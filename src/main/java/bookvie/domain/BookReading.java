@@ -32,6 +32,10 @@ public class BookReading {
 
     private int pagesRead;
 
+    public void read(int pages) {
+        setPagesRead(pages);
+    }
+
     private void setPagesRead(int pagesRead) {
         if (pagesRead < 0) {
             throw new IllegalArgumentException("Cannot read negative pages!");
@@ -43,9 +47,5 @@ public class BookReading {
             throw new IllegalArgumentException("Cannot read more pages than the book has!");
         }
         this.pagesRead = pagesRead;
-    }
-
-    public void read(int pages) {
-        setPagesRead(pages);
     }
 }
