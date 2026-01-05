@@ -59,12 +59,12 @@ class BookReadingTest {
     }
 
     @Test
-    void shouldStartReadingWithNoPagesRead() {
+    void shouldStartReadingWithNoPagesOnPage() {
         // when
         reading.start();
 
         // then
-        assertThat(reading.getPagesRead()).isZero();
+        assertThat(reading.getOnPage()).isZero();
     }
 
     @Test
@@ -76,7 +76,7 @@ class BookReadingTest {
         reading.finish();
 
         // when
-        assertThat(reading.getEndDate()).isEqualTo(today);
+        assertThat(reading.getFinishDate()).isEqualTo(today);
     }
 
     @Test
@@ -88,16 +88,16 @@ class BookReadingTest {
         reading.finish(finishDate);
 
         // then
-        assertThat(reading.getEndDate()).isEqualTo(finishDate);
+        assertThat(reading.getFinishDate()).isEqualTo(finishDate);
     }
 
     @Test
-    void shouldMatchBookReadPagesWhenFinishReading() {
+    void shouldMatchBookFinishAtPagePagesWhenFinishReading() {
         // when
         reading.finish();
 
         // then
-        assertThat(reading.getPagesRead()).isEqualTo(reading.getBook().getPages());
+        assertThat(reading.getOnPage()).isEqualTo(reading.getBook().getPages());
     }
 
     @Test
@@ -108,41 +108,123 @@ class BookReadingTest {
         reading.finish();
 
         // then
-        assertThat(reading.getStartDate()).isEqualTo(reading.getEndDate());
+        assertThat(reading.getStartDate()).isEqualTo(reading.getFinishDate());
         assertThat(reading.getStartDate()).isToday();
-        assertThat(reading.getEndDate()).isToday();
+        assertThat(reading.getFinishDate()).isToday();
     }
 
     @Test
-    void shouldNotExceedTotalPagesWhenRead() {
+    void shouldNotExceedTotalPagesWhenOnPage() {
         // expect
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> reading.read(105))
+                .isThrownBy(() -> reading.onPage(105))
                 .withMessage("Cannot read more pages than the book has!");
     }
 
     @Test
-    void shouldNotAcceptZeroPagesRead() {
+    void shouldNotAcceptZeroPagesOnPage() {
         // expect
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> reading.read(0))
+                .isThrownBy(() -> reading.onPage(0))
                 .withMessage("Cannot read zero pages!");
     }
 
     @Test
-    void shouldNotAcceptNegativePagesRead() {
+    void shouldNotAcceptNegativePagesOnPage() {
         // expect
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> reading.read(-15))
+                .isThrownBy(() -> reading.onPage(-15))
                 .withMessage("Cannot read negative pages!");
     }
 
     @Test
-    void shouldReadPages() {
+    void shouldOnPagePages() {
         // when
-        reading.read(50);
+        reading.onPage(50);
 
         // then
-        assertThat(reading.getPagesRead()).isEqualTo(50);
+        assertThat(reading.getOnPage()).isEqualTo(50);
     }
+
+    @Test
+    void shouldNotReadLessPagesThanAlreadyOnPage() {
+        // when
+        reading.onPage(25);
+
+        // then
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> reading.onPage(10))
+                .withMessage("Cannot read less pages than already read!");
+    }
+
+    @Test
+    void shouldStartReadingIfNotExplicitlySetTheDate() {
+        // when
+        reading.onPage(30);
+
+        // then
+        assertThat(reading.getStartDate()).isToday();
+    }
+
+    @Test
+    void shouldNotStartItOverIfFinished() {
+        // when
+        reading.finish();
+
+        // then
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> reading.start())
+                .withMessage("Cannot start reading after finishing it!");
+    }
+
+    @Test
+    void shouldNotFinishReadingTwice() {
+        // when
+        reading.finish();
+
+        // then
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> reading.finish())
+                .withMessage("Cannot finish reading twice!");
+    }
+
+    @Test
+    void shouldEnsureTheReadingIsFinished() {
+        // when
+        reading.finish();
+
+        // then
+        assertThat(reading.isFinished()).isTrue();
+    }
+
+    @Test
+    void shouldReturnFalseWhenReadingIsNotFinished() {
+        // when
+        reading.start();
+
+        // then
+        assertThat(reading.isFinished()).isFalse();
+    }
+
+    @Test
+    void shouldNotAcceptAsFinishedIfOnPageDoesNotMatchBooksTotal() {
+        // given
+        reading.onPage(50);
+
+        // then
+        assertThat(reading.isFinished()).isFalse();
+    }
+
+    @Test
+    void shouldAcceptAsFinishedOnlyIfAllCriteriaMet() {
+        // when
+        reading.finish();
+
+        // then
+        assertThat(reading.isFinished()).isTrue();
+        assertThat(reading.getOnPage()).isEqualTo(reading.getBook().getPages());
+        assertThat(reading.getStartDate()).isToday();
+        assertThat(reading.getFinishDate()).isToday();
+    }
+
 }
