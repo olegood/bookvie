@@ -12,7 +12,7 @@ import java.time.LocalDate;
 @Getter
 public class BookReading {
 
-    private Book book;
+    private final Book book;
 
     private LocalDate startDate;
     private LocalDate endDate;
@@ -24,7 +24,22 @@ public class BookReading {
     }
 
     public void start(LocalDate startDate) {
+        if (book == null) {
+            throw new IllegalArgumentException("Cannot start reading without a book!");
+        }
         this.startDate = startDate;
+    }
+
+    public void finish() {
+        finish(LocalDate.now());
+    }
+
+    public void finish(LocalDate finishDate) {
+        if (this.startDate == null) {
+            start(finishDate);
+        }
+        read(book.getPages());
+        this.endDate = finishDate;
     }
 
     public void read(int pages) {
@@ -39,5 +54,4 @@ public class BookReading {
         }
         this.pagesRead = pages;
     }
-
 }

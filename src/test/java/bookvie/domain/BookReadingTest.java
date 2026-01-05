@@ -25,12 +25,25 @@ class BookReadingTest {
     }
 
     @Test
-    void shouldStartReading() {
+    void shouldHaveBookBeforeStartReading() {
+        // when
+        reading = BookReading.builder()
+                .book(null)
+                .build();
+
+        // then
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> reading.start())
+                .withMessage("Cannot start reading without a book!");
+    }
+
+    @Test
+    void shouldSetTodayWhenStartReading() {
         // when
         reading.start();
 
         // then
-        assertThat(reading.getStartDate()).isNotNull();
+        assertThat(reading.getStartDate()).isToday();
     }
 
     @Test
@@ -43,6 +56,61 @@ class BookReadingTest {
 
         // then
         assertThat(reading.getStartDate()).isEqualTo(startDate);
+    }
+
+    @Test
+    void shouldStartReadingWithNoPagesRead() {
+        // when
+        reading.start();
+
+        // then
+        assertThat(reading.getPagesRead()).isZero();
+    }
+
+    @Test
+    void shouldSetTodayWhenFinishReading() {
+        // given
+        var today = LocalDate.now();
+
+        // when
+        reading.finish();
+
+        // when
+        assertThat(reading.getEndDate()).isEqualTo(today);
+    }
+
+    @Test
+    void shouldSpecifyDateWhenFinishReading() {
+        // given
+        var finishDate = LocalDate.of(2026, Month.FEBRUARY, 15);
+
+        // when
+        reading.finish(finishDate);
+
+        // then
+        assertThat(reading.getEndDate()).isEqualTo(finishDate);
+    }
+
+    @Test
+    void shouldMatchBookReadPagesWhenFinishReading() {
+        // when
+        reading.finish();
+
+        // then
+        assertThat(reading.getPagesRead()).isEqualTo(reading.getBook().getPages());
+    }
+
+    @Test
+    void shouldSetStartDateTheSameAsFinishedWhenWasNotStartedExplicitly() {
+        // given
+
+        // when
+        reading.finish();
+
+        // then
+        assertThat(reading.getStartDate()).isEqualTo(reading.getEndDate());
+        assertThat(reading.getStartDate()).isToday();
+        assertThat(reading.getEndDate()).isToday();
     }
 
     @Test
