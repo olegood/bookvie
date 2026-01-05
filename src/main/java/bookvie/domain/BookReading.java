@@ -1,30 +1,17 @@
 package bookvie.domain;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.ManyToOne;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.Getter;
 
 import java.time.LocalDate;
-import java.util.UUID;
 
 /**
  * Represents one full read-through of a book.
  */
-@Data
 @Builder
-@AllArgsConstructor
-@NoArgsConstructor
-@Entity
+@Getter
 public class BookReading {
 
-    @Id
-    private UUID uuid = UUID.randomUUID();
-
-    @ManyToOne
     private Book book;
 
     private LocalDate startDate;
@@ -32,20 +19,25 @@ public class BookReading {
 
     private int pagesRead;
 
-    public void read(int pages) {
-        setPagesRead(pages);
+    public void start() {
+        start(LocalDate.now());
     }
 
-    private void setPagesRead(int pagesRead) {
-        if (pagesRead < 0) {
+    public void start(LocalDate startDate) {
+        this.startDate = startDate;
+    }
+
+    public void read(int pages) {
+        if (pages < 0) {
             throw new IllegalArgumentException("Cannot read negative pages!");
         }
-        if (pagesRead == 0) {
+        if (pages == 0) {
             throw new IllegalArgumentException("Cannot read zero pages!");
         }
-        if (pagesRead > book.getPages()) {
+        if (pages > book.getPages()) {
             throw new IllegalArgumentException("Cannot read more pages than the book has!");
         }
-        this.pagesRead = pagesRead;
+        this.pagesRead = pages;
     }
+
 }

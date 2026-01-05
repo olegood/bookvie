@@ -1,77 +1,80 @@
 package bookvie.domain;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import java.time.LocalDate;
+import java.time.Month;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 class BookReadingTest {
 
-    @Test
-    void shouldNotExceedTotalPagesWhenRead() {
-        // when
+    private BookReading reading;
+
+    @BeforeEach
+    void setUp() {
         var book = Book.builder()
                 .pages(100)
                 .build();
 
-        var reading = BookReading.builder()
+        reading = BookReading.builder()
                 .book(book)
                 .build();
+    }
+
+    @Test
+    void shouldStartReading() {
+        // when
+        reading.start();
 
         // then
+        assertThat(reading.getStartDate()).isNotNull();
+    }
+
+    @Test
+    void shouldStartReadingWithSpecifiedDate() {
+        // given
+        var startDate = LocalDate.of(2026, Month.FEBRUARY, 15);
+
+        // when
+        reading.start(startDate);
+
+        // then
+        assertThat(reading.getStartDate()).isEqualTo(startDate);
+    }
+
+    @Test
+    void shouldNotExceedTotalPagesWhenRead() {
+        // expect
         assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> reading.read(105))
                 .withMessage("Cannot read more pages than the book has!");
     }
 
     @Test
-    void shouldNotAcceptNegativePagesRead() {
-        // when
-        var book = Book.builder()
-                .pages(100)
-                .build();
-
-        var reading = BookReading.builder()
-                .book(book)
-                .build();
-
-        // then
-        assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> reading.read(-20))
-                .withMessage("Cannot read negative pages!");
-    }
-
-    @Test
     void shouldNotAcceptZeroPagesRead() {
-        // when
-        var book = Book.builder()
-                .pages(100)
-                .build();
-
-        var reading = BookReading.builder()
-                .book(book)
-                .build();
-
-        // then
+        // expect
         assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> reading.read(0))
                 .withMessage("Cannot read zero pages!");
     }
 
     @Test
+    void shouldNotAcceptNegativePagesRead() {
+        // expect
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> reading.read(-15))
+                .withMessage("Cannot read negative pages!");
+    }
+
+    @Test
     void shouldReadPages() {
-        // given
-        var book = Book.builder()
-                .pages(100)
-                .build();
-
-        var reading = BookReading.builder().book(book).build();
-
         // when
         reading.read(50);
 
         // then
         assertThat(reading.getPagesRead()).isEqualTo(50);
     }
-
 }
