@@ -1,15 +1,10 @@
 package bookvie.domain;
 
-import lombok.Builder;
-import lombok.Getter;
-
 import java.time.LocalDate;
 
 /**
  * Represents one full read-through of a book.
  */
-@Builder
-@Getter
 public class BookReading {
 
     private final Book book;
@@ -29,55 +24,93 @@ public class BookReading {
      */
     private int onPage;
 
+    public BookReading(Book book) {
+        this.book = book;
+    }
+
+    public LocalDate getStartedOn() {
+        return startDate;
+    }
+
+    public LocalDate getFinishedOn() {
+        return finishDate;
+    }
+
+    public int currentPage() {
+        return onPage;
+    }
+
+    public Book book() {
+        return book;
+    }
+
     public void start() {
         start(LocalDate.now());
     }
 
     public void start(LocalDate startDate) {
-        if (book == null) {
-            throw new IllegalArgumentException("Cannot start reading without a book!");
+        if (hasNoBook()) {
+            throw new IllegalArgumentException("Cannot operate without a book!");
         }
-        if (this.finishDate != null) {
+        if (isFinished()) {
             throw new IllegalArgumentException("Cannot start reading after finishing it!");
         }
         this.startDate = startDate;
     }
 
     public void finish() {
+        if (hasNoBook()) {
+            throw new IllegalArgumentException("Cannot operate without a book!");
+        }
         finish(LocalDate.now());
     }
 
     public void finish(LocalDate finishDate) {
-        if (this.finishDate != null) {
+        if (isFinished()) {
             throw new IllegalArgumentException("Cannot finish reading twice!");
         }
-        if (this.startDate == null) {
+        if (isReadyToStart()) {
             start(finishDate);
         }
         onPage(book.getPages());
         this.finishDate = finishDate;
     }
 
-    public void onPage(int page) {
-        if (this.startDate == null) {
+    private boolean isReadyToStart() {
+        return hasBook() && startDate == null;
+    }
+
+    private boolean hasBook() {
+        return book != null;
+    }
+
+    private boolean hasNoBook() {
+        return !hasBook();
+    }
+
+    public void onPage(int pageNo) {
+        if (isReadyToStart()) {
             start();
         }
-        if (page < 0) {
-            throw new IllegalArgumentException("Cannot read negative pages!");
+        if (pageNo <= 0) {
+            throw new IllegalArgumentException("Incorrect pages progress!");
         }
-        if (page == 0) {
-            throw new IllegalArgumentException("Cannot read zero pages!");
-        }
-        if (page > book.getPages()) {
+        if (pageNo > book.getPages()) {
             throw new IllegalArgumentException("Cannot read more pages than the book has!");
         }
-        if (page < onPage) {
+        if (pageNo < onPage) {
             throw new IllegalArgumentException("Cannot read less pages than already read!");
         }
-        this.onPage = page;
+        this.onPage = pageNo;
     }
 
     public boolean isFinished() {
         return this.finishDate != null && this.onPage == book.getPages();
+    }
+
+    public void reset() {
+        this.finishDate = null;
+        this.onPage = 0;
+        start();
     }
 }

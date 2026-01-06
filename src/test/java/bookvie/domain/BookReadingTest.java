@@ -19,22 +19,29 @@ class BookReadingTest {
                 .pages(100)
                 .build();
 
-        reading = BookReading.builder()
-                .book(book)
-                .build();
+        reading = new BookReading(book);
     }
 
     @Test
     void shouldHaveBookBeforeStartReading() {
         // when
-        reading = BookReading.builder()
-                .book(null)
-                .build();
+        reading = new BookReading(null);
 
         // then
         assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> reading.start())
-                .withMessage("Cannot start reading without a book!");
+                .withMessage("Cannot operate without a book!");
+    }
+
+    @Test
+    void shouldHaveBookAfterFinishReading() {
+        // when
+        reading = new BookReading(null);
+
+        // then
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> reading.finish())
+                .withMessage("Cannot operate without a book!");
     }
 
     @Test
@@ -43,7 +50,7 @@ class BookReadingTest {
         reading.start();
 
         // then
-        assertThat(reading.getStartDate()).isToday();
+        assertThat(reading.getStartedOn()).isToday();
     }
 
     @Test
@@ -55,7 +62,7 @@ class BookReadingTest {
         reading.start(startDate);
 
         // then
-        assertThat(reading.getStartDate()).isEqualTo(startDate);
+        assertThat(reading.getStartedOn()).isEqualTo(startDate);
     }
 
     @Test
@@ -64,7 +71,7 @@ class BookReadingTest {
         reading.start();
 
         // then
-        assertThat(reading.getOnPage()).isZero();
+        assertThat(reading.currentPage()).isZero();
     }
 
     @Test
@@ -76,7 +83,7 @@ class BookReadingTest {
         reading.finish();
 
         // when
-        assertThat(reading.getFinishDate()).isEqualTo(today);
+        assertThat(reading.getFinishedOn()).isEqualTo(today);
     }
 
     @Test
@@ -88,7 +95,7 @@ class BookReadingTest {
         reading.finish(finishDate);
 
         // then
-        assertThat(reading.getFinishDate()).isEqualTo(finishDate);
+        assertThat(reading.getFinishedOn()).isEqualTo(finishDate);
     }
 
     @Test
@@ -97,20 +104,18 @@ class BookReadingTest {
         reading.finish();
 
         // then
-        assertThat(reading.getOnPage()).isEqualTo(reading.getBook().getPages());
+        assertThat(reading.currentPage()).isEqualTo(reading.book().getPages());
     }
 
     @Test
     void shouldSetStartDateTheSameAsFinishedWhenWasNotStartedExplicitly() {
-        // given
-
         // when
         reading.finish();
 
         // then
-        assertThat(reading.getStartDate()).isEqualTo(reading.getFinishDate());
-        assertThat(reading.getStartDate()).isToday();
-        assertThat(reading.getFinishDate()).isToday();
+        assertThat(reading.getStartedOn()).isToday();
+        assertThat(reading.getFinishedOn()).isToday();
+        assertThat(reading.getStartedOn()).isEqualTo(reading.getFinishedOn());
     }
 
     @Test
@@ -126,7 +131,7 @@ class BookReadingTest {
         // expect
         assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> reading.onPage(0))
-                .withMessage("Cannot read zero pages!");
+                .withMessage("Incorrect pages progress!");
     }
 
     @Test
@@ -134,7 +139,7 @@ class BookReadingTest {
         // expect
         assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> reading.onPage(-15))
-                .withMessage("Cannot read negative pages!");
+                .withMessage("Incorrect pages progress!");
     }
 
     @Test
@@ -143,7 +148,7 @@ class BookReadingTest {
         reading.onPage(50);
 
         // then
-        assertThat(reading.getOnPage()).isEqualTo(50);
+        assertThat(reading.currentPage()).isEqualTo(50);
     }
 
     @Test
@@ -163,7 +168,7 @@ class BookReadingTest {
         reading.onPage(30);
 
         // then
-        assertThat(reading.getStartDate()).isToday();
+        assertThat(reading.getStartedOn()).isToday();
     }
 
     @Test
@@ -222,9 +227,25 @@ class BookReadingTest {
 
         // then
         assertThat(reading.isFinished()).isTrue();
-        assertThat(reading.getOnPage()).isEqualTo(reading.getBook().getPages());
-        assertThat(reading.getStartDate()).isToday();
-        assertThat(reading.getFinishDate()).isToday();
+        assertThat(reading.currentPage()).isEqualTo(reading.book().getPages());
+        assertThat(reading.getStartedOn()).isToday();
+        assertThat(reading.getFinishedOn()).isToday();
+    }
+
+    @Test
+    void shouldResetProgressBackToStart() {
+        // given
+        reading.onPage(50);
+        reading.finish();
+
+        // when
+        reading.reset();
+
+        // then
+        assertThat(reading.currentPage()).isZero();
+        assertThat(reading.isFinished()).isFalse();
+        assertThat(reading.getStartedOn()).isToday();
+        assertThat(reading.getFinishedOn()).isNull();
     }
 
 }
