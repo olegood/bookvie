@@ -9,7 +9,7 @@ public class BookReading {
 
     private final Book book;
 
-    private ReadingDates dates;
+    private ReadingPeriod readingPeriod;
 
     /**
      * Represents the current page being read in the book.
@@ -20,27 +20,26 @@ public class BookReading {
      * - It cannot exceed the total number of pages in the book.
      * - It cannot be less than the current value of this field.
      */
-    private int onPage;
+    private int currentPage;
 
-    public BookReading(Book book) {
+    public BookReading(final Book book) {
+        if (book == null) {
+            throw new IllegalArgumentException("Cannot read a null book!");
+        }
         this.book = book;
-        this.dates = ReadingDates.empty();
+        this.readingPeriod = ReadingPeriod.empty();
     }
 
     public LocalDate getStartedOn() {
-        return dates.startDate();
+        return readingPeriod.startDate();
     }
 
     public LocalDate getFinishedOn() {
-        return dates.finishDate();
+        return readingPeriod.finishDate();
     }
 
     public int currentPage() {
-        return onPage;
-    }
-
-    public Book book() {
-        return book;
+        return currentPage;
     }
 
     /**
@@ -61,19 +60,16 @@ public class BookReading {
      * Validates the readiness to start by ensuring a book is assigned and the reading
      * has not already been marked as finished.
      *
-     * @param startDate the date when the reading should start. Must not be null.
+     * @param date the date when the reading should start. Must not be null.
      * @throws IllegalArgumentException if no book is assigned or if the book
      *                                  has already been marked as finished.
      */
-    public void start(LocalDate startDate) {
-        if (hasNoBook()) {
-            throw new IllegalArgumentException("Cannot operate without a book!");
-        }
+    public void start(LocalDate date) {
         if (isCompleted()) {
             throw new IllegalArgumentException("Cannot start reading after finishing it!");
         }
-        this.onPage = 0;
-        this.dates = ReadingDates.startOn(startDate);
+        this.currentPage = 0;
+        this.readingPeriod = ReadingPeriod.startOn(date);
     }
 
     /**
@@ -85,9 +81,6 @@ public class BookReading {
      *                                  if the book has already been marked as finished.
      */
     public void complete() {
-        if (hasNoBook()) {
-            throw new IllegalArgumentException("Cannot operate without a book!");
-        }
         complete(LocalDate.now());
     }
 
@@ -97,27 +90,15 @@ public class BookReading {
      * with the given finish date. Ensures the progress is updated to the final page
      * upon finishing. Throws an exception if the reading has already been completed.
      *
-     * @param finishDate the date on which the reading is finished. Must not be null.
+     * @param date the date on which the reading is finished. Must not be null.
      * @throws IllegalArgumentException if the book has already been marked as finished.
      */
-    public void complete(LocalDate finishDate) {
+    public void complete(LocalDate date) {
         if (isCompleted()) {
             throw new IllegalArgumentException("Cannot finish reading twice!");
         }
         onPage(book.getPages());
-        dates = dates.finishOn(finishDate);
-    }
-
-    private boolean isReadyToStart() {
-        return hasBook() && this.getStartedOn() == null;
-    }
-
-    private boolean hasBook() {
-        return book != null;
-    }
-
-    private boolean hasNoBook() {
-        return !hasBook();
+        readingPeriod = readingPeriod.finishOn(date);
     }
 
     /**
@@ -127,25 +108,29 @@ public class BookReading {
      * and not regressing behind the current progress.
      * If the reading process has not started yet, it will be initiated.
      *
-     * @param pageNo the page number to update to. Must be greater than 0,
-     *               must not exceed the total number of pages in the book,
-     *               and must not be less than the current page progress.
+     * @param currentPage the page number to update to. Must be greater than 0,
+     *                    must not exceed the total number of pages in the book,
+     *                    and must not be less than the current page progress.
      * @throws IllegalArgumentException if the provided page number violates any of the constraints.
      */
-    public void onPage(int pageNo) {
-        if (isReadyToStart()) {
+    public void onPage(int currentPage) {
+        if (readingPeriod.isReadyToStart()) {
             start();
         }
-        if (pageNo <= 0) {
+        validate(currentPage);
+        this.currentPage = currentPage;
+    }
+
+    private void validate(int currentPage) {
+        if (currentPage <= 0) {
             throw new IllegalArgumentException("Incorrect pages progress!");
         }
-        if (pageNo > book.getPages()) {
+        if (currentPage > book.getPages()) {
             throw new IllegalArgumentException("Cannot read more pages than the book has!");
         }
-        if (pageNo < onPage) {
+        if (currentPage < this.currentPage) {
             throw new IllegalArgumentException("Cannot read less pages than already read!");
         }
-        this.onPage = pageNo;
     }
 
     /**
@@ -156,7 +141,7 @@ public class BookReading {
      * @return true if the reading is finished, false otherwise.
      */
     public boolean isCompleted() {
-        return dates.arePacked() && onPage == book.getPages();
+        return readingPeriod.isFinished() && currentPage == book.getPages();
     }
 
     /**
@@ -167,7 +152,7 @@ public class BookReading {
      * - The reading process is restarted.
      */
     public void reset() {
-        dates = ReadingDates.empty();
+        readingPeriod = ReadingPeriod.empty();
         start();
     }
 }

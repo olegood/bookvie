@@ -11,11 +11,12 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 class BookReadingTest {
 
+    private Book book;
     private BookReading reading;
 
     @BeforeEach
     void setUp() {
-        var book = Book.builder()
+        book = Book.builder()
                 .pages(100)
                 .build();
 
@@ -23,25 +24,11 @@ class BookReadingTest {
     }
 
     @Test
-    void shouldHaveBookBeforeStartReading() {
-        // when
-        reading = new BookReading(null);
-
-        // then
+    void shouldThrowExceptionWhenBookIsNull() {
+        // expect
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> reading.start())
-                .withMessage("Cannot operate without a book!");
-    }
-
-    @Test
-    void shouldHaveBookAfterCompleteReading() {
-        // when
-        reading = new BookReading(null);
-
-        // then
-        assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> reading.complete())
-                .withMessage("Cannot operate without a book!");
+                .isThrownBy(() -> new BookReading(null))
+                .withMessage("Cannot read a null book!");
     }
 
     @Test
@@ -104,7 +91,7 @@ class BookReadingTest {
         reading.complete();
 
         // then
-        assertThat(reading.currentPage()).isEqualTo(reading.book().getPages());
+        assertThat(reading.currentPage()).isEqualTo(book.getPages());
     }
 
     @Test
@@ -227,7 +214,7 @@ class BookReadingTest {
 
         // then
         assertThat(reading.isCompleted()).isTrue();
-        assertThat(reading.currentPage()).isEqualTo(reading.book().getPages());
+        assertThat(reading.currentPage()).isEqualTo(book.getPages());
         assertThat(reading.getStartedOn()).isToday();
         assertThat(reading.getFinishedOn()).isToday();
     }
