@@ -34,13 +34,13 @@ class BookReadingTest {
     }
 
     @Test
-    void shouldHaveBookAfterFinishReading() {
+    void shouldHaveBookAfterCompleteReading() {
         // when
         reading = new BookReading(null);
 
         // then
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> reading.finish())
+                .isThrownBy(() -> reading.complete())
                 .withMessage("Cannot operate without a book!");
     }
 
@@ -75,33 +75,33 @@ class BookReadingTest {
     }
 
     @Test
-    void shouldSetTodayWhenFinishReading() {
+    void shouldSetTodayWhenCompleteReading() {
         // given
         var today = LocalDate.now();
 
         // when
-        reading.finish();
+        reading.complete();
 
         // when
         assertThat(reading.getFinishedOn()).isEqualTo(today);
     }
 
     @Test
-    void shouldSpecifyDateWhenFinishReading() {
+    void shouldSpecifyDateWhenCompleteReading() {
         // given
         var finishDate = LocalDate.of(2026, Month.FEBRUARY, 15);
 
         // when
-        reading.finish(finishDate);
+        reading.complete(finishDate);
 
         // then
         assertThat(reading.getFinishedOn()).isEqualTo(finishDate);
     }
 
     @Test
-    void shouldMatchBookFinishAtPagePagesWhenFinishReading() {
+    void shouldMatchBookFinishAtPagePagesWhenCompleteReading() {
         // when
-        reading.finish();
+        reading.complete();
 
         // then
         assertThat(reading.currentPage()).isEqualTo(reading.book().getPages());
@@ -110,7 +110,7 @@ class BookReadingTest {
     @Test
     void shouldSetStartDateTheSameAsFinishedWhenWasNotStartedExplicitly() {
         // when
-        reading.finish();
+        reading.complete();
 
         // then
         assertThat(reading.getStartedOn()).isToday();
@@ -174,7 +174,7 @@ class BookReadingTest {
     @Test
     void shouldNotStartItOverIfFinished() {
         // when
-        reading.finish();
+        reading.complete();
 
         // then
         assertThatExceptionOfType(IllegalArgumentException.class)
@@ -183,23 +183,23 @@ class BookReadingTest {
     }
 
     @Test
-    void shouldNotFinishReadingTwice() {
+    void shouldNotCompleteReadingTwice() {
         // when
-        reading.finish();
+        reading.complete();
 
         // then
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> reading.finish())
+                .isThrownBy(() -> reading.complete())
                 .withMessage("Cannot finish reading twice!");
     }
 
     @Test
-    void shouldEnsureTheReadingIsFinished() {
+    void shouldEnsureTheReadingIsCompleted() {
         // when
-        reading.finish();
+        reading.complete();
 
         // then
-        assertThat(reading.isFinished()).isTrue();
+        assertThat(reading.isCompleted()).isTrue();
     }
 
     @Test
@@ -208,7 +208,7 @@ class BookReadingTest {
         reading.start();
 
         // then
-        assertThat(reading.isFinished()).isFalse();
+        assertThat(reading.isCompleted()).isFalse();
     }
 
     @Test
@@ -217,16 +217,16 @@ class BookReadingTest {
         reading.onPage(50);
 
         // then
-        assertThat(reading.isFinished()).isFalse();
+        assertThat(reading.isCompleted()).isFalse();
     }
 
     @Test
     void shouldAcceptAsFinishedOnlyIfAllCriteriaMet() {
         // when
-        reading.finish();
+        reading.complete();
 
         // then
-        assertThat(reading.isFinished()).isTrue();
+        assertThat(reading.isCompleted()).isTrue();
         assertThat(reading.currentPage()).isEqualTo(reading.book().getPages());
         assertThat(reading.getStartedOn()).isToday();
         assertThat(reading.getFinishedOn()).isToday();
@@ -236,14 +236,14 @@ class BookReadingTest {
     void shouldResetProgressBackToStart() {
         // given
         reading.onPage(50);
-        reading.finish();
+        reading.complete();
 
         // when
         reading.reset();
 
         // then
         assertThat(reading.currentPage()).isZero();
-        assertThat(reading.isFinished()).isFalse();
+        assertThat(reading.isCompleted()).isFalse();
         assertThat(reading.getStartedOn()).isToday();
         assertThat(reading.getFinishedOn()).isNull();
     }

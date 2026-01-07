@@ -9,9 +9,7 @@ public class BookReading {
 
     private final Book book;
 
-    private LocalDate startDate;
-    private LocalDate finishDate;
-
+    private ReadingDates dates;
 
     /**
      * Represents the current page being read in the book.
@@ -26,14 +24,15 @@ public class BookReading {
 
     public BookReading(Book book) {
         this.book = book;
+        this.dates = ReadingDates.empty();
     }
 
     public LocalDate getStartedOn() {
-        return startDate;
+        return dates.startDate();
     }
 
     public LocalDate getFinishedOn() {
-        return finishDate;
+        return dates.finishDate();
     }
 
     public int currentPage() {
@@ -70,10 +69,11 @@ public class BookReading {
         if (hasNoBook()) {
             throw new IllegalArgumentException("Cannot operate without a book!");
         }
-        if (isFinished()) {
+        if (isCompleted()) {
             throw new IllegalArgumentException("Cannot start reading after finishing it!");
         }
-        this.startDate = startDate;
+        this.onPage = 0;
+        this.dates = ReadingDates.startOn(startDate);
     }
 
     /**
@@ -84,11 +84,11 @@ public class BookReading {
      * @throws IllegalArgumentException if no book is assigned to the reading or
      *                                  if the book has already been marked as finished.
      */
-    public void finish() {
+    public void complete() {
         if (hasNoBook()) {
             throw new IllegalArgumentException("Cannot operate without a book!");
         }
-        finish(LocalDate.now());
+        complete(LocalDate.now());
     }
 
     /**
@@ -100,19 +100,16 @@ public class BookReading {
      * @param finishDate the date on which the reading is finished. Must not be null.
      * @throws IllegalArgumentException if the book has already been marked as finished.
      */
-    public void finish(LocalDate finishDate) {
-        if (isFinished()) {
+    public void complete(LocalDate finishDate) {
+        if (isCompleted()) {
             throw new IllegalArgumentException("Cannot finish reading twice!");
         }
-        if (isReadyToStart()) {
-            start(finishDate);
-        }
         onPage(book.getPages());
-        this.finishDate = finishDate;
+        dates = dates.finishOn(finishDate);
     }
 
     private boolean isReadyToStart() {
-        return hasBook() && startDate == null;
+        return hasBook() && this.getStartedOn() == null;
     }
 
     private boolean hasBook() {
@@ -158,8 +155,8 @@ public class BookReading {
      *
      * @return true if the reading is finished, false otherwise.
      */
-    public boolean isFinished() {
-        return this.finishDate != null && this.onPage == book.getPages();
+    public boolean isCompleted() {
+        return dates.arePacked() && onPage == book.getPages();
     }
 
     /**
@@ -170,8 +167,7 @@ public class BookReading {
      * - The reading process is restarted.
      */
     public void reset() {
-        this.finishDate = null;
-        this.onPage = 0;
+        dates = ReadingDates.empty();
         start();
     }
 }
