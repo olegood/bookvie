@@ -13,7 +13,6 @@ class DurationTest {
         assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> Duration.hours(-2.0))
                 .withMessage("Duration must be positive!");
-
     }
 
     @Test
@@ -22,7 +21,6 @@ class DurationTest {
         assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> Duration.hours(0))
                 .withMessage("Duration must be positive!");
-
     }
 
     @Test
@@ -43,6 +41,14 @@ class DurationTest {
         // then
         assertThat(duration.value()).isEqualTo(6.0);
         assertThat(duration.unit()).isEqualTo(Duration.Unit.POMODOROS);
+    }
+
+    @Test
+    void shouldNotCreatePomodorosWithDecimals() {
+        // expect
+        assertThatExceptionOfType(IllegalArgumentException.class)
+                .isThrownBy(() -> new Duration(2.5, Duration.Unit.POMODOROS))
+                .withMessage("Pomodoros must be a whole number!");
     }
 
 }
