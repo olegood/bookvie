@@ -22,7 +22,7 @@ public final class Reading {
      * - It cannot exceed the total number of pages in the book.
      * - It cannot be less than the current value of this field.
      */
-    private int currentPage;
+    private int lastPageRead;
 
     public Reading(final Book book) {
         if (book == null) {
@@ -32,16 +32,16 @@ public final class Reading {
         this.readingPeriod = Period.empty();
     }
 
-    public LocalDate getStartedOn() {
+    public LocalDate startedOn() {
         return readingPeriod.startDate();
     }
 
-    public LocalDate getFinishedOn() {
+    public LocalDate finishedOn() {
         return readingPeriod.finishDate();
     }
 
-    public int currentPage() {
-        return currentPage;
+    public int lastPageRead() {
+        return lastPageRead;
     }
 
     /**
@@ -70,7 +70,7 @@ public final class Reading {
         if (isCompleted()) {
             throw new IllegalArgumentException("Cannot start reading after finishing it!");
         }
-        this.currentPage = 0;
+        this.lastPageRead = 0;
         this.readingPeriod = Period.startOn(date);
     }
 
@@ -120,7 +120,7 @@ public final class Reading {
             start();
         }
         validate(currentPage);
-        this.currentPage = currentPage;
+        this.lastPageRead = currentPage;
     }
 
     private void validate(int currentPage) {
@@ -130,7 +130,7 @@ public final class Reading {
         if (currentPage > book.getPages()) {
             throw new IllegalArgumentException("Cannot read more pages than the book has!");
         }
-        if (currentPage < this.currentPage) {
+        if (currentPage < this.lastPageRead) {
             throw new IllegalArgumentException("Cannot read less pages than already read!");
         }
     }
@@ -143,7 +143,7 @@ public final class Reading {
      * @return true if the reading is finished, false otherwise.
      */
     public boolean isCompleted() {
-        return readingPeriod.isFinished() && currentPage == book.getPages();
+        return readingPeriod.isFinished() && lastPageRead == book.getPages();
     }
 
     /**

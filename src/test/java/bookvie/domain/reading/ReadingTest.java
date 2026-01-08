@@ -38,7 +38,7 @@ class ReadingTest {
         reading.start();
 
         // then
-        assertThat(reading.getStartedOn()).isToday();
+        assertThat(reading.startedOn()).isToday();
     }
 
     @Test
@@ -50,7 +50,7 @@ class ReadingTest {
         reading.start(startDate);
 
         // then
-        assertThat(reading.getStartedOn()).isEqualTo(startDate);
+        assertThat(reading.startedOn()).isEqualTo(startDate);
     }
 
     @Test
@@ -59,7 +59,7 @@ class ReadingTest {
         reading.start();
 
         // then
-        assertThat(reading.currentPage()).isZero();
+        assertThat(reading.lastPageRead()).isZero();
     }
 
     @Test
@@ -71,7 +71,7 @@ class ReadingTest {
         reading.complete();
 
         // when
-        assertThat(reading.getFinishedOn()).isEqualTo(today);
+        assertThat(reading.finishedOn()).isEqualTo(today);
     }
 
     @Test
@@ -83,7 +83,7 @@ class ReadingTest {
         reading.complete(finishDate);
 
         // then
-        assertThat(reading.getFinishedOn()).isEqualTo(finishDate);
+        assertThat(reading.finishedOn()).isEqualTo(finishDate);
     }
 
     @Test
@@ -92,7 +92,7 @@ class ReadingTest {
         reading.complete();
 
         // then
-        assertThat(reading.currentPage()).isEqualTo(book.getPages());
+        assertThat(reading.lastPageRead()).isEqualTo(book.getPages());
     }
 
     @Test
@@ -101,9 +101,9 @@ class ReadingTest {
         reading.complete();
 
         // then
-        assertThat(reading.getStartedOn()).isToday();
-        assertThat(reading.getFinishedOn()).isToday();
-        assertThat(reading.getStartedOn()).isEqualTo(reading.getFinishedOn());
+        assertThat(reading.startedOn()).isToday();
+        assertThat(reading.finishedOn()).isToday();
+        assertThat(reading.startedOn()).isEqualTo(reading.finishedOn());
     }
 
     @Test
@@ -136,7 +136,7 @@ class ReadingTest {
         reading.onPage(50);
 
         // then
-        assertThat(reading.currentPage()).isEqualTo(50);
+        assertThat(reading.lastPageRead()).isEqualTo(50);
     }
 
     @Test
@@ -156,7 +156,7 @@ class ReadingTest {
         reading.onPage(30);
 
         // then
-        assertThat(reading.getStartedOn()).isToday();
+        assertThat(reading.startedOn()).isToday();
     }
 
     @Test
@@ -215,9 +215,9 @@ class ReadingTest {
 
         // then
         assertThat(reading.isCompleted()).isTrue();
-        assertThat(reading.currentPage()).isEqualTo(book.getPages());
-        assertThat(reading.getStartedOn()).isToday();
-        assertThat(reading.getFinishedOn()).isToday();
+        assertThat(reading.lastPageRead()).isEqualTo(book.getPages());
+        assertThat(reading.startedOn()).isToday();
+        assertThat(reading.finishedOn()).isToday();
     }
 
     @Test
@@ -230,10 +230,10 @@ class ReadingTest {
         reading.reset();
 
         // then
-        assertThat(reading.currentPage()).isZero();
+        assertThat(reading.lastPageRead()).isZero();
         assertThat(reading.isCompleted()).isFalse();
-        assertThat(reading.getStartedOn()).isToday();
-        assertThat(reading.getFinishedOn()).isNull();
+        assertThat(reading.startedOn()).isToday();
+        assertThat(reading.finishedOn()).isNull();
     }
 
 }
