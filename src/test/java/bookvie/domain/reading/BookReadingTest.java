@@ -1,5 +1,6 @@
-package bookvie.domain;
+package bookvie.domain.reading;
 
+import bookvie.domain.Book;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

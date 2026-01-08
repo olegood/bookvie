@@ -1,4 +1,6 @@
-package bookvie.domain;
+package bookvie.domain.reading;
+
+import bookvie.domain.Book;
 
 import java.time.LocalDate;
 
