@@ -7,11 +7,11 @@ import java.time.LocalDate;
 /**
  * Represents one full read-through of a book.
  */
-public class BookReading {
+public final class Reading {
 
     private final Book book;
 
-    private ReadingPeriod readingPeriod;
+    private Period readingPeriod;
 
     /**
      * Represents the current page being read in the book.
@@ -24,12 +24,12 @@ public class BookReading {
      */
     private int currentPage;
 
-    public BookReading(final Book book) {
+    public Reading(final Book book) {
         if (book == null) {
             throw new IllegalArgumentException("Cannot read a null book!");
         }
         this.book = book;
-        this.readingPeriod = ReadingPeriod.empty();
+        this.readingPeriod = Period.empty();
     }
 
     public LocalDate getStartedOn() {
@@ -71,7 +71,7 @@ public class BookReading {
             throw new IllegalArgumentException("Cannot start reading after finishing it!");
         }
         this.currentPage = 0;
-        this.readingPeriod = ReadingPeriod.startOn(date);
+        this.readingPeriod = Period.startOn(date);
     }
 
     /**
@@ -154,7 +154,7 @@ public class BookReading {
      * - The reading process is restarted.
      */
     public void reset() {
-        readingPeriod = ReadingPeriod.empty();
+        readingPeriod = Period.empty();
         start();
     }
 }

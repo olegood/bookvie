@@ -10,10 +10,10 @@ import java.time.Month;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
-class BookReadingTest {
+class ReadingTest {
 
     private Book book;
-    private BookReading reading;
+    private Reading reading;
 
     @BeforeEach
     void setUp() {
@@ -21,14 +21,14 @@ class BookReadingTest {
                 .pages(100)
                 .build();
 
-        reading = new BookReading(book);
+        reading = new Reading(book);
     }
 
     @Test
     void shouldThrowExceptionWhenBookIsNull() {
         // expect
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> new BookReading(null))
+                .isThrownBy(() -> new Reading(null))
                 .withMessage("Cannot read a null book!");
     }
 
