@@ -21,14 +21,15 @@ class ReadingTest {
                 .pages(100)
                 .build();
 
-        reading = new Reading(book);
+        reading = Reading.aBook(book);
+        reading.start();
     }
 
     @Test
     void shouldThrowExceptionWhenBookIsNull() {
         // expect
         assertThatExceptionOfType(IllegalArgumentException.class)
-                .isThrownBy(() -> new Reading(null))
+                .isThrownBy(() -> Reading.aBook(null))
                 .withMessage("Cannot read a null book!");
     }
 
@@ -167,7 +168,7 @@ class ReadingTest {
         // then
         assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> reading.start())
-                .withMessage("Cannot start reading after finishing it!");
+                .withMessage("Reading is already completed!");
     }
 
     @Test
@@ -178,7 +179,7 @@ class ReadingTest {
         // then
         assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> reading.complete())
-                .withMessage("Cannot finish reading twice!");
+                .withMessage("Reading is already completed!");
     }
 
     @Test
@@ -234,6 +235,22 @@ class ReadingTest {
         assertThat(reading.isCompleted()).isFalse();
         assertThat(reading.startedOn()).isToday();
         assertThat(reading.finishedOn()).isNull();
+    }
+
+    @Test
+    void shouldKeepUnreadPagesIfAbandoned() {
+        // given
+        reading.onPage(50);
+
+        // when
+        reading.abandon();
+
+        // then
+        assertThat(reading.lastPageRead()).isEqualTo(50);
+        assertThat(reading.isCompleted()).isFalse();
+        assertThat(reading.isAbandoned()).isTrue();
+        assertThat(reading.startedOn()).isToday();
+        assertThat(reading.finishedOn()).isToday();
     }
 
 }

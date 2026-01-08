@@ -13,6 +13,14 @@ public final class Reading {
 
     private Period readingPeriod;
 
+    private enum Status {
+        IN_PROGRESS,
+        COMPLETED,
+        ABANDONED
+    }
+
+    private Status status;
+
     /**
      * Represents the current page being read in the book.
      * <p>
@@ -24,12 +32,17 @@ public final class Reading {
      */
     private int lastPageRead;
 
-    public Reading(final Book book) {
+    private Reading(final Book book) {
         if (book == null) {
             throw new IllegalArgumentException("Cannot read a null book!");
         }
         this.book = book;
         this.readingPeriod = Period.empty();
+        this.status = Status.IN_PROGRESS;
+    }
+
+    public static Reading aBook(final Book book) {
+        return new Reading(book);
     }
 
     public LocalDate startedOn() {
@@ -67,11 +80,15 @@ public final class Reading {
      *                                  has already been marked as finished.
      */
     public void start(LocalDate date) {
-        if (isCompleted()) {
-            throw new IllegalArgumentException("Cannot start reading after finishing it!");
+        ensureInProgress();
+        lastPageRead = 0;
+        readingPeriod = Period.startOn(date);
+    }
+
+    private void ensureInProgress() {
+        if (status != Status.IN_PROGRESS) {
+            throw new IllegalArgumentException("Reading is already completed!");
         }
-        this.lastPageRead = 0;
-        this.readingPeriod = Period.startOn(date);
     }
 
     /**
@@ -96,9 +113,8 @@ public final class Reading {
      * @throws IllegalArgumentException if the book has already been marked as finished.
      */
     public void complete(LocalDate date) {
-        if (isCompleted()) {
-            throw new IllegalArgumentException("Cannot finish reading twice!");
-        }
+        ensureInProgress();
+        status = Status.COMPLETED;
         onPage(book.getPages());
         readingPeriod = readingPeriod.finishOn(date);
     }
@@ -116,9 +132,6 @@ public final class Reading {
      * @throws IllegalArgumentException if the provided page number violates any of the constraints.
      */
     public void onPage(int currentPage) {
-        if (readingPeriod.isReadyToStart()) {
-            start();
-        }
         validate(currentPage);
         this.lastPageRead = currentPage;
     }
@@ -135,6 +148,11 @@ public final class Reading {
         }
     }
 
+    public void abandon() {
+        status = Status.ABANDONED;
+        readingPeriod = readingPeriod.finishOn(LocalDate.now());
+    }
+
     /**
      * Determines whether the reading of the book has been completed.
      * A reading is considered finished if the finish date is not null
@@ -143,7 +161,11 @@ public final class Reading {
      * @return true if the reading is finished, false otherwise.
      */
     public boolean isCompleted() {
-        return readingPeriod.isFinished() && lastPageRead == book.getPages();
+        return status == Status.COMPLETED;
+    }
+
+    public boolean isAbandoned() {
+        return status == Status.ABANDONED;
     }
 
     /**
@@ -154,6 +176,7 @@ public final class Reading {
      * - The reading process is restarted.
      */
     public void reset() {
+        status = Status.IN_PROGRESS;
         readingPeriod = Period.empty();
         start();
     }
