@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field
 from uuid import uuid4
 
+from .errors import DomainError
+
 
 def new_id() -> str:
     return uuid4().hex[:12]
@@ -13,9 +15,9 @@ class Progress:
 
     def __post_init__(self):
         if self.pages_read < 0 or self.total_pages < 0:
-            raise ValueError("page counts cannot be negative")
+            raise DomainError("page counts cannot be negative")
         if self.pages_read > self.total_pages:
-            raise ValueError(f"pages read ({self.pages_read}) exceeds total ({self.total_pages})")
+            raise DomainError(f"pages read ({self.pages_read}) exceeds total ({self.total_pages})")
 
     @property
     def percent(self) -> float:
@@ -62,9 +64,9 @@ class Book:
     def __post_init__(self):
         """Ensure that the book title and total pages are valid."""
         if not self.title.strip():
-            raise ValueError("book title cannot be empty")
+            raise DomainError("book title cannot be empty")
         if self.total_pages < 1:
-            raise ValueError("a book needs at least one page")
+            raise DomainError("a book needs at least one page")
         self.authors = tuple(self.authors)
 
     @property

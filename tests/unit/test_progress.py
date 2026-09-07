@@ -2,6 +2,7 @@ import re
 
 import pytest
 
+from bookvie.domain.errors import DomainError
 from bookvie.domain.models import Progress
 
 
@@ -14,17 +15,17 @@ def test_progress_creation():
 
 
 def test_progress_incorrect_pages_read():
-    with pytest.raises(ValueError, match="page counts cannot be negative"):
+    with pytest.raises(DomainError, match="page counts cannot be negative"):
         Progress(pages_read=-1)
 
 
 def test_progress_incorrect_total_pages():
-    with pytest.raises(ValueError, match="page counts cannot be negative"):
+    with pytest.raises(DomainError, match="page counts cannot be negative"):
         Progress(total_pages=-1)
 
 
 def test_progress_pages_read_greater_than_total_pages():
-    with pytest.raises(ValueError, match=re.escape("pages read (10) exceeds total (5)")):
+    with pytest.raises(DomainError, match=re.escape("pages read (10) exceeds total (5)")):
         Progress(pages_read=10, total_pages=5)
 
 

@@ -1,5 +1,6 @@
 import pytest
 
+from bookvie.domain.errors import DomainError
 from bookvie.domain.models import Book
 
 
@@ -28,13 +29,13 @@ def test_book_display_name(book):
 
 def test_book_has_no_title():
     # EXPECT a book needs a title
-    with pytest.raises(ValueError, match="book title cannot be empty"):
+    with pytest.raises(DomainError, match="book title cannot be empty"):
         Book(title="   ", total_pages=10)
 
 
 def test_book_has_no_pages():
     # EXPECT a book needs at least one page
-    with pytest.raises(ValueError, match="a book needs at least one page"):
+    with pytest.raises(DomainError, match="a book needs at least one page"):
         Book(title="Python Testing with pytest", total_pages=0)
 
 
