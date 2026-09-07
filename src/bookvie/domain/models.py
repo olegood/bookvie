@@ -1,7 +1,9 @@
 from dataclasses import dataclass, field
+from datetime import datetime
 from uuid import uuid4
 
-from .errors import DomainError
+from .errors import DomainError, SequenceLocked
+from .status import Status
 
 
 def new_id() -> str:
@@ -73,3 +75,64 @@ class Book:
     def display_title(self) -> str:
         """The title of the book, optionally followed by the subtitle."""
         return f"{self.title}: {self.subtitle}" if self.subtitle else self.title
+
+
+@dataclass(slots=True)
+class ReadingSequence:
+    """A named, ordered list of books."""
+    name: str
+    description: str = ""
+    book_ids: list[str] = field(default_factory=list)
+    status: Status = Status.NEW
+    id: str = field(default_factory=new_id)
+    created_at: datetime = field(default_factory=datetime.now)
+
+    def __post_init__(self):
+        if not self.name.strip():
+            raise DomainError("sequence name cannot be empty")
+
+    @property
+    def is_editable(self) -> bool:
+        return self.status.is_open
+
+    @property
+    def size(self) -> int:
+        return len(self.book_ids)
+
+    def add_book(self, book_id: str, position: int | None = None) -> None:
+        self._ensure_editable()
+        if book_id in self.book_ids:
+            raise SequenceLocked("book is already in this sequence")
+        if position is None:
+            self.book_ids.append(book_id)
+        else:
+            self.book_ids.insert(position, book_id)
+
+    def remove_book(self, book_id: str) -> None:
+        self._ensure_editable()
+        self.ensure_contains(book_id)
+        self.book_ids.remove(book_id)
+
+    def move_book(self, book_id: str, position: int) -> None:
+        self._ensure_editable()
+        self.ensure_contains(book_id)
+        self.book_ids.remove(book_id)
+        self.book_ids.insert(position, book_id)
+
+    def rename(self, name: str) -> None:
+        self._ensure_editable()
+        if not name.strip():
+            raise DomainError("sequence name cannot be empty")
+        self.name = name
+
+    def change_status(self, target: Status) -> None:
+        self.status.ensure_can_change_to(target)
+        self.status = target
+
+    def ensure_contains(self, book_id: str) -> None:
+        if book_id not in self.book_ids:
+            raise DomainError(f"'{self.name}' does not contain this book")
+
+    def _ensure_editable(self) -> None:
+        if not self.is_editable:
+            raise SequenceLocked(f"sequence '{self.name}' is {self.status.value} and cannot be changed")
