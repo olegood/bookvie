@@ -3,11 +3,8 @@ import pytest
 from bookvie.domain.models import Book
 
 
-def test_book_defaults():
-    # WHEN create a book with required attributes
-    book = Book(title="Python Testing with pytest", total_pages=248)
-
-    # THEN the book has the expected attributes
+def test_book_defaults(book):
+    # EXPECT the book has the expected attributes
     assert book.title == "Python Testing with pytest"
     assert book.total_pages == 248
     assert book.subtitle is None
@@ -16,20 +13,17 @@ def test_book_defaults():
     assert book.year is None
 
 
-def test_book_id():
-    # WHEN create a book with required attributes
-    book = Book(title="Python Testing with pytest", total_pages=248)
-
-    # THEN id
+def test_book_id(book):
+    # EXPECT the book always has an id
     assert book.id is not None
 
 
-def test_book_display_name():
-    # WHEN create a book with required attributes
-    book = Book(title="The Great Gatsby", subtitle="A Novel", total_pages=100)
+def test_book_display_name(book):
+    # WHEN book has subtitle
+    book.subtitle = "Simple, Rapid, Effective, and Scalable"
 
     # THEN display title has subtitle
-    assert book.display_title == "The Great Gatsby: A Novel"
+    assert book.display_title == "Python Testing with pytest: Simple, Rapid, Effective, and Scalable"
 
 
 def test_book_has_no_title():
@@ -44,16 +38,16 @@ def test_book_has_no_pages():
         Book(title="Python Testing with pytest", total_pages=0)
 
 
-def test_book_with_one_author():
-    # WHEN create a book with one author
-    book = Book(title="Python Testing with pytest", total_pages=248, authors=("Brian Okken",))
+def test_book_with_one_author(book):
+    # WHEN book has one author
+    book.authors = ("Brian Okken",)
 
     # THEN authors are a tuple
     assert book.authors == ("Brian Okken",)
 
 
 def test_book_with_multiple_authors():
-    # WHEN create a book with authors
+    # WHEN book has multiple authors
     book = Book(title="Learning LangChain", total_pages=268, authors=("Mayo Oshin", "Nuno Campos"))
 
     # THEN authors are a tuple
