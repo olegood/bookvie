@@ -4,7 +4,7 @@ from bookvie.domain.errors import DomainError
 from bookvie.domain.models import Book
 
 
-def test_book_defaults(book):
+def test_default_attributes(book):
     # EXPECT the book has the expected attributes
     assert book.title == "Python Testing with pytest"
     assert book.total_pages == 248
@@ -14,42 +14,45 @@ def test_book_defaults(book):
     assert book.year is None
 
 
-def test_book_id(book):
+def test_book_always_has_id(book):
     # EXPECT the book always has an id
     assert book.id is not None
 
 
-def test_book_display_name(book):
+def test_display_name(book):
     # WHEN book has subtitle
     book.subtitle = "Simple, Rapid, Effective, and Scalable"
 
-    # THEN display title has subtitle
+    # THEN display title has subtitle with a colon
     assert book.display_title == "Python Testing with pytest: Simple, Rapid, Effective, and Scalable"
 
 
-def test_book_has_no_title():
-    # EXPECT a book needs a title
+@pytest.mark.parametrize("bad_title", ["", "   ", "\n ", "\t  \n"])
+def test_title_cannot_be_empty(bad_title):
+    # EXPECT a book needs a correct title
     with pytest.raises(DomainError, match="book title cannot be empty"):
-        Book(title="   ", total_pages=10)
+        Book(title=bad_title, total_pages=10)
 
 
-def test_book_has_no_pages():
+@pytest.mark.parametrize("bad_total_pages", [-42, 0])
+def test_book_needs_at_least_one_page(bad_total_pages):
     # EXPECT a book needs at least one page
     with pytest.raises(DomainError, match="a book needs at least one page"):
-        Book(title="Python Testing with pytest", total_pages=0)
+        Book(title="Python Testing with pytest", total_pages=bad_total_pages)
 
 
-def test_book_with_one_author(book):
+def test_book_has_one_author(book):
     # WHEN book has one author
     book.authors = ("Brian Okken",)
 
-    # THEN authors are a tuple
+    # THEN authors is a tuple of one name
     assert book.authors == ("Brian Okken",)
 
 
-def test_book_with_multiple_authors():
+def test_book_has_multiple_authors(book):
     # WHEN book has multiple authors
-    book = Book(title="Learning LangChain", total_pages=268, authors=("Mayo Oshin", "Nuno Campos"))
+    book.title = "Learning LandChain"
+    book.authors = ("Mayo Oshin", "Nuno Campos")
 
-    # THEN authors are a tuple
+    # THEN authors is a tuple of two names
     assert book.authors == ("Mayo Oshin", "Nuno Campos")
