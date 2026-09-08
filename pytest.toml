@@ -1,5 +1,8 @@
 [pytest]
 addopts = [
     "-v",
-    "--strict-markers"
+    "--strict-markers",
+    "--strict-config",
+    "--cov=bookvie",
+    "--cov-report=term:skip-covered"
 ]
