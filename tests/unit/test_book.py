@@ -4,6 +4,7 @@ from bookvie.domain.errors import DomainError
 from bookvie.domain.models import Book
 
 
+@pytest.mark.smoke
 def test_default_attributes(book):
     # EXPECT the book has the expected attributes
     assert book.title == "Python Testing with pytest"

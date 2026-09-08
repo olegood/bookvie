@@ -1,8 +1,12 @@
 [pytest]
 addopts = [
     "-v",
+    "-ra",
     "--strict-markers",
     "--strict-config",
     "--cov=bookvie",
     "--cov-report=term:skip-covered"
+]
+markers = [
+    "smoke: subset of tests"
 ]

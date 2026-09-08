@@ -13,5 +13,5 @@ from bookvie.domain.status import Status
         (Status.ABANDONED, Status.IN_PROGRESS),
     ]
 )
-def test_can_change_to(status: Status, target: Status):
+def test_change_status_correctly(status: Status, target: Status):
     assert status.can_change_to(target)

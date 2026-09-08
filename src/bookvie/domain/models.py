@@ -136,3 +136,49 @@ class ReadingSequence:
     def _ensure_editable(self) -> None:
         if not self.is_editable:
             raise SequenceLocked(f"sequence '{self.name}' is {self.status.value} and cannot be changed")
+
+
+@dataclass(slots=True)
+class Reading:
+    """Reading of one book inside a sequence."""
+    book_id: str
+    sequence_id: str
+    pages_read: int = 0
+    status: Status = Status.NEW
+    id: str = field(default_factory=new_id)
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+
+    def progress(self, book: Book) -> Progress:
+        self._ensure_same_book(book)
+        return Progress(self.pages_read, book.total_pages)
+
+    def record(self, pages_read: int, book: Book) -> Progress:
+        self._ensure_same_book(book)
+        if not self.status.is_open:
+            raise DomainError(f"cannot record pages on a {self.status.value} reading")
+        if not 0 <= pages_read <= book.total_pages:
+            raise DomainError(f"pages_read must be within 0..{book.total_pages}")
+
+        self.pages_read = pages_read
+        if pages_read > 0 and self.status is Status.NEW:
+            self.status = Status.IN_PROGRESS
+            self.started_at = self.started_at or datetime.now()
+        if pages_read == book.total_pages:
+            self.status.ensure_can_change_to(Status.FINISHED)
+            self.status = Status.FINISHED
+            self.finished_at = datetime.now()
+        return self.progress(book)
+
+    def abandon(self):
+        self.status.ensure_can_change_to(Status.ABANDONED)
+        self.status = Status.ABANDONED
+
+    def resume(self):
+        self.status.ensure_can_change_to(Status.IN_PROGRESS)
+        self.status = Status.IN_PROGRESS
+        self.started_at = self.started_at or datetime.now()
+
+    def _ensure_same_book(self, book: Book) -> None:
+        if self.book_id != book.id:
+            raise DomainError("reading record does not belong to this book")
