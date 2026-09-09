@@ -13,6 +13,7 @@ def test_default_attributes(book):
     assert book.authors == ()
     assert book.isbn is None
     assert book.year is None
+    assert book.edition_no is None
 
 
 def test_book_always_has_id(book):
@@ -42,6 +43,13 @@ def test_book_needs_at_least_one_page(bad_total_pages):
         Book(title="Python Testing with pytest", total_pages=bad_total_pages)
 
 
+@pytest.mark.parametrize("bad_edition", [-42, 0])
+def test_there_is_not_edition_before_the_first(bad_edition):
+    # EXPECT a book needs correct edition
+    with pytest.raises(DomainError, match="there is not edition before the first"):
+        Book(title="Python Testing with pytest", total_pages=10, edition_no=bad_edition)
+
+
 def test_book_has_one_author(book):
     # WHEN book has one author
     book.authors = ("Brian Okken",)
@@ -52,7 +60,7 @@ def test_book_has_one_author(book):
 
 def test_book_has_multiple_authors(book):
     # WHEN book has multiple authors
-    book.title = "Learning LandChain"
+    book.title = "Learning LangChain"
     book.authors = ("Mayo Oshin", "Nuno Campos")
 
     # THEN authors is a tuple of two names

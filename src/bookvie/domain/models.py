@@ -61,12 +61,15 @@ class Book:
     authors: tuple[str, ...] = ()
     isbn: str | None = None
     year: int | None = None
+    edition_no: int | None = None
     id: str = field(default_factory=new_id)
 
     def __post_init__(self):
         """Ensure that the book title and total pages are valid."""
         if not self.title.strip():
             raise DomainError("book title cannot be empty")
+        if self.edition_no is not None and self.edition_no < 1:
+            raise DomainError("there is not edition before the first")
         if self.total_pages < 1:
             raise DomainError("a book needs at least one page")
         self.authors = tuple(self.authors)
