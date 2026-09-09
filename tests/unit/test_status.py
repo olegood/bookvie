@@ -14,4 +14,5 @@ from bookvie.domain.status import Status
     ]
 )
 def test_change_status_correctly(status: Status, target: Status):
+    # EXPECT valid status transitions to be permitted
     assert status.can_change_to(target)
