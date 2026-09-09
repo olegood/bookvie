@@ -5,7 +5,8 @@ addopts = [
     "--strict-markers",
     "--strict-config",
     "--cov=bookvie",
-    "--cov-report=term:skip-covered"
+    "--cov-report=term-missing",
+    "--cov-report=html",
 ]
 markers = [
     "smoke: subset of tests"
