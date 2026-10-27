@@ -1,24 +1,78 @@
-# Compiled class file
-*.class
+# ── Python ───────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+*.egg
 
-# Log file
+# Virtual environments
+.venv/
+venv/
+env/
+.python-version
+
+# Tooling caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.pyright/
+.tox/
+.nox/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# ── Environment & secrets ────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── Local data ───────────────────────────────────────
+*.sqlite
+*.sqlite3
+*.db
 *.log
 
-# BlueJ files
-*.ctxt
+# ── Test / browser artifacts (Playwright) ────────────
+test-results/
+playwright-report/
+.playwright-mcp/
 
-# Mobile Tools for Java (J2ME)
-.mtj.tmp/
+# ── BMad ─────────────────────────────────────────────
+# Commit: _bmad/ (installed modules, config.toml, _config/ manifests),
+#         _bmad/custom/config.toml (team overrides), .claude/skills/,
+#         and _bmad-output/ (planning artifacts, incl. .memlog.md so
+#         sessions can be resumed from another machine).
 
-# Package Files #
-*.jar
-*.war
-*.nar
-*.ear
-*.zip
-*.tar.gz
-*.rar
+# Per-user install answers (name, language, skill level)
+_bmad/config.user.toml
+# Per-user overrides (also covered by _bmad/custom/.gitignore)
+_bmad/custom/*.user.toml
+# Rendered skill snapshots, regenerated on demand (also covered by
+# _bmad/render/.gitignore)
+_bmad/render/*
+!_bmad/render/.gitignore
+# Script caches
+_bmad/**/__pycache__/
+.claude/skills/**/__pycache__/
 
-# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
-hs_err_pid*
-replay_pid*
+# Opt-in: uncomment to keep BMad entirely local instead of shared.
+# _bmad/
+# .claude/skills/bmad-*/
+# _bmad-output/
+
+# ── Claude Code: per-user settings ───────────────────
+.claude/settings.local.json
+
+# ── IDEs ─────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+
+# ── OS ───────────────────────────────────────────────
+.DS_Store
+Thumbs.db
