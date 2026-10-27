@@ -1,0 +1,907 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The bookvie Shelf</title>
+<meta name="description" content="A keepsake of the bookvie brainstorming session, 27 October 2026: six techniques read like six books, converged into a v1 scope.">
+<style>
+:root{
+  --paper:#f5efe3; --paper-2:#ece3d2; --paper-3:#fffaf0;
+  --ink:#2b241d; --ink-soft:#6b5f51; --rule:#d6c9b2;
+  --wood:#9a6b43; --wood-dark:#6e4a2c;
+  --user:#c7801a; --user-ink:#7a4a05; --user-bg:#fbe9c6;
+  --coach:#2f7d78; --coach-ink:#1d5552; --coach-bg:#e1efec;
+  --grey:#bdb4a6; --grey-ink:#5b544b;
+  --rb:#b8443a; --fw:#3f4f9e; --ma:#3d7d4f; --tt:#7b4a9b; --ya:#d0742a; --sh:#3a6f8f;
+  --hat-white:#f3f1ec; --hat-red:#c8433a; --hat-yellow:#e8b730; --hat-black:#2a2a2a; --hat-green:#4f8f4a; --hat-blue:#3b6fb5;
+  --deep:#3d7d4f; --light:#9cc58f; --cards:#c7801a; --rest:#8d8fb8;
+  --shadow:0 1px 2px rgba(60,40,20,.12),0 6px 18px rgba(60,40,20,.10);
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,serif;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  color-scheme:light dark;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --paper:#1b1714; --paper-2:#241f1a; --paper-3:#2b2520;
+    --ink:#ede3d2; --ink-soft:#b3a691; --rule:#463c31;
+    --wood:#6e4a2c; --wood-dark:#4a311d;
+    --user:#f0a63a; --user-ink:#ffd28a; --user-bg:#3a2a12;
+    --coach:#5fbdb5; --coach-ink:#9fe0da; --coach-bg:#15302e;
+    --grey:#5a534b; --grey-ink:#cfc6b8;
+    --rb:#e0675c; --fw:#7f8fe0; --ma:#6dbd80; --tt:#b685d6; --ya:#f0954b; --sh:#6fa9cc;
+    --hat-white:#e9e5dc; --hat-red:#e0625a; --hat-yellow:#f0c64a; --hat-black:#0d0d0d; --hat-green:#6fb569; --hat-blue:#6c9be0;
+    --deep:#6dbd80; --light:#3f6b3a; --cards:#f0a63a; --rest:#7577a8;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 18px rgba(0,0,0,.35);
+  }
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--serif);font-size:17px;line-height:1.55;overflow-x:hidden}
+h1,h2,h3,h4{line-height:1.15;overflow-wrap:anywhere;margin:0}
+p{margin:.5em 0}
+button{font:inherit;color:inherit}
+.wrap{max-width:1040px;margin:0 auto;padding:0 16px}
+.kicker{font-family:var(--sans);font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-soft)}
+.muted{color:var(--ink-soft)}
+a{color:inherit}
+
+/* ---------- reading progress bookmark (fixed) ---------- */
+#progress-book{position:fixed;right:14px;bottom:14px;z-index:20;width:46px;height:64px;border-radius:3px 6px 6px 3px;background:var(--grey);box-shadow:var(--shadow);overflow:hidden;border-left:5px solid var(--wood-dark);cursor:pointer}
+#progress-book .fill{position:absolute;left:0;right:0;bottom:0;height:0;background:linear-gradient(0deg,var(--rb),var(--ya) 30%,var(--ma) 55%,var(--sh) 80%,var(--tt));transition:height .15s linear}
+#progress-book span{position:absolute;inset:auto 0 4px 0;text-align:center;font:600 9px/1.1 var(--sans);color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.5)}
+
+/* ---------- title page ---------- */
+header.title{padding:56px 0 28px}
+.title-grid{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:32px;align-items:center}
+@media (max-width:720px){.title-grid{grid-template-columns:1fr}}
+.title h1{font-size:clamp(2.6rem,9vw,5.2rem);font-weight:600;letter-spacing:-.02em}
+.title h1 em{font-style:italic;color:var(--user)}
+.title .sub{font-size:1.15rem;max-width:36em;margin-top:14px}
+.meta-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+.chip{font-family:var(--sans);font-size:.75rem;padding:4px 10px;border-radius:99px;border:1px solid var(--rule);background:var(--paper-3)}
+.hero-cover{width:190px;height:270px;position:relative;border-radius:4px 10px 10px 4px;background:var(--grey);box-shadow:var(--shadow);overflow:hidden;border-left:12px solid var(--wood-dark);justify-self:center}
+.hero-cover .fill{position:absolute;inset:auto 0 0 0;height:0%;background:linear-gradient(160deg,var(--ya),var(--rb) 60%,var(--tt));animation:heroFill 4.5s cubic-bezier(.3,.6,.3,1) .4s forwards}
+@keyframes heroFill{to{height:100%}}
+.hero-cover .t{position:absolute;inset:0;padding:22px 16px;display:flex;flex-direction:column;justify-content:space-between;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.35)}
+.hero-cover .t b{font-size:1.9rem;font-style:italic;font-weight:600}
+.hero-cover .t small{font-family:var(--sans);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase}
+@media (prefers-reduced-motion:reduce){.hero-cover .fill{animation:none;height:100%}}
+
+/* library card */
+.libcard{margin:34px 0 8px;background:var(--paper-3);border:1px solid var(--rule);border-radius:6px;box-shadow:var(--shadow);position:relative;padding:22px 22px 18px;background-image:repeating-linear-gradient(transparent 0 30px,var(--rule) 30px 31px);background-position:0 54px}
+.libcard:before{content:"";position:absolute;top:0;bottom:0;left:44px;border-left:2px solid rgba(200,67,58,.35)}
+.libcard h2{font-size:1.05rem;font-family:var(--sans);letter-spacing:.14em;text-transform:uppercase;padding-left:34px}
+.libcard .row{padding-left:34px;line-height:31px}
+.libcard ul{margin:0;padding:0 0 0 34px;list-style:none;columns:2 260px;column-gap:28px}
+.libcard li{line-height:31px;break-inside:avoid}
+.libcard li:before{content:"— ";color:var(--ink-soft)}
+.goal{font-style:italic}
+
+/* legend */
+.legend{display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin:22px 0 0;font-family:var(--sans);font-size:.85rem}
+.tally{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr));gap:10px;margin-top:16px}
+.tally div{background:var(--paper-2);border-radius:6px;padding:10px 12px;font-family:var(--sans);font-size:.8rem}
+.tally b{display:block;font-family:var(--serif);font-size:1.7rem;font-weight:600}
+.tally .u b{color:var(--user)} .tally .c b{color:var(--coach)}
+
+/* ---------- the shelf ---------- */
+.shelf-wrap{margin:44px 0 20px}
+.shelf{display:flex;align-items:flex-end;gap:6px;padding:16px 12px 0;min-height:230px;border-bottom:16px solid var(--wood);border-radius:2px;background:linear-gradient(180deg,transparent 0,var(--paper-2) 100%);position:relative;overflow:hidden}
+.shelf:after{content:"";position:absolute;left:0;right:0;bottom:-16px;height:5px;background:var(--wood-dark)}
+.spine{flex:1 1 0;min-width:0;position:relative;border:0;padding:0;cursor:pointer;border-radius:3px 3px 0 0;background:var(--grey);box-shadow:inset -3px 0 0 rgba(0,0,0,.12),inset 3px 0 0 rgba(255,255,255,.12);overflow:hidden;transition:transform .2s}
+.spine:hover,.spine:focus-visible{transform:translateY(-8px)}
+.spine:focus-visible{outline:3px solid var(--user);outline-offset:2px}
+.spine .fill{position:absolute;inset:auto 0 0 0;height:calc(var(--fill,0)*100%);background:var(--hue);transition:height .25s}
+.spine .lbl{position:absolute;inset:10px 0;writing-mode:vertical-rl;transform:rotate(180deg);display:flex;align-items:center;justify-content:space-between;font-size:clamp(.66rem,2.2vw,.95rem);font-weight:600;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.45);white-space:nowrap;overflow:hidden}
+.spine .lbl small{font-family:var(--sans);font-weight:500;font-size:.68em;letter-spacing:.1em;opacity:.9}
+.shelf-note{font-family:var(--sans);font-size:.8rem;color:var(--ink-soft);margin-top:24px}
+
+/* ---------- chapters ---------- */
+.chapter{padding:56px 0 24px;border-top:1px dashed var(--rule);margin-top:40px}
+.ch-head{display:grid;grid-template-columns:120px minmax(0,1fr);gap:22px;align-items:end;margin-bottom:22px}
+@media (max-width:560px){.ch-head{grid-template-columns:78px minmax(0,1fr);gap:14px}}
+.ch-cover{aspect-ratio:2/3;border-radius:3px 8px 8px 3px;background:var(--grey);border-left:8px solid rgba(0,0,0,.25);position:relative;overflow:hidden;box-shadow:var(--shadow)}
+.ch-cover .fill{position:absolute;inset:auto 0 0 0;height:calc(var(--fill,0)*100%);background:var(--hue);transition:height .25s}
+.ch-cover .num{position:absolute;top:8px;left:8px;font:600 .8rem var(--sans);color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.4)}
+.ch-cover .pct{position:absolute;bottom:6px;right:8px;font:600 .72rem var(--sans);color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.5)}
+.ch-head h2{font-size:clamp(1.8rem,6vw,3rem);font-weight:600}
+.ch-head p{max-width:40em}
+.ch-head .kicker{color:var(--hue)}
+
+/* ---------- notes (user vs coach) ---------- */
+.note{position:relative;border-radius:6px;padding:12px 14px 12px 16px;margin:10px 0;break-inside:avoid}
+.note .tag{font-family:var(--sans);font-size:.66rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;display:inline-flex;gap:6px;align-items:center;margin-bottom:3px}
+.note.u{background:var(--user-bg);border-left:6px solid var(--user);font-size:1.04em;box-shadow:var(--shadow)}
+.note.u .tag{color:var(--user-ink)}
+.note.u:after{content:"";position:absolute;top:-4px;right:14px;width:14px;height:28px;background:var(--user);clip-path:polygon(0 0,100% 0,100% 100%,50% 75%,0 100%)}
+.note.c{background:transparent;border-left:2px dotted var(--coach);font-style:italic;color:var(--ink);font-size:.95em}
+.note.c .tag{color:var(--coach-ink);font-style:normal}
+.note.dec{outline:2px solid currentColor;outline-offset:-2px}
+.note.u.dec{outline-color:var(--user)}
+.note.c.dec{outline:1px dashed var(--coach)}
+.stamp{display:inline-block;font:700 .6rem var(--sans);letter-spacing:.14em;padding:2px 6px;border:2px solid currentColor;border-radius:3px;transform:rotate(-4deg);margin-left:4px}
+.note.q .tag:after{content:"?";font-size:1.1em;margin-left:2px}
+.cols{columns:2 320px;column-gap:24px}
+
+details.thread{border:1px solid var(--rule);border-radius:8px;background:var(--paper-3);margin:12px 0;overflow:hidden}
+details.thread summary{cursor:pointer;padding:14px 16px;list-style:none;display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline}
+details.thread summary::-webkit-details-marker{display:none}
+details.thread summary h4{font-size:1.15rem;font-weight:600}
+details.thread summary h4:before{content:"▸ ";color:var(--hue);display:inline-block;transition:transform .2s}
+details.thread[open] summary h4:before{transform:rotate(90deg)}
+details.thread .body{padding:0 16px 14px}
+.count{font-family:var(--sans);font-size:.75rem;color:var(--ink-soft)}
+.count b{color:var(--user-ink)}
+
+/* flip cards */
+.flipgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,230px),1fr));gap:14px;margin:18px 0}
+.flip{perspective:900px;border:0;padding:0;background:none;text-align:left;cursor:pointer;display:grid}
+.flip .inner{display:grid;transition:transform .6s cubic-bezier(.3,.7,.3,1);transform-style:preserve-3d}
+.flip.on .inner{transform:rotateY(180deg)}
+.flip .face{grid-area:1/1;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:8px;padding:14px 14px 34px;box-shadow:var(--shadow);position:relative;min-height:170px}
+.flip .front{background:var(--paper-3);border:1px solid var(--rule);background-image:linear-gradient(var(--paper-3) 34px,transparent 34px),repeating-linear-gradient(transparent 0 23px,var(--rule) 23px 24px)}
+.flip .front.u{border-top:6px solid var(--user)}
+.flip .front.c{border-top:6px solid var(--coach)}
+.flip .back{transform:rotateY(180deg);background:var(--rb);color:#fff}
+.flip .n{font:700 .7rem var(--sans);letter-spacing:.12em;text-transform:uppercase}
+.flip .front .n{color:var(--rb)}
+.flip .who{font:700 .62rem var(--sans);letter-spacing:.12em;text-transform:uppercase;padding:2px 6px;border-radius:3px;margin-left:6px}
+.flip .who.u{background:var(--user);color:#fff}
+.flip .who.c{border:1px solid var(--coach);color:var(--coach-ink)}
+.flip .back .who{background:rgba(255,255,255,.2);color:#fff;border:0}
+.flip p{font-size:.95rem;line-height:1.45}
+.flip .hint{position:absolute;bottom:10px;right:12px;font:500 .7rem var(--sans);opacity:.7}
+.btn{font-family:var(--sans);font-size:.85rem;padding:8px 14px;border-radius:99px;border:1px solid var(--rule);background:var(--paper-3);cursor:pointer}
+.btn:hover{border-color:var(--ink-soft)}
+.btn[aria-pressed=true]{background:var(--ink);color:var(--paper)}
+.tension{margin:22px 0;padding:18px 20px;border:2px solid var(--coach);border-radius:10px;font-size:1.08rem;font-style:italic;position:relative}
+.tension:before{content:"⚖";position:absolute;top:-16px;left:16px;background:var(--paper);padding:0 6px;font-size:1.4rem;font-style:normal;color:var(--coach)}
+
+/* five whys chain */
+.chain{position:relative;margin:24px 0;padding-left:40px}
+.chain:before{content:"";position:absolute;left:17px;top:10px;bottom:10px;border-left:4px dotted var(--fw)}
+.why{position:relative;margin-bottom:22px}
+.why .ring{position:absolute;left:-40px;top:6px;width:38px;height:38px;border-radius:50%;border:5px solid var(--fw);background:var(--paper);display:grid;place-items:center;font:700 .8rem var(--sans);color:var(--fw)}
+.why.root .ring{background:var(--fw);color:#fff}
+.why h3{font-size:1.25rem;font-weight:600;margin-bottom:4px}
+.why .side{margin-left:18px}
+.rootline{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:14px 0;font-family:var(--sans);font-size:.82rem}
+.rootline span{padding:6px 10px;border-radius:4px;background:var(--paper-2);border:1px solid var(--rule)}
+.rootline span.end{background:var(--rb);color:#fff;border-color:transparent}
+.rootline i{color:var(--fw);font-style:normal}
+.principle{font-size:clamp(1.3rem,4vw,1.9rem);font-style:italic;line-height:1.3;border-left:6px solid var(--fw);padding:6px 0 6px 18px;margin:20px 0}
+
+/* morphological drawers */
+.drawers{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:16px;margin:18px 0}
+.drawer{background:var(--paper-3);border:1px solid var(--rule);border-radius:6px;box-shadow:var(--shadow);overflow:hidden}
+.drawer .front{background:var(--ma);color:#fff;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.drawer .front h4{font-size:1.05rem}
+.drawer .pull{width:34px;height:10px;border-radius:5px;background:rgba(255,255,255,.55);flex:none}
+.drawer .vals{display:flex;flex-wrap:wrap;gap:6px;padding:12px 14px 4px}
+.val{font-family:var(--sans);font-size:.75rem;padding:3px 9px;border-radius:4px;border:1px solid var(--rule);background:var(--paper-2)}
+.val.x{text-decoration:line-through;opacity:.6}
+.val.new{border-color:var(--user);background:var(--user-bg)}
+.drawer .body{padding:0 14px 8px}
+.model{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin:22px 0;padding:18px;border-radius:10px;background:var(--paper-2)}
+.model .box{background:var(--paper-3);border:2px solid var(--ma);border-radius:8px;padding:10px 14px;font-family:var(--sans);font-size:.85rem;flex:1 1 200px}
+.model .box b{display:block;font-family:var(--serif);font-size:1.15rem}
+.model .arrow{font:700 .9rem var(--sans);color:var(--ma);flex:0 0 auto}
+.readings{display:flex;gap:6px;margin-top:8px}
+.readings i{width:22px;height:32px;border-radius:2px 4px 4px 2px;background:var(--grey);position:relative;overflow:hidden}
+.readings i:after{content:"";position:absolute;inset:auto 0 0 0;height:var(--h);background:var(--ma)}
+
+/* talk show */
+.stage{position:relative;margin:22px 0;padding:22px 16px 26px;border-radius:14px;background:radial-gradient(ellipse at 50% 0,rgba(123,74,155,.25),transparent 70%),var(--paper-2);overflow:hidden}
+.stage .onair{display:inline-block;font:700 .7rem var(--sans);letter-spacing:.2em;color:#fff;background:var(--rb);padding:4px 10px;border-radius:3px;animation:blink 2.4s infinite}
+@keyframes blink{50%{opacity:.55}}
+.guests{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:18px;margin-top:16px}
+.guest{background:var(--paper-3);border-radius:12px;padding:16px;border:1px solid var(--rule);position:relative}
+.guest .chair{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.guest .face{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font:700 .75rem var(--sans);color:#fff;background:var(--tt);flex:none}
+.guest h3{font-size:1.2rem}
+.bubble{background:var(--user-bg);border:2px solid var(--user);border-radius:16px 16px 16px 4px;padding:12px 14px;font-size:1.1rem;font-style:italic;margin-bottom:10px;position:relative}
+.bubble small{display:block;font:700 .62rem var(--sans);letter-spacing:.14em;text-transform:uppercase;color:var(--user-ink);font-style:normal;margin-bottom:4px}
+
+/* yes-and */
+.demo{display:grid;grid-template-columns:auto minmax(0,1fr);gap:24px;align-items:center;margin:18px 0 26px;padding:20px;border-radius:12px;background:var(--paper-2)}
+@media (max-width:560px){.demo{grid-template-columns:1fr;justify-items:center;text-align:center}}
+.dcover{width:140px;height:210px;border-radius:3px 9px 9px 3px;position:relative;overflow:hidden;background:var(--grey);border-left:10px solid rgba(0,0,0,.28);box-shadow:var(--shadow);filter:saturate(var(--sat,1))}
+.dcover .fill{position:absolute;inset:auto 0 0 0;height:var(--p,0%);background:linear-gradient(0deg,var(--ya),var(--rb) 50%,var(--tt));transition:height .05s}
+.dcover .solid{position:absolute;inset:auto 0 0 0;height:var(--s,0%);background:rgba(255,255,255,.0)}
+.dcover .title{position:absolute;top:14px;left:12px;right:10px;color:#fff;font-weight:600;font-style:italic;text-shadow:0 1px 3px rgba(0,0,0,.4);text-align:left}
+.dcover .mark{position:absolute;left:-10px;width:16px;height:6px;border-radius:0 3px 3px 0;background:var(--user);box-shadow:0 0 0 2px #fff;opacity:0;transition:opacity .3s}
+.dcover .mark.on{opacity:1}
+.demo input[type=range]{width:100%;max-width:420px;accent-color:var(--ya);margin:10px 0}
+.dial{font-size:2.3rem;font-weight:600;font-variant-numeric:tabular-nums}
+.dial small{font-size:1rem;color:var(--ink-soft);font-weight:400}
+.lifecycle{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,120px),1fr));gap:14px;margin:16px 0 26px}
+.lc{text-align:center;font-family:var(--sans);font-size:.78rem}
+.lc i{display:block;width:62px;height:92px;margin:0 auto 8px;border-radius:2px 6px 6px 2px;position:relative;overflow:hidden}
+.lc .wish{border:2px dashed var(--ink-soft)}
+.lc .owned{background:var(--grey)}
+.lc .reading{background:var(--grey)} .lc .reading:after{content:"";position:absolute;inset:auto 0 0 0;height:55%;background:var(--ya)}
+.lc .read{background:linear-gradient(0deg,var(--ya),var(--rb) 50%,var(--tt))}
+.lc .dust{background:var(--grey)} .lc .dust:after{content:"";position:absolute;inset:0;background:radial-gradient(circle at 20% 30%,rgba(255,255,255,.55) 1px,transparent 2px) 0 0/7px 7px,linear-gradient(180deg,rgba(255,255,255,.45),transparent 40%)}
+.lc .donated{background:var(--grey);opacity:.45}
+.yeschain{position:relative;margin:10px 0}
+.yeschain .note{max-width:min(100%,560px)}
+.yeschain .note.c{margin-left:auto}
+.yesand{font:700 .7rem var(--sans);letter-spacing:.14em;color:var(--ya);text-align:center;margin:-2px 0;text-transform:uppercase}
+
+/* six hats */
+.hats{display:grid;gap:14px;margin:18px 0}
+.hat{border-radius:12px;padding:16px 18px;border:1px solid var(--rule);background:var(--paper-3);position:relative;border-top:14px solid var(--hc)}
+.hat h3{font-size:1.3rem;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.hat h3 svg{flex:none}
+.hat h3 small{font:600 .7rem var(--sans);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft)}
+.hat.white{--hc:var(--hat-white)} .hat.red{--hc:var(--hat-red)} .hat.yellow{--hc:var(--hat-yellow)} .hat.black{--hc:var(--hat-black)} .hat.green{--hc:var(--hat-green)} .hat.blue{--hc:var(--hat-blue)}
+.hat.white{border-top-color:var(--hat-white);box-shadow:inset 0 0 0 1px var(--rule)}
+
+/* calendar */
+.cal{margin:16px 0;padding:16px;border-radius:10px;background:var(--paper-2)}
+.checkin{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 14px}
+.checkin button{flex:1 1 110px;padding:12px 10px;border-radius:10px;border:2px solid var(--dc);background:var(--paper-3);cursor:pointer;font-family:var(--sans);font-weight:600;font-size:.9rem}
+.checkin button[aria-pressed=true]{background:var(--dc);color:#fff}
+.days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.days .dow{font:600 .66rem var(--sans);text-align:center;color:var(--ink-soft)}
+.day{aspect-ratio:1;border-radius:5px;border:1px solid var(--rule);background:var(--paper-3);font:500 .7rem var(--sans);position:relative;cursor:pointer;padding:0;display:grid;place-items:center}
+.day.today{outline:2px solid var(--user);outline-offset:1px}
+.day[data-t=deep]{background:var(--deep);color:#fff;border-color:transparent}
+.day[data-t=light]{background:var(--light);color:var(--ink);border-color:transparent}
+.day[data-t=cards]:after{content:"▭";position:absolute;bottom:1px;right:3px;color:var(--cards);font-size:.8rem}
+.day[data-t=cards]{border-color:var(--cards)}
+.day[data-t=rest]:after{content:"☾";position:absolute;bottom:1px;right:3px;color:var(--rest);font-size:.8rem}
+.day[data-t=rest]{border-color:var(--rest)}
+.calkey{display:flex;flex-wrap:wrap;gap:12px;font:500 .75rem var(--sans);margin-top:10px;color:var(--ink-soft)}
+.calkey i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-2px;margin-right:4px}
+
+/* moscow shelves */
+.mshelf{margin:30px 0 8px}
+.mshelf h3{font-size:1.5rem;display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.mshelf h3 small{font:500 .78rem var(--sans);color:var(--ink-soft)}
+.plank{display:flex;flex-wrap:wrap;align-items:flex-end;gap:6px;padding:12px 8px 0;border-bottom:12px solid var(--wood);margin-top:8px;min-height:60px}
+.bk{flex:1 1 140px;max-width:240px;border-radius:3px 3px 0 0;padding:10px 10px 12px;font-size:.88rem;line-height:1.3;position:relative;overflow:hidden;color:#fff;box-shadow:inset -3px 0 0 rgba(0,0,0,.15)}
+.bk:nth-child(3n){min-height:118px} .bk:nth-child(3n+1){min-height:100px} .bk:nth-child(3n+2){min-height:132px}
+.must .bk{background:linear-gradient(0deg,var(--ya),var(--rb) 60%,var(--tt));text-shadow:0 1px 2px rgba(0,0,0,.3)}
+.should .bk{background:var(--grey);color:var(--ink)}
+.should .bk:before{content:"";position:absolute;inset:auto 0 0 0;height:50%;background:var(--ya);opacity:.85}
+.should .bk span{position:relative}
+.could .bk{background:var(--grey);color:var(--grey-ink)}
+.wont .plank{border-bottom:0;background:repeating-linear-gradient(45deg,var(--paper-2) 0 10px,var(--paper-3) 10px 20px);border:3px solid var(--wood);border-radius:4px;padding:14px;min-height:0;align-items:center}
+.wont .bk{flex:0 1 auto;min-height:0!important;border:2px dashed var(--ink-soft);color:var(--ink-soft);background:transparent;transform:rotate(var(--r,-2deg));border-radius:4px;text-decoration:line-through;box-shadow:none}
+.resolved{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));gap:12px;margin:18px 0}
+.slip{background:var(--paper-3);border:1px solid var(--rule);border-radius:4px;padding:12px 14px 14px;position:relative;box-shadow:var(--shadow)}
+.slip .q{font-size:.85rem;color:var(--ink-soft);font-style:italic}
+.slip .a{margin-top:6px;font-weight:600}
+.slip .stamp{position:absolute;top:8px;right:10px;color:var(--user)}
+.slip .by{font:700 .6rem var(--sans);letter-spacing:.12em;color:var(--user-ink);text-transform:uppercase;margin-top:6px}
+
+/* finale */
+.finale{margin-top:60px;padding:56px 0 70px;background:radial-gradient(ellipse at 50% 100%,rgba(208,116,42,.22),transparent 65%),var(--paper-2);border-top:1px solid var(--rule)}
+.finale h2{font-size:clamp(2rem,7vw,3.6rem);text-align:center;font-weight:600}
+.finale .lead{text-align:center;max-width:34em;margin:10px auto 0}
+.pillars{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(8px,2.5vw,26px);margin:36px auto 10px;max-width:760px;align-items:end}
+.pillar{border-radius:4px 10px 0 0;color:#fff;padding:18px 10px;text-align:center;position:relative;overflow:hidden;min-height:260px;display:flex;flex-direction:column;justify-content:flex-end;background:var(--grey);border-left:8px solid rgba(0,0,0,.25)}
+.pillar:before{content:"";position:absolute;inset:auto 0 0 0;height:0;background:var(--pc);transition:height 1.6s cubic-bezier(.3,.7,.3,1)}
+.finale.lit .pillar:before{height:100%}
+.pillar:nth-child(2):before{transition-delay:.35s} .pillar:nth-child(3):before{transition-delay:.7s}
+.pillar>*{position:relative}
+.pillar b{font-size:clamp(1rem,3.4vw,1.5rem);font-style:italic;line-height:1.15;overflow-wrap:anywhere}
+.pillar small{font:600 .62rem var(--sans);letter-spacing:.14em;text-transform:uppercase;margin-top:8px;opacity:.9}
+.pillar:nth-child(1){--pc:var(--rb);min-height:300px}
+.pillar:nth-child(2){--pc:var(--fw);min-height:270px}
+.pillar:nth-child(3){--pc:var(--ma);min-height:240px}
+.pillarshelf{max-width:760px;margin:0 auto;height:16px;background:var(--wood);border-bottom:5px solid var(--wood-dark)}
+.credit{text-align:center;margin:18px auto 0;font-family:var(--sans);font-size:.8rem;color:var(--user-ink)}
+.connections{max-width:760px;margin:36px auto 0;display:grid;gap:12px}
+.conn{display:grid;grid-template-columns:auto minmax(0,1fr);gap:14px;align-items:start;padding:14px 16px;border-radius:8px;background:var(--paper-3);border-left:2px dotted var(--coach)}
+.conn .k{font:700 .64rem var(--sans);letter-spacing:.12em;color:var(--coach-ink);text-transform:uppercase;writing-mode:vertical-rl;transform:rotate(180deg)}
+.conn p{margin:0;font-style:italic}
+.loop{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px;font:500 .8rem var(--sans);font-style:normal}
+.loop span{padding:5px 10px;border-radius:99px;background:var(--coach-bg);color:var(--coach-ink)}
+.colophon{text-align:center;margin-top:46px;font-family:var(--sans);font-size:.78rem;color:var(--ink-soft)}
+.colophon .end{font-family:var(--serif);font-style:italic;font-size:1.3rem;color:var(--ink);display:block;margin-bottom:8px}
+</style>
+</head>
+<body>
+
+<a id="progress-book" href="#top" aria-label="Reading progress through this keepsake; tap to return to the top"><div class="fill"></div><span>p.0</span></a>
+
+<header class="title wrap" id="top">
+  <div class="title-grid">
+    <div>
+      <div class="kicker">A brainstorm, bound · 27 October 2026 · Creative Partner mode</div>
+      <h1>The <em>bookvie</em> Shelf</h1>
+      <p class="sub">One evening spent designing a personal library organizer and reading tracker, kept here as a small library of its own. Six techniques, six books. Each cover starts grey and fills with colour as you read it, the same way the session decided bookvie's covers should.</p>
+      <div class="meta-row">
+        <span class="chip">status: complete</span>
+        <span class="chip">2 batches · 6 techniques</span>
+        <span class="chip">converged with MoSCoW</span>
+      </div>
+    </div>
+    <div class="hero-cover" aria-hidden="true"><div class="fill"></div><div class="t"><small>a reading log</small><b>bookvie</b><small>192 entries</small></div></div>
+  </div>
+
+  <section class="libcard" aria-labelledby="brief-h">
+    <h2 id="brief-h">Borrower's card · the brief</h2>
+    <div class="row"><b>Goal:</b> <span class="goal">read consistently, track progress, make reading intent explicit, plan reading better, and stop reading several books at once (which leads to abandonment and burnout).</span></div>
+    <div class="row muted" style="font-family:var(--sans);font-size:.78rem;letter-spacing:.1em;text-transform:uppercase">Initial brief, by the user</div>
+    <ul>
+      <li>catalog of 100+ books</li>
+      <li>manual progress: explicit start, pages read, pages left, %</li>
+      <li>goals: N books/month or by a date</li>
+      <li>topic sequences with whole-sequence progress</li>
+      <li>reorder unless read</li>
+      <li>abandon-but-keep and exclude-by-mistake in sequences</li>
+      <li>one book in many sequences</li>
+      <li>book metadata separate from reading progress</li>
+      <li>donate / gift books</li>
+      <li>read if finished in any sequence</li>
+      <li>standalone reading</li>
+      <li>stats for custom periods</li>
+    </ul>
+  </section>
+
+  <div class="legend" aria-label="How to read this keepsake">
+    <div class="note u" style="margin:0;flex:1 1 240px"><div class="tag">User · idea</div>Ideas, insights and decisions from the user carry a gold ribbon.</div>
+    <div class="note c" style="margin:0;flex:1 1 240px"><div class="tag">Coach · idea</div>The coach's contributions sit in the margin, in teal italics.</div>
+  </div>
+  <div class="tally">
+    <div class="u"><b>32</b>ideas by the user</div>
+    <div class="u"><b>31</b>decisions by the user</div>
+    <div class="u"><b>21</b>insights by the user</div>
+    <div class="c"><b>66</b>ideas by the coach</div>
+    <div class="c"><b>12 + 7</b>coach insights + questions</div>
+  </div>
+
+  <nav class="shelf-wrap" aria-label="The six technique books">
+    <div class="kicker">The shelf · tap a spine to open its book</div>
+    <div class="shelf" id="shelf"></div>
+    <p class="shelf-note">First batch (approved by the user): Reverse Brainstorming, Five Whys, Morphological Analysis, Time Travel Talk Show. Second batch (chosen by the user on resuming, via the composer page): Yes And Building, Six Thinking Hats. Then the shelves of the convergence, and the finale.</p>
+  </nav>
+</header>
+
+<main class="wrap">
+
+<!-- ============ 1. REVERSE BRAINSTORMING ============ -->
+<section class="chapter" id="rb" data-hue="var(--rb)" style="--hue:var(--rb)">
+  <div class="ch-head">
+    <div class="ch-cover"><div class="fill"></div><span class="num">I</span><span class="pct">0%</span></div>
+    <div>
+      <div class="kicker">Book I · first batch</div>
+      <h2>Reverse Brainstorming</h2>
+      <p>How could a reading app make you fail? Fourteen failures were dreamt up, then every one was flipped. Each failure is a flash card: tap it to turn it over and see its flip.</p>
+    </div>
+  </div>
+  <button class="btn" id="flipall" aria-pressed="false">Turn all cards over</button>
+  <div class="flipgrid" id="flips"></div>
+
+  <div class="tension"><b>The trap (coach insight).</b> A strict WIP limit combined with shameful abandoning freezes reading entirely. For a WIP limit to work, abandoning has to be cheap and dignified.</div>
+
+  <h3 style="font-size:1.3rem;margin:26px 0 6px">Marginalia from the flips</h3>
+  <p class="muted">Each flip started a conversation. Open a thread to read it in order.</p>
+  <div id="rb-threads"></div>
+</section>
+
+<!-- ============ 2. FIVE WHYS ============ -->
+<section class="chapter" id="fw" style="--hue:var(--fw)">
+  <div class="ch-head">
+    <div class="ch-cover"><div class="fill"></div><span class="num">II</span><span class="pct">0%</span></div>
+    <div>
+      <div class="kicker">Book II · first batch</div>
+      <h2>Five Whys</h2>
+      <p>The question: what is the root of starting several books at once? Each link of the chain is an answer from the user. The coach's ideas hang off each link.</p>
+    </div>
+  </div>
+  <div class="chain" id="whys"></div>
+  <div class="note c"><div class="tag">Coach · insight · the root chain</div>
+    <div class="rootline"><span>urgent need</span><i>→</i><span>interruption</span><i>→</i><span>context lost</span><i>→</i><span>re-reading invisible</span><i>→</i><span>feels like no progress</span><i>→</i><span>motivation drops</span><i>→</i><span class="end">paused book never resumed</span></div>
+  </div>
+  <p class="principle">“Every real reading effort must visibly move something.”</p>
+</section>
+
+<!-- ============ 3. MORPHOLOGICAL ANALYSIS ============ -->
+<section class="chapter" id="ma" style="--hue:var(--ma)">
+  <div class="ch-head">
+    <div class="ch-cover"><div class="fill"></div><span class="num">III</span><span class="pct">0%</span></div>
+    <div>
+      <div class="kicker">Book III · first batch</div>
+      <h2>Morphological Analysis</h2>
+      <p>The domain was split into parameters and their combinations were tested. Here they are as the drawers of a card catalogue: the values on top, and what was decided about each combination below.</p>
+    </div>
+  </div>
+  <div class="drawers" id="drawers"></div>
+  <div class="model" aria-label="Data model">
+    <div class="box"><b>Book</b>catalog entry · exactly 1<br><span class="muted">“read” if any Reading finished</span></div>
+    <div class="arrow">→ 0..n →</div>
+    <div class="box"><b>Readings</b>each with progress, page and time logs, purpose, pause note
+      <div class="readings" aria-hidden="true"><i style="--h:100%"></i><i style="--h:100%"></i><i style="--h:40%"></i></div>
+    </div>
+    <div class="note c" style="flex:1 1 100%;margin:0"><div class="tag">Coach · insight · model confirmed</div>A whole re-read is a new Reading. A partial rewind is review pages inside the current Reading.</div>
+  </div>
+</section>
+
+<!-- ============ 4. TIME TRAVEL TALK SHOW ============ -->
+<section class="chapter" id="tt" style="--hue:var(--tt)">
+  <div class="ch-head">
+    <div class="ch-cover"><div class="fill"></div><span class="num">IV</span><span class="pct">0%</span></div>
+    <div>
+      <div class="kicker">Book IV · first batch</div>
+      <h2>Time Travel Talk Show</h2>
+      <p>Three guests on the sofa: the reader's past, present and future selves. The user spoke for all three, and the coach followed up after each one.</p>
+    </div>
+  </div>
+  <div class="stage">
+    <span class="onair">ON AIR</span>
+    <div class="guests" id="guests"></div>
+  </div>
+  <p class="muted" style="font-family:var(--sans);font-size:.85rem">With this the first batch of four techniques was finished.</p>
+</section>
+
+<!-- ============ 5. YES AND BUILDING ============ -->
+<section class="chapter" id="ya" style="--hue:var(--ya)">
+  <div class="ch-head">
+    <div class="ch-cover"><div class="fill"></div><span class="num">V</span><span class="pct">0%</span></div>
+    <div>
+      <div class="kicker">Book V · second batch</div>
+      <h2>Yes And Building</h2>
+      <p>The second batch began with the coach's seed: logging is not a form but one big draggable page dial. Each answer then started with “yes, and…”. Try the seed below; this cover fills the way the session described it.</p>
+    </div>
+  </div>
+
+  <div class="demo">
+    <div class="dcover" id="dcover"><div class="fill"></div><div class="title">your main book</div></div>
+    <div>
+      <div class="kicker">Demo · drag the page dial</div>
+      <div class="dial" id="dialv">p.186 <small>/ 400 · 46%</small></div>
+      <input type="range" id="dial" min="0" max="400" value="186" aria-label="Page reached">
+      <p class="muted" style="font-size:.9rem;margin:0">Grey to colour, filling from the bottom up, live while you drag. The gold marks are flash cards, each placed at the height of its page (an illustration of the idea; the numbers are made up for the demo).</p>
+    </div>
+  </div>
+
+  <div class="kicker">The cover lifecycle (coach idea)</div>
+  <div class="lifecycle">
+    <div class="lc"><i class="wish"></i>wishlist<br><span class="muted">outline only</span></div>
+    <div class="lc"><i class="owned"></i>owned, unread<br><span class="muted">grey</span></div>
+    <div class="lc"><i class="dust"></i>unread the longest<br><span class="muted">light dust layer</span></div>
+    <div class="lc"><i class="reading"></i>reading<br><span class="muted">filling</span></div>
+    <div class="lc"><i class="read"></i>read<br><span class="muted">vivid · a wall of colour</span></div>
+  </div>
+
+  <div class="yeschain" id="yeschain"></div>
+  <p class="muted" style="font-family:var(--sans);font-size:.85rem">Yes And Building complete. The user moved the session on.</p>
+</section>
+
+<!-- ============ 6. SIX THINKING HATS ============ -->
+<section class="chapter" id="sh" style="--hue:var(--sh)">
+  <div class="ch-head">
+    <div class="ch-cover"><div class="fill"></div><span class="num">VI</span><span class="pct">0%</span></div>
+    <div>
+      <div class="kicker">Book VI · second batch</div>
+      <h2>Six Thinking Hats</h2>
+      <p>The subject: bookvie as shaped so far. Hats worn in order: White, Red, Yellow, Black, Green, Blue.</p>
+    </div>
+  </div>
+  <div class="hats" id="hats"></div>
+</section>
+
+<!-- ============ CONVERGENCE ============ -->
+<section class="chapter" id="mo" style="--hue:var(--wood)">
+  <div class="ch-head">
+    <div class="ch-cover"><div class="fill"></div><span class="num">✦</span><span class="pct">0%</span></div>
+    <div>
+      <div class="kicker">Converging · decided by the user</div>
+      <h2>Four shelves for v1</h2>
+      <p>The user moved to converging and asked for a v1 scope plus a list of open decisions. The coach drafted the buckets with MoSCoW. The user resolved the open decisions and accepted the buckets as drafted. The shelves use bookvie's own cover lifecycle: Must is vivid, Should is half filled, Could is still grey, and Won't goes in the donation box.</p>
+    </div>
+  </div>
+  <div id="moscow"></div>
+
+  <h3 style="font-size:1.4rem;margin:36px 0 4px">Open decisions, stamped</h3>
+  <p class="muted">Questions raised during the session and settled by the user before the shelves were accepted.</p>
+  <div class="resolved" id="resolved"></div>
+</section>
+
+</main>
+
+<!-- ============ FINALE ============ -->
+<section class="finale" id="finale">
+  <div class="wrap">
+    <div class="kicker" style="text-align:center">The last page · synthesis</div>
+    <h2>What matters most</h2>
+    <p class="lead">After six books and four shelves, the user put the whole evening into three words:</p>
+    <div class="pillars">
+      <div class="pillar"><b>visible progress</b><small>the killer benefit</small></div>
+      <div class="pillar"><b>conscious reading</b><small>purpose → day → fulfilled?</small></div>
+      <div class="pillar"><b>simplicity</b><small>less state, less stress</small></div>
+    </div>
+    <div class="pillarshelf"></div>
+    <p class="credit">★ Synthesis by the user</p>
+
+    <div class="connections">
+      <div class="kicker" style="color:var(--coach-ink)">How they hold each other up · coach connections</div>
+      <div class="conn"><span class="k">Coach</span><p>Simplicity protects visible progress: every state removed is a failure signal removed.</p></div>
+      <div class="conn"><span class="k">Coach</span><p>Conscious reading is one intent loop with three touchpoints.
+        <span class="loop"><span>purpose at start</span>→<span>day type daily</span>→<span>“fulfilled?” at finish</span></span></p></div>
+      <div class="conn"><span class="k">Coach</span><p>The one-tap daily check-in answers the tick-vs-app risk and keeps the calendar free of gaps.</p></div>
+      <div class="conn"><span class="k">Coach</span><p>Pause/Interrupt is one concept that serves urgent books, marathons, put back on shelf and the Waiting list.</p></div>
+      <div class="conn"><span class="k">Coach</span><p>The colour-filling cover is the most direct expression of the killer benefit, and the first candidate to pull forward after v1.</p></div>
+    </div>
+
+    <div class="colophon">
+      <span class="end">The shelf is full. Every cover is in colour.</span>
+      bookvie · brainstorming session · 27 October 2026, last entry 21:55 · status: complete
+    </div>
+  </div>
+</section>
+
+<script>
+(function(){
+  const $ = (s, r=document) => r.querySelector(s);
+  const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  // note: [by, kind, text]  by: u|c ; kind: idea|insight|decision|question|direction
+  function note(n){
+    const [by, kind, text] = n;
+    const who = by === 'u' ? 'User' : 'Coach';
+    const dec = kind === 'decision' ? ' dec' : '';
+    const q = kind === 'question' ? ' q' : '';
+    const stamp = kind === 'decision' ? '<span class="stamp">' + (by === 'u' ? 'DECIDED' : 'DRAFTED') + '</span>' : '';
+    return `<div class="note ${by}${dec}${q}"><div class="tag">${who} · ${kind}${stamp}</div>${text}</div>`;
+  }
+  const notes = arr => arr.map(note).join('');
+  function countLine(arr){
+    const u = arr.filter(n=>n[0]==='u').length, d = arr.filter(n=>n[1]==='decision'&&n[0]==='u').length;
+    return `<span class="count">${arr.length} notes · <b>${u} from the user</b>${d?` · ${d} decided`:''}</span>`;
+  }
+
+  /* ---------- shelf ---------- */
+  const books = [
+    ['rb','Reverse Brainstorming','I','var(--rb)',1],
+    ['fw','Five Whys','II','var(--fw)',.78],
+    ['ma','Morphological Analysis','III','var(--ma)',1.06],
+    ['tt','Time Travel Talk Show','IV','var(--tt)',.92],
+    ['ya','Yes And Building','V','var(--ya)',.86],
+    ['sh','Six Thinking Hats','VI','var(--sh)',.98],
+  ];
+  $('#shelf').innerHTML = books.map(b =>
+    `<button class="spine" data-for="${b[0]}" style="--hue:${b[3]};height:${Math.round(200*b[4])}px" aria-label="Open book ${b[2]}: ${b[1]}"><span class="fill"></span><span class="lbl"><span>${b[1]}</span><small>${b[2]}</small></span></button>`
+  ).join('');
+  document.querySelectorAll('.spine').forEach(s => s.addEventListener('click', () => document.getElementById(s.dataset.for).scrollIntoView({behavior:'smooth'})));
+
+  /* ---------- Reverse brainstorming flip cards ---------- */
+  const flips = [
+    ['c','Start a 4th book with one click and no friction.','c','Flip #1. A WIP limit: starting a new book means finishing, pausing or abandoning one. The user went further: only one active book at a time.'],
+    ['u','No reminders, so a started book gets forgotten for weeks.','u','Flip #2/#3. A gentle nudge that shows pages left, not days missed. Forward-looking, not guilt.'],
+    ['c','The app stays silent while a book goes stale, then greets you with a guilt wall (“Last read 47 days ago, 12% done”), so you avoid opening it at all.','u','Flip #2/#3. A gentle nudge that shows pages left, not days missed.'],
+    ['u','The book is boring, but you feel forced to finish it.','u','Flip #5. Abandoning becomes normal, with no penalty. In the end there is no abandoned status at all: dropping a book means excluding it, or putting it back on the shelf.'],
+    ['c','Abandoning counts as failure (red mark, lower stats, broken goal), so you never officially abandon, and the boring book becomes a zombie that blocks the reading slot.','u','Flip #5. Abandoning is cheap and dignified: no status, no penalty, and the slot is freed.'],
+    ['u','Goals are too ambitious, so you drop out halfway through the goal period.','u','Flip #6/#7/#8. Goals are measured in pages and recalculated from the reader\'s own measured pace.'],
+    ['c','Goals count books, not pages. “10 books/month” rewards thin books and punishes a 900-page one.','u','Flip #6/#7/#8. Goals in pages, from your own pace. (Book-count goals were later kept alongside them.)'],
+    ['c','Once a goal is mathematically lost (day 20, 2 of 10 books), the app keeps showing the hopeless target.','c','Flip #8. A one-click reset (“new realistic target: 410 pages this month”), framed as adjusting the plan rather than failing.'],
+    ['u','A sequence won\'t let you skip or reorder a book you\'re not in the mood for.','u','The reader always chooses the main book. The next book in a sequence is only suggested as Up next and never starts automatically. Dropping a book from a sequence means excluding it.'],
+    ['c','Sequences are strictly linear: one dull book at position 3 locks positions 4–10, and the whole topic stalls.','u','Sequences are optional plans that focus reading on a topic and make it fun. They are not a required structure.'],
+    ['c','Every order is treated as equal, so the app can\'t tell a real prerequisite from a preference. Either everything is rigid or nothing is.','u','The sequence only suggests and the reader decides, so order never becomes a lock.'],
+    ['u','Adding 100+ books by hand takes forever.','u','Catalog entry goes through the user\'s own custom AI skills, so no import is needed for now. The app has to be automation-friendly and detect duplicates.'],
+    ['c','Every field (ISBN, publisher, year, edition, cover) is required before saving, so a half-entered book can\'t exist.','c','Only title and pages are required, since pages drive progress %. Everything else is optional and can be filled in later.'],
+    ['c','Donating deletes the book, along with its reading history and stats, and breaks the sequences it was in.','u','Flip #14. Donating marks the book as donated. History and stats are kept, so you can still see that you finished it or owned it.'],
+  ];
+  $('#flips').innerHTML = flips.map((f,i) => `
+    <button class="flip" aria-pressed="false" aria-label="Failure ${i+1}. Tap to see its flip">
+      <span class="inner">
+        <span class="face front ${f[0]}"><span class="n">Failure #${i+1}</span><span class="who ${f[0]}">${f[0]==='u'?'User':'Coach'}</span><p>${f[1]}</p><span class="hint">tap to flip ↻</span></span>
+        <span class="face back"><span class="n">The flip</span><span class="who">${f[2]==='u'?'User':'Coach'}</span><p>${f[3]}</p><span class="hint">↻</span></span>
+      </span>
+    </button>`).join('');
+  document.querySelectorAll('.flip').forEach(b => b.addEventListener('click', () => { b.classList.toggle('on'); b.setAttribute('aria-pressed', b.classList.contains('on')); }));
+  $('#flipall').addEventListener('click', e => {
+    const on = e.currentTarget.getAttribute('aria-pressed') !== 'true';
+    e.currentTarget.setAttribute('aria-pressed', on);
+    e.currentTarget.textContent = on ? 'Show all failures again' : 'Turn all cards over';
+    document.querySelectorAll('.flip').forEach(b => { b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); });
+  });
+
+  const threads = [
+    ['Abandoning, without the shame', [
+      ['u','idea','Flip #5: abandoning is a normal status with a reason, no penalty.'],
+      ['u','idea','Maybe no explicit abandoned status at all: just exclude the book from the sequence.'],
+      ['c','question','Tension with the original brief, which separated abandon (keep in sequence, visible) from exclude (added by mistake). Merging them loses the record that it was tried and dropped.'],
+      ['c','idea','Abandon belongs to the reading attempt, not the book. The book can be started again later as a new attempt (“not now” vs “not for me”).'],
+      ['c','idea','Abandoning instantly frees the reading slot. Abandon reasons (boring, wrong time, too hard, outdated) feed stats to show patterns.'],
+      ['u','decision','No abandoned status. Dropping a book in a sequence = exclude it. No history of past exclusions/abandons is needed. Simplicity reduces reader stress.'],
+      ['u','insight','Design principle: <b>simplicity over completeness of history; less state = less stress for the reader.</b>'],
+      ['c','idea','Standalone equivalent: “Put back on shelf” ends the current reading with no status or penalty. Pages already read still count, and the book returns to unread.'],
+    ]],
+    ['Nudges that look forward', [
+      ['u','idea','Gentle nudge that shows pages left, not days missed.'],
+      ['c','idea','Translate pages left into effort: “214 pages left = about 7 evenings of 30 pages” or “~5 h at your pace”, using the reader\'s own pace.'],
+      ['c','idea','Re-entry aid: “you stopped at p.186, chapter 9”.'],
+      ['c','question','Nudge channel: in-app on next visit only, or email/browser push?'],
+    ]],
+    ['Goals from your own pace', [
+      ['u','idea','Goals measured in pages, recalculated from my own measured pace.'],
+      ['c','idea','Propose a realistic goal from history: “you average 620 pages/month; 700 = +13% stretch”.'],
+      ['c','idea','Deadline goals become a daily page target that recalculates every log: “24 pages/day for the next 11 days”.'],
+      ['c','idea','When the target becomes unrealistic, offer a one-click reset, framed as adjusting the plan.'],
+      ['c','question','Do book-count goals survive at all, or only as a display derived from pages?'],
+    ]],
+    ['One main book (and three on the side)', [
+      ['u','idea','Only one active book at a time; must finish or pause it before starting another.'],
+      ['c','idea','Merge “pause” with “put back on shelf”: pausing keeps the page reached. One concept, not two.'],
+      ['c','idea','Starting is a deliberate moment: “Start X? This pauses Y at p.120 (64%)”.'],
+      ['c','idea','An “Up next” slot, so when the active book is done the decision is already made.'],
+      ['u','decision','Two tiers: exactly 1 main book (explicitly tracked) + up to 3 “side reading” books open alongside.'],
+      ['c','idea','Side reads are lightweight: no nudges, no progress pressure; a sidebar list, not a dashboard.'],
+      ['c','idea','Promote/swap: one action turns a side read into the main book.'],
+      ['c','idea','Guard: the 3-slot cap stops side reading becoming a backdoor to 5 parallel books.'],
+      ['c','question','Do side reads log pages and count toward goals and stats?'],
+      ['u','decision','Only the main book counts toward goals and stats; side reads are just an explicit “I am also reading this” marker.'],
+      ['c','idea','Promoting asks “which page are you on?” once; earlier pages don\'t count (keeps the rule honest).'],
+      ['u','decision','The reader always chooses the main book; the next book in a sequence is only suggested as Up next, never auto-started.'],
+    ]],
+    ['Sequences, marathons and overtime', [
+      ['u','idea','Sequences can be created up front as plans without starting any progress.'],
+      ['u','insight','Sequences are optional: a way to focus reading on a topic and make it fun, not a required structure.'],
+      ['u','idea','<b>Reading Marathon</b>: a pile of books to read within the next 24 hours of total reading (interruptions allowed).'],
+      ['c','idea','Sequence kinds: Topic (open-ended) and Marathon (time-boxed, live countdown of reading time and pages).'],
+      ['c','idea','Marathon recap card: books finished, pages, hours, best stretch. A fun, shareable moment.'],
+      ['c','question','Does a 24-hour total mean a start/stop timer, or manual time entry?'],
+      ['u','decision','Reading time entered manually only (no timer), via a convenient control; approximate, for fun, not precision.'],
+      ['u','decision','No penalty if logged marathon time exceeds the planned time.'],
+      ['c','idea','Time entry as quick chips (+15m, +30m, +1h) in the same single log form as “page reached”.'],
+      ['c','idea','Overrun shown as a playful “overtime” badge (“26h — overtime!”): a celebration, not a warning.'],
+    ]],
+    ['The catalog', [
+      ['u','decision','Book fields: title, subtitle, pages, authors, ISBN, edition, year, type (paperback, ebook, hardcover, etc.).'],
+      ['u','decision','Catalog entry happens via the user\'s own custom AI skills; no batch or in-app import for now.'],
+      ['c','idea','Only title + pages required; a book can exist half-entered.'],
+      ['c','insight','With an AI skill as the main way in, the app needs automation-friendly entry (stable labels/selectors or a small API) and duplicate detection.'],
+      ['c','question','Does “type” change behaviour (no donate for ebooks), or is it just a label?'],
+    ]],
+    ['Letting books go', [
+      ['u','decision','Donating marks the book as donated; history and stats kept.'],
+      ['u','idea','Donation requires an explicit destination: a university, a public library shelf, a gift to someone, a public place.'],
+      ['c','idea','Donation record = destination type + free-text note + date; a “Past shelf” view lists books you\'ve let go and where they went.'],
+    ]],
+    ['Reading with a purpose', [
+      ['u','idea','Before starting, write one sentence: <b>“what do I need to be able to do with this knowledge?”</b> Supports conscious reading.'],
+      ['c','idea','Purpose shown at start confirmation, on the main book card, and in nudges (“214 pages left toward: design a Kafka pipeline”).'],
+      ['c','idea','On finishing, an optional one-tap reflection: “Can you do it now? yes / partly / not yet”.'],
+    ]],
+    ['Flash cards', [
+      ['u','idea','Optional flash cards per book: a quote, note or any text plus the page it was found on.'],
+      ['u','idea','Review flash cards sequentially (by page) or shuffled.'],
+      ['c','idea','Shuffle across scope: one book, a sequence, or the whole library (“daily 5 cards”).'],
+    ]],
+  ];
+  $('#rb-threads').innerHTML = threads.map(t => `<details class="thread"><summary><h4>${t[0]}</h4>${countLine(t[1])}</summary><div class="body">${notes(t[1])}</div></details>`).join('');
+
+  /* ---------- Five whys ---------- */
+  const whys = [
+    ['Why #1','A new book becomes main because of an immediate need: to acquire a new skill or get familiar with a topic quickly (work-driven urgency).',[
+      ['c','idea','Urgent interruption is legitimate, not a failure: an explicit “Interrupt” start pauses the main book and marks it to resume next.']]],
+    ['Why #2','The paused book isn\'t resumed because another urgent book arrives (an urgency chain), or the paused material now needs a refresher.',[
+      ['c','idea','Refresher on resume: show the purpose, the last page and the book\'s flash cards in page order (“12 cards from pp.1–186”). Flash cards double as re-entry.'],
+      ['c','idea','Resume with rewind: pick an earlier restart page, such as the start of chapter 7.'],
+      ['c','idea','Interrupted books visible as “Waiting for you (3)”, oldest first, so the urgency chain is seen instead of silently burying planned books.']]],
+    ['Why #3','Context is forgotten, and re-reading feels like wasted time.',[
+      ['c','idea','Pause note: one optional line for your future self (“understood X; next chapter is about Y”), shown first on resume.'],
+      ['c','idea','Re-read pages counted separately as “review pages”: real effort made visible without inflating new-page progress.']]],
+    ['Why #4','Re-reading feels wasted because the progress bar doesn\'t move, so it feels like no progress.',[
+      ['c','idea','A two-layer progress bar: solid fill for the furthest page, a lighter pulse for review pages this session.'],
+      ['c','idea','Consistency measured by reading days (any pages or time, new or review), so a refresher day still counts.']]],
+    ['Why #5 · the root','<b>Visible progress shows I\'m moving forward and keeps me motivated; seeing reading move matters.</b>',[]],
+  ];
+  $('#whys').innerHTML = whys.map((w,i) => `<div class="why${i===4?' root':''}"><span class="ring">${i+1}</span>
+      <div class="note u"><div class="tag">User · insight · ${w[0]}</div>${w[1]}</div>
+      <div class="side">${notes(w[2])}</div></div>`).join('');
+
+  /* ---------- Morphological drawers ---------- */
+  const drawers = [
+    ['Format', [['paperback'],['hardcover'],['ebook'],['… physical vs digital']], [
+      ['c','idea','Split Format from Ownership. The donate action is shown only for physical formats.'],
+      ['u','decision','Ebooks can\'t be donated; donation applies to physical books only.']]],
+    ['Ownership', [['wished','new'],['owned'],['donated'],['borrowed','x']], [
+      ['u','decision','Strictly own library: no borrowed books.'],
+      ['c','insight','Later, in Yes And Building, the wishlist extended the states to wished / owned / donated.']]],
+    ['Book × Sequence', [['finished'],['unread'],['donated'],['in several sequences']], [
+      ['c','idea','A finished book in several sequences counts as read in all of them, since progress lives on the book, not the sequence.'],
+      ['u','decision','A donated unread book stays in its planned sequence, greyed out as donated; its pages are excluded from live progress.'],
+      ['c','idea','Re-acquire: if a donated book comes back, one action restores it to owned and it rejoins sequence progress.']]],
+    ['What can be paused', [['book'],['marathon'],['anything','new']], [
+      ['u','decision','Starting a marathon pauses the current main book; afterwards it returns as Up next.'],
+      ['c','insight','Marathon start and urgent-book start are the same mechanism: Interrupt (pause main, queue it as Up next).'],
+      ['u','decision','An unfinished marathon can be extended or paused, and resumed later.'],
+      ['u','insight','Anything can be paused (book, marathon), which keeps the current reading item explicit.'],
+      ['c','question','Does universal pause risk a new zombie, a growing paused pile? Cap it?'],
+      ['u','decision','No cap on paused items; the visible “Waiting for you” list is enough.']]],
+    ['Time-box clock', [['24h reading budget'],['weekend window'],['custom']], [
+      ['u','idea','<b>Weekend sprint</b>: a weekend-scoped sequence, like a marathon, e.g. finish a book over Saturday and Sunday.'],
+      ['c','idea','Two clock types: a reading-time budget (marathon) and a calendar window (weekend: Sat 00:00 to Sun 23:59). One concept, two clocks.'],
+      ['c','idea','A weekend sprint reuses the deadline goal: “180 pages left, 90 per day”, recalculated each log.']]],
+    ['Reading number', [['1st reading'],['re-read'],['partial rewind']], [
+      ['u','decision','Re-reading a finished book fully is a new Reading with its own progress and stats; second-time reading is welcome.'],
+      ['c','idea','A “read 2x” badge, and a fresh purpose per Reading.']]],
+  ];
+  $('#drawers').innerHTML = drawers.map(d => `<div class="drawer"><div class="front"><h4>${d[0]}</h4><span class="pull"></span></div>
+    <div class="vals">${d[1].map(v=>`<span class="val ${v[1]||''}">${v[0]}</span>`).join('')}</div>
+    <div class="body">${notes(d[2])}</div></div>`).join('');
+
+  /* ---------- Talk show ---------- */
+  const guests = [
+    ['PAST','Past self','Finish one book before starting another one.',[
+      ['c','idea','Near-finish guard: when the main book is over 80% done, the start-another confirmation says “Only 40 pages (~1 evening) to the finish, finish first?”. Advice, not a block.']]],
+    ['NOW','Present self','The first version must get quick page logging for the main book right, with visible progress.',[]],
+    ['NEXT','Future self','Opening bookvie, the first thing I see is the main book, pages left and its purpose.',[
+      ['c','idea','Focus home: the home screen <i>is</i> the main book, with one-action “log pages + time”. Side reads, Up next and Waiting are small below. The catalog is a secondary screen.'],
+      ['u','insight','Future self looks forward to finishing a book, going back through its card notes, and feeling the reading purpose was fulfilled.'],
+      ['c','idea','Finish ceremony: purpose → “fulfilled? yes / partly / not yet” → the flash cards replayed as a highlights reel → reading summary (days, pages, time).'],
+      ['c','idea','A “What I can do now” wall: fulfilled purposes over time, a portfolio of skills gained from reading.']]],
+  ];
+  $('#guests').innerHTML = guests.map(g => `<div class="guest"><div class="chair"><span class="face">${g[0]}</span><h3>${g[1]}</h3></div>
+    <div class="bubble"><small>${g[0]==='NOW'?'User · decision':'User · '+(g[0]==='PAST'?'insight':'idea')}</small>“${g[2]}”</div>${notes(g[3])}</div>`).join('');
+
+  /* ---------- Yes-and chain ---------- */
+  const yes = [
+    ['c','idea','<b>Seed:</b> logging is not a form but one big draggable page dial (p.186 → p.214); the progress bar fills live while dragging.'],
+    ['u','idea','The main book\'s cover image is shown on the logging screen.'],
+    ['c','idea','The cover <i>is</i> the progress bar: faded grey, filling with colour bottom-up as pages are logged. Finished books are fully vivid, so the read shelf becomes a wall of colour.'],
+    ['u','idea','Organize books into shelves and tags.'],
+    ['u','idea','A wishlist of books I\'d like to own and read one day.'],
+    ['c','insight','Ownership states become wished / owned / donated.'],
+    ['c','idea','Cover colour encodes the whole lifecycle: wishlist = outline, owned unread = grey, reading = filling, read = vivid. Buying a wishlist book turns the outline grey.'],
+    ['u','idea','Store the language the book is written in.'],
+    ['c','idea','Language as a stats lens (“this year: 3,100 pages EN, 1,400 RU”), plus a small language badge on the cover corner.'],
+    ['u','idea','Filter by several parameters combined: ISBN, partial title, language, author, publisher.'],
+    ['c','insight','Publisher wasn\'t in the field list; the field list now also gains language and publisher.'],
+    ['c','idea','Save any filter as a smart shelf that updates itself (“unread, RU, under 300 pages”), which can seed a marathon or weekend sprint in one click.'],
+    ['u','idea','Sort shelves by author, year, pages.'],
+    ['c','idea','Also sort by estimated time at my pace (“~6 evenings”) and “unread the longest”, where long-unread books show a light dust layer.'],
+    ['u','idea','Group books by author.'],
+    ['c','idea','Author pages: owned / read / wishlist side by side, pages read of that author, and one click to make a topic sequence (“read all of Fowler”).'],
+    ['u','idea','Group books by publisher.'],
+    ['c','idea','Grouping is one generic mechanism (any field). Publisher groups surface series (Manning “in Action”, O\'Reilly animal books) as collections to complete.'],
+    ['u','idea','Add a flash card directly while logging pages, in the same action.'],
+    ['c','idea','The card page is prefilled from the session\'s range (p.186–214). Each card is a small marker at its height on the cover, so the cover maps where the insights were.'],
+    ['u','idea','Export flash cards to share them.'],
+    ['c','idea','Export scope mirrors shuffle scope. A single card exports as a shareable image (quote over the cover colours), a set as Markdown or an Anki deck.'],
+    ['u','idea','Rate a book with stars, up to five.'],
+    ['c','idea','Rating is asked in the finish ceremony right after “purpose fulfilled?” and belongs to the Reading: “1st read 3 stars, 2nd read 5 stars”.'],
+  ];
+  $('#yeschain').innerHTML = yes.map((n,i) => (i?'<div class="yesand">yes, and…</div>':'') + note(n)).join('');
+
+  /* ---------- Six hats ---------- */
+  const hatSvg = c => `<svg width="34" height="22" viewBox="0 0 34 22" aria-hidden="true"><ellipse cx="17" cy="18" rx="16" ry="3.5" fill="${c}" stroke="currentColor" stroke-opacity=".35"/><path d="M8 18 C8 6 10 2 17 2 C24 2 26 6 26 18Z" fill="${c}" stroke="currentColor" stroke-opacity=".35"/><rect x="8.6" y="12" width="16.8" height="3" fill="currentColor" opacity=".25"/></svg>`;
+  const hats = [
+    ['white','White hat','facts','var(--hat-white)',[
+      ['u','insight','Reads almost every day; currently ticks boxes in a reading diary.'],
+      ['u','idea','Streak visualization: number of consecutive reading days without a miss.'],
+      ['u','insight','Pages per day/week are not fixed; they depend on workload.'],
+      ['u','insight','Sometimes listens to an audiobook of a book owned on paper or ebook, then logs progress against the paper book\'s pages.'],
+      ['c','insight','So the daily tick is the core habit and logging a day must be as cheap as a tick. Goals must tolerate low weeks. Audio is a way of reading, not a separate book (no audiobook format needed).'],
+      ['u','insight','A missed day is a heavy work day, too tired to open a book.'],
+      ['c','insight','Missed days are predictable, not random; the streak design should account for them rather than punish.']]],
+    ['red','Red hat','feelings','var(--hat-red)',[
+      ['u','insight','<b>Joy of finishing a book; joy of tracking progress; keeping the streak motivates.</b>'],
+      ['c','insight','Unease: a motivating streak turns a heavy work day into a threat, and losing a long streak can sting enough to quit the habit.']]],
+    ['yellow','Yellow hat','benefits','var(--hat-yellow)',[
+      ['u','insight','Reading stats for any period.'],
+      ['u','insight','Digitizes the paper diary process.'],
+      ['u','insight','Shows progress paper can\'t (percentage, gauge, etc.).'],
+      ['u','insight','Overview of how many books I own and how well they\'re organized (shelved, tagged).'],
+      ['u','insight','Card notes and reading purpose kept close to the book.'],
+      ['c','idea','The fulfilled-purpose wall plus flash cards become evidence of learning for work, useful in performance reviews or a CV.'],
+      ['u','decision','<b>Killer benefit that replaces the paper diary: visible progress (percentage and gauge).</b>'],
+      ['c','insight','This converges with the Five Whys root and the Talk Show\'s v1 decision. Three techniques point at the same core.']]],
+    ['black','Black hat','risks','var(--hat-black)',[
+      ['c','idea','Risk: if logging takes longer than ticking a paper box, the diary wins on tired evenings and bookvie\'s data gets gaps.'],
+      ['u','direction','Skipped adding own Black hat risks; moved on.']]],
+    ['green','Green hat','new ideas','var(--hat-green)',[
+      ['u','decision','The streak is visualization only and never resets to zero; it works like a tracking calendar.'],
+      ['u','idea','Day types: <b>intense reading days</b> (free time, less work), <b>light days</b> of 1–2 pages that still count, and <b>reading rest days</b>, book put away but card notes may be reviewed.'],
+      ['u','idea','The app asks “what was your reading day today?” with options to choose.'],
+      ['c','idea','The daily check-in <i>is</i> the tick: one tap on Deep / Light / Cards / Rest. Deep and Light open the page dial, Cards opens today\'s review, Rest just marks the day. The heatmap shades by intensity.'],
+      ['u','decision','Day type (Deep/Light) is the reader\'s own choice at tap time, not inferred from pages.'],
+      ['c','idea','Feeling vs numbers: “your Light days average 9 pages, Deep days 48”. A gentle self-knowledge mirror.']], true],
+    ['blue','Blue hat','process','var(--hat-blue)',[
+      ['u','direction','The brainstorm\'s output should be a v1 scope and a list of open decisions.']]],
+  ];
+  $('#hats').innerHTML = hats.map(h => `<div class="hat ${h[0]}"><h3>${hatSvg(h[3])}${h[1]} <small>${h[2]}</small></h3>
+    <div class="${h[4].length>3?'cols':''}">${notes(h[4])}</div>${h[5]?calendarHTML():''}</div>`).join('');
+
+  function calendarHTML(){
+    return `<div class="cal" id="cal"><div class="kicker">Try the check-in · What was your reading day today?</div>
+      <div class="checkin">
+        <button style="--dc:var(--deep)" data-t="deep" aria-pressed="false">Deep</button>
+        <button style="--dc:var(--light);" data-t="light" aria-pressed="false">Light</button>
+        <button style="--dc:var(--cards)" data-t="cards" aria-pressed="false">Cards</button>
+        <button style="--dc:var(--rest)" data-t="rest" aria-pressed="false">Rest</button>
+      </div>
+      <div class="days" id="days"></div>
+      <div class="calkey"><span><i style="background:var(--deep)"></i>Deep</span><span><i style="background:var(--light)"></i>Light</span><span>▭ Cards</span><span>☾ Rest</span><span>Tap any day to change it. There is no days-in-a-row number, by decision.</span></div></div>`;
+  }
+  // build calendar: October 2026, today = 27th
+  (function(){
+    const days = $('#days'); if(!days) return;
+    const order = ['', 'deep','light','cards','rest'];
+    let html = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d=>`<span class="dow">${d}</span>`).join('');
+    const first = (new Date(2026,9,1).getDay()+6)%7;
+    for(let i=0;i<first;i++) html += '<span></span>';
+    for(let d=1; d<=31; d++) html += `<button class="day${d===27?' today':''}" data-d="${d}" data-t="" aria-label="October ${d}">${d}</button>`;
+    days.innerHTML = html;
+    const today = days.querySelector('[data-d="27"]');
+    const btns = document.querySelectorAll('.checkin button');
+    const sync = () => btns.forEach(b => b.setAttribute('aria-pressed', b.dataset.t === today.dataset.t));
+    btns.forEach(b => b.addEventListener('click', () => { today.dataset.t = today.dataset.t === b.dataset.t ? '' : b.dataset.t; sync(); }));
+    days.querySelectorAll('.day').forEach(c => c.addEventListener('click', () => {
+      c.dataset.t = order[(order.indexOf(c.dataset.t)+1)%order.length]; if(c===today) sync();
+    }));
+  })();
+
+  /* ---------- MoSCoW ---------- */
+  const moscow = [
+    ['must','Must','vivid · read',[
+      'Catalog (title + pages required)','AI-skill-friendly entry + duplicate detection','Book → Readings model','One main book with start confirmation','Quick page logging with % and gauge','Pause / put back on shelf','Daily check-in: Deep / Light / Rest','Never-resetting reading calendar','Stats for any period']],
+    ['should','Should','filling · reading',[
+      'Reading purpose','Re-entry info + pages left as evenings','Up next + Waiting for you','Side-read markers','Flash cards + Cards day type','Simple finish ceremony with per-Reading stars','Shelves / tags / filter / sort','Cover image on main screen']],
+    ['could','Could','grey · owned, not yet started',[
+      'Page goals from pace','Sequences / marathons / sprints','Donation','Wishlist','Colour-filling cover','Dust','Smart shelves','Author / publisher groups','Series','Card shuffle / export','Review pages / rewind / pause note','Language and felt-vs-actual stats','“What I can do now” wall','Near-finish guard','Re-read badge']],
+    ['wont','Won\'t','the donation box',[
+      'Borrowed books','Import','Timer','Abandoned status','Audiobook format']],
+  ];
+  $('#moscow').innerHTML = moscow.map(m => `<div class="mshelf ${m[0]}"><h3>${m[1]} <small>${m[2]} · ${m[3].length} books</small></h3>
+    <div class="plank">${m[3].map((t,i)=>`<div class="bk" style="--r:${[-3,2,-1,3,-2][i%5]}deg"><span>${t}</span></div>`).join('')}</div></div>`).join('')
+    + `<div class="note c" style="margin-top:18px"><div class="tag">Coach · decision<span class="stamp">DRAFTED</span></div>Converge method: MoSCoW. Buckets drafted by the coach.</div>`
+    + `<div class="note u dec"><div class="tag">User · decision<span class="stamp">DECIDED</span></div>MoSCoW buckets accepted as drafted (with resolved open decisions applied); proceed to wrap-up.</div>`;
+
+  const resolved = [
+    ['Nudge channel: in-app on next visit, or email/browser push?','In-app on the next visit only. No email or browser push.'],
+    ['Do book-count goals survive, or only as a display derived from pages?','Book-count goals survive, alongside page goals.'],
+    ['Where do cover images come from?','Cover images are uploaded by the user.'],
+    ['Shelves and tags?','Shelf = physical location, exactly one per book. Tags = free-form, many per book, the light way to group books.'],
+    ['Streak or calendar?','No “days in a row” metric at all. The calendar just tracks the type of each day.'],
+    ['Black hat risk review?','Skipped for this session.'],
+  ];
+  $('#resolved').innerHTML = resolved.map(r => `<div class="slip"><span class="stamp">RESOLVED</span><div class="q">${r[0]}</div><div class="a">${r[1]}</div><div class="by">★ decided by the user</div></div>`).join('');
+
+  /* ---------- yes-and demo cover ---------- */
+  const dial = $('#dial'), dcover = $('#dcover'), dialv = $('#dialv');
+  const marks = [60, 140, 186, 214, 300];
+  marks.forEach(p => { const m = document.createElement('span'); m.className='mark'; m.dataset.p=p; m.style.bottom = (p/400*100)+'%'; dcover.appendChild(m); });
+  function updDial(){
+    const p = +dial.value, pct = Math.round(p/400*100);
+    dcover.querySelector('.fill').style.height = pct+'%';
+    dialv.innerHTML = `p.${p} <small>/ 400 · ${pct}%${p===400?' · read, fully vivid':''}</small>`;
+    dcover.querySelectorAll('.mark').forEach(m => m.classList.toggle('on', +m.dataset.p <= p));
+  }
+  dial.addEventListener('input', updDial); updDial();
+
+  /* ---------- scroll-driven cover fill ---------- */
+  const sections = [...document.querySelectorAll('.chapter')];
+  const pb = $('#progress-book .fill'), pbl = $('#progress-book span');
+  const finale = $('#finale');
+  let ticking = false;
+  function onScroll(){
+    ticking = false;
+    const vh = innerHeight;
+    sections.forEach(s => {
+      const r = s.getBoundingClientRect();
+      const f = Math.max(0, Math.min(1, (vh*0.6 - r.top) / (r.height)));
+      s.style.setProperty('--fill', f.toFixed(3));
+      const pct = s.querySelector('.ch-cover .pct'); if(pct) pct.textContent = Math.round(f*100)+'%';
+      const sp = document.querySelector(`.spine[data-for="${s.id}"]`); if(sp) sp.style.setProperty('--fill', f.toFixed(3));
+    });
+    const doc = document.documentElement;
+    const tot = Math.max(1, doc.scrollHeight - vh);
+    const g = Math.min(1, scrollY / tot);
+    pb.style.height = (g*100)+'%';
+    pbl.textContent = 'p.' + Math.round(g*192);
+    if (finale.getBoundingClientRect().top < vh*0.75) finale.classList.add('lit');
+  }
+  addEventListener('scroll', () => { if(!ticking){ ticking = true; requestAnimationFrame(onScroll); } }, {passive:true});
+  addEventListener('resize', onScroll);
+  onScroll();
+})();
+</script>
+</body>
+</html>
