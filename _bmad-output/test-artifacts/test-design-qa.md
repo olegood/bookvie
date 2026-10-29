@@ -70,7 +70,7 @@ Details are in the architecture doc's Quick Guide.
    - A Python builder that emits a valid `library.json` through `store.serialize()` and `check_invariants()`, written to the temp data dir before the server starts.
    - Without it, every complex state has to be clicked into place, which is slow and brittle.
 2. **TC-2 Test-only `Clock` override** (Dev, server skeleton)
-   - `--fake-today YYYY-MM-DD` (or an env var), refused without `--no-browser`. Pin `TZ`, and set the same zone in the Playwright `timezoneId`.
+   - `--fake-today YYYY-MM-DD` (or an env var), refused without `--no-browser`. Pin `TZ`, and set the same zone in the Playwright `timezoneId`. The fixture also sets `page.clock` to the `--fake-today` date, so browser-side dates match (AD-20).
    - Without it, relative dates, "not in the future" and This-month stats can't be asserted reliably.
 3. **TC-3 fs seam in `store/`** (Dev, first persistence story)
    - An injectable write/fsync/rename interface.
@@ -130,7 +130,7 @@ Full details are in the architecture doc.
 
 | NFR Category | Requirement / Threshold | Planned Validation | Tool / Level | Evidence Artifact | Priority |
 |---|---|---|---|---|---|
-| Security | Loopback bind; Host/Origin allow-list; archive allow-list, no traversal, ≤ 2 GB; image re-decode, ≤ 20 MB | Guard matrix; bind check; crafted archives; non-image upload | pytest API | `reports/pytest-junit.xml` | P0 |
+| Security | Loopback bind; Host/Origin allow-list; archive allow-list, no traversal, no symlinks, ≤ 1 GB upload, ≤ 5,000 entries, ≤ 1 GB extracted; image re-decode, ≤ 20 MB | Guard matrix; bind check; crafted archives; non-image upload | pytest API | `reports/pytest-junit.xml` | P0 |
 | Reliability / data integrity | Atomic commit; all-or-nothing intent; serialized writes; single instance; byte-identical round trip; `.bak` before migration | Fault injection; concurrency; lock subprocess; round trip; Hypothesis invariants | pytest UNIT/API | junit XML; Hypothesis statistics | P0 |
 | Performance | Catch-up ≤ 2 interactions, < 30 s; ~500 Books / ~10 MB | Interaction-count e2e; intent/view timing on a 500-Book / 3,000-note fixture | Playwright; pytest | Playwright HTML report; `reports/timing.txt` | P0 (interactions) / P3 (timing) |
 | Accessibility | Accessibility Floor; Agent Label Contract | Contract suite; validation a11y attributes; spine names; optional axe | Playwright (+ `@axe-core/playwright`) | Playwright report; axe JSON | P0 (contract) / P3 (axe) |
@@ -201,7 +201,7 @@ Full details are in the architecture doc.
 | **FIN-API-002** | Finish non-Main → Main unchanged; removed from Up next/Waiting | API | R-01 | |
 | **BKP-API-001** | Export → restore on the rich fixture → byte-identical `library.json` + covers | API | R-02 | FR-23 |
 | **BKP-API-003** | Restore refusals (not zip, truncated, no `library.json`, bad schema, invariant violation, missing/undecodable cover, newer version) → data unchanged | API | R-02 | |
-| **BKP-API-004** | Malicious archives (`../`, absolute, extra entry, > 2 GB declared) → refused, nothing outside `.staging/` | API | R-14 | |
+| **BKP-API-004** | Malicious archives (`../`, absolute, extra entry, symlink, duplicate name, > 5,000 entries, > 1 GB extracted including headers that understate sizes) → refused, nothing outside `.staging/` | API | R-14 | |
 | **BKP-API-005** | Fault during restore apply → current data intact; `.staging/` emptied at startup | API | R-02, R-03 | |
 
 **Total P0:** ~27

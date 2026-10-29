@@ -56,7 +56,7 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
 
 - **Binds:** A3, Data-safety NFR, FR-22, FR-23
 - **Prevents:** partial writes; a second store; two code paths serializing differently.
-- **Rule:** All textual data is a single `library.json` with the shape in AD-18. `store.serialize()` is the only function that produces its bytes: UTF-8, camelCase keys, nulls kept, keys in model order, 2-space indent. Every commit writes a temp file in the same folder, fsyncs it, and renames it over the original. If any step fails, the original is untouched and the intent reports `couldnt_save`.
+- **Rule:** All textual data is a single `library.json` with the shape in AD-18. `store.serialize()` is the only function that produces its bytes: UTF-8, camelCase keys, nulls kept, keys in model order, 2-space indent. Every commit writes a temp file in the same folder, fsyncs it, and renames it over the original. If any step fails, the original is untouched and the intent reports `couldnt_save`. At startup the server deletes leftover `library.json.tmp*` files from an interrupted commit, and exits non-zero with a message naming the path if the data folder isn't writable.
 
 ### AD-3: Domain rules live only in the server; mutations arrive only as intents [ADOPTED]
 
@@ -74,7 +74,7 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
 
 - **Binds:** AD-1, CLI
 - **Prevents:** two processes writing the same folder.
-- **Rule:** The server holds `bookvie.lock` (PID and port) in the data folder. When `bookvie` finds a live lock, it opens the browser at the recorded URL and exits. A lock whose PID is dead is taken over. On SIGINT or SIGTERM the server waits for the AD-4 lock, then removes `bookvie.lock` and exits.
+- **Rule:** The server holds `bookvie.lock` (PID and port) in the data folder, created with exclusive-create so two launches can't both take it. When `bookvie` finds a live lock, it opens the browser at the recorded URL and exits. A lock is live only when its PID is alive **and** `GET /api/health` on the recorded port answers `{ "app": "bookvie", "dataDir": "<path>" }` for this data folder. Any other lock (dead PID, a reused PID, no answer) is taken over. On SIGINT or SIGTERM the server waits for the AD-4 lock, then removes `bookvie.lock` and exits.
 
 ### AD-6: The server owns domain numbers and selections; the client owns presentation [ADOPTED]
 
@@ -111,8 +111,8 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
   - **Success:** HTTP 200 with `{ "ok": true, "ids"?: {<name>: <uuid>}, "reachedLastPage"?: true }`.
   - **Failure:** `{ "error": { "kind": "refusal" | "couldnt_save", "code": "<snake_case>", "message": "<user copy>", "fields"?: [{ "field", "code", "message" }] } }`.
     - HTTP 422 means field validation. `code` is `invalid_fields`, and `fields` lists every failing field.
-    - HTTP 409 means a state rule (e.g. `duplicate_book`, `pages_below_current_page`).
-    - HTTP 500 or 503 means `couldnt_save`.
+    - HTTP 409 means a state rule (e.g. `duplicate_book`, `pages_below_current_page`). An intent whose target is no longer in a state it can act on is refused, never applied to another Book: `book_not_found` (the Book was deleted), `not_main_book` (`update-page` or `pause` for a Book that isn't Main), `reading_already_finished`, `already_main` (`start-reading` for the Main book), `main_cannot_be_up_next`, `main_cannot_be_side_read`.
+    - HTTP 500 or 503 means `couldnt_save`. When `check_invariants()` fails after validation passed, that is a server bug: the intent commits nothing, logs the failed rule to stderr, and returns 500 `couldnt_save`.
   - A global `RequestValidationError` handler maps framework validation errors into this shape. The server owns all message copy (PRD §5 Tone), and the client renders it as is. Error codes are an enum in the contract.
 
 ### AD-10: Duplicate detection is a server refusal
@@ -135,9 +135,12 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
 - **Binds:** A5, FR-1, FR-21, FR-22, FR-23
 - **Prevents:** a failed commit leaving a document pointing at an overwritten image; browsers showing a cached old cover; dangling references.
 - **Rule:**
-  - The server downscales every uploaded cover to a long edge of at most 1200px, after re-decoding it with Pillow, which rejects anything that isn't an image. Uploads are capped at 20 MB.
+  - The server downscales every uploaded cover to a long edge of at most 1200px, after re-decoding it with Pillow, which rejects anything that isn't an image. Uploads are capped at 20 MB, counted while streaming.
+  - **Decoding:** EXIF orientation is applied before downscaling (`ImageOps.exif_transpose`). Pillow's `MAX_IMAGE_PIXELS` stays on, and a decompression bomb is refused like a non-image. CMYK is converted to RGB, and only the first frame of an animated image is kept. Formats Pillow can't decode without a plugin, such as HEIC, are refused with a message naming the supported formats (JPEG, PNG, WebP); no HEIC plugin is added.
+  - **Output:** covers are re-encoded as JPEG, or PNG when the image has transparency. `<ext>` comes from the output format, never from the uploaded file name.
   - Each upload is stored under a new server-minted name, `covers/<book-id>-<uuid>.<ext>`, recorded in the Book's `coverFile`. A name is never reused or overwritten.
   - **The order is always:** write the new files (temp + rename), commit the document, then delete files no Book references.
+  - **After the commit:** once the document commit succeeds, the intent has succeeded. A failure while deleting unreferenced files or emptying `.staging/` is logged to stderr and left for the startup sweep; the response is still 200, never `couldnt_save`.
   - Covers are served at `/media/covers/<file>` with immutable caching.
   - At startup the server removes cover files that no Book references.
 
@@ -149,6 +152,7 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
   - `library.json` carries an integer `schemaVersion`.
   - A single ordered migration chain in `store/migrations/` upgrades older versions, both at startup and on restore.
   - Before a startup migration rewrites the file, the server copies the original to `library.v<N>.bak.json`.
+  - The chain runs in memory and the result is committed once. If any step raises, the server exits non-zero with a message, and the original file and its backup are unchanged.
   - A newer version or an invalid file is refused, and nothing changes.
 
 ### AD-14: Export is the data folder packaged; restore validates, then applies the AD-12 order [ADOPTED]
@@ -156,10 +160,11 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
 - **Binds:** FR-22, FR-23, A6
 - **Prevents:** an export format that drifts from storage; a restore that fails halfway; malicious or damaged archives.
 - **Rule:**
-  - **Export:** `GET /api/export` returns one `.zip` holding `library.json` and `covers/`, and nothing else. It is read under the AD-4 lock.
-  - **Restore validation:** restore unpacks into `.staging/` inside the data folder. It accepts only the entries `library.json` and `covers/<name>`: no absolute paths, no `..`, at most 2 GB uncompressed. Then it validates the whole archive: schema, migrations, AD-18 invariants, and every referenced cover present and decodable.
+  - **Export:** `GET /api/export` returns one `.zip` holding `library.json` and `covers/` (always present as a directory entry, even when empty), and nothing else. It is read under the AD-4 lock. "Last export" (AD-15) is recorded only after the last byte has been sent with no client disconnect; a HEAD request or an aborted download records nothing. The server can't know whether the browser kept the file, so "Last export" means "last complete download".
+  - **Restore validation:** restore empties `.staging/`, then unpacks into it. It accepts only the entries `library.json` and `covers/<name>`: no absolute paths, no `..`, no symlinks, no duplicate names. A missing `covers/` counts as empty.
+  - **Restore limits:** the upload is at most 1 GB, the archive holds at most 5,000 entries, and at most 1 GB is extracted. The extracted size is counted on the bytes actually written, never on sizes declared in the zip headers, and extraction stops as soon as a limit is passed. These limits fit about 2,000 Books with downscaled covers (about 300 KB each) plus `library.json` up to its 10 MB performance ceiling. Then it validates the whole archive: schema, migrations, AD-18 invariants, and every referenced cover present and decodable.
   - **Restore apply:** following the AD-12 order, restore adds the archive's covers, commits the document via AD-2, then deletes covers the new document doesn't reference.
-  - **Failure and cleanup:** a failure before the commit leaves current data untouched. `.staging/` is emptied at startup.
+  - **Failure and cleanup:** a failure before the commit leaves current data untouched. `.staging/` is emptied after every restore, refused or not, and at startup.
   - **Round trip:** export → restore at the same `schemaVersion` reproduces byte-identical `library.json` and covers.
 
 ### AD-15: State that is not exported [ADOPTED]
@@ -174,7 +179,7 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
 - **Prevents:** the cataloging skill losing the app behind a random port; LAN or cross-site access to the user's data.
 - **Rule:**
   - **Binding:** the server binds `127.0.0.1` only, on port `8765` by default. `--port` overrides it, and the lock records the actual port.
-  - **Port conflict:** if the port is held by a process that isn't bookvie, startup exits with a message naming the port and `--port`.
+  - **Port conflict:** if the port is held by a process that isn't bookvie, startup exits with a message naming the port and `--port`. If `GET /api/health` on that port answers as bookvie for another data folder, the message says so and names that folder instead.
   - **Request guard:** requests are rejected when their `Host` isn't `127.0.0.1:<port>` or `localhost:<port>`, or when an `Origin` is present and isn't one of those. With `--dev`, the Vite dev origin is also allowed.
   - **No authentication:** anything on the machine that can reach the loopback port is trusted.
   - **SPA routes:** the server serves the built SPA and falls back to `index.html` for client routes.
@@ -216,7 +221,7 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
 
 - **Binds:** domain, FR-10, FR-11, FR-14, FR-16, AD-19
 - **Prevents:** tests and code disagreeing on "today"; finish dates shifting by timezone.
-- **Rule:** `domain/` never calls the system clock directly. It receives a `Clock` (now, plus today as a local date in the machine timezone) that tests replace. Local dates are `YYYY-MM-DD`; timestamps are ISO 8601 with offset. Measured pace counts days inclusively (finishDate − startDate + 1), excludes back-filled Readings, and lives only in `domain/`.
+- **Rule:** `domain/` never calls the system clock directly. It receives a `Clock` (now, plus today as a local date in the machine timezone) that tests replace. Local dates are `YYYY-MM-DD`; timestamps are ISO 8601 with offset. Measured pace counts days inclusively (finishDate − startDate + 1), excludes back-filled Readings, and lives only in `domain/`. The browser computes its own "today" for presentation (AD-6), so in e2e tests the Playwright fixture sets the browser clock (`page.clock`) to the same date it passes as `--fake-today`, and the browser `timezoneId` to the server's pinned `TZ`. Views don't carry the server's date.
 
 ## Consistency Conventions
 

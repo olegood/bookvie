@@ -61,7 +61,7 @@ inputDocuments:
 These need to land in the first (test-framework / server-skeleton) story. Without them the high-risk tests can't be written cheaply.
 
 1. **TC-1: Fixture seeding path.** A test-only builder that writes a valid `library.json` (via `store.serialize()` + `check_invariants()`) into a temp `--data-dir` before the server starts. No seeding endpoint in the product. (Owner: Dev)
-2. **TC-2: Controllable "today" for e2e.** The `Clock` override reaches only pytest today. Need a test-only `--fake-today` (or env var) that feeds `Clock`, accepted only together with `--no-browser`. Pin the server `TZ` and the browser `timezoneId` to the same zone. (Owner: Dev)
+2. **TC-2: Controllable "today" for e2e.** The `Clock` override reaches only pytest today. Need a test-only `--fake-today` (or env var) that feeds `Clock`, accepted only together with `--no-browser`. Pin the server `TZ` and the browser `timezoneId` to the same zone, and have the Playwright fixture set the browser clock (`page.clock`) to the same date it passes as `--fake-today`, because the browser computes its own "today" for relative dates, the pace finish date and Stats presets (AD-20). (Owner: Dev)
 3. **TC-3: fs seam in `store/`.** Write, fsync and rename (and cover writes) go through one small injectable interface, so tests can fail each step and prove AD-2/AD-12. (Owner: Dev)
 4. **TC-5: Real-library guard.** e2e servers always run with an explicit `--data-dir` under `$TMPDIR/bookvie-e2e/<run-id>/worker-<n>/` (pytest uses its own `tmp_path`). The harness refuses to start a server on any other path, and always on `~/bookvie-data`. The install smoke test uses an isolated `HOME`, `UV_TOOL_DIR` and `UV_TOOL_BIN_DIR`. (Owner: Dev)
 
@@ -135,7 +135,7 @@ TECH = architecture/integration · SEC = security · PERF = performance · DATA 
 
 | NFR Category | Threshold / Requirement | Current Design Support | Gap / Decision Needed | Planned Evidence |
 |---|---|---|---|---|
-| Security | Loopback bind; Host/Origin allow-list; restore entry allow-list, no `..`, ≤ 2 GB; covers re-decoded, ≤ 20 MB (AD-12/14/16) | Supported | None | pytest guard + crafted-archive results |
+| Security | Loopback bind; Host/Origin allow-list; restore entry allow-list, no `..`, no symlinks, ≤ 1 GB upload, ≤ 5,000 entries, ≤ 1 GB extracted (counted on bytes written); covers re-decoded, ≤ 20 MB (AD-12/14/16) | Supported | None | pytest guard + crafted-archive results |
 | Performance | Catch-up < 30 s, ≤ 2 interactions (PRD §5); sized for ~500 Books / ~10 MB | Partial | No latency target, by decision (Q2) | e2e interaction count; timing log (informational only) |
 | Reliability / data integrity | Atomic commit; all-or-nothing intent; serialized writes; single instance; byte-identical round trip; `.bak` before migration | Supported, given TC-3 | fs seam (TC-3) | fault-injection + round-trip results; Hypothesis stats |
 | Accessibility | Accessibility Floor + Agent Label Contract; 1.4.10 deviation accepted | Supported | axe scan is report-only (Q4) | label-contract e2e; axe JSON (advisory) |

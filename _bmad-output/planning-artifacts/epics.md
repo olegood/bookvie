@@ -117,7 +117,7 @@ From ARCHITECTURE-SPINE.md and the TEA handoff. Items are grouped by concern.
 - AR17: IDs are server-generated UUID v4 strings returned in `ids`; the client never mints IDs. Naming: domain terms exactly as PRD §3; Python snake_case; JSON/TS camelCase (Pydantic alias generator); intents kebab-case verbs, views nouns under `GET /api/views/<name>`.
 
 **Export and restore.**
-- AR18 (AD-14): `GET /api/export` returns one `.zip` with `library.json` and `covers/` only, read under the AD-4 lock. Restore unpacks into `.staging/` in the data folder, accepting only `library.json` and `covers/<name>` (no absolute paths, no `..`, ≤ 2 GB uncompressed), validates schema, migrations, AD-18 invariants and every referenced cover present and decodable, then applies in AD-12 order. Failure before commit leaves data untouched; `.staging/` emptied at startup. Round trip at the same `schemaVersion` is byte-identical.
+- AR18 (AD-14): `GET /api/export` returns one `.zip` with `library.json` and `covers/` only, read under the AD-4 lock. Restore unpacks into `.staging/` in the data folder, accepting only `library.json` and `covers/<name>` (no absolute paths, no `..`, no symlinks or duplicate names; ≤ 1 GB upload, ≤ 5,000 entries, ≤ 1 GB extracted counted on bytes written), validates schema, migrations, AD-18 invariants and every referenced cover present and decodable, then applies in AD-12 order. Failure before commit leaves data untouched; `.staging/` emptied before and after every restore and at startup. Last export is recorded only after a complete download. Round trip at the same `schemaVersion` is byte-identical.
 
 **CLI, process and security.**
 - AR19 (AD-5): Server holds `bookvie.lock` (PID, port) in the data folder. A live lock → `bookvie` opens the browser at the recorded URL and exits; a dead PID's lock is taken over. On SIGINT/SIGTERM wait for the AD-4 lock, remove the lock file, exit.
@@ -277,7 +277,7 @@ The user, or their AI cataloging skill, can open bookvie, add, edit and delete B
 
 **Gate:** FND-* P0 green; label-contract suite (CAT-E2E-001..005) green; `~/bookvie-data` untouched by `check`; per-epic quality gates (TR7). Closes R-03, R-04, R-05, R-06, R-08, R-13, R-15, R-16.
 
-**Standard intent ACs (TR8).** Every story below that adds or changes an intent also satisfies: *Given* a failure injected through the store's filesystem seam at write, fsync or rename, *When* the intent runs, *Then* `library.json` is byte-identical to before and the response is 503 `couldnt_save` with "Couldn't save. Your data wasn't changed." (FND-API-001); *and* after every successful intent `check_invariants()` holds (FND-UNIT-002); *and* every new error `code` has an API test.
+**Standard intent ACs (TR8).** Every story below that adds or changes an intent also satisfies: *Given* a failure injected through the store's filesystem seam at write, fsync or rename, *When* the intent runs, *Then* `library.json` is byte-identical to before and the response is 503 `couldnt_save` with "Couldn't save. Your data wasn't changed." (FND-API-001); *and* after every successful intent `check_invariants()` holds (FND-UNIT-002); *and* an intent naming a Book that no longer exists is refused with 409 `book_not_found` and changes nothing; *and* every new error `code` has an API test.
 
 ### Story 1.1: Install and launch bookvie
 
@@ -302,15 +302,21 @@ So that it opens in my browser and nothing outside my machine can reach it.
 
 **Given** a live `bookvie.lock`
 **When** I run `bookvie` again
-**Then** it opens the browser at the recorded URL and exits without starting a second server.
+**Then** it opens the browser at the recorded URL and exits without starting a second server
+**And** a lock counts as live only when its PID is alive and `GET /api/health` on the recorded port answers `{ "app": "bookvie", "dataDir": … }` for this data folder (AD-5).
 
-**Given** a `bookvie.lock` whose PID is dead
+**Given** a `bookvie.lock` whose PID is dead, or whose PID is alive but doesn't answer as bookvie for this folder
 **When** I run `bookvie`
 **Then** the new server takes the lock over (R-13).
 
+**Given** two `bookvie` launches at the same moment with no lock
+**When** both try to create `bookvie.lock`
+**Then** exactly one succeeds, because the lock is created with exclusive-create, and the other waits up to a few seconds for the winner's `GET /api/health` to answer, then opens the browser at its URL and exits.
+
 **Given** port 8765 is held by a process that isn't bookvie
 **When** I run `bookvie`
-**Then** it exits non-zero with a message naming the port and the `--port` flag.
+**Then** it exits non-zero with a message naming the port and the `--port` flag
+**And** when `GET /api/health` on that port answers as bookvie for a different data folder, the message says bookvie is already running for that folder instead (AD-16).
 
 **Given** a running server
 **When** it receives SIGINT or SIGTERM
@@ -350,6 +356,7 @@ So that every browser on this machine sees the same library and a crash can neve
 **Given** an empty data folder
 **When** the server starts
 **Then** it creates `library.json` as `{ "schemaVersion": 1, "mainBookId": null, "upNextBookId": null, "sideReadBookIds": [], "books": [] }`, plus `covers/` and an empty `.staging/`
+**And** at every startup leftover `library.json.tmp*` files are deleted, and an unwritable data folder makes the server exit non-zero with a message naming the path (AD-2)
 **And** the bytes come only from `store.serialize()`: UTF-8, camelCase keys, nulls kept, keys in model order, 2-space indent.
 
 **Given** the store's commit path
@@ -368,7 +375,11 @@ So that every browser on this machine sees the same library and a crash can neve
 **Given** a `library.json` at an older `schemaVersion` (a test fixture migration)
 **When** the server starts
 **Then** it copies the original to `library.v<N>.bak.json` before rewriting
-**And** the upgrade runs through the single ordered chain in `store/migrations/`, the same chain restore will use.
+**And** the upgrade runs through the single ordered chain in `store/migrations/`, the same chain restore will use, in memory, committed once.
+
+**Given** a migration step that raises (a test fixture)
+**When** the server starts
+**Then** it exits non-zero with a message, and the original file and its backup are unchanged (AD-13).
 
 **Given** `domain.check_invariants()`
 **When** it is unit-tested with libraries built by the `LibraryBuilder` fixture (TC-1)
@@ -379,13 +390,15 @@ So that every browser on this machine sees the same library and a crash can neve
 **When** it needs the date or time
 **Then** it receives an injected `Clock` (now, plus today as a local `YYYY-MM-DD` date) and never reads the system clock
 **And** `--fake-today YYYY-MM-DD` sets that Clock but is refused at startup unless `--no-browser` is also given (TC-2)
-**And** the test runners pin the timezone.
+**And** the test runners pin the timezone, and the Playwright fixture sets the browser clock (`page.clock`) to the same date and the browser `timezoneId` to the same zone, so browser-side dates match the server (AD-20)
+**And** an e2e test asserts that Home's date header equals the `--fake-today` date.
 
 **Given** the HTTP layer
 **When** any request fails validation or is refused
 **Then** the body has the AD-9 shape `{ "error": { "kind", "code", "message", "fields"? } }` with 422 for `invalid_fields`, 409 for state rules and 500/503 for `couldnt_save`
 **And** FastAPI's default `{"detail": …}` never reaches the client, because a global `RequestValidationError` handler maps it
-**And** error codes are an enum in the OpenAPI contract.
+**And** error codes are an enum in the OpenAPI contract
+**And** when `check_invariants()` fails after validation passed, nothing is committed, the failed rule is logged to stderr, and the response is 500 `couldnt_save` (AD-9), covered by an API test that forces the failure.
 
 **Given** the views `GET /api/views/home` and `GET /api/views/catalog`
 **When** the library is empty
@@ -785,12 +798,14 @@ So that my Books are recognizable and their spines can take the cover's color.
 
 **Given** an uploaded file
 **When** the server receives it
-**Then** Pillow re-decodes it, and anything that isn't an image (including a non-image with an image extension) is refused with 422 and "Cover must be an image file."
-**And** uploads over 20 MB are refused (R-14).
+**Then** Pillow re-decodes it, and anything that isn't an image (including a non-image with an image extension, and a decompression bomb over Pillow's `MAX_IMAGE_PIXELS`) is refused with 422 and "Cover must be an image file."
+**And** uploads over 20 MB are refused while streaming, before the whole body is read (R-14)
+**And** a HEIC file, or any format Pillow can't decode without a plugin, is refused with 422 and "Cover must be a JPEG, PNG or WebP image." (AD-12).
 
 **Given** a valid image
 **When** it is stored
-**Then** it is downscaled to a long edge of at most 1200px, keeping its aspect ratio, and saved under a new server-minted name `covers/<book-id>-<uuid>.<ext>` recorded in `coverFile`
+**Then** its EXIF orientation is applied, CMYK is converted to RGB, only the first frame of an animation is kept, and it is downscaled to a long edge of at most 1200px, keeping its aspect ratio
+**And** it is re-encoded as JPEG, or PNG when it has transparency, and saved under a new server-minted name `covers/<book-id>-<uuid>.<ext>` recorded in `coverFile`, with `<ext>` from the output format, never from the uploaded file name
 **And** replacing a cover writes a new name and never overwrites or reuses one.
 
 **Given** any cover write
@@ -800,6 +815,10 @@ So that my Books are recognizable and their spines can take the cover's color.
 **Given** a cover write
 **When** a fault is injected at the document commit
 **Then** the old document and its cover are intact and the new file is cleaned up (R-03).
+
+**Given** a cover write whose document commit succeeded
+**When** a fault is injected while deleting files no Book references
+**Then** the response is still 200, the failure is logged to stderr, and the startup sweep removes the leftover file (AD-12).
 
 **Given** a stored cover
 **When** the browser requests `/media/covers/<file>`
@@ -883,15 +902,16 @@ So that a dead disk can never take my readings and notes with it.
 
 **Given** a library with Books, back-filled Readings and covers
 **When** I press **Export all data**
-**Then** `GET /api/export` returns one `.zip` holding exactly `library.json` and `covers/` and nothing else, read under the AD-4 lock so it never captures a half-written state, and the browser downloads it as `bookvie-export-<YYYY-MM-DD>.zip`.
+**Then** `GET /api/export` returns one `.zip` holding exactly `library.json` and `covers/` (a directory entry even when there are no covers) and nothing else, read under the AD-4 lock so it never captures a half-written state, and the browser downloads it as `bookvie-export-<YYYY-MM-DD>.zip`.
 
 **Given** an export that takes longer than about 300 ms
 **When** it runs
 **Then** the button reads "Exporting…" and is disabled until it finishes, at 60% opacity with no spinner (the one allowed native-disabled case).
 
-**Given** the export file has been fully built and handed to the browser
-**When** the response completes
-**Then** the server records the time in `local-state.json` in the data folder (never inside the export) (AD-15)
+**Given** an export download
+**When** the server has sent the last byte with no client disconnect
+**Then** the server records the time in `local-state.json` in the data folder (never inside the export) (AD-14, AD-15)
+**And** a download the client aborts, or a HEAD request, records nothing (API tests for both)
 **And** the line reads "Last export: today" in every browser on this machine.
 
 **Given** an export that fails (for example, a cover can't be read)
@@ -922,7 +942,7 @@ So that a new laptop shows my library exactly as I left it.
 
 **Given** I confirm with a valid export at the current `schemaVersion`
 **When** `restore` runs (multipart, one call)
-**Then** the archive is unpacked into `.staging/`, the whole file is validated (schema, AD-18 invariants, every referenced cover present and decodable) before anything is replaced, and the result is applied in AD-12 order: archive covers in, then the `library.json` commit (AD-2), then covers the new document doesn't reference are deleted
+**Then** `.staging/` is emptied and the archive is unpacked into it, the whole file is validated (schema, AD-18 invariants, every referenced cover present and decodable) before anything is replaced, and the result is applied in AD-12 order: archive covers in, then the `library.json` commit (AD-2), then covers the new document doesn't reference are deleted
 **And** the whole operation holds the AD-4 lock.
 
 **Given** a restore that succeeds
@@ -944,7 +964,16 @@ So that a new laptop shows my library exactly as I left it.
 
 **Given** the server starts
 **When** `.staging/` holds leftovers from an interrupted restore
-**Then** they are deleted.
+**Then** they are deleted
+**And** `.staging/` is also emptied after every restore, whether it succeeded or was refused.
+
+**Given** an export from a library with no covers
+**When** it is restored
+**Then** it succeeds, with a missing `covers/` treated as empty.
+
+**Given** a restore whose document commit succeeded
+**When** a fault is injected while deleting unreferenced covers or emptying `.staging/`
+**Then** the response is still success and "Restored." is shown, the failure is logged to stderr, and the startup sweep removes the leftovers (AD-12).
 
 ### Story 2.3: Refuse damaged, hostile or newer files
 
@@ -964,7 +993,7 @@ So that a restore can never leave me with less than I had.
 **When** I confirm the restore
 **Then** it is refused with "This export is from a newer version of bookvie. Nothing was changed." and nothing changes.
 
-**Given** an archive with an entry other than `library.json` or `covers/<name>`, an absolute path, a `..` component, or more than 2 GB uncompressed
+**Given** an archive with an entry other than `library.json` or `covers/<name>`, an absolute path, a `..` component, a symlink, a duplicate name, more than 5,000 entries, an upload over 1 GB, or more than 1 GB extracted (counted on bytes written, including an archive whose headers understate its sizes)
 **When** it is restored
 **Then** it is refused before anything is written outside `.staging/`, and nothing outside `.staging/` changes (BKP-API-004, R-14)
 **And** a `library.json` that references a missing or undecodable cover is refused the same way.
@@ -1041,6 +1070,10 @@ So that exactly one Book is tracked and I start it on purpose.
 **When** I start it
 **Then** a new Reading is created for the re-read, and earlier Readings are unchanged.
 
+**Given** the Main book
+**When** `start-reading` is sent for it
+**Then** it is refused with 409 `already_main` and nothing changes (AD-9).
+
 **Given** a paused Reading (seeded, or paused by an earlier start)
 **When** I press **Resume** on its Book detail
 **Then** the dialog reads "Resume *X*?" with the existing Purpose prefilled, and confirming resumes the same Reading at its page, sets `lastProgressUpdate` to now and makes the Book Main (AD-19).
@@ -1094,6 +1127,10 @@ So that catching up after a few days takes seconds.
 **When** I press **Update**
 **Then** the page is saved, the Reading stays unfinished, and the response carries `reachedLastPage: true` (PRG-API-002)
 **And** until Story 3.6 adds the Finish dialog, the client ignores `reachedLastPage`.
+
+**Given** a page update from a tab that still shows *X* as Main after another tab changed the Main book
+**When** `update-page` is sent for *X*
+**Then** it is refused with 409 `not_main_book`, nothing changes, and the refreshed views show the current state (AD-9).
 
 **Given** a fresh app open with a Main book
 **When** a Playwright test catches up
@@ -1219,6 +1256,10 @@ So that every finished Book counts and I see whether reading it did what I wante
 **Given** `update-page` and `finish-reading`
 **When** they are tested together
 **Then** only `finish-reading` ever sets `finishDate` (AD-19).
+
+**Given** a Reading that is already finished (for example, finished in another tab)
+**When** `finish-reading` is sent for it again
+**Then** it is refused with 409 `reading_already_finished` and nothing changes (AD-9).
 
 **And** the standard intent ACs (TR8) hold for finish-reading, and a couldn't-save keeps the dialog open with every answer kept.
 
@@ -1362,6 +1403,10 @@ So that I can step away from reading entirely without losing my place.
 **Then** a Confirm `alertdialog` first says "Pause *X* at p.150 (58%)? *Z* moves to Waiting for you." (or "*Z* returns to the catalog."), with **Pause** and **Cancel** (Cancel has default focus) (UX-DR40)
 **And** confirming applies the pause and moves *Z* as stated, while **Cancel** or Esc changes nothing.
 
+**Given** a Book that is no longer Main
+**When** `pause` is sent for it
+**Then** it is refused with 409 `not_main_book` and nothing changes (AD-9).
+
 **Given** a completed pause
 **When** focus settles
 **Then** after a pause from Home, focus is on **Resume** in the empty Main book card, and after a pause from Book detail, it is on that page's **Resume** button.
@@ -1396,7 +1441,8 @@ So that the Book I mean to read next is ready when the current one is done.
 
 **Given** the Main book
 **When** I look at its actions
-**Then** **Set as Up next** isn't offered.
+**Then** **Set as Up next** isn't offered
+**And** `set-up-next` sent for the Main book is refused with 409 `main_cannot_be_up_next` (AD-9).
 
 **Given** a paused Book in Waiting for you
 **When** I set it as Up next
@@ -1485,7 +1531,8 @@ So that they stay in view without competing with my Main book.
 **Given** three Side reads already
 **When** I look at **Mark as Side read**
 **Then** it stays focusable with `aria-disabled="true"` and the hint "Up to 3 side reads." (UX-DR45)
-**And** the server refuses a fourth with 409.
+**And** the server refuses a fourth with 409
+**And** `mark-side-read` sent for the Main book is refused with 409 `main_cannot_be_side_read` (AD-9).
 
 **Given** Side reads
 **When** Home renders
