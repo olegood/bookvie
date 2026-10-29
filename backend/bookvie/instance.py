@@ -97,6 +97,22 @@ def release_lock(data_dir: Path, pid: int) -> bool:
     return True
 
 
+def hand_over_lock(data_dir: Path, own_pid: int, running: LockInfo) -> bool:
+    """Replace this launch's lock with one naming a running server.
+
+    Used when this launch took over the lock of a server that turned out to be
+    alive, so that server keeps a lock naming it.
+    """
+    info = read_lock(data_dir)
+    if info is None or info.pid != own_pid:
+        return False
+    path = lock_path(data_dir)
+    tmp = path.with_name(f"{LOCK_NAME}.{own_pid}.tmp")
+    tmp.write_text(json.dumps({"pid": running.pid, "port": running.port}))
+    os.replace(tmp, path)
+    return True
+
+
 def pid_alive(pid: int) -> bool:
     try:
         os.kill(pid, 0)
@@ -104,17 +120,23 @@ def pid_alive(pid: int) -> bool:
         return False
     except PermissionError:
         return True
-    except OSError:
+    except (OSError, OverflowError):
         return False
     return True
 
 
-def probe_health(port: int, timeout: float = _PROBE_TIMEOUT) -> str | None:
-    """``dataDir`` reported by a bookvie on ``port``, or ``None``."""
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Treat a 3xx as a failed probe instead of following it off loopback."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+def _health(port: int, timeout: float) -> dict | None:
     url = f"http://{HOST}:{port}/api/health"
     request = urllib.request.Request(url, headers={"Accept": "application/json"})
     # Never pick up an HTTP proxy from the environment: this is loopback only.
-    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), _NoRedirect())
     try:
         with opener.open(request, timeout=timeout) as response:
             if response.status != 200:
@@ -124,13 +146,31 @@ def probe_health(port: int, timeout: float = _PROBE_TIMEOUT) -> str | None:
         return None
     if not isinstance(data, dict) or data.get("app") != "bookvie":
         return None
-    data_dir = data.get("dataDir")
+    return data
+
+
+def probe_health(port: int, timeout: float = _PROBE_TIMEOUT) -> str | None:
+    """``dataDir`` reported by a bookvie on ``port``, or ``None``."""
+    data = _health(port, timeout)
+    data_dir = data.get("dataDir") if data else None
     return data_dir if isinstance(data_dir, str) else None
+
+
+def probe_pid(port: int, timeout: float = _PROBE_TIMEOUT) -> int | None:
+    """``pid`` reported by a bookvie on ``port``, or ``None``."""
+    data = _health(port, timeout)
+    pid = data.get("pid") if data else None
+    return pid if type(pid) is int and pid > 0 else None
 
 
 def same_folder(reported: str | None, data_dir: Path) -> bool:
     if reported is None:
         return False
+    # samefile sees through case and Unicode variants on case-insensitive disks.
+    try:
+        return os.path.samefile(reported, data_dir)
+    except (OSError, ValueError):
+        pass
     try:
         return Path(reported).resolve() == Path(data_dir).resolve()
     except (OSError, ValueError):

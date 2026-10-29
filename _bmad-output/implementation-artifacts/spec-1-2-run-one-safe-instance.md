@@ -64,6 +64,34 @@ context:
 - Given two `main()` calls racing on an empty folder, when both try to create the lock, then exactly one creates it.
 - Given the full suite, when `uv run --project backend pytest` runs, then it passes with no file created under `~/bookvie-data`.
 
+### Review Findings
+
+- [x] [Review][Patch] Same-folder port conflict leaves the running server without a lock — resolved by decision: add `pid` to `/api/health`, and on a same-folder port conflict rewrite `bookvie.lock` as the running server's `{pid, port}` instead of deleting it [backend/bookvie/cli.py:107]
+- [x] [Review][Patch] `same_folder` compares path strings, so case variants of one folder on case-insensitive APFS count as different folders. A live server's lock gets taken over, the message says "already running for <same folder>", and a launch with another `--port` serves the folder twice. Use `os.path.samefile`. [backend/bookvie/instance.py:131]
+- [x] [Review][Patch] `pid_alive` crashes with `OverflowError` (not an `OSError`) when the lock holds a PID above the C int range, so every launch tracebacks until the lock is deleted by hand [backend/bookvie/instance.py:100]
+- [x] [Review][Patch] `probe_health` follows HTTP redirects (default `HTTPRedirectHandler`), so a foreign listener on the port can send the probe to a non-loopback host. This breaks the Never rule "no outbound calls other than loopback health probes". [backend/bookvie/instance.py:117]
+- [x] [Review][Patch] No `main()` test shows that a dev Origin is rejected without `--dev`; `main` could pass the wrong `dev` value and the suite would stay green [backend/tests/test_cli.py:218]
+- [x] [Review][Defer] Vite `changeOrigin: true` is checked only by a source-text regex; nothing proves a proxied request gets past the guard [frontend/vite.config.ts:1] — deferred: needs the Vite toolchain / e2e harness from Story 1.3
+
+**Rejected:**
+- AC3 not enforced suite-wide (no `HOME` isolation fixture), raised by two reviewers: low. No current test writes to `~/bookvie-data`, and a fixture would only guard future tests.
+- `bind_socket` connect pre-check is "not a health probe": false. It is a loopback-only TCP connect, which is within the constraint's intent (triage #19).
+- Starting poll can take up to 5 s past the lock's own 5 s age: low. Worst case is a ~10 s wait in a rare race.
+- Same-folder port conflict exits 0, but the Execution task says exit 1: rejected because the fix would be a spec edit (behaviour comes from triage #2).
+- Health returns `"dataDir": null` without `data_dir`, and the probe reads it as "another program", raised by two reviewers: low. The CLI always passes `data_dir`, so only tests can reach it.
+- Takeover during the old server's shutdown window, and the `release_lock` read-then-unlink race: low. It needs a narrow interleaving, there are no writes before 1.4, and related races were accepted in triage #4/#18.
+- Exception path releases the lock without `write_lock`: low. There are no writes before Story 1.4, and `app` may not exist yet on that path.
+- Spec `status: done` vs sprint `review`, raised by two reviewers: rejected because the fix would be a spec edit.
+- Spec Implementation Notes / Change Log don't record the post-triage behaviour: rejected because the fix would be a spec edit.
+- `write`/`fsync` failure leaves an empty lock: low. It needs ENOSPC/EIO, and launches after 5 s take the lock over.
+- `bookvie.lock` as a directory or unreadable file tracebacks: low. The program fails loudly on a state it never creates.
+- Unbounded `write_lock` acquire can hang shutdown, raised by two reviewers: low. Nothing holds `write_lock` before Story 1.4.
+- Pre-bind probe timeout on a full-backlog listener: low. A 0.2 s loopback connect timeout needs a saturated listener.
+- No real-process race test (the threads share a PID): low. It is a coverage gap with no defect shown.
+- `test_server_runs_on_pre_bound_loopback_socket` doesn't assert the host: low. The bound address is already covered by the FND-API-005 socket test.
+- `test_packaging.py` Vite regex fragile to reformatting: low. It fails loudly (false red), never silently.
+- README doesn't mention `bookvie.lock` / exit codes: low. It is documentation polish with no behavioural harm.
+
 ## Implementation Notes
 
 ## Spec Change Log

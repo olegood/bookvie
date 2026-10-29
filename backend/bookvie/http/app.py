@@ -10,6 +10,7 @@ CORS or state-changing requests. Simple cross-site GETs carry no Origin and
 do pass, so GET routes must stay free of side effects.
 """
 
+import os
 import threading
 from collections.abc import Iterable
 from pathlib import Path
@@ -98,8 +99,8 @@ def create_app(
     )
 
     @app.get("/api/health")
-    async def health() -> dict[str, str | None]:
-        return {"app": "bookvie", "dataDir": resolved_data_dir}
+    async def health() -> dict[str, str | int | None]:
+        return {"app": "bookvie", "dataDir": resolved_data_dir, "pid": os.getpid()}
 
     app.mount(
         "/assets",

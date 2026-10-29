@@ -104,7 +104,7 @@ def _show(url: str, no_browser: bool) -> None:
         webbrowser.open(url)
 
 
-def _port_conflict(port: int, data_dir: Path, no_browser: bool) -> int:
+def _port_conflict(port: int, data_dir: Path, pid: int, no_browser: bool) -> int:
     reported = instance.probe_health(port)
     if reported is None:
         _say(
@@ -112,6 +112,10 @@ def _port_conflict(port: int, data_dir: Path, no_browser: bool) -> int:
             f"Start bookvie with --port <number> to use a different port."
         )
     elif instance.same_folder(reported, data_dir):
+        # This launch took over the running server's lock; give it back.
+        running = instance.probe_pid(port)
+        if running is not None and instance.pid_alive(running):
+            instance.hand_over_lock(data_dir, pid, instance.LockInfo(running, port))
         _show(f"http://{HOST}:{port}/", no_browser)
         return 0
     else:
@@ -140,7 +144,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         try:
             sock = instance.bind_socket(args.port)
         except OSError:
-            return _port_conflict(args.port, data_dir, args.no_browser)
+            return _port_conflict(args.port, data_dir, pid, args.no_browser)
 
         app = create_app(STATIC_DIR, data_dir=data_dir, port=args.port, dev=args.dev)
 

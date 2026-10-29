@@ -4,3 +4,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-2-run-one-safe-instance.md`
   summary: Before `GET /api/export` (Epic 2) ships, reject cross-site simple GETs (e.g. `Sec-Fetch-Site: cross-site`) or make sure no GET route has side effects such as recording "Last export".
   evidence: The Host/Origin guard passes a cross-site `<img>`/no-cors GET because it sends `Host: 127.0.0.1:<port>` and no Origin. The page can't read the response, but a full export download would record "Last export".
+
+## Deferred from: code review of spec-1-2-run-one-safe-instance (2026-10-29)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-2-run-one-safe-instance.md`
+  summary: Verify the Vite proxy end to end: a request through `npm run dev` with `changeOrigin: true` must pass the Host/Origin guard. Today `test_packaging.py` only regex-matches `frontend/vite.config.ts`.
+  evidence: If Vite ignored or misplaced the option, every proxied dev request would get 403 and pytest would stay green. Belongs with the Story 1.3 e2e harness.

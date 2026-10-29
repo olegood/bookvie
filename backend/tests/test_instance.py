@@ -109,6 +109,19 @@ def test_pid_alive() -> None:
     assert instance.pid_alive(_dead_pid()) is False
 
 
+def test_pid_alive_false_for_out_of_range_pid() -> None:
+    assert instance.pid_alive(10**20) is False
+
+
+def test_hand_over_lock_rewrites_only_own_lock(tmp_path: Path) -> None:
+    _write_lock(tmp_path, os.getpid(), 8799)
+    assert instance.hand_over_lock(tmp_path, os.getpid(), LockInfo(pid=4242, port=8799))
+    assert instance.read_lock(tmp_path) == LockInfo(pid=4242, port=8799)
+    assert not instance.hand_over_lock(tmp_path, os.getpid(), LockInfo(pid=1, port=1))
+    assert instance.read_lock(tmp_path) == LockInfo(pid=4242, port=8799)
+    assert [p.name for p in tmp_path.iterdir()] == [LOCK_NAME]
+
+
 def test_pid_alive_permission_error_means_alive(monkeypatch: pytest.MonkeyPatch) -> None:
     def deny(pid: int, sig: int) -> None:
         raise PermissionError
@@ -171,6 +184,57 @@ def test_probe_health_none_for_garbage_reply() -> None:
         sock.close()
 
 
+def _serve_once(sock: socket.socket, reply: bytes) -> threading.Thread:
+    def serve() -> None:
+        sock.settimeout(5)
+        try:
+            conn, _ = sock.accept()
+        except OSError:
+            return
+        with conn:
+            conn.recv(4096)
+            conn.sendall(reply)
+
+    thread = threading.Thread(target=serve)
+    thread.start()
+    return thread
+
+
+def _http_ok(body: dict) -> bytes:
+    raw = json.dumps(body).encode()
+    head = f"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {len(raw)}\r\n\r\n"
+    return head.encode() + raw
+
+
+def test_probe_pid_reads_health() -> None:
+    sock = instance.bind_socket(0)
+    thread = _serve_once(sock, _http_ok({"app": "bookvie", "dataDir": "/x", "pid": 4242}))
+    try:
+        assert instance.probe_pid(sock.getsockname()[1], timeout=2) == 4242
+    finally:
+        thread.join(5)
+        sock.close()
+
+
+def test_probe_health_does_not_follow_redirects() -> None:
+    target = instance.bind_socket(0)
+    target.settimeout(0.5)
+    source = instance.bind_socket(0)
+    location = f"http://127.0.0.1:{target.getsockname()[1]}/api/health"
+    thread = _serve_once(
+        source,
+        f"HTTP/1.1 302 Found\r\nLocation: {location}\r\nContent-Length: 0\r\n\r\n".encode(),
+    )
+    try:
+        assert instance.probe_health(source.getsockname()[1], timeout=2) is None
+        with pytest.raises(OSError):
+            target.accept()  # the redirect target was never contacted
+    finally:
+        thread.join(5)
+        source.close()
+        target.close()
+
+
 def test_bind_socket_refuses_port_held_on_all_interfaces() -> None:
     held = socket.socket()
     held.bind(("0.0.0.0", 0))
@@ -187,6 +251,15 @@ def test_same_folder_compares_resolved_paths(tmp_path: Path) -> None:
     assert instance.same_folder(str(tmp_path / "b" / ".." / "a"), tmp_path / "a")
     assert not instance.same_folder(str(tmp_path / "b"), tmp_path / "a")
     assert not instance.same_folder(None, tmp_path)
+
+
+def test_same_folder_sees_case_variant(tmp_path: Path) -> None:
+    folder = tmp_path / "bookvie-data"
+    folder.mkdir()
+    variant = tmp_path / "Bookvie-Data"
+    if not variant.exists():
+        pytest.skip("case-sensitive file system")
+    assert instance.same_folder(str(variant), folder)
 
 
 # --- claim_lock: the matrix rows --------------------------------------------

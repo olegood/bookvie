@@ -1,5 +1,6 @@
 """SPA serving rules (I/O matrix rows for the static app)."""
 
+import os
 from pathlib import Path
 
 import pytest
@@ -90,7 +91,11 @@ def test_health_reports_resolved_data_dir(tmp_path: Path, static_dir: Path) -> N
     app = create_app(static_dir, data_dir=tmp_path / "x" / ".." / "data")
     response = TestClient(app, base_url=BASE_URL).get("/api/health")
     assert response.status_code == 200
-    assert response.json() == {"app": "bookvie", "dataDir": str((tmp_path / "data").resolve())}
+    assert response.json() == {
+        "app": "bookvie",
+        "dataDir": str((tmp_path / "data").resolve()),
+        "pid": os.getpid(),
+    }
 
 
 def test_app_has_write_lock(static_dir: Path) -> None:

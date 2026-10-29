@@ -223,7 +223,21 @@ def test_app_gets_data_dir_port_and_dev(
     app = fake_server.instances[0].config.app
     client = TestClient(app, base_url="http://127.0.0.1:8799")
     response = client.get("/api/health", headers={"Origin": "http://localhost:5173"})
-    assert response.json() == {"app": "bookvie", "dataDir": str(data_dir.resolve())}
+    assert response.json() == {
+        "app": "bookvie",
+        "dataDir": str(data_dir.resolve()),
+        "pid": os.getpid(),
+    }
+
+
+def test_app_rejects_dev_origin_without_dev(
+    tmp_path: Path, fake_server: type[FakeServer], opened: list[str]
+) -> None:
+    cli.main(["--data-dir", str(tmp_path / "d"), "--no-browser", "--port", "8799"])
+    app = fake_server.instances[0].config.app
+    client = TestClient(app, base_url="http://127.0.0.1:8799")
+    response = client.get("/api/health", headers={"Origin": "http://localhost:5173"})
+    assert response.status_code == 403
 
 
 def test_live_lock_opens_recorded_url_without_serving(
@@ -351,6 +365,7 @@ def test_port_held_by_bookvie_for_same_folder_opens_it(
     monkeypatch.setattr(cli.instance, "bind_socket", REAL_BIND)
     data_dir = tmp_path / "d"
     monkeypatch.setattr(instance, "probe_health", lambda port, timeout=0.5: str(data_dir))
+    monkeypatch.setattr(instance, "probe_pid", lambda port, timeout=0.5: None)
     holder = REAL_BIND(0)
     port = holder.getsockname()[1]
     try:
@@ -361,6 +376,28 @@ def test_port_held_by_bookvie_for_same_folder_opens_it(
     assert opened == [f"http://127.0.0.1:{port}/"]
     assert fake_server.instances == []
     assert not (data_dir / LOCK_NAME).exists()
+
+
+def test_port_held_by_bookvie_for_same_folder_gets_its_lock_back(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    fake_server: type[FakeServer],
+    opened: list[str],
+) -> None:
+    """This launch took over a slow server's lock; the lock must name it again."""
+    monkeypatch.setattr(cli.instance, "bind_socket", REAL_BIND)
+    data_dir = tmp_path / "d"
+    running = os.getppid()
+    monkeypatch.setattr(instance, "probe_health", lambda port, timeout=0.5: str(data_dir))
+    monkeypatch.setattr(instance, "probe_pid", lambda port, timeout=0.5: running)
+    holder = REAL_BIND(0)
+    port = holder.getsockname()[1]
+    try:
+        assert cli.main(["--data-dir", str(data_dir), "--port", str(port), "--no-browser"]) == 0
+    finally:
+        holder.close()
+    assert fake_server.instances == []
+    assert json.loads((data_dir / LOCK_NAME).read_text()) == {"pid": running, "port": port}
 
 
 def test_main_release_waits_for_write_lock(

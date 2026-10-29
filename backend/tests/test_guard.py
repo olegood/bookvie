@@ -1,5 +1,6 @@
 """Host/Origin guard matrix (FND-API-004, AD-16)."""
 
+import os
 from pathlib import Path
 
 import pytest
@@ -152,4 +153,8 @@ def test_health_is_guarded_too(static_dir: Path, tmp_path: Path) -> None:
     assert client.get("/api/health", headers={"Origin": "null"}).status_code == 403
     response = client.get("/api/health")
     assert response.status_code == 200
-    assert response.json() == {"app": "bookvie", "dataDir": str(tmp_path.resolve())}
+    assert response.json() == {
+        "app": "bookvie",
+        "dataDir": str(tmp_path.resolve()),
+        "pid": os.getpid(),
+    }
