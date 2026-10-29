@@ -3,7 +3,9 @@ import { defineConfig } from 'vite'
 
 // The SPA is built into the backend package so the installed tool can serve it.
 // In dev, Vite serves the SPA and proxies server paths to `bookvie --dev`.
-const backend = 'http://127.0.0.1:8765'
+// `changeOrigin` rewrites Host to 127.0.0.1:8765 so the server's Host guard
+// accepts it; Origin stays the Vite origin, which `--dev` allows.
+const backend = { target: 'http://127.0.0.1:8765', changeOrigin: true }
 
 export default defineConfig({
   plugins: [react()],

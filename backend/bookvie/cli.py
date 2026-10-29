@@ -1,7 +1,9 @@
 """The ``bookvie`` command: start the local server and open the browser."""
 
 import argparse
+import asyncio
 import copy
+import os
 import sys
 import threading
 import time
@@ -11,9 +13,10 @@ from pathlib import Path
 
 import uvicorn
 
+from bookvie import instance
 from bookvie.http.app import STATIC_DIR, create_app
+from bookvie.instance import HOST
 
-HOST = "127.0.0.1"
 DEFAULT_PORT = 8765
 DEFAULT_DATA_DIR = "~/bookvie-data"
 _BROWSER_WAIT_SECONDS = 30.0
@@ -46,6 +49,8 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         help="development mode, used alongside the Vite dev server on :5173",
     )
     args = parser.parse_args(argv)
+    if not 1 <= args.port <= 65535:
+        parser.error(f"--port must be between 1 and 65535, got {args.port}")
     args.data_dir = Path(args.data_dir).expanduser().resolve()
     return args
 
@@ -69,31 +74,103 @@ def _open_browser_when_started(
     webbrowser.open(url)
 
 
+class _Server(uvicorn.Server):
+    """Releases ``bookvie.lock`` inside shutdown.
+
+    uvicorn re-raises a captured SIGTERM after ``serve()`` returns, which ends
+    the process before any ``finally`` in :func:`main` could run.
+    """
+
+    def __init__(self, config: uvicorn.Config, *, release) -> None:
+        super().__init__(config)
+        self._release = release
+
+    async def shutdown(self, sockets=None) -> None:
+        try:
+            await super().shutdown(sockets=sockets)
+        finally:
+            await asyncio.to_thread(self._release)
+
+
+def _say(message: str) -> None:
+    print(message, file=sys.stderr)
+
+
+def _show(url: str, no_browser: bool) -> None:
+    if no_browser:
+        _say(f"bookvie is already running at {url}")
+    else:
+        _say(f"bookvie is already running, opening {url}")
+        webbrowser.open(url)
+
+
+def _port_conflict(port: int, data_dir: Path, no_browser: bool) -> int:
+    reported = instance.probe_health(port)
+    if reported is None:
+        _say(
+            f"bookvie: port {port} is in use by another program. "
+            f"Start bookvie with --port <number> to use a different port."
+        )
+    elif instance.same_folder(reported, data_dir):
+        _show(f"http://{HOST}:{port}/", no_browser)
+        return 0
+    else:
+        _say(
+            f"bookvie is already running for {reported} on port {port}. "
+            f"Stop it, or start bookvie with --port <number> to use a different port."
+        )
+    return 1
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
-    args.data_dir.mkdir(parents=True, exist_ok=True)
+    data_dir: Path = args.data_dir
+    data_dir.mkdir(parents=True, exist_ok=True)
 
-    app = create_app(STATIC_DIR)
-    url = f"http://{HOST}:{args.port}/"
-    config = uvicorn.Config(app, host=HOST, port=args.port, log_config=_log_config())
-    server = uvicorn.Server(config)
-    print(f"bookvie: serving {args.data_dir} at {url}", file=sys.stderr)
+    claim = instance.claim_lock(data_dir, args.port)
+    if claim.kind == "running":
+        _show(f"http://{HOST}:{claim.port}/", args.no_browser)
+        return 0
+    if claim.kind == "starting":
+        _say("bookvie is starting in another window; try again.")
+        return 1
 
-    done = threading.Event()
-    opener = None
-    if not args.no_browser:
-        opener = threading.Thread(
-            target=_open_browser_when_started,
-            args=(server, url, done),
-            daemon=True,
-        )
-        opener.start()
+    pid = os.getpid()
     try:
-        server.run()
+        try:
+            sock = instance.bind_socket(args.port)
+        except OSError:
+            return _port_conflict(args.port, data_dir, args.no_browser)
+
+        app = create_app(STATIC_DIR, data_dir=data_dir, port=args.port, dev=args.dev)
+
+        def release() -> None:
+            with app.state.write_lock:
+                instance.release_lock(data_dir, pid)
+
+        url = f"http://{HOST}:{args.port}/"
+        config = uvicorn.Config(app, host=HOST, port=args.port, log_config=_log_config())
+        server = _Server(config, release=release)
+        _say(f"bookvie: serving {data_dir} at {url}")
+
+        done = threading.Event()
+        opener = None
+        if not args.no_browser:
+            opener = threading.Thread(
+                target=_open_browser_when_started,
+                args=(server, url, done),
+                daemon=True,
+            )
+            opener.start()
+        try:
+            with sock:
+                server.run(sockets=[sock])
+        finally:
+            done.set()
+            if opener is not None:
+                opener.join(timeout=1)
     finally:
-        done.set()
-        if opener is not None:
-            opener.join(timeout=1)
+        instance.release_lock(data_dir, pid)
     return 0
 
 

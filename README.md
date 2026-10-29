@@ -89,7 +89,7 @@ uv tool install --reinstall ./backend    # puts `bookvie` on your PATH
 bookvie                                  # serves 127.0.0.1:8765 and opens the browser
 ```
 
-`bookvie` keeps its data in `~/bookvie-data` (created if missing). Options: `--data-dir DIR`, `--port N`, `--no-browser`, and `--dev` (not used yet; Story 1.2 gives it meaning).
+`bookvie` keeps its data in `~/bookvie-data` (created if missing). Options: `--data-dir DIR`, `--port N`, `--no-browser`, and `--dev` (also accepts requests from the Vite dev origin on `:5173`). A second `bookvie` for the same folder opens the running one; requests must use `127.0.0.1:<port>` or `localhost:<port>`.
 
 **Development:** run `npm run dev` (Vite on `:5173`, proxying `/api` and `/media` to `:8765`) next to `bookvie --dev --no-browser`.
 

@@ -4,9 +4,10 @@ Allowed edges: ``domain`` imports no other layer; ``store`` imports ``domain``;
 ``intents`` and ``views`` import ``domain`` and ``store``; ``http`` imports
 ``intents`` and ``views``. Every other cross-layer import is forbidden.
 
-Outside the layers, the package holds only ``__init__`` and ``cli`` (the
-composition root). No layer may import them, so a top-level module can never
-become a side channel between layers.
+Outside the layers, the package holds only ``__init__``, ``cli`` (the
+composition root) and ``instance`` (the single-instance lock it uses). No
+layer may import them, so a top-level module can never become a side channel
+between layers.
 """
 
 import ast
@@ -17,7 +18,7 @@ import pytest
 PACKAGE_ROOT = Path(__file__).resolve().parents[1] / "bookvie"
 
 LAYERS = {"http", "intents", "views", "domain", "store"}
-TOP_LEVEL_MODULES = {"__init__", "cli"}
+TOP_LEVEL_MODULES = {"__init__", "cli", "instance"}
 # Any `bookvie.<name>` that is not a layer is grouped under this target.
 TOP_LEVEL = "toplevel"
 ALLOWED: dict[str, set[str]] = {
@@ -80,7 +81,7 @@ def test_every_layer_package_exists() -> None:
         assert (PACKAGE_ROOT / layer / "__init__.py").is_file(), layer
 
 
-def test_top_level_holds_only_cli_and_layers() -> None:
+def test_top_level_holds_only_cli_instance_and_layers() -> None:
     modules = {p.stem for p in PACKAGE_ROOT.glob("*.py")}
     packages = {p.parent.name for p in PACKAGE_ROOT.glob("*/__init__.py")}
     assert modules == TOP_LEVEL_MODULES

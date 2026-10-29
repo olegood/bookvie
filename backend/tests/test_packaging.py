@@ -25,8 +25,8 @@ def test_vite_dev_proxy_targets_the_cli_server() -> None:
     if not VITE_CONFIG.is_file():
         pytest.skip("frontend sources are not next to the backend")
     config = VITE_CONFIG.read_text(encoding="utf-8")
-    match = re.search(r"const backend = '([^']+)'", config)
-    assert match, "vite.config.ts has no backend URL"
+    match = re.search(r"const backend = \{\s*target: '([^']+)',\s*changeOrigin: true\s*\}", config)
+    assert match, "vite.config.ts has no backend target with changeOrigin: true"
     assert match.group(1) == f"http://{HOST}:{DEFAULT_PORT}"
     assert re.search(r"'/api':\s*backend", config), "/api is not proxied"
     assert re.search(r"'/media':\s*backend", config), "/media is not proxied"

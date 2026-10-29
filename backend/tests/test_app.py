@@ -7,6 +7,8 @@ from fastapi.testclient import TestClient
 
 from bookvie.http.app import create_app
 
+# The Host guard accepts only this server's own Host (see test_guard.py).
+BASE_URL = "http://127.0.0.1:8765"
 INDEX = "<!doctype html><title>bookvie</title><div id=root></div>"
 
 
@@ -22,7 +24,7 @@ def static_dir(tmp_path: Path) -> Path:
 
 @pytest.fixture
 def client(static_dir: Path) -> TestClient:
-    return TestClient(create_app(static_dir))
+    return TestClient(create_app(static_dir), base_url=BASE_URL)
 
 
 def test_root_serves_index(client: TestClient) -> None:
@@ -63,7 +65,7 @@ def test_top_level_build_file_is_served(client: TestClient) -> None:
 )
 def test_api_and_media_never_fall_back(client: TestClient, path: str) -> None:
     # Absolute URL: httpx would read a bare `//api/x` as host `api`.
-    response = client.get(f"http://testserver{path}")
+    response = client.get(f"{BASE_URL}{path}")
     assert response.status_code == 404
     assert INDEX not in response.text
 
@@ -75,9 +77,23 @@ def test_traversal_does_not_escape_static_dir(client: TestClient, static_dir: Pa
 
 
 def test_spa_not_built_names_npm_run_build(tmp_path: Path) -> None:
-    client = TestClient(create_app(tmp_path / "missing"))
+    client = TestClient(create_app(tmp_path / "missing"), base_url=BASE_URL)
     response = client.get("/")
     assert response.status_code == 404
     assert "npm run build" in response.text
     assert client.get("/books/x").status_code == 404
     assert client.get("/assets/x.js").status_code == 404
+
+
+def test_health_reports_resolved_data_dir(tmp_path: Path, static_dir: Path) -> None:
+    (tmp_path / "data").mkdir()
+    app = create_app(static_dir, data_dir=tmp_path / "x" / ".." / "data")
+    response = TestClient(app, base_url=BASE_URL).get("/api/health")
+    assert response.status_code == 200
+    assert response.json() == {"app": "bookvie", "dataDir": str((tmp_path / "data").resolve())}
+
+
+def test_app_has_write_lock(static_dir: Path) -> None:
+    lock = create_app(static_dir).state.write_lock
+    assert lock.acquire(blocking=False)
+    lock.release()
