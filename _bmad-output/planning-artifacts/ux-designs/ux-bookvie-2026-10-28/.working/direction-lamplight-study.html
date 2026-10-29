@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>bookvie direction: Lamplight Study</title>
+<style>
+/*
+  DIRECTION A — LAMPLIGHT STUDY
+  Register: evening reading nook. Dark warm room, one pool of lamplight on the Main book,
+  walnut shelves behind. Serif throughout. Low density, generous air. Texture: wood grain, paper.
+
+  Palette
+  --room        #1C1814  room / page background (warm near-black)
+  --room-2      #26201A  raised panels in the dark
+  --glow        #F2C98A  lamplight glow (radial, low alpha)
+  --paper       #F3EBDD  Main book card (cream paper)
+  --paper-edge  #E2D6C1  paper borders / input bg
+  --ink         #2A2119  text on paper
+  --ink-soft    #6E5F4E  secondary text on paper
+  --dim         #A89A86  secondary text on dark
+  --light       #EDE3D2  primary text on dark
+  --amber       #C98A3B  progress fill / primary action
+  --amber-deep  #9C6524  action pressed / borders
+  --walnut      #4A3222  shelf plank
+  --walnut-hi   #6B4A33  plank top highlight
+  --walnut-lo   #2E1F15  plank shadow / shelf back
+  Unread spines: book colour with grayscale(1) brightness(.5) — "in shadow, not yet lit".
+  Read spines: full colour with a soft warm sheen. No red is used for any UI state.
+*/
+:root{--room:#1C1814;--room-2:#26201A;--glow:#F2C98A;--paper:#F3EBDD;--paper-edge:#E2D6C1;--ink:#2A2119;--ink-soft:#6E5F4E;--dim:#A89A86;--light:#EDE3D2;--amber:#C98A3B;--amber-deep:#9C6524;--walnut:#4A3222;--walnut-hi:#6B4A33;--walnut-lo:#2E1F15;}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0F0D0B;font-family:Georgia,"Iowan Old Style",ui-serif,serif;color:var(--light);padding:32px 0 60px}
+.rationale{width:1280px;margin:0 auto 20px;color:#CFC3B0;font-size:15px;line-height:1.55}
+.rationale b{color:var(--glow);font-weight:normal;letter-spacing:.06em;text-transform:uppercase;font-size:12px;display:block;margin-bottom:6px;font-family:system-ui,sans-serif}
+.frame{width:1280px;margin:0 auto;border-radius:10px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.6);border:1px solid #3a3129}
+.chrome{height:38px;background:#2B2622;display:flex;align-items:center;gap:8px;padding:0 14px;font-family:system-ui,sans-serif}
+.chrome i{width:12px;height:12px;border-radius:50%;background:#5a514a;display:inline-block}
+.chrome .url{margin-left:18px;flex:0 0 420px;background:#1E1A17;border-radius:6px;height:24px;font-size:12px;color:#9a8f84;display:flex;align-items:center;padding:0 10px}
+.app{background:var(--room);position:relative;overflow:hidden}
+.app:before{content:"";position:absolute;left:180px;top:40px;width:820px;height:560px;background:radial-gradient(ellipse at center,rgba(242,201,138,.20),rgba(242,201,138,.06) 45%,transparent 70%);pointer-events:none}
+header{display:flex;align-items:baseline;padding:22px 48px 0;position:relative}
+.logo{font-style:italic;font-size:24px;color:var(--light);letter-spacing:.01em}
+.logo em{color:var(--amber);font-style:normal}
+.date{margin-left:20px;color:var(--dim);font-size:14px}
+nav{margin-left:auto;display:flex;gap:28px;font-size:15px}
+nav a{color:var(--dim);text-decoration:none}
+nav a.on{color:var(--light);border-bottom:1px solid var(--amber);padding-bottom:3px}
+
+.hero{display:grid;grid-template-columns:auto 520px 1fr;gap:0 40px;padding:44px 48px 36px 96px;position:relative;align-items:start}
+/* CSS-drawn cover: The Left Hand of Darkness */
+.coverwrap{position:relative;width:212px}
+.cover{width:212px;height:318px;border-radius:2px 5px 5px 2px;position:relative;overflow:hidden;
+  background:linear-gradient(180deg,#DCE6EC 0%,#B9CAD6 48%,#8EA6B8 49%,#7590A6 100%);
+  box-shadow:0 22px 40px rgba(0,0,0,.55),inset 6px 0 0 rgba(0,0,0,.18),inset 8px 0 0 rgba(255,255,255,.18)}
+.cover .sun{position:absolute;left:120px;top:60px;width:46px;height:46px;border-radius:50%;background:#F6F1E4;box-shadow:0 0 30px #fff}
+.cover .ice{position:absolute;left:-20px;right:-20px;top:150px;height:60px;background:#EEF3F6;clip-path:polygon(0 100%,12% 30%,22% 70%,38% 10%,52% 60%,66% 25%,80% 75%,92% 35%,100% 100%)}
+.cover .fig{position:absolute;left:96px;top:200px;width:10px;height:26px;background:#2E3B48;border-radius:5px 5px 2px 2px}
+.cover .fig+.fig{left:112px;top:204px;height:22px}
+.cover .t{position:absolute;left:18px;right:14px;bottom:44px;color:#1E2A36;font-size:22px;line-height:1.05;letter-spacing:.01em}
+.cover .a{position:absolute;left:18px;bottom:20px;color:#F3F6F8;font-family:system-ui,sans-serif;font-size:10px;letter-spacing:.22em;text-transform:uppercase}
+/* action ribbons hanging from the book's right edge */
+.ribbons{position:absolute;left:206px;top:26px;display:flex;flex-direction:column;gap:10px}
+.ribbon{display:block;padding:8px 16px 8px 14px;font-size:13.5px;color:var(--ink);background:var(--paper);border:1px solid var(--paper-edge);border-left:none;border-radius:0 3px 3px 0;box-shadow:4px 6px 14px rgba(0,0,0,.35);white-space:nowrap;font-family:Georgia,serif}
+.ribbon.primary{background:var(--amber);color:#1C1408;border-color:var(--amber-deep)}
+.ribbon small{color:var(--ink-soft);font-size:12px}
+
+.card{background:var(--paper);color:var(--ink);border-radius:4px;padding:30px 34px 28px;margin-top:10px;margin-left:110px;width:440px;
+  box-shadow:0 20px 50px rgba(0,0,0,.45);background-image:linear-gradient(rgba(255,255,255,.35),rgba(255,255,255,0))}
+.kicker{font-family:system-ui,sans-serif;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-soft)}
+.title{font-size:30px;line-height:1.12;margin:8px 0 4px;font-weight:normal}
+.author{font-style:italic;color:var(--ink-soft);font-size:16px}
+.gauge{margin:26px 0 8px;display:flex;align-items:center;gap:16px}
+.track{flex:1;height:8px;border-radius:4px;background:#E0D3BD;position:relative;box-shadow:inset 0 1px 2px rgba(0,0,0,.12)}
+.fill{position:absolute;left:0;top:0;bottom:0;width:64%;border-radius:4px;background:linear-gradient(90deg,#B47A33,var(--amber))}
+.fill:after{content:"";position:absolute;right:-6px;top:-4px;width:16px;height:16px;border-radius:50%;background:var(--paper);border:3px solid var(--amber)}
+.pct{font-size:34px;line-height:1;color:var(--ink)}
+.pct span{font-size:18px;color:var(--ink-soft)}
+.pages{font-size:15px;color:var(--ink-soft)}
+.entry{display:flex;gap:10px;margin-top:22px;align-items:center}
+.entry label{font-size:14px;color:var(--ink-soft)}
+.entry .field{width:96px;height:40px;border:1px solid #CDBDA3;background:#FBF6EC;border-radius:3px;display:flex;align-items:center;padding:0 12px;font-size:18px;color:var(--ink)}
+.entry .field:after{content:"";width:1px;height:20px;background:var(--ink);margin-left:2px}
+.btn{height:40px;padding:0 18px;border-radius:3px;border:1px solid var(--amber-deep);background:var(--amber);color:#1C1408;font-family:Georgia,serif;font-size:15px;display:inline-flex;align-items:center}
+.reentry{margin-top:20px;padding-top:16px;border-top:1px solid var(--paper-edge);font-style:italic;color:var(--ink-soft);font-size:15px}
+.reentry b{font-style:normal;color:var(--ink);font-weight:normal}
+
+.side{padding-top:12px;display:flex;flex-direction:column;gap:30px}
+.side h3{font-family:system-ui,sans-serif;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim);font-weight:500;margin-bottom:12px}
+.daytype p{color:var(--light);font-size:16px;margin-bottom:14px;font-style:italic}
+.dt{display:flex;gap:10px}
+.dt span{flex:1;text-align:center;padding:12px 0 10px;border:1px solid #4A3F35;border-radius:24px;color:var(--light);font-size:15px;background:var(--room-2)}
+.dt span small{display:block;font-size:11px;color:var(--dim);font-family:system-ui,sans-serif;margin-top:2px}
+.mini{display:flex;gap:12px;align-items:center}
+.ph{width:38px;height:56px;border-radius:1px 3px 3px 1px;flex:none;background:repeating-linear-gradient(45deg,#3A3029 0 6px,#352C25 6px 12px);border:1px solid #574A3E;display:flex;align-items:center;justify-content:center;color:#8F8170;font-size:16px;box-shadow:inset 3px 0 0 rgba(0,0,0,.25)}
+.mini .mt{font-size:15px;color:var(--light);line-height:1.25}
+.mini .ma{font-size:13px;color:var(--dim);font-style:italic}
+.wait li{list-style:none;display:flex;justify-content:space-between;font-size:14.5px;padding:7px 0;border-bottom:1px dotted #3E352D;color:var(--light)}
+.wait li span{color:var(--dim);font-size:13px;font-family:system-ui,sans-serif}
+
+/* Shelves */
+.shelves{position:relative;padding:28px 48px 40px;background:linear-gradient(180deg,rgba(0,0,0,0),rgba(0,0,0,.25)),var(--walnut-lo)}
+.shelves:before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,rgba(255,255,255,.015) 0 2px,transparent 2px 9px);pointer-events:none}
+.shead{display:flex;align-items:baseline;gap:16px;margin-bottom:14px;position:relative}
+.shead h2{font-weight:normal;font-size:18px;color:var(--light)}
+.shead .sort{font-family:system-ui,sans-serif;font-size:12px;color:var(--dim)}
+.shead .lit{margin-left:auto;font-size:15px;color:var(--glow);font-style:italic}
+.shead .lit em{font-style:normal;color:var(--dim);font-size:13px;margin-left:8px}
+.row{position:relative;margin-bottom:22px}
+.books{display:flex;align-items:flex-end;gap:2px;padding:0 10px;height:178px}
+.plank{height:16px;background:linear-gradient(180deg,var(--walnut-hi),var(--walnut) 35%,#3B281B);border-radius:2px;box-shadow:0 10px 18px rgba(0,0,0,.55);
+  background-image:linear-gradient(180deg,var(--walnut-hi),var(--walnut) 35%,#3B281B),repeating-linear-gradient(90deg,rgba(0,0,0,.08) 0 1px,transparent 1px 23px)}
+.sp{position:relative;border-radius:2px 2px 0 0;background:var(--c);display:flex;justify-content:center;padding:10px 0;overflow:hidden;
+  box-shadow:inset 2px 0 0 rgba(255,255,255,.14),inset -3px 0 0 rgba(0,0,0,.22)}
+.sp span{writing-mode:vertical-rl;font-size:11px;color:rgba(255,255,255,.88);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-height:100%;letter-spacing:.03em}
+.sp:before,.sp:after{content:"";position:absolute;left:0;right:0;height:2px;background:rgba(255,255,255,.18)}
+.sp:before{top:16px}.sp:after{bottom:16px}
+.sp.read{background:linear-gradient(90deg,rgba(255,255,255,.10),rgba(255,255,255,0) 40%,rgba(0,0,0,.12)),var(--c)}
+.sp.unread{filter:grayscale(1) brightness(.48) contrast(.9)}
+.sp.unread span{color:rgba(255,255,255,.55)}
+.sp.main{background:linear-gradient(0deg,var(--c) 64%,#3a3632 64%);box-shadow:0 0 18px rgba(242,201,138,.55),inset 2px 0 0 rgba(255,255,255,.2)}
+.sp .mk{position:absolute;top:-1px;left:50%;transform:translateX(-50%);width:6px;height:22px;background:var(--amber);clip-path:polygon(0 0,100% 0,100% 100%,50% 75%,0 100%);font-size:0}
+.sp.unread .mk{filter:grayscale(0)}
+.legend{display:flex;gap:26px;font-family:system-ui,sans-serif;font-size:12px;color:var(--dim);position:relative}
+.legend i{display:inline-block;width:10px;height:14px;margin-right:7px;vertical-align:-2px;border-radius:1px}
+
+/* State variant */
+.variant{width:1280px;margin:34px auto 0;display:grid;grid-template-columns:300px 1fr;gap:32px;align-items:start}
+.variant .note{color:#CFC3B0;font-size:14.5px;line-height:1.55}
+.variant .note b{display:block;font-family:system-ui,sans-serif;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--glow);font-weight:500;margin-bottom:8px}
+.empty{background:var(--room);border:1px solid #3a3129;border-radius:10px;padding:36px 44px;display:flex;gap:34px;align-items:center;position:relative;overflow:hidden}
+.empty:before{content:"";position:absolute;left:0;top:-80px;width:520px;height:340px;background:radial-gradient(ellipse at center,rgba(242,201,138,.12),transparent 70%)}
+.phbig{position:relative;width:120px;height:180px;flex:none;border-radius:2px 5px 5px 2px;background:linear-gradient(90deg,#3B2F27,#4A3B30 12%,#463829);
+  box-shadow:0 14px 28px rgba(0,0,0,.5),inset 6px 0 0 rgba(0,0,0,.25);display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:14px;border:1px solid #5b4a3b}
+.phbig .rule{width:56px;height:1px;background:#8C7559;margin:8px 0}
+.phbig .pt{font-size:13px;color:#D9C7A8;line-height:1.2}
+.phbig .pa{font-size:10px;color:#A8957A;font-style:italic}
+.empty .msg{position:relative}
+.empty .msg h4{font-weight:normal;font-size:24px;color:var(--light);margin-bottom:6px}
+.empty .msg p{color:var(--dim);font-size:15px;margin-bottom:18px;font-style:italic}
+.empty .msg .un{font-size:17px;color:var(--light);margin-bottom:18px}
+.empty .msg .un span{color:var(--dim);font-size:14px;font-style:italic}
+.ghost{height:40px;padding:0 16px;border-radius:3px;border:1px solid #574A3E;color:var(--light);font-size:14px;display:inline-flex;align-items:center;margin-left:10px}
+</style>
+</head>
+<body>
+
+<div class="rationale">
+  <b>Direction A — Lamplight Study</b>
+  It's evening and one lamp is on: the Main book sits in a warm pool of light on a cream paper card, and the rest of the room falls back into quiet shadow. The walnut shelves behind work the same way. Unread spines wait in the dark, and every finished book is lit in its true colour, so the library "uncovers" like lamps coming on, never like a to-do list. Serif type, low density and few elements keep attention on one thing at a time.
+</div>
+
+<div class="frame">
+  <div class="chrome"><i></i><i></i><i></i><div class="url">127.0.0.1:5173 / bookvie</div></div>
+  <div class="app">
+    <header>
+      <div class="logo">book<em>vie</em></div>
+      <div class="date">Wednesday, 28 October</div>
+      <nav><a class="on">Home</a><a>Catalog</a><a>Calendar</a><a>Stats</a><a>Card notes</a><a>Backup</a></nav>
+    </header>
+
+    <section class="hero">
+      <div class="coverwrap">
+        <div class="cover"><div class="sun"></div><div class="ice"></div><div class="fig"></div><div class="fig"></div>
+          <div class="t">The Left Hand<br>of Darkness</div><div class="a">Ursula K. Le Guin</div></div>
+      </div>
+
+      <div style="position:relative">
+        <div class="ribbons" style="left:-46px">
+          <span class="ribbon primary">+ Add pages</span>
+          <span class="ribbon">Add card note</span>
+          <span class="ribbon">See card notes <small>· 6</small></span>
+        </div>
+        <div class="card">
+          <div class="kicker">Main book</div>
+          <h1 class="title">The Left Hand of Darkness</h1>
+          <div class="author">Ursula K. Le Guin</div>
+          <div class="gauge"><div class="track"><div class="fill"></div></div><div class="pct">64<span>%</span></div></div>
+          <div class="pages">p.212 of 330</div>
+          <div class="entry"><label>I'm on page</label><div class="field">212</div><span class="btn">Save page</span></div>
+          <div class="reentry">Last time: <b>p.188</b> · about <b>7 evenings</b> left at your pace</div>
+        </div>
+      </div>
+
+      <aside class="side">
+        <div class="daytype">
+          <h3>Today</h3>
+          <p>What kind of reading day is it?</p>
+          <div class="dt"><span>Deep<small>long, focused</small></span><span>Light<small>a few pages</small></span><span>Rest<small>a day off</small></span></div>
+        </div>
+        <div>
+          <h3>Up next</h3>
+          <div class="mini"><div class="ph">❦</div><div><div class="mt">Designing Data-Intensive Applications</div><div class="ma">Martin Kleppmann</div></div></div>
+        </div>
+        <div class="wait">
+          <h3>Waiting for you (2)</h3>
+          <ul><li>Dune <span>p.120 · 29%</span></li><li>Gödel, Escher, Bach <span>p.88 · 11%</span></li></ul>
+        </div>
+      </aside>
+    </section>
+
+    <section class="shelves">
+      <div class="shead"><h2>Your shelves</h2><span class="sort">sorted by author</span>
+        <span class="lit">24 of 54 lit<em>each finished book lights its spine</em></span></div>
+      <div class="row"><div class="books"><div class="sp read" style="width:32px;height:130px;--c:#2E6B8F" title="The Hitchhiker&#x27;s Guide to the Galaxy — Adams"><span>The Hitchhiker&#x27;s Guide to the Galaxy</span></div><div class="sp read" style="width:34px;height:147px;--c:#B5532E" title="Foundation — Asimov"><span>Foundation</span></div><div class="sp unread" style="width:36px;height:164px;--c:#8E2F3C" title="The Handmaid&#x27;s Tale — Atwood"><span>The Handmaid&#x27;s Tale</span></div><div class="sp read" style="width:34px;height:134px;--c:#7C8F6A" title="Persuasion — Austen"><span>Persuasion</span></div><div class="sp unread" style="width:33px;height:151px;--c:#3C5A7A" title="Test-Driven Development — Beck"><span>Test-Driven Development</span></div><div class="sp read" style="width:32px;height:168px;--c:#C9772B" title="Fahrenheit 451 — Bradbury"><span>Fahrenheit 451</span></div><div class="sp read" style="width:36px;height:138px;--c:#5B4E8C" title="The Mythical Man-Month — Brooks"><span>The Mythical Man-Month</span></div><div class="sp unread" style="width:40px;height:155px;--c:#2F2F38" title="The Master and Margarita — Bulgakov"><span>The Master and Margarita</span></div><div class="sp read" style="width:30px;height:172px;--c:#4F8C8A" title="Invisible Cities — Calvino"><span>Invisible Cities</span></div><div class="sp unread" style="width:36px;height:143px;--c:#A69A55" title="The Plague — Camus"><span>The Plague</span></div><div class="sp read" style="width:37px;height:159px;--c:#2B4C6F" title="Exhalation — Chiang"><span>Exhalation</span></div><div class="sp unread" style="width:54px;height:130px;--c:#5E2B2B" title="The Brothers Karamazov — Dostoevsky"><span>The Brothers Karamazov</span></div><div class="sp unread" style="width:44px;height:147px;--c:#6A4A2E" title="The Name of the Rose — Eco"><span>The Name of the Rose</span></div><div class="sp unread" style="width:45px;height:164px;--c:#3E6E58" title="Domain-Driven Design — Evans"><span>Domain-Driven Design</span></div><div class="sp read" style="width:37px;height:134px;--c:#D0A23A" title="Surely You&#x27;re Joking, Mr. Feynman! — Feynman"><span>Surely You&#x27;re Joking, Mr. Feynman!</span></div><div class="sp read" style="width:41px;height:151px;--c:#8A3B2E" title="Refactoring — Fowler"><span>Refactoring</span></div><div class="sp unread" style="width:39px;height:168px;--c:#5A6470" title="Design Patterns — Gamma et al."><span>Design Patterns</span></div><div class="sp read" style="width:40px;height:138px;--c:#B0623A" title="One Hundred Years of Solitude — García Márquez"><span>One Hundred Years of Solitude</span></div><div class="sp read" style="width:34px;height:155px;--c:#2D6E6A" title="Neuromancer — Gibson"><span>Neuromancer</span></div><div class="sp unread paused" style="width:40px;height:172px;--c:#C08A3E" title="Dune — Herbert"><span>Dune</span><i class="mk">waiting</i></div><div class="sp unread paused" style="width:53px;height:143px;--c:#4B5E8E" title="Gödel, Escher, Bach — Hofstadter"><span>Gödel, Escher, Bach</span><i class="mk">waiting</i></div><div class="sp read" style="width:37px;height:159px;--c:#3B3B3B" title="The Pragmatic Programmer — Hunt &amp; Thomas"><span>The Pragmatic Programmer</span></div><div class="sp unread" style="width:36px;height:130px;--c:#C7A27A" title="Klara and the Sun — Ishiguro"><span>Klara and the Sun</span></div><div class="sp read" style="width:34px;height:147px;--c:#6F7F5A" title="The Remains of the Day — Ishiguro"><span>The Remains of the Day</span></div><div class="sp unread" style="width:43px;height:164px;--c:#D9C25A" title="Thinking, Fast and Slow — Kahneman"><span>Thinking, Fast and Slow</span></div><div class="sp unread next" style="width:47px;height:134px;--c:#7A4E7E" title="Designing Data-Intensive Applications — Kleppmann"><span>Designing Data-Intensive Applications</span><i class="mk">up next</i></div><div class="sp unread" style="width:49px;height:151px;--c:#2F4A6B" title="The Art of Computer Programming, Vol. 1 — Knuth"><span>The Art of Computer Programming, Vol. 1</span></div></div><div class="plank"></div></div>
+<div class="row"><div class="books"><div class="sp read" style="width:31px;height:168px;--c:#3F7A8C" title="A Wizard of Earthsea — Le Guin"><span>A Wizard of Earthsea</span></div><div class="sp unread" style="width:39px;height:138px;--c:#9A6B3C" title="The Dispossessed — Le Guin"><span>The Dispossessed</span></div><div class="sp main" style="width:37px;height:155px;--c:#5E7FA3" title="The Left Hand of Darkness — Le Guin"><span>The Left Hand of Darkness</span><i class="mk">reading</i></div><div class="sp unread" style="width:51px;height:172px;--c:#4D5B45" title="The Magic Mountain — Mann"><span>The Magic Mountain</span></div><div class="sp read" style="width:35px;height:143px;--c:#6B6B6B" title="The Road — McCarthy"><span>The Road</span></div><div class="sp unread" style="width:43px;height:159px;--c:#3A7FA8" title="Cloud Atlas — Mitchell"><span>Cloud Atlas</span></div><div class="sp read" style="width:35px;height:130px;--c:#A8343A" title="Norwegian Wood — Murakami"><span>Norwegian Wood</span></div><div class="sp unread" style="width:36px;height:147px;--c:#8C7A4A" title="Pale Fire — Nabokov"><span>Pale Fire</span></div><div class="sp read" style="width:35px;height:164px;--c:#2C3E50" title="Deep Work — Newport"><span>Deep Work</span></div><div class="sp read" style="width:37px;height:134px;--c:#B23A2E" title="Nineteen Eighty-Four — Orwell"><span>Nineteen Eighty-Four</span></div><div class="sp read" style="width:31px;height:151px;--c:#4E8A6E" title="A Philosophy of Software Design — Ousterhout"><span>A Philosophy of Software Design</span></div><div class="sp unread" style="width:40px;height:168px;--c:#B98B3A" title="Zen and the Art of Motorcycle Maintenance — Pirsig"><span>Zen and the Art of Motorcycle Maintenance</span></div><div class="sp unread" style="width:30px;height:138px;--c:#6E3E5E" title="The Crying of Lot 49 — Pynchon"><span>The Crying of Lot 49</span></div><div class="sp unread" style="width:34px;height:155px;--c:#7D9AA6" title="Gilead — Robinson"><span>Gilead</span></div><div class="sp read" style="width:39px;height:172px;--c:#1F3550" title="Cosmos — Sagan"><span>Cosmos</span></div><div class="sp unread" style="width:40px;height:143px;--c:#5C8A9A" title="A Swim in a Pond in the Rain — Saunders"><span>A Swim in a Pond in the Rain</span></div><div class="sp unread" style="width:42px;height:159px;--c:#8A4E2E" title="Hyperion — Simmons"><span>Hyperion</span></div><div class="sp unread" style="width:58px;height:130px;--c:#3E4A3A" title="Cryptonomicon — Stephenson"><span>Cryptonomicon</span></div><div class="sp read" style="width:28px;height:147px;--c:#9C3B3B" title="The Elements of Style — Strunk &amp; White"><span>The Elements of Style</span></div><div class="sp read" style="width:36px;height:164px;--c:#3D6B45" title="The Hobbit — Tolkien"><span>The Hobbit</span></div><div class="sp unread" style="width:57px;height:134px;--c:#6B2E3E" title="Anna Karenina — Tolstoy"><span>Anna Karenina</span></div><div class="sp unread" style="width:32px;height:151px;--c:#C9B48A" title="The Visual Display of Quantitative Information — Tufte"><span>The Visual Display of Quantitative Information</span></div><div class="sp read" style="width:35px;height:168px;--c:#D2622E" title="Slaughterhouse-Five — Vonnegut"><span>Slaughterhouse-Five</span></div><div class="sp unread" style="width:58px;height:138px;--c:#4A86A8" title="Infinite Jest — Wallace"><span>Infinite Jest</span></div><div class="sp unread" style="width:32px;height:155px;--c:#8FA88A" title="To the Lighthouse — Woolf"><span>To the Lighthouse</span></div><div class="sp unread" style="width:37px;height:172px;--c:#7A5A3A" title="Memoirs of Hadrian — Yourcenar"><span>Memoirs of Hadrian</span></div><div class="sp read" style="width:45px;height:143px;--c:#4A4A6A" title="The Book Thief — Zusak"><span>The Book Thief</span></div></div><div class="plank"></div></div>
+      <div class="legend"><span><i style="background:#3F7A8C"></i>read, in full colour</span><span><i style="background:#555;filter:brightness(.6)"></i>not read yet, waiting in the shade</span><span><i style="background:linear-gradient(0deg,#5E7FA3 64%,#3a3632 64%)"></i>Main book, filling as you go</span><span><i style="background:#C98A3B;clip-path:polygon(0 0,100% 0,100% 100%,50% 75%,0 100%)"></i>ribbon: reading · up next · waiting</span></div>
+    </section>
+  </div>
+</div>
+
+<div class="variant">
+  <div class="note"><b>State: no Main book</b>Shown after a finish or a pause. The lamp stays on and the copy just points to Up next, with no "nothing to do" tone. This also shows the <i>no cover</i> placeholder: a plain cloth binding with the title stamped on it.</div>
+  <div class="empty">
+    <div class="phbig"><div class="pt">Designing Data-Intensive Applications</div><div class="rule"></div><div class="pa">Martin Kleppmann</div></div>
+    <div class="msg">
+      <h4>No Main book right now.</h4>
+      <p>Pick one up whenever you like.</p>
+      <div class="un">Up next: Designing Data-Intensive Applications <span>— Martin Kleppmann · 616 pages</span></div>
+      <span class="btn">Start</span><span class="ghost">Choose another</span>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

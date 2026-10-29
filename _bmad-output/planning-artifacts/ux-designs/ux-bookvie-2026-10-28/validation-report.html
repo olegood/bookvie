@@ -1,0 +1,1345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>bookvie UX Validation</title>
+<style>
+  :root {
+    --bg: #fafaf9;
+    --surface: #ffffff;
+    --border: #e7e5e4;
+    --text: #1c1917;
+    --muted: #78716c;
+
+    --verdict-strong: #16a34a;
+    --verdict-adequate: #65a30d;
+    --verdict-thin: #d97706;
+    --verdict-broken: #dc2626;
+
+    --sev-low: #64748b;
+    --sev-medium: #ca8a04;
+    --sev-high: #ea580c;
+    --sev-critical: #dc2626;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    font-size: 15px;
+  }
+  .container { max-width: 960px; margin: 0 auto; padding: 32px 24px 64px; }
+
+  header.report-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
+  }
+  .title h1 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
+  .title .subtitle { color: var(--muted); font-size: 13px; margin-top: 4px; font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+
+  .synthesis {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--muted);
+    border-radius: 8px;
+    padding: 18px 22px;
+    margin-bottom: 24px;
+    font-size: 15.5px;
+  }
+  .synthesis p { margin: 0 0 10px; }
+  .synthesis p:last-child { margin-bottom: 0; }
+
+  .dimension-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+  .dim-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+  .dim-card .dim-name { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  .dim-card .dim-verdict { font-size: 14px; font-weight: 600; }
+
+  section.dimension, section.reviewer-section { margin-bottom: 14px; }
+  section.dimension details, section.reviewer-section details {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  section summary {
+    padding: 14px 20px;
+    cursor: pointer;
+    user-select: none;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  section summary::-webkit-details-marker { display: none; }
+  section summary::before {
+    content: "▸";
+    display: inline-block;
+    color: var(--muted);
+    transition: transform 0.15s ease;
+  }
+  section details[open] summary::before { transform: rotate(90deg); }
+  section summary h2 {
+    display: inline;
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+    flex: 1;
+  }
+  .verdict-pill {
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: white;
+  }
+  .verdict-strong { background: var(--verdict-strong); }
+  .verdict-adequate { background: var(--verdict-adequate); }
+  .verdict-thin { background: var(--verdict-thin); }
+  .verdict-broken { background: var(--verdict-broken); }
+
+  .dim-body { padding: 4px 20px 18px; }
+  .dim-judgment { color: var(--text); font-size: 14.5px; }
+  .dim-judgment p { margin: 0 0 10px; }
+
+  .findings-list { padding: 0 20px 4px; }
+  article.finding {
+    padding: 14px 0;
+    border-top: 1px solid var(--border);
+  }
+  article.finding:first-child { border-top: none; }
+  article.finding header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
+  }
+  .badge {
+    font-size: 10.5px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    line-height: 1.4;
+  }
+  .badge-sev-low { background: rgba(100, 116, 139, 0.12); color: var(--sev-low); }
+  .badge-sev-medium { background: rgba(202, 138, 4, 0.14); color: var(--sev-medium); }
+  .badge-sev-high { background: rgba(234, 88, 12, 0.14); color: var(--sev-high); }
+  .badge-sev-critical { background: rgba(220, 38, 38, 0.14); color: var(--sev-critical); }
+  .finding-title { margin: 0; font-size: 15px; font-weight: 500; flex: 1; min-width: 200px; }
+  .finding-location { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12.5px; color: var(--muted); }
+  .finding-note, .finding-fix { margin-top: 6px; font-size: 14px; }
+  .finding-fix strong { color: var(--muted); font-weight: 500; }
+
+  .reviewer-source {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+
+  .mechanical {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-top: 24px;
+    font-size: 14px;
+  }
+  .mechanical h3 { margin: 0 0 10px; font-size: 14px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .mechanical ul { margin: 0; padding-left: 20px; }
+  .mechanical li { margin-bottom: 4px; color: var(--text); }
+
+  footer.report-footer {
+    margin-top: 40px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--muted);
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  footer .meta { display: flex; gap: 24px; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+  <div class="container">
+
+    <header class="report-header">
+      <div class="title">
+        <h1>bookvie — UX Design Validation Report</h1>
+        <div class="subtitle">_bmad-output/planning-artifacts/ux-designs/ux-bookvie-2026-10-28/DESIGN.md · _bmad-output/planning-artifacts/ux-designs/ux-bookvie-2026-10-28/EXPERIENCE.md</div>
+      </div>
+    </header>
+
+    <div class="synthesis">
+      <p>The pair is a usable contract. Every token reference resolves, all 32 component names match across both spines, all five UJs have complete flows, and the Agent Label Contract is unusually well specified. Removing Day types and the Reading calendar was carried through cleanly. Four gaps would make downstream teams invent behavior: FR-20 (tags, sort, filter) is missing or unspecified; there is no state for a failed local save; the agent-facing form contract depends on three unconfirmed assumptions; and a few non-text contrast pairs on the bookcase fall below 3:1 and are not in the contrast table.</p>
+      <p>The extra reviewers shift the picture from "usable with four gaps" to "one more pass before epics". The edge-case reviewer found one critical gap: there is no way to back-fill finish dates for already-read books, so cataloguing the paper diary would land every historical finish in this month's Stats and zero out Measured pace from day one. It also found that overlapping Book states (re-read Main, paused Up next, Side read + paused) have no precedence rule. The accessibility reviewer confirmed every claimed text contrast pair, but found non-text contrast failures beyond the rubric's (form-field borders, segmented-control selection, markers, mini bars, the spine focus ring) and agent-contract collisions: "(required)" leaking into accessible names, Title/Subtitle substring matches, two simultaneous "Cancel" buttons with opposite effects, and stale live-region outcomes the unattended skill could read as success.</p>
+      <p>Across all three reviewers, 103 raw findings deduplicate to 81: 1 critical, 17 high, 38 medium, 25 low. The Markdown twin (validation-report.md) lists them merged by severity.</p>
+    </div>
+
+    <div class="dimension-summary">
+<div class="dim-card">
+  <div class="dim-name">Flow coverage</div>
+  <div class="dim-verdict" style="color: var(--verdict-adequate)">adequate</div>
+</div>
+<div class="dim-card">
+  <div class="dim-name">Token completeness</div>
+  <div class="dim-verdict" style="color: var(--verdict-adequate)">adequate</div>
+</div>
+<div class="dim-card">
+  <div class="dim-name">Component coverage</div>
+  <div class="dim-verdict" style="color: var(--verdict-adequate)">adequate</div>
+</div>
+<div class="dim-card">
+  <div class="dim-name">State coverage</div>
+  <div class="dim-verdict" style="color: var(--verdict-adequate)">adequate</div>
+</div>
+<div class="dim-card">
+  <div class="dim-name">Visual reference coverage</div>
+  <div class="dim-verdict" style="color: var(--verdict-adequate)">adequate</div>
+</div>
+<div class="dim-card">
+  <div class="dim-name">Bloat &amp; overspecification</div>
+  <div class="dim-verdict" style="color: var(--verdict-strong)">strong</div>
+</div>
+<div class="dim-card">
+  <div class="dim-name">Inheritance discipline</div>
+  <div class="dim-verdict" style="color: var(--verdict-adequate)">adequate</div>
+</div>
+<div class="dim-card">
+  <div class="dim-name">Shape fit</div>
+  <div class="dim-verdict" style="color: var(--verdict-adequate)">adequate</div>
+</div>
+    </div>
+
+<section class="dimension">
+  <details>
+    <summary>
+      <h2>Flow coverage</h2>
+      <span class="verdict-pill verdict-adequate">adequate</span>
+    </summary>
+    <div class="dim-body">
+      <div class="dim-judgment">
+<p>Checked: UJ-1 to UJ-5 (PRD §2.3, as amended by prd-deltas 9/17) and FR-1 to FR-23 (minus the removed FR-12/13) against Key Flows, Component Patterns and State Patterns. Each of UJ-1 to UJ-5 maps to a flow (Flows 1–5) with a named protagonist (Oleg), numbered steps, a <strong>Climax</strong> beat and a failure path. Flows 6–8 cover Card notes, Stats + Export and Restore.</p>
+      </div>
+    </div>
+    <div class="findings-list">
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-high">high</span>
+    <h3 class="finding-title">FR-20 (tags, sort, filter) is missing or unspecified.</h3>
+    <span class="finding-location">EXPERIENCE §IA Pages, §Component Patterns; DESIGN §Layout → Catalog</span>
+  </header>
+  <div class="finding-note">There are no free-form tags anywhere: no Tags field in the Agent Label Contract, no tag filter, no delta in prd-deltas.md. Sort and filter are named only in passing: "sort/filter" in the Catalog IA row (EXPERIENCE §IA), "sort chip" in the Bookcase header (DESIGN §Components → Bookcase), and the default sort (author) is an assumption. Nothing says which sort keys (title / author / date added / pages) or filters (tag / type / language / read status) exist, how they show, or how they combine with search.</div>
+  <div class="finding-fix"><strong>Fix:</strong> Either add a Sort/filter control and a Tags field, with rows in both component tables, Agent Label Contract entries and a "filter, no matches" state, or record a prd-deltas item that defers FR-20 / tags.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-medium">medium</span>
+    <h3 class="finding-title">FR-6 Pause and FR-8 Side read promotion have no Key Flow.</h3>
+    <span class="finding-location">EXPERIENCE §Component Patterns → Book detail; Open Questions 3</span>
+  </header>
+  <div class="finding-note">The Book detail row lists "Pause (Main book only, FR-6)" without its outcome (the paused Book becomes Up next, and the displaced Up next goes to Waiting for you or back to the catalog). Pause placement is still Open Question 3. The SM-3 thesis (paused Readings get finished) depends on this loop. <em>Also raised by: Edge cases.</em></div>
+  <div class="finding-fix"><strong>Fix:</strong> Close OQ3, state Pause's consequences in the Book detail row, and add a short flow for pause → Waiting for you → resume.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-medium">medium</span>
+    <h3 class="finding-title">FR-9 "edit it later" has no surface: a Purpose can't be edited after start.</h3>
+    <span class="finding-location">EXPERIENCE §Component Patterns → Book detail, Start dialog</span>
+  </header>
+  <div class="finding-note">Book detail shows Purpose read-only, and the Start dialog prefills it only on resume.</div>
+  <div class="finding-fix"><strong>Fix:</strong> Add an "Edit Purpose" action on Book detail's Reading row, or record a delta.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-low">low</span>
+    <h3 class="finding-title">FR-19 says "search inside a Book… when viewing a Book or browsing its pile".</h3>
+    <span class="finding-location">EXPERIENCE §Component Patterns → Pile, Card notes list</span>
+  </header>
+  <div class="finding-note">The Pile has no search and Book detail has no notes search; only the scoped Card notes list covers it. This is not in prd-deltas.</div>
+  <div class="finding-fix"><strong>Fix:</strong> Record it as delta 28, or add search to the Pile.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-low">low</span>
+    <h3 class="finding-title">Flow 7 has no failure path.</h3>
+    <span class="finding-location">EXPERIENCE §Flow 7</span>
+  </header>
+  <div class="finding-note">If the download is cancelled or blocked, does "Last export" still update? This decides when the export timestamp is written. <em>Also raised by: Edge cases.</em></div>
+  <div class="finding-fix"><strong>Fix:</strong> One line: the timestamp updates when the file is generated, or is never updated on cancel.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-low">low</span>
+    <h3 class="finding-title">The meter figures across flows contradict each other.</h3>
+    <span class="finding-location">EXPERIENCE §Flow 1 step 8, §Flow 4 step 4</span>
+  </header>
+  <div class="finding-note">Flow 1 (Thursday) ends at "24 of 73 finished", but Flow 4 (Sunday) moves the meter to "25 of 54".</div>
+  <div class="finding-fix"><strong>Fix:</strong> Align the numbers, or drop the cross-flow implication.</div>
+</article>
+    </div>
+  </details>
+</section>
+<section class="dimension">
+  <details>
+    <summary>
+      <h2>Token completeness</h2>
+      <span class="verdict-pill verdict-adequate">adequate</span>
+    </summary>
+    <div class="dim-body">
+      <div class="dim-judgment">
+<p>Checked: every frontmatter token and every <code>{path}</code> reference. The script found 0 unresolved references. All colors have hex values, and light/dark pairs exist for every chrome color. Read-spine colors are deliberately theme-independent, and the spine says so. The contrast table covers 15 pairs in both themes.</p>
+      </div>
+    </div>
+    <div class="findings-list">
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-medium">medium</span>
+    <h3 class="finding-title">The Main book spine is "outlined in its spine color" on <code>shelf-wall</code>.</h3>
+    <span class="finding-location">DESIGN §Components → Spine; §Colors → Spine colors</span>
+  </header>
+  <div class="finding-note">Computed non-text contrast in light: <code>spine-sage</code> 2.92:1 and <code>spine-ochre</code> 2.63:1, both below the 3:1 floor that the spine sets for unread outlines. The label rule nudges only label contrast, never outline vs wall. <em>Also raised by: Accessibility, Edge cases.</em></div>
+  <div class="finding-fix"><strong>Fix:</strong> Add an "outline vs <code>shelf-wall</code> ≥ 3:1" rule for Main book outlines, or outline the Main book with <code>spine-unread-outline</code> and fill in its color.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-medium">medium</span>
+    <h3 class="finding-title">Contrast pairs are missing for markers and mini bars.</h3>
+    <span class="finding-location">DESIGN §Colors → Contrast</span>
+  </header>
+  <div class="finding-note"><code>marker-waiting</code> (light, <code>#A8987A</code>) on <code>spine-unread-fill</code> = 2.75:1. <code>accent-mid</code> on <code>accent-soft</code> (Waiting-for-you mini bars) = 2.11:1 light. Neither is in the table. Text redundancy covers meaning, but the sand dot is the only visual difference from the sky dot. <em>Also raised by: Accessibility.</em></div>
+  <div class="finding-fix"><strong>Fix:</strong> Darken <code>marker-waiting</code> in light, add the marker, mini-bar and gauge track/fill rows to the table, or state explicitly that these graphics are decorative because a text equivalent exists.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-medium">medium</span>
+    <h3 class="finding-title">Several rendered text roles have no typography token.</h3>
+    <span class="finding-location">DESIGN §Components → Main book card, New book panel, Pile; §Layout → Home</span>
+  </header>
+  <div class="finding-note">The Home header date line, the author on the Main book card ("16px"), the New book panel heading ("18px"), Pile note text ("17px [ASSUMPTION]") and the "Bookcase" heading. Developers will invent sizes.</div>
+  <div class="finding-fix"><strong>Fix:</strong> Add <code>page-header</code>, <code>author</code>, <code>panel-heading</code> and <code>pile-text</code> tokens, or map these roles to existing tokens.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-medium">medium</span>
+    <h3 class="finding-title">The cover-derived spine color ("dominant cover hue, softened toward the birch palette") has no algorithm.</h3>
+    <span class="finding-location">DESIGN §Colors → Spine colors</span>
+  </header>
+  <div class="finding-note">The spine also doesn't say whether the color is computed once and stored or computed on every render. Architecture needs this for storage, export (delta 16) and the "never changes color between visits" promise, which is itself an [ASSUMPTION]. <em>Also raised by: Edge cases.</em></div>
+  <div class="finding-fix"><strong>Fix:</strong> Store the resolved color on the Book when the cover is set, and state the softening rule (for example, HSL lightness/saturation clamps).</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-low">low</span>
+    <h3 class="finding-title">Component tokens hardcode values that are off the spacing scale.</h3>
+    <span class="finding-location">DESIGN frontmatter <code>components</code></span>
+  </header>
+  <div class="finding-note">Padding <code>28px 32px</code> and <code>20px 22px</code>, gauge radius <code>7px</code>, widths 500/440/180/110px, plank 12px, marker 7px.</div>
+  <div class="finding-fix"><strong>Fix:</strong> Snap them to the scale, or add named spacing tokens.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-low">low</span>
+    <h3 class="finding-title">Shadows and the scrim (an [ASSUMPTION]) exist only as prose values, with no token names.</h3>
+    <span class="finding-location">DESIGN §Elevation &amp; Depth, frontmatter <code>rounded</code></span>
+  </header>
+  <div class="finding-note"><code>rounded.spine</code> is a multi-value string (<code>3px 3px 0 0</code>), which the spec type rules do not anticipate.</div>
+  <div class="finding-fix"><strong>Fix:</strong> Add <code>shadow-*</code> / <code>scrim</code> tokens, or note the exception.</div>
+</article>
+    </div>
+  </details>
+</section>
+<section class="dimension">
+  <details>
+    <summary>
+      <h2>Component coverage</h2>
+      <span class="verdict-pill verdict-adequate">adequate</span>
+    </summary>
+    <div class="dim-body">
+      <div class="dim-judgment">
+<p>Checked: 32 components appear in both DESIGN §Components and EXPERIENCE §Component Patterns, with identical names and real rules. Primitives (<code>button-primary</code>/<code>secondary</code>, <code>link</code>, <code>chip</code>) are frontmatter-only, which is acceptable.</p>
+      </div>
+    </div>
+    <div class="findings-list">
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-medium">medium</span>
+    <h3 class="finding-title">No component row for the Sort/filter control or the Tags field (see Flow coverage).</h3>
+    <span class="finding-location">both spines</span>
+  </header>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-medium">medium</span>
+    <h3 class="finding-title">The "No Main book." state of the Main book card area is specified behaviorally (State Patterns.</h3>
+    <span class="finding-location">DESIGN §Components → Main book card</span>
+  </header>
+  <div class="finding-note">Message plus the Up next Book with <strong>Start reading</strong>), but it has no visual spec. The same gap applies to the one-line "Finished <em>X</em>." in the bookcase header.</div>
+  <div class="finding-fix"><strong>Fix:</strong> Add a "Main book card — empty" row.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-medium">medium</span>
+    <h3 class="finding-title">The Finish dialog's star rating and "Purpose fulfilled?" control have a visual spec but no behavioral or accessibility spec.</h3>
+    <span class="finding-location">EXPERIENCE §Component Patterns → Finish dialog</span>
+  </header>
+  <div class="finding-note">Missing: the role (radio group?), keyboard operation, clearing a chosen star, and what "skipped" records. <em>Also raised by: Accessibility.</em></div>
+  <div class="finding-fix"><strong>Fix:</strong> Specify both as native radio groups with "No rating" as the default.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-medium">medium</span>
+    <h3 class="finding-title">Book detail's layout is undecided (Open Question 1).</h3>
+    <span class="finding-location">DESIGN §Components → Book detail; EXPERIENCE OQ1</span>
+  </header>
+  <div class="finding-note">It hosts Pause, Mark finished, Edit, Delete, Readings and the per-Book pace calculator, and it can be reached from four places. Story development cannot size or build it with confidence.</div>
+  <div class="finding-fix"><strong>Fix:</strong> Decide the layout before epics: even a wireframe-level ordering is enough.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-low">low</span>
+    <h3 class="finding-title">Editing and deleting a Card note is mentioned ("Edit and delete per note (delete confirms)"), but the Card note panel has no edit mode and the Confirm dialog lists only Restore and Delete book.</h3>
+    <span class="finding-location">EXPERIENCE §Component Patterns → Card notes list, Confirm dialog</span>
+  </header>
+  <div class="finding-fix"><strong>Fix:</strong> Add an edit mode ("Save note") and a "Delete card note?" variant with its copy.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-low">low</span>
+    <h3 class="finding-title">The color swatch buttons (popover and panel) have no stated accessible names (for example "Sage", "Clay") and no selected-state rule (<code>aria-pressed</code>).</h3>
+    <span class="finding-location">EXPERIENCE §Component Patterns → Spine popover; §Agent Label Contract → Spine color</span>
+  </header>
+  <div class="finding-note"><em>Also raised by: Accessibility.</em></div>
+</article>
+    </div>
+  </details>
+</section>
+<section class="dimension">
+  <details>
+    <summary>
+      <h2>State coverage</h2>
+      <span class="verdict-pill verdict-adequate">adequate</span>
+    </summary>
+    <div class="dim-body">
+      <div class="dim-judgment">
+<p>Checked surfaces: Home, Catalog, Book detail, Stats, Card notes, Backup, and every overlay. Empty, first-run, validation, duplicate, no-match, reduced-motion, theme and narrow-window states are well covered. Offline and permission-denied correctly don't apply.</p>
+      </div>
+    </div>
+    <div class="findings-list">
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-high">high</span>
+    <h3 class="finding-title">There is no state for a failed local save.</h3>
+    <span class="finding-location">EXPERIENCE §Foundation → Local-first; §State Patterns</span>
+  </header>
+  <div class="finding-note">Storage write fails, quota exceeded (covers are images), or storage cleared or unavailable at load. The spine says "No sync, saving, or connection status is shown anywhere", and NFR Data safety says no action silently loses data. Together these leave architecture with no UX contract for failed persistence, and the unattended agent with no signal for it. The memlog notes "no loading state (local-first, deliberate)", but the spines never state it. <em>Also raised by: Accessibility.</em></div>
+  <div class="finding-fix"><strong>Fix:</strong> Add one row: "Couldn't save. Your change is still on screen." in the <code>alert</code> region, value kept, no red. Also add a line saying there is no loading state, with the reason.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-medium">medium</span>
+    <h3 class="finding-title">A re-read that is the Main book gets two conflicting rules.</h3>
+    <span class="finding-location">EXPERIENCE §Bookcase; DESIGN §Components → Spine</span>
+  </header>
+  <div class="finding-note">Bookcase says "a re-read of a finished Book keeps its full color [ASSUMPTION]", while Spine says the Main book is "outlined in its color and filled to its percentage". <em>Also raised by: Edge cases.</em></div>
+  <div class="finding-fix"><strong>Fix:</strong> Pick one rule and add a State Patterns row.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-medium">medium</span>
+    <h3 class="finding-title">Book detail has no state rows.</h3>
+    <span class="finding-location">EXPERIENCE §State Patterns</span>
+  </header>
+  <div class="finding-note">Never started, Main book, paused, finished, re-read, Side read, no Readings. Deleting the current Main book or Up next has no stated effect on Home. <em>Also raised by: Edge cases.</em></div>
+  <div class="finding-fix"><strong>Fix:</strong> Add a Book detail state table with visible actions per state, plus the delete consequences.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-medium">medium</span>
+    <h3 class="finding-title">The Cover field has no failure states (not an image, oversized), and Restore has none for a partially valid or older-version export.</h3>
+    <span class="finding-location">EXPERIENCE §Agent Label Contract → Cover; §State Patterns → Restore</span>
+  </header>
+  <div class="finding-note"><em>Also raised by: Edge cases.</em></div>
+  <div class="finding-fix"><strong>Fix:</strong> Add the rows, and keep the copy calm.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-low">low</span>
+    <h3 class="finding-title">Missing smaller states: Stats custom range end before start, cancelled export.</h3>
+    
+  </header>
+  <div class="finding-note"><em>Also raised by: Edge cases.</em></div>
+</article>
+    </div>
+  </details>
+</section>
+<section class="dimension">
+  <details>
+    <summary>
+      <h2>Visual reference coverage</h2>
+      <span class="verdict-pill verdict-adequate">adequate</span>
+    </summary>
+    <div class="dim-body">
+      <div class="dim-judgment">
+<p><code>mockups/</code> and <code>wireframes/</code> are absent, and <code>imports/</code> is empty. The single cited reference is <code>.working/birch-v2-light-dark.html</code>. Both spine preambles cite it, list what it superseded, and state that the spine wins. <code>.working/</code> also holds three direction renders (lamplight-study, birch-morning, reading-room-ledger) that neither spine references.</p>
+      </div>
+    </div>
+    <div class="findings-list">
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-medium">medium</span>
+    <h3 class="finding-title">The only composition reference lives in <code>.working/</code> (unpromoted scratch).</h3>
+    <span class="finding-location">DESIGN preamble; EXPERIENCE preamble</span>
+  </header>
+  <div class="finding-note">It is cited in the preambles only, never at the sections it illustrates (bookcase, popover, finish moment in dark).</div>
+  <div class="finding-fix"><strong>Fix:</strong> Promote it to <code>mockups/birch-v2.html</code> and add an inline pointer under DESIGN §Components → Bookcase / Spine popover and EXPERIENCE §State Patterns → Finish moment.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-low">low</span>
+    <h3 class="finding-title">The three direction renders are orphans.</h3>
+    
+  </header>
+  <div class="finding-fix"><strong>Fix:</strong> Leave them out of the hand-off, or add one line marking them as non-normative exploration.</div>
+</article>
+    </div>
+  </details>
+</section>
+<section class="dimension">
+  <details>
+    <summary>
+      <h2>Bloat &amp; overspecification</h2>
+      <span class="verdict-pill verdict-strong">strong</span>
+    </summary>
+    <div class="dim-body">
+      <div class="dim-judgment">
+<p>EXPERIENCE is tight and table-driven. DESIGN prose carries editorial voice only in Brand &amp; Style. Personas and FRs are referenced, not restated.</p>
+      </div>
+    </div>
+    <div class="findings-list">
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-low">low</span>
+    <h3 class="finding-title">The EXPERIENCE §Bookcase section repeats DESIGN rules.</h3>
+    <span class="finding-location">EXPERIENCE §Bookcase bullets 2, 4</span>
+  </header>
+  <div class="finding-note">Spine sizing, color precedence, fixed width.</div>
+  <div class="finding-fix"><strong>Fix:</strong> Keep the ordering, slice, scale, highlight and keyboard behavior; for visuals, point to DESIGN.</div>
+</article>
+    </div>
+  </details>
+</section>
+<section class="dimension">
+  <details>
+    <summary>
+      <h2>Inheritance discipline</h2>
+      <span class="verdict-pill verdict-adequate">adequate</span>
+    </summary>
+    <div class="dim-body">
+      <div class="dim-judgment">
+<p>Checked:</p>
+<ul><li>Both <code>sources</code> paths resolve.</li><li>The <code>design: ./DESIGN.md</code> link resolves.</li><li>Glossary terms are used as defined, with the "Catch-up" redefinition carried by delta 4.</li><li>Component names are identical in all four tables.</li><li>EXPERIENCE refers to visuals by DESIGN token or alias name ("sage" = <code>accent</code>, "sky dot" = <code>marker-up-next</code>, "teal" = <code>spine-teal</code>), and all of them resolve.</li><li>Removing Day types and the calendar is consistent: no residue in either spine.</li></ul>
+      </div>
+    </div>
+    <div class="findings-list">
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-high">high</span>
+    <h3 class="finding-title">The Agent Label Contract depends on three [ASSUMPTION]s.</h3>
+    <span class="finding-location">EXPERIENCE §Agent Label Contract</span>
+  </header>
+  <div class="finding-note">Author(s) as one semicolon-separated field (OQ5), the exact Type option text ("Paperback" / "Hardcover" / "Ebook"), and the edit-mode submit "Save changes". The contract's own breaking-change rule makes these costly to change once tests and the AI skill bind to them. <em>Also raised by: Accessibility.</em></div>
+  <div class="finding-fix"><strong>Fix:</strong> Confirm all three with the user before architecture. If several authors become repeatable fields, specify their labels ("Author 1"…) and an "Add author" button.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-medium">medium</span>
+    <h3 class="finding-title">Flow titles are not the PRD UJ names verbatim.</h3>
+    <span class="finding-location">EXPERIENCE §Key Flows headings</span>
+  </header>
+  <div class="finding-note">"Cataloging a stack" vs "The user catalogs a shelf"; "Catch-up" vs "The user catches up after three busy evenings" (days, after delta 9); "Urgent switch" vs "An urgent work book arrives"; "Finishing a book" vs "The user finishes a book". The IDs are present, so the flows stay traceable.</div>
+  <div class="finding-fix"><strong>Fix:</strong> Use the PRD names, with the amended wording where deltas apply.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-medium">medium</span>
+    <h3 class="finding-title">Two statements of how Book detail is reached contradict each other.</h3>
+    <span class="finding-location">EXPERIENCE §IA Pages → Book detail vs §Component Patterns → Section pane</span>
+  </header>
+  <div class="finding-note">IA says Book detail is reached from "a title in Home's panes", but Section pane says activating Up next and Waiting rows opens the Start dialog. Only the Main book card title links (an [ASSUMPTION]).</div>
+  <div class="finding-fix"><strong>Fix:</strong> Decide whether pane rows open the Start dialog, Book detail, or both (for example, the title opens Book detail and a Resume button opens the dialog).</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-medium">medium</span>
+    <h3 class="finding-title">"Search titles" is a placeholder in DESIGN, but the Accessibility Floor ("visible label equals accessible name") and the Agent Label Contract treat it as a label.</h3>
+    <span class="finding-location">DESIGN §Components → Search field; EXPERIENCE §Accessibility Floor, §Agent Label Contract</span>
+  </header>
+  <div class="finding-note">Placeholders are not visible labels once the user types. The Card notes search has no label at all. <em>Also raised by: Accessibility.</em></div>
+  <div class="finding-fix"><strong>Fix:</strong> Add a visible (or <code>aria-label</code> plus magnifier) label "Search titles", and name the Card notes search ("Search card notes").</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-low">low</span>
+    <h3 class="finding-title">"Traces to" cells cite "memlog …", a working log downstream consumers won't read.</h3>
+    <span class="finding-location">EXPERIENCE §IA tables</span>
+  </header>
+  <div class="finding-fix"><strong>Fix:</strong> Cite prd-deltas item numbers instead.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-low">low</span>
+    <h3 class="finding-title">prd-deltas is missing two spine departures.</h3>
+    
+  </header>
+  <div class="finding-note">Dropping FR-11's separate "page last reached" (OQ2) and FR-19's in-Book and Pile search scope (see 1).</div>
+  <div class="finding-fix"><strong>Fix:</strong> Add them as items 28–29 once triaged.</div>
+</article>
+    </div>
+  </details>
+</section>
+<section class="dimension">
+  <details>
+    <summary>
+      <h2>Shape fit</h2>
+      <span class="verdict-pill verdict-adequate">adequate</span>
+    </summary>
+    <div class="dim-body">
+      <div class="dim-judgment">
+<p>DESIGN sections are in canonical order (Brand &amp; Style → Colors → Typography → Layout &amp; Spacing → Elevation &amp; Depth → Shapes → Components → Do's and Don'ts). EXPERIENCE has all required defaults. Responsive &amp; Platform is omitted, which is defensible: there is one desktop surface, and the 1024px minimum is stated in Foundation plus the "Narrow window" state. The invented sections (Bookcase, Agent Label Contract, Open Questions) earn their place.</p>
+      </div>
+    </div>
+    <div class="findings-list">
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-medium">medium</span>
+    <h3 class="finding-title">Inspiration &amp; Anti-patterns is omitted, although sources trigger it.</h3>
+    <span class="finding-location">EXPERIENCE</span>
+  </header>
+  <div class="finding-note">The addendum names reference products (StoryGraph, Bookly, Basmo and their streaks), and the memlog records rejects: greeting, confetti, "Add pages", "Open existing", the left rail, and the pale decorative outline. These are scattered across the Banned list and the Don'ts, without reasons.</div>
+  <div class="finding-fix"><strong>Fix:</strong> Add a short section of 4–6 lifted/rejected bullets with one-line reasons, so future contributors don't re-add them.</div>
+</article>
+    </div>
+  </details>
+</section>
+<section class="reviewer-section">
+  <details>
+    <summary>
+      <h2>Accessibility review</h2>
+      <span class="reviewer-source">review-accessibility.md</span>
+    </summary>
+    <div class="dim-body">
+      <div class="dim-judgment">
+<p>Reviewer lens: adversarial accessibility (WCAG 2.2 AA + practical ARIA), with the unattended AI cataloging skill treated as a first-class assistive-tech user.</p>
+<p>The spines have a stronger accessibility floor than most drafts: they use native elements, an explicit Agent Label Contract, <code>alertdialog</code> for duplicates, live-region outcomes, spine names that carry status, and darkened unread outlines. Every text pair DESIGN.md claims passes, and I reproduced those values. Still, the unattended cataloging path has several ways to fail silently. Two examples: the "(required)" label text conflicts with the label contract, and two "Cancel" buttons can be open at once with opposite effects. Outcome text can also be stale, and there is no save-failure signal. Several keyboard and focus models are also left as assumptions or not specified at all: the bookcase grid, where focus goes after a dialog removes its own trigger, and the popover. The 1024px no-reflow floor conflicts with WCAG 1.4.10. Fix the high items before implementation stories are written.</p>
+<p>Counts: <strong>0 critical · 6 high · 15 medium · 14 low</strong></p>
+      </div>
+    </div>
+    <div class="findings-list">
+<div class="reviewer-source" style="padding-top:14px">Agent Label Contract and machine-readable outcomes</div>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-high">high</span>
+    <h3 class="finding-title">The "(required)" marker is likely to become part of the accessible name.</h3>
+    <span class="finding-location">DESIGN.md § Components → New book panel; EXPERIENCE.md § Agent Label Contract</span>
+  </header>
+  <div class="finding-note">DESIGN.md puts "(required)" next to the label. If it sits inside <code>&lt;label&gt;</code>, the name of Title becomes "Title (required)". That breaks the contract's rule "Visible label and accessible name always stay identical", and an exact <code>getByLabel('Title')</code> will miss it. Separately, the default substring match <code>getByLabel('Title')</code> also matches <strong>Subtitle</strong>, so the skill can hit an ambiguous or wrong field without anyone watching.</div>
+  <div class="finding-fix"><strong>Fix:</strong> Keep "(required)" outside the <code>&lt;label&gt;</code>, or wrap it in <code>aria-hidden="true"</code> and expose requiredness with <code>required</code>/<code>aria-required="true"</code>. State in the contract that the accessible name is exactly the bare label. Tell the skill and the tests to match labels exactly, and list Title/Subtitle as a known substring pair.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-high">high</span>
+    <h3 class="finding-title">Two buttons named "Cancel" can be in the DOM at once, with opposite effects.</h3>
+    <span class="finding-location">EXPERIENCE.md § Agent Label Contract, § Duplicate dialog; DESIGN.md § Duplicate dialog</span>
+  </header>
+  <div class="finding-note">While the Duplicate <code>alertdialog</code> is open over the New book panel, the panel's footer <strong>Cancel</strong> (discard everything, close the panel) and the dialog's <strong>Cancel</strong> (go back to the panel with fields intact) share one name. The contract only says to "resolve within the open dialog", which pushes scoping onto the skill. If the skill picks the wrong one, the book is silently discarded.</div>
+  <div class="finding-fix"><strong>Fix:</strong> Give the duplicate's dismiss button a unique name such as <strong>Don't add</strong> or <strong>Back to form</strong>, and add it to the contract. Also require the panel to be <code>inert</code> (native <code>showModal()</code> stacking) while the alertdialog is open, so only one set of buttons is exposed.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-high">high</span>
+    <h3 class="finding-title">Outcome text can be stale, and a save failure has no signal.</h3>
+    <span class="finding-location">EXPERIENCE.md § Accessibility Floor → Live regions, § State Patterns, Agent Label Contract → Outcome signals</span>
+  </header>
+  <div class="finding-note">"One polite <code>status</code> region per page" keeps "Added <em>X</em>." from the previous book. A live region does not re-announce identical text, for example the same validation alert after a retry, or "Added Dune." after Add anyway. No state is defined for a write that fails (storage quota or a database error), and the "no failure states anywhere" rule rules one out. An unattended skill can read the last book's "Added …" and report success. <em>Also raised by: Rubric · State coverage.</em></div>
+  <div class="finding-fix"><strong>Fix:</strong> Clear the <code>status</code> and <code>alert</code> regions when the panel opens and on every <strong>Add book</strong> press. Set the new text after a tick so repeated text is announced again. Add an outcome signal: <code>alert</code> "Not saved. bookvie couldn't write to this computer's storage." with the panel kept open. Calm wording, but it must exist.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-medium">medium</span>
+    <h3 class="finding-title">The "Search titles" check is ambiguous.</h3>
+    <span class="finding-location">EXPERIENCE.md § Flow 1 step 5, § Search field</span>
+  </header>
+  <div class="finding-note">"1 book matches" fails for titles that are substrings of others (Dune vs Dune Messiah) and after an <strong>Add anyway</strong> (2 matches). The skill cannot tell its new book apart using the count alone. <em>Also raised by: Edge cases.</em></div>
+  <div class="finding-fix"><strong>Fix:</strong> Tell the skill to confirm by the accessible name of a remaining spine button or list row ("<em>Title</em> by <em>Author</em>, not read yet"). State that filtered-out spines are removed from the accessibility tree (<code>hidden</code>/<code>display:none</code>), not only made invisible. Debounce the count announcement.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-medium">medium</span>
+    <h3 class="finding-title">The contract leaves out controls the skill or tests will meet.</h3>
+    <span class="finding-location">EXPERIENCE.md § Agent Label Contract</span>
+  </header>
+  <div class="finding-note">Missing entries: the panel's close "×" (name it <strong>Close</strong>, distinct from Cancel), the eight swatch buttons and the "From cover" chip (they need names such as "Sage" and an <code>aria-pressed</code> state), the edit-mode dialog name "Edit book" and <strong>Save changes</strong> (still [ASSUMPTION]), the exact Type option values (still [ASSUMPTION]), Pages accepting decimals (an <code>input type=number</code> without <code>step=1</code> accepts 12.5), and the Card notes search name. <em>Also raised by: Rubric · Inheritance discipline, Rubric · Component coverage.</em></div>
+  <div class="finding-fix"><strong>Fix:</strong> Add these rows and resolve the [ASSUMPTION]s before tests are written. Name the Card notes search "Search card notes" so "Search titles" only ever means the Catalog.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-medium">medium</span>
+    <h3 class="finding-title">"Search titles" is defined only as a placeholder.</h3>
+    <span class="finding-location">DESIGN.md § Search field; EXPERIENCE.md § Accessibility Floor → Names</span>
+  </header>
+  <div class="finding-note">DESIGN.md gives "Placeholder 'Search titles'" and no visible label. That violates EXPERIENCE.md's "Every control has a visible label". The visible hint disappears as soon as text is typed, and the placeholder is a fallback name source that <code>getByLabel</code> does not match. <em>Also raised by: Rubric · Inheritance discipline.</em></div>
+  <div class="finding-fix"><strong>Fix:</strong> Give the search field <code>aria-label="Search titles"</code> (or a visible or visually hidden <code>&lt;label&gt;</code>), keep the placeholder as decoration only, and list the name source in the contract.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-low">low</span>
+    <h3 class="finding-title">The spine-to-popover relationship isn't exposed.</h3>
+    
+  </header>
+  <div class="finding-fix"><strong>Fix:</strong> Spine buttons get <code>aria-haspopup="dialog"</code> and <code>aria-expanded</code>. Name the popover with <code>aria-labelledby</code> pointing at its title heading (EXPERIENCE.md § Spine, § Spine popover).</div>
+</article>
+<div class="reviewer-source" style="padding-top:14px">Keyboard and focus</div>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-high">high</span>
+    <h3 class="finding-title">The bookcase keyboard model for about 500 spines is only an [ASSUMPTION] and is underspecified.</h3>
+    <span class="finding-location">EXPERIENCE.md § Bookcase → Keyboard, Catalog scale, Highlight after add</span>
+  </header>
+  <div class="finding-note">Rows reflow with viewport width, so Up/Down has no stable meaning. These are all undefined: the container role (roving <code>tabindex</code> over buttons in a generic <code>div</code> is not a recognized composite), Home/End and PageUp/PageDown, position info ("12 of 500"), what happens when the focused spine is filtered out or the sort changes, and how focus "moves to the new spine" when that row is lazily unrendered.</div>
+  <div class="finding-fix"><strong>Fix:</strong> Decide the pattern and remove the [ASSUMPTION]. For example: container <code>role="list"</code> named "Bookcase, 54 books", spines as list items with buttons; one Tab stop; Left/Right step through spines; Up/Down move to the nearest spine in the visual row above or below; Home/End go to the row's ends and Ctrl+Home/End to the library's ends. If the focused spine disappears, focus moves to its nearest neighbor or to the search field. The target row is rendered before focus moves. Apply the same model to the Home slice.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-high">high</span>
+    <h3 class="finding-title">Focus has no defined destination when a dialog removes its own trigger.</h3>
+    <span class="finding-location">EXPERIENCE.md § Interaction Primitives → Esc, § Finish dialog, § Start dialog, § Confirm dialog</span>
+  </header>
+  <div class="finding-note">After <strong>Done</strong> in the Finish dialog, the page field and <strong>Update</strong> are gone (no Main book). When finishing starts from Book detail, the app navigates to Home. Start reading may navigate to Home (Flow 3), Delete book removes the current page, Restore reloads Home, and a dialog opened from the popover has no popover to return to. "Return focus to the opener" can't work in any of these cases, so focus drops to <code>&lt;body&gt;</code>.</div>
+  <div class="finding-fix"><strong>Fix:</strong> Add a focus-destination table. Suggested targets: Finish Done → <strong>Start reading</strong> for the suggested Up next, or the "No Main book." heading. Start confirmed → the new Main book's page field or heading. Delete → Catalog search or the neighboring spine. Restore → Home <code>h1</code>. Popover-launched dialog closed → the originating spine.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-medium">medium</span>
+    <h3 class="finding-title">The spine popover's focus model is undefined.</h3>
+    <span class="finding-location">EXPERIENCE.md § Spine popover; DESIGN.md § Spine popover</span>
+  </header>
+  <div class="finding-note">"Non-modal dialog" doesn't say where focus goes on open (the title, the primary action, or ×), whether Tab leaves the popover into the next page element or wraps, or what happens to an open popover when focus leaves it. The 500px popover anchored above a spine can also be clipped at the viewport edges, on the top shelf row, and under zoom. <em>Also raised by: Edge cases.</em></div>
+  <div class="finding-fix"><strong>Fix:</strong> On open, focus the first actionable control and give the dialog <code>aria-labelledby</code> pointing at the title. Tab past the last control closes the popover and continues after the spine. Close on focus-out. Add collision-aware placement (flip below, shift inward) with <code>max-width: calc(100vw - 32px)</code>.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-medium">medium</span>
+    <h3 class="finding-title">The "/" shortcut fails WCAG 2.1.4 (Character Key Shortcuts) as written.</h3>
+    <span class="finding-location">EXPERIENCE.md § Interaction Primitives</span>
+  </header>
+  <div class="finding-note">It is a single printable-character shortcut with no way to turn it off or remap it, so speech-input users who dictate "slash" are affected. "Ignored while typing in a field" also doesn't cover <code>select</code>, <code>contenteditable</code>, IME composition, modifier keys, or an open modal or popover, where it would move focus out of a trapped dialog.</div>
+  <div class="finding-fix"><strong>Fix:</strong> Add a "Keyboard shortcut: / focuses search" on/off setting (default on), or require a modifier. Ignore the key while any modal or popover is open, inside editable or select elements, during composition, and with any modifier pressed.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-medium">medium</span>
+    <h3 class="finding-title">There is no skip link and no landmark, heading, or page-title spec (WCAG 2.4.1, 2.4.2, 1.3.1).</h3>
+    <span class="finding-location">EXPERIENCE.md § Accessibility Floor</span>
+  </header>
+  <div class="finding-note">Every page puts 8 tab stops first (5 nav items plus 3 theme options). Single-page-app route changes don't announce the new page or move focus.</div>
+  <div class="finding-fix"><strong>Fix:</strong> Add a "Skip to content" link, <code>header</code>/<code>nav</code>/<code>main</code> landmarks, one <code>h1</code> per page ("Home", "Catalog", and so on), a <code>document.title</code> per route, and move focus to the <code>h1</code> (or announce it) on route change.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-low">low</span>
+    <h3 class="finding-title">A disabled control removes its explanation.</h3>
+    <span class="finding-location">EXPERIENCE.md § Book detail, § Pile</span>
+  </header>
+  <div class="finding-note">The 4th "Mark as Side read" is disabled with the hint "Up to 3 side reads.", but a natively disabled button is skipped by Tab, so keyboard and screen-reader users never meet the hint. Pile <strong>Previous</strong>/<strong>Next</strong> disabling at either end also drops focus.</div>
+  <div class="finding-fix"><strong>Fix:</strong> Use <code>aria-disabled="true"</code> with <code>aria-describedby</code> pointing at the hint. Keep Pile buttons focusable at the ends, or wrap around.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-low">low</span>
+    <h3 class="finding-title">The sticky panel footer can cover focused fields (WCAG 2.4.11 Focus Not Obscured).</h3>
+    
+  </header>
+  <div class="finding-fix"><strong>Fix:</strong> Add <code>scroll-padding-bottom</code> equal to the footer height in the New book panel (DESIGN.md § New book panel).</div>
+</article>
+<div class="reviewer-source" style="padding-top:14px">Screen reader semantics and live regions</div>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-medium">medium</span>
+    <h3 class="finding-title">Page-field and card-note errors are silent.</h3>
+    <span class="finding-location">EXPERIENCE.md § State Patterns → Validation error (Page field, Card note panel), § Page field</span>
+  </header>
+  <div class="finding-note">State Patterns says "Inline message, nothing saved, value kept", with no <code>aria-invalid</code>, no <code>aria-describedby</code>, and no announcement. That contradicts the Accessibility Floor ("One <code>alert</code> region for … validation failure"). "of M" is also not tied to the field.</div>
+  <div class="finding-fix"><strong>Fix:</strong> Apply the New book rules here: <code>aria-invalid</code>, a message linked with <code>aria-describedby</code>, and the message announced through the <code>alert</code> region. Link "of 330" to the field with <code>aria-describedby</code>.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-medium">medium</span>
+    <h3 class="finding-title">Pile navigation isn't announced.</h3>
+    <span class="finding-location">EXPERIENCE.md § Pile</span>
+  </header>
+  <div class="finding-note"><strong>Next</strong> changes the note while focus stays on the button, so a screen reader hears nothing. The order toggle and "N of M" have no semantics.</div>
+  <div class="finding-fix"><strong>Fix:</strong> Put the card in an <code>aria-live="polite"</code> region (or announce "Note 3 of 7, p.42: …"). Make Page order · Shuffled two <code>aria-pressed</code> buttons, or a radio group named "Order".</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-medium">medium</span>
+    <h3 class="finding-title">The rating and "Purpose fulfilled?" controls have no defined semantics, and the selected star is shown by color only.</h3>
+    <span class="finding-location">DESIGN.md § Finish dialog; EXPERIENCE.md § Finish dialog</span>
+  </header>
+  <div class="finding-note">"Five outline stars (sage when selected)" makes the selection a color-only state change (1.4.1). Skippable answers have no way to clear a choice. <em>Also raised by: Rubric · Component coverage.</em></div>
+  <div class="finding-fix"><strong>Fix:</strong> Make both radio groups ("Rating", "Purpose fulfilled?") with named options ("4 stars"). Show selected stars filled, not only recolored, and add a "No rating" option or a way to clear.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-low">low</span>
+    <h3 class="finding-title">The finish announcement races focus changes.</h3>
+    <span class="finding-location">EXPERIENCE.md § State Patterns → Finish moment</span>
+  </header>
+  <div class="finding-note">The dialog closing, focus moving, the card re-rendering, and the "Finished <em>X</em>. 25 of 54 finished." message all happen at once, and screen readers often drop polite messages during a focus change.</div>
+  <div class="finding-fix"><strong>Fix:</strong> Announce after focus has settled on the new target (see the focus-destination fix), or make the new focus target's name include "Finished <em>X</em>".</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-low">low</span>
+    <h3 class="finding-title">Some dynamic results are not announced.</h3>
+    <span class="finding-location">EXPERIENCE.md § Pace calculator, § Stats range picker, § Card notes list</span>
+  </header>
+  <div class="finding-note">The Pace calculator result changing as you type, numbers after a Stats range change, and the Card notes search count. Only the Catalog search count is announced.</div>
+  <div class="finding-fix"><strong>Fix:</strong> Use <code>&lt;output&gt;</code> or a polite region for the pace result and a debounced "N notes match". Stats can announce "2 books, 610 pages this month".</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-low">low</span>
+    <h3 class="finding-title">Toggle groups have no names.</h3>
+    <span class="finding-location">EXPERIENCE.md § Theme toggle, § Catalog view toggle</span>
+  </header>
+  <div class="finding-note">The theme and Catalog-view toggles are groups of <code>aria-pressed</code> buttons with no group label.</div>
+  <div class="finding-fix"><strong>Fix:</strong> Use <code>role="group"</code> with <code>aria-label="Theme"</code> / <code>"Catalog view"</code>. The glyphs are <code>aria-hidden</code> and the text labels stay visible.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-low">low</span>
+    <h3 class="finding-title">Spine color, a personal association by design, is never exposed, and the popover gives no current-color state.</h3>
+    <span class="finding-location">EXPERIENCE.md § Spine popover → Change color</span>
+  </header>
+  <div class="finding-fix"><strong>Fix:</strong> Show the current color in the popover ("Color: teal, from cover"), name the swatches, and announce "Color set to Teal."</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-low">low</span>
+    <h3 class="finding-title">Mini bars and the gauge need complete progressbar attributes.</h3>
+    <span class="finding-location">EXPERIENCE.md § Gauge, § Accessibility Floor → Progress</span>
+  </header>
+  <div class="finding-note">Each "Waiting for you" mini bar is a progressbar but has no name. The gauge omits <code>aria-valuemin="0"</code>.</div>
+  <div class="finding-fix"><strong>Fix:</strong> Use <code>aria-labelledby</code> pointing at the row title, <code>aria-valuetext="page 120 of 330, 36%"</code>, and an explicit <code>aria-valuemin</code>.</div>
+</article>
+<div class="reviewer-source" style="padding-top:14px">Color and contrast (computed)</div>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-medium">medium</span>
+    <h3 class="finding-title">The difference between read and unread spines has no contrast floor.</h3>
+    <span class="finding-location">DESIGN.md § Spine colors, label rule</span>
+  </header>
+  <div class="finding-note">Curated <strong>sage</strong> (2.92) and <strong>ochre</strong> (2.63) fall below 3:1 against the light <code>shelf-wall</code>. Dark <strong>plum</strong> is 2.78 against a neighboring unread fill. User-set and cover-derived colors are only nudged for <em>label</em> contrast, so a pale cover color in light theme, or a near-black one in dark theme, makes a read spine blend into the wall or look like an outlined unread spine. <em>Also raised by: Rubric · Token completeness, Edge cases.</em></div>
+  <div class="finding-fix"><strong>Fix:</strong> Add a second constraint to the nudge: at least 3:1 against <code>shelf-wall</code> in both themes. Because spine colors are the same in both themes, that means relative luminance between ≈0.142 and ≈0.242, a band where a white or ink label still reaches 4.5:1 near its ends. Alternatively, give every read spine a 1px darker or lighter edge.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-medium">medium</span>
+    <h3 class="finding-title">Spine markers fail 1.4.11 in two places.</h3>
+    <span class="finding-location">DESIGN.md § Colors, § Spine → Markers</span>
+  </header>
+  <div class="finding-note"><code>marker-waiting</code> sand is 2.75:1 on the light <code>spine-unread-fill</code>. On colored spines, which a re-read or a paused finished book will have, sky and sand drop to 1.1–2.3:1 against every curated color in both themes. <em>Also raised by: Rubric · Token completeness.</em></div>
+  <div class="finding-fix"><strong>Fix:</strong> Darken light-theme sand to about <code>#8C7B5C</code> (4.01 on fill, 3.43 on wall), and give each marker a 1.5px ring in <code>spine-unread-fill</code> or <code>page</code> so the dot keeps 3:1 on any spine color.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-medium">medium</span>
+    <h3 class="finding-title">Form-field boundaries are invisible.</h3>
+    <span class="finding-location">DESIGN.md § Page field, § New book panel, § Search field</span>
+  </header>
+  <div class="finding-note">The <code>line</code> border is 1.33:1 on <code>surface</code> and 1.26:1 on <code>surface-inset</code> (dark: 1.30 / 1.38). It is the only edge that marks the page field, search, all New book fields, the pace field, and the hex field, which fails 1.4.11.</div>
+  <div class="finding-fix"><strong>Fix:</strong> Add an <code>input-border</code> token at ≥ 3:1, for example <code>#8A8273</code> light (3.80 on surface) and <code>#767A6F</code> dark (3.53). Keep <code>line</code> for decorative hairlines only.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-medium">medium</span>
+    <h3 class="finding-title">The selected state of segmented controls is barely visible.</h3>
+    <span class="finding-location">DESIGN.md § Theme toggle, § Catalog view toggle</span>
+  </header>
+  <div class="finding-note">Theme, Catalog view, Purpose fulfilled, Stats presets, and Pile order all show selection with an <code>accent-soft</code> fill (1.22:1 vs <code>surface</code>, 1.29 dark) plus weight 600.</div>
+  <div class="finding-fix"><strong>Fix:</strong> Add a non-color indicator with ≥ 3:1 contrast: a 2px <code>accent</code> underline or border on the selected option, or a check glyph.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-medium">medium</span>
+    <h3 class="finding-title">Light-theme mini bars fail.</h3>
+    <span class="finding-location">DESIGN.md § Section pane</span>
+  </header>
+  <div class="finding-note"><code>accent-mid</code> on <code>accent-soft</code> is 2.11:1 (dark passes at 3.23). The proportion isn't shown elsewhere, because the row only shows "p.N". <em>Also raised by: Rubric · Token completeness.</em></div>
+  <div class="finding-fix"><strong>Fix:</strong> Use <code>accent</code> for the fill (4.48 on <code>accent-soft</code>), or add the percentage or "of M" as text.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-medium">medium</span>
+    <h3 class="finding-title">The spine focus ring has weak contrast against its surroundings.</h3>
+    <span class="finding-location">DESIGN.md § Focus ring, § Layout → spine-gap</span>
+  </header>
+  <div class="finding-note">A 2px ring at 2px offset fills the entire 4px spine gap, so its outer edge touches neighboring spines (accent vs curated colors: 1.01–1.73 light, 1.40–2.38 dark). In dark theme, its bottom edge lies over the walnut plank (<code>accent-dark</code> vs <code>birch-plank-dark</code> 2.70). The inner edge against the wall passes (4.55 / 7.27), so this is borderline, but it affects the app's main interaction.</div>
+  <div class="finding-fix"><strong>Fix:</strong> Use a two-tone ring for spines, like the highlight ring (<code>0 0 0 2px page, 0 0 0 4px accent</code>), or widen the gap to 6px. Check the plank edge in dark theme.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-low">low</span>
+    <h3 class="finding-title">The search-match highlight relies on a background that is barely visible.</h3>
+    <span class="finding-location">DESIGN.md § Card notes list</span>
+  </header>
+  <div class="finding-note"><code>accent-soft</code> vs <code>surface</code> is 1.22:1.</div>
+  <div class="finding-fix"><strong>Fix:</strong> Use <code>&lt;mark&gt;</code> with an underline or weight change in addition to the tint.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-low">low</span>
+    <h3 class="finding-title">The library meter track can't be seen.</h3>
+    <span class="finding-location">DESIGN.md § Library meter</span>
+  </header>
+  <div class="finding-note"><code>line</code> vs <code>shelf-wall</code> is 1.11:1, so the bar's full length, and therefore the proportion, is invisible. The text "X of Y finished" makes up for it.</div>
+  <div class="finding-fix"><strong>Fix:</strong> Use a darker track, or accept it as decorative and document that.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-low">low</span>
+    <h3 class="finding-title">The contrast table is missing pairs that are in use.</h3>
+    <span class="finding-location">DESIGN.md § Contrast</span>
+  </header>
+  <div class="finding-note">The placeholder text color, the star outline, the "×" close glyph against <code>surface</code>, and dark <code>ink-tertiary</code> on <code>accent-soft</code> (4.39, which fails if any hint ever sits in a selected option).</div>
+  <div class="finding-fix"><strong>Fix:</strong> Add these rows and set the placeholder and star outline to ≥ 4.5 and ≥ 3:1 respectively.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-low">low</span>
+    <h3 class="finding-title">Forced-colors / Windows High Contrast isn't addressed.</h3>
+    
+  </header>
+  <div class="finding-note">Read spine fills, Main book partial fills, gauge fills, and markers are backgrounds that forced-colors mode removes, so read and unread look the same.</div>
+  <div class="finding-fix"><strong>Fix:</strong> Add <code>@media (forced-colors: active)</code> rules: read spines get <code>CanvasText</code>/<code>Highlight</code> fills via <code>forced-color-adjust: none</code> on the fill element, and gauges get a border.</div>
+</article>
+<div class="reviewer-source" style="padding-top:14px">Motion</div>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-low">low</span>
+    <h3 class="finding-title">Reduced-motion coverage is incomplete.</h3>
+    <span class="finding-location">EXPERIENCE.md § Interaction Primitives → Motion, § Bookcase → Highlight after add</span>
+  </header>
+  <div class="finding-note">"Only two motions exist" ignores motion the spines imply elsewhere: the side panel and popover appearing, the smooth scroll to the new spine after an add, the gauge moving 57→64%, the shelf reflowing during search, and theme-switch transitions.</div>
+  <div class="finding-fix"><strong>Fix:</strong> State a global rule. Under <code>prefers-reduced-motion: reduce</code>, all transitions and animations are none and <code>scrollIntoView</code> uses <code>behavior: 'auto'</code>. Panels and popovers appear without sliding.</div>
+</article>
+<div class="reviewer-source" style="padding-top:14px">Zoom, reflow, and text</div>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-high">high</span>
+    <h3 class="finding-title">The 1024px no-reflow floor fails WCAG 1.4.10 (Reflow) at 200–400% zoom.</h3>
+    <span class="finding-location">EXPERIENCE.md § Foundation, § State Patterns → Narrow window; DESIGN.md § Layout</span>
+  </header>
+  <div class="finding-note">At 200% on a 1440px laptop, the CSS viewport is 720px. Every page, including text-only ones (Card notes, Backup, Stats, the New book form), then scrolls in two directions. The fixed 440px panel and 500px popover make it worse. The bookcase itself already reflows by row count, so the floor only hurts.</div>
+  <div class="finding-fix"><strong>Fix:</strong> Keep 1024px as the design target, not a hard floor. Below it, stack Home's two columns, let the panel go full width, cap the popover at <code>100vw - 32px</code>, and let the toolbar wrap. No phone <em>design</em> is needed, only a layout that doesn't break.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-low">low</span>
+    <h3 class="finding-title">Vertical spine labels don't hold up under text spacing.</h3>
+    <span class="finding-location">DESIGN.md § Layout → Spine sizing, § Typography</span>
+  </header>
+  <div class="finding-note">Spine heights are computed in px from 11px / 10.5px vertical text. User text-spacing overrides (1.4.12) or a minimum font-size setting will clip or overflow labels, and 10.5px vertical text is hard to read at any zoom. The full title in the name and the popover mitigates this. <em>Also raised by: Edge cases.</em></div>
+  <div class="finding-fix"><strong>Fix:</strong> Measure the rendered label to set height, and clip with an ellipsis instead of overflowing. Consider 12px minimum for spine labels. Make sure the popover is the documented way to read a title.</div>
+</article>
+    </div>
+  </details>
+</section>
+<section class="reviewer-section">
+  <details>
+    <summary>
+      <h2>Edge-case review</h2>
+      <span class="reviewer-source">review-edge-cases.md</span>
+    </summary>
+    <div class="dim-body">
+      <div class="dim-judgment">
+<p>The spines handle the happy path and the single-state cases well: empty library, 0 or many Waiting rows, no Measured pace, validation, duplicates, and reduced motion. They break down where states overlap. A Book can be finished and re-read, Up next and paused, a Side read and Main, and the spines give each surface a single status with no precedence rule. They also never say how a library full of already-read books gets finish dates. A developer would have to guess the data rules behind the shelf, Stats, and Measured pace, so the pair needs one more pass before epics.</p>
+<p>Severity reflects downstream impact: <strong>critical</strong> means the data model or a core metric is guessed; <strong>high</strong> means a core screen or flow behaves differently depending on who builds it; <strong>medium</strong> means a visible inconsistency or a small guess; <strong>low</strong> means polish.</p>
+<p>Counts: <strong>1 critical · 9 high · 18 medium · 7 low</strong></p>
+      </div>
+    </div>
+    <div class="findings-list">
+<div class="reviewer-source" style="padding-top:14px">Readings, finishing, re-reads</div>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-critical">critical</span>
+    <h3 class="finding-title">The spines never say how already-read Books get finished Readings with past dates.</h3>
+    <span class="finding-location">EXPERIENCE.md § Component Patterns → Book detail, Finish dialog; PRD FR-14, FR-16, Glossary "Measured pace"</span>
+  </header>
+  <div class="finding-note">Flow 1 ends with "24 of 73 finished", yet the only finish paths are "enter the last page" and "Mark finished", and both stamp today. Back-filling the paper diary would put every historical Book into this month's Stats. It would also give Measured pace a start date equal to its finish date, so 0 days, or invent a start date. Pace, the "~N days left" line, and the library calculator would all be wrong from day one.</div>
+  <div class="finding-fix"><strong>Fix:</strong> Add an "Add past reading" (or "Mark as read before") action on Book detail with optional start and finish dates. Say how undated past Readings count: excluded from Stats periods and from Measured pace, but included in the "X of Y finished" meter. Record this in prd-deltas.md.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-high">high</span>
+    <h3 class="finding-title">Book states overlap with no precedence rule.</h3>
+    <span class="finding-location">EXPERIENCE.md § Component Patterns → Spine, Spine popover; § Bookcase; DESIGN.md § Components → Spine</span>
+  </header>
+  <div class="finding-note">A Book can be finished and re-read as Main, finished and Up next, Up next with a paused Reading, a Side read and Up next, or a Side read with a paused Reading. The spine accessible name allows one status. The popover lists one primary action per state, and "Up next → Start reading" is wrong when the Up next has a paused Reading (it should be Resume). DESIGN draws one marker per spine. The re-read spine is "[ASSUMPTION] keeps its full color", but the Main-book rule says "outlined in its color, filled to %"; these contradict for a re-read Main book. <em>Also raised by: Rubric · State coverage.</em></div>
+  <div class="finding-fix"><strong>Fix:</strong> Add a state table to EXPERIENCE.md with orthogonal axes: read-ever (yes/no), Reading state (none, Main, paused), Up next (yes/no), Side read (yes/no). For each combination give the spine fill, the marker (one dot or two), the accessible-name status string (for example "finished, re-reading, 12%"), and the popover primary action.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-high">high</span>
+    <h3 class="finding-title">"Mark finished" on a Reading that isn't Main is undefined.</h3>
+    <span class="finding-location">EXPERIENCE.md § Component Patterns → Finish dialog, Book detail</span>
+  </header>
+  <div class="finding-note">Book detail offers Mark finished in some states, and Done always goes to Home, plays the fill on the slice, and switches the Main book card to no-Main-book. That's wrong when the finished Reading was paused, Up next, or never started. Book detail doesn't say which states show Mark finished. Finishing an Up-next or Waiting Book doesn't say whether it leaves Up next or Waiting. Finishing an unread Book with no Reading doesn't say whether a Reading is created, or with which start date.</div>
+  <div class="finding-fix"><strong>Fix:</strong> List the states where Mark finished appears. For a Reading that isn't Main: stay on Book detail, play no fill (or play it only if the spine is visible), leave the Main book alone, and remove the Book from Up next and Waiting. State what an unread Book finish creates.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-high">high</span>
+    <h3 class="finding-title">Editing the page count below the current page is undefined.</h3>
+    <span class="finding-location">EXPERIENCE.md § Component Patterns → New book panel edit mode, Page field, Card note panel; PRD FR-10, FR-17</span>
+  </header>
+  <div class="finding-note">If a Reading sits at p.300 and Pages is edited to 250, the spines don't say whether the gauge reads 120%, whether the page clamps, or whether the Finish dialog opens. Card notes on pp.260–270 fall out of range, and the spines don't say whether they are refused, flagged, or kept. Stats use "all of a Reading's pages", so finished Readings would change retroactively.</div>
+  <div class="finding-fix"><strong>Fix:</strong> On Save changes, validate Pages ≥ the highest current page of any active or paused Reading and ≥ the highest Card note page, with an inline message. Alternatively, clamp the page and say so. Decide whether finished Readings store their own page count for Stats.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-medium">medium</span>
+    <h3 class="finding-title">Cancelling the Finish dialog leaves a loop.</h3>
+    <span class="finding-location">EXPERIENCE.md § Component Patterns → Page field, Re-entry line</span>
+  </header>
+  <div class="finding-note">The Reading sits at the last page, so the gauge reads 100%, the Main spine looks fully filled (like a finished Book), and "~0 days left" shows. Pressing Update again with the same value either reopens the dialog or does nothing; the spines say neither.</div>
+  <div class="finding-fix"><strong>Fix:</strong> Re-submitting the last page reopens the Finish dialog. Hide "~N days left" when 0 pages are left. Keep the Main-book marker so the spine stays distinguishable from a finished one.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-medium">medium</span>
+    <h3 class="finding-title">The finish moment for a re-read has no defined effect.</h3>
+    <span class="finding-location">EXPERIENCE.md § State Patterns → Finish moment; § Component Patterns → Spine popover</span>
+  </header>
+  <div class="finding-note">The spine is already full color under the re-read assumption, the meter count doesn't change, and the live region still says "25 of 54 finished". Popover: a finished Book has "no primary action" and no "Start reading" link, so a re-read can start only from Book detail; the spines don't say whether that's intended.</div>
+  <div class="finding-fix"><strong>Fix:</strong> State that a re-read plays only the highlight ring (no fill), and that the line reads "Finished <em>X</em> again." or stays the same. Decide whether the popover offers "Read again" as a link.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-low">low</span>
+    <h3 class="finding-title">For a 1-page Book, the gauge ticks "0 · half · total" read "0 · 0.5 · 1".</h3>
+    <span class="finding-location">DESIGN.md § Components → Gauge</span>
+  </header>
+  <div class="finding-fix"><strong>Fix:</strong> Round the half tick, or drop it when Pages &lt; 4.</div>
+</article>
+<div class="reviewer-source" style="padding-top:14px">Up next, Waiting for you, Side reads</div>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-high">high</span>
+    <h3 class="finding-title">It's unclear whether a paused Up next Book also appears in Waiting for you.</h3>
+    <span class="finding-location">EXPERIENCE.md § Component Patterns → Section pane; PRD FR-7, Glossary</span>
+  </header>
+  <div class="finding-note">EXPERIENCE says Waiting lists "every paused Reading". FR-7 says a displaced Up next "moves to Waiting for you", which implies it wasn't there while Up next. Flow 3 puts the paused <em>Left Hand</em> in Up next only. If Waiting does include it, the Book appears twice on Home with two markers.</div>
+  <div class="finding-fix"><strong>Fix:</strong> Define Waiting for you as paused Readings excluding the Up next Book, and use the same definition for the "(N)" count, the spine marker, and the Library pace scope.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-high">high</span>
+    <h3 class="finding-title">Starting a Book when an Up next exists displaces that Up next silently.</h3>
+    <span class="finding-location">EXPERIENCE.md § Component Patterns → Start dialog; Flow 3 step 6</span>
+  </header>
+  <div class="finding-note">Flow 3 sends the previous Up next "back to the catalog", but the Start dialog's trade-off line names only the paused Main book. That breaks the PRD's "every switch a deliberate, visible trade-off".</div>
+  <div class="finding-fix"><strong>Fix:</strong> Add a second trade-off line when an Up next exists and isn't the Book being started: "<em>Z</em> leaves Up next." (or "<em>Z</em> moves to Waiting for you.").</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-medium">medium</span>
+    <h3 class="finding-title">Set as Up next exists only on unread Books in the popover.</h3>
+    <span class="finding-location">EXPERIENCE.md § Component Patterns → Spine popover, Book detail; PRD FR-7</span>
+  </header>
+  <div class="finding-note">Paused Books get Resume, finished Books get nothing, and Book detail has no Set as Up next. So FR-7 ("set one Book as Up next", "It can be unread or paused") can't be done for a paused Book, and a planned re-read can't be queued.</div>
+  <div class="finding-fix"><strong>Fix:</strong> Add Set as Up next to Book detail for any Book that isn't Main and isn't already Up next. Optionally add it as a link in the paused popover.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-medium">medium</span>
+    <h3 class="finding-title">Side-read promotion conflicts with other states.</h3>
+    <span class="finding-location">EXPERIENCE.md § Component Patterns → Start dialog, Section pane; PRD FR-8</span>
+  </header>
+  <div class="finding-note">Promoting a Side read that already has a paused Reading would show both Resume (keep the page) and the required "Which page?" field. Starting a Side read from the Catalog popover or Book detail (not from On the side) doesn't say whether "Which page?" appears. After promotion, nothing says whether the Side read marker clears and frees a slot. A Side read that gets finished doesn't say whether it stays in On the side. "Which page?" = the last page doesn't say whether it finishes at once.</div>
+  <div class="finding-fix"><strong>Fix:</strong> "Which page?" appears whenever a Side-read Book is started by any route, prefilled with the paused page if one exists. Promotion and finishing both clear the Side read marker. The last page goes straight to the Finish dialog.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-medium">medium</span>
+    <h3 class="finding-title">Deleting a Book in a special state is underspecified.</h3>
+    <span class="finding-location">EXPERIENCE.md § Component Patterns → Confirm dialog</span>
+  </header>
+  <div class="finding-note">The Confirm copy doesn't mention that the Book is the Main book, Up next, or waiting. Deleting Up next doesn't say whether Up next stays empty or gets a suggestion from Waiting. Deleting from Book detail doesn't say where the user lands. A pending "Finished <em>X</em>." header line for a deleted Book has no rule. <em>Also raised by: Rubric · State coverage.</em></div>
+  <div class="finding-fix"><strong>Fix:</strong> Add the state to the Confirm copy ("Delete <em>X</em>? It is your Main book. Its readings and card notes are deleted too."). After deletion, go to Catalog and leave the vacated role empty (no auto-promotion, consistent with "nothing starts automatically").</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-medium">medium</span>
+    <h3 class="finding-title">Waiting for you with 20+ rows pushes the bookcase slice far below the fold, because the grid has no cap and the slice sits underneath.</h3>
+    <span class="finding-location">EXPERIENCE.md § State Patterns → Waiting for you: many, Finish moment; DESIGN.md § Layout → Home</span>
+  </header>
+  <div class="finding-note">The finish moment then plays off-screen and is lost forever ("never replays").</div>
+  <div class="finding-fix"><strong>Fix:</strong> Scroll the finished spine into view before playing the fill, or play it only once the spine is in the viewport. Optionally cap visible Waiting rows with "Show all (N)" without dropping the count.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-low">low</span>
+    <h3 class="finding-title">Pause has no confirmation and no defined effect on an existing Up next.</h3>
+    <span class="finding-location">EXPERIENCE.md § Component Patterns → Book detail</span>
+  </header>
+  <div class="finding-note">Pausing makes the Main book Up next, which displaces the current one, with no trade-off shown. <em>Also raised by: Rubric · Flow coverage.</em></div>
+  <div class="finding-fix"><strong>Fix:</strong> Show the same displacement line in a small confirm, or state that Pause moves the old Up next to Waiting or the catalog silently.</div>
+</article>
+<div class="reviewer-source" style="padding-top:14px">Home slice and bookcase scale</div>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-high">high</span>
+    <h3 class="finding-title">The slice rule doesn't include the Main book's row.</h3>
+    <span class="finding-location">EXPERIENCE.md § Bookcase → Home slice vs § Component Patterns → Page field, Flow 2 step 4</span>
+  </header>
+  <div class="finding-note">The rule is "row with Up next, then rows with recent finishes", but Flow 2 and the Page field rule say the Main book spine fill updates on the slice. With 500 Books, the Main book is usually on another row.</div>
+  <div class="finding-fix"><strong>Fix:</strong> Change the slice priority to the Main book row first, then the Up next row, then the most recent finishes, up to 3 rows.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-medium">medium</span>
+    <h3 class="finding-title">Rows depend on viewport width, so the slice changes as the window is resized.</h3>
+    <span class="finding-location">EXPERIENCE.md § Bookcase → Ordering, Home slice; Open Question 7</span>
+  </header>
+  <div class="finding-note">"Catalog sort order" for the slice isn't tied to a stored sort: the spines don't say whether it is the last sort chosen on Catalog or always the default.</div>
+  <div class="finding-fix"><strong>Fix:</strong> The slice and the Catalog share one remembered sort. The slice recomputes on resize. State this.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-medium">medium</span>
+    <h3 class="finding-title">The rules for long and non-Latin titles are incomplete.</h3>
+    <span class="finding-location">DESIGN.md § Layout → Spine sizing, § Typography; EXPERIENCE.md § Component Patterns → Spine</span>
+  </header>
+  <div class="finding-note">Two-line spine labels don't say how overflow ends (ellipsis or hard clip). <code>writing-mode: vertical-rl</code> sets CJK upright by default, which contradicts "spines rotate any script identically". No truncation rule exists for the 34px Main-book title, popover subtitles, or Waiting rows in a 320px column. A spine's accessible name with 8 authors isn't specified. <em>Also raised by: Accessibility.</em></div>
+  <div class="finding-fix"><strong>Fix:</strong> Specify <code>text-orientation: sideways</code> (or accept upright CJK explicitly) and use an ellipsis on line 2. Clamp the Main title to 3 lines and pane titles to 2 lines, with the full text in a <code>title</code> attribute or the accessible name. Name the spine with the first author plus "and N others".</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-medium">medium</span>
+    <h3 class="finding-title">"Sort by author" is undefined for multiple authors and name order.</h3>
+    <span class="finding-location">EXPERIENCE.md § Bookcase → Ordering; Agent Label Contract → Author(s)</span>
+  </header>
+  <div class="finding-note">Authors are typed as "Ursula K. Le Guin" in one semicolon-separated field, so it's unclear whether the sort uses the first author's first or last word, how it handles diacritics and non-Latin scripts, and what the tie-breaker is.</div>
+  <div class="finding-fix"><strong>Fix:</strong> Sort by the first listed author string with locale-aware <code>Intl.Collator</code>, then by title. State that last-name sort is out of scope, or add a "Sort as" field.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-low">low</span>
+    <h3 class="finding-title">With ~500 Books, lazily rendered rows mean browser find (Cmd+F) can't reach off-screen spines.</h3>
+    <span class="finding-location">EXPERIENCE.md § Bookcase → Catalog scale; DESIGN.md § Components → Spine popover</span>
+  </header>
+  <div class="finding-note">The List view has no paging and no clickable column sort. The popover's "anchored above" placement has no flip rule for top-row or edge spines. <em>Also raised by: Accessibility.</em></div>
+  <div class="finding-fix"><strong>Fix:</strong> Accept it, or render all rows as lightweight DOM (500 buttons is cheap). Add a flip/shift rule for the popover.</div>
+</article>
+<div class="reviewer-source" style="padding-top:14px">Measured pace, "days left", relative times</div>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-high">high</span>
+    <h3 class="finding-title">Measured pace can divide by zero or produce extreme values.</h3>
+    <span class="finding-location">EXPERIENCE.md § Component Patterns → Re-entry line, Pace calculator; PRD Glossary "Measured pace", FR-15</span>
+  </header>
+  <div class="finding-note">A Reading started and finished the same day gives 0 days. Pace below 1 page/day gives "~1,240 days left". The calculator prefill doesn't say whether it is rounded or shown as 0.37. "About N months" has no rule for under 1 month or over several years. The Library scope with 0 pages left has no result rule.</div>
+  <div class="finding-fix"><strong>Fix:</strong> Count days inclusively (minimum 1). Prefill with one decimal. Format results as days under 60, months under 24, otherwise years. For 0 pages left show "Nothing left to read." or hide the result. Cap or round "~N days left" to weeks or months beyond 60 days.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-medium">medium</span>
+    <h3 class="finding-title">"Last updated" baseline and clock rules are missing.</h3>
+    <span class="finding-location">EXPERIENCE.md § Component Patterns → Re-entry line; prd-deltas #18</span>
+  </header>
+  <div class="finding-note">It isn't stated whether resuming a paused Reading or a Side-read promotion resets the timestamp; if not, a book resumed after 60 days greets the user with "Last updated 60 days ago", which reads as reproach. Calendar days vs 24-hour periods isn't specified. A timestamp in the future (clock moved back, timezone change) would give "-1 days ago". Multi-year spans have no format.</div>
+  <div class="finding-fix"><strong>Fix:</strong> Start and resume set the timestamp. Compute local calendar days and clamp negatives to "today". Show "over a year ago" beyond 365 days. Apply the same rules to "Last export".</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-low">low</span>
+    <h3 class="finding-title">The Home header date and every relative time go stale when the tab stays open past midnight.</h3>
+    <span class="finding-location">EXPERIENCE.md § State Patterns; DESIGN.md § Layout → Home</span>
+  </header>
+  <div class="finding-fix"><strong>Fix:</strong> Recompute on window focus or visibility change.</div>
+</article>
+<div class="reviewer-source" style="padding-top:14px">Spine color</div>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-medium">medium</span>
+    <h3 class="finding-title">"From cover" vs automatic is ambiguous.</h3>
+    <span class="finding-location">EXPERIENCE.md § Component Patterns → Spine popover; Agent Label Contract → Spine color; DESIGN.md § Spine colors</span>
+  </header>
+  <div class="finding-note">The Spine color field is "<code>#RRGGBB</code> or empty (empty = automatic)". Choosing the "From cover" chip could store the hex (frozen) or clear the field (follows cover changes). If a cover is replaced later, it isn't clear whether an automatic color re-derives, and a user can't tell a frozen color from an automatic one. The popover has no "Automatic" option for cover-less Books once a swatch is picked. An invalid hex typed by the agent has no validation message. <em>Also raised by: Rubric · Token completeness.</em></div>
+  <div class="finding-fix"><strong>Fix:</strong> "From cover" means empty (automatic, re-derived when the cover changes); add an "Automatic" choice when there's no cover. Make invalid hex a validation error with the message "Spine color must be #RRGGBB or empty."</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-medium">medium</span>
+    <h3 class="finding-title">A cover-derived color can disappear against the shelf.</h3>
+    <span class="finding-location">DESIGN.md § Spine colors, § Contrast</span>
+  </header>
+  <div class="finding-note">The label rule guarantees text contrast on the spine, but nothing guarantees spine-vs-<code>shelf-wall</code> or plank contrast. A cream or birch-colored cover makes a read spine look like an unread one or vanish, in light theme especially; the same applies to a near-black spine on the dark wall. <em>Also raised by: Rubric · Token completeness, Accessibility.</em></div>
+  <div class="finding-fix"><strong>Fix:</strong> Require read-spine fill ≥ 3:1 against <code>shelf-wall</code> in both themes, nudging lightness as the label rule does, or add a 1px <code>spine-unread-outline</code>-weight edge to every read spine.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-low">low</span>
+    <h3 class="finding-title">Curated-color assignment for cover-less Books is "stable per Book (e.g. from id)", but after a restore, ids could change and so would colors.</h3>
+    <span class="finding-location">DESIGN.md § Spine colors [ASSUMPTION]</span>
+  </header>
+  <div class="finding-note"><em>Also raised by: Rubric · Token completeness.</em></div>
+  <div class="finding-fix"><strong>Fix:</strong> Persist the resolved automatic color, or require ids to survive export and restore.</div>
+</article>
+<div class="reviewer-source" style="padding-top:14px">Card notes</div>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-medium">medium</span>
+    <h3 class="finding-title">The page-range parsing rules are incomplete.</h3>
+    <span class="finding-location">EXPERIENCE.md § Component Patterns → Card note panel; Flow 6 failure path</span>
+  </header>
+  <div class="finding-note">Reversed ranges (45–42), equal ranges (42–42), spaced ranges ("42 – 45", "42 - 45"), a "p." prefix, and multiple ranges aren't specified. Flow 6 says the range minimum is 1 but the Page field allows 0, and the Card note panel prefills the current page, so at p.0 it prefills an invalid "0". The panel from Book detail on an unread Book has no current page to prefill.</div>
+  <div class="finding-fix"><strong>Fix:</strong> Trim whitespace and accept "p."/"pp." prefixes. Swap reversed ranges silently (or refuse them with a message) and store 42–42 as 42. The valid range is 1..Pages. Prefill with max(current page, 1), or leave it empty when there's no Reading.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-medium">medium</span>
+    <h3 class="finding-title">Pile edge cases are undefined.</h3>
+    <span class="finding-location">EXPERIENCE.md § Component Patterns → Pile</span>
+  </header>
+  <div class="finding-note">It isn't clear whether "N of M" and "jump" follow the shuffled order or page order. Opening a search result may or may not reset Shuffled to Page order. Previous on 1 and Next on M could wrap or disable. A pile of 1, and editing or deleting a note while the pile is open, have no rules. An all-Books search result opens "its Book's pile", but the Esc return target isn't stated.</div>
+  <div class="finding-fix"><strong>Fix:</strong> Index follows the current order. Opening a result opens in Page order. Previous and Next are disabled at the ends (no wrap). Edit and delete are allowed in the pile, and after a delete it moves to the next note. Esc returns to the list scroll position, with the last viewed note focused.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-low">low</span>
+    <h3 class="finding-title">"See card notes · 0" when a Book has no notes, and the button's accessible name with the count, aren't specified.</h3>
+    <span class="finding-location">EXPERIENCE.md § Component Patterns → Main book card</span>
+  </header>
+  <div class="finding-fix"><strong>Fix:</strong> Show "See card notes" without a count at 0, and name it "See card notes, 7 notes".</div>
+</article>
+<div class="reviewer-source" style="padding-top:14px">Stats</div>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-medium">medium</span>
+    <h3 class="finding-title">Custom range end before start, future ranges, partial months (15 Mar–10 Apr), and "All time" over many years (120+ monthly bars) are undefined.</h3>
+    <span class="finding-location">EXPERIENCE.md § Component Patterns → Stats range picker, Monthly bars</span>
+  </header>
+  <div class="finding-note">The start of "All time" isn't stated (first finish or first Book added). Whether a finish counts by local date or UTC timestamp isn't stated either. <em>Also raised by: Rubric · State coverage.</em></div>
+  <div class="finding-fix"><strong>Fix:</strong> Swap reversed custom dates, or disable the end date before the start. Bar partial months by the dates in range. For ranges over 24 months, show one bar per year. All time starts at the first finished Reading. Store the finish as a local date.</div>
+</article>
+<div class="reviewer-source" style="padding-top:14px">Duplicate warning and agent contract</div>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-high">high</span>
+    <h3 class="finding-title">Duplicate matching and the agent's confirmation step are fragile.</h3>
+    <span class="finding-location">EXPERIENCE.md § Component Patterns → Duplicate dialog; Agent Label Contract outcome signals; PRD FR-3</span>
+  </header>
+  <div class="finding-note">Author comparison rules aren't stated (FR-3 normalizes titles only). Semicolon splitting, case, and "Le Guin, Ursula" vs "Ursula Le Guin" are unspecified. ISBN-10 vs ISBN-13 of the same edition don't match. The dialog names "the existing Book" (singular) when there may be several matches. It isn't stated whether Save changes in edit mode runs the check. After the skill chooses <strong>Add anyway</strong>, or adds "Dune" when "Dune Messiah" exists, its documented check "1 book matches" fails, because search is substring-based. <em>Also raised by: Accessibility.</em></div>
+  <div class="finding-fix"><strong>Fix:</strong> Normalize authors as titles are normalized (case, whitespace, per semicolon item). Optionally convert ISBN-10 to ISBN-13 before comparing. Name up to 3 matches plus "and N more". Run the check on edit only when title, author, or ISBN changed. Change the agent's success signal to the <code>status</code> text "Added <em>Title</em>." plus "a row whose title equals <em>Title</em>" rather than a count of 1.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-medium">medium</span>
+    <h3 class="finding-title">Field validation beyond "required" has no messages.</h3>
+    <span class="finding-location">EXPERIENCE.md § Agent Label Contract; § State Patterns → Validation error</span>
+  </header>
+  <div class="finding-note">Pages 0 or 1.5, Edition 0, Year 99999, ISBN with letters, and a non-image or 30 MB Cover file. The Type select has no placeholder rule, so "required" can never fail if Paperback is preselected. These are outcomes the unattended skill must read. <em>Also raised by: Rubric · State coverage.</em></div>
+  <div class="finding-fix"><strong>Fix:</strong> Add a validation table with each rule and its exact message. Give the Type select an empty first option. Downscale covers on upload (for example, a long edge of 1200px) and refuse non-images with a message.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-low">low</span>
+    <h3 class="finding-title">Edit mode reuses the New book panel, but the side panel is "anchored over the Catalog" while Edit opens from Book detail.</h3>
+    <span class="finding-location">EXPERIENCE.md § Component Patterns → New book panel; DESIGN.md § Layout → Side panel</span>
+  </header>
+  <div class="finding-note">Post-save behavior (live region text, highlight, where focus goes) is defined only for Add.</div>
+  <div class="finding-fix"><strong>Fix:</strong> The panel opens over the current page. On Save changes: status "Saved <em>Title</em>.", stay on Book detail, focus returns to Edit.</div>
+</article>
+<div class="reviewer-source" style="padding-top:14px">Backup, restore, concurrency</div>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-high">high</span>
+    <h3 class="finding-title">Two tabs, and the agent's browser, have no rules.</h3>
+    <span class="finding-location">EXPERIENCE.md § Foundation → Local-first, Users; Flow 1</span>
+  </header>
+  <div class="finding-note">With local browser storage, two open tabs each hold stale state, and the last write wins (a lost page update or card note). More seriously, the cataloging skill drives a browser through Playwright, which by default uses its own profile. Unless the skill uses the user's profile, it writes to a separate local store, and Flow 1's climax ("Oleg comes back… 19 new spines") never happens.</div>
+  <div class="finding-fix"><strong>Fix:</strong> State the expectation for architecture: one shared store, with a cross-tab change listener such as a <code>storage</code> event or BroadcastChannel that reloads state, or a "bookvie is open in another tab" notice. Add to Flow 1 that the skill must run in the user's browser profile, or against the same local origin and store. Flag this in prd-deltas.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-medium">medium</span>
+    <h3 class="finding-title">Restore failure modes collapse into one message.</h3>
+    <span class="finding-location">EXPERIENCE.md § State Patterns → Restore; prd-deltas #19</span>
+  </header>
+  <div class="finding-note">An older-version export (needs migration), a newer-version export, a truncated or corrupt file, and a valid bookvie file with broken references all have no rule. "Restore done: Home reloads" doesn't say whether the app navigates away from Backup. It isn't stated whether "Last export" after a restore comes from the file or stays local ("No export yet" on the new laptop would be misleading). Theme and Catalog view preferences aren't stated as included or excluded. <em>Also raised by: Rubric · State coverage.</em></div>
+  <div class="finding-fix"><strong>Fix:</strong> Accept older versions through migration. Refuse newer versions with "This export is from a newer bookvie." Refuse corrupt files with "This file is damaged. Nothing was changed." Validate everything before replacing anything. After a restore, navigate to Home. Keep "Last export" local. Preferences are not restored.</div>
+</article>
+<article class="finding">
+  <header>
+    <span class="badge badge-sev-medium">medium</span>
+    <h3 class="finding-title">Export size and duration aren't specified.</h3>
+    <span class="finding-location">EXPERIENCE.md § Component Patterns → Backup page; memlog "no loading state"</span>
+  </header>
+  <div class="finding-note">500 covers at phone-photo size could make a single file of hundreds of MB. "No loading state, deliberate" doesn't hold for exporting or restoring that much data. "Last export: today" is set on click even if the download is cancelled or blocked, which shows false safety. <em>Also raised by: Rubric · Flow coverage.</em></div>
+  <div class="finding-fix"><strong>Fix:</strong> Downscale covers on upload. Show a busy state ("Exporting…", button disabled) for operations over about 300ms. Set "Last export" only after the file has been generated and handed to the download. Note that the browser can't confirm the save.</div>
+</article>
+    </div>
+  </details>
+</section>
+
+    <div class="mechanical">
+      <h3>Mechanical notes</h3>
+      <ul>
+        <li>Token references: a script check found 0 unresolved <code>{path}</code> references in DESIGN; dark twins appear only in frontmatter and the Colors hex columns.</li>
+        <li>Component names: all 32 are identical across DESIGN §Components, DESIGN frontmatter keys and EXPERIENCE §Component Patterns.</li>
+        <li>Frontmatter: both spines are still <code>status: draft</code>; EXPERIENCE <code>sources</code> and <code>design</code> links resolve.</li>
+        <li>Mermaid: none.</li>
+        <li>Memlog is stale: it says 27 [ASSUMPTION]s, the spines now carry about 31. Update at triage.</li>
+        <li>The spines-win statement appears in both preambles (harmless; expected once).</li>
+        <li>Card note page-range copy "between 1 and 330" vs page field "between 0 and 330" is intentional but marked [ASSUMPTION copy]; confirm.</li>
+        <li>Day types, the Reading calendar and the Calendar screen are correctly absent from both spines.</li>
+        <li>Contrast values in the accessibility review were recomputed from DESIGN frontmatter hex; every text pair DESIGN claims reproduces.</li>
+        <li>Load-bearing [ASSUMPTION]s: agent contract trio, Pause placement (OQ3), Book detail layout (OQ1), stored vs derived spine colour, Home slice rule, re-read colour. The rest (default theme, default sort, Stats range, highlight fade, "No export yet") can be confirmed in a batch.</li>
+      </ul>
+    </div>
+
+    <footer class="report-footer">
+      <div class="meta">
+        <span>Rubric: _bmad-output/planning-artifacts/ux-designs/ux-bookvie-2026-10-28/review-rubric.md</span>
+        <span>Reviewers: review-accessibility.md, review-edge-cases.md</span>
+        <span>Generated: 2026-10-28T22:27:29+0100</span>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>

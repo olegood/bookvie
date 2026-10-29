@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>bookvie direction: Birch Morning</title>
+<style>
+/*
+  DIRECTION B — BIRCH MORNING
+  Register: bright Nordic morning, a tidy pale-birch bookcase. Light, flat and airy, with almost no texture.
+  Humanist sans for the UI and a serif only for book titles. Medium density, with a left rail for navigation.
+
+  Palette
+  --bg          #F6F4EF  page (warm off-white)
+  --surface     #FFFFFF  cards
+  --line        #E4DFD5  hairlines / borders
+  --ink         #2B2E2A  primary text
+  --ink-2       #6B6F68  secondary text
+  --ink-3       #9A9D95  tertiary text
+  --sage        #5F7A64  primary action / progress
+  --sage-soft   #E3EBE2  sage tint (selected-ish surfaces, gauge track)
+  --sky         #6E8FA8  info accent (Up next)
+  --birch       #E9DCC3  shelf plank face
+  --birch-edge  #D5C3A2  plank edge
+  --wall        #EFEAE0  shelf back wall
+  --outline     #CFC8BA  unread spine outline
+  Unread spines: white "line drawing" spines with an outline and faint title, like a colouring book.
+  Read spines: filled with the book's colour, slightly softened (saturate .85).
+  The Main book fills its spine from the bottom up to its % read. No red UI state anywhere.
+*/
+:root{--bg:#F6F4EF;--surface:#FFFFFF;--line:#E4DFD5;--ink:#2B2E2A;--ink-2:#6B6F68;--ink-3:#9A9D95;--sage:#5F7A64;--sage-soft:#E3EBE2;--sky:#6E8FA8;--birch:#E9DCC3;--birch-edge:#D5C3A2;--wall:#EFEAE0;--outline:#CFC8BA}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#E9E6DF;font-family:system-ui,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;color:var(--ink);padding:32px 0 60px}
+.serif{font-family:ui-serif,Georgia,"Iowan Old Style",serif}
+.rationale{width:1280px;margin:0 auto 20px;color:#4A4D47;font-size:15px;line-height:1.55}
+.rationale b{display:block;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--sage);margin-bottom:6px}
+.frame{width:1280px;margin:0 auto;border-radius:10px;overflow:hidden;box-shadow:0 24px 60px rgba(40,40,30,.18);border:1px solid #D9D4CA;background:var(--bg)}
+.chrome{height:38px;background:#ECE9E3;border-bottom:1px solid #DDD8CE;display:flex;align-items:center;gap:8px;padding:0 14px}
+.chrome i{width:12px;height:12px;border-radius:50%;background:#D2CDC4;display:inline-block}
+.chrome .url{margin-left:18px;flex:0 0 420px;background:#fff;border:1px solid #E0DBD2;border-radius:6px;height:24px;font-size:12px;color:#8a8d86;display:flex;align-items:center;padding:0 10px}
+.app{display:grid;grid-template-columns:188px 1fr}
+.rail{border-right:1px solid var(--line);padding:26px 18px;min-height:100%;background:#F9F8F4}
+.logo{font-size:21px;font-weight:600;letter-spacing:-.01em;margin:0 10px 30px}
+.logo span{display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--sage);margin-left:3px}
+.rail a{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;font-size:14.5px;color:var(--ink-2);text-decoration:none;margin-bottom:2px}
+.rail a b{width:16px;height:16px;border-radius:4px;border:1.5px solid currentColor;opacity:.55;flex:none}
+.rail a.on{background:var(--sage-soft);color:var(--ink)}
+.rail a.on b{background:var(--sage);border-color:var(--sage);opacity:1}
+.rail .foot{margin-top:40px;font-size:12px;color:var(--ink-3);padding:0 10px;line-height:1.5}
+main{padding:28px 36px 30px}
+.top{display:flex;align-items:baseline;margin-bottom:20px}
+.top h1{font-size:15px;font-weight:500;color:var(--ink-2)}
+.top h1 strong{color:var(--ink);font-weight:600}
+.grid{display:grid;grid-template-columns:1fr 300px;gap:24px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px}
+.mainbook{display:grid;grid-template-columns:200px 1fr;gap:34px;padding:28px 32px}
+/* CSS cover: The Left Hand of Darkness (flat, graphic) */
+.cover{width:200px;height:300px;border-radius:4px;position:relative;overflow:hidden;background:#E8EEF1;box-shadow:0 1px 0 #d6dde1,0 14px 30px rgba(60,80,100,.18)}
+.cover .band{position:absolute;left:0;right:0;top:0;height:150px;background:#5E7FA3}
+.cover .circ{position:absolute;left:62px;top:84px;width:76px;height:76px;border-radius:50%;background:#F4F1EA}
+.cover .half{position:absolute;left:62px;top:84px;width:38px;height:76px;border-radius:38px 0 0 38px;background:#2F4A66}
+.cover .t{position:absolute;left:18px;right:18px;top:186px;font-family:ui-serif,Georgia,serif;font-size:21px;line-height:1.1;color:#22313F}
+.cover .a{position:absolute;left:18px;bottom:18px;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:#5E7FA3;font-weight:600}
+/* action bar docked to the bottom of the book */
+.bookbar{margin-top:10px;width:200px;display:grid;grid-template-columns:1fr;gap:6px}
+.bookbar span{font-size:12.5px;text-align:center;padding:8px 6px;border-radius:8px;border:1px solid var(--line);background:#FAF9F6;color:var(--ink)}
+.bookbar span.primary{background:var(--sage);border-color:var(--sage);color:#fff;font-weight:500;font-size:13.5px}
+.info .label{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--sage)}
+.info h2{font-family:ui-serif,Georgia,serif;font-weight:500;font-size:34px;line-height:1.1;margin:10px 0 6px;letter-spacing:-.01em}
+.info .by{color:var(--ink-2);font-size:16px}
+.gauge{margin-top:30px}
+.gaugehead{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px}
+.gaugehead .pct{font-size:44px;font-weight:300;letter-spacing:-.02em;line-height:1}
+.gaugehead .pct small{font-size:20px;color:var(--ink-3)}
+.gaugehead .pg{font-size:15px;color:var(--ink-2)}
+.track{height:14px;border-radius:7px;background:var(--sage-soft);overflow:hidden}
+.track div{width:64%;height:100%;border-radius:7px;background:var(--sage)}
+.ticks{display:flex;justify-content:space-between;font-size:11px;color:var(--ink-3);margin-top:6px}
+.entry{margin-top:26px;display:flex;align-items:center;gap:10px;padding:14px;border-radius:12px;background:#FAF9F6;border:1px solid var(--line)}
+.entry label{font-size:14px;color:var(--ink-2);margin-right:4px}
+.field{width:110px;height:42px;border-radius:9px;border:1.5px solid var(--sage);background:#fff;display:flex;align-items:center;padding:0 14px;font-size:18px;font-variant-numeric:tabular-nums;box-shadow:0 0 0 4px rgba(95,122,100,.12)}
+.field:after{content:"";width:1px;height:20px;background:var(--ink);margin-left:2px}
+.of{font-size:14px;color:var(--ink-3)}
+.btn{height:42px;padding:0 20px;border-radius:9px;background:var(--sage);color:#fff;font-size:14.5px;font-weight:500;display:inline-flex;align-items:center;margin-left:auto}
+.reentry{margin-top:16px;font-size:14px;color:var(--ink-2);display:flex;gap:18px}
+.reentry span{display:inline-flex;align-items:center;gap:8px}
+.reentry span:before{content:"";width:6px;height:6px;border-radius:50%;background:var(--ink-3)}
+
+.stack{display:flex;flex-direction:column;gap:16px}
+.pane{padding:20px 22px}
+.pane h3{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);margin-bottom:12px}
+.pane p.q{font-size:15px;margin-bottom:14px}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#FAF9F6}
+.seg span{text-align:center;padding:11px 0;font-size:14px;color:var(--ink);border-right:1px solid var(--line)}
+.seg span:last-child{border-right:none}
+.seg span i{display:block;width:10px;height:10px;border-radius:50%;margin:0 auto 6px;border:1.5px solid}
+.seg .d i{border-color:#4E6E8A}.seg .l i{border-color:#8FAE8A}.seg .r i{border-color:#C6B79A}
+.pane .hint{font-size:12.5px;color:var(--ink-3);margin-top:10px}
+.next{display:flex;gap:12px;align-items:center}
+.ph{width:44px;height:64px;border-radius:3px;flex:none;background:#F1EEE8;border:1.5px dashed #CBC4B6;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}
+.ph b{width:22px;height:2px;background:#CBC4B6;border-radius:1px}
+.ph b+b{width:14px}
+.next .t{font-family:ui-serif,Georgia,serif;font-size:15.5px;line-height:1.25}
+.next .a{font-size:13px;color:var(--ink-2);margin-top:2px}
+.waitl{list-style:none}
+.waitl li{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line);font-size:14px}
+.waitl li:first-child{border-top:none;padding-top:0}
+.waitl .bar{margin-left:auto;width:60px;height:5px;border-radius:3px;background:var(--sage-soft);overflow:hidden}
+.waitl .bar i{display:block;height:100%;background:#9DB39F}
+.waitl small{color:var(--ink-3);font-size:12px;width:34px;text-align:right}
+
+/* Shelf */
+.shelfcard{margin-top:24px;padding:22px 26px 18px;background:var(--wall);border:1px solid #E2DBCD;border-radius:14px}
+.shead{display:flex;align-items:center;gap:14px;margin-bottom:12px}
+.shead h3{font-size:15px;font-weight:600}
+.chip{font-size:12px;color:var(--ink-2);border:1px solid #DCD4C5;border-radius:20px;padding:3px 10px;background:#F7F3EB}
+.meter{margin-left:auto;display:flex;align-items:center;gap:10px;font-size:13.5px;color:var(--ink-2)}
+.meter .dots{display:flex;gap:2px}
+.meter .dots i{width:4px;height:12px;border-radius:1px;background:#D9D1C2}
+.meter .dots i.f{background:var(--sage)}
+.row{margin-bottom:16px}
+.books{display:flex;align-items:flex-end;gap:3px;padding:0 12px;height:164px}
+.plank{height:12px;background:var(--birch);border-bottom:4px solid var(--birch-edge);border-radius:2px;box-shadow:0 6px 10px rgba(120,100,60,.12)}
+.sp{position:relative;border-radius:3px 3px 0 0;display:flex;justify-content:center;padding:10px 0;overflow:hidden}
+.sp span{writing-mode:vertical-rl;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:.02em}
+.sp.read{background:var(--c);filter:saturate(.85)}
+.sp.read span{color:rgba(255,255,255,.92)}
+.sp.unread{background:#FDFCF9;border:1.5px solid var(--outline);border-bottom:none}
+.sp.unread span{color:#B4AEA2}
+.sp.main{background:linear-gradient(0deg,var(--c) 64%,#FDFCF9 64%);border:1.5px solid var(--c);border-bottom:none}
+.sp.main span{color:#fff;text-shadow:0 0 3px #2B3E55}
+.sp:has(.mk){padding-top:18px}
+.sp .mk{position:absolute;top:5px;left:50%;transform:translateX(-50%);width:7px;height:7px;border-radius:50%;font-size:0;background:var(--sky)}
+.sp.main .mk{background:#fff;top:5px}
+.sp.paused .mk{background:#C6B79A}
+.legend{display:flex;gap:22px;font-size:12px;color:var(--ink-2);margin-top:4px}
+.legend i{display:inline-block;width:10px;height:14px;border-radius:2px 2px 0 0;margin-right:7px;vertical-align:-2px}
+
+/* State variant */
+.variant{width:1280px;margin:34px auto 0;display:grid;grid-template-columns:300px 1fr;gap:32px;align-items:start}
+.variant .note{font-size:14.5px;line-height:1.55;color:#4A4D47}
+.variant .note b{display:block;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--sage);margin-bottom:8px}
+.dlgwrap{background:rgba(43,46,42,.28);border-radius:14px;padding:44px;display:flex;justify-content:center}
+.dlg{width:520px;background:#fff;border-radius:16px;padding:28px 30px 24px;box-shadow:0 30px 60px rgba(40,40,30,.25)}
+.dlg .pair{display:flex;align-items:center;gap:14px;margin:4px 0 20px}
+.dlg .pair .arrow{color:var(--ink-3);font-size:20px}
+.mc{width:46px;height:68px;border-radius:3px;flex:none;position:relative;overflow:hidden}
+.mc.lh{background:#E8EEF1}.mc.lh:before{content:"";position:absolute;left:0;right:0;top:0;height:34px;background:#5E7FA3}.mc.lh:after{content:"";position:absolute;left:14px;top:20px;width:18px;height:18px;border-radius:50%;background:#F4F1EA}
+.dlg h4{font-family:ui-serif,Georgia,serif;font-weight:500;font-size:22px;line-height:1.25;margin-bottom:8px}
+.dlg p{font-size:15px;color:var(--ink-2);line-height:1.5}
+.dlg p b{color:var(--ink);font-weight:600}
+.dlg .acts{display:flex;justify-content:flex-end;gap:10px;margin-top:24px}
+.dlg .ghost{height:42px;padding:0 18px;border-radius:9px;border:1px solid var(--line);font-size:14.5px;display:inline-flex;align-items:center;color:var(--ink)}
+.dlg .btn{margin-left:0}
+</style>
+</head>
+<body>
+
+<div class="rationale">
+  <b>Direction B — Birch Morning</b>
+  A bright, uncluttered morning room with a pale birch bookcase. Flat colour, plenty of white, a quiet sage accent and almost no texture, so it feels calm because it's tidy. Unread books are drawn as plain white outlines and colour fills in as each one is finished, like a colouring book slowly completing. The Main book's own spine fills from the bottom to the same 64% as its gauge.
+</div>
+
+<div class="frame">
+  <div class="chrome"><i></i><i></i><i></i><div class="url">127.0.0.1:5173 / bookvie</div></div>
+  <div class="app">
+    <aside class="rail">
+      <div class="logo">bookvie<span></span></div>
+      <a class="on"><b></b>Home</a>
+      <a><b></b>Catalog</a>
+      <a><b></b>Calendar</a>
+      <a><b></b>Stats</a>
+      <a><b></b>Card notes</a>
+      <a><b></b>Backup</a>
+      <div class="foot">Everything is saved on this computer.</div>
+    </aside>
+    <main>
+      <div class="top"><h1><strong>Wednesday, 28 October</strong> · Good morning</h1></div>
+      <div class="grid">
+        <div class="card mainbook">
+          <div>
+            <div class="cover"><div class="band"></div><div class="circ"></div><div class="half"></div>
+              <div class="t">The Left Hand of Darkness</div><div class="a">Ursula K. Le Guin</div></div>
+            <div class="bookbar"><span class="primary">+ Add pages</span><span>Add card note</span><span>See card notes · 6</span></div>
+          </div>
+          <div class="info">
+            <div class="label">Main book</div>
+            <h2>The Left Hand of Darkness</h2>
+            <div class="by">Ursula K. Le Guin</div>
+            <div class="gauge">
+              <div class="gaugehead"><div class="pct">64<small>%</small></div><div class="pg">p.212 of 330</div></div>
+              <div class="track"><div></div></div>
+              <div class="ticks"><span>0</span><span>165</span><span>330</span></div>
+            </div>
+            <div class="entry"><label>Page</label><div class="field">212</div><span class="of">of 330</span><span class="btn">Update</span></div>
+            <div class="reentry"><span>Last time: p.188</span><span>~7 evenings left</span></div>
+          </div>
+        </div>
+
+        <div class="stack">
+          <div class="card pane">
+            <h3>Today</h3>
+            <p class="q">What kind of reading day?</p>
+            <div class="seg"><span class="d"><i></i>Deep</span><span class="l"><i></i>Light</span><span class="r"><i></i>Rest</span></div>
+            <div class="hint">Pick one whenever you like, or leave it for later.</div>
+          </div>
+          <div class="card pane">
+            <h3>Up next</h3>
+            <div class="next"><div class="ph"><b></b><b></b></div><div><div class="t">Designing Data-Intensive Applications</div><div class="a">Martin Kleppmann</div></div></div>
+          </div>
+          <div class="card pane">
+            <h3>Waiting for you (2)</h3>
+            <ul class="waitl">
+              <li><span class="serif">Dune</span><span class="bar"><i style="width:29%"></i></span><small>29%</small></li>
+              <li><span class="serif">Gödel, Escher, Bach</span><span class="bar"><i style="width:11%"></i></span><small>11%</small></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="shelfcard">
+        <div class="shead"><h3>Bookcase</h3><span class="chip">Sorted by author ▾</span>
+          <div class="meter"><span class="dots"><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i class="f"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>24 of 54 coloured in</div></div>
+        <div class="row"><div class="books"><div class="sp read" style="width:25px;height:118px;--c:#2E6B8F" title="The Hitchhiker&#x27;s Guide to the Galaxy — Adams"><span>The Hitchhiker&#x27;s Guide to the Galaxy</span></div><div class="sp read" style="width:26px;height:134px;--c:#B5532E" title="Foundation — Asimov"><span>Foundation</span></div><div class="sp unread" style="width:28px;height:150px;--c:#8E2F3C" title="The Handmaid&#x27;s Tale — Atwood"><span>The Handmaid&#x27;s Tale</span></div><div class="sp read" style="width:26px;height:122px;--c:#7C8F6A" title="Persuasion — Austen"><span>Persuasion</span></div><div class="sp unread" style="width:26px;height:138px;--c:#3C5A7A" title="Test-Driven Development — Beck"><span>Test-Driven Development</span></div><div class="sp read" style="width:25px;height:154px;--c:#C9772B" title="Fahrenheit 451 — Bradbury"><span>Fahrenheit 451</span></div><div class="sp read" style="width:28px;height:126px;--c:#5B4E8C" title="The Mythical Man-Month — Brooks"><span>The Mythical Man-Month</span></div><div class="sp unread" style="width:31px;height:142px;--c:#2F2F38" title="The Master and Margarita — Bulgakov"><span>The Master and Margarita</span></div><div class="sp read" style="width:24px;height:158px;--c:#4F8C8A" title="Invisible Cities — Calvino"><span>Invisible Cities</span></div><div class="sp unread" style="width:28px;height:130px;--c:#A69A55" title="The Plague — Camus"><span>The Plague</span></div><div class="sp read" style="width:29px;height:146px;--c:#2B4C6F" title="Exhalation — Chiang"><span>Exhalation</span></div><div class="sp unread" style="width:41px;height:118px;--c:#5E2B2B" title="The Brothers Karamazov — Dostoevsky"><span>The Brothers Karamazov</span></div><div class="sp unread" style="width:34px;height:134px;--c:#6A4A2E" title="The Name of the Rose — Eco"><span>The Name of the Rose</span></div><div class="sp unread" style="width:35px;height:150px;--c:#3E6E58" title="Domain-Driven Design — Evans"><span>Domain-Driven Design</span></div><div class="sp read" style="width:29px;height:122px;--c:#D0A23A" title="Surely You&#x27;re Joking, Mr. Feynman! — Feynman"><span>Surely You&#x27;re Joking, Mr. Feynman!</span></div><div class="sp read" style="width:32px;height:138px;--c:#8A3B2E" title="Refactoring — Fowler"><span>Refactoring</span></div><div class="sp unread" style="width:30px;height:154px;--c:#5A6470" title="Design Patterns — Gamma et al."><span>Design Patterns</span></div><div class="sp read" style="width:31px;height:126px;--c:#B0623A" title="One Hundred Years of Solitude — García Márquez"><span>One Hundred Years of Solitude</span></div><div class="sp read" style="width:27px;height:142px;--c:#2D6E6A" title="Neuromancer — Gibson"><span>Neuromancer</span></div><div class="sp unread paused" style="width:31px;height:158px;--c:#C08A3E" title="Dune — Herbert"><span>Dune</span><i class="mk">waiting</i></div><div class="sp unread paused" style="width:41px;height:130px;--c:#4B5E8E" title="Gödel, Escher, Bach — Hofstadter"><span>Gödel, Escher, Bach</span><i class="mk">waiting</i></div><div class="sp read" style="width:29px;height:146px;--c:#3B3B3B" title="The Pragmatic Programmer — Hunt &amp; Thomas"><span>The Pragmatic Programmer</span></div><div class="sp unread" style="width:28px;height:118px;--c:#C7A27A" title="Klara and the Sun — Ishiguro"><span>Klara and the Sun</span></div><div class="sp read" style="width:26px;height:134px;--c:#6F7F5A" title="The Remains of the Day — Ishiguro"><span>The Remains of the Day</span></div><div class="sp unread" style="width:33px;height:150px;--c:#D9C25A" title="Thinking, Fast and Slow — Kahneman"><span>Thinking, Fast and Slow</span></div><div class="sp unread next" style="width:36px;height:122px;--c:#7A4E7E" title="Designing Data-Intensive Applications — Kleppmann"><span>Designing Data-Intensive Applications</span><i class="mk">up next</i></div><div class="sp unread" style="width:38px;height:138px;--c:#2F4A6B" title="The Art of Computer Programming, Vol. 1 — Knuth"><span>The Art of Computer Programming, Vol. 1</span></div></div><div class="plank"></div></div>
+<div class="row"><div class="books"><div class="sp read" style="width:24px;height:154px;--c:#3F7A8C" title="A Wizard of Earthsea — Le Guin"><span>A Wizard of Earthsea</span></div><div class="sp unread" style="width:30px;height:126px;--c:#9A6B3C" title="The Dispossessed — Le Guin"><span>The Dispossessed</span></div><div class="sp main" style="width:28px;height:142px;--c:#5E7FA3" title="The Left Hand of Darkness — Le Guin"><span>The Left Hand of Darkness</span><i class="mk">reading</i></div><div class="sp unread" style="width:39px;height:158px;--c:#4D5B45" title="The Magic Mountain — Mann"><span>The Magic Mountain</span></div><div class="sp read" style="width:27px;height:130px;--c:#6B6B6B" title="The Road — McCarthy"><span>The Road</span></div><div class="sp unread" style="width:33px;height:146px;--c:#3A7FA8" title="Cloud Atlas — Mitchell"><span>Cloud Atlas</span></div><div class="sp read" style="width:27px;height:118px;--c:#A8343A" title="Norwegian Wood — Murakami"><span>Norwegian Wood</span></div><div class="sp unread" style="width:28px;height:134px;--c:#8C7A4A" title="Pale Fire — Nabokov"><span>Pale Fire</span></div><div class="sp read" style="width:27px;height:150px;--c:#2C3E50" title="Deep Work — Newport"><span>Deep Work</span></div><div class="sp read" style="width:28px;height:122px;--c:#B23A2E" title="Nineteen Eighty-Four — Orwell"><span>Nineteen Eighty-Four</span></div><div class="sp read" style="width:24px;height:138px;--c:#4E8A6E" title="A Philosophy of Software Design — Ousterhout"><span>A Philosophy of Software Design</span></div><div class="sp unread" style="width:31px;height:154px;--c:#B98B3A" title="Zen and the Art of Motorcycle Maintenance — Pirsig"><span>Zen and the Art of Motorcycle Maintenance</span></div><div class="sp unread" style="width:23px;height:126px;--c:#6E3E5E" title="The Crying of Lot 49 — Pynchon"><span>The Crying of Lot 49</span></div><div class="sp unread" style="width:26px;height:142px;--c:#7D9AA6" title="Gilead — Robinson"><span>Gilead</span></div><div class="sp read" style="width:30px;height:158px;--c:#1F3550" title="Cosmos — Sagan"><span>Cosmos</span></div><div class="sp unread" style="width:31px;height:130px;--c:#5C8A9A" title="A Swim in a Pond in the Rain — Saunders"><span>A Swim in a Pond in the Rain</span></div><div class="sp unread" style="width:33px;height:146px;--c:#8A4E2E" title="Hyperion — Simmons"><span>Hyperion</span></div><div class="sp unread" style="width:44px;height:118px;--c:#3E4A3A" title="Cryptonomicon — Stephenson"><span>Cryptonomicon</span></div><div class="sp read" style="width:22px;height:134px;--c:#9C3B3B" title="The Elements of Style — Strunk &amp; White"><span>The Elements of Style</span></div><div class="sp read" style="width:28px;height:150px;--c:#3D6B45" title="The Hobbit — Tolkien"><span>The Hobbit</span></div><div class="sp unread" style="width:43px;height:122px;--c:#6B2E3E" title="Anna Karenina — Tolstoy"><span>Anna Karenina</span></div><div class="sp unread" style="width:25px;height:138px;--c:#C9B48A" title="The Visual Display of Quantitative Information — Tufte"><span>The Visual Display of Quantitative Information</span></div><div class="sp read" style="width:27px;height:154px;--c:#D2622E" title="Slaughterhouse-Five — Vonnegut"><span>Slaughterhouse-Five</span></div><div class="sp unread" style="width:44px;height:126px;--c:#4A86A8" title="Infinite Jest — Wallace"><span>Infinite Jest</span></div><div class="sp unread" style="width:25px;height:142px;--c:#8FA88A" title="To the Lighthouse — Woolf"><span>To the Lighthouse</span></div><div class="sp unread" style="width:29px;height:158px;--c:#7A5A3A" title="Memoirs of Hadrian — Yourcenar"><span>Memoirs of Hadrian</span></div><div class="sp read" style="width:34px;height:130px;--c:#4A4A6A" title="The Book Thief — Zusak"><span>The Book Thief</span></div></div><div class="plank"></div></div>
+        <div class="legend"><span><i style="background:#4E8A6E"></i>read</span><span><i style="background:#FDFCF9;border:1.5px solid #CFC8BA"></i>not read yet</span><span><i style="background:linear-gradient(0deg,#5E7FA3 64%,#FDFCF9 64%);border:1.5px solid #5E7FA3"></i>Main book, filled to its %</span><span><i style="background:#6E8FA8;width:7px;height:7px;border-radius:50%"></i>up next</span><span><i style="background:#C6B79A;width:7px;height:7px;border-radius:50%"></i>waiting for you</span></div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<div class="variant">
+  <div class="note"><b>State: switch confirmation</b>Starting another book is a deliberate, visible trade-off. The dialog says exactly what gets paused and where, in plain neutral words. Nothing is lost: the paused book becomes Up next. The no-cover placeholder appears here too, as a dashed blank with two title lines.</div>
+  <div class="dlgwrap">
+    <div class="dlg">
+      <div class="pair"><div class="mc lh"></div><span class="arrow">→</span><div class="ph" style="width:46px;height:68px"><b></b><b></b></div></div>
+      <h4>Start Designing Data-Intensive Applications?</h4>
+      <p>This pauses <b>The Left Hand of Darkness</b> at <b>p.212 (64%)</b>. It'll be your Up next, right where you left it.</p>
+      <div class="acts"><span class="ghost">Keep reading Le Guin</span><span class="btn">Start Kleppmann</span></div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

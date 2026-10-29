@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>bookvie key screen: Book detail</title>
+<style>
+/*
+  KEY SCREEN · BOOK DETAIL (bookvie) · rendered 2026-10-29 from DESIGN.md + EXPERIENCE.md (spines win on conflict)
+  Layout accepted by the user (former Open Question 1); adds Card notes block, Change color, and the pile's Close button.
+
+  Governing spine sections
+    DESIGN.md      Components: Book detail (accepted layout), Spine popover (Change color swatches), Gauge, No-cover placeholder, Text field, Pace calculator,
+                   Card notes list, Pile, Card note, Focus ring · Colors (spine-edge / label strip on the status glyph)
+                   · Typography (book-title-lg as the page h1) · Elevation & Depth (cover shadow, scrim)
+    EXPERIENCE.md  Component Patterns: Book detail (Card notes block, Change color), Pace calculator, Pile (Close + Esc),
+                   Finished on (back-filled Reading) · Focus after close (Pile)
+                   · Book states → "Finished, re-read paused" row and Book detail actions · Voice and Tone
+                   · Flow 6 (card notes, pile), Flow 9 (back-fill), Flow 10 (pause)
+
+  Book in this mock: Dune, user-set spine color #D8B26E ("set by you"), finished on 14 Aug 2019 (back-filled, no start),
+  re-read started 2 Sep 2026 and paused at p.120 of 535 → state "Finished, re-read paused": primary Resume; Pause hidden (Main only).
+  Pace: Measured pace 17.0 pages/day, 415 pages left → About 25 days · 22 November 2026.
+*/
+
+.t-light{--page:#F6F4EF;--surface:#FFFFFF;--surface-inset:#FAF9F6;--line:#E4DFD5;--input-border:#8A8273;--ink:#2B2E2A;--ink-2:#5F635C;--ink-3:#666961;--accent:#557059;--on-accent:#FFFFFF;--accent-soft:#E3EBE2;--focus-halo:rgba(85,112,89,.16);--mk-next:#5A7D98;--mk-wait:#8C7B5C;--mk-ring:#FDFCF9;--wall:#EFEAE0;--wall-line:#E2DBCD;--plank:#E9DCC3;--plank-edge:#D5C3A2;--unread-fill:#FDFCF9;--unread-outline:#8A8273;--unread-text:#77716A;--spine-edge:#5E584D;--cover-shadow:0 14px 30px rgba(60,80,100,.18);--pop-shadow:0 18px 40px rgba(40,40,30,.18),0 2px 6px rgba(40,40,30,.08);--plank-shadow:0 6px 10px rgba(120,100,60,.12);--scrim:rgba(43,46,42,.24);--chrome:#ECE9E3;--chrome-line:#DDD8CE;--url:#FFFFFF}
+.t-dark{--page:#191B18;--surface:#222520;--surface-inset:#1D201B;--line:#343831;--input-border:#767A6F;--ink:#ECEAE3;--ink-2:#B3B7AD;--ink-3:#9A9E94;--accent:#93B597;--on-accent:#142017;--accent-soft:#2C3A2E;--focus-halo:rgba(147,181,151,.18);--mk-next:#8EADC6;--mk-wait:#A8987A;--mk-ring:#191B18;--wall:#1E201C;--wall-line:#2E312B;--plank:#6E604B;--plank-edge:#4E4433;--unread-fill:#252822;--unread-outline:#70766A;--unread-text:#A39E92;--spine-edge:#858A7F;--cover-shadow:0 14px 30px rgba(0,0,0,.45);--pop-shadow:0 18px 40px rgba(0,0,0,.5);--plank-shadow:0 6px 10px rgba(0,0,0,.35);--scrim:rgba(25,27,24,.60);--chrome:#2A2C28;--chrome-line:#3A3D37;--url:#1F211D}
+/* theme-independent read-spine parts */
+:root{--strip:#FBF8F1;--spine-label:#2B2E2A}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#DEDBD4;font-family:system-ui,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;color:#2B2E2A;padding:28px 0 56px}
+button,input,select{font:inherit;color:inherit}
+ul{list-style:none}
+a{color:inherit;text-decoration:none}
+.serif{font-family:ui-serif,Georgia,"Iowan Old Style",serif}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.intro,.cap{width:1280px;margin:0 auto 12px;font-size:14px;line-height:1.55;color:#3F423D}
+.intro b,.cap b{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#4C6550;margin-right:10px}
+.intro{margin-bottom:22px}
+section.shot{margin:0 auto 40px}
+.frame{width:1280px;margin:0 auto;border-radius:10px;overflow:hidden;box-shadow:0 24px 60px rgba(40,40,30,.18);border:1px solid #CFCAC0;background:var(--page);color:var(--ink);position:relative}
+.chrome{height:38px;background:var(--chrome);border-bottom:1px solid var(--chrome-line);display:flex;align-items:center;gap:8px;padding:0 14px}
+.chrome i{width:12px;height:12px;border-radius:50%;background:var(--input-border);opacity:.5}
+.chrome .url{margin-left:18px;flex:0 0 420px;background:var(--url);border:1px solid var(--chrome-line);border-radius:6px;height:24px;font-size:12px;color:var(--ink-3);display:flex;align-items:center;padding:0 10px}
+/* top nav · {components.top-nav} */
+.topbar{height:60px;display:flex;align-items:center;gap:36px;padding:0 36px;border-bottom:1px solid var(--line);background:var(--surface-inset);position:relative}
+.skip{position:absolute;left:-9999px}
+.logo{font-size:20px;font-weight:600;letter-spacing:-.01em}
+.logo span{display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--accent);margin-left:3px}
+.topbar nav{display:flex;gap:4px;height:100%}
+.topbar nav a{display:flex;align-items:center;padding:0 12px;font-size:14.5px;color:var(--ink-2);border-bottom:2px solid transparent;margin-bottom:-1px}
+.topbar nav a.on{color:var(--ink);font-weight:600;border-bottom-color:var(--accent)}
+/* segmented control · theme toggle, view toggle, order */
+.toggle,.seg{display:flex;border:1px solid var(--input-border);border-radius:9px;padding:3px;background:var(--surface);gap:2px}
+.toggle{margin-left:auto}
+.tg{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:6px;font-size:13px;color:var(--ink-2);padding:5px 10px;border-radius:6px;border-bottom:2px solid transparent;cursor:default}
+.tg svg{width:14px;height:14px}
+.tg.on{background:var(--accent-soft);color:var(--ink);font-weight:600;border-bottom-color:var(--accent)}
+main{padding:24px 36px 32px}
+/* buttons */
+.btn{all:unset;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;height:42px;padding:0 20px;border-radius:9px;font-size:14.5px;font-weight:600;background:var(--accent);color:var(--on-accent);white-space:nowrap;cursor:default}
+.btn2{all:unset;box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;height:36px;padding:0 14px;border-radius:9px;font-size:13.5px;background:var(--surface-inset);color:var(--ink);border:1px solid var(--input-border);white-space:nowrap;cursor:default}
+.btn.sm,.btn2.sm{height:30px;padding:0 11px;font-size:13px;border-radius:8px}
+.btn.md{height:34px;padding:0 14px;font-size:13.5px;border-radius:8px}
+.link{color:var(--accent);text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
+.tlink{color:var(--ink)}
+.slabel{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.meta{font-size:13px;line-height:1.45;color:var(--ink-3)}
+/* text field · {components.text-field} */
+.fld{display:flex;flex-direction:column;gap:5px}
+.fld label,.flabel{font-size:14px;color:var(--ink-2)}
+.fld .req{font-size:13px;color:var(--ink-3);margin-left:6px}
+.inp{height:38px;border:1.5px solid var(--input-border);border-radius:9px;background:var(--surface);padding:0 12px;display:flex;align-items:center;font-size:15px;color:var(--ink);gap:8px}
+.inp.focus{border-color:var(--accent);box-shadow:0 0 0 4px var(--focus-halo)}
+.inp.empty{color:var(--ink-3)}
+.inp svg{width:15px;height:15px;color:var(--ink-3);flex:none}
+.sel{justify-content:space-between}
+.sel:after{content:"";width:7px;height:7px;border-right:1.5px solid var(--ink-2);border-bottom:1.5px solid var(--ink-2);transform:rotate(45deg) translateY(-2px)}
+/* cards */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px}
+/* bookcase · {components.bookcase} */
+.shelfcard{padding:20px 26px 16px;background:var(--wall);border:1px solid var(--wall-line);border-radius:14px}
+.shead{display:flex;align-items:center;gap:16px;margin-bottom:14px;min-height:20px}
+.shead h2{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink)}
+.quiet{font-size:14px;color:var(--ink-2)}
+.meter{display:flex;align-items:center;gap:12px;font-size:13px;color:var(--ink-2)}
+.shead .meter{margin-left:auto}
+.mbar{display:block;width:180px;height:4px;border-radius:2px;background:var(--line);overflow:hidden}
+.mbar i{display:block;height:100%;background:var(--accent);border-radius:2px}
+.case{position:relative}
+.row{margin-bottom:14px}
+.books{display:flex;align-items:flex-end;gap:4px;padding:0 12px;height:204px}
+.plank{height:12px;background:var(--plank);border-bottom:4px solid var(--plank-edge);border-radius:2px;box-shadow:var(--plank-shadow)}
+/* spine · {components.spine}: exact fill + {colors.spine-edge} + label strip */
+.sp{all:unset;box-sizing:border-box;position:relative;flex:none;width:28px;border-radius:3px 3px 0 0;display:flex;justify-content:center;align-items:flex-start;padding:8px 0 0;overflow:hidden;cursor:default}
+.sp.mkd{padding-top:20px}
+.sp.read{background:var(--c);border:1px solid var(--spine-edge);border-bottom:none}
+.sp.unread{background:var(--unread-fill);border:1.5px solid var(--unread-outline);border-bottom:none}
+/* Main-book fill line: {components.spine.main-fill-line} 2px spine-edge at the fill level */
+.sp.main{background:linear-gradient(0deg,var(--c) var(--f),var(--spine-edge) var(--f),var(--spine-edge) calc(var(--f) + 2px),var(--unread-fill) calc(var(--f) + 2px));border:1.5px solid var(--unread-outline);border-bottom:none}
+/* label strip: top of spine only; {spacing.spine-label-strip-top} 8px (20px with marker), length = label + 2x4px, max {spacing.spine-label-strip-max} 96px */
+.strip{display:flex;justify-content:center;width:16px;padding:4px 0;background:var(--strip);border-radius:2px;max-height:96px;flex:none}
+.lab{display:block;writing-mode:vertical-rl;text-orientation:sideways;font-size:11px;line-height:12px;letter-spacing:.02em;white-space:nowrap;color:var(--spine-label);overflow:hidden;text-overflow:ellipsis;max-height:88px}
+.sp.unread .lab{color:var(--unread-text)}
+.mk{position:absolute;top:8px;left:50%;margin-left:-3.5px;width:7px;height:7px;border-radius:50%;box-shadow:0 0 0 1.5px var(--mk-ring)}
+.mk.main{background:var(--unread-text)}.mk.next{background:var(--mk-next)}.mk.wait{background:var(--mk-wait)}
+.sp.is-open,.sp.hl{overflow:visible;box-shadow:0 0 0 2px var(--page),0 0 0 4px var(--accent)}
+.legend{display:flex;gap:22px;font-size:13px;color:var(--ink-2);margin-top:4px;align-items:center}
+.legend .lg{display:inline-block;width:11px;height:15px;border-radius:2px 2px 0 0;margin-right:7px;vertical-align:-3px;position:relative}
+.lg.read{background:var(--c);border:1px solid var(--spine-edge);border-bottom:none}
+.lg b{position:absolute;left:2.5px;right:2.5px;top:2px;height:5px;background:var(--strip);border-radius:1px}
+.lg.unread{background:var(--unread-fill);border:1.5px solid var(--unread-outline);border-bottom:none}
+.lg.main{background:linear-gradient(0deg,var(--c) 64%,var(--unread-fill) 64%);border:1.5px solid var(--unread-outline);border-bottom:none}
+.lg.main{background:linear-gradient(0deg,var(--c) 55%,var(--spine-edge) 55%,var(--spine-edge) calc(55% + 1.5px),var(--unread-fill) calc(55% + 1.5px))}
+.legend .dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:8px;vertical-align:1px;box-shadow:0 0 0 1.5px var(--mk-ring)}
+.dot.next{background:var(--mk-next)}.dot.wait{background:var(--mk-wait)}
+/* mini spine glyph (status) */
+.glyph{display:inline-block;width:8px;height:11px;border-radius:2px 2px 0 0;margin-right:7px;vertical-align:-1px}
+.glyph.read{background:var(--c);border:1px solid var(--spine-edge);border-bottom:none}
+.glyph.unread{background:var(--unread-fill);border:1.5px solid var(--unread-outline);border-bottom:none}
+.glyph.main{background:linear-gradient(0deg,var(--c) 64%,var(--unread-fill) 64%);border:1.5px solid var(--unread-outline);border-bottom:none}
+/* popover / dialogs / panel · {components.spine-popover} {components.dialog} {components.side-panel} */
+.pop{position:absolute;width:500px;display:grid;grid-template-columns:1fr 236px;gap:18px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px 14px;box-shadow:var(--pop-shadow);z-index:5}
+.x{all:unset;position:absolute;top:8px;right:12px;font-size:19px;color:var(--ink-3);line-height:1}
+.pt{font-size:18px;line-height:1.2}
+.ps{font-size:13px;color:var(--ink-2);margin-top:3px}
+.pa{font-size:14px;margin-top:8px}
+.pm{font-size:13px;color:var(--ink-2);margin-top:4px}
+.pstat{display:flex;align-items:center;font-size:13px;color:var(--ink-2);margin-top:12px}
+.pcolor{font-size:13px;color:var(--ink-2);margin-top:4px}
+.pr{padding-left:18px;border-left:1px solid var(--line);padding-top:16px}
+.phint{font-size:13px;color:var(--ink-3);margin-top:5px}
+.plinks{display:flex;gap:16px;margin-top:8px;font-size:13px}
+.pcol{margin-top:10px;padding-top:9px;border-top:1px solid var(--line)}
+.pcolh{font-size:13px;color:var(--ink);font-weight:600;margin-bottom:7px}
+.pcolh small{font-weight:400;color:var(--ink-3);font-size:13px}
+.swrow{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.fromcover{all:unset;display:inline-flex;align-items:center;gap:5px;font-size:13px;color:var(--ink);border:1px solid var(--input-border);border-radius:9999px;padding:2px 8px 2px 3px}
+.fromcover i{width:14px;height:14px;border-radius:50%}
+.fromcover.on{border:2px solid var(--accent);box-shadow:0 0 0 3px var(--focus-halo);padding:1px 7px 1px 2px}
+.fromcover.on:after{content:"✓";font-size:11px;color:var(--accent);font-weight:700}
+.sw{all:unset;width:16px;height:16px;border-radius:50%;display:inline-block;position:relative}
+.sw.on{box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--accent),0 0 0 7px var(--focus-halo)}
+.ptr{position:absolute;width:14px;height:14px;background:var(--surface);transform:rotate(45deg)}
+.ptr.down{bottom:-8px;border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
+.menu{position:absolute;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--pop-shadow);padding:6px;width:170px;z-index:6}
+.menu li{padding:8px 12px;border-radius:8px;font-size:15px}
+.menu li.cur{outline:2px solid var(--accent);outline-offset:-2px}
+.scrim{position:absolute;inset:0;background:var(--scrim);z-index:7}
+.panel{position:absolute;top:0;right:0;bottom:0;width:440px;background:var(--surface);border-left:1px solid var(--line);box-shadow:var(--pop-shadow);z-index:8;display:flex;flex-direction:column}
+.panel header{display:flex;align-items:center;padding:18px 24px 14px;border-bottom:1px solid var(--line)}
+.panel h2{font-size:18px;font-weight:600;line-height:1.3}
+.panel header .x{position:static;margin-left:auto}
+.pbody{padding:16px 24px;display:flex;flex-direction:column;gap:12px;flex:1;overflow:hidden}
+.pfoot{padding:14px 24px;border-top:1px solid var(--line);display:flex;gap:10px;background:var(--surface)}
+.dlg{position:absolute;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--pop-shadow);padding:22px 24px 20px;z-index:10}
+.dlg h2{font-size:18px;font-weight:600;line-height:1.3;margin-bottom:10px}
+.dlg p{font-size:15px;line-height:1.55;color:var(--ink)}
+.dlg .acts{display:flex;justify-content:flex-end;gap:10px;margin-top:20px}
+.annot{width:1280px;margin:12px auto 0;font-size:13px;color:#55584F;line-height:1.5}
+
+
+.bd{display:grid;grid-template-columns:200px 1fr;gap:40px;padding:28px 32px}
+.dcover{width:200px;height:300px;border-radius:4px;position:relative;overflow:hidden;background:#E7C48A;box-shadow:var(--cover-shadow)}
+.dcover .sun{position:absolute;left:112px;top:40px;width:56px;height:56px;border-radius:50%;background:#F4E3BE}
+.dcover .dune1{position:absolute;left:-40px;right:-20px;top:150px;height:120px;border-radius:50% 60% 0 0;background:#C9853F}
+.dcover .dune2{position:absolute;left:60px;right:-60px;top:190px;height:140px;border-radius:60% 40% 0 0;background:#A8642E}
+.dcover .t{position:absolute;left:18px;top:22px;font-family:ui-serif,Georgia,serif;font-size:30px;letter-spacing:.06em;color:#3A2414}
+.dcover .a{position:absolute;left:18px;bottom:16px;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:#F4E3BE;font-weight:600}
+.dact{margin-top:18px;display:grid;gap:8px}
+.dact .btn,.dact .btn2{width:100%}
+.dinfo h1{font-family:ui-serif,Georgia,"Iowan Old Style",serif;font-weight:500;font-size:34px;line-height:1.1;letter-spacing:-.01em}
+.by{color:var(--ink-2);font-size:16px;margin-top:6px}
+.mgrid{display:grid;grid-template-columns:repeat(3,auto);justify-content:start;gap:6px 40px;margin-top:20px;font-size:14px;color:var(--ink-2)}
+.mgrid dt{font-size:13px;color:var(--ink-3)}
+.mgrid dd{color:var(--ink-2);font-variant-numeric:tabular-nums}
+.tags{display:flex;gap:6px;margin-top:16px}
+.tagchip{display:inline-flex;align-items:center;height:26px;padding:0 11px;border-radius:9999px;border:1px solid var(--input-border);background:var(--surface-inset);font-size:13px;color:var(--ink)}
+.blk{margin-top:26px;padding-top:20px;border-top:1px solid var(--line)}
+.blk h2{margin-bottom:12px}
+.rstat{display:flex;align-items:center;font-size:14px;color:var(--ink-2)}
+.ghead{display:flex;align-items:baseline;justify-content:space-between;margin:12px 0 10px}
+.pct{font-size:44px;font-weight:300;letter-spacing:-.02em;line-height:1}
+.pct small{font-size:20px;color:var(--ink-3)}
+.pg{font-size:15px;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.track{height:14px;border-radius:7px;background:var(--accent-soft);overflow:hidden}
+.track i{display:block;height:100%;border-radius:7px;background:var(--accent)}
+.ticks{display:flex;justify-content:space-between;font-size:13px;color:var(--ink-3);margin-top:6px}
+.purpose{margin-top:16px;font-size:15px;color:var(--ink);display:flex;gap:14px;align-items:baseline}
+.purpose .pl{font-size:14px;color:var(--ink-2)}
+.purpose .link{font-size:14px;margin-left:auto;white-space:nowrap}
+.rlist li{display:grid;grid-template-columns:200px 200px 1fr;gap:16px;padding:10px 0;border-top:1px solid var(--line);font-size:14px;color:var(--ink-2);align-items:center}
+.rlist li:first-child{border-top:none;padding-top:0}
+.stars{color:var(--accent);letter-spacing:2px;font-size:15px}
+.stars s{text-decoration:none;color:var(--input-border)}
+.pace{display:flex;align-items:center;gap:12px;background:var(--surface-inset);border-radius:12px;padding:12px 14px}
+.pace .inp{width:80px;height:36px;font-variant-numeric:tabular-nums}
+.pace output{font-size:15px;color:var(--ink);margin-left:8px}
+/* Card notes page + pile */
+.cn-tools{display:flex;align-items:center;gap:16px;margin-bottom:18px}
+.cn-tools .inp{width:300px}
+.scope{display:inline-flex;align-items:center;gap:8px;height:28px;padding:0 6px 0 12px;border-radius:9999px;border:2px solid var(--accent);background:var(--accent-soft);font-size:13px;color:var(--ink)}
+.scope button{all:unset;width:20px;height:20px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;color:var(--ink-3);font-size:15px}
+.grp-h{display:flex;align-items:baseline;gap:16px;margin-bottom:12px}
+.grp-h h2{font-family:ui-serif,Georgia,serif;font-size:18px;font-weight:400}
+.notes{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.note{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;font-size:15px;line-height:1.55}
+.note .ref{display:flex;align-items:center;margin-top:8px;font-size:13px;color:var(--ink-3)}
+.note .ref .btn2{margin-left:auto}
+mark{background:var(--accent-soft);color:inherit;font-weight:600;text-decoration:underline 1px var(--accent);text-underline-offset:3px}
+.pile{position:absolute;left:50%;top:110px;transform:translateX(-50%);width:640px;z-index:10;background:var(--page);border:1px solid var(--line);border-radius:12px;box-shadow:var(--pop-shadow);padding:36px 40px 26px}
+.pcard{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:28px 30px 22px;font-size:17px;line-height:1.6;}
+.pcard:before,.pcard:after{content:"";position:absolute;left:10px;right:-6px;top:6px;bottom:-6px;border:1px solid var(--line);border-radius:12px;background:var(--surface);z-index:-1}
+.pcard:after{left:18px;right:-12px;top:12px;bottom:-12px;z-index:-2}
+.pcard .bt{font-family:ui-serif,Georgia,serif;font-size:15.5px;color:var(--ink-2);margin-bottom:10px}
+.pcard .ref{margin-top:14px;font-size:13px;color:var(--ink-3)}
+.pctl{display:flex;align-items:center;justify-content:center;gap:16px;margin-top:30px}
+.pctl .cnt{font-size:14px;color:var(--ink);font-variant-numeric:tabular-nums}
+.pctl .btn2{height:36px;background:var(--surface)}
+.pord{display:flex;justify-content:center;margin-top:14px}
+.pclose{position:absolute;top:12px;right:14px;height:32px;background:var(--surface)}
+.pctl .btn2.off{color:var(--ink-3)}
+.notes3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:4px}
+.notes3 .note{font-size:14.5px}
+.cnlinks{display:flex;gap:22px;margin-top:12px;font-size:14px}
+.blk .cn-tools{margin-bottom:14px}
+.blk .cn-tools .inp{width:280px}
+.curcol{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-2);margin-bottom:10px}
+.curcol i{width:16px;height:16px;border-radius:50%;box-shadow:0 0 0 1px var(--spine-edge)}
+</style></head><body>
+<div class="intro"><b>Key screen · Book detail</b>The accepted layout from DESIGN.md → Book detail. The canonical state is in the light theme; the alternate shows the pile opened from the Card notes block, in the dark theme.</div>
+
+<section class="shot"><div class="cap"><b>Canonical · Light</b><span class="serif">Dune</span>: finished in 2019 (back-filled), now re-read and paused at p.120, so it is waiting for you. The user set the spine color. Only the actions that apply are shown: Resume is primary; Pause is absent because Dune is not the Main book. The Card notes block shows the first three of four notes, with search and “Go through as a pile”. Change color shows the user's own color; no swatch is pressed.</div>
+<div class="frame t-light"><div class="chrome" aria-hidden="true"><i></i><i></i><i></i><div class="url">127.0.0.1:5173 / bookvie / book / dune</div></div><div style="position:relative"><header class="topbar"><a class="skip" href="#main">Skip to content</a>
+    <div class="logo">bookvie<span aria-hidden="true"></span></div>
+    <nav aria-label="Main"><a href="#">Home</a><a href="#">Catalog</a><a href="#">Stats</a><a href="#">Card notes</a><a href="#">Backup</a></nav>
+    <div class="toggle" role="group" aria-label="Theme"><button class="tg on" aria-pressed="true"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.5"/><g stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M8 1.5v1.6M8 12.9v1.6M1.5 8h1.6M12.9 8h1.6M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M3.4 12.6l1.1-1.1M11.5 4.5l1.1-1.1"/></g></svg>Light</button><button class="tg" aria-pressed="false"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13 9.6A5.5 5.5 0 0 1 6.4 3a5.5 5.5 0 1 0 6.6 6.6z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>Dark</button><button class="tg" aria-pressed="false"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 2.5a5.5 5.5 0 0 1 0 11z" fill="currentColor"/></svg>System</button></div></header>
+  <main id="main"><article class="card bd">
+  <div>
+    <div class="dcover" aria-hidden="true"><div class="sun"></div><div class="dune1"></div><div class="dune2"></div><div class="t">DUNE</div><div class="a">Frank Herbert</div></div>
+    <div class="dact">
+      <button class="btn" aria-label="Resume Dune">Resume</button>
+      <button class="btn2">Set as Up next</button>
+      <button class="btn2">Mark finished</button>
+      <button class="btn2">Mark as Side read</button>
+      <button class="btn2">Add card note</button>
+      <button class="btn2">Edit</button>
+      <button class="btn2">Delete</button>
+    </div>
+  </div>
+  <div class="dinfo">
+    <h1 tabindex="-1">Dune</h1>
+    <div class="by">Frank Herbert</div>
+    <dl class="mgrid">
+      <div><dt>Pages</dt><dd>535</dd></div><div><dt>Language</dt><dd>English</dd></div><div><dt>Publisher</dt><dd>Ace Books</dd></div>
+      <div><dt>Type</dt><dd>Paperback</dd></div><div><dt>ISBN</dt><dd>978-0-441-17271-9</dd></div><div><dt>Year</dt><dd>1990</dd></div>
+    </dl>
+    <div class="tags" aria-label="Tags"><span class="tagchip">science fiction</span><span class="tagchip">classics</span><span class="tagchip">re-read</span></div>
+
+    <section class="blk" aria-labelledby="cr"><h2 class="slabel" id="cr">Current reading</h2>
+      <div class="rstat"><i class="glyph read" style="--c:#D8B26E"></i>Waiting for you, page 120 · started 2 Sep 2026</div>
+      <div class="ghead"><div class="pct">22<small>%</small></div><div class="pg">p.120 of 535</div></div>
+      <div class="track" role="progressbar" aria-label="Dune progress" aria-valuemin="0" aria-valuemax="535" aria-valuenow="120" aria-valuetext="page 120 of 535, 22%"><i style="width:22%"></i></div>
+      <div class="ticks" aria-hidden="true"><span>0</span><span>268</span><span>535</span></div>
+      <p class="purpose"><span class="pl">Purpose</span><span>Reread for the ecology of Arrakis before starting <i class="serif">Dune Messiah</i>.</span><a href="#" class="link">Edit Purpose</a></p>
+    </section>
+
+    <section class="blk" aria-labelledby="cn"><h2 class="slabel" id="cn">Card notes (4)</h2>
+      <div class="cn-tools"><label class="flabel" for="bq">Search card notes</label><span class="inp empty" id="bq" role="searchbox"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10.4 10.4 14 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span></div>
+      <div class="notes3"><div class="note">The test with the box: fear is the thing to watch, not the pain.<div class="ref">p.12<button class="btn2 sm">Edit</button></div></div><div class="note">Every habit on Arrakis follows from the lack of water. Scarcity writes the customs.<div class="ref">p.48<button class="btn2 sm">Edit</button></div></div><div class="note">The stillsuit scene. Recycled water is a political fact here, not just equipment.<div class="ref">pp.101–103<button class="btn2 sm">Edit</button></div></div></div>
+      <div class="cnlinks"><a href="#" class="link">Go through as a pile</a><a href="#" class="link">See all card notes</a></div>
+    </section>
+
+    <section class="blk" aria-labelledby="rd"><h2 class="slabel" id="rd">Readings</h2>
+      <ul class="rlist">
+        <li><span>Started 2 Sep 2026</span><span>Waiting for you at p.120</span><span></span></li>
+        <li><span>Finished 14 Aug 2019</span><span class="stars" aria-label="5 stars">★★★★★</span><span></span></li>
+      </ul>
+    </section>
+
+    <section class="blk" aria-labelledby="pc"><h2 class="slabel" id="pc">How long until…?</h2>
+      <div class="pace"><span class="inp" role="spinbutton" aria-labelledby="ppd">17.0</span><label id="ppd" class="flabel">pages/day</label><output>About 25 days · 22 November 2026</output></div>
+    </section>
+
+    <section class="blk" aria-labelledby="cc"><h2 class="slabel" id="cc">Change color</h2>
+      <div class="curcol"><i style="background:#D8B26E" aria-hidden="true"></i>Color: set by you</div>
+      <div class="swrow"><button class="fromcover" aria-pressed="false"><i style="background:#C08A3E"></i>From cover</button><button class="sw" style="background:#749076" aria-label="Sage" aria-pressed="false"></button><button class="sw" style="background:#5B7590" aria-label="Slate" aria-pressed="false"></button><button class="sw" style="background:#9B6753" aria-label="Clay" aria-pressed="false"></button><button class="sw" style="background:#B48A45" aria-label="Ochre" aria-pressed="false"></button><button class="sw" style="background:#7A6283" aria-label="Plum" aria-pressed="false"></button><button class="sw" style="background:#4B7C7B" aria-label="Teal" aria-pressed="false"></button><button class="sw" style="background:#6C7650" aria-label="Moss" aria-pressed="false"></button><button class="sw" style="background:#6F7375" aria-label="Stone" aria-pressed="false"></button></div>
+    </section>
+  </div>
+</article></main></div></div></section>
+
+<section class="shot"><div class="cap"><b>Alternate · Dark</b>“Go through as a pile” on Book detail opens the pile over the page, in Page order at note 1 of 4. Previous is inactive at the first note; focus is on Next. A visible Close button sits at the top right; Esc also closes it (crop).</div>
+<div class="frame t-dark" style="height:720px;overflow:hidden"><div class="chrome" aria-hidden="true"><i></i><i></i><i></i><div class="url">127.0.0.1:5173 / bookvie / book / dune</div></div><div style="position:relative"><header class="topbar"><a class="skip" href="#main">Skip to content</a>
+    <div class="logo">bookvie<span aria-hidden="true"></span></div>
+    <nav aria-label="Main"><a href="#">Home</a><a href="#">Catalog</a><a href="#">Stats</a><a href="#">Card notes</a><a href="#">Backup</a></nav>
+    <div class="toggle" role="group" aria-label="Theme"><button class="tg" aria-pressed="false"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.5"/><g stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M8 1.5v1.6M8 12.9v1.6M1.5 8h1.6M12.9 8h1.6M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M3.4 12.6l1.1-1.1M11.5 4.5l1.1-1.1"/></g></svg>Light</button><button class="tg on" aria-pressed="true"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13 9.6A5.5 5.5 0 0 1 6.4 3a5.5 5.5 0 1 0 6.6 6.6z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>Dark</button><button class="tg" aria-pressed="false"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 2.5a5.5 5.5 0 0 1 0 11z" fill="currentColor"/></svg>System</button></div></header>
+  <main id="main"><article class="card bd">
+  <div>
+    <div class="dcover" aria-hidden="true"><div class="sun"></div><div class="dune1"></div><div class="dune2"></div><div class="t">DUNE</div><div class="a">Frank Herbert</div></div>
+    <div class="dact">
+      <button class="btn" aria-label="Resume Dune">Resume</button>
+      <button class="btn2">Set as Up next</button>
+      <button class="btn2">Mark finished</button>
+      <button class="btn2">Mark as Side read</button>
+      <button class="btn2">Add card note</button>
+      <button class="btn2">Edit</button>
+      <button class="btn2">Delete</button>
+    </div>
+  </div>
+  <div class="dinfo">
+    <h1 tabindex="-1">Dune</h1>
+    <div class="by">Frank Herbert</div>
+    <dl class="mgrid">
+      <div><dt>Pages</dt><dd>535</dd></div><div><dt>Language</dt><dd>English</dd></div><div><dt>Publisher</dt><dd>Ace Books</dd></div>
+      <div><dt>Type</dt><dd>Paperback</dd></div><div><dt>ISBN</dt><dd>978-0-441-17271-9</dd></div><div><dt>Year</dt><dd>1990</dd></div>
+    </dl>
+    <div class="tags" aria-label="Tags"><span class="tagchip">science fiction</span><span class="tagchip">classics</span><span class="tagchip">re-read</span></div>
+
+    <section class="blk" aria-labelledby="cr"><h2 class="slabel" id="cr">Current reading</h2>
+      <div class="rstat"><i class="glyph read" style="--c:#D8B26E"></i>Waiting for you, page 120 · started 2 Sep 2026</div>
+      <div class="ghead"><div class="pct">22<small>%</small></div><div class="pg">p.120 of 535</div></div>
+      <div class="track" role="progressbar" aria-label="Dune progress" aria-valuemin="0" aria-valuemax="535" aria-valuenow="120" aria-valuetext="page 120 of 535, 22%"><i style="width:22%"></i></div>
+      <div class="ticks" aria-hidden="true"><span>0</span><span>268</span><span>535</span></div>
+      <p class="purpose"><span class="pl">Purpose</span><span>Reread for the ecology of Arrakis before starting <i class="serif">Dune Messiah</i>.</span><a href="#" class="link">Edit Purpose</a></p>
+    </section>
+
+    <section class="blk" aria-labelledby="cn"><h2 class="slabel" id="cn">Card notes (4)</h2>
+      <div class="cn-tools"><label class="flabel" for="bq">Search card notes</label><span class="inp empty" id="bq" role="searchbox"><svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10.4 10.4 14 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span></div>
+      <div class="notes3"><div class="note">The test with the box: fear is the thing to watch, not the pain.<div class="ref">p.12<button class="btn2 sm">Edit</button></div></div><div class="note">Every habit on Arrakis follows from the lack of water. Scarcity writes the customs.<div class="ref">p.48<button class="btn2 sm">Edit</button></div></div><div class="note">The stillsuit scene. Recycled water is a political fact here, not just equipment.<div class="ref">pp.101–103<button class="btn2 sm">Edit</button></div></div></div>
+      <div class="cnlinks"><a href="#" class="link">Go through as a pile</a><a href="#" class="link">See all card notes</a></div>
+    </section>
+
+    <section class="blk" aria-labelledby="rd"><h2 class="slabel" id="rd">Readings</h2>
+      <ul class="rlist">
+        <li><span>Started 2 Sep 2026</span><span>Waiting for you at p.120</span><span></span></li>
+        <li><span>Finished 14 Aug 2019</span><span class="stars" aria-label="5 stars">★★★★★</span><span></span></li>
+      </ul>
+    </section>
+
+    <section class="blk" aria-labelledby="pc"><h2 class="slabel" id="pc">How long until…?</h2>
+      <div class="pace"><span class="inp" role="spinbutton" aria-labelledby="ppd">17.0</span><label id="ppd" class="flabel">pages/day</label><output>About 25 days · 22 November 2026</output></div>
+    </section>
+
+    <section class="blk" aria-labelledby="cc"><h2 class="slabel" id="cc">Change color</h2>
+      <div class="curcol"><i style="background:#D8B26E" aria-hidden="true"></i>Color: set by you</div>
+      <div class="swrow"><button class="fromcover" aria-pressed="false"><i style="background:#C08A3E"></i>From cover</button><button class="sw" style="background:#749076" aria-label="Sage" aria-pressed="false"></button><button class="sw" style="background:#5B7590" aria-label="Slate" aria-pressed="false"></button><button class="sw" style="background:#9B6753" aria-label="Clay" aria-pressed="false"></button><button class="sw" style="background:#B48A45" aria-label="Ochre" aria-pressed="false"></button><button class="sw" style="background:#7A6283" aria-label="Plum" aria-pressed="false"></button><button class="sw" style="background:#4B7C7B" aria-label="Teal" aria-pressed="false"></button><button class="sw" style="background:#6C7650" aria-label="Moss" aria-pressed="false"></button><button class="sw" style="background:#6F7375" aria-label="Stone" aria-pressed="false"></button></div>
+    </section>
+  </div>
+</article></main><div class="scrim" aria-hidden="true"></div>
+  <div class="pile" role="dialog" aria-modal="true" aria-label="Card notes pile, Dune">
+    <button class="btn2 pclose">Close</button>
+    <div class="pcard" aria-live="polite"><div class="bt">Dune</div>The test with the box: fear is the thing to watch, not the pain.<div class="ref">p.12</div></div>
+    <div class="pctl"><button class="btn2 off" aria-disabled="true">Previous</button><span class="cnt">1 of 4</span><button class="btn2" style="outline:2px solid var(--accent);outline-offset:2px">Next</button></div>
+    <div class="pord"><div class="seg" role="radiogroup" aria-label="Order"><button class="tg on" role="radio" aria-checked="true">Page order</button><button class="tg" role="radio" aria-checked="false">Shuffled</button></div></div>
+  </div></div></div></section>
+</body></html>

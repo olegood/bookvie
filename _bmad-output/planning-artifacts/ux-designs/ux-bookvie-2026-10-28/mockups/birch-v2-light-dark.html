@@ -1,0 +1,394 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Birch Morning v2</title>
+<style>
+/*
+  BIRCH MORNING v2 · light + dark
+  Bright, flat Nordic look with a pale birch bookcase. Sans-serif UI, serif for book titles, sage accent.
+  Navigation sits in a top bar; theme is a three-state toggle (Light / Dark / System).
+
+  LIGHT TOKENS                      DARK TOKENS
+  --page        #F6F4EF  page bg    --page        #191B18
+  --surface     #FFFFFF  cards      --surface     #222520
+  --surface-2   #FAF9F6  insets     --surface-2   #1D201B
+  --line        #E4DFD5  hairlines  --line        #343831
+  --ink         #2B2E2A  text       --ink         #ECEAE3
+  --ink-2       #5F635C  secondary  --ink-2       #B3B7AD
+  --ink-3       #666961  tertiary   --ink-3       #9A9E94
+  --accent      #557059  sage       --accent      #93B597
+  --on-accent   #FFFFFF             --on-accent   #142017
+  --accent-soft #E3EBE2  tracks     --accent-soft #2C3A2E
+  --accent-mid  #8FA892  minor bars --accent-mid  #6E8C72
+  --sky         #5A7D98  up next    --sky         #8EADC6
+  --sand        #A8987A  waiting    --sand        #A8987A
+  --wall        #EFEAE0  shelf back --wall        #1E201C
+  --birch       #E9DCC3  plank face --birch       #6E604B  (walnut-at-night)
+  --birch-edge  #D5C3A2  plank edge --birch-edge  #4E4433
+  --unread-fill #FDFCF9  unread     --unread-fill #252822
+  --unread-line #C9C1B1  outline    --unread-line #4D5249
+  --unread-text #77716A  spine text --unread-text #A39E92
+
+  Read spines: the book's own colour, identical in both themes. Label is white or #1E211D,
+  whichever contrasts more; the colour is nudged until the label reaches >= 4.5:1.
+
+  WCAG contrast (computed, relative luminance):
+    body text on page                      light 12.51   dark 14.40
+    body text on card                      light 13.75   dark 12.89
+    secondary on card                      light  6.13   dark  7.61
+    secondary on bookcase                  light  5.11   dark  8.05
+    tertiary on card                       light  5.59   dark  5.68
+    tertiary on inset                      light  5.31   dark  6.03
+    tertiary on page                       light  5.08   dark  6.35
+    sage label / link on card              light  5.46   dark  6.87
+    primary button label                   light  5.46   dark  7.45
+    toggle selected label                  light 11.30   dark  9.96
+    unread spine title                     light  4.70   dark  5.60
+    bookcase heading                       light 11.47   dark 13.64
+    meter fill vs wall (non-text, 3:1)     light  4.55   dark  7.27
+    unread outline vs wall (decorative)    light  1.49   dark  2.05
+    Read-spine labels: every spine >= 4.6 by construction (see note). Sky/sand markers are paired with legend text.
+    Unread outline is below 3:1 on purpose (pale colouring-book look); each spine is identified by its >=4.5 title text, and focus shows a 2px sage ring.
+*/
+.theme-light{--page:#F6F4EF;--surface:#FFFFFF;--surface-2:#FAF9F6;--line:#E4DFD5;--ink:#2B2E2A;--ink-2:#5F635C;--ink-3:#666961;--accent:#557059;--on-accent:#FFFFFF;--accent-soft:#E3EBE2;--accent-mid:#8FA892;--sky:#5A7D98;--sand:#A8987A;--wall:#EFEAE0;--wall-line:#E2DBCD;--birch:#E9DCC3;--birch-edge:#D5C3A2;--unread-fill:#FDFCF9;--unread-line:#C9C1B1;--unread-text:#77716A;--chrome:#ECE9E3;--chrome-line:#DDD8CE;--url:#FFFFFF;--cover-shadow:rgba(60,80,100,.18);--pop-shadow:0 18px 40px rgba(40,40,30,.18),0 2px 6px rgba(40,40,30,.08);--plank-shadow:rgba(120,100,60,.12);--focus:rgba(85,112,89,.16)}
+.theme-dark{--page:#191B18;--surface:#222520;--surface-2:#1D201B;--line:#343831;--ink:#ECEAE3;--ink-2:#B3B7AD;--ink-3:#9A9E94;--accent:#93B597;--on-accent:#142017;--accent-soft:#2C3A2E;--accent-mid:#6E8C72;--sky:#8EADC6;--sand:#A8987A;--wall:#1E201C;--wall-line:#2E312B;--birch:#6E604B;--birch-edge:#4E4433;--unread-fill:#252822;--unread-line:#4D5249;--unread-text:#A39E92;--chrome:#2A2C28;--chrome-line:#3A3D37;--url:#1F211D;--cover-shadow:rgba(0,0,0,.45);--pop-shadow:0 18px 40px rgba(0,0,0,.5);--plank-shadow:rgba(0,0,0,.35);--focus:rgba(147,181,151,.18)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#DEDBD4;font-family:system-ui,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;color:#2B2E2A;padding:32px 0 60px}
+.serif{font-family:ui-serif,Georgia,"Iowan Old Style",serif}
+.intro{width:1280px;margin:0 auto 22px;color:#3F423D;font-size:15px;line-height:1.55}
+.intro b,.cap b,.notes b{display:block;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#4C6550;margin-bottom:6px}
+section{margin:0 auto}
+.cap{width:1280px;margin:0 auto 10px;font-size:14px;color:#3F423D}
+.cap b{display:inline;margin-right:10px}
+.frame{width:1280px;margin:0 auto;border-radius:10px;overflow:hidden;box-shadow:0 24px 60px rgba(40,40,30,.18);border:1px solid #CFCAC0;background:var(--page);color:var(--ink)}
+.chrome{height:38px;background:var(--chrome);border-bottom:1px solid var(--chrome-line);display:flex;align-items:center;gap:8px;padding:0 14px}
+.chrome i{width:12px;height:12px;border-radius:50%;background:var(--unread-line);display:inline-block}
+.chrome .url{margin-left:18px;flex:0 0 420px;background:var(--url);border:1px solid var(--chrome-line);border-radius:6px;height:24px;font-size:12px;color:var(--ink-3);display:flex;align-items:center;padding:0 10px}
+/* top bar */
+.topbar{height:60px;display:flex;align-items:center;gap:36px;padding:0 36px;border-bottom:1px solid var(--line);background:var(--surface-2)}
+.logo{font-size:20px;font-weight:600;letter-spacing:-.01em}
+.logo span{display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--accent);margin-left:3px}
+nav{display:flex;gap:4px;height:100%}
+nav a{display:flex;align-items:center;padding:0 12px;font-size:14.5px;color:var(--ink-2);border-bottom:2px solid transparent;margin-bottom:-1px}
+nav a.on{color:var(--ink);font-weight:600;border-bottom-color:var(--accent)}
+.toggle{margin-left:auto;display:flex;border:1px solid var(--line);border-radius:9px;padding:3px;background:var(--surface);gap:2px}
+.tg{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--ink-2);padding:5px 10px;border-radius:6px}
+.tg.on{background:var(--accent-soft);color:var(--ink);font-weight:600}
+.ic{width:12px;height:12px;border-radius:50%;display:inline-block;flex:none}
+.ic.sun{border:2px solid currentColor;box-shadow:0 0 0 2px var(--surface),0 0 0 3px currentColor;transform:scale(.7)}
+.ic.moon{box-shadow:inset -4px -1px 0 0 currentColor}
+.ic.sys{border:1.5px solid currentColor;background:linear-gradient(90deg,currentColor 50%,transparent 50%)}
+.tg.on .ic.sun{box-shadow:0 0 0 2px var(--accent-soft),0 0 0 3px currentColor}
+main{padding:24px 36px 30px}
+.top{display:flex;align-items:baseline;margin-bottom:18px}
+.top h1{font-size:15px;font-weight:500;color:var(--ink-2)}
+.top h1 strong{color:var(--ink);font-weight:600}
+.saved{margin-left:auto;font-size:12.5px;color:var(--ink-3)}
+.grid{display:grid;grid-template-columns:1fr 320px;gap:24px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px}
+.mainbook{display:grid;grid-template-columns:200px 1fr;gap:36px;padding:28px 32px}
+.cover{width:200px;height:300px;border-radius:4px;position:relative;overflow:hidden;background:#E8EEF1;box-shadow:0 14px 30px var(--cover-shadow)}
+.cover .band{position:absolute;left:0;right:0;top:0;height:150px;background:#5E7FA3}
+.cover .circ{position:absolute;left:62px;top:84px;width:76px;height:76px;border-radius:50%;background:#F4F1EA}
+.cover .half{position:absolute;left:62px;top:84px;width:38px;height:76px;border-radius:38px 0 0 38px;background:#2F4A66}
+.cover .t{position:absolute;left:18px;right:18px;top:186px;font-family:ui-serif,Georgia,serif;font-size:21px;line-height:1.1;color:#22313F}
+.cover .a{position:absolute;left:18px;bottom:18px;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:#45698F;font-weight:600}
+.bookbar{margin-top:12px;width:200px;display:grid;gap:6px}
+.bookbar span{font-size:13px;text-align:center;padding:8px 6px;border-radius:8px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink)}
+.bookbar span.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent);font-weight:600;font-size:13.5px}
+.info .label{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+.info h2{font-weight:500;font-size:34px;line-height:1.1;margin:10px 0 6px;letter-spacing:-.01em}
+.info .by{color:var(--ink-2);font-size:16px}
+.gauge{margin-top:30px}
+.gaugehead{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px}
+.gaugehead .pct{font-size:44px;font-weight:300;letter-spacing:-.02em;line-height:1}
+.gaugehead .pct small{font-size:20px;color:var(--ink-3)}
+.gaugehead .pg{font-size:15px;color:var(--ink-2)}
+.track{height:14px;border-radius:7px;background:var(--accent-soft);overflow:hidden}
+.track div{width:64%;height:100%;border-radius:7px;background:var(--accent)}
+.ticks{display:flex;justify-content:space-between;font-size:11.5px;color:var(--ink-3);margin-top:6px}
+.entry{margin-top:24px;display:flex;align-items:center;gap:10px;padding:14px;border-radius:12px;background:var(--surface-2);border:1px solid var(--line)}
+.entry label{font-size:14px;color:var(--ink-2);margin-right:4px}
+.field{width:110px;height:42px;border-radius:9px;border:1.5px solid var(--accent);background:var(--surface);display:flex;align-items:center;padding:0 14px;font-size:18px;font-variant-numeric:tabular-nums;box-shadow:0 0 0 4px var(--focus);color:var(--ink)}
+.field:after{content:"";width:1px;height:20px;background:var(--ink);margin-left:2px}
+.of{font-size:14px;color:var(--ink-3)}
+.btn{height:42px;padding:0 20px;border-radius:9px;background:var(--accent);color:var(--on-accent);font-size:14.5px;font-weight:600;display:inline-flex;align-items:center;margin-left:auto}
+.reentry{margin-top:16px;font-size:14px;color:var(--ink-2);display:flex;gap:18px}
+.reentry span{display:inline-flex;align-items:center;gap:8px}
+.reentry span:before{content:"";width:6px;height:6px;border-radius:50%;background:var(--ink-3)}
+.stack{display:flex;flex-direction:column;gap:16px}
+.pane{padding:20px 22px}
+.pane h3{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);margin-bottom:12px}
+.pane p.q{font-size:15px;margin-bottom:14px}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--surface-2)}
+.seg span{text-align:center;padding:11px 0;font-size:14px;color:var(--ink);border-right:1px solid var(--line)}
+.seg span:last-child{border-right:none}
+.pane .hint{font-size:12.5px;color:var(--ink-3);margin-top:10px}
+.next{display:flex;gap:12px;align-items:center}
+.ph{width:44px;height:64px;border-radius:3px;flex:none;background:var(--surface-2);border:1.5px dashed var(--unread-line);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}
+.ph b{width:22px;height:2px;background:var(--unread-line);border-radius:1px}
+.ph b+b{width:14px}
+.next .t{font-size:15.5px;line-height:1.25}
+.next .a{font-size:13px;color:var(--ink-2);margin-top:2px}
+.waitl{list-style:none}
+.waitl li{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line);font-size:14px}
+.waitl li:first-child{border-top:none;padding-top:0}
+.waitl .bar{margin-left:auto;width:60px;height:5px;border-radius:3px;background:var(--accent-soft);overflow:hidden}
+.waitl .bar i{display:block;height:100%;background:var(--accent-mid)}
+.waitl small{color:var(--ink-2);font-size:12.5px;width:40px;text-align:right;font-variant-numeric:tabular-nums}
+/* bookcase */
+.shelfcard{margin-top:24px;padding:20px 26px 16px;background:var(--wall);border:1px solid var(--wall-line);border-radius:14px}
+.shead{display:flex;align-items:center;gap:14px;margin-bottom:14px}
+.shead h3{font-size:15px;font-weight:600}
+.chip{font-size:12.5px;color:var(--ink-2);border:1px solid var(--line);border-radius:20px;padding:3px 10px;background:var(--surface-2)}
+.quiet{font-size:13.5px;color:var(--ink-2)}
+.meter{margin-left:auto;display:flex;align-items:center;gap:12px;font-size:13.5px;color:var(--ink-2)}
+.mbar{display:block;width:180px;height:4px;border-radius:2px;background:var(--line);overflow:hidden}
+.mbar i{display:block;height:100%;background:var(--accent);border-radius:2px}
+.case{position:relative}
+.row{margin-bottom:14px}
+.books{display:flex;align-items:flex-end;gap:4px;padding:0 12px;height:204px}
+.plank{height:12px;background:var(--birch);border-bottom:4px solid var(--birch-edge);border-radius:2px;box-shadow:0 6px 10px var(--plank-shadow)}
+.sp{all:unset;box-sizing:border-box;position:relative;flex:none;width:28px;border-radius:3px 3px 0 0;display:flex;justify-content:center;align-items:flex-start;padding:12px 0;overflow:hidden;cursor:pointer;font-family:system-ui,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif}
+.sp .lab{writing-mode:vertical-rl;font-size:11px;line-height:12px;white-space:nowrap;letter-spacing:.02em}
+.sp.two .lab{white-space:normal;max-height:100%;text-align:start;font-size:10.5px;line-height:11.5px}
+.sp.read{background:var(--c)}
+.sp.read .lab{color:var(--lc)}
+.sp.unread{background:var(--unread-fill);border:1.5px solid var(--unread-line);border-bottom:none}
+.sp.unread .lab{color:var(--unread-text)}
+.sp:has(.mk){padding-top:22px}
+.sp .mk{position:absolute;top:8px;left:50%;transform:translateX(-50%);width:7px;height:7px;border-radius:50%}
+.sp.next .mk{background:var(--sky)}
+.sp.paused .mk{background:var(--sand)}
+.sp.main .mk{background:var(--unread-text)}
+/* filled spines: main book at 64%, finishing book mid-fill; label is drawn twice and clipped at the fill line */
+.sp.main,.sp.finishing{--f:64%;background:linear-gradient(0deg,var(--c) var(--f),var(--unread-fill) var(--f));border:1.5px solid var(--c);border-bottom:none}
+.sp.finishing{--f:58%;background:linear-gradient(0deg,var(--c) calc(var(--f) - 7%),color-mix(in srgb,var(--c) 70%,#FFFFFF) var(--f),var(--unread-fill) calc(var(--f) + .5%));box-shadow:0 0 0 2px var(--page),0 0 0 4px color-mix(in srgb,var(--accent) 70%,transparent)}
+.sp .layer{position:absolute;inset:0;display:flex;justify-content:center;align-items:flex-start;padding:12px 0}
+.sp.main .layer{padding-top:22px}
+.sp .l-top .lab{color:var(--unread-text)}
+.sp .l-bot .lab{color:var(--lc)}
+.sp .l-top{clip-path:inset(0 0 var(--f) 0)}
+.sp .l-bot{clip-path:inset(calc(100% - var(--f)) 0 0 0)}
+.sp.finishing .l-top{clip-path:inset(0 0 calc(var(--f) - 6%) 0)}
+.sp.finishing .l-bot{clip-path:inset(calc(106% - var(--f)) 0 0 0)}
+.sp.is-open{outline:2px solid var(--accent);outline-offset:2px;border-color:var(--accent)}
+.legend{display:flex;gap:22px;font-size:12.5px;color:var(--ink-2);margin-top:4px;align-items:center}
+.legend .lg{display:inline-block;width:10px;height:14px;border-radius:2px 2px 0 0;margin-right:7px;vertical-align:-2px}
+.lg.read{background:#4B7C7B}.lg.unread{background:var(--unread-fill);border:1.5px solid var(--unread-line)}
+.lg.main{background:linear-gradient(0deg,#4F7096 64%,var(--unread-fill) 64%);border:1.5px solid #4F7096}
+.legend .dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:7px;vertical-align:1px}
+.dot.sky{background:var(--sky)}.dot.sand{background:var(--sand)}
+/* popover (light frame): compact two-column card anchored above the spine of The Design of Everyday Things (row 2, 2nd spine) */
+.pop{position:absolute;left:-14px;bottom:222px;width:500px;display:grid;grid-template-columns:1fr 236px;gap:18px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px 14px;box-shadow:var(--pop-shadow);z-index:5}
+.pop .x{position:absolute;top:8px;right:12px;font-size:18px;color:var(--ink-3);line-height:1}
+.pt{font-size:18px;line-height:1.2}
+.ps{font-size:13px;color:var(--ink-2);margin-top:3px}
+.pa{font-size:14px;margin-top:8px}
+.pm{display:flex;gap:10px;font-size:13px;color:var(--ink-2);margin-top:4px}
+.pm span+span:before{content:"·";margin-right:10px;color:var(--ink-3)}
+.pstat{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--ink-2);margin-top:12px}
+.pstat i{width:8px;height:11px;border:1.5px solid var(--unread-line);border-bottom:none;border-radius:2px 2px 0 0;background:var(--unread-fill)}
+.pr{padding-left:18px;border-left:1px solid var(--line);padding-top:16px}
+.pbtn{height:34px;padding:0 14px;border-radius:8px;background:var(--accent);color:var(--on-accent);font-size:13.5px;font-weight:600;display:inline-flex;align-items:center}
+.phint{font-size:12px;color:var(--ink-3);margin-top:5px}
+.plinks{display:flex;gap:16px;margin-top:8px}
+.plink{font-size:13px;color:var(--accent);text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
+.pcol{margin-top:10px;padding-top:9px;border-top:1px solid var(--line)}
+.pcolh{font-size:12.5px;color:var(--ink);font-weight:600;margin-bottom:7px}
+.pcolh small{font-weight:400;color:var(--ink-3);font-size:12px}
+.swrow{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.fromcover{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--ink);border:1px solid var(--line);border-radius:14px;padding:2px 8px 2px 3px}
+.fromcover i{width:14px;height:14px;border-radius:50%}
+.fromcover.on{border-color:var(--accent);box-shadow:0 0 0 2px var(--focus)}
+.sw{width:16px;height:16px;border-radius:50%;display:inline-block}
+.ptr{position:absolute;left:65px;bottom:-8px;width:14px;height:14px;background:var(--surface);border-right:1px solid var(--line);border-bottom:1px solid var(--line);transform:rotate(45deg)}
+/* annotation (designer note inside the dark frame, visually distinct from UI) */
+.anno{position:absolute;right:6px;bottom:30px;width:330px;font-size:12.5px;line-height:1.5;color:var(--ink-2);border:1.5px dashed #B89A5A;border-radius:10px;padding:10px 12px;background:color-mix(in srgb,var(--wall) 85%,#B89A5A)}
+.anno b{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#D4B878;margin-bottom:3px}
+.anno em{font-style:normal;color:var(--ink);font-weight:600}
+.anno .lead{position:absolute;right:125px;top:-96px;width:0;height:95px;border-left:1.5px dashed #B89A5A}
+/* notes outside frames */
+.notes{width:1280px;margin:18px auto 44px;display:grid;grid-template-columns:repeat(3,1fr);gap:14px 26px;font-size:13.5px;line-height:1.55;color:#3F423D}
+.notes .n:first-child{grid-column:span 2}
+.src{margin-top:4px}.src em{font-style:normal;font-weight:600;color:#2B2E2A}
+.src.small{font-size:12px;color:#55584F;margin-top:8px}
+.exs{display:inline-flex;align-items:center;gap:5px;margin:0 8px 0 6px}
+.exs i,.chipsw{display:inline-block;width:10px;height:14px;border-radius:2px 2px 0 0;vertical-align:-2px}
+.chipsw{margin:0 3px 0 8px}
+
+</style>
+</head>
+<body>
+<div class="intro">
+  <b>Direction B, Birch Morning · v2 (light + dark)</b>
+  The same main screen in both themes. Changes from v1: navigation moves to a top bar with a light/dark/system toggle, so the bookcase gets the full width. All spines are the same width now, and their height grows to fit the whole title, kept within one calm range. The library meter is a thin bar that still works at 500 books. Re-entry is counted in days.
+</div>
+
+<section class="theme-light">
+<div class="cap"><b>Light theme</b>Morning, Light selected in the toggle. A spine popover is open on an unread book.</div>
+<div class="frame">
+  <div class="chrome"><i></i><i></i><i></i><div class="url">127.0.0.1:5173 / bookvie</div></div>
+  <header class="topbar">
+    <div class="logo">bookvie<span></span></div>
+    <nav><a class="on" aria-current="page">Home</a><a>Catalog</a><a>Calendar</a><a>Stats</a><a>Card notes</a><a>Backup</a></nav>
+    <div class="toggle" role="group" aria-label="Theme"><span class="tg on" aria-pressed="true"><b class="ic sun"></b>Light</span><span class="tg" aria-pressed="false"><b class="ic moon"></b>Dark</span><span class="tg" aria-pressed="false"><b class="ic sys"></b>System</span></div>
+  </header>
+  <main>
+    <div class="top"><h1><strong>Wednesday, 28 October</strong> · Good morning</h1><span class="saved">Saved on this computer</span></div>
+    <div class="grid">
+      <div class="card mainbook">
+        <div>
+          <div class="cover"><div class="band"></div><div class="circ"></div><div class="half"></div>
+            <div class="t">The Left Hand of Darkness</div><div class="a">Ursula K. Le Guin</div></div>
+          <div class="bookbar"><span class="primary">+ Add pages</span><span>Add card note</span><span>See card notes · 6</span></div>
+        </div>
+        <div class="info">
+          <div class="label">Main book</div>
+          <h2 class="serif">The Left Hand of Darkness</h2>
+          <div class="by">Ursula K. Le Guin</div>
+          <div class="gauge">
+            <div class="gaugehead"><div class="pct">64<small>%</small></div><div class="pg">p.212 of 330</div></div>
+            <div class="track"><div></div></div>
+            <div class="ticks"><span>0</span><span>165</span><span>330</span></div>
+          </div>
+          <div class="entry"><label>Page</label><div class="field">212</div><span class="of">of 330</span><span class="btn">Update</span></div>
+          <div class="reentry"><span>Last time: p.188</span><span>~7 days left</span></div>
+        </div>
+      </div>
+      <div class="stack">
+        <div class="card pane">
+          <h3>Today</h3>
+          <p class="q">What kind of reading day?</p>
+          <div class="seg" role="radiogroup"><span>Deep</span><span>Light</span><span>Rest</span></div>
+          <div class="hint">Pick one whenever you like, or leave it for later.</div>
+        </div>
+        <div class="card pane">
+          <h3>Up next</h3>
+          <div class="next"><div class="ph"><b></b><b></b></div><div><div class="t serif">Designing Data-Intensive Applications</div><div class="a">Martin Kleppmann</div></div></div>
+        </div>
+        <div class="card pane">
+          <h3>Waiting for you (2)</h3>
+          <ul class="waitl">
+            <li><span class="serif">Dune</span><span class="bar"><i style="width:29%"></i></span><small>p.120</small></li>
+            <li><span class="serif">Gödel, Escher, Bach</span><span class="bar"><i style="width:11%"></i></span><small>p.88</small></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="shelfcard">
+      <div class="shead"><h3>Bookcase</h3><span class="chip">Sorted by author ▾</span>
+        <div class="meter"><span class="mbar" role="progressbar" aria-valuenow="24" aria-valuemax="54"><i style="width:44.4%"></i></span><span>24 of 54 finished</span></div></div>
+      <div class="case">
+<div class="row"><div class="books"><button class="sp read two" style="height:160px;--c:#3A6E8C;--lc:#FFFFFF" aria-label="The Hitchhiker&#x27;s Guide to the Galaxy by Adams, finished" data-i="0"><span class="lab">The Hitchhiker&#x27;s Guide to the Galaxy</span></button><button class="sp read" style="height:120px;--c:#AE5B3A;--lc:#FFFFFF" aria-label="Foundation by Asimov, finished" data-i="1"><span class="lab">Foundation</span></button><button class="sp unread" style="height:144px;--c:#8E2F3C;--lc:#FFFFFF" aria-label="The Handmaid&#x27;s Tale by Atwood, not read yet" data-i="2"><span class="lab">The Handmaid&#x27;s Tale</span></button><button class="sp read" style="height:120px;--c:#7E8E6E;--lc:#1E211D" aria-label="Persuasion by Austen, finished" data-i="3"><span class="lab">Persuasion</span></button><button class="sp read" style="height:120px;--c:#C07A3A;--lc:#1E211D" aria-label="Fahrenheit 451 by Bradbury, finished" data-i="4"><span class="lab">Fahrenheit 451</span></button><button class="sp read" style="height:168px;--c:#7A6283;--lc:#FFFFFF" aria-label="The Mythical Man-Month by Brooks, finished" data-i="5"><span class="lab">The Mythical Man-Month</span></button><button class="sp unread" style="height:176px;--c:#2F2F38;--lc:#FFFFFF" aria-label="The Master and Margarita by Bulgakov, not read yet" data-i="6"><span class="lab">The Master and Margarita</span></button><button class="sp read" style="height:120px;--c:#639392;--lc:#1E211D" aria-label="Invisible Cities by Calvino, finished" data-i="7"><span class="lab">Invisible Cities</span></button><button class="sp unread" style="height:120px;--c:#A69A55;--lc:#1E211D" aria-label="The Plague by Camus, not read yet" data-i="8"><span class="lab">The Plague</span></button><button class="sp read" style="height:120px;--c:#35526F;--lc:#FFFFFF" aria-label="Exhalation by Chiang, finished" data-i="9"><span class="lab">Exhalation</span></button><button class="sp unread" style="height:168px;--c:#5E2B2B;--lc:#FFFFFF" aria-label="The Brothers Karamazov by Dostoevsky, not read yet" data-i="10"><span class="lab">The Brothers Karamazov</span></button><button class="sp unread" style="height:152px;--c:#6A4A2E;--lc:#FFFFFF" aria-label="The Name of the Rose by Eco, not read yet" data-i="11"><span class="lab">The Name of the Rose</span></button><button class="sp unread" style="height:152px;--c:#3E6E58;--lc:#FFFFFF" aria-label="Domain-Driven Design by Evans, not read yet" data-i="12"><span class="lab">Domain-Driven Design</span></button><button class="sp read two" style="height:152px;--c:#C49E4A;--lc:#1E211D" aria-label="Surely You&#x27;re Joking, Mr. Feynman! by Feynman, finished" data-i="13"><span class="lab">Surely You&#x27;re Joking, Mr. Feynman!</span></button><button class="sp read" style="height:120px;--c:#8C4A3C;--lc:#FFFFFF" aria-label="Refactoring by Fowler, finished" data-i="14"><span class="lab">Refactoring</span></button><button class="sp unread" style="height:120px;--c:#5A6470;--lc:#FFFFFF" aria-label="Design Patterns by Gamma et al., not read yet" data-i="15"><span class="lab">Design Patterns</span></button><button class="sp read" style="height:200px;--c:#A26347;--lc:#FFFFFF" aria-label="One Hundred Years of Solitude by García Márquez, finished" data-i="16"><span class="lab">One Hundred Years of Solitude</span></button><button class="sp read" style="height:120px;--c:#36706C;--lc:#FFFFFF" aria-label="Neuromancer by Gibson, finished" data-i="17"><span class="lab">Neuromancer</span></button><button class="sp unread paused" style="height:120px;--c:#C08A3E;--lc:#1E211D" aria-label="Dune by Herbert, waiting for you" data-i="18"><span class="lab">Dune</span><i class="mk" aria-hidden="true"></i></button><button class="sp unread paused two" style="height:192px;--c:#4B5E8E;--lc:#FFFFFF" aria-label="Gödel, Escher, Bach: An Eternal Golden Braid by Hofstadter, waiting for you" data-i="19"><span class="lab">Gödel, Escher, Bach: An Eternal Golden Braid</span><i class="mk" aria-hidden="true"></i></button><button class="sp read" style="height:184px;--c:#6F7375;--lc:#FFFFFF" aria-label="The Pragmatic Programmer by Hunt &amp; Thomas, finished" data-i="20"><span class="lab">The Pragmatic Programmer</span></button><button class="sp unread" style="height:128px;--c:#C7A27A;--lc:#1E211D" aria-label="Klara and the Sun by Ishiguro, not read yet" data-i="21"><span class="lab">Klara and the Sun</span></button><button class="sp read" style="height:160px;--c:#6B7A56;--lc:#FFFFFF" aria-label="The Remains of the Day by Ishiguro, finished" data-i="22"><span class="lab">The Remains of the Day</span></button><button class="sp unread" style="height:160px;--c:#D9C25A;--lc:#1E211D" aria-label="Thinking, Fast and Slow by Kahneman, not read yet" data-i="23"><span class="lab">Thinking, Fast and Slow</span></button><button class="sp unread next two" style="height:176px;--c:#7A4E7E;--lc:#FFFFFF" aria-label="Designing Data-Intensive Applications by Kleppmann, up next" data-i="24"><span class="lab">Designing Data-Intensive Applications</span><i class="mk" aria-hidden="true"></i></button><button class="sp unread two" style="height:176px;--c:#2F4A6B;--lc:#FFFFFF" aria-label="The Art of Computer Programming, Vol. 1 by Knuth, not read yet" data-i="25"><span class="lab">The Art of Computer Programming, Vol. 1</span></button><button class="sp read" style="height:144px;--c:#467A8A;--lc:#FFFFFF" aria-label="A Wizard of Earthsea by Le Guin, finished" data-i="26"><span class="lab">A Wizard of Earthsea</span></button><button class="sp unread" style="height:128px;--c:#9A6B3C;--lc:#FFFFFF" aria-label="The Dispossessed by Le Guin, not read yet" data-i="27"><span class="lab">The Dispossessed</span></button><button class="sp main" style="height:192px;--c:#4F7096;--lc:#FFFFFF" aria-label="The Left Hand of Darkness by Le Guin, reading, 64%" data-i="28"><span class="layer l-top"><span class="lab">The Left Hand of Darkness</span></span><span class="layer l-bot"><span class="lab">The Left Hand of Darkness</span></span><i class="mk" aria-hidden="true"></i></button><button class="sp unread" style="height:144px;--c:#4D5B45;--lc:#FFFFFF" aria-label="The Magic Mountain by Mann, not read yet" data-i="29"><span class="lab">The Magic Mountain</span></button><button class="sp unread" style="height:120px;--c:#6B6B6B;--lc:#FFFFFF" aria-label="The Road by McCarthy, not read yet" data-i="30"><span class="lab">The Road</span></button><button class="sp read" style="height:192px;--c:#4B7C7B;--lc:#FFFFFF" aria-label="Thinking in Systems: A Primer by Meadows, finished" data-i="31"><span class="lab">Thinking in Systems: A Primer</span></button><button class="sp unread" style="height:120px;--c:#387AA1;--lc:#FFFFFF" aria-label="Cloud Atlas by Mitchell, not read yet" data-i="32"><span class="lab">Cloud Atlas</span></button><button class="sp read" style="height:128px;--c:#A0444A;--lc:#FFFFFF" aria-label="Norwegian Wood by Murakami, finished" data-i="33"><span class="lab">Norwegian Wood</span></button><button class="sp unread" style="height:120px;--c:#847346;--lc:#FFFFFF" aria-label="Pale Fire by Nabokov, not read yet" data-i="34"><span class="lab">Pale Fire</span></button></div><div class="plank"></div></div>
+<div class="row"><div class="books"><button class="sp read" style="height:120px;--c:#5B7590;--lc:#FFFFFF" aria-label="Deep Work by Newport, finished" data-i="35"><span class="lab">Deep Work</span></button><button class="sp unread is-open" style="height:200px;--c:#C05339;--lc:#FFFFFF" aria-label="The Design of Everyday Things by Norman, not read yet" data-i="36"><span class="lab">The Design of Everyday Things</span></button><button class="sp read" style="height:152px;--c:#A8483E;--lc:#FFFFFF" aria-label="Nineteen Eighty-Four by Orwell, finished" data-i="37"><span class="lab">Nineteen Eighty-Four</span></button><button class="sp read two" style="height:152px;--c:#749076;--lc:#1E211D" aria-label="A Philosophy of Software Design by Ousterhout, finished" data-i="38"><span class="lab">A Philosophy of Software Design</span></button><button class="sp unread two" style="height:176px;--c:#B98B3A;--lc:#1E211D" aria-label="Zen and the Art of Motorcycle Maintenance by Pirsig, not read yet" data-i="39"><span class="lab">Zen and the Art of Motorcycle Maintenance</span></button><button class="sp unread" style="height:120px;--c:#7D9AA6;--lc:#1E211D" aria-label="Gilead by Robinson, not read yet" data-i="40"><span class="lab">Gilead</span></button><button class="sp read" style="height:120px;--c:#23395A;--lc:#FFFFFF" aria-label="Cosmos by Sagan, finished" data-i="41"><span class="lab">Cosmos</span></button><button class="sp unread" style="height:184px;--c:#638F9E;--lc:#1E211D" aria-label="A Swim in a Pond in the Rain by Saunders, not read yet" data-i="42"><span class="lab">A Swim in a Pond in the Rain</span></button><button class="sp unread" style="height:120px;--c:#8A4E2E;--lc:#FFFFFF" aria-label="Hyperion by Simmons, not read yet" data-i="43"><span class="lab">Hyperion</span></button><button class="sp unread" style="height:120px;--c:#3E4A3A;--lc:#FFFFFF" aria-label="Cryptonomicon by Stephenson, not read yet" data-i="44"><span class="lab">Cryptonomicon</span></button><button class="sp read" style="height:152px;--c:#9B6753;--lc:#FFFFFF" aria-label="The Elements of Style by Strunk &amp; White, finished" data-i="45"><span class="lab">The Elements of Style</span></button><button class="sp read" style="height:120px;--c:#3F6A4A;--lc:#FFFFFF" aria-label="The Hobbit by Tolkien, finished" data-i="46"><span class="lab">The Hobbit</span></button><button class="sp unread" style="height:120px;--c:#6B2E3E;--lc:#FFFFFF" aria-label="Anna Karenina by Tolstoy, not read yet" data-i="47"><span class="lab">Anna Karenina</span></button><button class="sp unread two" style="height:184px;--c:#C9B48A;--lc:#1E211D" aria-label="The Visual Display of Quantitative Information by Tufte, not read yet" data-i="48"><span class="lab">The Visual Display of Quantitative Information</span></button><button class="sp read" style="height:144px;--c:#CB7346;--lc:#1E211D" aria-label="Slaughterhouse-Five by Vonnegut, finished" data-i="49"><span class="lab">Slaughterhouse-Five</span></button><button class="sp unread" style="height:120px;--c:#447B9B;--lc:#FFFFFF" aria-label="Infinite Jest by Wallace, not read yet" data-i="50"><span class="lab">Infinite Jest</span></button><button class="sp unread" style="height:128px;--c:#8FA88A;--lc:#1E211D" aria-label="To the Lighthouse by Woolf, not read yet" data-i="51"><span class="lab">To the Lighthouse</span></button><button class="sp unread" style="height:136px;--c:#7A5A3A;--lc:#FFFFFF" aria-label="Memoirs of Hadrian by Yourcenar, not read yet" data-i="52"><span class="lab">Memoirs of Hadrian</span></button><button class="sp read" style="height:120px;--c:#4A4A6A;--lc:#FFFFFF" aria-label="The Book Thief by Zusak, finished" data-i="53"><span class="lab">The Book Thief</span></button></div><div class="plank"></div></div>
+<div class="pop" role="dialog" aria-label="The Design of Everyday Things">
+  <span class="x" aria-label="Close">×</span>
+  <div class="pl">
+    <div class="pt serif">The Design of Everyday Things</div>
+    <div class="ps">Revised and Expanded Edition</div>
+    <div class="pa">Don Norman</div>
+    <div class="pm"><span>368 pages</span><span>2013</span></div>
+    <div class="pstat"><i></i>Unread</div>
+  </div>
+  <div class="pr">
+    <span class="pbtn">Set as Up next</span>
+    <div class="phint">Replaces the current Up next.</div>
+    <div class="plinks"><span class="plink">Start reading</span><span class="plink">Open book →</span></div>
+    <div class="pcol"><div class="pcolh">Change color <small>· shown once read</small></div>
+      <div class="swrow"><span class="fromcover on"><i style="background:#C4553A"></i>From cover</span><i class="sw" style="background:#749076" title="sage"></i><i class="sw" style="background:#5B7590" title="slate"></i><i class="sw" style="background:#9B6753" title="clay"></i><i class="sw" style="background:#B48A45" title="ochre"></i><i class="sw" style="background:#7A6283" title="plum"></i><i class="sw" style="background:#4B7C7B" title="teal"></i><i class="sw" style="background:#6C7650" title="moss"></i><i class="sw" style="background:#6F7375" title="stone"></i></div></div>
+  </div>
+  <span class="ptr" aria-hidden="true"></span>
+</div>
+      </div>
+      <div class="legend"><span><i class="lg read"></i>finished</span><span><i class="lg unread"></i>not read yet</span><span><i class="lg main"></i>Main book, filled to its %</span><span><i class="dot sky"></i>up next</span><span><i class="dot sand"></i>waiting for you</span></div>
+    </div>
+  </main>
+</div>
+</section>
+<div class="notes">
+  <div class="n"><b>Where a read spine gets its colour</b>
+    <div class="src"><em>From the cover</em> (default when the book has a cover image). The dominant cover hue is softened toward the birch palette. <span class="exs"><i style="background:#3A6E8C"></i><span class="serif">The Hitchhiker&#x27;s Guide to the Galaxy</span></span><span class="exs"><i style="background:#A26347"></i><span class="serif">One Hundred Years of Solitude</span></span><span class="exs"><i style="background:#A0444A"></i><span class="serif">Norwegian Wood</span></span> and most others.</div>
+    <div class="src"><em>Calm curated palette</em> (when there's no cover):<span class="exs"><i style="background:#7A6283"></i><span class="serif">The Mythical Man-Month</span></span><span class="exs"><i style="background:#6F7375"></i><span class="serif">The Pragmatic Programmer</span></span><span class="exs"><i style="background:#4B7C7B"></i><span class="serif">Thinking in Systems: A Primer</span></span><span class="exs"><i style="background:#5B7590"></i><span class="serif">Deep Work</span></span><span class="exs"><i style="background:#749076"></i><span class="serif">A Philosophy of Software Design</span></span><span class="exs"><i style="background:#9B6753"></i><span class="serif">The Elements of Style</span></span></div>
+    <div class="src"><em>Customised by you</em> (always wins):<span class="exs"><i style="background:#23395A"></i><span class="serif">Cosmos</span></span><span class="exs"><i style="background:#3F6A4A"></i><span class="serif">The Hobbit</span></span></div>
+    <div class="src small">Curated palette: <i class="chipsw" style="background:#749076"></i>sage #749076 <i class="chipsw" style="background:#5B7590"></i>slate #5B7590 <i class="chipsw" style="background:#9B6753"></i>clay #9B6753 <i class="chipsw" style="background:#B48A45"></i>ochre #B48A45 <i class="chipsw" style="background:#7A6283"></i>plum #7A6283 <i class="chipsw" style="background:#4B7C7B"></i>teal #4B7C7B <i class="chipsw" style="background:#6C7650"></i>moss #6C7650 <i class="chipsw" style="background:#6F7375"></i>stone #6F7375</div>
+  </div>
+  <div class="n"><b>Spine sizing</b>Every spine is 28px wide. Height is set by the title length: 11px vertical text plus padding, rounded up to an 8px step and kept within 120–200px, so neighbouring books stay in proportion. A title too long for 200px wraps onto a second line inside the spine (for example <span class="serif">Gödel, Escher, Bach: An Eternal Golden Braid</span>) instead of making the spine taller.</div>
+  <div class="n"><b>Label contrast</b>The label is white or ink, whichever contrasts more with the spine colour. If neither reaches 4.5:1, the colour is nudged slightly darker or lighter until one does. Custom colours follow the same rule.</div>
+  <div class="n"><b>At ~500 books</b>About 35 spines fit on a plank at 1280px, so 500 books fill roughly 15 shelves. The bookcase card then shows three shelves and scrolls inside itself. Shelf rows render lazily, and the meter stays one bar.</div>
+  <div class="n"><b>Spine popover</b>Opens on click, Enter or Space, anchored above the spine with a pointer. It shows details and one action that fits the book's state: unread → Set as Up next; Up next → Start reading; waiting → Resume; Main book or finished → no primary. Closes on Esc or an outside click, and focus returns to the spine.</div>
+</div>
+
+<section class="theme-dark">
+<div class="cap"><b>Dark theme</b>Evening, Dark selected. Shows the brief finish moment on a spine instead of the popover.</div>
+<div class="frame">
+  <div class="chrome"><i></i><i></i><i></i><div class="url">127.0.0.1:5173 / bookvie</div></div>
+  <header class="topbar">
+    <div class="logo">bookvie<span></span></div>
+    <nav><a class="on" aria-current="page">Home</a><a>Catalog</a><a>Calendar</a><a>Stats</a><a>Card notes</a><a>Backup</a></nav>
+    <div class="toggle" role="group" aria-label="Theme"><span class="tg" aria-pressed="false"><b class="ic sun"></b>Light</span><span class="tg on" aria-pressed="true"><b class="ic moon"></b>Dark</span><span class="tg" aria-pressed="false"><b class="ic sys"></b>System</span></div>
+  </header>
+  <main>
+    <div class="top"><h1><strong>Wednesday, 28 October</strong> · Good evening</h1><span class="saved">Saved on this computer</span></div>
+    <div class="grid">
+      <div class="card mainbook">
+        <div>
+          <div class="cover"><div class="band"></div><div class="circ"></div><div class="half"></div>
+            <div class="t">The Left Hand of Darkness</div><div class="a">Ursula K. Le Guin</div></div>
+          <div class="bookbar"><span class="primary">+ Add pages</span><span>Add card note</span><span>See card notes · 6</span></div>
+        </div>
+        <div class="info">
+          <div class="label">Main book</div>
+          <h2 class="serif">The Left Hand of Darkness</h2>
+          <div class="by">Ursula K. Le Guin</div>
+          <div class="gauge">
+            <div class="gaugehead"><div class="pct">64<small>%</small></div><div class="pg">p.212 of 330</div></div>
+            <div class="track"><div></div></div>
+            <div class="ticks"><span>0</span><span>165</span><span>330</span></div>
+          </div>
+          <div class="entry"><label>Page</label><div class="field">212</div><span class="of">of 330</span><span class="btn">Update</span></div>
+          <div class="reentry"><span>Last time: p.188</span><span>~7 days left</span></div>
+        </div>
+      </div>
+      <div class="stack">
+        <div class="card pane">
+          <h3>Today</h3>
+          <p class="q">What kind of reading day?</p>
+          <div class="seg" role="radiogroup"><span>Deep</span><span>Light</span><span>Rest</span></div>
+          <div class="hint">Pick one whenever you like, or leave it for later.</div>
+        </div>
+        <div class="card pane">
+          <h3>Up next</h3>
+          <div class="next"><div class="ph"><b></b><b></b></div><div><div class="t serif">Designing Data-Intensive Applications</div><div class="a">Martin Kleppmann</div></div></div>
+        </div>
+        <div class="card pane">
+          <h3>Waiting for you (2)</h3>
+          <ul class="waitl">
+            <li><span class="serif">Dune</span><span class="bar"><i style="width:29%"></i></span><small>p.120</small></li>
+            <li><span class="serif">Gödel, Escher, Bach</span><span class="bar"><i style="width:11%"></i></span><small>p.88</small></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="shelfcard">
+      <div class="shead"><h3>Bookcase</h3><span class="chip">Sorted by author ▾</span><span class="quiet">Finished <span class="serif">Thinking in Systems</span>.</span>
+        <div class="meter"><span class="mbar" role="progressbar" aria-valuenow="24" aria-valuemax="54"><i style="width:44.4%"></i></span><span>24 of 54 finished</span></div></div>
+      <div class="case">
+<div class="row"><div class="books"><button class="sp read two" style="height:160px;--c:#3A6E8C;--lc:#FFFFFF" aria-label="The Hitchhiker&#x27;s Guide to the Galaxy by Adams, finished" data-i="0"><span class="lab">The Hitchhiker&#x27;s Guide to the Galaxy</span></button><button class="sp read" style="height:120px;--c:#AE5B3A;--lc:#FFFFFF" aria-label="Foundation by Asimov, finished" data-i="1"><span class="lab">Foundation</span></button><button class="sp unread" style="height:144px;--c:#8E2F3C;--lc:#FFFFFF" aria-label="The Handmaid&#x27;s Tale by Atwood, not read yet" data-i="2"><span class="lab">The Handmaid&#x27;s Tale</span></button><button class="sp read" style="height:120px;--c:#7E8E6E;--lc:#1E211D" aria-label="Persuasion by Austen, finished" data-i="3"><span class="lab">Persuasion</span></button><button class="sp read" style="height:120px;--c:#C07A3A;--lc:#1E211D" aria-label="Fahrenheit 451 by Bradbury, finished" data-i="4"><span class="lab">Fahrenheit 451</span></button><button class="sp read" style="height:168px;--c:#7A6283;--lc:#FFFFFF" aria-label="The Mythical Man-Month by Brooks, finished" data-i="5"><span class="lab">The Mythical Man-Month</span></button><button class="sp unread" style="height:176px;--c:#2F2F38;--lc:#FFFFFF" aria-label="The Master and Margarita by Bulgakov, not read yet" data-i="6"><span class="lab">The Master and Margarita</span></button><button class="sp read" style="height:120px;--c:#639392;--lc:#1E211D" aria-label="Invisible Cities by Calvino, finished" data-i="7"><span class="lab">Invisible Cities</span></button><button class="sp unread" style="height:120px;--c:#A69A55;--lc:#1E211D" aria-label="The Plague by Camus, not read yet" data-i="8"><span class="lab">The Plague</span></button><button class="sp read" style="height:120px;--c:#35526F;--lc:#FFFFFF" aria-label="Exhalation by Chiang, finished" data-i="9"><span class="lab">Exhalation</span></button><button class="sp unread" style="height:168px;--c:#5E2B2B;--lc:#FFFFFF" aria-label="The Brothers Karamazov by Dostoevsky, not read yet" data-i="10"><span class="lab">The Brothers Karamazov</span></button><button class="sp unread" style="height:152px;--c:#6A4A2E;--lc:#FFFFFF" aria-label="The Name of the Rose by Eco, not read yet" data-i="11"><span class="lab">The Name of the Rose</span></button><button class="sp unread" style="height:152px;--c:#3E6E58;--lc:#FFFFFF" aria-label="Domain-Driven Design by Evans, not read yet" data-i="12"><span class="lab">Domain-Driven Design</span></button><button class="sp read two" style="height:152px;--c:#C49E4A;--lc:#1E211D" aria-label="Surely You&#x27;re Joking, Mr. Feynman! by Feynman, finished" data-i="13"><span class="lab">Surely You&#x27;re Joking, Mr. Feynman!</span></button><button class="sp read" style="height:120px;--c:#8C4A3C;--lc:#FFFFFF" aria-label="Refactoring by Fowler, finished" data-i="14"><span class="lab">Refactoring</span></button><button class="sp unread" style="height:120px;--c:#5A6470;--lc:#FFFFFF" aria-label="Design Patterns by Gamma et al., not read yet" data-i="15"><span class="lab">Design Patterns</span></button><button class="sp read" style="height:200px;--c:#A26347;--lc:#FFFFFF" aria-label="One Hundred Years of Solitude by García Márquez, finished" data-i="16"><span class="lab">One Hundred Years of Solitude</span></button><button class="sp read" style="height:120px;--c:#36706C;--lc:#FFFFFF" aria-label="Neuromancer by Gibson, finished" data-i="17"><span class="lab">Neuromancer</span></button><button class="sp unread paused" style="height:120px;--c:#C08A3E;--lc:#1E211D" aria-label="Dune by Herbert, waiting for you" data-i="18"><span class="lab">Dune</span><i class="mk" aria-hidden="true"></i></button><button class="sp unread paused two" style="height:192px;--c:#4B5E8E;--lc:#FFFFFF" aria-label="Gödel, Escher, Bach: An Eternal Golden Braid by Hofstadter, waiting for you" data-i="19"><span class="lab">Gödel, Escher, Bach: An Eternal Golden Braid</span><i class="mk" aria-hidden="true"></i></button><button class="sp read" style="height:184px;--c:#6F7375;--lc:#FFFFFF" aria-label="The Pragmatic Programmer by Hunt &amp; Thomas, finished" data-i="20"><span class="lab">The Pragmatic Programmer</span></button><button class="sp unread" style="height:128px;--c:#C7A27A;--lc:#1E211D" aria-label="Klara and the Sun by Ishiguro, not read yet" data-i="21"><span class="lab">Klara and the Sun</span></button><button class="sp read" style="height:160px;--c:#6B7A56;--lc:#FFFFFF" aria-label="The Remains of the Day by Ishiguro, finished" data-i="22"><span class="lab">The Remains of the Day</span></button><button class="sp unread" style="height:160px;--c:#D9C25A;--lc:#1E211D" aria-label="Thinking, Fast and Slow by Kahneman, not read yet" data-i="23"><span class="lab">Thinking, Fast and Slow</span></button><button class="sp unread next two" style="height:176px;--c:#7A4E7E;--lc:#FFFFFF" aria-label="Designing Data-Intensive Applications by Kleppmann, up next" data-i="24"><span class="lab">Designing Data-Intensive Applications</span><i class="mk" aria-hidden="true"></i></button><button class="sp unread two" style="height:176px;--c:#2F4A6B;--lc:#FFFFFF" aria-label="The Art of Computer Programming, Vol. 1 by Knuth, not read yet" data-i="25"><span class="lab">The Art of Computer Programming, Vol. 1</span></button><button class="sp read" style="height:144px;--c:#467A8A;--lc:#FFFFFF" aria-label="A Wizard of Earthsea by Le Guin, finished" data-i="26"><span class="lab">A Wizard of Earthsea</span></button><button class="sp unread" style="height:128px;--c:#9A6B3C;--lc:#FFFFFF" aria-label="The Dispossessed by Le Guin, not read yet" data-i="27"><span class="lab">The Dispossessed</span></button><button class="sp main" style="height:192px;--c:#4F7096;--lc:#FFFFFF" aria-label="The Left Hand of Darkness by Le Guin, reading, 64%" data-i="28"><span class="layer l-top"><span class="lab">The Left Hand of Darkness</span></span><span class="layer l-bot"><span class="lab">The Left Hand of Darkness</span></span><i class="mk" aria-hidden="true"></i></button><button class="sp unread" style="height:144px;--c:#4D5B45;--lc:#FFFFFF" aria-label="The Magic Mountain by Mann, not read yet" data-i="29"><span class="lab">The Magic Mountain</span></button><button class="sp unread" style="height:120px;--c:#6B6B6B;--lc:#FFFFFF" aria-label="The Road by McCarthy, not read yet" data-i="30"><span class="lab">The Road</span></button><button class="sp finishing" style="height:192px;--c:#4B7C7B;--lc:#FFFFFF" aria-label="Thinking in Systems: A Primer by Meadows, just finished" data-i="31"><span class="layer l-top"><span class="lab">Thinking in Systems: A Primer</span></span><span class="layer l-bot"><span class="lab">Thinking in Systems: A Primer</span></span></button><button class="sp unread" style="height:120px;--c:#387AA1;--lc:#FFFFFF" aria-label="Cloud Atlas by Mitchell, not read yet" data-i="32"><span class="lab">Cloud Atlas</span></button><button class="sp read" style="height:128px;--c:#A0444A;--lc:#FFFFFF" aria-label="Norwegian Wood by Murakami, finished" data-i="33"><span class="lab">Norwegian Wood</span></button><button class="sp unread" style="height:120px;--c:#847346;--lc:#FFFFFF" aria-label="Pale Fire by Nabokov, not read yet" data-i="34"><span class="lab">Pale Fire</span></button></div><div class="plank"></div></div>
+<div class="row"><div class="books"><button class="sp read" style="height:120px;--c:#5B7590;--lc:#FFFFFF" aria-label="Deep Work by Newport, finished" data-i="35"><span class="lab">Deep Work</span></button><button class="sp unread" style="height:200px;--c:#C05339;--lc:#FFFFFF" aria-label="The Design of Everyday Things by Norman, not read yet" data-i="36"><span class="lab">The Design of Everyday Things</span></button><button class="sp read" style="height:152px;--c:#A8483E;--lc:#FFFFFF" aria-label="Nineteen Eighty-Four by Orwell, finished" data-i="37"><span class="lab">Nineteen Eighty-Four</span></button><button class="sp read two" style="height:152px;--c:#749076;--lc:#1E211D" aria-label="A Philosophy of Software Design by Ousterhout, finished" data-i="38"><span class="lab">A Philosophy of Software Design</span></button><button class="sp unread two" style="height:176px;--c:#B98B3A;--lc:#1E211D" aria-label="Zen and the Art of Motorcycle Maintenance by Pirsig, not read yet" data-i="39"><span class="lab">Zen and the Art of Motorcycle Maintenance</span></button><button class="sp unread" style="height:120px;--c:#7D9AA6;--lc:#1E211D" aria-label="Gilead by Robinson, not read yet" data-i="40"><span class="lab">Gilead</span></button><button class="sp read" style="height:120px;--c:#23395A;--lc:#FFFFFF" aria-label="Cosmos by Sagan, finished" data-i="41"><span class="lab">Cosmos</span></button><button class="sp unread" style="height:184px;--c:#638F9E;--lc:#1E211D" aria-label="A Swim in a Pond in the Rain by Saunders, not read yet" data-i="42"><span class="lab">A Swim in a Pond in the Rain</span></button><button class="sp unread" style="height:120px;--c:#8A4E2E;--lc:#FFFFFF" aria-label="Hyperion by Simmons, not read yet" data-i="43"><span class="lab">Hyperion</span></button><button class="sp unread" style="height:120px;--c:#3E4A3A;--lc:#FFFFFF" aria-label="Cryptonomicon by Stephenson, not read yet" data-i="44"><span class="lab">Cryptonomicon</span></button><button class="sp read" style="height:152px;--c:#9B6753;--lc:#FFFFFF" aria-label="The Elements of Style by Strunk &amp; White, finished" data-i="45"><span class="lab">The Elements of Style</span></button><button class="sp read" style="height:120px;--c:#3F6A4A;--lc:#FFFFFF" aria-label="The Hobbit by Tolkien, finished" data-i="46"><span class="lab">The Hobbit</span></button><button class="sp unread" style="height:120px;--c:#6B2E3E;--lc:#FFFFFF" aria-label="Anna Karenina by Tolstoy, not read yet" data-i="47"><span class="lab">Anna Karenina</span></button><button class="sp unread two" style="height:184px;--c:#C9B48A;--lc:#1E211D" aria-label="The Visual Display of Quantitative Information by Tufte, not read yet" data-i="48"><span class="lab">The Visual Display of Quantitative Information</span></button><button class="sp read" style="height:144px;--c:#CB7346;--lc:#1E211D" aria-label="Slaughterhouse-Five by Vonnegut, finished" data-i="49"><span class="lab">Slaughterhouse-Five</span></button><button class="sp unread" style="height:120px;--c:#447B9B;--lc:#FFFFFF" aria-label="Infinite Jest by Wallace, not read yet" data-i="50"><span class="lab">Infinite Jest</span></button><button class="sp unread" style="height:128px;--c:#8FA88A;--lc:#1E211D" aria-label="To the Lighthouse by Woolf, not read yet" data-i="51"><span class="lab">To the Lighthouse</span></button><button class="sp unread" style="height:136px;--c:#7A5A3A;--lc:#FFFFFF" aria-label="Memoirs of Hadrian by Yourcenar, not read yet" data-i="52"><span class="lab">Memoirs of Hadrian</span></button><button class="sp read" style="height:120px;--c:#4A4A6A;--lc:#FFFFFF" aria-label="The Book Thief by Zusak, finished" data-i="53"><span class="lab">The Book Thief</span></button></div><div class="plank"></div></div>
+<div class="anno fin"><b>Finish moment</b>The spine fills with its colour once, bottom to top, <em>~600 ms</em>, ease-out, then stays. Reduced motion: instant fill. No sound, no confetti, never replays.<span class="lead" aria-hidden="true"></span></div>
+      </div>
+      <div class="legend"><span><i class="lg read"></i>finished</span><span><i class="lg unread"></i>not read yet</span><span><i class="lg main"></i>Main book, filled to its %</span><span><i class="dot sky"></i>up next</span><span><i class="dot sand"></i>waiting for you</span></div>
+    </div>
+  </main>
+</div>
+</section>
+<div class="notes">
+  <div class="n"><b>Dark theme</b>Same layout and hierarchy. The birch plank darkens to warm walnut and unread spines become dark outlines with light grey titles. Read spines keep their exact colours, so a book looks the same morning and evening. Sage brightens to stay at AA on dark surfaces.</div>
+  <div class="n"><b>Finish moment</b>Depicted mid-fill at ~58%. It plays once, right after the finish confirmation. The meter label has already updated, and a single quiet line appears in the shelf header, then fades on the next visit to Home.</div>
+  <div class="n"><b>Tone</b>No streaks, no missed-day copy, no red states. "Waiting for you" shows the page, not elapsed time.</div>
+</div>
+</body>
+</html>
