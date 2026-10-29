@@ -10,7 +10,7 @@ sources:
 
 # bookvie — Experience Spine
 
-Behavior. Visual specs live in [DESIGN.md](./DESIGN.md) under the same component names. Terms (Book, Reading, Main book, Side read, Pause, Up next, Waiting for you, Purpose, Card note, Measured pace, Quick pace calculator) are used exactly as defined in the PRD glossary, as amended in [prd-deltas.md](./prd-deltas.md) (cited below as "D*n*"). Where this spine departs from the PRD, the change is listed in prd-deltas.md and holds until the PRD is corrected.
+Behavior. Visual specs live in [DESIGN.md](./DESIGN.md) under the same component names. Terms (Book, Reading, Back-filled Reading, Main book, Side read, Pause, Up next, Waiting for you, Purpose, Catch-up, Bookcase, Spine color, Card note, Measured pace, Quick pace calculator) are used exactly as defined in the PRD glossary. "D*n*" citations below point to the change list in [prd-deltas.md](./prd-deltas.md); every delta is applied in the PRD as of 2026-10-29.
 
 Mocks illustrate this spine; they are not the contract. If a mock and a spine disagree, the spine wins. Key screens: [Home](mockups/key-home.html), [Catalog](mockups/key-catalog.html), [Book detail](mockups/key-book-detail.html). Direction reference: [Birch Morning v2](mockups/birch-v2-light-dark.html).
 
@@ -19,7 +19,7 @@ Mocks illustrate this spine; they are not the contract. If a mock and a spine di
 - **Platform.** Web app in a desktop or laptop browser. Minimum viewport 1024px; below that the page scrolls horizontally. No phone or tablet layout (PRD §6.3) (documented deviation: Accessibility Floor → Reflow).
 - **UI system.** None named. Plain, semantic HTML controls styled by DESIGN.md tokens. Native elements (`button`, `input`, `select`, `dialog`) are preferred so roles and names come for free.
 - **Local-first.** All data lives on this computer; no account, no network (PRD §5). No sync or connection status is shown. There is no loading state: local reads are instant. The only busy states are Export and Restore (see Backup page). A save that fails is never silent (see State Patterns → Couldn't save).
-- **One store, two operators.** The user's browser and the cataloging skill's browser must see the same data. How they share it is an architecture decision (prd-deltas → For architecture). UX rule for two open tabs or browsers: last write wins; reloading shows the current data. No cross-tab warning is shown.
+- **One store, two operators.** The user's browser and the cataloging skill's browser must see the same data (PRD §5: a Book saved from any browser on this machine appears in every other). How they share it is an architecture decision (prd-deltas → For architecture, A1). UX rule for two open tabs or browsers: last write wins; reloading shows the current data. No cross-tab warning is shown.
 - **Theme.** Light · Dark · System toggle in the top nav. Default is System; the choice is remembered on this computer.
 - **Users.** One person, who is also the builder. A browser-driven AI cataloging skill acts as a second, unattended operator of the add-book form (see Agent Label Contract).
 - **Language.** UI is English only.
@@ -33,8 +33,8 @@ Top nav, left to right: **Home · Catalog · Stats · Card notes · Backup**, th
 
 | Surface | Reached from | Purpose | Traces to | Journey |
 |---|---|---|---|---|
-| Home | App open; nav | Main book progress and actions, Up next, Waiting for you, On the side, bookcase slice, library meter, quiet status facts | FR-6–FR-11, FR-14, FR-21; D14, D17–D19 | Flows 2, 3, 4, 6, 10 |
-| Catalog | Nav | The whole library: bookcase or list, Search titles, Sort, filters, New book, library meter, "How long until…?" | FR-1–FR-4, FR-15, FR-20; D14, D37 | Flows 1, 3, 5, 9 |
+| Home | App open; nav | Main book progress and actions, Up next, Waiting for you, On the side, bookcase slice, library meter, quiet status facts | FR-6–FR-11, FR-14, FR-21, FR-24; D14, D17–D19 | Flows 2, 3, 4, 6, 10 |
+| Catalog | Nav | The whole library: bookcase or list, Search titles, Sort, filters, New book, library meter, "How long until…?" | FR-1–FR-4, FR-15, FR-20, FR-24; D14, D37 | Flows 1, 3, 5, 9 |
 | Book detail | A book title anywhere (Main book card, Home panes, List view row); "Open book →" in the spine popover; "Open book" in the "⋯" menu | One Book's metadata, current Reading, its first Card notes with search and the pile, Readings, actions, per-Book pace, spine color | FR-1, FR-4–FR-9, FR-14, FR-15; D31, D35 | Flows 1, 9, 10 |
 | Stats | Nav | Books finished and pages finished for a period, monthly bars | FR-16; D3, D30 | Flow 7 |
 | Card notes | Nav (all Books); "See card notes" on the Main book card or "See all card notes" on Book detail (scoped to one Book) | Card notes grouped by Book, quick search, entry to the pile | FR-17–FR-19; D23, D43 | Flow 6 |
@@ -46,7 +46,7 @@ Book detail is a page, not an overlay.
 
 | Overlay | Opened from | Traces to | Journey |
 |---|---|---|---|
-| Spine popover | Click, Enter or Space on a spine (Home slice or Catalog) | D14 | Flows 1, 3 |
+| Spine popover | Click, Enter or Space on a spine (Home slice or Catalog) | FR-24; D14 | Flows 1, 3 |
 | "⋯" menu | Main book card | FR-6; D35 | Flow 10 |
 | New book panel | **New book** button on Catalog (and on the empty state); **Edit** on Book detail | FR-1, FR-2; D20, D28, D38 | Flows 1, 9 |
 | Duplicate dialog | **Add book** or **Save changes** when FR-3 matches | FR-3; D22, D39 | Flow 1 |
@@ -151,7 +151,7 @@ Use: Home side column.
 
 - **Panes:** three, top to bottom. Each row's title is a link to Book detail, and each row's button opens the Start dialog. Buttons carry the title in their name ("Resume The Left Hand of Darkness").
 - **Up next:** the single Up next Book, button **Start reading** (or **Resume** if it has a paused Reading).
-- **Waiting for you (N):** every paused Reading except the Up next Book's, oldest first, no cap. Each row: title, mini bar, "p.N of M", and **Resume**. The mini bar is a progressbar named by the row title (`aria-labelledby`), with `aria-valuetext` "page 120 of 330, 36%".
+- **Waiting for you (N):** every paused Reading except the Up next Book's, longest paused first (by paused-at date), no cap. The paused-at date orders the list but is never shown. Each row: title, mini bar, "p.N of M", and **Resume**. The mini bar is a progressbar named by the row title (`aria-labelledby`), with `aria-valuetext` "page 120 of 330, 36%".
 - **On the side:** up to 3 Side reads. Each row: title, author, and **Start reading**, which opens the Start dialog with "Which page?".
 - **Empty panes:** hidden, except Up next while a Main book exists ("Nothing up next."). With no Main book the Up next pane is hidden: the empty Main book card already suggests the Up next Book (see State Patterns).
 
@@ -173,7 +173,7 @@ Use: page.
 - **Heading:** the `h1` is the Book title.
 - **Content:** metadata, cover, Tags, current Reading (status, gauge, Purpose), Readings (start, finish, stars, Purpose fulfilled). Back-filled Readings show "Finished 14 Aug 2019" with no start.
 - **Actions:** visible per state; see Book states → Book detail actions.
-- **Pause** (Main book only): pauses the Reading at its current page; per FR-7 it becomes Up next. If another Book is Up next, the Confirm dialog first states the displacement ("Pause *X* at p.150 (58%)? *Z* moves to Waiting for you." or "*Z* returns to the catalog.") with **Pause** and **Cancel**. Otherwise Pause applies at once and `status` announces "Paused *X* at p.150. It's Up next."
+- **Pause** (Main book only): pauses the Reading at its current page and records its paused-at date; per FR-7 it becomes Up next. If another Book is Up next, the Confirm dialog first states the displacement ("Pause *X* at p.150 (58%)? *Z* moves to Waiting for you." or "*Z* returns to the catalog.") with **Pause** and **Cancel**. Otherwise Pause applies at once and `status` announces "Paused *X* at p.150. It's Up next."
 - **Edit Purpose** (when a Reading is active or paused): turns the Purpose line into a one-line field with **Save** and **Cancel**; Enter saves, Esc cancels.
 - **Mark finished:** opens the Finish dialog.
 - **Mark as Side read:** When three Side reads already exist, **Mark as Side read** stays focusable with `aria-disabled="true"` and is described by the hint "Up to 3 side reads."
@@ -218,7 +218,7 @@ Use: anywhere a Reading starts or resumes.
 - **Trade-off lines**, each shown only when it applies: "This pauses *Y* at p.120 (64%)." when a Main book exists; and, when that pause will displace an Up next *Z* that is not *X*: "*Z* moves to Waiting for you." (*Z* has a paused Reading) or "*Z* returns to the catalog." (*Z* was never started).
 - **Which page?:** a required number field whenever *X* is a Side read, by any route, prefilled with its paused page if it has one, else empty. A value equal to the last page opens the Finish dialog right after confirming.
 - **Purpose:** optional field (one sentence, FR-9), prefilled with the existing Purpose when resuming.
-- **Start reading** or **Resume** confirms: the previous Main book is paused and becomes Up next; the displaced Up next goes as stated. Starting a Side read removes it from On the side. Starting or resuming sets the Reading's "Last updated" to now. Starting a finished Book creates a re-read.
+- **Start reading** or **Resume** confirms: the previous Main book is paused (its paused-at date is recorded) and becomes Up next; the displaced Up next goes as stated. Starting a Side read removes it from On the side. Starting or resuming sets the Reading's "Last updated" to now. Starting a finished Book creates a re-read.
 - **Cancel** or Esc: nothing changes.
 
 ### Finish dialog
@@ -284,7 +284,7 @@ The bookcase is the library drawn as birch shelves of spines. It is atmospheric:
 | Main book, no Up next | Home | Up next pane shows "Nothing up next." with a link to Catalog. |
 | Waiting for you: none | Home | Pane hidden. |
 | Waiting for you: one | Home | Heading "Waiting for you (1)", one row. |
-| Waiting for you: many | Home | All rows, oldest first, no cap; the side column grows and the page scrolls. |
+| Waiting for you: many | Home | All rows, longest paused first, no cap; the side column grows and the page scrolls. |
 | On the side: none, or 1–3 | Home | Hidden when none; otherwise rows. |
 | Main book at page 0 | Home | Gauge 0%, "p.0 of M"; "Last updated" counts from the start. |
 | Main book at its last page (finish cancelled) | Home | Gauge 100%; "~N days left" hidden; the spine keeps the Main-book marker so it still differs from a finished spine. **Update** with the same page reopens the Finish dialog. |
@@ -447,7 +447,7 @@ Oleg, Thursday evening, 20 books from the hallway shelf.
 
 Mock: [key-catalog](mockups/key-catalog.html).
 
-Precondition: the skill's browser reaches the same bookvie data as Oleg's own browser (prd-deltas → For architecture). The catalog holds 54 Books, 23 of them finished.
+Precondition: the skill's browser reaches the same bookvie data as Oleg's own browser (PRD §5; prd-deltas → For architecture). The catalog holds 54 Books, 23 of them finished.
 
 1. Oleg stacks 20 books by the laptop, opens bookvie on Catalog, starts the AI cataloging skill, and goes to make dinner.
 2. The skill activates **New book**. The `dialog` "New book" opens with focus on **Title**.
@@ -600,4 +600,4 @@ The user offered no external references; the visual reference is the user's own 
 
 ## Open Questions
 
-1. **Shared storage across browsers.** The cataloging skill drives its own browser; it must reach the same data as the user's browser. Owned by architecture (prd-deltas → For architecture). *(Blocks architecture.)*
+1. **Shared storage across browsers.** The cataloging skill drives its own browser; it must reach the same data as the user's browser (PRD §5). Owned by architecture (prd-deltas → For architecture). *(Blocks architecture.)*

@@ -1,7 +1,8 @@
 ---
 title: PRD deltas from the bookvie UX run
-status: draft
-updated: 2026-10-28
+status: applied
+updated: 2026-10-29
+applied: PRD commit c78da40 (2026-10-29); A1–A6 carried to the PRD addendum as architecture handoff
 for: bmad-correct-course
 targets:
   - _bmad-output/planning-artifacts/prds/prd-bookvie-2026-10-28/prd.md
