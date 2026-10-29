@@ -2,7 +2,7 @@
 
 A personal, local-first web app for organizing my home library and tracking my reading. It replaces a paper reading diary as the single source of truth for reading progress. The diary can stay on the nightstand for quick notes; I catch up in the app on my next visit by entering the page I reached.
 
-> **Status:** planning. There is no application code yet. The PRD, UX design, architecture, system-level test design, and epics and stories are final, and the implementation readiness check has passed (see [Project docs](#project-docs)). The next step is sprint planning, then building Epic 1.
+> **Status:** planning. There is no application code yet. The PRD, UX design, architecture, system-level test design, and epics and stories are final, the implementation readiness check has passed, and sprint planning is done: all 41 stories are tracked in the sprint status file, every one still in backlog (see [Project docs](#project-docs)). The next step is building Epic 1, starting with Story 1.1, *Scaffold and install bookvie*.
 
 ## Why
 
@@ -96,6 +96,7 @@ Catalog entry happens through my own AI skills rather than an in-app importer or
 - [Test design handoff](_bmad-output/test-artifacts/test-design/bookvie-handoff.md): how the test design feeds epics and stories
 - [Epics and stories](_bmad-output/planning-artifacts/epics.md): requirements inventory, FR coverage map, and all 41 stories with acceptance criteria
 - [Implementation readiness](_bmad-output/planning-artifacts/implementation-readiness.md): the readiness gate's findings and the decisions that resolved them
+- [Sprint status](_bmad-output/implementation-artifacts/sprint-status.yaml): the status of every epic, story and retrospective, updated as the build moves forward
 - [Brainstorm intent](_bmad-output/brainstorming/brainstorm-personal-library-tracker-2026-10-27/brainstorm-intent.md): the brainstorm's problem statement, pillars and decisions
 - [Brainstorm session](_bmad-output/brainstorming/brainstorm-personal-library-tracker-2026-10-27/brainstorm.html): the full session record
 
