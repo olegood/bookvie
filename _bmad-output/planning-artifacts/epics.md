@@ -140,7 +140,7 @@ From ARCHITECTURE-SPINE.md and the TEA handoff. Items are grouped by concern.
 
 ### UX Design Requirements
 
-From DESIGN.md (visual) and EXPERIENCE.md (behaviour). The two documents share component names.
+From DESIGN.md (visual) and EXPERIENCE.md (behavior). The two documents share component names.
 
 **Foundation and tokens**
 - UX-DR1: Implement DESIGN.md tokens as CSS custom properties: all light colors and their `-dark` twins, the 8 theme-independent spine colors plus `spine-label`/`spine-label-strip`, typography roles (sans system stack for UI; serif stack for book titles only), spacing scale 4–36 plus component dimensions, radii (`plank` … `full`), elevation literals and the scrim.
@@ -173,8 +173,8 @@ From DESIGN.md (visual) and EXPERIENCE.md (behaviour). The two documents share c
 - UX-DR24: Spine visual: 28px wide; height = 120px + 0.3 × rendered one-line title length, rounded up to 8px steps, capped 200px; read = exact stored color + `spine-edge` on top and sides + label strip (16px, top 8px / 20px when marked, ≤ 96px, label ≤ 88px, one line, ellipsis); unread = unread fill + 1.5px outline + unread text, no strip; Main never-finished = unread body with exact color filled from plank to % below the strip, topped by a 2px `spine-edge` fill line; re-read Main = read spine + Main marker; one 7px marker dot with `marker-ring` (Main / sky Up next / sand Waiting), never two; two-tone focus ring.
 - UX-DR25: Spine semantics: `button` in a list item, `aria-haspopup="dialog"`, `aria-expanded`; accessible name "*Title* by *First author*[ and N others], *status*" with status strings per the Book states table.
 - UX-DR26: Bookcase container: `shelf-wall` card, birch planks (face, edge, shadow), "BOOKCASE" header with library meter, footer legend (finished · not read yet · Main book filled to its % · up next · waiting for you); `list` named "Bookcase, N books" / "Bookcase slice, 3 rows"; client-side packing of spines into rows by viewport width; ~500 spines all in the DOM.
-- UX-DR27: Bookcase keyboard: one Tab stop (roving tabindex, returns to last focused spine); Left/Right previous/next in sort order across rows; Up/Down nearest horizontal center in adjacent row; Home/End first/last; Enter/Space open popover; no type-ahead; focused spine filtered/deleted → nearest neighbour, else Search titles.
-- UX-DR28: Spine popover: non-modal `dialog` labelled by its title, one at a time, anchored above with pointer (flips below on top row, shifts at edges, max width viewport − 32px); focus to first actionable control; Tab out closes; Esc/outside click/×/focus leave close and return focus to spine; read-only details (title, subtitle, authors, pages · year, status, color line); at most one state-aware primary (Set as Up next with hint "Replaces the current Up next." / Start reading / Resume); "Start reading" link where applicable; "Open book →"; Change color block.
+- UX-DR27: Bookcase keyboard: one Tab stop (roving tabindex, returns to last focused spine); Left/Right previous/next in sort order across rows; Up/Down nearest horizontal center in adjacent row; Home/End first/last; Enter/Space open popover; no type-ahead; focused spine filtered/deleted → nearest neighbor, else Search titles.
+- UX-DR28: Spine popover: non-modal `dialog` labeled by its title, one at a time, anchored above with pointer (flips below on top row, shifts at edges, max width viewport − 32px); focus to first actionable control; Tab out closes; Esc/outside click/×/focus leave close and return focus to spine; read-only details (title, subtitle, authors, pages · year, status, color line); at most one state-aware primary (Set as Up next with hint "Replaces the current Up next." / Start reading / Resume); "Start reading" link where applicable; "Open book →"; Change color block.
 - UX-DR29: Change color control (popover and Book detail): "From cover" chip (only with a cover) + 8 named swatches (Sage, Slate, Clay, Ochre, Plum, Teal, Moss, Stone) as toggle buttons; saves immediately, `status` "Color set to Teal."; color line "Color: Teal, from cover" / "Color: Sage" / "Color: set by you"; "· shown once read" on unread Books.
 - UX-DR30: Library meter: thin 180×4 progressbar, "X of Y finished" (X = Books with any finished Reading incl. back-filled), `aria-valuetext` "24 of 73 finished", one bar at any size.
 - UX-DR31: Home bookcase slice: up to 3 rows chosen Main row → Up next row → most-recent-finish rows, filled from the first rows when fewer qualify; display Main row first then others in bookcase order; recomputes on resize; never filtered; never scrolls internally; header has meter and "See all in Catalog".
@@ -185,7 +185,7 @@ From DESIGN.md (visual) and EXPERIENCE.md (behaviour). The two documents share c
 - UX-DR34: Main book card empty state: "No Main book." with the Up next suggestion (44×64 thumb, title, author, **Start reading**/**Resume**) or the link "Choose a book in the Catalog".
 - UX-DR35: Gauge: progressbar `aria-valuemin=0`, `aria-valuenow`=page, `aria-valuemax`=pages, `aria-valuetext` "64%, page 212 of 330"; 44px light figure with small "%", "p.N of M" right, ticks 0 · half · total (half rounded, dropped under 4 pages).
 - UX-DR36: Page field: "Page" label, number field prefilled with last saved page, "of M" via `aria-describedby`, **Update** (or Enter) saves; no autofocus; invalid → value kept, `aria-invalid`, "Page must be between 0 and N." in `alert`; on save gauge, %, re-entry line and spine fill update together and `status` says "Page 212 of 330, 64%."; last page opens Finish dialog, and Update with the same last page reopens it.
-- UX-DR37: Re-entry line: up to three muted facts separated by dots: "Last updated N days ago", "~N days left", "Last export: N days ago" / "No export yet"; never coloured or warning-styled.
+- UX-DR37: Re-entry line: up to three muted facts separated by dots: "Last updated N days ago", "~N days left", "Last export: N days ago" / "No export yet"; never colored or warning-styled.
 - UX-DR38: Section panes (Up next; Waiting for you (N); On the side): serif title links, compact secondary buttons carrying the title in their name ("Resume *Title*"); Up next row with thumb + author; Waiting rows with 60×5 mini progressbar (`aria-labelledby` row title, `aria-valuetext` "page 120 of 330, 36%") and "p.N of M", ordered longest paused first, paused date never shown; On the side rows with author + **Start reading**; empty panes hidden except "Nothing up next." while a Main book exists; Up next pane hidden with no Main book.
 - UX-DR39: Start dialog: modal, "Start *X*?" / "Resume *X*?" (serif title), trade-off lines only when they apply, required "Which page?" field for Side reads (prefilled with paused page), optional "Purpose (optional)" one-line field prefilled on resume, **Start reading**/**Resume** and **Cancel**; on confirm focus goes to Home's Main book title link (navigating to Home if needed).
 - UX-DR40: Pause flows: from "⋯" menu and Book detail; Confirm dialog only when an Up next would be displaced ("Pause *X* at p.150 (58%)? *Z* moves to Waiting for you." / "*Z* returns to the catalog.", **Pause**/**Cancel**), else immediate with `status` "Paused *X* at p.150. It's Up next."
@@ -239,42 +239,43 @@ FR-24: Epic 1 - Catalog bookcase (spines, colors, meter, popover, keyboard); Epi
 ### Epic 1: Catalog the home library
 The user, or their AI cataloging skill, can open bookvie, add, edit and delete Books through the agent-friendly form, get duplicate warnings, back-fill finished Books with Finished on, and browse and search the full bookcase on Catalog (read in color, unread outlined, "X of Y finished"), with Book detail and the spine popover. Includes the project skeleton, CLI, store, security guard, test harness (TC-1..5, `check`) and app shell.
 **FRs covered:** FR-1, FR-2, FR-3, FR-4, FR-24 (catalog bookcase)
-**Gate:** FND-* P0 green; label-contract suite (CAT-E2E-001..005) green; `~/bookvie-data` untouched by `check`. Closes R-03, R-04, R-05, R-06, R-08, R-13, R-15, R-16.
+**Gate:** FND-* P0 green; label-contract suite (CAT-E2E-001..005) green; `~/bookvie-data` untouched by `check`; per-epic quality gates (TR7). Closes R-03, R-04, R-05, R-06, R-08, R-13, R-15, R-16.
 
 ### Epic 2: Keep the library safe
-The user can export all data to one file with one click, see "Last export: N days ago", and restore onto a fresh machine, with damaged and newer files refused and nothing changed.
+The user can export all data to one file with one click, see "Last export: N days ago", and restore onto a fresh machine, with damaged, hostile and newer files refused and nothing changed.
 **FRs covered:** FR-22, FR-23
-**Gate:** byte-identical round trip; every refusal and fault test green. Closes R-02, R-14.
+**Gate:** byte-identical round trip (BKP-API-001); every refusal and fault test green (BKP-API-003..005); per-epic quality gates (TR7). Closes R-02, R-14.
 
 ### Epic 3: Read a book with visible progress
 The user can start a Book as the Main book with an optional Purpose, see it on Home with cover, gauge and page field, catch up in at most 2 interactions, see "Last updated…" and "~N days left", and finish it (Finished on, Purpose fulfilled, stars, the one-time spine fill), including re-reads.
 **FRs covered:** FR-5 (basic), FR-9, FR-10, FR-11, FR-14 (Main book), FR-21, FR-24 (Home slice, Main fill)
-**Gate:** PRG-E2E-001 (≤ 2 interactions) green. Closes R-07, R-10, R-17 (with Epic 4: R-01).
+**Gate:** PRG-E2E-001 (≤ 2 interactions) green; fake-Clock tests for re-entry and finish dates green; per-epic quality gates (TR7). Closes R-07, R-10, R-17 (with Epic 4: R-01).
 
 ### Epic 4: Switch books without losing your place
 An urgent book can interrupt the current one with the trade-off shown; the user can pause, set Up next, see and resume every paused Reading in Waiting for you, mark any non-Main Reading finished from Book detail, and keep up to 3 Side reads.
 **FRs covered:** FR-5 (Up next displacement), FR-6, FR-7, FR-8, FR-14 (non-Main finish), FR-24 (markers)
-**Gate:** RDG-UNIT-002 property test green; every Book-states row has a test. Closes R-01, R-11.
+**Gate:** RDG-UNIT-002 property test green; every EXPERIENCE.md Book-states row has a Given/When/Then API test (RDG-API-001..003); per-epic quality gates (TR7). Closes R-01, R-11.
 
 ### Epic 5: Keep what a book gave you
 The user can add, edit and delete Card notes with a page or range on any Book, go through a Book's notes as a pile, and search all notes or one Book's notes.
 **FRs covered:** FR-17, FR-18, FR-19
-**Gate:** CRD-API-001 green. Closes R-09 (with Epic 1).
+**Gate:** CRD-API-001 green; per-epic quality gates (TR7). Closes R-09 (with Story 1.8).
 
 ### Epic 6: Know how long and how much
 The user can see when a Book or the whole unread library will be finished at a given pace, prefilled with Measured pace, and see Stats for any period with monthly bars.
 **FRs covered:** FR-15, FR-16
-**Gate:** fake-Clock boundary tests green.
+**Gate:** fake-Clock boundary tests for pace, ranges, month edges and local dates green; per-epic quality gates (TR7). Closes R-07, R-10 (with Epic 3).
 
 ### Epic 7: Organize the catalog
 The user can sort the catalog (Author, Title, Date added, Pages) and filter it with chips (Read/Unread, Type, Language, Tag); the bookcase closes up and Home's slice follows the sort.
 **FRs covered:** FR-20
+**Gate:** per-epic quality gates (TR7).
 
 ## Epic 1: Catalog the home library
 
 The user, or their AI cataloging skill, can open bookvie, add, edit and delete Books through the agent-friendly form, get duplicate warnings, back-fill finished Books with Finished on, and browse and search the full bookcase on Catalog, with Book detail and the spine popover. The epic also lays the foundation every later epic builds on: skeleton, CLI, store, security guard, test harness and app shell.
 
-**Gate:** FND-* P0 green; label-contract suite (CAT-E2E-001..005) green; `~/bookvie-data` untouched by `check`; per-epic quality gates (TR7).
+**Gate:** FND-* P0 green; label-contract suite (CAT-E2E-001..005) green; `~/bookvie-data` untouched by `check`; per-epic quality gates (TR7). Closes R-03, R-04, R-05, R-06, R-08, R-13, R-15, R-16.
 
 **Standard intent ACs (TR8).** Every story below that adds or changes an intent also satisfies: *Given* a failure injected through the store's filesystem seam at write, fsync or rename, *When* the intent runs, *Then* `library.json` is byte-identical to before and the response is 503 `couldnt_save` with "Couldn't save. Your data wasn't changed." (FND-API-001); *and* after every successful intent `check_invariants()` holds (FND-UNIT-002); *and* every new error `code` has an API test.
 
@@ -301,8 +302,11 @@ So that it opens in my browser and nothing outside my machine can reach it.
 
 **Given** a live `bookvie.lock`
 **When** I run `bookvie` again
-**Then** it opens the browser at the recorded URL and exits without starting a second server
-**And** given a lock whose PID is dead, the new server takes the lock over (R-13).
+**Then** it opens the browser at the recorded URL and exits without starting a second server.
+
+**Given** a `bookvie.lock` whose PID is dead
+**When** I run `bookvie`
+**Then** the new server takes the lock over (R-13).
 
 **Given** port 8765 is held by a process that isn't bookvie
 **When** I run `bookvie`
@@ -310,7 +314,7 @@ So that it opens in my browser and nothing outside my machine can reach it.
 
 **Given** a running server
 **When** it receives SIGINT or SIGTERM
-**Then** it waits for the write lock, removes `bookvie.lock`, and exits.
+**Then** it waits for the AD-4 lock, removes `bookvie.lock`, and exits.
 
 **Given** a running server
 **When** a request arrives with a `Host` other than `127.0.0.1:<port>` or `localhost:<port>`, or with an `Origin` present that isn't one of those
@@ -351,8 +355,11 @@ So that every browser on this machine sees the same library and a crash can neve
 **Given** the store's commit path
 **When** a commit runs
 **Then** it writes a temp file in the same folder, fsyncs it and renames it over `library.json`
-**And** given a fault injected through the filesystem seam (TC-3) at write, fsync or rename, the original file is byte-identical and the commit reports `couldnt_save` (R-03)
-**And** one in-process lock covers apply → write files → commit → swap in-memory state, and views read only the committed in-memory state (AD-4).
+**And** one in-process lock (the AD-4 lock) covers apply → write files → commit → swap in-memory state, and views read only the committed in-memory state (AD-4).
+
+**Given** the store's commit path
+**When** a fault is injected through the filesystem seam (TC-3) at write, fsync or rename
+**Then** the original file is byte-identical and the commit reports `couldnt_save` (R-03).
 
 **Given** a `library.json` whose `schemaVersion` is newer than the server supports, or that isn't valid against the model
 **When** the server starts
@@ -487,7 +494,8 @@ So that my catalog never holds half-entered books and the cataloging skill alway
 
 **Given** input that breaks any rule in the Agent Label Contract validation table (required fields; Pages a whole number ≥ 1; Edition a whole number ≥ 1; Year four digits, not after next year; ISBN 10 or 13 digits after removing hyphens and spaces, last may be X; Finished on a valid date, not in the future; Spine color `#RRGGBB` or empty; Type exactly paperback, hardcover or ebook)
 **When** add-book is sent
-**Then** the response is 422 `invalid_fields` listing **every** failing field with the table's exact message ("Pages is required.", "ISBN must have 10 or 13 digits.", …) and nothing is saved (CAT-API-001).
+**Then** the response is 422 `invalid_fields` listing **every** failing field with the table's exact message ("Pages is required.", "ISBN must have 10 or 13 digits.", …) and nothing is saved (CAT-API-001)
+**And** text fields are trimmed before validation, so a value of only spaces counts as empty ("Title is required.").
 
 **Given** an Author(s) value such as "Ursula K. Le Guin; Brian Attebery"
 **When** the Book is saved
@@ -567,6 +575,10 @@ So that a shelf can be cataloged unattended and every save can be confirmed by t
 **When** it types "Dune" into **Search titles**
 **Then** it can confirm the save from a row whose title equals "Dune" exactly, even though "Dune Messiah" also matches.
 
+**Given** I press **Add book**
+**When** the request is in flight
+**Then** **Add book** has `aria-disabled="true"` and further presses send nothing until the response arrives.
+
 ### Story 1.6: Get warned about duplicates
 
 As Oleg,
@@ -587,7 +599,7 @@ So that a second copy or a skill's repeated entry doesn't clutter my catalog.
 **When** add-book is sent without `confirmDuplicate`
 **Then** the response is 409 `duplicate_book`, listing the matching Books (title, authors, ISBN), and nothing is saved (CAT-API-009).
 
-**Given** either Book has no ISBN, and the titles match and at least one author is shared
+**Given** the new Book or the existing Book has no ISBN, the titles match, and at least one author is shared
 **When** add-book is sent
 **Then** it is refused with `duplicate_book`
 **And** two Books with different ISBNs never match on title and author alone.
@@ -595,6 +607,10 @@ So that a second copy or a skill's repeated entry doesn't clutter my catalog.
 **Given** a `duplicate_book` refusal
 **When** the same intent is resent with `confirmDuplicate: true`
 **Then** the Book is saved as normal.
+
+**Given** an add-book payload that both has invalid fields and matches an existing Book
+**When** it is sent
+**Then** the response is 422 `invalid_fields`, because field validation runs first and the duplicate check runs only on a valid payload.
 
 **Given** a refusal in the New book panel
 **When** the response arrives
@@ -661,6 +677,11 @@ So that I can see at a glance how much of my library I have read.
 **When** the panel closes in Bookcase view
 **Then** the new spine is scrolled into view with the highlight ring (fading over about 2 s, instant under reduced motion) and receives focus.
 
+**Given** the cataloging skill has just saved "Dune" and Catalog opens in Bookcase view (default or remembered)
+**When** it types "Dune" into **Search titles**
+**Then** it can confirm the save from a spine whose accessible name starts with "Dune by " (the UX-DR25 name pattern), which "Dune Messiah by …" never matches
+**And** CAT-E2E-002 runs in both Bookcase and List view.
+
 **Given** both themes and forced colors
 **When** the bookcase renders
 **Then** read and unread spines stay distinct, and axe reports no AA violations.
@@ -689,18 +710,26 @@ So that mistakes from cataloging and back-filled finish dates can be fixed.
 **Given** `edit-book`
 **When** it is sent
 **Then** it applies the same field validation as add-book (422 `invalid_fields`)
-**And** it runs the duplicate check only when the title, an author or the ISBN changed, with the same 409 / `confirmDuplicate` flow.
+**And** it runs the duplicate check only when the title, an author or the ISBN changed, with the same 409 / `confirmDuplicate` flow
+**And** the duplicate check compares against every Book except the one being edited, so an API test that changes only an ISBN's hyphenation never gets `duplicate_book`.
 
 **Given** a Book whose unfinished Reading is at page 300 (seeded with `LibraryBuilder`)
 **When** I save Pages = 250
 **Then** it is refused with 409 `pages_below_current_page` and the field message "Pages can't be less than 300, the page you're on." (CAT-API-006)
-**And** given a Card note on page 270, Pages = 260 is refused with "Pages can't be less than 270, where a card note is."
 **And** finished Readings keep their `finishedPages` when Pages changes.
+
+**Given** a Book with a Card note on page 270
+**When** I save Pages = 260
+**Then** it is refused with "Pages can't be less than 270, where a card note is."
 
 **Given** a Book with finished Readings
 **When** the edit panel opens
 **Then** Finished on shows the most recent finish date, and changing it changes that Reading's `finishDate` (not in the future)
 **And** clearing it is refused with "A finish date can't be removed here."
+
+**Given** the most recent finished Reading has a `startDate`
+**When** Finished on is changed to a date before it
+**Then** nothing is saved, and the response is 422 with "Finished on can't be before 12 March 2026, when this reading started." on Finished on (the same message as FIN-API-003).
 
 **Given** a Book with no finished Reading
 **When** I fill Finished on and save
@@ -709,9 +738,9 @@ So that mistakes from cataloging and back-filled finish dates can be fixed.
 
 **Given** an edit that changes Spine color
 **When** it is saved
-**Then** the resolved `spineColor` is re-resolved, and edits that don't touch a color input leave it unchanged (AD-11).
+**Then** `spineColor` is resolved again, and edits that don't touch a color input leave it unchanged (AD-11).
 
-**And** the standard intent ACs (TR8) hold for edit-book, and the panel's couldn't-save behaviour matches Story 1.5.
+**And** the standard intent ACs (TR8) hold for edit-book, and the panel's couldn't-save behavior matches Story 1.5.
 
 ### Story 1.9: Delete a book
 
@@ -726,7 +755,7 @@ So that an accidental duplicate can be removed without risking anything else.
 **Given** Book detail
 **When** I press **Delete**
 **Then** an `alertdialog` asks "Delete *X*? Its readings and card notes are deleted too.", with **Delete book** and **Cancel**, and **Cancel** has default focus
-**And** when the Book has a role (seeded), the dialog adds "It is your Main book.", "It is Up next." or "It is waiting for you at p.120.".
+**And** when the Book is Main, Up next or Waiting for you (seeded in the test), the dialog adds "It is your Main book.", "It is Up next." or "It is waiting for you at p.120."
 
 **Given** the Confirm dialog
 **When** I press **Cancel** or Esc
@@ -766,8 +795,11 @@ So that my Books are recognizable and their spines can take the cover's color.
 
 **Given** any cover write
 **When** the intent runs
-**Then** the order is: new files (temp + rename), then the document commit, then deleting files no Book references
-**And** given a fault at the document commit, the old document and its cover are intact and the new file is cleaned up (R-03).
+**Then** the order is: new files (temp + rename), then the document commit, then deleting files no Book references.
+
+**Given** a cover write
+**When** a fault is injected at the document commit
+**Then** the old document and its cover are intact and the new file is cleaned up (R-03).
 
 **Given** a stored cover
 **When** the browser requests `/media/covers/<file>`
@@ -799,7 +831,7 @@ So that each read book keeps the color I associate with it.
 
 **Given** a spine
 **When** I click it or press Enter or Space
-**Then** a non-modal `dialog` popover labelled by the Book's title opens above the spine with a pointer (below on the top row, shifted inward at viewport edges, at most viewport width − 32px), the spine gets `aria-haspopup="dialog"` and `aria-expanded="true"`, and only one popover is open at a time (UX-DR28).
+**Then** a non-modal `dialog` popover labeled by the Book's title opens above the spine with a pointer (below on the top row, shifted inward at viewport edges, at most viewport width − 32px), the spine gets `aria-haspopup="dialog"` and `aria-expanded="true"`, and only one popover is open at a time (UX-DR28).
 
 **Given** an open popover
 **When** it opens
@@ -809,7 +841,7 @@ So that each read book keeps the color I associate with it.
 **Given** the popover
 **When** I read it
 **Then** it shows title, subtitle, authors, "N pages · year", the status line and the color line, plus an "Open book →" link to Book detail
-**And** it has no primary action yet.
+**And** it has no primary action until Stories 3.2 and 4.4 add them.
 
 **Given** the Change color block in the popover and on Book detail
 **When** I pick "From cover" (only when a cover exists) or one of Sage, Slate, Clay, Ochre, Plum, Teal, Moss, Stone (toggle buttons with `aria-pressed`)
@@ -948,7 +980,7 @@ So that a restore can never leave me with less than I had.
 
 The user can start a Book as the Main book with an optional Purpose, see it on Home with cover, gauge and page field, catch up in at most 2 interactions, see "Last updated…" and "~N days left", and finish it with the one-time spine fill, including re-reads. In this epic, starting a Book while another is Main pauses the previous one and says so; Epic 4 adds where the paused Book goes (Up next, Waiting for you).
 
-**Gate:** PRG-E2E-001 (≤ 2 interactions) green; fake-Clock tests for re-entry and finish dates green; per-epic quality gates (TR7). Closes R-07, R-10, R-17.
+**Gate:** PRG-E2E-001 (≤ 2 interactions) green; fake-Clock tests for re-entry and finish dates green; per-epic quality gates (TR7). Closes R-07, R-10, R-17 (with Epic 4: R-01).
 
 ### Story 3.1: See my Main book on Home
 
@@ -967,7 +999,7 @@ So that opening bookvie tells me where I am in one glance.
 
 **Given** the Main book at page 212 of 330
 **When** the gauge renders
-**Then** the home view supplies the percentage (64%, computed only on the server, AD-6), and the gauge shows "64%" in the gauge figure, "p.212 of 330", and ticks 0 · 165 · 330 (the half tick dropped under 4 pages)
+**Then** the home view supplies the percentage (64%, computed only on the server as floor(page × 100 ÷ pages), so it reads 100% only at the last page, AD-6), and the gauge shows "64%" in the gauge figure, "p.212 of 330", and ticks 0 · 165 · 330 (the half tick dropped under 4 pages)
 **And** it is a progressbar with `aria-valuemin="0"`, `aria-valuenow="212"`, `aria-valuemax="330"` and `aria-valuetext` "64%, page 212 of 330" (UX-DR35).
 
 **Given** a Main book at page 0
@@ -981,7 +1013,7 @@ So that opening bookvie tells me where I am in one glance.
 **Given** Book detail for the Main book or a paused Book
 **When** it renders
 **Then** the Current reading block shows the status, the gauge and the Purpose
-**And** the Book's spine is named "…, Main book, 64%" or "…, waiting for you, page 120" per the Book states table.
+**And** the spine's accessible name is "…, Main book, 64%" or "…, waiting for you, page 120" per the Book states table.
 
 ### Story 3.2: Start reading a book
 
@@ -1052,11 +1084,13 @@ So that catching up after a few days takes seconds.
 
 **Given** an out-of-range or non-numeric page
 **When** I press **Update**
-**Then** nothing is saved, the field keeps the typed value with `aria-invalid="true"`, and "Page must be between 0 and 330." appears under it and in the `alert` region.
+**Then** nothing is saved, the field keeps the typed value with `aria-invalid="true"`, and "Page must be between 0 and 330." appears under it and in the `alert` region
+**And** a page that isn't a whole number (such as 212.5) counts as non-numeric: the input uses `step="1"`, and the server refuses anything but an integer with the same message.
 
 **Given** the Book's last page
 **When** I press **Update**
 **Then** the page is saved, the Reading stays unfinished, and the response carries `reachedLastPage: true` (PRG-API-002)
+**And** until Story 3.6 adds the Finish dialog, the client ignores `reachedLastPage`.
 
 **Given** a fresh app open with a Main book
 **When** a Playwright test catches up
@@ -1085,7 +1119,8 @@ So that I can pick up again without guilt or arithmetic.
 
 **Given** a Main book
 **When** the home view is computed
-**Then** it supplies days left = ceil(pages left ÷ Measured pace), at least 1, or none when there is no Measured pace, Measured pace is 0, or no pages are left (FR-11, R-10).
+**Then** it supplies days left = ceil(pages left ÷ Measured pace), with a minimum of 1
+**And** it omits days left when there is no Measured pace, when Measured pace is 0, or when no pages are left (FR-11, R-10).
 
 **Given** the Main book card
 **When** the re-entry line renders
@@ -1096,7 +1131,7 @@ So that I can pick up again without guilt or arithmetic.
 **When** Home renders
 **Then** "Last export" sits in the re-entry line, and returns to the Home header line when there is no Main book.
 
-**Given** a Main book at its last page after a cancelled finish
+**Given** a Main book at its last page
 **When** Home renders
 **Then** the gauge shows 100% and "~N days left" is hidden.
 
@@ -1130,7 +1165,7 @@ So that progress is something I can see on the shelf, not only a number.
 
 **Given** a re-read of a finished Book
 **When** it is the Main book
-**Then** its spine stays full color with the Main-book marker, and its name ends "finished, re-reading, 12%".
+**Then** its spine stays full color with the Main-book marker, and its accessible name ends "finished, re-reading, 12%".
 
 **Given** the slice header
 **When** it renders
@@ -1157,7 +1192,7 @@ So that every finished Book counts and I see whether reading it did what I wante
 
 **Given** the Finish dialog
 **When** I press **Done**
-**Then** `finish-reading` stores `finishDate` (local date), `finishedPages` = the Book's current page count, `purposeFulfilled` and `rating` (null when skipped), and clears `mainBookId`, in one commit (FR-14, FIN-API-001)
+**Then** `finish-reading` stores `finishDate` (local date), `finishedPages` = the Book's Pages value at the time of finishing, `purposeFulfilled` and `rating` (null when skipped), and clears `mainBookId`, in one commit (FR-14, FIN-API-001)
 **And** the Book counts as read, so the meter increases.
 
 **Given** a Finished on date in the future, or before the Reading's start date
@@ -1166,11 +1201,16 @@ So that every finished Book counts and I see whether reading it did what I wante
 
 **Given** the Finish dialog opened from the page field
 **When** I press **Cancel** or Esc
-**Then** nothing changes, the Reading stays active at the last page, focus returns to the page field, and pressing **Update** again with the same page reopens the dialog.
+**Then** nothing changes, the Reading stays active at the last page, focus returns to the page field, and pressing **Update** again with the same page reopens the dialog
+**And** Home's gauge shows 100% with "~N days left" hidden (Story 3.4).
+
+**Given** I press **Done**
+**When** the request is in flight
+**Then** **Done** has `aria-disabled="true"` and further presses send nothing until the response arrives.
 
 **Given** a finished Main book
 **When** **Done** succeeds
-**Then** the app goes to Home, the Main book card switches to "No Main book.", and focus is on the "No Main book." heading
+**Then** the app goes to Home, the Main book card switches to "No Main book.", and focus is on the "No Main book." heading (Story 4.1 amends this when an Up next exists)
 **And** Book detail's Readings block lists the Reading with its start, finish, stars and Purpose fulfilled.
 
 **Given** `update-page` and `finish-reading`
@@ -1192,7 +1232,7 @@ So that finishing feels like something on my shelf changed, without fuss.
 **Given** **Done** succeeds for the Main book in this tab
 **When** Home renders
 **Then** the slice first scrolls the finished spine into view if needed, then fills it from its current fill to full, bottom to top, over about 600 ms ease-out with the highlight ring, and it stays solid (UX-DR42)
-**And** the bookcase header shows "Finished *X*.", the meter updates, and once focus has settled the `status` region reads "Finished *X*. 25 of 73 finished.".
+**And** the bookcase header shows "Finished *X*.", the meter updates, and once focus has settled the `status` region reads "Finished *X*. 25 of 73 finished."
 
 **Given** the finish moment has played
 **When** I reload, revisit Home, or look at another tab or browser that only received refreshed views
@@ -1212,7 +1252,7 @@ So that finishing feels like something on my shelf changed, without fuss.
 
 ## Epic 4: Switch books without losing your place
 
-An urgent Book can interrupt the current one with every consequence stated up front. The user can pause, set Up next, see and resume every paused Reading in Waiting for you, mark any non-Main Reading finished from Book detail, and keep up to 3 Side reads. This is the product thesis (SM-3).
+An urgent Book can interrupt the current one with every consequence stated up front. The user can pause, set Up next, see and resume every paused Reading in Waiting for you, mark any non-Main Reading finished from Book detail, and keep up to 3 Side reads. This epic carries the product thesis (SM-3).
 
 **Gate:** RDG-UNIT-002 property test green; every EXPERIENCE.md Book-states row has a Given/When/Then API test (RDG-API-001..003); per-epic quality gates (TR7). Closes R-01, R-11.
 
@@ -1247,7 +1287,7 @@ So that it is the first thing bookvie offers me once the urgent one is done.
 **Given** no Main book and an Up next
 **When** I open Home
 **Then** the Up next pane is hidden, and the empty Main book card shows "No Main book." with the Up next Book (thumbnail, title, author) and **Start reading** or **Resume** (UX-DR34)
-**And** after finishing the Main book (Story 3.6), focus lands on that **Start reading** button.
+**And** this amends Story 3.6: after finishing the Main book, focus lands on that **Start reading** or **Resume** button when an Up next exists, and stays on the "No Main book." heading when none does, with the Story 3.6 e2e test updated to cover both cases.
 
 **Given** two browser contexts on the same data
 **When** one starts a Book and the other then regains focus
@@ -1267,11 +1307,12 @@ So that nothing I put down is ever forgotten.
 
 **Given** paused Readings
 **When** the home view is computed
-**Then** Waiting for you lists every paused Reading except the Up next Book's, ordered by `pausedAt`, oldest first, with no cap (FR-7, AD-6).
+**Then** Waiting for you lists every paused Reading except the Up next Book's, ordered by `pausedAt`, oldest first, with no cap (FR-7, AD-6)
+**And** Readings paused on the same day are ordered by title with `Intl.Collator`, then by Book id, so the order is the same on every render (unit test with two pauses on one fake day).
 
 **Given** Waiting for you has entries
 **When** Home renders
-**Then** a pane headed "Waiting for you (N)" shows each row's serif title link, a 60×5 mini progressbar (labelled by the title, `aria-valuetext` "page 120 of 330, 36%"), "p.120 of 330" in tabular figures, and **Resume** named with the title
+**Then** a pane headed "Waiting for you (N)" shows each row's serif title link, a 60×5 mini progressbar (labeled by the title, `aria-valuetext` "page 120 of 330, 36%"), "p.120 of 330" in tabular figures, and **Resume** named with the title
 **And** the paused-at date is never shown (UX-DR38, NFR6).
 
 **Given** no paused Readings outside Up next
@@ -1307,7 +1348,7 @@ So that I can step away from reading entirely without losing my place.
 **Given** a Main book and no Up next
 **When** I choose **Pause** (from the menu or the Main book's Book detail)
 **Then** `pause` keeps the current page, records `pausedAt` = today, clears `mainBookId` and makes the Book Up next, in one commit (FR-6)
-**And** the `status` region reads "Paused *X* at p.150. It's Up next.".
+**And** the `status` region reads "Paused *X* at p.150. It's Up next."
 
 **Given** a Main book and an Up next *Z*
 **When** I choose **Pause**
@@ -1316,7 +1357,7 @@ So that I can step away from reading entirely without losing my place.
 
 **Given** a completed pause
 **When** focus settles
-**Then** from Home it is on **Resume** in the empty Main book card, and from Book detail it is on **Resume**.
+**Then** after a pause from Home, focus is on **Resume** in the empty Main book card, and after a pause from Book detail, it is on that page's **Resume** button.
 
 **Given** a dialog opened from the "⋯" menu
 **When** it opens
@@ -1335,13 +1376,16 @@ So that the Book I mean to read next is ready when the current one is done.
 **Acceptance Criteria:**
 
 **Given** a Book that isn't Main and isn't already Up next
-**When** I press **Set as Up next** on its Book detail (a secondary action) or as the primary of its spine popover (never read, no Reading)
+**When** I press **Set as Up next** on its Book detail (a secondary action) or in its spine popover, where it is the primary action when the Book has no Reading
 **Then** `set-up-next` makes it `upNextBookId` (FR-7).
 
 **Given** an existing Up next *Z*
 **When** another Book becomes Up next
-**Then** *Z* moves to Waiting for you if it has a paused Reading, otherwise it returns to the catalog
-**And** the popover shows the hint "Replaces the current Up next." under the button.
+**Then** *Z* moves to Waiting for you if it has a paused Reading, otherwise it returns to the catalog.
+
+**Given** an existing Up next
+**When** a spine popover offers **Set as Up next**
+**Then** the hint "Replaces the current Up next." appears under the button.
 
 **Given** the Main book
 **When** I look at its actions
@@ -1356,7 +1400,7 @@ So that the Book I mean to read next is ready when the current one is done.
 ### Story 4.5: Mark any book finished from its page
 
 As Oleg,
-I want to mark a paused, Up next or never-started Book finished without touching my Main book,
+I want to mark a paused, Up next, or never-finished Book finished without touching my Main book,
 So that books I finished away from bookvie, or finished in a different way, close their loop.
 
 **Requirements:** FR-14, UX-DR41
@@ -1404,7 +1448,7 @@ So that I always know what is waiting and what to do with it.
 
 **Given** Book detail
 **When** it renders
-**Then** the primary button is **Resume** (paused) or **Start reading** (no active or paused Reading, not Main; a re-read on a finished Book), and there is none for the Main book
+**Then** the primary button is **Resume** when the Book's Reading is paused, or **Start reading** when the Book has no active or paused Reading and isn't Main (including a re-read of a finished Book). The Main book has no primary button
 **And** the secondary actions appear only when they apply, in the order Set as Up next, Pause, Mark finished, Edit, Delete (UX-DR43).
 
 **Given** the property test (RDG-UNIT-002)
@@ -1434,13 +1478,18 @@ So that they stay in view without competing with my Main book.
 **Given** Side reads
 **When** Home renders
 **Then** an "On the side" pane lists them, each with a serif title link, the author and **Start reading** named with the title, and the pane is hidden when there are none
-**And** their spine names add ", on the side", with no marker.
+**And** their spines' accessible names add ", on the side", with no marker.
 
 **Given** a Side read
 **When** it is started by any route
 **Then** the Start dialog shows a required "Which page?" field, prefilled with its paused page if it has one
 **And** confirming starts tracking from that page and removes it from the Side reads
 **And** a value equal to the last page returns `reachedLastPage`, and the Finish dialog opens right after confirming.
+
+**Given** the "Which page?" field
+**When** it is empty, not a whole number, or outside 0 to the Book's page count
+**Then** nothing is saved, and the field shows "Which page? is required." (empty) or "Page must be between 0 and 330." with `aria-invalid="true"`, also announced in the `alert` region
+**And** `start-reading` refuses the same values with 422 `invalid_fields`, covered by an API test.
 
 **Given** a Side read that is finished from Book detail
 **When** **Done** succeeds
@@ -1476,7 +1525,7 @@ So that I keep what a book gave me without leaving what I was doing.
 **Given** a page outside 1 to the Book's page count, a reversed range, or more than one range
 **When** I press **Save note**
 **Then** nothing is saved, and the field shows "Page must be between 1 and 330.", "The first page must come before the last." or "Use one page or one range." with `aria-invalid`, the message also announced in the `alert` region (CRD-API-001)
-**And** an empty Note is refused with "Note is required.".
+**And** a Note that is empty or only whitespace is refused with "Note is required."
 
 **Given** a successful save
 **When** the panel closes
@@ -1509,9 +1558,9 @@ So that my notes stay accurate.
 **Then** an `alertdialog` asks "Delete this card note?" with **Delete card note** and **Cancel** (Cancel has default focus)
 **And** confirming runs `delete-card-note`, and focus moves to the next note's **Edit**, else the block heading.
 
-**Given** a Card note on page 270 being deleted
-**When** it was the highest Card note page
-**Then** the Pages-below rule from Story 1.8 now allows lowering Pages to the next highest note page.
+**Given** the Card note on page 270 is the Book's highest Card note page
+**When** it is deleted
+**Then** the Pages-below rule from Story 1.8 allows lowering Pages to the highest remaining Card note page.
 
 **And** the standard intent ACs (TR8) hold for edit-card-note and delete-card-note.
 
@@ -1566,7 +1615,7 @@ So that I can review what it gave me at my own pace.
 
 **Given** a Book's notes, from its group on the Card notes page or its Book detail block
 **When** I choose "Go through as a pile"
-**Then** a modal named "Card notes pile, *X*" opens on `page` over the scrim, showing one note at a time in pile-text with a faint stacked edge, a **Close** button (text) at the top right, Previous · "N of M" · Next, and an "Order" radio group (Page order · Shuffled) (FR-18, UX-DR50).
+**Then** a modal named "Card notes pile, *X*" opens with the `page` background color over the scrim, showing one note at a time in pile-text with a faint stacked edge, a **Close** button (text) at the top right, Previous · "N of M" · Next, and an "Order" radio group (Page order · Shuffled) (FR-18, UX-DR50).
 
 **Given** the pile
 **When** I press **Next** or **Previous**
@@ -1615,7 +1664,7 @@ So that I can judge whether a Book fits before a deadline.
 **Given** a positive number in the field
 **When** I type
 **Then** the result updates on every keystroke: days = ceil(pages left ÷ pages/day), finish date = today + days, using the same rounding as the server's days left (AD-6)
-**And** it reads as a duration plus a date ("About 9 months · July 2027"), in days under 60 days, months under 24 months, and years beyond.
+**And** it reads as a duration plus a date ("About 9 months · July 2027"), in days below 60 days, in months below 24 months, and in years from 24 months on.
 
 **Given** zero, a negative number, non-numeric text or an empty field
 **When** I type
@@ -1623,7 +1672,7 @@ So that I can judge whether a Book fits before a deadline.
 
 **Given** a Book with nothing left to read (finished, no unfinished Reading)
 **When** the block renders
-**Then** it reads "Nothing left to read.".
+**Then** it reads "Nothing left to read."
 
 **Given** fake-Clock unit tests
 **When** the duration formatter runs at its edges (59/60 days, 23/24 months, a pace above the pages left)
@@ -1683,7 +1732,7 @@ So that I can look back on a month or a year of reading.
 **Given** the result
 **When** it renders
 **Then** two big numbers show books finished and pages finished, and the `status` region reads "2 books, 610 pages." when the range changes
-**And** an empty range shows 0 and 0 with "No books finished in this range.".
+**And** an empty range shows 0 and 0 with "No books finished in this range."
 
 **Given** a Book whose Pages is edited after it was finished
 **When** Stats render
@@ -1739,11 +1788,11 @@ So that the shelf is arranged the way I want to look at it.
 
 **Given** the Catalog toolbar
 **When** it renders
-**Then** a native `select` labelled "Sort" offers Author (default), Title, Date added and Pages (FR-20, UX-DR19).
+**Then** a native `select` labeled "Sort" offers Author (default), Title, Date added and Pages (FR-20, UX-DR19).
 
 **Given** a sort key
 **When** it applies
-**Then** Author sorts by the first listed author string with `Intl.Collator` and then by title; Title sorts A–Z; Date added sorts newest first by `createdAt`; Pages sorts fewest first; and ties always break by title
+**Then** Author sorts by the first listed author string with `Intl.Collator` and then by title; Title sorts A–Z; Date added sorts newest first by `createdAt`; Pages sorts fewest first; and ties always break by title, then by `createdAt`, then by Book id, so two editions with the same title keep a stable order
 **And** both the bookcase spines and the List view rows reorder, and the bookcase keyboard order follows the new order.
 
 **Given** a chosen sort
@@ -1766,7 +1815,7 @@ So that I can find the right Book for the moment.
 
 **Given** the Catalog toolbar's second row
 **When** it renders
-**Then** filter chips appear in labelled groups: Status (**Read**, **Unread**), Type (**Paperback**, **Hardcover**, **Ebook**), **Language ▾** and **Tag ▾**, each chip a toggle button with `aria-pressed`, and selected chips show the accent-soft fill, a 2px accent border and a check glyph (UX-DR20).
+**Then** filter chips appear in labeled groups: Status (**Read**, **Unread**), Type (**Paperback**, **Hardcover**, **Ebook**), **Language ▾** and **Tag ▾**, each chip a toggle button with `aria-pressed`, and selected chips show the accent-soft fill, a 2px accent border and a check glyph (UX-DR20).
 
 **Given** **Language ▾** or **Tag ▾**
 **When** I open it
@@ -1787,7 +1836,7 @@ So that I can find the right Book for the moment.
 
 **Given** the focused spine is filtered out
 **When** filters change
-**Then** focus moves to its nearest remaining neighbour in sort order, or to Search titles when none remain.
+**Then** focus moves to its nearest remaining neighbor in sort order, or to Search titles when none remain.
 
 **Given** filters
 **When** I leave Catalog and come back
