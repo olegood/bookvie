@@ -2,7 +2,7 @@
 
 A personal, local-first web app for organizing my home library and tracking my reading. It replaces a paper reading diary as the single source of truth for reading progress. The diary can stay on the nightstand for quick notes; I catch up in the app on my next visit by entering the page I reached.
 
-> **Status:** planning. There is no application code yet. The PRD, UX design, architecture, system-level test design, and epics and stories are final, the implementation readiness check has passed, and sprint planning is done: all 41 stories are tracked in the sprint status file, every one still in backlog (see [Project docs](#project-docs)). The next step is building Epic 1, starting with Story 1.1, *Scaffold and install bookvie*.
+> **Status:** building Epic 1. Story 1.1, *Scaffold and install bookvie*, is done: the backend package, the frontend app and the one-command install work, and bookvie opens a placeholder Catalog page. The other 40 stories are in backlog (see [Sprint status](_bmad-output/implementation-artifacts/sprint-status.yaml)). The next step is Story 1.2, *Run one safe instance*.
 
 ## Why
 
@@ -78,6 +78,23 @@ The build is split into 7 epics and 41 stories, each story with Given/When/Then 
 6. **Know how long and how much** (4). The quick pace calculator for one book or the whole library, and Stats with monthly bars.
 7. **Organize the catalog** (2). Sort and filter chips.
 
+## Getting started
+
+You need Python 3.14 with [uv](https://docs.astral.sh/uv/), and Node with npm to build the frontend.
+
+```sh
+npm install                              # installs frontend dependencies
+npm run build                            # builds the SPA into backend/bookvie/http/static/
+uv tool install --reinstall ./backend    # puts `bookvie` on your PATH
+bookvie                                  # serves 127.0.0.1:8765 and opens the browser
+```
+
+`bookvie` keeps its data in `~/bookvie-data` (created if missing). Options: `--data-dir DIR`, `--port N`, `--no-browser`, and `--dev` (not used yet; Story 1.2 gives it meaning).
+
+**Development:** run `npm run dev` (Vite on `:5173`, proxying `/api` and `/media` to `:8765`) next to `bookvie --dev --no-browser`.
+
+**Tests:** `uv run --project backend pytest` for the backend; `cd frontend && npx tsc -b && npm run lint` for the frontend. The single `npm run check` command arrives with Story 1.3.
+
 ## Adding books with AI
 
 Catalog entry happens through my own AI skills rather than an in-app importer or API. A browser-driven skill fills the "add book" form from a plain description like "Dune by Frank Herbert, 412 pages", exactly as a person would. That makes the form's labels, accessible names and outcome messages a contract (the Agent Label Contract in the UX spec): renaming one is a breaking change.
@@ -97,6 +114,9 @@ Catalog entry happens through my own AI skills rather than an in-app importer or
 - [Epics and stories](_bmad-output/planning-artifacts/epics.md): requirements inventory, FR coverage map, and all 41 stories with acceptance criteria
 - [Implementation readiness](_bmad-output/planning-artifacts/implementation-readiness.md): the readiness gate's findings and the decisions that resolved them
 - [Sprint status](_bmad-output/implementation-artifacts/sprint-status.yaml): the status of every epic, story and retrospective, updated as the build moves forward
+- [Epic 1 context](_bmad-output/implementation-artifacts/epic-1-context.md): the planning facts Epic 1's stories build on
+- [Story 1.1 spec](_bmad-output/implementation-artifacts/spec-1-1-scaffold-and-install-bookvie.md): intent, acceptance criteria, review triage and verification for the scaffold
+- [Deferred work](_bmad-output/implementation-artifacts/deferred-work.md): review findings deferred to later stories
 - [Brainstorm intent](_bmad-output/brainstorming/brainstorm-personal-library-tracker-2026-10-27/brainstorm-intent.md): the brainstorm's problem statement, pillars and decisions
 - [Brainstorm session](_bmad-output/brainstorming/brainstorm-personal-library-tracker-2026-10-27/brainstorm.html): the full session record
 
