@@ -1,0 +1,12 @@
+{
+  "name": "bookvie",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Local-first home library and reading tracker.",
+  "license": "MIT",
+  "scripts": {
+    "postinstall": "npm --prefix frontend install",
+    "build": "npm --prefix frontend run build",
+    "dev": "npm --prefix frontend run dev"
+  }
+}

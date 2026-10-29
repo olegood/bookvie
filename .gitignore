@@ -26,6 +26,12 @@ env/
 htmlcov/
 coverage.xml
 
+# ── Node / frontend ──────────────────────────────────
+node_modules/
+
+# Built SPA (npm run build); shipped in the wheel as artifacts
+backend/bookvie/http/static/
+
 # ── Environment & secrets ────────────────────────────
 .env
 .env.*
