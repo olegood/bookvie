@@ -2,7 +2,7 @@
 
 A personal, local-first web app for organizing my home library and tracking my reading. It replaces a paper reading diary as the single source of truth for reading progress. The diary can stay on the nightstand for quick notes; I catch up in the app on my next visit by entering the page I reached.
 
-> **Status:** planning. There is no application code yet. The PRD, UX design, architecture and system-level test design are final (see [Project docs](#project-docs)); the next steps are epics and stories, then sprint planning.
+> **Status:** planning. There is no application code yet. The PRD, UX design, architecture, system-level test design, and epics and stories are final (see [Project docs](#project-docs)); the next step is sprint planning, then building Epic 1.
 
 ## Why
 
@@ -65,6 +65,18 @@ One local Python process owns the data; browsers (mine and the cataloging agent'
 
 Testing is planned up front: a risk register (18 risks, none critical) and about 88 test scenarios, with the Agent Label Contract covered by Playwright end-to-end tests and the test harness built in the first epic.
 
+## Delivery plan
+
+The build is split into 7 epics and 38 stories, each story with Given/When/Then acceptance criteria. Each epic builds only on earlier ones and ends with its own test gate.
+
+1. **Catalog the home library** (11 stories). Install and launch, the safe single-file store, the app shell, the agent-friendly New book panel, duplicate warnings, the bookcase, Book detail, covers and spine colors. The test harness is built here too.
+2. **Keep the library safe** (3). One-click export, restore, and refusing damaged, hostile or newer files.
+3. **Read a book with visible progress** (7). The Main book on Home, the Start dialog with Purpose, one-step catch-up, "~N days left", the shelf slice, finishing, and the one-time spine fill.
+4. **Switch books without losing your place** (7). Up next, Waiting for you, pause, marking any book finished, state markers on the shelf, and Side reads.
+5. **Keep what a book gave you** (4). Card notes: add, edit, search, and go through a book's notes as a pile.
+6. **Know how long and how much** (4). The quick pace calculator for one book or the whole library, and Stats with monthly bars.
+7. **Organize the catalog** (2). Sort and filter chips.
+
 ## Adding books with AI
 
 Catalog entry happens through my own AI skills rather than an in-app importer or API. A browser-driven skill fills the "add book" form from a plain description like "Dune by Frank Herbert, 412 pages", exactly as a person would. That makes the form's labels, accessible names and outcome messages a contract (the Agent Label Contract in the UX spec): renaming one is a breaking change.
@@ -81,6 +93,7 @@ Catalog entry happens through my own AI skills rather than an in-app importer or
 - [Test design: architecture](_bmad-output/test-artifacts/test-design-architecture.md): risk register, testability requirements and NFR concerns for the build
 - [Test design: QA](_bmad-output/test-artifacts/test-design-qa.md): coverage plan, test scenarios and quality gates
 - [Test design handoff](_bmad-output/test-artifacts/test-design/bookvie-handoff.md): how the test design feeds epics and stories
+- [Epics and stories](_bmad-output/planning-artifacts/epics.md): requirements inventory, FR coverage map, and all 38 stories with acceptance criteria
 - [Brainstorm intent](_bmad-output/brainstorming/brainstorm-personal-library-tracker-2026-10-27/brainstorm-intent.md): the brainstorm's problem statement, pillars and decisions
 - [Brainstorm session](_bmad-output/brainstorming/brainstorm-personal-library-tracker-2026-10-27/brainstorm.html): the full session record
 
