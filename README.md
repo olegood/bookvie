@@ -67,9 +67,9 @@ Testing is planned up front: a risk register (18 risks, none critical) and about
 
 ## Delivery plan
 
-The build is split into 7 epics and 38 stories, each story with Given/When/Then acceptance criteria. Each epic builds only on earlier ones and ends with its own test gate.
+The build is split into 7 epics and 39 stories, each story with Given/When/Then acceptance criteria. Each epic builds only on earlier ones and ends with its own test gate.
 
-1. **Catalog the home library** (11 stories). Install and launch, the safe single-file store, the app shell, the agent-friendly New book panel, duplicate warnings, the bookcase, Book detail, covers and spine colors. The test harness is built here too.
+1. **Catalog the home library** (12 stories). Install and launch, the safe single-file store, one checked API contract, the app shell, the agent-friendly New book panel, duplicate warnings, the bookcase, Book detail, covers and spine colors. The test harness is built here too.
 2. **Keep the library safe** (3). One-click export, restore, and refusing damaged, hostile or newer files.
 3. **Read a book with visible progress** (7). The Main book on Home, the Start dialog with Purpose, one-step catch-up, "~N days left", the shelf slice, finishing, and the one-time spine fill.
 4. **Switch books without losing your place** (7). Up next, Waiting for you, pause, marking any book finished, state markers on the shelf, and Side reads.
@@ -93,7 +93,7 @@ Catalog entry happens through my own AI skills rather than an in-app importer or
 - [Test design: architecture](_bmad-output/test-artifacts/test-design-architecture.md): risk register, testability requirements and NFR concerns for the build
 - [Test design: QA](_bmad-output/test-artifacts/test-design-qa.md): coverage plan, test scenarios and quality gates
 - [Test design handoff](_bmad-output/test-artifacts/test-design/bookvie-handoff.md): how the test design feeds epics and stories
-- [Epics and stories](_bmad-output/planning-artifacts/epics.md): requirements inventory, FR coverage map, and all 38 stories with acceptance criteria
+- [Epics and stories](_bmad-output/planning-artifacts/epics.md): requirements inventory, FR coverage map, and all 39 stories with acceptance criteria
 - [Brainstorm intent](_bmad-output/brainstorming/brainstorm-personal-library-tracker-2026-10-27/brainstorm-intent.md): the brainstorm's problem statement, pillars and decisions
 - [Brainstorm session](_bmad-output/brainstorming/brainstorm-personal-library-tracker-2026-10-27/brainstorm.html): the full session record
 

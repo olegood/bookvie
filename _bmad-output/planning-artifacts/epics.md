@@ -15,13 +15,37 @@ inputDocuments:
 
 ## Overview
 
-This document provides the complete epic and story breakdown for bookvie, decomposing the requirements from the PRD, UX Design if it exists, and Architecture requirements into implementable stories.
+This document breaks bookvie's PRD, UX design (DESIGN.md, EXPERIENCE.md) and architecture spine into seven epics of implementable stories. Each story names the requirement IDs it satisfies and lists Given/When/Then acceptance criteria.
+
+**How to read it.** The Epic List gives the build order and what each epic delivers. Each epic section starts with its gate. Every story follows the conventions in "Conventions for every story", just before Epic 1. The Requirements Inventory is a lookup table; the source documents stay authoritative.
+
+**ID key.**
+- **FR-n, NFRn:** PRD requirements (`prd.md`).
+- **ARn:** architecture requirements; each points to an AD-n decision in `ARCHITECTURE-SPINE.md`.
+- **TRn:** test requirements from the TEA handoff; each points to a TC-n testability concern or an R-n risk.
+- **UX-DRn:** UX design requirements; each points to a section of `DESIGN.md` or `EXPERIENCE.md`.
+- **R-n:** risks in `test-design-architecture.md`. "Closes R-n" in a gate means the epic's tests retire that risk.
+- **Test IDs** such as FND-API-001 or CAT-E2E-002: scenarios in `test-design-qa.md`. The prefix is the area (FND foundation, CAT catalog, BKP backup, PRG progress, FIN finish, RDG reading, CRD card notes) and the middle part is the level (UNIT, API, E2E).
+
+## Epic List
+
+Gates are in each epic's section.
+
+| Epic | What it delivers | FRs covered |
+|---|---|---|
+| 1. Catalog the home library | Add, edit, delete and browse Books on a bookcase, with duplicate warnings, back-filled finishes, covers and the agent-friendly form; plus the project foundation (skeleton, CLI, store, API contract, test harness, app shell). | FR-1, FR-2, FR-3, FR-4, FR-24 (catalog bookcase) |
+| 2. Keep the library safe | Export everything with one click and restore it on a fresh machine; damaged, hostile and newer files are refused with nothing changed. | FR-22, FR-23 |
+| 3. Read a book with visible progress | Start a Main book with a Purpose, catch up in at most 2 interactions, see "Last updated…" and days left, and finish with the one-time spine fill, including re-reads. | FR-5 (basic), FR-9, FR-10, FR-11, FR-14 (Main book), FR-21, FR-24 (Home slice, Main fill) |
+| 4. Switch books without losing your place | Interrupt with every consequence stated, pause, Up next, Waiting for you, finishing any non-Main Reading, and up to 3 Side reads. | FR-5 (Up next displacement), FR-6, FR-7, FR-8, FR-14 (non-Main finish), FR-24 (markers) |
+| 5. Keep what a book gave you | Card notes with a page or range on any Book, the pile, and note search. | FR-17, FR-18, FR-19 |
+| 6. Know how long and how much | Pace to finish for a Book or the whole unread library, and Stats for any period with monthly bars. | FR-15, FR-16 |
+| 7. Organize the catalog | Sort, and filter chips that close up the bookcase; Home's slice follows the sort. | FR-20 |
 
 ## Requirements Inventory
 
 ### Functional Requirements
 
-FR IDs are the PRD's own stable IDs. FR-12 and FR-13 (Day types, Reading calendar) were retired on 2026-10-28 and are not listed. Priority in brackets.
+The PRD is authoritative; this text is a copy so each story can be read on its own. FR IDs are the PRD's own stable IDs. FR-12 and FR-13 (Day types, Reading calendar) were retired on 2026-10-28 and are not listed. Priority in brackets.
 
 FR-1 [Must]: Book fields. The user can create, edit and delete a Book. Required: title, pages, at least one author, edition (default 1), language, publisher, type (Paperback / Hardcover / Ebook). Optional: subtitle, ISBN, year, cover image, spine color, tags, Finished on. Saving is refused while any required field is empty. Pages is always a page count. Edition is displayed only when it isn't 1. A Book without a cover shows a "no cover" placeholder. New Books default to Ownership = owned. An empty spine color means automatic (from cover, else curated palette). An empty Finished on means not read; a date (not in the future) creates a back-filled Reading (no start date) finished on that date, and on a Book with an active or paused Reading adds a past Reading and leaves the current one untouched. In edit, Finished on shows the most recent finish date and changing it changes that date; clearing it is refused. Tags: many per Book, comma-separated free text with suggestions from existing tags, shown on Book detail. Editing Pages below the current page of an active or paused Reading, or below the highest Card note page, is refused with a message; finished Readings keep the page count they finished with. Deleting a Book requires confirmation and removes its Readings and Card notes.
 
@@ -87,127 +111,121 @@ NFR8 (Unattended operation): Cataloging runs with nobody watching; every outcome
 
 ### Additional Requirements
 
-From ARCHITECTURE-SPINE.md and the TEA handoff. Items are grouped by concern.
-
-**Project skeleton (Epic 1 Story 1).** There is no third-party starter repo. The greenfield scaffold is:
-- `backend/` as a uv-managed Python 3.14 package (`pyproject.toml`, console script `bookvie = bookvie.cli:main`, `http/static` included as package data) with layers `cli.py`, `http/`, `intents/`, `views/`, `domain/`, `store/`, `tests/`.
-- `frontend/` from the Vite 8.3 `react-ts` template (React 19.3, TypeScript pinned to 5.9 instead of the template's TS 7, because openapi-typescript 7.13 requires TS ^5), TanStack Query 5, `src/api/generated/`, `src/api/`, `pages/`, `components/`, `e2e/` (Playwright 1.64).
-- Stack pins: FastAPI 0.162.x, Pydantic 2.14.x, Uvicorn 0.54.x, Pillow 13.x, pytest 9.x, uv 0.13.x, openapi-typescript 7.13.x.
-- Dependency direction enforced: `http → intents, views → domain`; `intents, views → store`; `domain` imports nothing from other layers; `store` imports only `domain` types; the frontend imports only `api/`.
+From ARCHITECTURE-SPINE.md and the TEA handoff. Each line names the source decision, which holds the full rule.
 
 **Persistence and data folder.**
-- AR1 (AD-1): All data lives in one folder (`--data-dir`, default `~/bookvie-data`); only `store/` reads or writes it. No domain data persisted in the browser.
-- AR2 (AD-2): All textual data is one `library.json`; `store.serialize()` is the only producer of its bytes (UTF-8, camelCase, nulls kept, model key order, 2-space indent). Every commit: temp file in same folder → fsync → rename. Any failure leaves the original untouched and the intent reports `couldnt_save`.
-- AR3 (AD-18): Canonical shape `{ schemaVersion, mainBookId|null, upNextBookId|null, sideReadBookIds[], books[] }`; each Book carries `id`, `createdAt`, `ownership` (`owned`), `coverFile|null`, AD-11 color fields, PRD fields, nested `readings[]` and `cardNotes[]` (`{ id, text, pageStart, pageEnd|null, createdAt }`). `domain.check_invariants()` runs before every commit: pointers reference existing Books; Main is neither Up next nor Side read; ≤ 3 Side reads; ≤ 1 unfinished Reading per Book; Main book has an unfinished Reading; card-note pages and unfinished Reading pages within page count. Deleting a Book clears every pointer in the same commit; vacated Main/Up next stays empty.
-- AR4 (AD-19): Reading fields `id`, `startDate|null`, `currentPage`, `purpose|null`, `lastProgressUpdate`, `pausedAt|null`, `finishDate|null`, `finishedPages|null`, `purposeFulfilled|null`, `rating|null`. `domain.reading_status()` is the only status function (finished if `finishDate`; active if Book is `mainBookId`; else paused). One `start-reading` intent resumes or creates. Only `finish-reading` sets `finishDate`; `update-page` (or `start-reading` with a Side read page) at the last page returns `reachedLastPage: true` and the client opens the Finish dialog.
-- AR5 (AD-11): Stored, never recomputed: `spineColorUser`, `spineColorFromCover` (computed once per uploaded cover), `spineColorCurated` (assigned at creation, cycling the eight), resolved `spineColor`; finished Reading `finishDate` (local date) and `finishedPages`; back-filled `startDate: null`.
-- AR6 (AD-12): Covers re-decoded with Pillow (rejects non-images), capped 20 MB upload, downscaled to ≤ 1200px long edge, stored as `covers/<book-id>-<uuid>.<ext>` (never reused). Order: write files → commit document → delete unreferenced files. Served at `/media/covers/<file>` with immutable caching. Unreferenced covers removed at startup.
-- AR7 (AD-13): `schemaVersion` integer; one ordered migration chain in `store/migrations/` used at startup and on restore; pre-migration copy `library.v<N>.bak.json`; newer or invalid file refused with nothing changed.
-- AR8 (AD-15): Last-export timestamp in `local-state.json` (data folder, not exported, untouched by restore). UI preferences (theme, catalog view, sort) in browser `localStorage`, wrapped in try/catch with defaults.
+- AR1 (AD-1): One data folder (`--data-dir`, default `~/bookvie-data`); only `store/` reads or writes it.
+- AR2 (AD-2): One `library.json`, produced only by `store.serialize()`, committed by temp file, fsync and rename; startup cleanup of leftover temp files.
+- AR3 (AD-18): Canonical document shape; `check_invariants()` runs before every commit.
+- AR4 (AD-19): Reading fields, the single status function, start and finish rules, and how intents address their target.
+- AR5 (AD-11): Spine colors and finish values are stored, never recomputed.
+- AR6 (AD-12): Cover decoding, immutable cover names, and the files-then-document-then-cleanup order.
+- AR7 (AD-13): `schemaVersion` and one migration chain, run in memory, with a pre-migration backup.
+- AR8 (AD-15): Last export in `local-state.json`; UI preferences in browser `localStorage`.
 
 **API contract.**
-- AR9 (AD-3): Each user action is exactly one `POST /api/intents/<verb>` that validates, applies every consequence, runs `check_invariants()` and commits once, or changes nothing and returns a refusal. No CRUD/PATCH or whole-document endpoints. File-carrying intents (`add-book`, `edit-book`, `restore`) are `multipart/form-data` with a JSON part `intent` plus a file part.
-- AR10 (AD-4): One in-process lock covers apply → write files → commit → swap in-memory state; export and restore hold the same lock. Views read committed in-memory state.
-- AR11 (AD-6): Server computes percentages, Measured pace, days left, pages left (Book and library scope), Waiting order, Home bookcase slice membership and row priority, stats incl. per-month bars, and the "X of Y finished" meter. Client may only apply presentation: sort via `Intl.Collator`, filter chips, packing spines into rows, case-insensitive substring search, pile order/shuffle, copy and date formatting incl. relative days, and the Quick pace calculator arithmetic (ceil(pages left ÷ pages/day), finish date = today + days).
-- AR12 (AD-7): No optimistic updates. View queries keyed `['view', name, params]`; after every intent response (success or refusal) invalidate all views; refetch on focus/visibility. Success announcements only after refetched views render. On `couldnt_save` or network failure, keep input and show the couldn't-save message. The finish fill plays only in the tab that received the successful `finish-reading` response.
-- AR13 (AD-8): Pydantic models define every intent body, view, success response and error code. TS types generated from FastAPI OpenAPI via `openapi-typescript` into `frontend/src/api/generated/`, never hand-edited. `npm run check:api` regenerates and fails on any diff.
-- AR14 (AD-9): Success `200 { ok: true, ids?, reachedLastPage? }`. Failure `{ error: { kind: refusal|couldnt_save, code, message, fields?[] } }`: 422 `invalid_fields` listing every failing field; 409 state rules (e.g. `duplicate_book`, `pages_below_current_page`); 500/503 `couldnt_save`. Global `RequestValidationError` handler maps framework errors to this shape. Server owns all message copy; error codes are an enum in the contract.
-- AR15 (AD-10): `add-book`, and `edit-book` when title/author/ISBN changed, refuse 409 `duplicate_book` unless `confirmDuplicate: true`. ISBN normalization and author-set comparison live in `domain/`.
-- AR16 (AD-20): `domain/` never calls the system clock; it receives an injected `Clock` (now, plus today as a local date). Local dates `YYYY-MM-DD`; timestamps ISO 8601 with offset. Measured pace = total finished pages ÷ Σ(finishDate − startDate + 1), excluding back-filled Readings; lives only in `domain/`.
-- AR17: IDs are server-generated UUID v4 strings returned in `ids`; the client never mints IDs. Naming: domain terms exactly as PRD §3; Python snake_case; JSON/TS camelCase (Pydantic alias generator); intents kebab-case verbs, views nouns under `GET /api/views/<name>`.
+- AR9 (AD-3): Each user action is one `POST /api/intents/<verb>` that applies every consequence and commits once, or changes nothing.
+- AR10 (AD-4): One in-process lock serializes intents, export and restore; views read committed state.
+- AR11 (AD-6): The server computes domain numbers and selections; the client only presents them.
+- AR12 (AD-7): No optimistic updates; every intent response invalidates all views.
+- AR13 (AD-8): Pydantic models are the contract; TS types are generated and checked by `check:api`.
+- AR14 (AD-9): One success and failure envelope, an error-code enum, and the refusal codes.
+- AR15 (AD-10): Duplicate detection is a 409 refusal with `confirmDuplicate`.
+- AR16 (AD-20): Injected `Clock`, local dates, and Measured pace in `domain/`.
+- AR17 (Consistency Conventions): Server-minted UUIDs and the naming conventions.
 
 **Export and restore.**
-- AR18 (AD-14): `GET /api/export` returns one `.zip` with `library.json` and `covers/` only, read under the AD-4 lock. Restore unpacks into `.staging/` in the data folder, accepting only `library.json` and `covers/<name>` (no absolute paths, no `..`, no symlinks or duplicate names; ≤ 1 GB upload, ≤ 5,000 entries, ≤ 1 GB extracted counted on bytes written), validates schema, migrations, AD-18 invariants and every referenced cover present and decodable, then applies in AD-12 order. Failure before commit leaves data untouched; `.staging/` emptied before and after every restore and at startup. Last export is recorded only after a complete download. Round trip at the same `schemaVersion` is byte-identical.
+- AR18 (AD-14): Export packaging and when Last export is recorded; restore validation, limits and apply order.
 
 **CLI, process and security.**
-- AR19 (AD-5): Server holds `bookvie.lock` (PID, port) in the data folder. A live lock → `bookvie` opens the browser at the recorded URL and exits; a dead PID's lock is taken over. On SIGINT/SIGTERM wait for the AD-4 lock, remove the lock file, exit.
-- AR20 (AD-16): Bind `127.0.0.1` only, port 8765 by default (`--port` overrides; lock records the actual port). Port held by a non-bookvie process → exit with a message naming the port and `--port`. Reject requests whose `Host` isn't `127.0.0.1:<port>`/`localhost:<port>` or whose `Origin` is present and not one of those (`--dev` also allows the Vite origin). No authentication. Serve the built SPA with `index.html` fallback for client routes.
-- AR21: CLI flags `--data-dir`, `--port`, `--no-browser`, `--dev`; no config file. Server logs to stderr; no telemetry, no outbound network calls.
-- AR22: Build and install: `npm run build` writes the SPA into `backend/bookvie/http/static/` (gitignored, included as package data); `uv tool install --reinstall ./backend` installs the global `bookvie`. Node only at build time. Dev: Vite on :5173 proxying `/api` and `/media` to `bookvie --dev --no-browser` on :8765.
-- AR23 (AD-17): The Agent Label Contract (EXPERIENCE.md) is a public interface; the Playwright e2e suite drives those flows only by its exact accessible names. No `data-testid` attributes (TEA handoff).
+- AR19 (AD-5): One server per data folder through a health-checked lock.
+- AR20 (AD-16): Loopback bind, port handling, the Host/Origin guard and the SPA fallback.
+- AR21 (Consistency Conventions): CLI flags, stderr logging, no outbound network calls.
+- AR22 (Stack, Structural Seed): Build into `backend/bookvie/http/static/`, install with `uv tool install`, Vite dev proxy.
+- AR23 (AD-17): The Agent Label Contract is a public interface; e2e drives it by exact accessible names, with no `data-testid`.
 
-**Test harness and quality gates (TEA handoff; foundation epic).**
-- TR1 (TC-1): `LibraryBuilder` fixture plus pre-start seeding of a data folder.
-- TR2 (TC-2): `--fake-today` Clock flag, accepted only with `--no-browser`; pinned TZ for tests.
-- TR3 (TC-3): Filesystem seam in `store/` for fault injection (write / fsync / rename failures).
+**Test harness and quality gates (TEA handoff).**
+- TR1 (TC-1): `LibraryBuilder` fixture and pre-start seeding of a data folder.
+- TR2 (TC-2): `--fake-today` Clock flag, only with `--no-browser`; pinned TZ; browser clock and time zone matched in e2e.
+- TR3 (TC-3): Filesystem seam in `store/` for fault injection.
 - TR4 (TC-4): Worker-scoped Playwright server fixture.
-- TR5 (TC-5): e2e isolation: per-worker data dirs under `$TMPDIR/bookvie-e2e/<run-id>/worker-<n>/`; a path guard that refuses any other path (always refuses `~/bookvie-data`); isolated install smoke test (build, `uv tool install`, start, load `/`).
-- TR6 (R-16): One `check` command running pytest, Playwright, `check:api` and the smoke test; `~/bookvie-data` is never touched by `check`.
-- TR7: Per-epic gates: P0 = 100%, P1 ≥ 95%; every new AD-9 error `code` has an API test; `check:api` clean; coverage ≥ 90% line on `domain/`, ≥ 80% on `intents/` + `store/`.
-- TR8: Every intent story carries two ACs: a failure at write / fsync / rename leaves `library.json` unchanged and returns 503 `couldnt_save` (FND-API-001); `check_invariants()` holds after the intent (FND-UNIT-002).
-- TR9: Every UI save surface: a routed 503 shows "Couldn't save. Your data wasn't changed." and keeps all values (R-12).
+- TR5 (TC-5): Per-worker e2e data dirs, a path guard that always refuses `~/bookvie-data`, and an isolated install smoke test.
+- TR6 (R-16): One `check` command; `~/bookvie-data` is never touched.
+- TR7: Per-epic gates: P0 = 100%, P1 ≥ 95%, every error code has an API test, `check:api` clean, coverage ≥ 90% on `domain/` and ≥ 80% on `intents/` + `store/`.
+- TR8: The standard intent ACs in "Conventions for every story".
+- TR9 (R-12): Every UI save surface keeps its values and shows "Couldn't save. Your data wasn't changed." on a routed 503.
 - No CI provider is required; everything runs locally until one is chosen.
 
 ### UX Design Requirements
 
-From DESIGN.md (visual) and EXPERIENCE.md (behavior). The two documents share component names.
+Each line names the UX section that holds the full requirement. D = DESIGN.md, E = EXPERIENCE.md.
 
 **Foundation and tokens**
-- UX-DR1: Implement DESIGN.md tokens as CSS custom properties: all light colors and their `-dark` twins, the 8 theme-independent spine colors plus `spine-label`/`spine-label-strip`, typography roles (sans system stack for UI; serif stack for book titles only), spacing scale 4–36 plus component dimensions, radii (`plank` … `full`), elevation literals and the scrim.
-- UX-DR2: Theme toggle in the top nav: `role="group"` "Theme" with Light / Dark / System toggle buttons (`aria-pressed`), default System, System follows the OS live, choice remembered locally; segmented-control visual (accent-soft fill + 2px accent bar).
-- UX-DR3: App shell: "Skip to content" link first (moves focus to `main`), top nav Home · Catalog · Stats · Card notes · Backup with `aria-current="page"` and 2px accent underline, wordmark; `header`/`nav`/`main` landmarks; one `h1` per page (Home's visually hidden); `document.title` "Page — bookvie"; on route change focus moves to the page `h1`; 1024px min width with horizontal scroll below.
-- UX-DR4: Live-region infrastructure: one polite `status` and one `alert` region per page; both emptied before every save attempt and when a panel/dialog opens; text set after ~100 ms; messages that follow a focus change set after focus settles.
-- UX-DR5: Shared primitives with DESIGN.md visuals: `button-primary`, `button-secondary`, `link`, Text field (visible label, "(required)" outside the label element, accent focus + halo, invalid = 2px ink border + one-line message, never red), chip, focus ring on `:focus-visible` (never suppressed), highlight ring (~2 s fade), Failure message (ink, one line, no icon), Busy button ("Exporting…"/"Restoring…", 60% opacity, no spinner).
-- UX-DR6: Overlay primitives: modal dialog and `alertdialog` (native `dialog`/`showModal()`, focus trap, Esc, scrim), side panel (right-anchored, 440px, sticky footer with `scroll-padding-bottom`), non-modal popover, menu (`aria-haspopup="menu"`, arrow keys, Esc returns focus); at most one stacking level (Duplicate over New book panel only); a dialog opened from a popover/menu replaces it; panels and dialogs fade ≤ 150 ms.
-- UX-DR7: Focus-after-close rules exactly per EXPERIENCE.md → Focus after close table, including fallback to the page `h1` when the opener no longer exists.
-- UX-DR8: Reduced motion: under `prefers-reduced-motion: reduce` all transitions/animations are off (fill and ring instant, no fades, gauges jump, scroll-into-view uses `behavior: 'auto'`).
-- UX-DR9: Forced colors: label strip `Canvas`/`CanvasText`, read edge `CanvasText`, fills with `forced-color-adjust: none` + `CanvasText`, unread `CanvasText` outline on `Canvas`, markers with `CanvasText` ring, selected options keep their border indicator.
-- UX-DR10: Relative dates in local calendar days ("today", "yesterday", "N days ago", future → "today", > 365 days → "over a year ago"); all relative times and the Home date recompute on focus/visibility.
-- UX-DR11: Controls that can't act stay focusable with `aria-disabled="true"` and a description saying why (never natively disabled, except Export/Restore busy).
-- UX-DR12: Voice and Tone microcopy per EXPERIENCE.md Do/Don't table: no greetings (Home header is the date "Wednesday, 28 October"), no exclamation marks, no praise, no red; banned: drag and drop, hover-only affordances, character-key shortcuts, auto-start, confetti, sound, streaks, auto-playing animation on load.
+- UX-DR1: Design tokens as CSS custom properties (D → Colors, Typography, Layout & Spacing, Elevation & Depth, Shapes)
+- UX-DR2: Theme toggle, Light / Dark / System (D → Components; E → Foundation)
+- UX-DR3: App shell, nav, landmarks, page titles and focus on route change (E → Information Architecture, Accessibility Floor)
+- UX-DR4: Live regions and their timing (E → Accessibility Floor)
+- UX-DR5: Shared primitives: buttons, link, Text field, chip, focus and highlight rings, Failure message, Busy button (D → Components)
+- UX-DR6: Overlay primitives: dialog, alertdialog, side panel, popover, menu (E → Overlays, Interaction Primitives)
+- UX-DR7: Focus after close (E → Focus after close)
+- UX-DR8: Reduced motion (E → Interaction Primitives)
+- UX-DR9: Forced colors (D → Forced colors)
+- UX-DR10: Relative dates in local calendar days (E → Foundation)
+- UX-DR11: Controls that can't act use `aria-disabled` with a reason (E → Accessibility Floor)
+- UX-DR12: Voice and Tone, and banned patterns (E → Voice and Tone; D → Do's and Don'ts)
 
 **Catalog and entry**
-- UX-DR13: New book panel (`dialog` "New book" / "Edit book"): fields in Agent Label Contract order and exact labels (Title, Subtitle, Pages, Author(s), Edition prefilled 1, Language, Publisher, Type select with empty option + Paperback/Hardcover/Ebook, ISBN, Year, Finished on date, Tags, Cover file, Spine color hex + From cover/8 swatch buttons with `aria-pressed`); submit **Add book** / **Save changes**, **Cancel**, **Close** (×); opens with focus on Title; Esc/Cancel/Close discard without prompt.
-- UX-DR14: New book panel outcomes: validation table messages per field; on failure nothing saved, each invalid field `aria-invalid` + described-by message, `alert` "Not saved. N fields need attention: …", focus to first invalid field. Success (add): close, `status` "Added *Title*.", Catalog scrolls new spine into view in current sort with highlight ring (clearing a search/filter that would hide it), focus on the new spine. Success (edit): `status` "Saved *Title*.", focus on Edit. Couldn't save keeps every value.
-- UX-DR15: Duplicate dialog: `alertdialog` "Possible duplicate", description names up to 3 matches (title, author, ISBN) and "and N more"; panel behind `inert`; **Don't add** (default focus, returns to Title with fields kept) and **Add anyway**; no warning color.
-- UX-DR16: Tags field: comma-separated input as `combobox` + `listbox` suggestions of existing tags starting with the typed text; trimmed; duplicates merged case-insensitively keeping first spelling; Book detail shows them as non-interactive chips.
-- UX-DR17: Catalog page layout: `h1` "Catalog"; toolbar row 1 Search titles (visible label, `searchbox`, no placeholder, first control after nav), Sort select, Catalog view toggle, **New book** right; row 2 filter chips + "Clear filters"; library meter; collapsed "How long until…?" link; bookcase or list.
-- UX-DR18: Search titles: case-insensitive substring filter as you type; non-matching spines/rows `hidden`, shelf closes up; `status` "N books match." after ~500 ms pause; Esc clears; "No titles match “query”." empty state.
-- UX-DR19: Sort select ("Sort"): Author (first author string via `Intl.Collator`, then title), Title A–Z, Date added newest first, Pages fewest first, ties by title; reorders bookcase and list; remembered locally and shared with Home's slice.
-- UX-DR20: Filter chips: Status (Read, Unread), Type (Paperback, Hardcover, Ebook), Language ▾ and Tag ▾ checkbox lists (existing values, alphabetical; chip reads "Language: 2"); toggle buttons with `aria-pressed`, selected = accent-soft + 2px accent border + check glyph; OR within a group, AND across groups and with search; hidden not dimmed; "Clear filters"; `status` "N books match."; not remembered; "No books match these filters." state.
-- UX-DR21: Catalog view toggle (`role="group"` "Catalog view": Bookcase default · List) remembered locally; List view table Title (serif link), Author, Pages, Status (text + mini spine glyph), Date added, fixed column order.
-- UX-DR22: Empty state on Home and Catalog: bare birch planks, "Your shelf is empty. Add your first book.", **New book** (from Home: navigate to Catalog then open the panel); library meter hidden.
-- UX-DR23: No-cover placeholder (surface-inset, 1.5px dashed outline, two title bars) at the cover's size, not interactive, title given in text beside it.
+- UX-DR13: New book / Edit book panel fields and buttons (E → New book panel, Agent Label Contract)
+- UX-DR14: New book panel outcomes (E → New book panel)
+- UX-DR15: Duplicate dialog (E → Duplicate dialog)
+- UX-DR16: Tags combobox (E → Component Patterns)
+- UX-DR17: Catalog page layout and toolbar (E → Pages, Component Patterns; D → Layout & Spacing)
+- UX-DR18: Search titles (E → Component Patterns)
+- UX-DR19: Sort select (E → Component Patterns, Bookcase)
+- UX-DR20: Filter chips (D → Filter chips; E → Component Patterns)
+- UX-DR21: Catalog view toggle and List view (E → Component Patterns)
+- UX-DR22: Empty state on Home and Catalog (E → State Patterns)
+- UX-DR23: No-cover placeholder (D → Components)
 
 **Bookcase**
-- UX-DR24: Spine visual: 28px wide; height = 120px + 0.3 × rendered one-line title length, rounded up to 8px steps, capped 200px; read = exact stored color + `spine-edge` on top and sides + label strip (16px, top 8px / 20px when marked, ≤ 96px, label ≤ 88px, one line, ellipsis); unread = unread fill + 1.5px outline + unread text, no strip; Main never-finished = unread body with exact color filled from plank to % below the strip, topped by a 2px `spine-edge` fill line; re-read Main = read spine + Main marker; one 7px marker dot with `marker-ring` (Main / sky Up next / sand Waiting), never two; two-tone focus ring.
-- UX-DR25: Spine semantics: `button` in a list item, `aria-haspopup="dialog"`, `aria-expanded`; accessible name "*Title* by *First author*[ and N others], *status*" with status strings per the Book states table.
-- UX-DR26: Bookcase container: `shelf-wall` card, birch planks (face, edge, shadow), "BOOKCASE" header with library meter, footer legend (finished · not read yet · Main book filled to its % · up next · waiting for you); `list` named "Bookcase, N books" / "Bookcase slice, 3 rows"; client-side packing of spines into rows by viewport width; ~500 spines all in the DOM.
-- UX-DR27: Bookcase keyboard: one Tab stop (roving tabindex, returns to last focused spine); Left/Right previous/next in sort order across rows; Up/Down nearest horizontal center in adjacent row; Home/End first/last; Enter/Space open popover; no type-ahead; focused spine filtered/deleted → nearest neighbor, else Search titles.
-- UX-DR28: Spine popover: non-modal `dialog` labeled by its title, one at a time, anchored above with pointer (flips below on top row, shifts at edges, max width viewport − 32px); focus to first actionable control; Tab out closes; Esc/outside click/×/focus leave close and return focus to spine; read-only details (title, subtitle, authors, pages · year, status, color line); at most one state-aware primary (Set as Up next with hint "Replaces the current Up next." / Start reading / Resume); "Start reading" link where applicable; "Open book →"; Change color block.
-- UX-DR29: Change color control (popover and Book detail): "From cover" chip (only with a cover) + 8 named swatches (Sage, Slate, Clay, Ochre, Plum, Teal, Moss, Stone) as toggle buttons; saves immediately, `status` "Color set to Teal."; color line "Color: Teal, from cover" / "Color: Sage" / "Color: set by you"; "· shown once read" on unread Books.
-- UX-DR30: Library meter: thin 180×4 progressbar, "X of Y finished" (X = Books with any finished Reading incl. back-filled), `aria-valuetext` "24 of 73 finished", one bar at any size.
-- UX-DR31: Home bookcase slice: up to 3 rows chosen Main row → Up next row → most-recent-finish rows, filled from the first rows when fewer qualify; display Main row first then others in bookcase order; recomputes on resize; never filtered; never scrolls internally; header has meter and "See all in Catalog".
+- UX-DR24: Spine visual (D → Spine)
+- UX-DR25: Spine semantics and accessible name (E → Book states, Bookcase)
+- UX-DR26: Bookcase container, planks and legend (D → Components; E → Bookcase)
+- UX-DR27: Bookcase keyboard (E → Bookcase)
+- UX-DR28: Spine popover (D → Spine popover; E → Spine popover)
+- UX-DR29: Change color control (E → Spine popover, Book detail)
+- UX-DR30: Library meter (D → Components)
+- UX-DR31: Home bookcase slice (E → Bookcase)
 
 **Home and reading flow**
-- UX-DR32: Home layout: date header line (no greeting), two-column grid (fluid Main book card + 320px side column of section panes), full-width bookcase slice below; "Last export" moves to the header's right end when there is no Main book.
-- UX-DR33: Main book card: 200×300 cover (or placeholder) with shadow; under it **Add card note** and **See card notes · N** (name "See card notes, 7 notes"; "See card notes" at 0); "MAIN BOOK" eyebrow with "⋯" (name "More actions") menu: Pause, Open book; title (serif, 3-line clamp) as link to Book detail; author; edition only when ≠ 1; gauge; page field; re-entry line.
-- UX-DR34: Main book card empty state: "No Main book." with the Up next suggestion (44×64 thumb, title, author, **Start reading**/**Resume**) or the link "Choose a book in the Catalog".
-- UX-DR35: Gauge: progressbar `aria-valuemin=0`, `aria-valuenow`=page, `aria-valuemax`=pages, `aria-valuetext` "64%, page 212 of 330"; 44px light figure with small "%", "p.N of M" right, ticks 0 · half · total (half rounded, dropped under 4 pages).
-- UX-DR36: Page field: "Page" label, number field prefilled with last saved page, "of M" via `aria-describedby`, **Update** (or Enter) saves; no autofocus; invalid → value kept, `aria-invalid`, "Page must be between 0 and N." in `alert`; on save gauge, %, re-entry line and spine fill update together and `status` says "Page 212 of 330, 64%."; last page opens Finish dialog, and Update with the same last page reopens it.
-- UX-DR37: Re-entry line: up to three muted facts separated by dots: "Last updated N days ago", "~N days left", "Last export: N days ago" / "No export yet"; never colored or warning-styled.
-- UX-DR38: Section panes (Up next; Waiting for you (N); On the side): serif title links, compact secondary buttons carrying the title in their name ("Resume *Title*"); Up next row with thumb + author; Waiting rows with 60×5 mini progressbar (`aria-labelledby` row title, `aria-valuetext` "page 120 of 330, 36%") and "p.N of M", ordered longest paused first, paused date never shown; On the side rows with author + **Start reading**; empty panes hidden except "Nothing up next." while a Main book exists; Up next pane hidden with no Main book.
-- UX-DR39: Start dialog: modal, "Start *X*?" / "Resume *X*?" (serif title), trade-off lines only when they apply, required "Which page?" field for Side reads (prefilled with paused page), optional "Purpose (optional)" one-line field prefilled on resume, **Start reading**/**Resume** and **Cancel**; on confirm focus goes to Home's Main book title link (navigating to Home if needed).
-- UX-DR40: Pause flows: from "⋯" menu and Book detail; Confirm dialog only when an Up next would be displaced ("Pause *X* at p.150 (58%)? *Z* moves to Waiting for you." / "*Z* returns to the catalog.", **Pause**/**Cancel**), else immediate with `status` "Paused *X* at p.150. It's Up next."
-- UX-DR41: Finish dialog: modal "Finished *X*" (serif), **Finished on** date prefilled today with future/before-start messages, "Purpose fulfilled?" segmented radio (yes · partly · not yet, none preselected, Purpose quoted above; only when a Purpose exists), Rating radios "No rating" default then 1–5 stars (outline/filled shape change), **Done**/**Cancel**; Main book → go Home + finish moment; other Reading → stay on Book detail, `status` "Finished *X*.".
-- UX-DR42: Finish moment: on Home's slice, scroll the finished spine into view, fill from current fill to full bottom-to-top ~600 ms ease-out with highlight ring, then solid; instant under reduced motion; never replays; header line "Finished *X*." (gone on next visit); `status` "Finished *X*. 25 of 73 finished."; re-read variant: ring only and "Finished *X* again.", meter unchanged; no sound, no confetti.
+- UX-DR32: Home layout (D → Layout & Spacing; E → Pages)
+- UX-DR33: Main book card (D → Main book card)
+- UX-DR34: Main book card empty state (E → State Patterns)
+- UX-DR35: Gauge (D → Components; E → Component Patterns)
+- UX-DR36: Page field (E → Component Patterns)
+- UX-DR37: Re-entry line (E → Component Patterns)
+- UX-DR38: Section panes: Up next, Waiting for you, On the side (E → Section pane)
+- UX-DR39: Start dialog (E → Start dialog)
+- UX-DR40: Pause flows (E → Flow 10, Focus after close)
+- UX-DR41: Finish dialog (E → Finish dialog)
+- UX-DR42: Finish moment (E → Finish dialog; D → Components)
 
 **Book detail**
-- UX-DR43: Book detail page (one surface card, two columns): left 200px cover/placeholder + action stack (one state-aware primary Resume/Start reading, then secondary Set as Up next, Pause, Mark finished, Mark as Side read/Remove from side, Add card note, Edit, Delete, each shown only when it applies per EXPERIENCE Book states → Book detail actions); right `h1` title (serif 34px), subtitle, author, metadata grid (Edition only when ≠ 1), tag chips; blocks Current reading (status, gauge, Purpose + Edit Purpose), Card notes (N), Readings (start, finish, stars, Purpose fulfilled; back-filled shows "Finished 14 Aug 2019" with no start), How long until…?, Change color.
-- UX-DR44: Edit Purpose inline: Purpose line becomes a one-line field with **Save**/**Cancel**; Enter saves, Esc cancels.
-- UX-DR45: Mark as Side read at 3 Side reads stays focusable with `aria-disabled="true"` and the hint "Up to 3 side reads."
-- UX-DR46: Delete book Confirm (`alertdialog`): "Delete *X*? Its readings and card notes are deleted too." plus role line ("It is your Main book." / "It is Up next." / "It is waiting for you at p.120."), **Delete book**/**Cancel** (Cancel default focus); after delete go to Catalog with focus on Search titles.
+- UX-DR43: Book detail page and its actions (D → Book detail; E → Book detail, Book states)
+- UX-DR44: Edit Purpose inline (E → Book detail)
+- UX-DR45: Mark as Side read limit (E → Book detail)
+- UX-DR46: Delete book confirmation (E → Overlays, Focus after close)
 
 **Card notes**
-- UX-DR47: Card note panel: small modal styled as an index card (360px), "Card note"/"Edit card note", Note (multi-line, required) and Page (prefilled current page, at least 1, empty with no Reading); page parser accepts "42", "42–45", "42-45", "42 – 45", optional "p."/"pp.", "42–42" → 42; refusals "Page must be between 1 and N.", "The first page must come before the last.", "Use one page or one range."; **Save note**/**Cancel**, edit mode adds **Delete** → Confirm "Delete this card note?" (**Delete card note**/**Cancel**); on save `status` "Card note saved." and the count updates; the user never leaves the page.
-- UX-DR48: Card notes page: notes grouped under serif Book titles; "Search card notes" (visible label, live filter, case-insensitive, matches in `<mark>` with accent-soft + weight 600 + accent underline, page ref, `status` "N notes match."); scoped mode with removable "In *X*" chip; "Go through as a pile" per group; each note has Edit; states "No card notes yet." (scoped adds **Add card note**) and "No card notes contain “query”.".
-- UX-DR49: Book detail Card notes block: first three notes in page order in a 3-column grid with Edit; in-place "Search card notes" that shows every match while it holds text; "Go through as a pile" and "See all card notes" links; "No card notes yet." with no search/links when empty.
-- UX-DR50: Pile: modal "Card notes pile, *X*" on `page`, Close button (text) top right, one card at a time in `pile-text` with faint stacked edges, polite live region "Note 3 of 7, p.42: *text*.", Previous · "N of M" · Next (no wrap, ends `aria-disabled`), "Order" radio group Page order · Shuffled (reshuffle once per change); opening from a search result opens in Page order at that note; read-only; Close/Esc return to the list scrolled to the last viewed note.
+- UX-DR47: Card note panel and page parser (E → Card note panel)
+- UX-DR48: Card notes page and search (E → Component Patterns)
+- UX-DR49: Book detail Card notes block (E → Book detail)
+- UX-DR50: Pile (E → Pile)
 
 **Pace, Stats, Backup**
-- UX-DR51: Pace calculator: Catalog collapsed behind "How long until…?" (`aria-expanded`), Book detail inline; "pages/day" field (80px) prefilled with Measured pace to one decimal; result in an `output` ("About 9 months · July 2027"): days under 60 days, months under 24 months, else years; "Nothing left to read." when nothing is left; invalid input shows nothing.
-- UX-DR52: Stats page: range picker presets This month · This year (default) · Last year · All time · Custom (From/To date fields, swapped silently if reversed); two big numbers (books finished, pages finished); one bar per month in range (partial months count only in-range finishes), one per year over 24 months, value labels above, period labels below, exposed as a table (period, books, pages); `status` "2 books, 610 pages."; empty state "No books finished in this range.".
-- UX-DR53: Backup page: Export card (**Export all data** primary, "Last export: N days ago"/"No export yet" in meta), Restore card (**Restore from file…** secondary + one-line explanation); busy labels after ~300 ms; "Last export: today" only after the file is handed to the download; Restore Confirm "Replace all data with this file? Your current books, readings and card notes will be replaced." (**Replace all data**/**Cancel**); messages "This file isn't a bookvie export, or it's damaged. Nothing was changed.", "This export is from a newer version of bookvie. Nothing was changed.", "Couldn't export. Your data wasn't changed."; on success `status` "Restored.", go to Home with focus on its `h1`.
+- UX-DR51: Pace calculator (E → Component Patterns, Flow 5)
+- UX-DR52: Stats page (E → Component Patterns; D → Components)
+- UX-DR53: Backup page (E → State Patterns, Component Patterns)
 
 ### FR Coverage Map
 
@@ -234,50 +252,17 @@ FR-22: Epic 2 - Export
 FR-23: Epic 2 - Restore
 FR-24: Epic 1 - Catalog bookcase (spines, colors, meter, popover, keyboard); Epic 3 - Home slice and Main-book fill; Epic 4 - Up next / Waiting markers
 
-## Epic List
+## Conventions for every story
 
-### Epic 1: Catalog the home library
-The user, or their AI cataloging skill, can open bookvie, add, edit and delete Books through the agent-friendly form, get duplicate warnings, back-fill finished Books with Finished on, and browse and search the full bookcase on Catalog (read in color, unread outlined, "X of Y finished"), with Book detail and the spine popover. Includes the project skeleton, CLI, store, security guard, test harness (TC-1..5, `check`) and app shell.
-**FRs covered:** FR-1, FR-2, FR-3, FR-4, FR-24 (catalog bookcase)
-**Gate:** FND-* P0 green; label-contract suite (CAT-E2E-001..005) green; `~/bookvie-data` untouched by `check`; per-epic quality gates (TR7). Closes R-03, R-04, R-05, R-06, R-08, R-13, R-15, R-16.
+**Standard intent ACs (TR8).** Every story below that adds or changes an intent also satisfies: *Given* a failure injected through the store's filesystem seam at write, fsync or rename, *When* the intent runs, *Then* `library.json` is byte-identical to before and the response is 503 `couldnt_save` with "Couldn't save. Your data wasn't changed." (FND-API-001); *and* after every successful intent `check_invariants()` holds (FND-UNIT-002); *and* an intent naming a Book that no longer exists is refused with 409 `book_not_found` and changes nothing; *and* every new error `code` has an API test.
 
-### Epic 2: Keep the library safe
-The user can export all data to one file with one click, see "Last export: N days ago", and restore onto a fresh machine, with damaged, hostile and newer files refused and nothing changed.
-**FRs covered:** FR-22, FR-23
-**Gate:** byte-identical round trip (BKP-API-001); every refusal and fault test green (BKP-API-003..005); per-epic quality gates (TR7). Closes R-02, R-14.
-
-### Epic 3: Read a book with visible progress
-The user can start a Book as the Main book with an optional Purpose, see it on Home with cover, gauge and page field, catch up in at most 2 interactions, see "Last updated…" and "~N days left", and finish it (Finished on, Purpose fulfilled, stars, the one-time spine fill), including re-reads.
-**FRs covered:** FR-5 (basic), FR-9, FR-10, FR-11, FR-14 (Main book), FR-21, FR-24 (Home slice, Main fill)
-**Gate:** PRG-E2E-001 (≤ 2 interactions) green; fake-Clock tests for re-entry and finish dates green; per-epic quality gates (TR7). Closes R-07, R-10, R-17 (with Epic 4: R-01).
-
-### Epic 4: Switch books without losing your place
-An urgent book can interrupt the current one with the trade-off shown; the user can pause, set Up next, see and resume every paused Reading in Waiting for you, mark any non-Main Reading finished from Book detail, and keep up to 3 Side reads.
-**FRs covered:** FR-5 (Up next displacement), FR-6, FR-7, FR-8, FR-14 (non-Main finish), FR-24 (markers)
-**Gate:** RDG-UNIT-002 property test green; every EXPERIENCE.md Book-states row has a Given/When/Then API test (RDG-API-001..003); per-epic quality gates (TR7). Closes R-01, R-11.
-
-### Epic 5: Keep what a book gave you
-The user can add, edit and delete Card notes with a page or range on any Book, go through a Book's notes as a pile, and search all notes or one Book's notes.
-**FRs covered:** FR-17, FR-18, FR-19
-**Gate:** CRD-API-001 green; per-epic quality gates (TR7). Closes R-09 (with Story 1.8).
-
-### Epic 6: Know how long and how much
-The user can see when a Book or the whole unread library will be finished at a given pace, prefilled with Measured pace, and see Stats for any period with monthly bars.
-**FRs covered:** FR-15, FR-16
-**Gate:** fake-Clock boundary tests for pace, ranges, month edges and local dates green; per-epic quality gates (TR7). Closes R-07, R-10 (with Epic 3).
-
-### Epic 7: Organize the catalog
-The user can sort the catalog (Author, Title, Date added, Pages) and filter it with chips (Read/Unread, Type, Language, Tag); the bookcase closes up and Home's slice follows the sort.
-**FRs covered:** FR-20
-**Gate:** per-epic quality gates (TR7).
+**Seeded states.** "Seeded" in an AC means the state is built with the `LibraryBuilder` fixture (TC-1) before the test, not clicked into place.
 
 ## Epic 1: Catalog the home library
 
 The user, or their AI cataloging skill, can open bookvie, add, edit and delete Books through the agent-friendly form, get duplicate warnings, back-fill finished Books with Finished on, and browse and search the full bookcase on Catalog, with Book detail and the spine popover. The epic also lays the foundation every later epic builds on: skeleton, CLI, store, security guard, test harness and app shell.
 
 **Gate:** FND-* P0 green; label-contract suite (CAT-E2E-001..005) green; `~/bookvie-data` untouched by `check`; per-epic quality gates (TR7). Closes R-03, R-04, R-05, R-06, R-08, R-13, R-15, R-16.
-
-**Standard intent ACs (TR8).** Every story below that adds or changes an intent also satisfies: *Given* a failure injected through the store's filesystem seam at write, fsync or rename, *When* the intent runs, *Then* `library.json` is byte-identical to before and the response is 503 `couldnt_save` with "Couldn't save. Your data wasn't changed." (FND-API-001); *and* after every successful intent `check_invariants()` holds (FND-UNIT-002); *and* an intent naming a Book that no longer exists is refused with 409 `book_not_found` and changes nothing; *and* every new error `code` has an API test.
 
 ### Story 1.1: Install and launch bookvie
 
@@ -293,7 +278,10 @@ So that it opens in my browser and nothing outside my machine can reach it.
 **When** I run `npm run build` and then `uv tool install --reinstall ./backend`
 **Then** a global `bookvie` command exists
 **And** the built SPA is packaged from `backend/bookvie/http/static/` (gitignored, included as package data)
-**And** the backend packages follow the AD layer layout (`cli.py`, `http/`, `intents/`, `views/`, `domain/`, `store/`) and the dependency direction in the architecture spine.
+**And** there is no third-party starter: `backend/` is a uv-managed package with the console script `bookvie = bookvie.cli:main`, and `frontend/` starts from the Vite `react-ts` template with TanStack Query 5 and Playwright 1.64, TypeScript pinned to 5.9 instead of the template's TS 7 because openapi-typescript 7.13 requires TS ^5
+**And** every dependency matches the pins in ARCHITECTURE-SPINE.md → Stack
+**And** the backend packages follow the AD layer layout (`cli.py`, `http/`, `intents/`, `views/`, `domain/`, `store/`, `tests/`), and the frontend has `src/api/generated/`, `src/api/`, `pages/`, `components/` and `e2e/`
+**And** the dependency direction holds: `http → intents, views → domain`; `intents, views → store`; `domain` imports no other layer; `store` imports only `domain` types; the frontend imports only `api/`.
 
 **Given** no bookvie is running
 **When** I run `bookvie`
@@ -349,7 +337,7 @@ As Oleg,
 I want all my data kept in one folder that bookvie upgrades safely and never half-writes,
 So that every browser on this machine sees the same library and a crash can never corrupt it.
 
-**Requirements:** NFR1, NFR5, AR1–AR5, AR7, AR9–AR14, AR16, AR17, TR1–TR3, TR7
+**Requirements:** NFR1, NFR5, AR1–AR5, AR7, AR10, AR16, TR1–TR3
 
 **Acceptance Criteria:**
 
@@ -390,8 +378,17 @@ So that every browser on this machine sees the same library and a crash can neve
 **When** it needs the date or time
 **Then** it receives an injected `Clock` (now, plus today as a local `YYYY-MM-DD` date) and never reads the system clock
 **And** `--fake-today YYYY-MM-DD` sets that Clock but is refused at startup unless `--no-browser` is also given (TC-2)
-**And** the test runners pin the timezone, and the Playwright fixture sets the browser clock (`page.clock`) to the same date and the browser `timezoneId` to the same zone, so browser-side dates match the server (AD-20)
-**And** an e2e test asserts that Home's date header equals the `--fake-today` date.
+**And** the test runners pin the timezone, and the Playwright fixture sets the browser clock (`page.clock`) to the same date and the browser `timezoneId` to the same zone, so browser-side dates match the server (AD-20).
+
+### Story 1.3: Speak one API contract
+
+As Oleg,
+I want the server and the browser to share one checked contract for every request, view and error,
+So that every save, refusal and failure is reported the same way and the browser can never drift from the server.
+
+**Requirements:** NFR5, AR9, AR11–AR14, AR17, TR7
+
+**Acceptance Criteria:**
 
 **Given** the HTTP layer
 **When** any request fails validation or is refused
@@ -412,10 +409,13 @@ So that every browser on this machine sees the same library and a crash can neve
 **Given** the frontend `api/` module
 **When** any intent response arrives, success or refusal
 **Then** every query keyed `['view', …]` is invalidated, all views also refetch on window focus and visibility change, and nothing is patched optimistically (AD-7)
-**And** the fetch wrapper parses the AD-9 envelope into a typed success, refusal or `couldnt_save` result, and treats a network failure as `couldnt_save`
-**And** coverage thresholds (≥ 90% line on `domain/`, ≥ 80% on `intents/` + `store/`) are enforced in `check`.
+**And** the fetch wrapper parses the AD-9 envelope into a typed success, refusal or `couldnt_save` result, and treats a network failure as `couldnt_save`.
 
-### Story 1.3: Open bookvie to an empty shelf
+**Given** the single `check` command
+**When** it runs
+**Then** it enforces the coverage thresholds (≥ 90% line on `domain/`, ≥ 80% on `intents/` + `store/`) and fails below them (TR7).
+
+### Story 1.4: Open bookvie to an empty shelf
 
 As Oleg,
 I want a calm, accessible app frame with themes and an honest empty shelf,
@@ -452,6 +452,7 @@ So that bookvie feels like my own reading room from the first launch.
 **Given** an empty library
 **When** I open Home
 **Then** the header line is today's date (for example "Wednesday, 28 October"), with no greeting
+**And** an e2e test started with `--fake-today` asserts that the header shows that date (TC-2, AD-20)
 **And** the empty state shows bare birch planks, "Your shelf is empty. Add your first book." and a **New book** button that navigates to Catalog (UX-DR22).
 
 **Given** an empty library
@@ -485,7 +486,7 @@ So that bookvie feels like my own reading room from the first launch.
 **Then** none contains an exclamation mark, a greeting or praise, and no style uses red or warning colors for failures
 **And** no character-key shortcuts, drag and drop, hover-only affordances or animations that play on load exist (UX-DR12, NFR6).
 
-### Story 1.4: Accept a new book only when it is complete
+### Story 1.5: Accept a new book only when it is complete
 
 As Oleg,
 I want bookvie to save a new Book only when every required field is valid,
@@ -530,7 +531,7 @@ So that my catalog never holds half-entered books and the cataloging skill alway
 
 **And** the standard intent ACs (TR8) hold for add-book.
 
-### Story 1.5: Add a book with the New book panel
+### Story 1.6: Add a book with the New book panel
 
 As Oleg, or my AI cataloging skill,
 I want a labeled New book panel and a searchable list of my Books,
@@ -592,7 +593,7 @@ So that a shelf can be cataloged unattended and every save can be confirmed by t
 **When** the request is in flight
 **Then** **Add book** has `aria-disabled="true"` and further presses send nothing until the response arrives.
 
-### Story 1.6: Get warned about duplicates
+### Story 1.7: Get warned about duplicates
 
 As Oleg,
 I want bookvie to warn me before it adds a Book I already have,
@@ -640,7 +641,7 @@ So that a second copy or a skill's repeated entry doesn't clutter my catalog.
 
 **And** the standard intent ACs (TR8) hold for add-book with the duplicate check.
 
-### Story 1.7: See the library as a bookcase
+### Story 1.8: See the library as a bookcase
 
 As Oleg,
 I want my catalog drawn as birch shelves of spines, with read books in color and unread ones outlined,
@@ -699,7 +700,7 @@ So that I can see at a glance how much of my library I have read.
 **When** the bookcase renders
 **Then** read and unread spines stay distinct, and axe reports no AA violations.
 
-### Story 1.8: Open and edit a book
+### Story 1.9: Open and edit a book
 
 As Oleg,
 I want a page for each Book where I can see and correct its details,
@@ -753,9 +754,9 @@ So that mistakes from cataloging and back-filled finish dates can be fixed.
 **When** it is saved
 **Then** `spineColor` is resolved again, and edits that don't touch a color input leave it unchanged (AD-11).
 
-**And** the standard intent ACs (TR8) hold for edit-book, and the panel's couldn't-save behavior matches Story 1.5.
+**And** the standard intent ACs (TR8) hold for edit-book, and the panel's couldn't-save behavior matches Story 1.6.
 
-### Story 1.9: Delete a book
+### Story 1.10: Delete a book
 
 As Oleg,
 I want to delete a Book after an explicit confirmation,
@@ -782,7 +783,7 @@ So that an accidental duplicate can be removed without risking anything else.
 
 **And** the standard intent ACs (TR8) hold for delete-book.
 
-### Story 1.10: Add a cover
+### Story 1.11: Add a cover
 
 As Oleg,
 I want to attach a photo of each Book's cover,
@@ -840,7 +841,7 @@ So that my Books are recognizable and their spines can take the cover's color.
 
 Out of scope: removing a cover without replacing it. A wrong cover is fixed by choosing a new file.
 
-### Story 1.11: Change a book's color from the shelf
+### Story 1.12: Change a book's color from the shelf
 
 As Oleg,
 I want to open a spine and change its color,
@@ -1565,7 +1566,7 @@ So that they stay in view without competing with my Main book.
 
 The user can add, edit and delete Card notes with a page or range on any Book, go through a Book's notes as a pile, and search all notes or one Book's notes.
 
-**Gate:** CRD-API-001 green; per-epic quality gates (TR7). Closes R-09 (with Story 1.8).
+**Gate:** CRD-API-001 green; per-epic quality gates (TR7). Closes R-09 (with Story 1.9).
 
 ### Story 5.1: Add a card note while reading
 
@@ -1624,7 +1625,7 @@ So that my notes stay accurate.
 
 **Given** the Card note on page 270 is the Book's highest Card note page
 **When** it is deleted
-**Then** the Pages-below rule from Story 1.8 allows lowering Pages to the highest remaining Card note page.
+**Then** the Pages-below rule from Story 1.9 allows lowering Pages to the highest remaining Card note page.
 
 **And** the standard intent ACs (TR8) hold for edit-card-note and delete-card-note.
 
