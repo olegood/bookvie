@@ -5,7 +5,7 @@
   "description": "Local-first home library and reading tracker.",
   "license": "MIT",
   "scripts": {
-    "postinstall": "npm --prefix frontend install",
+    "postinstall": "npm --prefix frontend ci",
     "build": "npm --prefix frontend run build",
     "dev": "npm --prefix frontend run dev"
   }

@@ -3,6 +3,10 @@
 Allowed edges: ``domain`` imports no other layer; ``store`` imports ``domain``;
 ``intents`` and ``views`` import ``domain`` and ``store``; ``http`` imports
 ``intents`` and ``views``. Every other cross-layer import is forbidden.
+
+Outside the layers, the package holds only ``__init__`` and ``cli`` (the
+composition root). No layer may import them, so a top-level module can never
+become a side channel between layers.
 """
 
 import ast
@@ -13,6 +17,9 @@ import pytest
 PACKAGE_ROOT = Path(__file__).resolve().parents[1] / "bookvie"
 
 LAYERS = {"http", "intents", "views", "domain", "store"}
+TOP_LEVEL_MODULES = {"__init__", "cli"}
+# Any `bookvie.<name>` that is not a layer is grouped under this target.
+TOP_LEVEL = "toplevel"
 ALLOWED: dict[str, set[str]] = {
     "domain": set(),
     "store": {"domain"},
@@ -57,7 +64,7 @@ def _target_layer(module: str) -> str | None:
         return None
     if len(parts) < 2:
         return None
-    return parts[1] if parts[1] in LAYERS or parts[1] == "cli" else None
+    return parts[1] if parts[1] in LAYERS else TOP_LEVEL
 
 
 def _layer_sources() -> list[tuple[str, Path]]:
@@ -71,6 +78,13 @@ def _layer_sources() -> list[tuple[str, Path]]:
 def test_every_layer_package_exists() -> None:
     for layer in LAYERS:
         assert (PACKAGE_ROOT / layer / "__init__.py").is_file(), layer
+
+
+def test_top_level_holds_only_cli_and_layers() -> None:
+    modules = {p.stem for p in PACKAGE_ROOT.glob("*.py")}
+    packages = {p.parent.name for p in PACKAGE_ROOT.glob("*/__init__.py")}
+    assert modules == TOP_LEVEL_MODULES
+    assert packages == LAYERS
 
 
 @pytest.mark.parametrize(
@@ -93,6 +107,9 @@ def test_scanner_catches_violations(tmp_path: Path) -> None:
     root = tmp_path / "bookvie"
     (root / "domain").mkdir(parents=True)
     bad = root / "domain" / "bad.py"
-    bad.write_text("from ..store import x\nimport bookvie.http.app\nfrom bookvie import views\n")
+    bad.write_text(
+        "from ..store import x\nimport bookvie.http.app\nfrom bookvie import views\n"
+        "from bookvie import cli\nimport bookvie.util\n"
+    )
     targets = {_target_layer(m) for m in _imported_modules(bad, root)} - {None}
-    assert targets == {"store", "http", "views"}
+    assert targets == {"store", "http", "views", TOP_LEVEL}

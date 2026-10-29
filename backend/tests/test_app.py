@@ -57,9 +57,13 @@ def test_top_level_build_file_is_served(client: TestClient) -> None:
     assert response.text == "<svg/>"
 
 
-@pytest.mark.parametrize("path", ["/api", "/api/nope", "/api/views/x", "/media", "/media/nope"])
+@pytest.mark.parametrize(
+    "path",
+    ["/api", "/api/nope", "/api/views/x", "/media", "/media/nope", "//api/x", "/API/x", "/Media/x"],
+)
 def test_api_and_media_never_fall_back(client: TestClient, path: str) -> None:
-    response = client.get(path)
+    # Absolute URL: httpx would read a bare `//api/x` as host `api`.
+    response = client.get(f"http://testserver{path}")
     assert response.status_code == 404
     assert INDEX not in response.text
 

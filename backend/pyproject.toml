@@ -32,5 +32,7 @@ build-backend = "hatchling.build"
 packages = ["bookvie"]
 artifacts = ["bookvie/http/static/**"]
 
+[tool.hatch.build.targets.wheel.hooks.custom]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]

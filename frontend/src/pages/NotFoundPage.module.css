@@ -1,0 +1,12 @@
+.page {
+  padding: var(--space-page-top) var(--space-page-x);
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-page-title-family);
+  font-size: var(--font-page-title-size);
+  font-weight: var(--font-page-title-weight);
+  line-height: var(--font-page-title-line-height);
+  color: var(--color-ink);
+}

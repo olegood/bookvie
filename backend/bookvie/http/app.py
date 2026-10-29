@@ -33,7 +33,8 @@ class _AssetFiles(StaticFiles):
 
 
 def _is_server_path(path: str) -> bool:
-    first = path.split("/", 1)[0]
+    # Tolerate `//api/x` and `/API/x` so they 404 instead of getting the SPA.
+    first = path.lstrip("/").split("/", 1)[0].lower()
     return first in _SERVER_PREFIXES
 
 
