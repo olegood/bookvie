@@ -141,16 +141,16 @@ From ARCHITECTURE-SPINE.md and the TEA handoff. Each line names the source decis
 - AR19 (AD-5): One server per data folder through a health-checked lock.
 - AR20 (AD-16): Loopback bind, port handling, the Host/Origin guard and the SPA fallback.
 - AR21 (Consistency Conventions): CLI flags, stderr logging, no outbound network calls.
-- AR22 (Stack, Structural Seed): Build into `backend/bookvie/http/static/`, install with `uv tool install`, Vite dev proxy.
+- AR22 (Stack, Structural Seed): Build into `backend/bookvie/http/static/`, shipped in the hatchling wheel, install with `uv tool install`, Vite dev proxy; React Router 8.5 and CSS Modules over one `tokens.css`.
 - AR23 (AD-17): The Agent Label Contract is a public interface; e2e drives it by exact accessible names, with no `data-testid`.
 
 **Test harness and quality gates (TEA handoff).**
 - TR1 (TC-1): `LibraryBuilder` fixture and pre-start seeding of a data folder.
-- TR2 (TC-2): `--fake-today` Clock flag, only with `--no-browser`; pinned TZ; browser clock and time zone matched in e2e.
+- TR2 (TC-2): `--fake-today` Clock flag, only with `--no-browser`; TZ pinned to `Europe/Madrid`; browser clock and time zone matched in e2e.
 - TR3 (TC-3): Filesystem seam in `store/` for fault injection.
 - TR4 (TC-4): Worker-scoped Playwright server fixture.
 - TR5 (TC-5): Per-worker e2e data dirs, a path guard that always refuses `~/bookvie-data`, and an isolated install smoke test.
-- TR6 (R-16): One `check` command; `~/bookvie-data` is never touched.
+- TR6 (R-16): One `npm run check` command (`check:py`, `check:api`, `check:e2e`, `check:smoke`, stopping at the first failure); `~/bookvie-data` is never touched.
 - TR7: Per-epic gates: P0 = 100%, P1 ≥ 95%, every error code has an API test, `check:api` clean, coverage ≥ 90% on `domain/` and ≥ 80% on `intents/` + `store/`.
 - TR8: The standard intent ACs in "Conventions for every story".
 - TR9 (R-12): Every UI save surface keeps its values and shows "Couldn't save. Your data wasn't changed." on a routed 503.
@@ -248,7 +248,7 @@ FR-18: Epic 5 - Card notes pile
 FR-19: Epic 5 - Card notes view and search
 FR-20: Epic 7 - Filter and sort
 FR-21: Epic 3 - Cover on the main screen
-FR-22: Epic 2 - Export
+FR-22: Epic 2 - Export; Epic 3 - Last export on Home
 FR-23: Epic 2 - Restore
 FR-24: Epic 1 - Catalog bookcase (spines, colors, meter, popover, keyboard); Epic 3 - Home slice and Main-book fill; Epic 4 - Up next / Waiting markers
 
@@ -262,15 +262,15 @@ FR-24: Epic 1 - Catalog bookcase (spines, colors, meter, popover, keyboard); Epi
 
 The user, or their AI cataloging skill, can open bookvie, add, edit and delete Books through the agent-friendly form, get duplicate warnings, back-fill finished Books with Finished on, and browse and search the full bookcase on Catalog, with Book detail and the spine popover. The epic also lays the foundation every later epic builds on: skeleton, CLI, store, security guard, test harness and app shell.
 
-**Gate:** FND-* P0 green; label-contract suite (CAT-E2E-001..005) green; `~/bookvie-data` untouched by `check`; per-epic quality gates (TR7). Closes R-03, R-04, R-05, R-06, R-08, R-13, R-15, R-16.
+**Gate:** FND-* P0 green; label-contract suite (CAT-E2E-001..005) green; `~/bookvie-data` untouched by `npm run check`; per-epic quality gates (TR7). Closes R-03, R-04, R-05, R-06, R-08, R-13, R-15, R-16.
 
-### Story 1.1: Install and launch bookvie
+### Story 1.1: Scaffold and install bookvie
 
 As Oleg,
 I want to install bookvie once and start it with one command,
-So that it opens in my browser and nothing outside my machine can reach it.
+So that it opens in my browser from a project laid out the way every later story expects.
 
-**Requirements:** NFR1, AR19–AR22, TR4–TR6
+**Requirements:** NFR1, AR20, AR22
 
 **Acceptance Criteria:**
 
@@ -283,10 +283,41 @@ So that it opens in my browser and nothing outside my machine can reach it.
 **And** the backend packages follow the AD layer layout (`cli.py`, `http/`, `intents/`, `views/`, `domain/`, `store/`, `tests/`), and the frontend has `src/api/generated/`, `src/api/`, `pages/`, `components/` and `e2e/`
 **And** the dependency direction holds: `http → intents, views → domain`; `intents, views → store`; `domain` imports no other layer; `store` imports only `domain` types; the frontend imports only `api/`.
 
+**Given** the backend's `pyproject.toml`
+**When** the wheel is built
+**Then** the build backend is hatchling, with `[tool.hatch.build.targets.wheel] packages = ["bookvie"]` and `artifacts = ["bookvie/http/static/**"]`, so the gitignored built SPA ships in the wheel.
+
+**Given** the template's `tsconfig` with TypeScript pinned to 5.9
+**When** I run `tsc -b` in `frontend/`
+**Then** it passes with no errors.
+
+**Given** the frontend
+**When** pages and styles are added
+**Then** routing uses React Router 8.5 in library mode (`createBrowserRouter`)
+**And** each component has its own CSS Module, and all of them read one `tokens.css` holding the DESIGN.md custom properties.
+
 **Given** no bookvie is running
 **When** I run `bookvie`
-**Then** the server binds `127.0.0.1:8765` only, creates the data folder (`--data-dir`, default `~/bookvie-data`) if missing, writes `bookvie.lock` with its PID and port, and opens the default browser at its URL (skipped with `--no-browser`)
+**Then** the server binds `127.0.0.1:8765`, creates the data folder (`--data-dir`, default `~/bookvie-data`) if missing, and opens the default browser at its URL (skipped with `--no-browser`)
 **And** `/` serves the SPA, and any other path outside `/api` and `/media` falls back to `index.html`.
+
+**Given** development mode
+**When** I run `npm run dev` alongside `bookvie --dev --no-browser`
+**Then** Vite on :5173 proxies `/api` and `/media` to :8765.
+
+### Story 1.2: Run one safe instance
+
+As Oleg,
+I want bookvie to run as exactly one server per data folder, reachable only from my own machine,
+So that two launches never fight over my library and nothing outside my machine can reach it.
+
+**Requirements:** NFR1, AR19, AR20, AR21
+
+**Acceptance Criteria:**
+
+**Given** no bookvie is running
+**When** I run `bookvie`
+**Then** it writes `bookvie.lock` in the data folder with its PID and port.
 
 **Given** a live `bookvie.lock`
 **When** I run `bookvie` again
@@ -299,7 +330,9 @@ So that it opens in my browser and nothing outside my machine can reach it.
 
 **Given** two `bookvie` launches at the same moment with no lock
 **When** both try to create `bookvie.lock`
-**Then** exactly one succeeds, because the lock is created with exclusive-create, and the other waits up to a few seconds for the winner's `GET /api/health` to answer, then opens the browser at its URL and exits.
+**Then** exactly one succeeds, because the lock is created with exclusive-create
+**And** the other polls the winner's `GET /api/health` every 100 ms for up to 5 s, then opens the browser at its URL and exits
+**And** when the winner hasn't answered after 5 s, the other exits non-zero with "bookvie is starting in another window; try again."
 
 **Given** port 8765 is held by a process that isn't bookvie
 **When** I run `bookvie`
@@ -316,22 +349,40 @@ So that it opens in my browser and nothing outside my machine can reach it.
 **And** with `--dev` the Vite dev origin is also accepted
 **And** the server isn't reachable on any non-loopback interface (FND-API-005).
 
-**Given** development mode
-**When** I run `npm run dev` alongside `bookvie --dev --no-browser`
-**Then** Vite on :5173 proxies `/api` and `/media` to :8765.
+### Story 1.3: One check command guards the repo
+
+As Oleg,
+I want one command that runs every test and gate without touching my real library,
+So that I know the repo is healthy before I trust it with my data.
+
+**Requirements:** AR21, TR4–TR7
+
+**Acceptance Criteria:**
+
+**Given** the repository root
+**When** I run `npm run check`
+**Then** the root `package.json` runs, in order, `check:py` (`uv run --project backend pytest` with the coverage gate), `check:api` (`npm --prefix frontend run check:api`), `check:e2e` (the Playwright suite) and `check:smoke` (the isolated install smoke test), stopping at the first failure with a non-zero exit
+**And** every check later stories add runs inside one of these four scripts (R-16).
+
+**Given** `check:py`
+**When** it runs
+**Then** it enforces the coverage thresholds (≥ 90% line on `domain/`, ≥ 80% on `intents/` + `store/`) and fails below them (TR7).
 
 **Given** the Playwright suite
 **When** it starts
 **Then** a worker-scoped fixture launches `bookvie --no-browser` on a free port with a data dir under `$TMPDIR/bookvie-e2e/<run-id>/worker-<n>/` (TC-4)
 **And** a path guard refuses any data dir outside that root, and always refuses `~/bookvie-data` (TC-5).
 
-**Given** the repository
-**When** I run the single `check` command
-**Then** it runs pytest, the Playwright suite and an isolated install smoke test (build, `uv tool install` into a temporary tool dir, start, `GET /` returns the app HTML), and every check later stories add to it (R-16)
-**And** `~/bookvie-data` is neither created nor modified by `check`
+**Given** `check:smoke`
+**When** it runs
+**Then** it builds the SPA, installs with `uv tool install` into a temporary tool dir, starts the installed `bookvie --no-browser` on a temporary data dir, and `GET /` returns the app HTML, proving the SPA is inside the installed tool.
+
+**Given** `npm run check` has run
+**When** I look at the home folder
+**Then** `~/bookvie-data` is neither created nor modified
 **And** the server makes no outbound network calls and logs only to stderr.
 
-### Story 1.2: Keep the library in one safe file
+### Story 1.4: Keep the library in one safe file
 
 As Oleg,
 I want all my data kept in one folder that bookvie upgrades safely and never half-writes,
@@ -345,7 +396,8 @@ So that every browser on this machine sees the same library and a crash can neve
 **When** the server starts
 **Then** it creates `library.json` as `{ "schemaVersion": 1, "mainBookId": null, "upNextBookId": null, "sideReadBookIds": [], "books": [] }`, plus `covers/` and an empty `.staging/`
 **And** at every startup leftover `library.json.tmp*` files are deleted, and an unwritable data folder makes the server exit non-zero with a message naming the path (AD-2)
-**And** the bytes come only from `store.serialize()`: UTF-8, camelCase keys, nulls kept, keys in model order, 2-space indent.
+**And** the bytes come only from `store.serialize()`: UTF-8, camelCase keys, nulls kept, keys in model order, 2-space indent
+**And** the schema at `schemaVersion` 1 already includes Readings (with `pausedAt`), `upNextBookId` and `sideReadBookIds`, so Story 1.12 and later tests can seed them without a migration.
 
 **Given** the store's commit path
 **When** a commit runs
@@ -378,9 +430,10 @@ So that every browser on this machine sees the same library and a crash can neve
 **When** it needs the date or time
 **Then** it receives an injected `Clock` (now, plus today as a local `YYYY-MM-DD` date) and never reads the system clock
 **And** `--fake-today YYYY-MM-DD` sets that Clock but is refused at startup unless `--no-browser` is also given (TC-2)
-**And** the test runners pin the timezone, and the Playwright fixture sets the browser clock (`page.clock`) to the same date and the browser `timezoneId` to the same zone, so browser-side dates match the server (AD-20).
+**And** `check:py` and `check:e2e` run with `TZ=Europe/Madrid`, and the Playwright fixture sets the browser clock (`page.clock`) to the same date and `timezoneId: 'Europe/Madrid'`, so browser-side dates match the server (AD-20)
+**And** DST boundary tests use the last Sundays of March and October.
 
-### Story 1.3: Speak one API contract
+### Story 1.5: Speak one API contract
 
 As Oleg,
 I want the server and the browser to share one checked contract for every request, view and error,
@@ -404,18 +457,19 @@ So that every save, refusal and failure is reported the same way and the browser
 **Given** the Pydantic models
 **When** I run `npm run check:api`
 **Then** `openapi-typescript` regenerates `frontend/src/api/generated/` from FastAPI's OpenAPI (alias names) and the command fails on any diff
-**And** `check:api` is part of `check` (R-18).
+**And** `npm run check` runs it as its `check:api` step (Story 1.3, R-18).
 
 **Given** the frontend `api/` module
 **When** any intent response arrives, success or refusal
 **Then** every query keyed `['view', …]` is invalidated, all views also refetch on window focus and visibility change, and nothing is patched optimistically (AD-7)
 **And** the fetch wrapper parses the AD-9 envelope into a typed success, refusal or `couldnt_save` result, and treats a network failure as `couldnt_save`.
 
-**Given** the single `check` command
-**When** it runs
-**Then** it enforces the coverage thresholds (≥ 90% line on `domain/`, ≥ 80% on `intents/` + `store/`) and fails below them (TR7).
+**Given** a view query in the `api/` module
+**When** its fetch fails
+**Then** with no data received yet, it reports a failed-load state the page can show
+**And** when it already holds data (a background refetch), it keeps the last data and reports nothing.
 
-### Story 1.4: Open bookvie to an empty shelf
+### Story 1.6: Open bookvie to an empty shelf
 
 As Oleg,
 I want a calm, accessible app frame with themes and an honest empty shelf,
@@ -432,7 +486,8 @@ So that bookvie feels like my own reading room from the first launch.
 
 **Given** the top nav
 **When** I look at it
-**Then** it shows a "Skip to content" link first (visible on focus, moves focus to `main`), the wordmark, and the nav items for the pages that exist (Home, Catalog), with later epics adding Stats, Card notes and Backup in the order Home · Catalog · Stats · Card notes · Backup
+**Then** it shows a "Skip to content" link first (visible on focus, moves focus to `main`), the wordmark, and the nav items for the pages that exist (only Catalog in this story), with later stories adding Home, Stats, Card notes and Backup in the order Home · Catalog · Stats · Card notes · Backup
+**And** until Story 3.1 ships, `/` routes to Catalog and Home is not in the nav
 **And** the active item has `aria-current="page"` and the 2px accent underline (UX-DR3).
 
 **Given** the theme toggle
@@ -449,15 +504,18 @@ So that bookvie feels like my own reading room from the first launch.
 **When** it renders
 **Then** it holds one polite `status` region and one `alert` region, with a shared helper that empties both, then sets text after about 100 ms (UX-DR4).
 
-**Given** an empty library
-**When** I open Home
-**Then** the header line is today's date (for example "Wednesday, 28 October"), with no greeting
-**And** an e2e test started with `--fake-today` asserts that the header shows that date (TC-2, AD-20)
-**And** the empty state shows bare birch planks, "Your shelf is empty. Add your first book." and a **New book** button that navigates to Catalog (UX-DR22).
+**Given** any page that shows server data
+**When** its first view response hasn't arrived yet
+**Then** only the header and nav render, with no spinner and no skeleton.
+
+**Given** any page whose view fetch fails before any data has arrived (a routed failure in e2e)
+**When** it renders
+**Then** the page body shows "Couldn't load. Is bookvie still running?" in an `alert` region with a **Try again** button that refetches
+**And** when a background refetch fails after data has loaded, the page keeps showing the last data with no message.
 
 **Given** an empty library
 **When** I open Catalog
-**Then** it shows the `h1` "Catalog", the same empty state, and a toolbar holding only **New book**.
+**Then** it shows the `h1` "Catalog", the empty state (bare birch planks and "Your shelf is empty. Add your first book."), and a toolbar holding only **New book** (UX-DR22).
 
 **Given** the shared primitives
 **When** they render
@@ -477,7 +535,7 @@ So that bookvie feels like my own reading room from the first launch.
 **When** it formats relative dates
 **Then** it counts local calendar days ("today", "yesterday", "N days ago", a future timestamp → "today", more than 365 days → "over a year ago") and recomputes on window focus and visibility (UX-DR10).
 
-**Given** Home and Catalog in both themes
+**Given** Catalog in both themes
 **When** an automated axe check runs in Playwright
 **Then** it reports no WCAG 2.2 AA violations.
 
@@ -486,7 +544,7 @@ So that bookvie feels like my own reading room from the first launch.
 **Then** none contains an exclamation mark, a greeting or praise, and no style uses red or warning colors for failures
 **And** no character-key shortcuts, drag and drop, hover-only affordances or animations that play on load exist (UX-DR12, NFR6).
 
-### Story 1.5: Accept a new book only when it is complete
+### Story 1.7: Accept a new book only when it is complete
 
 As Oleg,
 I want bookvie to save a new Book only when every required field is valid,
@@ -531,7 +589,7 @@ So that my catalog never holds half-entered books and the cataloging skill alway
 
 **And** the standard intent ACs (TR8) hold for add-book.
 
-### Story 1.6: Add a book with the New book panel
+### Story 1.8: Add a book with the New book panel
 
 As Oleg, or my AI cataloging skill,
 I want a labeled New book panel and a searchable list of my Books,
@@ -542,7 +600,7 @@ So that a shelf can be cataloged unattended and every save can be confirmed by t
 **Acceptance Criteria:**
 
 **Given** Catalog
-**When** I activate **New book** (also on the empty state, including from Home, which first navigates to Catalog)
+**When** I activate **New book** (also on the empty state)
 **Then** a modal side panel `dialog` named "New book" opens from the right with focus on **Title**, a scrim, and a sticky footer; the body sets `scroll-padding-bottom` so a focused field is never hidden (UX-DR6, UX-DR13).
 
 **Given** the open panel
@@ -593,7 +651,7 @@ So that a shelf can be cataloged unattended and every save can be confirmed by t
 **When** the request is in flight
 **Then** **Add book** has `aria-disabled="true"` and further presses send nothing until the response arrives.
 
-### Story 1.7: Get warned about duplicates
+### Story 1.9: Get warned about duplicates
 
 As Oleg,
 I want bookvie to warn me before it adds a Book I already have,
@@ -641,7 +699,7 @@ So that a second copy or a skill's repeated entry doesn't clutter my catalog.
 
 **And** the standard intent ACs (TR8) hold for add-book with the duplicate check.
 
-### Story 1.8: See the library as a bookcase
+### Story 1.10: See the library as a bookcase
 
 As Oleg,
 I want my catalog drawn as birch shelves of spines, with read books in color and unread ones outlined,
@@ -700,7 +758,7 @@ So that I can see at a glance how much of my library I have read.
 **When** the bookcase renders
 **Then** read and unread spines stay distinct, and axe reports no AA violations.
 
-### Story 1.9: Open and edit a book
+### Story 1.11: Open and edit a book
 
 As Oleg,
 I want a page for each Book where I can see and correct its details,
@@ -727,6 +785,16 @@ So that mistakes from cataloging and back-filled finish dates can be fixed.
 **And** it runs the duplicate check only when the title, an author or the ISBN changed, with the same 409 / `confirmDuplicate` flow
 **And** the duplicate check compares against every Book except the one being edited, so an API test that changes only an ISBN's hyphenation never gets `duplicate_book`.
 
+**Given** a `duplicate_book` refusal for `edit-book`
+**When** the response arrives
+**Then** the same Possible duplicate `alertdialog` opens over the Edit book panel, with **Don't save** (default focus) and **Save anyway** (both in the Agent Label Contract)
+**And** **Don't save** closes it with nothing saved and returns to the panel unchanged, with focus on **Save changes**
+**And** **Save anyway** resends `edit-book` with `confirmDuplicate: true`, with the same outcome as a normal "Saved *Title*." save.
+
+**Given** any `edit-book` refusal that carries `fields` (422 `invalid_fields`, or a 409 such as `pages_below_current_page`)
+**When** the response arrives
+**Then** the Edit book panel shows it exactly like the New book panel: each named field has `aria-invalid="true"` and a linked message, the `alert` region holds the summary, and focus moves to the first invalid field (AD-9).
+
 **Given** a Book whose unfinished Reading is at page 300 (seeded with `LibraryBuilder`)
 **When** I save Pages = 250
 **Then** it is refused with 409 `pages_below_current_page` and the field message "Pages can't be less than 300, the page you're on." (CAT-API-006)
@@ -735,6 +803,7 @@ So that mistakes from cataloging and back-filled finish dates can be fixed.
 **Given** a Book with a Card note on page 270
 **When** I save Pages = 260
 **Then** it is refused with "Pages can't be less than 270, where a card note is."
+**And** for a range the highest Card note page is its `pageEnd` when present, else its `pageStart` (a note on pp.268–272 refuses Pages = 270).
 
 **Given** a Book with finished Readings
 **When** the edit panel opens
@@ -754,9 +823,9 @@ So that mistakes from cataloging and back-filled finish dates can be fixed.
 **When** it is saved
 **Then** `spineColor` is resolved again, and edits that don't touch a color input leave it unchanged (AD-11).
 
-**And** the standard intent ACs (TR8) hold for edit-book, and the panel's couldn't-save behavior matches Story 1.6.
+**And** the standard intent ACs (TR8) hold for edit-book, and the panel's couldn't-save behavior matches Story 1.8.
 
-### Story 1.10: Delete a book
+### Story 1.12: Delete a book
 
 As Oleg,
 I want to delete a Book after an explicit confirmation,
@@ -779,11 +848,15 @@ So that an accidental duplicate can be removed without risking anything else.
 **When** I press **Delete book**
 **Then** `delete-book` removes the Book with its Readings and Card notes, and clears `mainBookId`, `upNextBookId` and `sideReadBookIds` entries pointing at it, all in the same commit
 **And** a vacated Main book or Up next stays empty, with nothing promoted (CAT-API-007)
-**And** the app goes to Catalog with focus on **Search titles**.
+**And** the app goes to Catalog with focus on **Search titles**, or on the empty state's **New book** when the deleted Book was the last one.
+
+**Given** the Confirm dialog and a server that answers `couldnt_save` (a routed 503 in e2e)
+**When** I press **Delete book**
+**Then** the dialog stays open, "Couldn't save. Your data wasn't changed." appears in an `alert` line inside the dialog above its buttons, and the Book is unchanged (TR9).
 
 **And** the standard intent ACs (TR8) hold for delete-book.
 
-### Story 1.11: Add a cover
+### Story 1.13: Add a cover
 
 As Oleg,
 I want to attach a photo of each Book's cover,
@@ -800,8 +873,9 @@ So that my Books are recognizable and their spines can take the cover's color.
 **Given** an uploaded file
 **When** the server receives it
 **Then** Pillow re-decodes it, and anything that isn't an image (including a non-image with an image extension, and a decompression bomb over Pillow's `MAX_IMAGE_PIXELS`) is refused with 422 and "Cover must be an image file."
-**And** uploads over 20 MB are refused while streaming, before the whole body is read (R-14)
-**And** a HEIC file, or any format Pillow can't decode without a plugin, is refused with 422 and "Cover must be a JPEG, PNG or WebP image." (AD-12).
+**And** uploads over 20 MB are refused while streaming, before the whole body is read, with 413 `cover_too_large` and the field message "Cover must be 20 MB or smaller." (R-14)
+**And** a HEIC file, or any format Pillow can't decode without a plugin, is refused with 422 and "Cover must be a JPEG, PNG or WebP image." (AD-12)
+**And** every cover message appears on **Cover** like any other field error and is listed in the Agent Label Contract.
 
 **Given** a valid image
 **When** it is stored
@@ -837,11 +911,14 @@ So that my Books are recognizable and their spines can take the cover's color.
 **Then** the no-cover placeholder (surface-inset fill, dashed outline, two title bars) appears at the cover's size and isn't interactive (UX-DR23)
 **And** the "From cover" swatch in the panel appears only when a cover exists, and pressing it empties Spine color.
 
+**Given** the Edit book panel for a Book with a cover
+**When** I press **Remove cover** (shown only when a cover exists) and save
+**Then** `edit-book` is sent with `removeCover: true`, `coverFile` and `spineColorFromCover` are cleared, the file is deleted after the commit (AD-12), and the resolved spine color falls back to user, else curated (AD-11)
+**And** Book detail shows the no-cover placeholder.
+
 **And** the standard intent ACs (TR8) hold for the cover paths of add-book and edit-book.
 
-Out of scope: removing a cover without replacing it. A wrong cover is fixed by choosing a new file.
-
-### Story 1.12: Change a book's color from the shelf
+### Story 1.14: Change a book's color from the shelf
 
 As Oleg,
 I want to open a spine and change its color,
@@ -895,7 +972,7 @@ So that a dead disk can never take my readings and notes with it.
 
 **Given** the top nav
 **When** Epic 2 ships
-**Then** a **Backup** item is added at the end of the nav (Home · Catalog · Backup until Stats and Card notes arrive), leading to a Backup page whose `h1` is "Backup" (UX-DR53).
+**Then** a **Backup** item is added at the end of the nav (Catalog · Backup until Home, Stats and Card notes arrive), leading to a Backup page whose `h1` is "Backup" (UX-DR53).
 
 **Given** the Backup page
 **When** it renders
@@ -903,7 +980,8 @@ So that a dead disk can never take my readings and notes with it.
 
 **Given** a library with Books, back-filled Readings and covers
 **When** I press **Export all data**
-**Then** `GET /api/export` returns one `.zip` holding exactly `library.json` and `covers/` (a directory entry even when there are no covers) and nothing else, read under the AD-4 lock so it never captures a half-written state, and the browser downloads it as `bookvie-export-<YYYY-MM-DD>.zip`.
+**Then** `GET /api/export` returns one `.zip` holding exactly `library.json` and `covers/` (a directory entry even when there are no covers) and nothing else, and the browser downloads it as `bookvie-export-<YYYY-MM-DD>.zip`
+**And** under the AD-4 lock the zip is built into a spooled temp file (in memory up to about 10 MB, then on disk), so it never captures a half-written state; the lock is released, then the file is sent (AD-14).
 
 **Given** an export that takes longer than about 300 ms
 **When** it runs
@@ -917,11 +995,8 @@ So that a dead disk can never take my readings and notes with it.
 
 **Given** an export that fails (for example, a cover can't be read)
 **When** I press **Export all data**
-**Then** the page shows "Couldn't export. Your data wasn't changed." as a failure line, and "Last export" keeps its previous value.
-
-**Given** Home
-**When** Epic 2 ships and there is no Main book
-**Then** "Last export: N days ago" (or "No export yet") appears muted at the right end of the Home header line, informational only and never a warning (FR-22).
+**Then** the failure happens while the zip is built, before any response header is sent, and the response is 503 with the error kind and code `couldnt_export`, covered by an API test
+**And** the page shows "Couldn't export. Your data wasn't changed." as a failure line, and "Last export" keeps its previous value.
 
 ### Story 2.2: Restore my library from an export
 
@@ -942,13 +1017,13 @@ So that a new laptop shows my library exactly as I left it.
 **Then** nothing changes and focus returns to **Restore from file…**.
 
 **Given** I confirm with a valid export at the current `schemaVersion`
-**When** `restore` runs (multipart, one call)
+**When** `restore` runs (`POST /api/intents/restore`, multipart, one call)
 **Then** `.staging/` is emptied and the archive is unpacked into it, the whole file is validated (schema, AD-18 invariants, every referenced cover present and decodable) before anything is replaced, and the result is applied in AD-12 order: archive covers in, then the `library.json` commit (AD-2), then covers the new document doesn't reference are deleted
 **And** the whole operation holds the AD-4 lock.
 
 **Given** a restore that succeeds
 **When** it completes
-**Then** the `status` region reads "Restored.", the app goes to Home with the restored data, and focus is on Home's `h1`
+**Then** the `status` region reads "Restored.", the app goes to the launch page `/` with the restored data, and focus is on that page's `h1`
 **And** `local-state.json` ("Last export") and the browser's preferences (theme, Catalog view, sort) are left as they were.
 
 **Given** a valid export at an older `schemaVersion` (test fixture)
@@ -988,16 +1063,16 @@ So that a restore can never leave me with less than I had.
 
 **Given** a file that isn't a zip, a zip without `library.json`, a truncated archive, or a `library.json` that fails the schema or AD-18 invariants
 **When** I confirm the restore
-**Then** it is refused with "This file isn't a bookvie export, or it's damaged. Nothing was changed.", and `library.json` and `covers/` are byte-identical to before (BKP-API-003).
+**Then** it is refused with 422 `restore_invalid` and "This file isn't a bookvie export, or it's damaged. Nothing was changed.", and `library.json` and `covers/` are byte-identical to before (BKP-API-003)
+**And** a `library.json` that references a missing or undecodable cover is refused the same way, with 422 `restore_invalid`.
 
 **Given** an export whose `schemaVersion` is newer than the server supports
 **When** I confirm the restore
-**Then** it is refused with "This export is from a newer version of bookvie. Nothing was changed." and nothing changes.
+**Then** it is refused with 422 `restore_newer_version` and "This export is from a newer version of bookvie. Nothing was changed." and nothing changes.
 
 **Given** an archive with an entry other than `library.json` or `covers/<name>`, an absolute path, a `..` component, a symlink, a duplicate name, more than 5,000 entries, an upload over 1 GB, or more than 1 GB extracted (counted on bytes written, including an archive whose headers understate its sizes)
 **When** it is restored
-**Then** it is refused before anything is written outside `.staging/`, and nothing outside `.staging/` changes (BKP-API-004, R-14)
-**And** a `library.json` that references a missing or undecodable cover is refused the same way.
+**Then** it is refused with 422 `restore_unsafe` and the same message as `restore_invalid`, before anything is written outside `.staging/`, and nothing outside `.staging/` changes (BKP-API-004, R-14).
 
 **Given** a valid archive, and a fault injected through the filesystem seam while covers are being copied in or at the document commit
 **When** the restore runs
@@ -1006,7 +1081,7 @@ So that a restore can never leave me with less than I had.
 **Given** any refusal
 **When** it is shown on the Backup page
 **Then** it appears as one ink failure line under Restore (no red, no icon), and focus returns to **Restore from file…**
-**And** every refusal code is in the AD-9 enum with an API test.
+**And** every refusal code (`restore_invalid`, `restore_newer_version`, `restore_unsafe`, `couldnt_save`) is in the AD-9 enum with an API test.
 
 ## Epic 3: Read a book with visible progress
 
@@ -1020,9 +1095,27 @@ As Oleg,
 I want Home to show my Main book with its cover and how far I am,
 So that opening bookvie tells me where I am in one glance.
 
-**Requirements:** FR-21, AR11, UX-DR32–UX-DR35
+**Requirements:** FR-21, FR-22, AR11, UX-DR3, UX-DR22, UX-DR32–UX-DR35
 
 **Acceptance Criteria:**
+
+**Given** the top nav
+**When** this story ships
+**Then** **Home** is added as the first nav item (Home · Catalog · Backup until Stats and Card notes arrive), and `/` routes to Home, which becomes the launch page that `bookvie` opens (UX-DR3).
+
+**Given** an empty library
+**When** I open Home
+**Then** the header line is today's date (for example "Wednesday, 28 October"), with no greeting
+**And** an e2e test started with `--fake-today` asserts that the header shows that date (TC-2, AD-20)
+**And** the empty state shows bare birch planks, "Your shelf is empty. Add your first book." and a **New book** button that navigates to Catalog and opens the New book panel (UX-DR22).
+
+**Given** no Main book
+**When** Home renders
+**Then** "Last export: N days ago" (or "No export yet") appears muted at the right end of the Home header line, informational only and never a warning (FR-22).
+
+**Given** Home in both themes, empty and with a Main book
+**When** an automated axe check runs in Playwright
+**Then** it reports no WCAG 2.2 AA violations.
 
 **Given** a Main book (seeded with `LibraryBuilder`)
 **When** I open Home
@@ -1060,7 +1153,8 @@ So that exactly one Book is tracked and I start it on purpose.
 **Given** Book detail for a Book with no active or paused Reading that isn't Main
 **When** I press **Start reading** (the page's single `button-primary`)
 **Then** a modal Start dialog opens with the heading "Start *X*?" (*X* in serif), an optional one-line "Purpose (optional)" field, **Start reading** and **Cancel**
-**And** the dialog is shown even when there is no Main book, because it carries the Purpose field (FR-5, FR-9, UX-DR39).
+**And** the dialog is shown even when there is no Main book, because it carries the Purpose field (FR-5, FR-9, UX-DR39)
+**And** focus starts in **Purpose (optional)** (Story 4.7 starts it in "Which page?" when that field is shown).
 
 **Given** the Start dialog
 **When** I press **Start reading**
@@ -1090,12 +1184,17 @@ So that exactly one Book is tracked and I start it on purpose.
 **Then** nothing changes and focus returns to the opener (RDG-E2E-003).
 
 **Given** a spine popover
-**When** the Book can be started
-**Then** it offers a "Start reading" link (or **Resume** as its primary for a paused Book), which closes the popover and opens the Start dialog.
+**When** the Book's row in the EXPERIENCE.md Book states table shows Start reading or Resume
+**Then** it offers a "Start reading" link (or **Resume** as its primary for a paused Book), which closes the popover and opens the Start dialog
+**And** a finished Book with no Reading in progress gets no start action in the popover; its re-read starts from Book detail.
 
 **Given** Book detail with an active or paused Reading
 **When** I use **Edit Purpose**
 **Then** the Purpose line becomes a one-line field with **Save** and **Cancel**, where Enter saves and Esc cancels, and `edit-purpose` stores it (UX-DR44).
+
+**Given** the Edit Purpose field and a server that answers `couldnt_save` (a routed 503 in e2e)
+**When** I press **Save**
+**Then** the field stays open with the typed Purpose kept, and "Couldn't save. Your data wasn't changed." appears in an `alert` line directly below it (TR9).
 
 **And** the standard intent ACs (TR8) hold for start-reading and edit-purpose, and a couldn't-save keeps the dialog open with the Purpose kept.
 
@@ -1198,7 +1297,8 @@ So that progress is something I can see on the shelf, not only a number.
 **Given** chosen slice rows
 **When** they display
 **Then** the Main book's row comes first and the others follow in bookcase order (all in bookcase order when there is no Main book)
-**And** the slice recomputes on resize, never applies Catalog filters, never scrolls internally, and is a `list` named "Bookcase slice, 3 rows" using the bookcase keyboard model.
+**And** the slice recomputes on resize, never applies Catalog filters, never scrolls internally, and is a `list` named "Bookcase slice, N rows" with the actual row count, using the bookcase keyboard model
+**And** on Home the arrow keys and Home/End follow the rows as displayed (Main book row first), not the full bookcase order.
 
 **Given** a never-finished Main book at 64%
 **When** its spine renders
@@ -1229,7 +1329,8 @@ So that every finished Book counts and I see whether reading it did what I wante
 
 **Given** `update-page` returned `reachedLastPage`, or I press **Mark finished** on the Main book's Book detail
 **When** the Finish dialog opens
-**Then** it is a modal headed "Finished *X*" with **Finished on** prefilled with today, "Purpose fulfilled?" (yes · partly · not yet, none preselected, the Purpose quoted above) only when the Reading has a Purpose, and a Rating radio group ("No rating" by default, then "1 star"…"5 stars", stars changing shape when selected), plus **Done** and **Cancel** (UX-DR41).
+**Then** it is a modal headed "Finished *X*" with **Finished on** prefilled with today, "Purpose fulfilled?" (yes · partly · not yet, none preselected, the Purpose quoted above) only when the Reading has a Purpose, and a Rating radio group ("No rating" by default, then "1 star"…"5 stars", stars changing shape when selected), plus **Done** and **Cancel** (UX-DR41)
+**And** focus starts in **Finished on**.
 
 **Given** the Finish dialog
 **When** I press **Done**
@@ -1353,7 +1454,7 @@ So that nothing I put down is ever forgotten.
 **Given** paused Readings
 **When** the home view is computed
 **Then** Waiting for you lists every paused Reading except the Up next Book's, ordered by `pausedAt`, oldest first, with no cap (FR-7, AD-6)
-**And** Readings paused on the same day are ordered by title with `Intl.Collator`, then by Book id, so the order is the same on every render (unit test with two pauses on one fake day).
+**And** Readings paused on the same day are ordered by the server title key (NFKD, combining marks stripped, casefolded), then by Book id, so the order is the same on every render (unit test with two pauses on one fake day, including titles that differ only by accents).
 
 **Given** Waiting for you has entries
 **When** Home renders
@@ -1416,6 +1517,15 @@ So that I can step away from reading entirely without losing my place.
 **When** it opens
 **Then** the menu closes first, so only one overlay level exists.
 
+**Given** a paused Reading
+**When** it is later resumed, and later still finished
+**Then** its `pausedAt` is still the date of its last pause after each step; `pausedAt` is never cleared, only overwritten by the next pause (AD-19, SM-3).
+
+**Given** a server that answers `couldnt_save` (a routed 503 in e2e)
+**When** I confirm **Pause** in the Confirm dialog
+**Then** the dialog stays open and "Couldn't save. Your data wasn't changed." appears in an `alert` line inside it, above its buttons
+**And** when **Pause** applies at once (no Up next), the same `alert` line appears directly below the **Pause** button on Book detail, or below "⋯" on Home, with focus kept there, and nothing changes (TR9).
+
 **And** the standard intent ACs (TR8) hold for pause.
 
 ### Story 4.4: Choose what to read next
@@ -1430,7 +1540,16 @@ So that the Book I mean to read next is ready when the current one is done.
 
 **Given** a Book that isn't Main and isn't already Up next
 **When** I press **Set as Up next** on its Book detail (a secondary action) or in its spine popover, where it is the primary action when the Book has no Reading
-**Then** `set-up-next` makes it `upNextBookId` (FR-7).
+**Then** `set-up-next` makes it `upNextBookId` (FR-7)
+**And** the `status` region reads "*X* is Up next.", and focus moves to Book detail's primary button (its `h1` when there is none), or back to the spine when set from a spine popover.
+
+**Given** the current Up next Book
+**When** `set-up-next` is sent for it again
+**Then** the response is 200, nothing changes, and nothing is committed (AD-9).
+
+**Given** a server that answers `couldnt_save` (a routed 503 in e2e)
+**When** I press **Set as Up next**
+**Then** "Couldn't save. Your data wasn't changed." appears in an `alert` line directly below the button, focus stays on the button, and nothing changes (TR9).
 
 **Given** an existing Up next *Z*
 **When** another Book becomes Up next
@@ -1458,16 +1577,21 @@ So that the Book I mean to read next is ready when the current one is done.
 ### Story 4.5: Mark any book finished from its page
 
 As Oleg,
-I want to mark a paused, Up next, or never-finished Book finished without touching my Main book,
+I want to mark a paused or never-finished Book finished, including one that is Up next, without touching my Main book,
 So that books I finished away from bookvie, or finished in a different way, close their loop.
 
 **Requirements:** FR-14, UX-DR41
 
 **Acceptance Criteria:**
 
-**Given** a Book that is paused, Up next, or never finished, and isn't Main
+**Given** a Book that isn't Main and either has a paused Reading or has never been finished (whether or not it is Up next)
 **When** I press **Mark finished** on its Book detail
-**Then** the same Finish dialog opens, with the Purpose question only when the Reading has a Purpose (FR-14).
+**Then** the same Finish dialog opens, with the Purpose question only when the Reading has a Purpose (FR-14)
+**And** **Mark finished** is offered only for the Main book, a paused Book or a never-finished Book, so a finished Book with no Reading in progress (even one that is Up next) doesn't offer it.
+
+**Given** a finished Book with no Reading in progress
+**When** `finish-reading` is sent for it
+**Then** it is refused with 409 `reading_already_finished` and nothing changes (AD-9).
 
 **Given** a paused or Up next Reading
 **When** I press **Done**
@@ -1508,7 +1632,8 @@ So that I always know what is waiting and what to do with it.
 **Given** Book detail
 **When** it renders
 **Then** the primary button is **Resume** when the Book's Reading is paused, or **Start reading** when the Book has no active or paused Reading and isn't Main (including a re-read of a finished Book). The Main book has no primary button
-**And** the secondary actions appear only when they apply, in the order Set as Up next, Pause, Mark finished, Edit, Delete (UX-DR43).
+**And** the secondary actions appear only when they apply, in the order Set as Up next, Pause, Mark finished, Mark as Side read / Remove from side, Add card note, Edit, Delete (UX-DR43), with each later epic's action taking its slot in that order
+**And** **Edit Purpose** is not in this stack; it stays a link beside the Purpose line in the Current reading block.
 
 **Given** the property test (RDG-UNIT-002)
 **When** random sequences of start-reading, pause, set-up-next, update-page, finish-reading and delete-book run against `domain/`
@@ -1527,12 +1652,17 @@ So that they stay in view without competing with my Main book.
 **Given** a Book that isn't Main
 **When** I press **Mark as Side read** on its Book detail
 **Then** `mark-side-read` adds it to `sideReadBookIds`, and nothing else about the Book changes: no status change, no Reading, no progress (FR-8)
-**And** **Remove from side** removes it again.
+**And** **Remove from side** removes it again
+**And** the `status` region reads "*X* is on the side." or "*X* is off the side.", and focus moves to Book detail's primary button (its `h1` when there is none).
+
+**Given** a server that answers `couldnt_save` (a routed 503 in e2e)
+**When** I press **Mark as Side read** or **Remove from side**
+**Then** "Couldn't save. Your data wasn't changed." appears in an `alert` line directly below the button, focus stays on the button, and nothing changes (TR9).
 
 **Given** three Side reads already
 **When** I look at **Mark as Side read**
 **Then** it stays focusable with `aria-disabled="true"` and the hint "Up to 3 side reads." (UX-DR45)
-**And** the server refuses a fourth with 409
+**And** the server refuses a fourth with 409 `side_reads_full` and "You already have 3 side reads. Remove one first." (AD-9)
 **And** `mark-side-read` sent for the Main book is refused with 409 `main_cannot_be_side_read` (AD-9).
 
 **Given** Side reads
@@ -1542,7 +1672,7 @@ So that they stay in view without competing with my Main book.
 
 **Given** a Side read
 **When** it is started by any route
-**Then** the Start dialog shows a required "Which page?" field, prefilled with its paused page if it has one
+**Then** the Start dialog shows a required "Which page?" field, prefilled with its paused page if it has one, and focus starts in it
 **And** confirming starts tracking from that page and removes it from the Side reads
 **And** a value equal to the last page returns `reachedLastPage`, and the Finish dialog opens right after confirming
 **And** a value below the paused page is accepted, as with any page update (FR-10).
@@ -1566,7 +1696,7 @@ So that they stay in view without competing with my Main book.
 
 The user can add, edit and delete Card notes with a page or range on any Book, go through a Book's notes as a pile, and search all notes or one Book's notes.
 
-**Gate:** CRD-API-001 green; per-epic quality gates (TR7). Closes R-09 (with Story 1.9).
+**Gate:** CRD-API-001 green; per-epic quality gates (TR7). Closes R-09 (with Story 1.11).
 
 ### Story 5.1: Add a card note while reading
 
@@ -1580,7 +1710,7 @@ So that I keep what a book gave me without leaving what I was doing.
 
 **Given** the Main book card or any Book detail
 **When** I press **Add card note**
-**Then** a small modal styled as an index card (360px) opens, headed "Card note", with Note (multi-line, required) and Page, plus **Save note** and **Cancel** (UX-DR47)
+**Then** a small modal styled as an index card (360px) opens, headed "Card note", with Note (multi-line, required) and Page, plus **Save note** and **Cancel** (UX-DR47), with focus starting in **Note**
 **And** Page is prefilled with the Book's current page (at least 1), or empty when the Book has no Reading.
 
 **Given** a Page value of "42", "42–45", "42-45", "42 – 45", "p.42" or "pp. 42–45"
@@ -1620,12 +1750,17 @@ So that my notes stay accurate.
 
 **Given** the edit panel
 **When** I press **Delete**
-**Then** an `alertdialog` asks "Delete this card note?" with **Delete card note** and **Cancel** (Cancel has default focus)
-**And** confirming runs `delete-card-note`, and focus moves to the next note's **Edit**, else the block heading.
+**Then** an `alertdialog` asks "Delete this card note?" with **Delete card note** and **Cancel** (Cancel has default focus), stacked over the Edit card note panel (one of the two allowed stacks)
+**And** **Cancel** or Esc closes only the Confirm dialog and returns to the panel with focus on **Delete**
+**And** confirming runs `delete-card-note`, closes both the dialog and the panel, and focus moves to the next note's **Edit**, else the block heading.
+
+**Given** a server that answers `couldnt_save` (a routed 503 in e2e)
+**When** I press **Save note** in the Edit card note panel, or **Delete card note** in the Confirm dialog
+**Then** the panel or dialog stays open with every value kept, and "Couldn't save. Your data wasn't changed." appears in an `alert` line inside it, above its buttons, and nothing changes (TR9).
 
 **Given** the Card note on page 270 is the Book's highest Card note page
 **When** it is deleted
-**Then** the Pages-below rule from Story 1.9 allows lowering Pages to the highest remaining Card note page.
+**Then** the Pages-below rule from Story 1.11 allows lowering Pages to the highest remaining Card note page, where a range counts by its `pageEnd` when present, else its `pageStart`.
 
 **And** the standard intent ACs (TR8) hold for edit-card-note and delete-card-note.
 
@@ -1654,8 +1789,8 @@ So that I can find where in which Book a thought was written.
 **And** with no matches it reads "No card notes contain “query”.", and Esc clears the field.
 
 **Given** the Main book card
-**When** it has Card notes
-**Then** it shows **See card notes · 7** (accessible name "See card notes, 7 notes"; just "See card notes" at 0), which opens the Card notes page scoped to that Book
+**When** it renders
+**Then** it shows **See card notes · 7** (accessible name "See card notes, 7 notes") when the Book has Card notes, or just **See card notes** when it has none, and either opens the Card notes page scoped to that Book
 **And** Book detail's block adds the link "See all card notes", which opens the same scoped view.
 
 **Given** the scoped view
@@ -1674,7 +1809,7 @@ As Oleg,
 I want to step through a Book's Card notes one at a time,
 So that I can review what it gave me at my own pace.
 
-**Requirements:** FR-18, FR-19, UX-DR50
+**Requirements:** FR-18, FR-19, FR-23, UX-DR50
 
 **Acceptance Criteria:**
 
@@ -1696,11 +1831,20 @@ So that I can review what it gave me at my own pace.
 **When** I open it
 **Then** the pile opens in Page order at that note (FR-19).
 
+**Given** any Card notes list (Book detail's block or the Card notes page, searched or not)
+**When** I activate a note's page ref ("p.42" or "pp.42–45"), a compact chip-style `button` with the accessible name "Open p.42 in the pile"
+**Then** the pile opens in Page order at that note (FR-18)
+**And** the note's **Edit** stays a separate button.
+
 **Given** the pile
 **When** I press **Close** or Esc
 **Then** it closes and returns to the list scrolled to the last viewed note, with focus on that note's **Edit**
 **And** on Book detail, focus goes to that note's **Edit** if it is shown, else to "Go through as a pile"
 **And** the pile has no search and no editing.
+
+**Given** a library with Card notes, a paused Reading, an Up next Book and Side reads (seeded with `LibraryBuilder`)
+**When** it is exported and then restored
+**Then** `library.json` and every cover are byte-identical to the originals (BKP-API-001 re-run with full data).
 
 ## Epic 6: Know how long and how much
 
@@ -1729,7 +1873,8 @@ So that I can judge whether a Book fits before a deadline.
 **Given** a positive number in the field
 **When** I type
 **Then** the result updates on every keystroke: days = ceil(pages left ÷ pages/day), finish date = today + days, using the same rounding as the server's days left (AD-6)
-**And** it reads as a duration plus a date ("About 9 months · July 2027"), in days below 60 days, in months below 24 months, and in years from 24 months on.
+**And** it reads as a duration plus a date, in days below 60 days, in months below 24 months, and in years from 24 months on
+**And** below 60 days the date is a day and month ("About 12 days · 10 November"), with the year added only when it isn't this year; months and years show month and year ("About 9 months · July 2027").
 
 **Given** zero, a negative number, non-numeric text or an empty field
 **When** I type
@@ -1740,7 +1885,7 @@ So that I can judge whether a Book fits before a deadline.
 **Then** it reads "Nothing left to read."
 
 **Given** fake-Clock unit tests
-**When** the duration formatter runs at its edges (59/60 days, 23/24 months, a pace above the pages left)
+**When** the duration formatter runs at its edges (59/60 days, 23/24 months, a pace above the pages left, a day-and-month date that crosses into next year)
 **Then** each case formats as specified.
 
 ### Story 6.2: See when my whole unread library will be finished
@@ -1790,6 +1935,11 @@ So that I can look back on a month or a year of reading.
 **And** Custom reveals "From" and "To" date fields, swapping the two silently when To is before From (UX-DR52).
 
 **Given** a range
+**When** the browser requests `GET /api/views/stats?from=YYYY-MM-DD&to=YYYY-MM-DD` (both inclusive local dates; both omitted for All time)
+**Then** the response is `{ books, pages, bucket: "month" | "year", buckets: [{ period, books, pages }] }` (AD-6)
+**And** the browser resolves the presets: This month = the 1st..today, This year = 1 January..today, Last year = the full previous year.
+
+**Given** a range
 **When** the stats view is computed for it
 **Then** the server returns the count of finished Readings and the sum of their `finishedPages`, counting each finish by its local `finishDate`, back-filled Readings in their Finished on period, and re-reads again (FR-16, AD-11)
 **And** "All time" starts at the earliest finished Reading, back-fills included.
@@ -1798,6 +1948,7 @@ So that I can look back on a month or a year of reading.
 **When** it renders
 **Then** two big numbers show books finished and pages finished, and the `status` region reads "2 books, 610 pages." when the range changes
 **And** an empty range shows 0 and 0 with "No books finished in this range."
+**And** All time with no finished Readings returns 0 and 0 with no buckets, and the page reads "No books finished yet."
 
 **Given** a Book whose Pages is edited after it was finished
 **When** Stats render
@@ -1819,8 +1970,8 @@ So that I can see when my reading happened.
 
 **Given** a range up to 24 months
 **When** the stats view is computed
-**Then** it returns one bucket per month in the range (books, pages), counting only finishes inside the range, so a range starting 15 March counts March from the 15th (AD-6)
-**And** a range over 24 months returns one bucket per year.
+**Then** it returns `bucket: "month"` and one bucket per month in the range (`period`, `books`, `pages`), counting only finishes inside the range, so a range starting 15 March counts March from the 15th (AD-6)
+**And** a range over 24 months returns `bucket: "year"` and one bucket per year.
 
 **Given** the buckets
 **When** the chart renders

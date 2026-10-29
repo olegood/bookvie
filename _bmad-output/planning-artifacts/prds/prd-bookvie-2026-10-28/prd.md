@@ -79,7 +79,7 @@ The user can create, edit, and delete a Book.
   - bookvie refuses to save while any required field is empty.
   - Pages is always a page count, ebooks included.
   - bookvie displays the edition only when it isn't 1.
-  - A Book without a cover shows a "no cover" placeholder.
+  - A Book without a cover shows a "no cover" placeholder. An existing cover can be removed when editing the Book.
   - New Books default to Ownership = owned.
   - An empty spine color means automatic: derived from the cover, else taken from a curated palette.
   - An empty **Finished on** means not read. A date (not in the future) creates a back-filled Reading finished on that date. On a Book with an active or paused Reading, it adds a past Reading and leaves the current one untouched.
@@ -162,7 +162,7 @@ On the next visit, bookvie shows the Main book's current page on the gauge ("p.N
 #### FR-24: Bookcase
 The main screen shows a slice of the bookcase, and the catalog shows the full bookcase: one spine per Book, in the catalog sort order (FR-20; Author by default).
 - **Consequences:**
-  - The slice is up to 3 shelf rows: the Main book's row, then the Up next Book's, then rows with the most recent finishes. Filters never apply to it.
+  - The slice is up to 3 shelf rows, chosen in this priority: the Main book's row, then the Up next Book's, then rows with the most recent finishes. The Main book's row is displayed first, the others in bookcase order. Filters never apply to it.
   - Unread Books are outlined; read Books show their spine color (FR-1), stored exactly as chosen.
   - Up next and Waiting for you Books carry their own markers, so a paused Book that was never finished stays visible even though it's outlined.
   - The Main book's spine is filled to its reading percentage. A re-read of a finished Book keeps its full-color spine and gets the Main-book marker instead.
@@ -196,7 +196,7 @@ On a Book or in the catalog, the user can type a positive pages/day value and se
 ### 4.6 Stats *(Must)*
 
 #### FR-16: Stats for any period
-The user can choose any date range and see the number of Books finished and the pages finished. The UX offers presets (This month, This year, Last year, All time) plus a custom range, with a bar per month.
+The user can choose any date range and see the number of Books finished and the pages finished. The UX offers presets (This month, This year, Last year, All time) plus a custom range, with a bar per month, or one bar per year when the range exceeds 24 months.
 - **Consequences:**
   - All of a Reading's pages count in the period it finished in, whatever its start date. A finish counts by its local date; a back-filled Reading counts in the period of its Finished on date.
   - "All time" starts at the earliest finished Reading.
@@ -259,7 +259,7 @@ The user can restore bookvie from an export file.
 - **Accessibility deviation (accepted):** The 1024px minimum width doesn't meet WCAG 2.2 SC 1.4.10 Reflow; at 200–400% zoom the page scrolls horizontally. Accepted because bookvie has a single user, runs on desktop only, and phone layouts are Won't (§6.3).
 - **Speed:** Catch-up (one page update) takes under 30 seconds and at most 2 interactions after opening the app.
 - **Data safety:** No action silently deletes data. Every destructive action needs confirmation. A save that fails is never silent: the UI says "Couldn't save. Your data wasn't changed." and keeps the user's input.
-- **Tone:** No guilt mechanics. bookvie has no streaks, no "you missed a day" message, and no red failure states. There are no greetings, exclamation marks, or praise. The finish copy is "Finished *X*.", and the finish moment is a single ~600ms spine fill that never replays.
+- **Tone:** No guilt mechanics. bookvie has no streaks, no "you missed a day" message, and no red failure states. There are no greetings, exclamation marks, or praise. The finish copy is "Finished *X*." ("Finished *X* again." for a re-read), and the finish moment is a single ~600ms spine fill that never replays.
 
 ## 6. MVP Scope
 

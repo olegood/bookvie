@@ -18,7 +18,7 @@ Mocks illustrate this spine; they are not the contract. If a mock and a spine di
 
 - **Platform.** Web app in a desktop or laptop browser. Minimum viewport 1024px; below that the page scrolls horizontally. No phone or tablet layout (PRD §6.3) (documented deviation: Accessibility Floor → Reflow).
 - **UI system.** None named. Plain, semantic HTML controls styled by DESIGN.md tokens. Native elements (`button`, `input`, `select`, `dialog`) are preferred so roles and names come for free.
-- **Local-first.** All data lives on this computer; no account, no network (PRD §5). No sync or connection status is shown. There is no loading state: local reads are instant. The only busy states are Export and Restore (see Backup page). A save that fails is never silent (see State Patterns → Couldn't save).
+- **Local-first.** All data lives on this computer; no account, no network (PRD §5). No sync or connection status is shown. There is no loading indicator: before a page's first view response, only the header and nav render (no spinner, no skeleton). A view that can't be loaded shows "Couldn't load" (see State Patterns); a failed background refetch keeps the last data silently. The only busy states are Export and Restore (see Backup page). A save that fails is never silent (see State Patterns → Couldn't save).
 - **One store, two operators.** The user's browser and the cataloging skill's browser must see the same data (PRD §5: a Book saved from any browser on this machine appears in every other). How they share it is an architecture decision (prd-deltas → For architecture, A1). UX rule for two open tabs or browsers: last write wins; reloading shows the current data. No cross-tab warning is shown.
 - **Theme.** Light · Dark · System toggle in the top nav. Default is System; the choice is remembered on this computer.
 - **Users.** One person, who is also the builder. A browser-driven AI cataloging skill acts as a second, unattended operator of the add-book form (see Agent Label Contract).
@@ -27,7 +27,7 @@ Mocks illustrate this spine; they are not the contract. If a mock and a spine di
 
 ## Information Architecture
 
-Top nav, left to right: **Home · Catalog · Stats · Card notes · Backup**, theme toggle on the right. A "Skip to content" link comes first. No left rail. Overlay stacking: see Interaction Primitives → One level of stacking.
+Top nav, left to right: **Home · Catalog · Stats · Card notes · Backup**, theme toggle on the right. A "Skip to content" link comes first. No left rail. Implementation staging: until Home ships (Story 3.1), `/` opens Catalog and Home is not in the nav; Story 3.1 adds Home to the nav and makes it the launch page. Overlay stacking: see Interaction Primitives → One level of stacking.
 
 ### Pages
 
@@ -49,7 +49,7 @@ Book detail is a page, not an overlay.
 | Spine popover | Click, Enter or Space on a spine (Home slice or Catalog) | FR-24; D14 | Flows 1, 3 |
 | "⋯" menu | Main book card | FR-6; D35 | Flow 10 |
 | New book panel | **New book** button on Catalog (and on the empty state); **Edit** on Book detail | FR-1, FR-2; D20, D28, D38 | Flows 1, 9 |
-| Duplicate dialog | **Add book** or **Save changes** when FR-3 matches | FR-3; D22, D39 | Flow 1 |
+| Duplicate dialog | **Add book** or **Save changes** when FR-3 matches (over the New book or Edit book panel) | FR-3; D22, D39 | Flow 1 |
 | Start dialog | Start reading or Resume anywhere | FR-5, FR-7–FR-9; D24, D33, D34 | Flows 3, 10 |
 | Finish dialog | Entering the last page; **Mark finished** on Book detail | FR-14; D28, D31 | Flows 4, 9 |
 | Card note panel | **Add card note** on the Main book card or Book detail; Edit on a note | FR-17 | Flow 6 |
@@ -79,7 +79,7 @@ A Book's state has four independent parts: **read-ever** (has a finished Reading
 | Finished, re-read paused | Full color | sand (sky if Up next) | "finished, waiting for you, page 40" | **Resume** | Waiting for you (or Up next only) |
 | Any of the above, plus Side read | As above | As above | adds ", on the side" | As above; Start reading asks "Which page?" | Also in On the side |
 
-**Book detail actions.** One `button-primary`: **Resume** (paused) or **Start reading** (no active or paused Reading, not Main; on a finished Book this starts a re-read); none for the Main book. Secondary, shown only when they apply: **Set as Up next** (not Main, not already Up next), **Pause** (Main only), **Mark finished** (Main, paused, or never finished), **Mark as Side read** or **Remove from side** (not Main), **Edit Purpose** (active or paused Reading), and always **Add card note**, **Edit**, **Delete**. Always shown in the right column: the Card notes block, the Pace calculator, and **Change color**.
+**Book detail actions.** One `button-primary`: **Resume** (paused) or **Start reading** (no active or paused Reading, not Main; on a finished Book this starts a re-read); none for the Main book. Secondary, shown only when they apply: **Set as Up next** (not Main, not already Up next), **Pause** (Main only), **Mark finished** (Main, paused, or never finished), **Mark as Side read** or **Remove from side** (not Main), and always **Add card note**, **Edit**, **Delete**, in that order (DESIGN.md → Book detail). Always shown in the right column: the Card notes block, the Pace calculator, and **Change color**. **Edit Purpose** is a `link` beside the Purpose line in the Current reading block (active or paused Reading), not in the action stack.
 
 ## Voice and Tone
 
@@ -131,16 +131,16 @@ Behavioral. Visual specs: DESIGN.md → Components, same names. Longer patterns 
 | Start dialog | Anywhere a Reading starts or resumes | See [Start dialog](#start-dialog) below. |
 | Finish dialog | After the last page is entered; **Mark finished** on Book detail | See [Finish dialog](#finish-dialog) below. |
 | Card note panel | Home (Main book card), Book detail; Card notes list (edit) | See [Card note panel](#card-note-panel) below. |
-| Card notes list | Card notes page | All Books: notes grouped by Book (serif titles), search across all Books with results still grouped. Scoped (from "See card notes" or Book detail's "See all card notes"): only that Book's notes, scope chip "In *X*" with a clear button that widens to all Books, search covers that Book only. Results update while typing, case-insensitive, matching text in `<mark>`, page ref shown; `status` announces "N notes match." after typing pauses. Each group has "Go through as a pile"; opening a result opens the pile at that note. Each note has Edit (Card note panel in edit mode). |
+| Card notes list | Card notes page | All Books: notes grouped by Book (serif titles), search across all Books with results still grouped. Scoped (from "See card notes" or Book detail's "See all card notes"): only that Book's notes, scope chip "In *X*" with a clear button that widens to all Books, search covers that Book only. Results update while typing, case-insensitive, matching text in `<mark>`, page ref shown; `status` announces "N notes match." after typing pauses. Each group has "Go through as a pile"; opening a result opens the pile at that note. Each note's page ref ("p.42") is a button that opens the pile in Page order at that note. Each note has Edit (Card note panel in edit mode), separate from the page ref. |
 | Pile | Over Card notes or Book detail | See [Pile](#pile) below. |
-| Pace calculator | Catalog (library scope), Book detail (Book scope) | Catalog: collapsed behind the link "How long until…?"; activating it expands inline (`aria-expanded`). One "pages/day" field, prefilled with Measured pace rounded to one decimal when one exists, else empty. Result updates as the user types, in an `output` element: duration and date ("About 9 months · July 2027"). Duration in days under 60 days, months under 24 months, years beyond. When nothing is left to read: "Nothing left to read." Zero, negative, or non-numeric input: no result, no message. Scopes per FR-15. |
-| Stats range picker | Stats | Presets This month · This year · Last year · All time, plus Custom ("From", "To" date fields). Default This year. If To is before From, the two dates swap silently. All time starts at the earliest finished Reading, back-filled ones included. A finish counts by its local date. Changing the range updates numbers and bars instantly and the `status` region announces "2 books, 610 pages." |
+| Pace calculator | Catalog (library scope), Book detail (Book scope) | Catalog: collapsed behind the link "How long until…?"; activating it expands inline (`aria-expanded`). One "pages/day" field, prefilled with Measured pace rounded to one decimal when one exists, else empty. Result updates as the user types, in an `output` element: duration and date ("About 9 months · July 2027"). Duration in days under 60 days, months under 24 months, years beyond. Under 60 days the date is a day and month ("About 12 days · 10 November"), with the year added only when it isn't this year; months and years keep month and year ("July 2027"). When nothing is left to read: "Nothing left to read." Zero, negative, or non-numeric input: no result, no message. Scopes per FR-15. |
+| Stats range picker | Stats | Presets This month · This year · Last year · All time, plus Custom ("From", "To" date fields). Default This year. Presets end today: This month runs from the 1st to today, This year from 1 January to today; Last year is the full year. If To is before From, the two dates swap silently. All time starts at the earliest finished Reading, back-filled ones included; with no finished Readings it shows 0 books, 0 pages, no bars, and "No books finished yet." A finish counts by its local date. Changing the range updates numbers and bars instantly and the `status` region announces "2 books, 610 pages." |
 | Monthly bars | Stats | Two numbers: books finished, pages finished. One bar per month in the range, counting only finishes inside the range (a range from 15 March counts March from the 15th); over 24 months, one bar per year. Each bar has a text value. All of a Reading's pages count in the period it finished (FR-16), using the page count it finished with. Exposed as a table to assistive tech (period, books, pages). |
 | Backup page | Backup | **Export all data** builds one file (FR-22) and hands it to the browser's download. When Export or Restore takes longer than about 300 ms, its button reads "Exporting…" or "Restoring…" and is disabled until it finishes; there is no spinner. "Last export: today" is set only once the file has been built and handed over; the browser cannot confirm the file was kept. **Restore from file…** opens a file picker, then the Confirm dialog. The whole file is checked before anything is replaced. "Last export: N days ago" also appears on Home's re-entry line; "No export yet" before the first export. "Last export" and preferences (theme, Catalog view, sort) stay local: a restore neither brings nor replaces them. "Last export" is never a warning. |
-| Confirm dialog | Restore, Delete book, Delete card note, Pause | `alertdialog`. Restore: "Replace all data with this file? Your current books, readings and card notes will be replaced." with **Replace all data** and **Cancel**. Delete book: "Delete *X*? Its readings and card notes are deleted too." with the Book's role when it has one ("It is your Main book.", "It is Up next.", or "It is waiting for you at p.120."), then **Delete book** and **Cancel**. After deleting, the app goes to Catalog; a vacated Main book or Up next stays empty (nothing is promoted automatically). Delete card note: see Card note panel. Pause: see Book detail. Cancel has default focus. |
+| Confirm dialog | Restore, Delete book, Delete card note, Pause | `alertdialog`. Restore: "Replace all data with this file? Your current books, readings and card notes will be replaced." with **Replace all data** and **Cancel**. Delete book: "Delete *X*? Its readings and card notes are deleted too." with the Book's role when it has one ("It is your Main book.", "It is Up next.", or "It is waiting for you at p.120."), then **Delete book** and **Cancel**. After deleting, the app goes to Catalog; a vacated Main book or Up next stays empty (nothing is promoted automatically). Delete card note: see Card note panel. Pause: see Book detail. Cancel has default focus. If the save fails, the dialog stays open and shows the couldn't-save `alert` line inside it, above its buttons (State Patterns → Couldn't save). |
 | Empty state | Home, Catalog (no Books) | Bare birch planks, "Your shelf is empty. Add your first book.", **New book** button. |
 | No-cover placeholder | Main book card, Up next, Book detail | Stands in for a missing cover at the same size; not interactive; the Book's title is still given in text beside it. |
-| Cover | New book panel | Image files only. On upload the image is downscaled to a long edge of 1200px before it is stored, so a library of phone photos stays a manageable export. |
+| Cover | New book panel | Image files only (JPEG, PNG or WebP), 20 MB or smaller. On upload the image is downscaled to a long edge of 1200px before it is stored, so a library of phone photos stays a manageable export. In edit mode, **Remove cover** clears an existing cover (see New book panel). |
 | Focus ring | Every focusable element | Shown on keyboard focus (`:focus-visible`) and on an open spine; never suppressed. |
 | Highlight ring | New spine or row; finish moment | Brief ring that fades over about 2 s; instant on and off under reduced motion. |
 | Finish fill | Finished spine on Home's slice | See State Patterns → Finish moment. |
@@ -174,11 +174,12 @@ Use: page.
 - **Content:** metadata, cover, Tags, current Reading (status, gauge, Purpose), Readings (start, finish, stars, Purpose fulfilled). Back-filled Readings show "Finished 14 Aug 2019" with no start.
 - **Actions:** visible per state; see Book states → Book detail actions.
 - **Pause** (Main book only): pauses the Reading at its current page and records its paused-at date; per FR-7 it becomes Up next. If another Book is Up next, the Confirm dialog first states the displacement ("Pause *X* at p.150 (58%)? *Z* moves to Waiting for you." or "*Z* returns to the catalog.") with **Pause** and **Cancel**. Otherwise Pause applies at once and `status` announces "Paused *X* at p.150. It's Up next."
-- **Edit Purpose** (when a Reading is active or paused): turns the Purpose line into a one-line field with **Save** and **Cancel**; Enter saves, Esc cancels.
+- **Set as Up next, Mark as Side read, Remove from side:** apply at once with no dialog; `status` announces the outcome (Accessibility Floor → Live regions).
+- **Edit Purpose** (when a Reading is active or paused): turns the Purpose line into a one-line field with **Save** and **Cancel**; Enter saves, Esc cancels. The field is optional with no length limit; surrounding whitespace is trimmed, and saving it empty clears the Purpose.
 - **Mark finished:** opens the Finish dialog.
 - **Mark as Side read:** When three Side reads already exist, **Mark as Side read** stays focusable with `aria-disabled="true"` and is described by the hint "Up to 3 side reads."
 - **Edit:** opens the New book panel in edit mode over this page.
-- **Card notes block** ("Card notes (N)"): the Book's first three notes in page order, each with Edit (Card note panel in edit mode).
+- **Card notes block** ("Card notes (N)"): the Book's first three notes in page order, each with Edit (Card note panel in edit mode). Each note's page ref is a button that opens the Pile, as in the Card notes list.
   - A **Search card notes** field searches this Book's notes in place. While it holds text, the block shows every matching note (not only three), with matching text in `<mark>`, and `status` announces "N notes match." after typing pauses. Esc clears it.
   - "Go through as a pile" opens the Pile over Book detail with this Book's notes; opening a matching note opens the pile at that note.
   - "See all card notes" opens the Card notes page scoped to this Book.
@@ -196,17 +197,19 @@ Use: Catalog; Book detail (edit).
 - **Success (edit):** the panel closes, `status` announces "Saved *Title*.", and the page stays where it was.
 - **Validation failure:** the panel stays open and nothing is saved (see State Patterns).
 - **Closing without saving:** **Cancel**, **Close** (×) or Esc. If fields were typed in, closing discards them without a prompt.
+- **Remove cover** (edit mode, when the Book has a cover): a button beside **Cover**. On **Save changes** the cover is cleared and its file deleted; the spine color falls back to the curated color unless the user set one (DESIGN.md → Spine colors).
 - **Pages in edit mode:** setting Pages lower than the current page of an active or paused Reading, or lower than the highest Card note page, is refused (validation table). Finished Readings keep the page count they were finished with, so Stats never change retroactively.
 - **Focus:** see Focus after close.
 
 ### Duplicate dialog
 
-Use: over the New book panel.
+Use: over the New book panel (or the Edit book panel).
 
 - **Role:** `alertdialog`, name "Possible duplicate". The description names up to three matching Books (title, author, ISBN) and "and N more".
 - **Stacking:** while it is open the panel behind is `inert` (native `showModal()` stacking), so only the dialog's two buttons are exposed.
 - **Don't add** (default focus): closes the warning and returns to the panel with every typed field kept; nothing is saved.
 - **Add anyway:** saves as normal. There is no "Open existing".
+- **Edit mode:** the same dialog over the Edit book panel, with **Don't save** (default focus; returns to the panel unchanged, focus on **Save changes**, nothing saved) and **Save anyway** (saves as normal).
 - **Matching:** titles normalized per FR-3; authors compared ignoring case and surrounding spaces, as a set of semicolon-separated names; ISBNs compared after removing hyphens and spaces and converting ISBN-10 to ISBN-13. A match on title and author, or on ISBN, triggers it. In edit mode the check runs only when Title, Author(s) or ISBN changed.
 - **Focus:** see Focus after close.
 
@@ -215,6 +218,7 @@ Use: over the New book panel.
 Use: anywhere a Reading starts or resumes.
 
 - **Role:** modal. Heading "Start *X*?" (or "Resume *X*?" for a paused Reading). Shown even with no Main book, because it carries the Purpose field.
+- **Opening focus:** on "Which page?" when it is shown, else on Purpose.
 - **Trade-off lines**, each shown only when it applies: "This pauses *Y* at p.120 (64%)." when a Main book exists; and, when that pause will displace an Up next *Z* that is not *X*: "*Z* moves to Waiting for you." (*Z* has a paused Reading) or "*Z* returns to the catalog." (*Z* was never started).
 - **Which page?:** a required number field whenever *X* is a Side read, by any route, prefilled with its paused page if it has one, else empty. A value equal to the last page opens the Finish dialog right after confirming.
 - **Purpose:** optional field (one sentence, FR-9), prefilled with the existing Purpose when resuming.
@@ -226,6 +230,7 @@ Use: anywhere a Reading starts or resumes.
 Use: after the last page is entered; **Mark finished** on Book detail.
 
 - **Role:** modal.
+- **Opening focus:** on Finished on.
 - **Finished on:** date field, prefilled today; not in the future and not before the Reading's start date ("Finished on can't be before 12 March 2026, when this reading started.").
 - **Purpose fulfilled?:** radio group (yes · partly · not yet), only when the Reading has a Purpose, no option preselected.
 - **Rating:** radio group: "No rating" (default), "1 star" … "5 stars"; arrow keys move, the selected stars fill.
@@ -241,11 +246,12 @@ Use: after the last page is entered; **Mark finished** on Book detail.
 Use: Home (Main book card), Book detail; Card notes list (edit).
 
 - **Role:** small modal styled as an index card.
+- **Opening focus:** on Note.
 - **Fields:** Note (required) and Page, prefilled with the current page (at least 1), or empty when the Book has no Reading.
 - **Page format:** accepts "42", "42–45", "42-45", "42 – 45", with or without "p." or "pp."; "42–42" is stored as 42. Valid pages are 1 to the Book's page count. A reversed range ("45–42") is refused: "The first page must come before the last." More than one range is refused: "Use one page or one range."
 - **Errors:** `aria-invalid`, message linked by `aria-describedby`, announced in `alert`.
 - **Save note** saves and closes; the "See card notes · N" count (on Book detail, the Card notes block) updates; `status` announces "Card note saved." The user never leaves the page they were on.
-- **Edit mode** ("Edit card note") adds **Delete**, which opens the Confirm dialog "Delete this card note?" with **Delete card note** and **Cancel**.
+- **Edit mode** ("Edit card note") adds **Delete**, which opens the Confirm dialog "Delete this card note?" with **Delete card note** and **Cancel** over the panel (one of the two allowed stacks; Interaction Primitives → One level of stacking). **Cancel** returns to the panel with focus on **Delete**; **Delete card note** closes both.
 - **Focus:** see Focus after close.
 
 ### Pile
@@ -255,7 +261,7 @@ Use: over Card notes or Book detail.
 - **Role:** modal, named "Card notes pile, *X*". One note at a time. The note sits in a polite live region, so each move announces "Note 3 of 7, p.42: *text*."
 - **Controls:** Previous and Next buttons, "N of M", and an "Order" radio group (Page order · Shuffled; shuffle reorders once per change). "N of M" follows the current order.
 - **Ends:** at the first and last note, Previous and Next stay focusable with `aria-disabled="true"`; there is no wrap. A pile of one note has both disabled.
-- **Entry:** opening a search result opens the pile in Page order at that note. To jump to a specific note, open it from the list behind the pile or from a search result.
+- **Entry:** opening a search result, or activating a note's page ref in any Card notes list (Card notes page or Book detail's Card notes block), opens the pile in Page order at that note. To jump to a specific note, use its page ref or a search result.
 - **Read-only:** editing happens in the list.
 - **Closing:** a visible **Close** button (top right) and Esc both close it, returning to the list scrolled to the last viewed note.
 - **Focus:** see Focus after close.
@@ -270,7 +276,7 @@ The bookcase is the library drawn as birch shelves of spines. It is atmospheric:
 - **Home slice.** Up to 3 shelf rows from the full bookcase in the remembered sort, chosen in this order: the row holding the Main book, then the row holding the Up next Book, then rows with the most recent finishes, newest first. With fewer qualifying rows, the first rows of the bookcase fill the rest. Display order: the Main book's row first, then the other chosen rows in bookcase order. With no Main book, all chosen rows are in bookcase order. The slice recomputes when the window is resized. Filters never apply to the slice. The header carries the library meter and a "See all in Catalog" link. The slice never scrolls internally.
 - **Catalog scale.** The full bookcase on Catalog handles about 500 Books (about 15 rows at 1280px). The page scrolls normally. Every spine is present in the page (lightweight elements, no lazy rows), so find-in-page and keyboard navigation reach all of them. The library meter stays one bar.
 - **Highlight after add.** After **Add book** saves, the panel closes, the Catalog scrolls the new spine into view in the current sort, and shows the highlight ring briefly; instant under reduced motion. In List view the new row is highlighted the same way. If a search or filter would hide the new Book, it is cleared first.
-- **Keyboard.** The bookcase is a `list` named "Bookcase, 73 books" (on Home "Bookcase slice, 3 rows"), each spine a button in a list item. It is one Tab stop (roving `tabindex`; Tab returns to the last focused spine). Left and Right move to the previous and next spine in sort order, crossing rows. Up and Down move to the spine in the row above or below whose horizontal center is nearest. Home and End go to the first and last spine of the bookcase. No type-ahead (Search titles does that job). Enter and Space open the popover. If the focused spine is filtered out or deleted, focus moves to its nearest remaining neighbor in sort order, or to Search titles when none remains. The same model applies to Home's slice.
+- **Keyboard.** The bookcase is a `list` named "Bookcase, 73 books" (on Home "Bookcase slice, N rows" with the actual row count, for example "Bookcase slice, 3 rows"), each spine a button in a list item. It is one Tab stop (roving `tabindex`; Tab returns to the last focused spine). Left and Right move to the previous and next spine in sort order, crossing rows. Up and Down move to the spine in the row above or below whose horizontal center is nearest. Home and End go to the first and last spine of the bookcase. No type-ahead (Search titles does that job). Enter and Space open the popover. If the focused spine is filtered out or deleted, focus moves to its nearest remaining neighbor in sort order, or to Search titles when none remains. The same model applies to Home's slice, except that the arrow keys and Home/End follow the rows as displayed (Main book's row first), not bookcase order.
 - **Ebooks** stand on the shelf like any Book.
 
 ## State Patterns
@@ -292,9 +298,10 @@ The bookcase is the library drawn as birch shelves of spines. It is atmospheric:
 | Never exported | Home, Backup | "No export yet", muted. |
 | No cover | Main book card, Up next, Book detail | No-cover placeholder; spine uses its curated color when read; "From cover" option absent in color pickers. |
 | Validation error | New book panel | Nothing saved, panel stays open. Each invalid field: `aria-invalid="true"`, message linked by `aria-describedby` ("Pages is required."). `alert` region: "Not saved. 2 fields need attention: Pages, Language." Focus moves to the first invalid field. No red. |
-| Validation error | Page field, Card note panel, Finish dialog, Edit Purpose | Inline message, nothing saved, value kept; `aria-invalid`, `aria-describedby`, message announced in `alert`. Messages: see Validation messages (other forms). |
-| Couldn't save | Any save (New book panel, page field, Card note, color, Finish, Start, Pause, delete) | The write to storage failed (storage full, unavailable, or cleared). `alert` region: "Couldn't save. Your data wasn't changed." in `ink`, one line below the action, never red. The panel or dialog stays open with every typed value kept, so the user (or the skill) can retry. Nothing on screen claims a change that didn't happen. |
-| Duplicate warning | New book panel | Duplicate dialog (Don't add, Add anyway). Don't add returns to the panel unchanged. |
+| Validation error | Page field, Card note panel, Finish dialog, Start dialog | Inline message, nothing saved, value kept; `aria-invalid`, `aria-describedby`, message announced in `alert`. Messages: see Validation messages (other forms). |
+| Couldn't save | Any save (New book panel, page field, Card note, color, Finish, Start, Pause, Set as Up next, Side read, Edit Purpose, delete) | The write to storage failed (storage full, unavailable, or cleared). `alert` region: "Couldn't save. Your data wasn't changed." in `ink`, one line below the action, never red. One-click buttons (Set as Up next, Mark as Side read, Remove from side) show the line directly below the button, with focus kept on it. Confirm dialogs (Pause, Delete book, Delete card note) show it inside the dialog above its buttons and stay open. The panel or dialog stays open with every typed value kept, so the user (or the skill) can retry. Nothing on screen claims a change that didn't happen. |
+| Couldn't load | Any page | A view fetch failed before the page had any data. The page body shows "Couldn't load. Is bookvie still running?" in an `alert` region with a **Try again** button, never red. A failed background refetch keeps the last data on screen silently. Before the first view response, only the header and nav render. |
+| Duplicate warning | New book panel | Duplicate dialog (Don't add, Add anyway; in edit mode Don't save, Save anyway). Don't add or Don't save returns to the panel unchanged. |
 | Saved | New book panel | `status` "Added *Title*." (edit: "Saved *Title*."); highlight after add. |
 | Search, no matches | Catalog | Empty shelf area with "No titles match “query”." and the count "0 books match." |
 | Filters, no matches | Catalog | Empty shelf area with "No books match these filters." and a "Clear filters" link. |
@@ -303,6 +310,7 @@ The bookcase is the library drawn as birch shelves of spines. It is atmospheric:
 | No Card notes | Book detail | Card notes block shows "No card notes yet."; no search field, no pile or "See all card notes" links (**Add card note** is in the action stack). |
 | Card notes search, no matches | Book detail | "No card notes contain “query”." inside the block. |
 | Stats, empty range | Stats | Numbers show 0; bars empty; "No books finished in this range." |
+| Stats, All time, nothing finished | Stats | Numbers show 0; no bars; "No books finished yet." |
 | Restore, not a bookvie file or damaged | Backup | Refused before anything changes: "This file isn't a bookvie export, or it's damaged. Nothing was changed." |
 | Restore, newer version | Backup | Refused: "This export is from a newer version of bookvie. Nothing was changed." |
 | Restore, older version | Backup | Accepted; the data is migrated to the current format, then replaces the current data. |
@@ -317,6 +325,8 @@ Messages for forms outside the Agent Label Contract's validation table. Each is 
 | Form | Field | Rule | Message |
 |---|---|---|---|
 | Main book card | Page field | 0 to the Book's page count | "Page must be between 0 and N." |
+| Start dialog | Which page? | Required when shown | "Which page? is required." |
+| Card note panel | Note | Not empty | "Note is required." |
 | Card note panel | Page | 1 to the Book's page count | "Page must be between 1 and N." |
 | Card note panel | Page | A range runs from low to high | "The first page must come before the last." |
 | Card note panel | Page | One page or one range | "Use one page or one range." |
@@ -331,7 +341,7 @@ Messages for forms outside the Agent Label Contract's validation table. Each is 
 - **No character-key shortcuts.** Search titles is the first control after the nav on Catalog.
 - **Enter in the page field** saves (same as **Update**).
 - **Outside click** closes the spine popover and the "⋯" menu. Modal dialogs and the side panel close only through their buttons, ×, or Esc.
-- **One level of stacking.** Overlays stack at most one level above a panel: the Duplicate dialog over the New book panel is the only stack. A dialog opened from the spine popover or the "⋯" menu replaces it: the popover or menu closes first.
+- **One level of stacking.** Overlays stack at most one level above a panel, and only in two places: the Duplicate dialog over the New book (or Edit book) panel, and the Delete card note Confirm dialog over the Edit card note panel. A dialog opened from the spine popover or the "⋯" menu replaces it: the popover or menu closes first.
 - **Motion.** Two intentional motions exist: the finish fill and the highlight ring. Panels, popovers, menus and dialogs appear with at most a 150 ms fade. Under `prefers-reduced-motion: reduce`, every transition and animation is off: the fill and ring are instant, panels and popovers appear without fading or sliding, the gauge and meters jump to their new value, and every scroll into view (new spine, finish moment, pile return) uses `behavior: 'auto'`.
 - **Banned:** drag and drop, hover-only affordances, auto-starting any Reading, notifications outside the app, streak counters, greetings, confetti, red states, auto-playing animation on load.
 
@@ -345,7 +355,7 @@ Behavioral. Visual contrast lives in DESIGN.md → Colors.
 - **Focus.** Visible sage focus ring on every focusable element, never suppressed; spines use the two-tone ring. Dialogs trap focus. Controls that can't act right now stay focusable with `aria-disabled="true"` and a description saying why, never natively disabled (except the Export and Restore busy state).
 - **Esc.** See Interaction Primitives → Esc.
 - **Names.** Every control has a visible label, and its accessible name is exactly that label, or starts with it when it adds the Book title ("Resume The Left Hand of Darkness"). Markers such as "(required)" sit outside the label element; requiredness is exposed with `required`. Spines carry full title, author, and status in their names, so a label cut with an ellipsis never hides information. Toggle groups have group names ("Theme", "Catalog view", "Order").
-- **Live regions.** One polite `status` region per page for outcomes (page saved, book added or saved, Card note saved, finished, paused, color set, search and filter counts, Stats totals, restored). One `alert` region for blocking outcomes (validation failure, couldn't save). Before every save attempt and when a panel or dialog opens, both regions are emptied; new text is set after a short tick (about 100 ms), so repeated identical messages are announced again and old text is never mistaken for a new outcome. Messages that follow a focus change are set after focus has settled. The Duplicate and Confirm dialogs are `alertdialog`.
+- **Live regions.** One polite `status` region per page for outcomes (page saved, book added or saved, Card note saved, finished, paused, set as Up next, side read added or removed, color set, search and filter counts, Stats totals, restored). One-click actions announce: "*X* is Up next." (Set as Up next), "*X* is on the side." (Mark as Side read), "*X* is off the side." (Remove from side), "Paused *X* at p.120. It's Up next." (Pause without a Confirm dialog). After them, focus moves to Book detail's `button-primary` (its `h1` when there is none); from a spine popover, focus returns to the spine. One `alert` region for blocking outcomes (validation failure, couldn't save). Before every save attempt and when a panel or dialog opens, both regions are emptied; new text is set after a short tick (about 100 ms), so repeated identical messages are announced again and old text is never mistaken for a new outcome. Messages that follow a focus change are set after focus has settled. The Duplicate and Confirm dialogs are `alertdialog`.
 - **Progress.** Gauge, library meter, and mini bars are progressbars with `aria-valuemin`, `aria-valuemax`, and text values; markers never carry meaning by color alone.
 - **Reduced motion.** Global rule in Interaction Primitives → Motion.
 - **Forced colors.** Read and unread spines, fills and markers stay distinct (DESIGN.md → Colors → Forced colors).
@@ -363,6 +373,8 @@ When a panel, dialog, popover or menu closes, focus goes to:
 | New book panel | Cancel, Close or Esc | The opener (**New book** or **Edit**) |
 | Duplicate dialog | Don't add | Title field in the panel |
 | Duplicate dialog | Add anyway | As "Added" |
+| Duplicate dialog (edit) | Don't save | **Save changes** in the panel |
+| Duplicate dialog (edit) | Save anyway | As "Saved" |
 | Spine popover | Any close | Its spine |
 | A dialog opened from the popover | Cancel or Esc | The originating spine, or its nearest neighbor if it is gone |
 | "⋯" menu | Esc or outside click | "⋯" |
@@ -374,8 +386,9 @@ When a panel, dialog, popover or menu closes, focus goes to:
 | Pause | Done (from Home) | **Start reading** or **Resume** in the empty Main book card |
 | Pause | Done (from Book detail) | **Resume** on Book detail |
 | Card note panel | Save or Cancel | The opener (**Add card note** or the note's Edit) |
-| Confirm, Delete book | Deleted | Catalog, **Search titles** |
-| Confirm, Delete card note | Deleted | The next note's Edit button, else the group heading |
+| Confirm, Delete book | Deleted | Catalog, **Search titles**; when the Catalog is now empty, the empty state's **New book** |
+| Confirm, Delete card note | Deleted | Closes the Edit card note panel too; the next note's Edit button, else the group heading |
+| Confirm, Delete card note | Cancel or Esc | **Delete** in the Edit card note panel |
 | Confirm, Restore | Restored | Home `h1` |
 | Any Confirm | Cancel or Esc | The opener |
 | Pile | Close or Esc | The last viewed note's Edit button in the list; on Book detail, that note's Edit if it is among the notes shown, else "Go through as a pile" |
@@ -403,7 +416,8 @@ The add-book and edit-book forms are an interface for the AI cataloging skill as
 | Year | Field | `spinbutton` | No | Year of the edition. |
 | Finished on | Field | date (`input type=date`) | No | Empty means not read. A date (`YYYY-MM-DD`) creates a finished Reading on that date. Not in the future. |
 | Tags | Field | `combobox` (text input with suggestions) | No | Comma-separated free text. |
-| Cover | Field | file input (`input type=file`) | No | Image file. |
+| Cover | Field | file input (`input type=file`) | No | Image file: JPEG, PNG or WebP, 20 MB or smaller. |
+| Remove cover | Edit book panel, beside Cover | `button` | — | Edit mode only, when the Book has a cover. Clears the cover on **Save changes**. |
 | Spine color | Field | `textbox` | No | `#RRGGBB` or empty (empty means automatic: cover-derived or curated). Stored and shown exactly as entered; no contrast adjustment. |
 | From cover; Sage, Slate, Clay, Ochre, Plum, Teal, Moss, Stone | Swatch buttons beside Spine color | `button` with `aria-pressed` | — | Shortcuts that fill Spine color (From cover empties it). From cover only when a cover exists. |
 | Add book | Panel submit (new) | `button` | — | |
@@ -412,6 +426,8 @@ The add-book and edit-book forms are an interface for the AI cataloging skill as
 | Close | Panel × | `button` | — | Same as Cancel. |
 | Don't add | Duplicate dialog | `button` | — | Closes the warning; typed fields kept; nothing saved. |
 | Add anyway | Duplicate dialog | `button` | — | Saves despite the match. |
+| Don't save | Duplicate dialog (edit) | `button` | — | Default focus. Returns to the Edit book panel unchanged; nothing saved. |
+| Save anyway | Duplicate dialog (edit) | `button` | — | Saves the changes despite the match. |
 | Search titles | Catalog search | `searchbox` | — | Visible label. Used after saving to confirm the Book exists. |
 
 Validation rules and messages (each shown under its field and listed in the `alert` text):
@@ -428,6 +444,8 @@ Validation rules and messages (each shown under its field and listed in the `ale
 | Finished on | A valid date, not in the future | "Finished on can't be in the future." |
 | Spine color | `#RRGGBB` or empty | "Spine color must be #RRGGBB or empty." |
 | Cover | An image file | "Cover must be an image file." |
+| Cover | JPEG, PNG or WebP | "Cover must be a JPEG, PNG or WebP image." |
+| Cover | 20 MB or smaller | "Cover must be 20 MB or smaller." |
 
 Outcome signals the skill reads (all within the page, no visual inspection needed). Both live regions are emptied at each **Add book** press, so any text present afterwards belongs to this attempt.
 

@@ -42,7 +42,7 @@ flowchart LR
   STORE --> FS[("~/bookvie-data/")]
 ```
 
-Dependency direction (an arrow means "may import"): `http → intents, views → domain`; `intents, views → store`; `domain` imports nothing from the other layers; `store` imports only `domain` types. Export and restore are intents (`intents/export`, `intents/restore`). The frontend imports only `api/`, never server internals.
+Dependency direction (an arrow means "may import"): `http → intents, views → domain`; `intents, views → store`; `domain` imports nothing from the other layers; `store` imports only `domain` types. Export is `GET /api/export`, implemented in `intents/export` but not under `/api/intents/`; restore is the intent `POST /api/intents/restore` (`intents/restore`). The frontend imports only `api/`, never server internals.
 
 ## Invariants & Rules
 
@@ -56,7 +56,7 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
 
 - **Binds:** A3, Data-safety NFR, FR-22, FR-23
 - **Prevents:** partial writes; a second store; two code paths serializing differently.
-- **Rule:** All textual data is a single `library.json` with the shape in AD-18. `store.serialize()` is the only function that produces its bytes: UTF-8, camelCase keys, nulls kept, keys in model order, 2-space indent. Every commit writes a temp file in the same folder, fsyncs it, and renames it over the original. If any step fails, the original is untouched and the intent reports `couldnt_save`. At startup the server deletes leftover `library.json.tmp*` files from an interrupted commit, and exits non-zero with a message naming the path if the data folder isn't writable.
+- **Rule:** All textual data is a single `library.json` with the shape in AD-18. `store.serialize()` is the only function that produces its bytes: UTF-8, camelCase keys, nulls kept, keys in model order, 2-space indent, non-ASCII written as is (`ensure_ascii=False`), LF line endings, exactly one trailing newline. Every commit writes a temp file in the same folder, fsyncs it, and renames it over the original. If any step fails, the original is untouched and the intent reports `couldnt_save`. At startup the server deletes leftover `library.json.tmp*` files from an interrupted commit, and exits non-zero with a message naming the path if the data folder isn't writable.
 
 ### AD-3: Domain rules live only in the server; mutations arrive only as intents [ADOPTED]
 
@@ -81,7 +81,8 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
 - **Binds:** FR-4, FR-7, FR-11, FR-15, FR-16, FR-18, FR-19, FR-20, FR-24
 - **Prevents:** percentage, Measured pace, days left, Waiting order, stats or library scope being computed in two places with different results.
 - **Rule:**
-  - **The server computes:** percentages, Measured pace, days left, pages left (per Book and library scope), Waiting for you order, which Books form the Home bookcase slice and in what row priority, stats for a requested date range including the per-month bars, and the "X of Y finished" meter.
+  - **The server computes:** percentages, Measured pace, days left, pages left (per Book and library scope), Waiting for you order, which Books form the Home bookcase slice and in what row priority, stats for a requested date range including the bars, and the "X of Y finished" meter.
+  - **Stats view:** `GET /api/views/stats?from=YYYY-MM-DD&to=YYYY-MM-DD`, both inclusive local dates; omit both for All time. Response `{ books, pages, bucket: "month" | "year", buckets: [{ period, books, pages }] }`; `bucket` is `year` when the range exceeds 24 months. The browser resolves presets to dates: This month = the 1st..today, This year = 1 January..today, Last year = the full year. All time with no finished Reading returns 0 books, 0 pages and no buckets.
   - **The client may only apply presentation to the views it has fetched:**
     - catalog sort, using `Intl.Collator`, per the UX;
     - filter chips;
@@ -109,10 +110,13 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
 - **Prevents:** endpoints inventing their own error shapes; FastAPI's default `{"detail":[…]}` reaching the client; the UI unable to tell "refused" from "not saved", or unable to report several fields at once.
 - **Rule:**
   - **Success:** HTTP 200 with `{ "ok": true, "ids"?: {<name>: <uuid>}, "reachedLastPage"?: true }`.
-  - **Failure:** `{ "error": { "kind": "refusal" | "couldnt_save", "code": "<snake_case>", "message": "<user copy>", "fields"?: [{ "field", "code", "message" }] } }`.
-    - HTTP 422 means field validation. `code` is `invalid_fields`, and `fields` lists every failing field.
-    - HTTP 409 means a state rule (e.g. `duplicate_book`, `pages_below_current_page`). An intent whose target is no longer in a state it can act on is refused, never applied to another Book: `book_not_found` (the Book was deleted), `not_main_book` (`update-page` or `pause` for a Book that isn't Main), `reading_already_finished`, `already_main` (`start-reading` for the Main book), `main_cannot_be_up_next`, `main_cannot_be_side_read`.
+  - **Failure:** `{ "error": { "kind": "refusal" | "couldnt_save" | "couldnt_export", "code": "<snake_case>", "message": "<user copy>", "fields"?: [{ "field", "code", "message" }] } }`.
+    - HTTP 422 means field validation. `code` is `invalid_fields`, and `fields` lists every failing field. 422 also covers a rejected upload: a cover that isn't a supported image is a field error, and a refused restore archive uses the AD-14 codes.
+    - HTTP 413 `cover_too_large` means a cover upload over 20 MB (AD-12); `fields` carries "Cover must be 20 MB or smaller."
+    - HTTP 409 means a state rule (e.g. `duplicate_book`, `pages_below_current_page`). An intent whose target is no longer in a state it can act on is refused, never applied to another Book: `book_not_found` (the Book was deleted), `not_main_book` (`update-page` or `pause` for a Book that isn't Main), `reading_already_finished`, `already_main` (`start-reading` for the Main book), `main_cannot_be_up_next`, `main_cannot_be_side_read`, `side_reads_full` ("You already have 3 side reads. Remove one first."). A 409 refusal about one field (e.g. `pages_below_current_page`) includes `fields`.
+    - An intent that would change nothing is a no-op success, not a refusal: `set-up-next` for the Book already Up next returns 200, changes nothing and commits nothing.
     - HTTP 500 or 503 means `couldnt_save`. When `check_invariants()` fails after validation passed, that is a server bug: the intent commits nothing, logs the failed rule to stderr, and returns 500 `couldnt_save`.
+    - HTTP 503 with kind and code `couldnt_export` means export failed to read the data; nothing was sent (AD-14).
   - A global `RequestValidationError` handler maps framework validation errors into this shape. The server owns all message copy (PRD §5 Tone), and the client renders it as is. Error codes are an enum in the contract.
 
 ### AD-10: Duplicate detection is a server refusal
@@ -135,12 +139,13 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
 - **Binds:** A5, FR-1, FR-21, FR-22, FR-23
 - **Prevents:** a failed commit leaving a document pointing at an overwritten image; browsers showing a cached old cover; dangling references.
 - **Rule:**
-  - The server downscales every uploaded cover to a long edge of at most 1200px, after re-decoding it with Pillow, which rejects anything that isn't an image. Uploads are capped at 20 MB, counted while streaming.
+  - The server downscales every uploaded cover to a long edge of at most 1200px, after re-decoding it with Pillow, which rejects anything that isn't an image. Uploads are capped at 20 MB, counted while streaming; a larger upload is refused with 413 `cover_too_large` (AD-9).
   - **Decoding:** EXIF orientation is applied before downscaling (`ImageOps.exif_transpose`). Pillow's `MAX_IMAGE_PIXELS` stays on, and a decompression bomb is refused like a non-image. CMYK is converted to RGB, and only the first frame of an animated image is kept. Formats Pillow can't decode without a plugin, such as HEIC, are refused with a message naming the supported formats (JPEG, PNG, WebP); no HEIC plugin is added.
   - **Output:** covers are re-encoded as JPEG, or PNG when the image has transparency. `<ext>` comes from the output format, never from the uploaded file name.
   - Each upload is stored under a new server-minted name, `covers/<book-id>-<uuid>.<ext>`, recorded in the Book's `coverFile`. A name is never reused or overwritten.
   - **The order is always:** write the new files (temp + rename), commit the document, then delete files no Book references.
   - **After the commit:** once the document commit succeeds, the intent has succeeded. A failure while deleting unreferenced files or emptying `.staging/` is logged to stderr and left for the startup sweep; the response is still 200, never `couldnt_save`.
+  - **Remove cover:** `edit-book` with `removeCover: true` (offered only when a cover exists) clears `coverFile` and `spineColorFromCover`, re-resolves `spineColor` (AD-11), and deletes the file after the commit, per the order above.
   - Covers are served at `/media/covers/<file>` with immutable caching.
   - At startup the server removes cover files that no Book references.
 
@@ -151,6 +156,7 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
 - **Rule:**
   - `library.json` carries an integer `schemaVersion`.
   - A single ordered migration chain in `store/migrations/` upgrades older versions, both at startup and on restore.
+  - Store models use `extra="forbid"`: unknown keys are refused, never silently dropped. Every persisted-shape change bumps `schemaVersion` by exactly 1 with exactly one migration step, and a test asserts the chain is contiguous from 1 to the current version.
   - Before a startup migration rewrites the file, the server copies the original to `library.v<N>.bak.json`.
   - The chain runs in memory and the result is committed once. If any step raises, the server exits non-zero with a message, and the original file and its backup are unchanged.
   - A newer version or an invalid file is refused, and nothing changes.
@@ -160,7 +166,8 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
 - **Binds:** FR-22, FR-23, A6
 - **Prevents:** an export format that drifts from storage; a restore that fails halfway; malicious or damaged archives.
 - **Rule:**
-  - **Export:** `GET /api/export` returns one `.zip` holding `library.json` and `covers/` (always present as a directory entry, even when empty), and nothing else. It is read under the AD-4 lock. "Last export" (AD-15) is recorded only after the last byte has been sent with no client disconnect; a HEAD request or an aborted download records nothing. The server can't know whether the browser kept the file, so "Last export" means "last complete download".
+  - **Export:** `GET /api/export` returns one `.zip` holding `library.json` and `covers/` (always present as a directory entry, even when empty), and nothing else. Under the AD-4 lock the zip is built into a spooled temp file (in memory up to ~10 MB, then on disk); the lock is released, then the file is sent. A read failure happens before any header is sent and returns 503 `couldnt_export`. "Last export" (AD-15) is recorded only after the last byte has been sent with no client disconnect; a HEAD request or an aborted download records nothing. The server can't know whether the browser kept the file, so "Last export" means "last complete download".
+  - **Restore route:** `POST /api/intents/restore`, multipart (AD-3). Refusals are 422: `restore_invalid` (not a zip, damaged, schema or invariant failure, missing or undecodable cover), `restore_newer_version`, and `restore_unsafe` (path, symlink, duplicate, entry or size limits; same user copy as `restore_invalid`). A failed commit is 503 `couldnt_save`.
   - **Restore validation:** restore empties `.staging/`, then unpacks into it. It accepts only the entries `library.json` and `covers/<name>`: no absolute paths, no `..`, no symlinks, no duplicate names. A missing `covers/` counts as empty.
   - **Restore limits:** the upload is at most 1 GB, the archive holds at most 5,000 entries, and at most 1 GB is extracted. The extracted size is counted on the bytes actually written, never on sizes declared in the zip headers, and extraction stops as soon as a limit is passed. These limits fit about 2,000 Books with downscaled covers (about 300 KB each) plus `library.json` up to its 10 MB performance ceiling. Then it validates the whole archive: schema, migrations, AD-18 invariants, and every referenced cover present and decodable.
   - **Restore apply:** following the AD-12 order, restore adds the archive's covers, commits the document via AD-2, then deletes covers the new document doesn't reference.
@@ -210,7 +217,7 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
 - **Binds:** FR-5 to FR-11, FR-14, FR-15, FR-24
 - **Prevents:** a resumed Reading still counting as paused; two unfinished Readings on a re-read; the page update and the Finish dialog both finishing a Reading.
 - **Rule:**
-  - **Fields:** a Reading stores `id`, `startDate|null`, `currentPage`, `purpose|null`, `lastProgressUpdate` (timestamp; set by `update-page` and by `start-reading`), `pausedAt|null` (a local date, overwritten on every pause), `finishDate|null`, `finishedPages|null`, `purposeFulfilled|null` and `rating|null`.
+  - **Fields:** a Reading stores `id`, `startDate|null`, `currentPage`, `purpose|null`, `lastProgressUpdate` (timestamp; set by `update-page` and by `start-reading`), `pausedAt|null` (a local date, overwritten on every pause and never cleared, not by resume nor by finish), `finishDate|null`, `finishedPages|null`, `purposeFulfilled|null` and `rating|null`.
   - **Current Reading:** a Book's current Reading is its single unfinished Reading.
   - **Status:** `domain.reading_status()` is the only status function. A Reading is *finished* if it has a `finishDate`, *active* if its Book is `mainBookId`, and *paused* otherwise. `pausedAt` is ignored while the Reading is active.
   - **Starting:** one `start-reading` intent resumes the current Reading, or creates a new one when the Book has none.
@@ -221,7 +228,7 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
 
 - **Binds:** domain, FR-10, FR-11, FR-14, FR-16, AD-19
 - **Prevents:** tests and code disagreeing on "today"; finish dates shifting by timezone.
-- **Rule:** `domain/` never calls the system clock directly. It receives a `Clock` (now, plus today as a local date in the machine timezone) that tests replace. Local dates are `YYYY-MM-DD`; timestamps are ISO 8601 with offset. Measured pace counts days inclusively (finishDate − startDate + 1), excludes back-filled Readings, and lives only in `domain/`. The browser computes its own "today" for presentation (AD-6), so in e2e tests the Playwright fixture sets the browser clock (`page.clock`) to the same date it passes as `--fake-today`, and the browser `timezoneId` to the server's pinned `TZ`. Views don't carry the server's date.
+- **Rule:** `domain/` never calls the system clock directly. It receives a `Clock` (now, plus today as a local date in the machine timezone) that tests replace. Local dates are `YYYY-MM-DD`; timestamps are ISO 8601 with offset. Measured pace counts days inclusively (finishDate − startDate + 1), excludes back-filled Readings, and lives only in `domain/`. The browser computes its own "today" for presentation (AD-6), so in e2e tests the Playwright fixture sets the browser clock (`page.clock`) to the same date it passes as `--fake-today`, and the browser `timezoneId` to the server's pinned `TZ`. The pinned zone is `Europe/Madrid`: `check:py` and `check:e2e` run with `TZ=Europe/Madrid`, and Playwright sets `timezoneId: 'Europe/Madrid'`. DST boundary tests use the last Sundays of March and October. Views don't carry the server's date.
 
 ## Consistency Conventions
 
@@ -230,10 +237,11 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
 | Naming | Domain terms exactly as PRD §3 (Book, Reading, Main book, Up next, Waiting for you, Side read, Card note). Python `snake_case`; JSON fields and TS `camelCase` (Pydantic alias generator). Intent paths are kebab-case verbs under `/api/intents/<verb>`; views are nouns under `GET /api/views/<name>`. |
 | IDs | Server-generated UUID v4 strings, returned in the success `ids`. The client never mints IDs. |
 | Dates | AD-20. Server and browser share the machine timezone. |
+| Title ordering (server) | One key for every server-side title ordering: NFKD, strip combining marks, casefold; ties by Book id. The client's catalog sort uses `Intl.Collator` (AD-6). |
 | Errors | AD-9. User-facing copy follows PRD §5 Tone (no exclamation marks, no praise, no red failure states). |
 | Logging | Server logs to stderr in the launching terminal. No telemetry, no network calls out. |
 | Config | CLI flags `--data-dir` (default `~/bookvie-data`), `--port` (default 8765), `--no-browser` (tests) and `--dev`. No config file. |
-| Testing | pytest for `domain/` and `intents/` (every FR consequence, refusal code and `check_invariants` rule) with a fake `Clock`. Playwright e2e for flows and the label contract (AD-17), run against a temporary `--data-dir`. One install smoke test: build, `uv tool install`, start, load `/`. |
+| Testing | pytest for `domain/` and `intents/` (every FR consequence, refusal code and `check_invariants` rule) with a fake `Clock`. Playwright e2e for flows and the label contract (AD-17), run against a temporary `--data-dir`. One install smoke test: build, `uv tool install`, start, load `/`. `npm run check` runs them all (Structural Seed). |
 
 ## Stack
 
@@ -241,17 +249,27 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
 | --- | --- |
 | Python | 3.14 |
 | uv (packaging, `uv tool install`) | 0.13.x |
+| hatchling (build backend) | 1.33.x |
 | FastAPI | 0.162.x |
 | Pydantic | 2.14.x |
 | Uvicorn | 0.54.x |
+| python-multipart (multipart intents) | 0.0.x |
 | Pillow (cover downscale, color derivation) | 13.x |
 | React | 19.3.x |
 | TypeScript | 5.9.x |
 | Vite (react-ts template) | 8.3.x |
 | openapi-typescript | 7.13.x |
 | TanStack Query | 5.x |
+| React Router (library mode, `createBrowserRouter`) | 8.5.x |
 | Playwright (`@playwright/test`) | 1.64.x |
-| pytest | 9.x |
+| pytest (dev) | 9.x |
+| pytest-cov (dev) | 7.1.x |
+| Hypothesis (dev) | 6.170.x |
+| httpx (dev, FastAPI `TestClient`) | 0.28.x |
+
+(dev) marks the Python dev dependency group; everything else Python is runtime. Frontend packages are build-time only (Node never runs at runtime).
+
+Styling is CSS Modules per component over one `frontend/src/styles/tokens.css` holding the DESIGN.md custom properties; no CSS framework.
 
 TypeScript stays on 5.9 because openapi-typescript 7.13 requires TS ^5. The Vite template's default TS 7 is overridden.
 
@@ -271,7 +289,9 @@ flowchart TB
   end
 ```
 
-**Build and install:** `npm run build` writes the SPA into `backend/bookvie/http/static/`, which is gitignored but explicitly included as package data. `uv tool install --reinstall ./backend` installs the global `bookvie` command. Upgrading means rebuilding and reinstalling. Node is needed only to build, never at runtime.
+**Build and install:** `npm run build` writes the SPA into `backend/bookvie/http/static/`, which is gitignored. The hatchling wheel target ships it anyway: `[tool.hatch.build.targets.wheel] packages = ["bookvie"]`, `artifacts = ["bookvie/http/static/**"]`; the install smoke test proves the SPA is in the installed tool. `uv tool install --reinstall ./backend` installs the global `bookvie` command. Upgrading means rebuilding and reinstalling. Node is needed only to build, never at runtime.
+
+**Check:** the root `package.json` defines `npm run check`, which runs `check:py` (`uv run --project backend pytest` with the coverage gate), then `check:api` (`npm --prefix frontend run check:api`), then `check:e2e` (Playwright), then `check:smoke` (isolated install smoke test), stopping at the first failure.
 
 ```text
 ~/bookvie-data/
@@ -295,8 +315,9 @@ erDiagram
 
 ```text
 bookvie/
+  package.json              # npm run check → check:py, check:api, check:e2e, check:smoke
   backend/
-    pyproject.toml          # console script: bookvie = bookvie.cli:main; includes http/static
+    pyproject.toml          # hatchling; console script bookvie = bookvie.cli:main; wheel artifacts bookvie/http/static/**
     bookvie/
       cli.py                # flags, lock check, start server, open browser, signals
       http/                 # FastAPI app, routes, Host/Origin guard, error handler, static/
@@ -309,6 +330,7 @@ bookvie/
     src/
       api/generated/        # openapi-typescript output, never edited (AD-8)
       api/                  # fetch wrapper, AD-9 envelope, query keys, invalidate-all
+      styles/tokens.css     # DESIGN.md custom properties; components use CSS Modules
       pages/  components/
     e2e/                    # Playwright, label-contract driven
 ```
@@ -326,13 +348,12 @@ bookvie/
 | FR-15 Quick pace calculator | `views/` (pages left, Measured pace); client arithmetic | AD-6, AD-20 |
 | FR-16 Stats | `views/stats` | AD-6, AD-11, AD-20 |
 | FR-17 to FR-19 Card notes | `intents/*_card_note`; `views/card_notes` | AD-3, AD-6, AD-18 |
-| FR-21 Cover | `store/covers`; `/media/covers` | AD-12 |
-| FR-22, FR-23 Export / restore | `intents/export`, `intents/restore`; `store/` | AD-4, AD-13, AD-14, AD-15 |
+| FR-21 Cover | `store/covers`; `intents/edit_book` (Remove cover); `/media/covers` | AD-11, AD-12 |
+| FR-22, FR-23 Export / restore | `GET /api/export` (`intents/export`), `POST /api/intents/restore`; `store/` | AD-4, AD-13, AD-14, AD-15 |
 | A1 shared storage | `store/`, `cli.py` | AD-1, AD-5, AD-16 |
 
 ## Deferred
 
-- **Frontend router and styling approach:** any choice that satisfies AD-7 and implements DESIGN.md tokens works. The first frontend story picks them. CSS custom properties from DESIGN.md are the expected default.
 - **Exact intent and view list and their field shapes beyond AD-18 and AD-19:** owned by the Pydantic models once written (AD-8).
 - **Spine-color derivation algorithm and curated-palette assignment order:** a `domain/` detail, constrained only by AD-11.
 - **Distribution beyond the user's machine** (PyPI, Homebrew, signed binaries): out of scope.
