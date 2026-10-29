@@ -1,8 +1,8 @@
 # bookvie
 
-A personal, local-first web app for organizing my home library and tracking my reading. It replaces a paper reading diary as the single source of truth for reading progress. The diary can stay on the nightstand for quick notes; I catch up in the app on my next visit.
+A personal, local-first web app for organizing my home library and tracking my reading. It replaces a paper reading diary as the single source of truth for reading progress. The diary can stay on the nightstand for quick notes; I catch up in the app on my next visit by entering the page I reached.
 
-> **Status:** planning. There is no application code yet. The PRD is final (see [Project docs](#project-docs)); the next steps are UX, architecture, and epics.
+> **Status:** planning. There is no application code yet. The PRD and the UX design are final (see [Project docs](#project-docs)); the next steps are architecture and epics.
 
 ## Why
 
@@ -10,18 +10,18 @@ I read almost every day, but my pace depends on work. The pattern that keeps bre
 
 bookvie breaks that chain by allowing exactly one tracked **Main book**, making every switch a deliberate, visible trade-off, and keeping every paused book in view until I pick it up again. Three pillars guide every decision:
 
-- **Visible progress.** Every real reading effort moves something you can see: a percentage and a gauge.
-- **Conscious reading.** A Purpose when I start a book, a Day type each day, and "Purpose fulfilled?" when I finish.
-- **Simplicity.** Less state means less stress. No streaks to break, no "abandoned" status, nothing that resets. Simplicity beats completeness of history.
+- **Visible progress.** Every real reading effort moves something you can see: a percentage, a gauge, and a spine on the bookcase.
+- **Conscious reading.** A Purpose when I start a book, and "Purpose fulfilled?" when I finish.
+- **Simplicity.** Less state means less stress, and removing a state also removes a failure signal. No streaks to break, no "abandoned" status, nothing that resets. Simplicity beats completeness of history.
 
 Re-reading is welcome and never counts as lost progress.
 
 ## Core ideas
 
-- **Book → Readings.** A Book is a catalog entry for a copy I own; each read-through is a separate Reading with its own current page, Purpose, dates and rating. A re-read is a new Reading.
+- **Book → Readings.** A Book is a catalog entry for a copy I own; each read-through is a separate Reading with its own current page, Purpose, dates and rating. A re-read is a new Reading. Books I read before bookvie get a back-filled Reading from a **Finished on** date.
 - **One Main book.** Starting a new one shows the trade-off first: "Start X? This pauses Y at p.120 (64%)".
 - **Pause, don't abandon.** Paused Readings keep their page. An interrupted book becomes **Up next**; other paused Readings wait in **Waiting for you**, oldest first.
-- **Day types.** Each day can be **Deep**, **Light** or **Rest**, always chosen by me and never inferred. Days can be filled in later (catch-up), and empty days are never shown as failures. The Reading calendar has no streak count.
+- **The bookcase.** Every Book is a spine on a pale birch shelf. Unread Books are outlined; finished ones show their spine color; the Main book's spine fills as I read. Coloring in the library, one spine at a time, is the only reward.
 - **Quick pace calculator.** Type a pages/day value and see when a book, or the whole unread library, would be finished.
 - **Card notes.** Quotes or notes with a page or page range, attached to a Book, reviewable as a pile and searchable across all Books.
 
@@ -29,32 +29,41 @@ Re-reading is welcome and never counts as lost progress.
 
 **Must** (the MVP)
 
-- Catalog: create, edit, delete and search Books (required: title, pages, author, edition, language, publisher, type)
+- Catalog: create, edit, delete and search Books (required: title, pages, author, edition, language, publisher, type), with tags and an optional Finished on date for back-filling
 - Agent-friendly add/edit forms with stable labels, plus a duplicate warning by ISBN or title + author
-- Main book with start confirmation, pause, Up next and Waiting for you
+- Main book with a Start confirmation and optional Purpose, pause, Up next and Waiting for you
 - Quick page update for the Main book (at most 2 interactions), with percentage and gauge
-- Daily Day type check-in, including catch-up for past days, and the Reading calendar
+- Bookcase: a slice on the main screen and the full bookcase in the catalog, with an "X of Y finished" meter
 - Finishing a Reading
 - Quick pace calculator for a Book or the whole library
-- Stats for any date range: books finished, pages finished, Day type counts
+- Stats for any date range: books finished and pages finished, with a bar per month
+- Card notes: add to any Book, review as a pile, search across all Books
 - One-click export to a single file and restore from it, from day one
 
-**Should:** Side reads (up to 3, untracked), Purpose, re-entry info with an effort estimate ("~7 evenings left"), finish prompts (Purpose fulfilled, 1–5 rating), Card notes, tags with filter and sort, cover on the main screen.
+**Should:** Side reads (up to 3, untracked), re-entry info with an effort estimate ("~7 days left"), finish prompts (Purpose fulfilled, 1–5 rating), filter and sort, cover on the main screen.
 
-**Later:** shelves, goals, Sequences (Topic, Marathon, Weekend sprint), donation and the Past shelf, wishlist, progress visuals, more stats, and Card note extras.
+**Later:** shelves, goals, Sequences (Topic, Marathon, Weekend sprint), donation and the Past shelf, wishlist, more progress visuals, organizing extras, Card note extras, resuming extras, more stats, and a near-finish guard.
 
 **Won't:** multiple users or sharing, phone layouts, borrowed books, batch or in-app import, a local API, a session timer, per-day page logs, an abandoned status, an audiobook format, email or push nudges.
 
-**Non-functional:** runs in a browser on one laptop or desktop with no account, network, or database server; catch-up for a few days takes under 30 seconds; no action silently deletes data; no guilt mechanics.
+**Non-functional:** runs in a browser on one laptop or desktop (1024px minimum width) with no account, network, or database server; light, dark, or system theme; English only; catch-up takes under 30 seconds; no action silently deletes data and a failed save is never silent; no guilt mechanics, greetings or praise.
+
+## Design
+
+The visual direction is **Birch Morning**: bright, flat and Nordic, with pale birch wood and one sage accent. The dark theme is the same room in the evening. Sans-serif for everything the app says, serif only for book titles. The app has five pages (Home, Catalog, Stats, Card notes, Backup) plus Book detail.
 
 ## Adding books with AI
 
-Catalog entry happens through my own AI skills rather than an in-app importer or API. A browser-driven skill fills the "add book" form from a plain description like "Dune by Frank Herbert, 412 pages", exactly as a person would. That makes the form's labels and accessible names a contract: renaming one is a breaking change.
+Catalog entry happens through my own AI skills rather than an in-app importer or API. A browser-driven skill fills the "add book" form from a plain description like "Dune by Frank Herbert, 412 pages", exactly as a person would. That makes the form's labels, accessible names and outcome messages a contract (the Agent Label Contract in the UX spec): renaming one is a breaking change.
 
 ## Project docs
 
 - [PRD](_bmad-output/planning-artifacts/prds/prd-bookvie-2026-10-28/prd.md): vision, glossary, functional requirements, scope and success metrics
 - [PRD addendum](_bmad-output/planning-artifacts/prds/prd-bookvie-2026-10-28/addendum.md): competitive landscape, implementation notes, design rationale, and rules for Later features
+- [DESIGN.md](_bmad-output/planning-artifacts/ux-designs/ux-bookvie-2026-10-28/DESIGN.md): how bookvie looks: tokens, colors, typography, components
+- [EXPERIENCE.md](_bmad-output/planning-artifacts/ux-designs/ux-bookvie-2026-10-28/EXPERIENCE.md): how bookvie behaves: information architecture, states, accessibility, Agent Label Contract, key flows
+- Mockups: [Home](_bmad-output/planning-artifacts/ux-designs/ux-bookvie-2026-10-28/mockups/key-home.html), [Catalog](_bmad-output/planning-artifacts/ux-designs/ux-bookvie-2026-10-28/mockups/key-catalog.html), [Book detail](_bmad-output/planning-artifacts/ux-designs/ux-bookvie-2026-10-28/mockups/key-book-detail.html), [Birch Morning light/dark](_bmad-output/planning-artifacts/ux-designs/ux-bookvie-2026-10-28/mockups/birch-v2-light-dark.html)
+- [PRD deltas](_bmad-output/planning-artifacts/ux-designs/ux-bookvie-2026-10-28/prd-deltas.md): the changes UX design made to the PRD, plus open items for architecture
 - [Brainstorm intent](_bmad-output/brainstorming/brainstorm-personal-library-tracker-2026-10-27/brainstorm-intent.md): the brainstorm's problem statement, pillars and decisions
 - [Brainstorm session](_bmad-output/brainstorming/brainstorm-personal-library-tracker-2026-10-27/brainstorm.html): the full session record
 
