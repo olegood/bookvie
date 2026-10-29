@@ -819,6 +819,8 @@ So that my Books are recognizable and their spines can take the cover's color.
 
 **And** the standard intent ACs (TR8) hold for the cover paths of add-book and edit-book.
 
+Out of scope: removing a cover without replacing it. A wrong cover is fixed by choosing a new file.
+
 ### Story 1.11: Change a book's color from the shelf
 
 As Oleg,
@@ -1046,7 +1048,8 @@ So that exactly one Book is tracked and I start it on purpose.
 **Given** a Main book *Y* at p.120 of 187
 **When** I open the Start dialog for another Book
 **Then** it shows "This pauses *Y* at p.120 (64%)."
-**And** confirming pauses *Y*'s Reading at its page, records `pausedAt` = today, and starts or resumes *X*, all in one intent and one commit (FR-5).
+**And** confirming pauses *Y*'s Reading at its page, records `pausedAt` = today, and starts or resumes *X*, all in one intent and one commit (FR-5)
+**And** this is interim behavior until Story 4.1, which also makes *Y* Up next (FR-7): tests here assert only *Y*'s `currentPage` and `pausedAt`, never `upNextBookId`.
 
 **Given** the Start dialog
 **When** I press **Cancel** or Esc
@@ -1319,6 +1322,10 @@ So that nothing I put down is ever forgotten.
 **When** Home renders
 **Then** the pane is hidden.
 
+**Given** a library written under the Epic 3 behavior (Story 3.2), with a paused Reading that isn't Up next (seeded with `LibraryBuilder`)
+**When** I open Home
+**Then** that Book is listed in Waiting for you with **Resume**, and `check_invariants()` holds.
+
 **Given** many paused Readings
 **When** Home renders
 **Then** all rows are shown, the side column grows and the page scrolls.
@@ -1395,6 +1402,10 @@ So that the Book I mean to read next is ready when the current one is done.
 **When** I set it as Up next
 **Then** it leaves Waiting for you and appears in Up next with **Resume**.
 
+**Given** a finished Book with no unfinished Reading, or a Side read
+**When** I set it as Up next
+**Then** it becomes Up next like any other Book: a finished Book shows **Start reading**, which starts a re-read, and a Side read stays in On the side as well (EXPERIENCE.md Book states: "Finished, Up next" and "Any of the above, plus Side read").
+
 **And** the standard intent ACs (TR8) hold for set-up-next.
 
 ### Story 4.5: Mark any book finished from its page
@@ -1418,7 +1429,8 @@ So that books I finished away from bookvie, or finished in a different way, clos
 
 **Given** a Book with no Reading
 **When** I mark it finished with Finished on 14 August 2019
-**Then** a back-filled Reading (`startDate: null`) is created, the Book counts as read, and its spine takes its color.
+**Then** a back-filled Reading (`startDate: null`) is created, the Book counts as read, and its spine takes its color
+**And** when that Book is Up next, the same commit clears `upNextBookId`, as for a paused Up next.
 
 **Given** a non-Main finish
 **When** the Finished on date is before the Reading's start
@@ -1453,7 +1465,7 @@ So that I always know what is waiting and what to do with it.
 
 **Given** the property test (RDG-UNIT-002)
 **When** random sequences of start-reading, pause, set-up-next, update-page, finish-reading and delete-book run against `domain/`
-**Then** `check_invariants()` holds after every step, there is never more than one Main book, and no Reading's page is ever lost (R-01).
+**Then** `check_invariants()` holds after every step, there is never more than one Main book, and no Reading's page is ever lost except by a page the user enters (`update-page`, or "Which page?" when starting a Side read) (R-01).
 
 ### Story 4.7: Keep a few side reads
 
@@ -1484,7 +1496,12 @@ So that they stay in view without competing with my Main book.
 **When** it is started by any route
 **Then** the Start dialog shows a required "Which page?" field, prefilled with its paused page if it has one
 **And** confirming starts tracking from that page and removes it from the Side reads
-**And** a value equal to the last page returns `reachedLastPage`, and the Finish dialog opens right after confirming.
+**And** a value equal to the last page returns `reachedLastPage`, and the Finish dialog opens right after confirming
+**And** a value below the paused page is accepted, as with any page update (FR-10).
+
+**Given** a Side read that is also Up next or Waiting for you
+**When** Home renders
+**Then** it appears in On the side and in its Up next or Waiting for you pane, and its spine shows only that role's marker (EXPERIENCE.md Book states, precedence rule 5).
 
 **Given** the "Which page?" field
 **When** it is empty, not a whole number, or outside 0 to the Book's page count
@@ -1495,7 +1512,7 @@ So that they stay in view without competing with my Main book.
 **When** **Done** succeeds
 **Then** it also leaves the Side reads.
 
-**And** the standard intent ACs (TR8) hold for mark-side-read and unmark-side-read, and the property test (Story 4.6) includes them.
+**And** the standard intent ACs (TR8) hold for mark-side-read and unmark-side-read, and the property test (Story 4.6) includes them, with generators that combine Side read with Up next, paused and finished states.
 
 ## Epic 5: Keep what a book gave you
 
