@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from bookvie.cli import DEFAULT_PORT, HOST
 from bookvie.http.app import STATIC_DIR
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
@@ -18,6 +19,18 @@ def test_vite_builds_into_the_served_folder() -> None:
     match = re.search(r"outDir:\s*'([^']+)'", VITE_CONFIG.read_text(encoding="utf-8"))
     assert match, "vite.config.ts has no outDir"
     assert (VITE_CONFIG.parent / match.group(1)).resolve() == STATIC_DIR
+
+
+def test_vite_dev_proxy_targets_the_cli_server() -> None:
+    if not VITE_CONFIG.is_file():
+        pytest.skip("frontend sources are not next to the backend")
+    config = VITE_CONFIG.read_text(encoding="utf-8")
+    match = re.search(r"const backend = '([^']+)'", config)
+    assert match, "vite.config.ts has no backend URL"
+    assert match.group(1) == f"http://{HOST}:{DEFAULT_PORT}"
+    assert re.search(r"'/api':\s*backend", config), "/api is not proxied"
+    assert re.search(r"'/media':\s*backend", config), "/media is not proxied"
+    assert re.search(r"port:\s*5173\b", config), "Vite dev server is not on :5173"
 
 
 def test_wheel_ships_the_served_folder() -> None:

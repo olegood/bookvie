@@ -99,6 +99,19 @@ def test_browser_not_opened_when_server_never_starts(
     assert opened == []
 
 
+def test_start_writes_nothing_to_stdout(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    fake_server: type[FakeServer],
+    opened: list[str],
+) -> None:
+    data_dir = tmp_path / "d"
+    cli.main(["--data-dir", str(data_dir), "--no-browser", "--port", "8799"])
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert f"serving {data_dir.resolve()} at http://127.0.0.1:8799/" in captured.err
+
+
 def test_logs_go_to_stderr() -> None:
     handlers = cli._log_config()["handlers"]
     assert handlers
