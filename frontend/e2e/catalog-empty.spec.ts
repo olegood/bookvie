@@ -25,6 +25,7 @@ test.describe('Story 1.6 Catalog states (ATDD)', () => {
     await page.goto('/')
     await viewRequested
     await expect(page.getByRole('banner').getByRole('navigation')).toBeVisible()
+    await expect(page.getByRole('main')).toBeEmpty()
     await expect(page.getByText(EMPTY_SHELF)).toHaveCount(0)
     await expect(page.getByRole('button', { name: 'New book' })).toHaveCount(0)
     await expect(page.getByRole('progressbar')).toHaveCount(0)
@@ -39,6 +40,7 @@ test.describe('Story 1.6 Catalog states (ATDD)', () => {
 
     await page.goto('/')
     await expect(page.getByRole('alert')).toHaveText(COULDNT_LOAD)
+    await expect(page.getByRole('main').getByText(COULDNT_LOAD)).toBeVisible()
     await expect(page.getByRole('banner').getByRole('navigation')).toBeVisible()
     await expect(page.getByRole('main').getByRole('heading', { level: 1, name: 'Catalog' })).toBeVisible()
 
@@ -116,5 +118,44 @@ test.describe('Story 1.6 Catalog states (ATDD)', () => {
         .analyze()
       expect(violations.map(({ id, nodes }) => `${colorScheme}: ${id} (${nodes.length})`)).toEqual([])
     }
+  })
+})
+
+test.describe('Story 1.6 Catalog states (automate)', () => {
+  test('[P2] AC-7 a Try again that fails again shows and announces Couldn\'t load again', async ({ page }) => {
+    await page.route(CATALOG_VIEW, (route) => route.abort('connectionrefused'))
+    await page.goto('/')
+    const alert = page.getByRole('alert')
+    await expect(alert).toHaveText(COULDNT_LOAD)
+
+    // Every text the alert region holds from here on, in order.
+    await alert.evaluate((region) => {
+      const seen: string[] = []
+      ;(window as Window & { alertTexts?: string[] }).alertTexts = seen
+      new MutationObserver(() => seen.push(region.textContent ?? '')).observe(region, {
+        childList: true,
+        characterData: true,
+        subtree: true,
+      })
+    })
+    await page.getByRole('button', { name: 'Try again' }).click()
+
+    await expect(page.getByRole('main').getByText(COULDNT_LOAD)).toBeVisible()
+    await expect
+      .poll(() => page.evaluate(() => (window as Window & { alertTexts?: string[] }).alertTexts))
+      .toEqual(['', COULDNT_LOAD])
+  })
+
+  test('[P2] AC-9 Try again is a button-secondary', async ({ page }) => {
+    await page.emulateMedia({ colorScheme: 'light' })
+    await page.route(CATALOG_VIEW, (route) => route.abort('connectionrefused'))
+    await page.goto('/')
+    const tryAgain = page.getByRole('button', { name: 'Try again' })
+
+    // DESIGN.md button-secondary: surface-inset, ink, 1px input-border, rounded md.
+    await expect(tryAgain).toHaveCSS('background-color', 'rgb(250, 249, 246)')
+    await expect(tryAgain).toHaveCSS('color', 'rgb(43, 46, 42)')
+    await expect(tryAgain).toHaveCSS('border', '1px solid rgb(138, 130, 115)')
+    await expect(tryAgain).toHaveCSS('border-radius', '9px')
   })
 })

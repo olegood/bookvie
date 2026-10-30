@@ -69,47 +69,96 @@ function hexHueSaturation(hex) {
   return { hue, saturation }
 }
 
+/** Messages with an exclamation mark. */
+const shouting = (copy) => copy.filter(({ text }) => text.includes('!'))
+
+const greetingsOrPraise = (copy) => copy.filter(({ text }) => GREETING_OR_PRAISE.test(text))
+
+/** Red or warning colors in CSS: named, or a saturated hex with a red-orange hue. */
+const redColors = (css) =>
+  css.flatMap(({ file, source }) => [
+    ...[...source.matchAll(/:\s*[^;{}]*/g)].filter((m) => RED_NAMES.test(m[0])).map((m) => `${file}: ${m[0]}`),
+    ...[...source.matchAll(/#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3}\b/g)]
+      .filter((m) => {
+        const { hue, saturation } = hexHueSaturation(m[0])
+        return saturation > 0.55 && (hue < 40 || hue > 345)
+      })
+      .map((m) => `${file}: ${m[0]}`),
+  ])
+
+/** :hover rules with no :focus twin in the same selector list. */
+const hoverOnly = (css) =>
+  css.flatMap(({ file, source }) =>
+    [...source.matchAll(/([^{}]*:hover[^{}]*)\{/g)]
+      .filter((m) => !/:focus/.test(m[1]))
+      .map((m) => `${file}: ${m[1].trim()}`),
+  )
+
+const FORBIDDEN_CODE = [
+  /(document|window)\.addEventListener\(\s*['"]key(down|up|press)['"]/, // global key handlers
+  /\.key\s*===?\s*['"][A-Za-z0-9/?]['"]/, // single-character shortcuts
+  /\bdraggable\b|\bonDrag\w*|\bonDrop\b/, // drag and drop
+]
+
+const forbiddenCode = (code) =>
+  code.flatMap(({ file, source }) => FORBIDDEN_CODE.filter((rule) => rule.test(source)).map((rule) => `${file}: ${rule}`))
+
 describe('copy and interaction guard', () => {
   it('[P1] AC-14 no message shouts, greets or praises, and nothing is red, key-bound, draggable or hover-only', () => {
     const copy = [...serverCopy(), ...clientCopy()]
-    assert.deepEqual(copy.filter(({ text }) => text.includes('!')), [])
+    assert.deepEqual(shouting(copy), [])
 
     assert.ok(copy.some(({ text }) => text === "Couldn't save. Your data wasn't changed."), 'server copy was scanned')
     assert.ok(copy.some(({ text }) => text === 'Your shelf is empty. Add your first book.'), 'client copy was scanned')
-    assert.deepEqual(copy.filter(({ text }) => GREETING_OR_PRAISE.test(text)), [])
+    assert.deepEqual(greetingsOrPraise(copy), [])
 
     const css = files(SRC, ['.css']).map((file) => ({ file: where(file), source: withoutComments(readFileSync(file, 'utf8')) }))
-    const reds = css.flatMap(({ file, source }) => [
-      ...[...source.matchAll(/:\s*[^;{}]*/g)].filter((m) => RED_NAMES.test(m[0])).map((m) => `${file}: ${m[0]}`),
-      ...[...source.matchAll(/#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3}\b/g)]
-        .filter((m) => {
-          const { hue, saturation } = hexHueSaturation(m[0])
-          return saturation > 0.55 && (hue < 40 || hue > 345)
-        })
-        .map((m) => `${file}: ${m[0]}`),
-    ])
-    assert.deepEqual(reds, [])
-
-    // Every :hover rule has a :focus twin in the same selector list.
-    const hoverOnly = css.flatMap(({ file, source }) =>
-      [...source.matchAll(/([^{}]*:hover[^{}]*)\{/g)]
-        .filter((m) => !/:focus/.test(m[1]))
-        .map((m) => `${file}: ${m[1].trim()}`),
-    )
-    assert.deepEqual(hoverOnly, [])
+    assert.deepEqual(redColors(css), [])
+    assert.deepEqual(hoverOnly(css), [])
 
     const code = files(SRC, ['.tsx', '.ts']).map((file) => ({
       file: where(file),
       source: withoutComments(readFileSync(file, 'utf8')),
     }))
-    const forbidden = [
-      /(document|window)\.addEventListener\(\s*['"]key(down|up|press)['"]/, // global key handlers
-      /\.key\s*===?\s*['"][A-Za-z0-9/?]['"]/, // single-character shortcuts
-      /\bdraggable\b|\bonDrag\w*|\bonDrop\b/, // drag and drop
+    assert.deepEqual(forbiddenCode(code), [])
+  })
+
+  it('[P2] AC-14 each detector flags its known-bad sample and passes the calm one next to it', () => {
+    const copy = ['Saved!', 'Welcome back.', 'Great job, three books this month.', 'Added Dune.'].map((text) => ({
+      file: 'sample',
+      text,
+    }))
+    assert.deepEqual(shouting(copy).map(({ text }) => text), ['Saved!'])
+    assert.deepEqual(greetingsOrPraise(copy).map(({ text }) => text), [
+      'Welcome back.',
+      'Great job, three books this month.',
+    ])
+
+    const css = [
+      {
+        file: 'sample.css',
+        source: [
+          '.a { color: crimson; }',
+          '.b { color: #D93025; }',
+          '.c { border-color: #e8710a; }',
+          '.calm { color: #557059; background: #8C7B5C; }',
+          '.d:hover { color: inherit; }',
+          '.e:hover, .e:focus-visible { color: inherit; }',
+        ].join('\n'),
+      },
     ]
+    assert.deepEqual(redColors(css), ['sample.css: : crimson', 'sample.css: #D93025', 'sample.css: #e8710a'])
+    assert.deepEqual(hoverOnly(css), ['sample.css: .d:hover'])
+
+    const code = [
+      "document.addEventListener('keydown', onKey)",
+      "if (event.key === 'n') openPanel()",
+      '<li draggable onDrop={drop}>',
+      "if (event.key === 'Escape') close()",
+    ].map((source, line) => ({ file: `sample.tsx:${line + 1}`, source }))
     assert.deepEqual(
-      code.flatMap(({ file, source }) => forbidden.filter((rule) => rule.test(source)).map((rule) => `${file}: ${rule}`)),
-      [],
+      forbiddenCode(code).map((hit) => hit.split(': ')[0]),
+      ['sample.tsx:1', 'sample.tsx:2', 'sample.tsx:3'],
     )
   })
 })

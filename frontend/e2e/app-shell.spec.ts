@@ -254,6 +254,7 @@ test.describe('Story 1.6 app shell (ATDD)', () => {
     const link = page.getByRole('link', { name: 'Back to the catalog' })
     await expect(link).toHaveCSS('color', 'rgb(85, 112, 89)')
     await expect(link).toHaveCSS('text-underline-offset', '3px')
+    await expect(link).toHaveCSS('text-decoration-thickness', '1px')
   })
 
   test('[P1] AC-10 reduced motion turns every transition and animation off', async ({ page }) => {
@@ -285,5 +286,66 @@ test.describe('Story 1.6 app shell (ATDD)', () => {
     const width = await page.evaluate(() => document.documentElement.scrollWidth)
     expect(width).toBeGreaterThanOrEqual(1024)
     expect((await page.getByRole('banner').boundingBox())?.width).toBeGreaterThanOrEqual(1024)
+  })
+})
+
+// Coverage beyond the ATDD scaffolds: the spec's Always rules and matrix rows
+// that no scaffold could fail on.
+test.describe('Story 1.6 app shell (automate)', () => {
+  test('[P1] AC-3 Light holds when the OS prefers dark', async ({ page }) => {
+    await page.emulateMedia({ colorScheme: 'dark' })
+    await page.goto('/')
+    const body = page.locator('body')
+    await expect(body).toHaveCSS('background-color', 'rgb(25, 27, 24)')
+
+    await page.getByRole('group', { name: 'Theme' }).getByRole('button', { name: 'Light', exact: true }).click()
+    await expect(body).toHaveCSS('background-color', 'rgb(246, 244, 239)')
+
+    await page.reload()
+    await expect(body).toHaveCSS('background-color', 'rgb(246, 244, 239)')
+  })
+
+  test('[P2] AC-3 the stored theme is on <html> before the app renders', async ({ page }) => {
+    await page.addInitScript(() => {
+      localStorage.setItem('bookvie.theme', 'dark')
+      // Record, in order, the theme landing on <html> and React's first content in #root.
+      const order: string[] = []
+      ;(window as Window & { bookvieOrder?: string[] }).bookvieOrder = order
+      new MutationObserver((records) => {
+        for (const record of records) {
+          if (record.type === 'attributes') order.push(`theme=${document.documentElement.dataset.theme}`)
+          else if ((record.target as Element).id === 'root' && !order.includes('render')) order.push('render')
+        }
+      }).observe(document, { subtree: true, childList: true, attributes: true, attributeFilter: ['data-theme'] })
+    })
+    await page.goto('/')
+    await expect(catalogHeading(page)).toBeVisible()
+
+    const order = await page.evaluate(() => (window as Window & { bookvieOrder?: string[] }).bookvieOrder)
+    expect(order).toEqual(['theme=dark', 'render'])
+  })
+
+  test('[P2] AC-2 Skip to content stays off-screen until it takes focus', async ({ page }) => {
+    await page.goto('/')
+    await expect(catalogHeading(page)).toBeVisible()
+    const skip = page.getByRole('link', { name: 'Skip to content' })
+
+    const hidden = (await skip.boundingBox())!
+    expect(hidden.y + hidden.height).toBeLessThanOrEqual(0)
+
+    await page.keyboard.press('Tab')
+    await expect(skip).toBeFocused()
+    expect((await skip.boundingBox())!.y).toBeGreaterThanOrEqual(0)
+  })
+
+  test('[P2] AC-5 the live regions sit outside main, and status is polite', async ({ page }) => {
+    await page.goto('/')
+    await expect(catalogHeading(page)).toBeVisible()
+
+    // A later modal makes the page `inert`; regions inside `main` would fall silent.
+    await expect(page.getByRole('status')).toHaveAttribute('aria-live', 'polite')
+    await expect(page.getByRole('alert')).toHaveCount(1)
+    await expect(page.getByRole('main').getByRole('status')).toHaveCount(0)
+    await expect(page.getByRole('main').getByRole('alert')).toHaveCount(0)
   })
 })
