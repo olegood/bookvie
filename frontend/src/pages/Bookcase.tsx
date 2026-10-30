@@ -71,7 +71,8 @@ function MeterBar({ meter }: { meter: LibraryMeter }) {
       >
         <span className={styles.barFill} style={{ width: `${share}%` }} />
       </span>
-      <span>{text}</span>
+      {/* The progressbar already reads this as its value. */}
+      <span aria-hidden="true">{text}</span>
     </div>
   )
 }
@@ -100,8 +101,9 @@ export default function Bookcase({ books, meter, query, highlightId, focusTarget
   const fromIndex = stopId === null ? -1 : ids.indexOf(stopId)
   const stop = fromIndex === -1 ? (visibleIds[0] ?? null) : nearestVisible(ids, fromIndex, (id) => visible.has(id))
 
-  // Keep a moved stop, so clearing the search leaves it where it went.
-  if (stopId !== null && stop !== null && stop !== stopId) setStopId(stop)
+  // Keep a moved stop, so clearing the search leaves it where it went; with
+  // no spine focused yet, the stop starts on the first spine.
+  if (stop !== null && stop !== (stopId ?? ids[0])) setStopId(stop)
 
   // Real focus follows only when a spine that had it is now hidden; with no
   // spine left it goes to Search titles. Runs before the measuring below

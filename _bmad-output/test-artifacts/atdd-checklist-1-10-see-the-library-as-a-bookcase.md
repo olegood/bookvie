@@ -155,8 +155,8 @@ Activate one test at a time: delete its `@pytest.mark.skip(reason=RED)` line, or
 - [x] Activate AC-1
 
 ### AC-3 / AC-4 the spine
-- [x] `components/Spine`: `<li><button>` with the accessible name from `title`, `firstAuthor`, `authorCount` and `finished` (`aria-label`, or visually hidden text), and the label as visible text
-- [x] Height: measure the label's natural one-line width in `spine-label` (for example `scrollWidth`, or `canvas.measureText` with the token font and letter spacing), then `min(200, ceil((120 + 0.3 × w) / 8) × 8)`. Keep this as a pure function in `lib/` so it can be unit-tested
+- [x] The spine, inline in `pages/Bookcase.tsx` (no separate component): `<li><button>` with the accessible name from `title`, `firstAuthor`, `authorCount` and `finished` (`aria-label`, or visually hidden text), and the label as visible text
+- [x] Height: measure the label's natural one-line width in `spine-label` (built as the vertical label's `scrollHeight`), then `min(200, ceil((120 + 0.3 × w) / 8) × 8)`. Keep this as a pure function in `lib/` so it can be unit-tested
 - [x] Read: fill `spineColor` exactly; `spine-edge` borders on the top and sides; a label strip of at most 96px (label at most 88px, one line, ellipsis). Unread: `spine-unread-fill`, 1.5px `spine-unread-outline` on the top and sides, `spine-unread-text`, no strip
 - [x] Activate AC-4, then AC-3
 
@@ -186,7 +186,7 @@ Activate one test at a time: delete its `@pytest.mark.skip(reason=RED)` line, or
 - [x] AC-4: the wording for exactly one co-author (see Notes); a Book with no authors (`firstAuthor` is "") gets no dangling "by"
 - [ ] AC-5: rows reflow when the viewport goes from 1024 to 1440px; about 35 spines a plank at 1280px; 12px inner padding at the row ends; the list name with one Book ("Bookcase, 1 book")
 - [ ] AC-6: a performance budget for the first render of 500 spines (a P3 check)
-- [ ] AC-7: Left on the first spine and Right on the last don't wrap; Up from row 1 and Down from the last row stay put; arrows skip `hidden` spines; Enter and Space do nothing until the popover story
+- [ ] AC-7: (done: Left on the first spine and Right on the last don't wrap; Up from row 1 and Down from the last row stay put; arrows skip `hidden` spines) open: Enter and Space do nothing until the popover story
 - [ ] AC-8: the nearest-neighbour tie rule; clearing the search keeps the tab stop; when the focused spine itself is hidden (filters and delete come in Epic 7 and Story 1.12), real focus moves, and it goes to Search titles when none remain
 - [ ] AC-9: reduced motion shows the ring instantly and scrolls with `behavior: 'auto'`; a search that would hide the new Book is cleared first; Add anyway from the Duplicate dialog lands on the spine the same way
 - [ ] AC-10: the remembered List view after a reload runs the List form of the check
@@ -247,8 +247,8 @@ npm run check
 ### Green run (Story 1.10 implemented)
 
 - `TZ=Europe/Madrid uv run pytest tests/test_bookcase_view.py` → **1 passed**.
-- `npm --prefix frontend run e2e -- e2e/bookcase.spec.ts` → **10 passed**.
-- `npm run check` → exit 0 (92 e2e passed, none skipped).
+- `npm --prefix frontend run e2e -- e2e/bookcase.spec.ts` → **14 passed** (the 10 ATDD tests plus 4 added in review).
+- `npm run check` → exit 0 (96 e2e passed, none skipped).
 - Unit: `spine.test.ts` (height boundaries, tie rule), `catalog.test.ts` (`spineName`, `bookcaseName`), `catalogView.test.ts` (junk and throwing storage). The step boundary is w = 80/3 ≈ 26.667, so the unit test pins 26.66 → 128 and 26.67 → 136 (w = 26.7 gives 128.01, which rounds up to 136).
 
 ### Scaffold run (all skipped)

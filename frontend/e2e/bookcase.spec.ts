@@ -380,9 +380,13 @@ test.describe('Story 1.10 Bookcase view (ATDD)', () => {
     await expect(all.last()).toBeFocused()
     await page.keyboard.press('ArrowRight')
     await expect(all.last()).toBeFocused()
+    await page.keyboard.press('ArrowDown')
+    await expect(all.last()).toBeFocused()
     await page.keyboard.press('Home')
     await expect(all.first()).toBeFocused()
     await page.keyboard.press('ArrowLeft')
+    await expect(all.first()).toBeFocused()
+    await page.keyboard.press('ArrowUp')
     await expect(all.first()).toBeFocused()
 
     // No type-ahead: a letter moves nothing.
@@ -420,6 +424,8 @@ test.describe('Story 1.10 Bookcase view (ATDD)', () => {
     await search(page).fill('moon')
 
     await expect(spines(page)).toHaveCount(2)
+    // The list name still counts every Book.
+    await expect(page.getByRole('list', { name: 'Bookcase, 5 books', exact: true })).toBeVisible()
     await expect(spines(page).first()).toHaveAccessibleName(name('Blue Moon'))
     await expect(spines(page).last()).toHaveAccessibleName(name('Eclipse Moon'))
     await expect(bookcase(page).getByRole('listitem')).toHaveCount(2)
@@ -567,6 +573,7 @@ test.describe('Story 1.10 Bookcase view (ATDD)', () => {
     })
     expect(outline.edge).not.toBe(outline.fill)
   })
+
   test('[P1] AC-3 a spine first rendered hidden gets its measured height once a search shows it', async ({
     page,
     seededServer,
@@ -626,5 +633,24 @@ test.describe('Story 1.10 Bookcase view (ATDD)', () => {
     await expect(listButton).toHaveAttribute('aria-pressed', 'true')
     await expect(bookRows(page)).toHaveCount(1)
     await expect(bookcase(page)).toBeHidden()
+  })
+
+  test('[P1] AC-8 with no spine focused yet, a search that hides the first spine moves the Tab stop for good', async ({
+    page,
+    seededServer,
+  }) => {
+    const author = 'Author'
+    // In sort order: Arcadia, Blue Moon, Cosmos.
+    const server = await seededServer({
+      books: ['Cosmos', 'Arcadia', 'Blue Moon'].map((title) => ({ title, authors: [author] })),
+    })
+    await page.goto(`${server.url}/`)
+
+    await search(page).fill('moon')
+    await expect(spines(page)).toHaveCount(1)
+    await search(page).fill('')
+    await expect(spines(page)).toHaveCount(3)
+    await tabIntoBookcase(page)
+    await expect(spine(page, `Blue Moon by ${author}, not read yet`)).toBeFocused()
   })
 })

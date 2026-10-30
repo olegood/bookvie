@@ -314,7 +314,8 @@
     outline-color: Highlight;
   }
 
+  /* Dashed, so the ring shows apart from the solid focus outline. */
   .spine.highlight {
-    outline: 2px solid Highlight;
+    outline: 2px dashed Highlight;
   }
 }

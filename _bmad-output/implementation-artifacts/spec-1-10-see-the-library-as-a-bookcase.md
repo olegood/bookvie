@@ -59,6 +59,39 @@ Decisions: when the tab-stop spine is hidden, the stop moves to the nearest visi
 - Given an empty library, when Catalog opens, then only **New book** and the empty shelf show (catalog-empty AC-8 still passes).
 - Given a stored view value that is junk, or storage that throws, when Catalog opens, then Bookcase shows and the page works.
 
+### Review Findings
+
+Second review, 2026-10-30, of diff `839eb7a..930e08e`.
+
+- [x] [Review][Patch] Forced-colors highlight ring looks the same as focus — make the forced-colors ring a dashed outline, so it differs from the solid focus outline and turns solid when it fades (decided by Oleg) [frontend/src/pages/Bookcase.module.css:317]
+- [x] [Review][Patch] Moved Tab stop not kept when no spine was focused yet — with `stopId` null, a search that hides the first spine moves the stop to `visibleIds[0]` but never saves it, so clearing the search puts it back on the first spine (Decision: "The moved stop stays when the search is cleared") [frontend/src/pages/Bookcase.tsx:104]
+- [x] [Review][Patch] No test that the list name keeps the full count during a search — swapping in `bookcaseName(visibleIds.length)` keeps every test green; assert `'Bookcase, 5 books'` exactly in AC-8 after `fill('moon')` [frontend/e2e/bookcase.spec.ts]
+- [x] [Review][Patch] No test that Up on the top row and Down on the bottom row stay put — wrapping via `bottoms.at(row + step)` keeps AC-7 green; add both presses after Home and End [frontend/e2e/bookcase.spec.ts]
+- [x] [Review][Patch] Checklist pass counts are stale — `bookcase.spec.ts` now has 13 active tests, not "10 passed", and the "92 e2e passed" total predates the three new tests [_bmad-output/test-artifacts/atdd-checklist-1-10-see-the-library-as-a-bookcase.md:250]
+- [x] [Review][Patch] Ticked checklist item names a `components/Spine` that wasn't built — the spine markup is inline in `Bookcase.tsx` [_bmad-output/test-artifacts/atdd-checklist-1-10-see-the-library-as-a-bookcase.md:158]
+- [x] [Review][Patch] Meter text is read twice by screen readers — the progressbar's `aria-valuetext` and the visible span say the same "X of Y finished"; mark the span `aria-hidden="true"` [frontend/src/pages/Bookcase.tsx:74]
+- [x] [Review][Patch] No blank line between the AC-11 test and the new tests [frontend/e2e/bookcase.spec.ts]
+- [x] [Review][Defer] Exact 168px height may not hold on the Ubuntu CI runner [frontend/e2e/bookcase.spec.ts:590] — deferred: maybe-false, medium if true. 168 was measured with macOS system fonts, and the `system-ui` stack falls back to another font on `ubuntu-latest`. The ATDD scaffold pins the same values (line 215). Settled by the first CI run after these commits are pushed.
+
+**Rejected**
+
+- false — Junk/throwing-storage tests labelled "AC-1": the checklist's AC-1 follow-up owns those cases, so the label matches.
+- false — Meter header overflows on narrow screens: the app has a 1024px minimum width, and narrower windows scroll.
+- false — CatalogPage imports Bookcase's CSS module: the Code Map says to move the card and plank styles into the Bookcase module and have `EmptyShelf` reuse them.
+- false — Title filter runs three times per render: only one view renders at a time, and CatalogPage filters only inside the debounced count timer.
+- false — Tab stop jumps to the first spine when its Book leaves `books`: no delete intent exists yet, so a Book can't disappear (Story 1.12).
+- false — Focus drops to body when the focused spine's Book is removed: same, no removal path until Story 1.12.
+- low — Spec `status: done` vs sprint-status `review`: the fix edits the spec under review, and this workflow syncs status.
+- low — Spec Verification "10 passed": the fix edits the spec under review (the checklist count is patched above).
+- low — Execution task still reads "26.7 → 128": the fix edits the spec under review; the Implementation Notes already disclose it.
+- low — Hard-coded sizes (strip width, 1.5px border, swatches, bar height): cosmetic drift risk with no current harm.
+- low — View choice not synced across tabs: not required, and it takes effect on reload.
+- low — `addInitScript` seeding reruns on reload: only a hypothetical future test would hit it.
+- low — `catalogView.test.ts` doesn't read back `'bookcase'`: AC-1 e2e reloads in both directions.
+- low — Empty shelf and full bookcase planks differ in geometry: the two states are never seen side by side, and unifying them means redrawing the empty shelf; the card is shared.
+- low — Tab-order part of the AC-1 follow-up untested: follow-ups may stay open, and the toolbar order is visible in `CatalogPage.tsx`.
+- low — Switching to List and back resets the Tab stop: the fix needs lifting state into CatalogPage, and Tab still lands on a spine.
+
 ## Implementation Notes
 
 - Spine height boundary: the formula gives 120 + 0.3 × 26.7 = 128.01, which rounds up to 136, so "26.7 → 128" can't hold. The step boundary is w = 80/3 ≈ 26.667. `spine.test.ts` pins 26.66 → 128, 26.67 → 136 and 26.8 → 136.
