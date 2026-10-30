@@ -73,6 +73,35 @@ Decisions: the panel is a native `<dialog>` opened with `showModal()`. Because t
 - Given `npm run check`, when it runs, then it exits 0 with the 12 Story 1.8 scaffolds active, and the 1.6 empty-shelf and shell tests still pass.
 - Given the open panel, when a screen reader is in use, then the `alert`/`status` regions are inside the dialog (not inert), and after close they are back in the shell.
 
+### Review Findings
+
+- [x] [Review][Patch] List view joins authors with ", " — switch to "; " to match the Author(s) input and avoid ambiguity with surname-first names; update the catalog-list test (decision: Oleg chose "; ") [frontend/src/pages/CatalogList.tsx:57]
+- [x] [Review][Patch] Panel closes itself right after opening in dev (StrictMode): the effect cleanup's `close()` queues a `close` event that fires after the re-run `showModal()` and reaches `onClose` (confirmed in Chromium: the event fires with `open=true`). Ignore `close` while the dialog is still open [frontend/src/components/SidePanel.tsx:82]
+- [x] [Review][Patch] AC-7's "in ink" check passes even when the couldn't-save line is visually hidden (the hidden alert inherits ink colour); assert visible geometry, and add a 422 refusal with only an unknown field (e.g. `intent`) that shows the same line [frontend/e2e/new-book-panel.spec.ts:330]
+- [x] [Review][Patch] The native close path (`onClose` on `<dialog>`, triage #1) is never exercised; close the dialog without `cancel` (`dialog.close()`) and assert New book reopens an empty panel [frontend/e2e/new-book-panel.spec.ts:360]
+- [x] [Review][Patch] Enter in Tags with no active suggestion should submit (triage #17), but no test covers it; end AC-3 by pressing Enter in Tags after ", zines" and assert the panel closes and the tag is saved [frontend/e2e/new-book-panel.spec.ts:202]
+- [x] [Review][Patch] The highlight ring's 2 s removal is never asserted; add a closing poll in AC-5 for no accent `box-shadow` [frontend/e2e/new-book-panel.spec.ts:270]
+- [x] [Review][Patch] `showAlert` doc comment still says "couldn't save" only; since triage #2 it also covers refusals with no known field [frontend/src/components/SidePanel.tsx:16]
+- [x] [Review][Patch] `e2e:burn-in` runs e2e without `TZ=Europe/Madrid`, unlike `check:e2e`, so the fixture-spawned server and the pinned browser can disagree on the zone [package.json:17]
+
+**Rejected:**
+- Spec `status: 'done'` vs sprint `review` (two reviewers): the fix would edit the spec; the workflow sets the final status at the end of this review.
+- Test counts in the spec (12 vs 13 vs 14): the fix would edit the spec.
+- `submit` lacks `try/finally` (false): `sendIntent` catches every fetch/parse error and `invalidateQueries` doesn't reject by default, so `addBook` never rejects.
+- `bookId ?? ''` fallback (low): an `ok` add always carries `bookId`; making a missing id an error would need a new branch.
+- "Added <Title>." uses the client trim (false): the server stores `title` trimmed only. FR-3's normalization is for duplicate matching, not storage.
+- Focus passes New book before the new row (low): the move happens in the same commit, and skipping the restore needs a new SidePanel prop.
+- `BOOK_FIELD_KEYS` drift from backend (low): drift is unlikely, and an unmapped field still shows the alert line; a drift check is new tooling.
+- Mixed known and unknown refusal fields hide the unknown message (low): the server doesn't send unknown keys alongside field errors in everyday use.
+- Live-region e2e covers only Cancel (low): every close path goes through the same unmount cleanup.
+- `Intl.Collator(undefined)` depends on locale, and no `numeric` (low): the spec asks only for `Intl.Collator`, and the test's order holds across common locales.
+- Finished glyph invisible without `spineColor` (false): the server always resolves a spine colour (`resolve_spine_color`).
+- `matchesTitle` runs three times (low): one predicate everywhere, so the count and the rows can't drift; it's a cleanup only.
+- No test for add under an active search (false): AC-5 fills "Neuro" and asserts the search is cleared.
+- Safari/Firefox mouse click leaves `opener` = body (low): only mouse users are affected (focus isn't restored), and the fix needs an opener prop.
+- An already-picked tag is suggested again (low): only when the same tag is typed again; the fix adds a filter.
+- `close` event after unmount calls `onClose` twice (false): React 19 detaches a deleted instance's props, and `onClose` is idempotent anyway.
+
 ## Implementation Notes
 
 - The couldn't-save line in the panel is the `alert` region itself, which `SidePanel` places in a slot above the footer buttons and un-hides in ink (`showAlert`). A separate `FailureMessage` would leave two elements with that text in the panel, and AC-7's `getByText(..., {exact:true})` would fail strict mode. Every other time the regions stay visually hidden.

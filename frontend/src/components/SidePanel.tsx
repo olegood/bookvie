@@ -14,7 +14,8 @@ type Props = {
   footer: ReactNode
   /**
    * Shows the `alert` region as a line in ink above the footer buttons, for an
-   * outcome that has no field to point at (couldn't save).
+   * outcome that has no field to point at (couldn't save, or a refusal whose
+   * fields the form doesn't know).
    */
   showAlert?: boolean
   children: ReactNode
@@ -79,7 +80,11 @@ export default function SidePanel({ title, onClose, onSubmit, initialFocus, foot
       }}
       // A native close that skips `cancel` (the close-watcher rule) must
       // still reach the owner; after the owner's own close it is unmounted.
-      onClose={onClose}
+      // A queued close that lands after a reopen (StrictMode re-runs the
+      // effect: close, then showModal) is stale and ignored.
+      onClose={(event) => {
+        if (!event.currentTarget.open) onClose()
+      }}
     >
       <div className={styles.header}>
         <h2 id={headingId} className={styles.heading}>

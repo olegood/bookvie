@@ -217,10 +217,12 @@ test.describe('Story 1.8 New book panel (ATDD)', () => {
     await expect(tags).toHaveValue(typed)
     await expect(tags).toHaveAttribute('aria-expanded', 'false')
 
-    // Text that matches no suggestion is kept and saved as a new tag.
-    await tags.fill(`${pickedTag}, zines`)
+    // Text that matches no suggestion is kept and saved as a new tag; with no
+    // suggestion active, Enter in Tags submits the form.
     await fillFields(panel, DUNE)
-    await panel.getByRole('button', { name: 'Add book', exact: true }).click()
+    await tags.fill(`${pickedTag}, zines`)
+    await expect(tags).toHaveAttribute('aria-expanded', 'false')
+    await tags.press('Enter')
     await expect(panel).toBeHidden()
     expect((await catalog(page, server)).tags).toContain('zines')
   })
@@ -274,18 +276,18 @@ test.describe('Story 1.8 New book panel (ATDD)', () => {
     const row = page.getByRole('table').getByRole('row').filter({ has: page.getByText('Dune', { exact: true }) })
     await expect(row).toHaveCount(1)
     await expect(row.locator(':focus')).toHaveText('Dune')
-    // Highlight ring: accent box-shadow on the row or one of its cells.
-    await expect
-      .poll(() =>
-        row.evaluate(
-          (element, accent) =>
-            [element, ...Array.from(element.querySelectorAll('*'))].some((node) =>
-              getComputedStyle(node).boxShadow.includes(accent),
-            ),
-          ACCENT,
-        ),
+    // Highlight ring: accent box-shadow on the row or one of its cells, gone
+    // after 2 s.
+    const ringed = () =>
+      row.evaluate(
+        (element, accent) =>
+          [element, ...Array.from(element.querySelectorAll('*'))].some((node) =>
+            getComputedStyle(node).boxShadow.includes(accent),
+          ),
+        ACCENT,
       )
-      .toBe(true)
+    await expect.poll(ringed).toBe(true)
+    await expect.poll(ringed, { timeout: 4_000 }).toBe(false)
     expect((await catalog(page, server)).books.map((book) => book.title).sort()).toEqual(['Dune', 'Neuromancer'])
   })
 
@@ -346,13 +348,51 @@ test.describe('Story 1.8 New book panel (ATDD)', () => {
     await panel.getByRole('button', { name: 'Add book', exact: true }).click()
     await expect(page.getByRole('alert')).toHaveText(COULDNT_SAVE)
     await expect(panel).toBeVisible()
-    await expect(panel.getByText(COULDNT_SAVE, { exact: true })).toHaveCSS('color', INK)
+    const line = panel.getByText(COULDNT_SAVE, { exact: true })
+    await expect(line).toHaveCSS('color', INK)
+    // Laid out as a line in the panel, not left visually hidden.
+    await expect(line).toHaveCSS('position', 'static')
+    expect((await line.boundingBox())?.height ?? 0).toBeGreaterThan(1)
 
     for (const [label, value] of Object.entries({ ...DUNE, Subtitle: 'Book One', Tags: 'sci-fi' })) {
       await expect(panel.getByLabel(label, { exact: true }), label).toHaveValue(value)
     }
     await expect(panel.getByRole('combobox', { name: 'Type', exact: true })).toHaveValue(/paperback/i)
     await expect(page.getByRole('status')).toHaveText('')
+    expect((await catalog(page, server)).books.map((book) => book.title)).toEqual(['Neuromancer'])
+  })
+
+  test('[P1] a refusal naming no field of the form shows its message as a line in the panel', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: [NEUROMANCER] })
+    const message = 'Not saved. The form could not be read.'
+    await page.route(ADD_BOOK, (route) =>
+      route.fulfill({
+        status: 422,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          error: {
+            kind: 'refusal',
+            code: 'invalid_fields',
+            message,
+            fields: [{ field: 'intent', message: 'The form could not be read.' }],
+          },
+        }),
+      }),
+    )
+    await page.goto(`${server.url}/`)
+    const panel = await openNewBook(page)
+    await fillFields(panel, DUNE)
+
+    await panel.getByRole('button', { name: 'Add book', exact: true }).click()
+    await expect(page.getByRole('alert')).toHaveText(message)
+    await expect(panel).toBeVisible()
+    const line = panel.getByText(message, { exact: true })
+    await expect(line).toHaveCSS('position', 'static')
+    expect((await line.boundingBox())?.height ?? 0).toBeGreaterThan(1)
+    await expect(panel.getByLabel('Title', { exact: true })).toHaveValue('Dune')
     expect((await catalog(page, server)).books.map((book) => book.title)).toEqual(['Neuromancer'])
   })
 
@@ -371,7 +411,10 @@ test.describe('Story 1.8 New book panel (ATDD)', () => {
     const closers: [string, (panel: Locator) => Promise<void>][] = [
       ['Cancel', (panel) => panel.getByRole('button', { name: 'Cancel', exact: true }).click()],
       ['Close', (panel) => panel.getByRole('button', { name: 'Close', exact: true }).click()],
-      ['Esc', (panel) => panel.getByLabel('Title', { exact: true }).press('Escape')],
+      // A browser close that skips `cancel` must still close the panel, so the
+      // next round can open it again.
+      ['native close', (panel) => panel.evaluate((dialog) => (dialog as HTMLDialogElement).close())],
+      ['Esc',(panel) => panel.getByLabel('Title', { exact: true }).press('Escape')],
     ]
 
     for (const [how, close] of closers) {

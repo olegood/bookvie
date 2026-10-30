@@ -54,7 +54,7 @@ export default function CatalogList({ books, query, highlightId, titleCells }: P
               >
                 {book.title}
               </td>
-              <td>{book.authors.join(', ')}</td>
+              <td>{book.authors.join('; ')}</td>
               <td className={styles.number}>{pages.format(book.pages)}</td>
               <td>
                 <span className={styles.status}>

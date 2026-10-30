@@ -62,7 +62,7 @@ test.describe('Story 1.8 List view and Search titles (ATDD)', () => {
 
     const cells = (title: string) =>
       bookRows(page).filter({ has: page.getByText(title, { exact: true }) }).getByRole('cell')
-    await expect(cells('Dune')).toHaveText(['Dune', 'Frank Herbert, Brian Herbert', '1,412', 'Finished', '15 Mar 2026'])
+    await expect(cells('Dune')).toHaveText(['Dune', 'Frank Herbert; Brian Herbert', '1,412', 'Finished', '15 Mar 2026'])
     await expect(cells('Nana')).toHaveText(['Nana', 'Émile Zola', '464', 'Not read yet', '15 Mar 2026'])
   })
 
