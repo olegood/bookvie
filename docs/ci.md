@@ -6,7 +6,7 @@
 
 | Job | Runs | When |
 | --- | --- | --- |
-| Lint (check:api) | `npm run check:api`: API contract diff, `tsc -b`, oxlint and the `src/api` unit tests | every run; the other jobs wait for it |
+| Lint (check:api) | `npm run check:api`: API contract diff, `tsc -b`, oxlint, the `src/api` unit tests and the contract drift test | every run; the other jobs wait for it |
 | Backend (check:py) | `npm run check:py`: pytest with the 90% `domain` and 80% `intents`+`store` coverage gates | every run |
 | E2E (shard 1/1) | `npm run build`, the Playwright suite, then `scripts/e2e-count.mjs` | every run |
 | Install smoke (check:smoke) | `npm run check:smoke`: `uv tool install` into a temp dir, start, fetch the SPA | every run |

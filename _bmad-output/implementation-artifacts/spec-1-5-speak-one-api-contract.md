@@ -69,6 +69,40 @@ context:
 - Given a fresh checkout, when `npm run check:api` runs, then it passes; after editing a view model without `api:gen`, it fails.
 - Given `npm run check`, when it runs, then it exits 0, coverage gates hold, and `~/bookvie-data` is unchanged.
 
+### Review Findings
+
+Code review 2026-10-30 (blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor): 26 raw findings, 0 decision-needed, 4 patch, 0 defer, 22 rejected.
+
+- [x] [Review][Patch] `api.py` docstring says unknown `/api` paths 404, but a POST (or any non-GET) to an unknown `/api` path or a wrong method on a view gets 405 `{detail}` from the GET/HEAD-only SPA route [backend/bookvie/http/api.py:6]
+- [x] [Review][Patch] `test_revalidation_error_is_500` checks the stderr substring only; the other `couldnt_save` tests assert exactly one `bookvie:` line [backend/tests/test_contract.py:197]
+- [x] [Review][Patch] `_app(data_dir, fs=None)` forwards an `fs` no caller passes; the seam test swaps `store.fs` after open — drop the parameter [backend/tests/test_contract.py:72]
+- [x] [Review][Patch] README and `docs/ci.md` describe `check:api` tests as `src/api` unit tests only; it also runs `scripts/*.test.mjs` (the contract drift test) [README.md, docs/ci.md]
+
+**Rejected:**
+
+- acceptance: 405/404 on `/api` not enveloped (Always rule) — low; repeat of triage #20; enveloping needs a new error code (forbidden by Never) or a spec exemption, so the fix edits the spec. Client already maps non-envelope bodies to `couldnt_save`.
+- acceptance: drift test appends to the generated file instead of editing a model — low; the pass case proves model → dump → TS regenerates identically, so model drift reaches the same diff; a real model mutation needs a patched backend in a subprocess.
+- acceptance + blind: unexpected exception outside `commit` also gets uvicorn's traceback (Starlette `ServerErrorMiddleware` re-raises, `errors.py:186`) — low; only a bug in a view reaches it, and the traceback helps diagnose that bug; fix needs a custom middleware.
+- acceptance: `_Wire`/`_View` repeat the camelCase config instead of reusing domain's — low; wire output is identical, domain `_Model` is private and also carries store-only settings; no caller diverges.
+- acceptance: `check:api` runs `scripts/*.test.mjs` beyond the spec list — false; additive, contradicts nothing.
+- acceptance + blind: spec `done` vs sprint `review` — false; this review syncs both statuses (repeat of #15).
+- acceptance: hooks untested — already deferred (triage #7).
+- blind: no `ok()` builder, so a future `response_model=OkResponse` sends `null`s — low; no route returns it yet; the builder belongs with the first real intent (Story 1.7); client tolerates nulls.
+- blind: `/api/health` not on the router, so it lacks envelope responses — low; pre-existing (Story 1.2), the route cannot fail.
+- blind: malformed body message reads "1 field needs attention: body." — low; the SPA always sends JSON, only hand-made requests reach it; field-label copy belongs to Story 1.7.
+- blind + edge-case: a `refusal` body at 5xx/3xx is accepted as a refusal — low; the server never sends one (repeat of #11 family); fix adds a guard.
+- blind + edge-case: a `ValidationError` raised by the change itself is logged as "the library is not valid" and returns 500 — low; per Always, any exception in an intent is 500; intents validate input before the change (Story 1.7); telling them apart needs wrapping `change`.
+- blind: `check:api` dumps the schema three times — low; a few seconds of CI; fix restructures the script.
+- blind: `--write` and missing-file paths of `api-contract.mjs` untested — low; a broken `api:gen` shows at once when run; fix adds tests.
+- blind: docs omit that `check:api` now needs uv/Python — false; README states it regenerates from the backend schema, and the repo already requires uv for `check:py`.
+- blind: `test_contract.py` imports `FaultyFs` from `test_store.py` — low; works today; moving it to a shared helper is a refactor.
+- blind: `_is_api` lowercases while routing is case-sensitive — false; it mirrors `_is_server_path` in `app.py`, which reserves `/API` the same way.
+- blind: 409 documented with no 409 code — low; the spec mandates the router-level mapping (repeat of #10).
+- blind: `sendIntent` accepts undefined/Blob bodies — low; repeat of #19, no callers yet.
+- edge-case: `bad envelope` kind/status mismatch — merged into the refusal-at-5xx line above.
+- edge-case: change-raised `ValidationError` misleading log — merged into the change-`ValidationError` line above.
+- edge-case: POST to unknown `/api` → 405 — kept as the docstring patch; enveloping it rejected with the acceptance 405 line.
+
 ## Implementation Notes
 
 ## Spec Change Log

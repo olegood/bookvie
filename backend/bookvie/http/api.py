@@ -3,8 +3,9 @@
 Every ``/api`` error body is ``{error: {kind, code, message, fields?}}``:
 :class:`IntentError` from an intent, 422 ``invalid_fields`` for a request
 that fails validation, and 500 ``couldnt_save`` for anything unexpected.
-FastAPI's ``{detail}`` shape never reaches the browser. Unknown ``/api``
-paths still 404 through the SPA route.
+FastAPI's ``{detail}`` shape never reaches the browser from a route here.
+Unknown ``/api`` paths are not enveloped: a GET or HEAD 404s through the SPA
+route, and any other method gets Starlette's 405 ``{detail}``.
 
 ``http`` may not import ``store`` or ``domain``: the store on
 ``app.state.store`` is duck-typed and only its ``library`` is read.

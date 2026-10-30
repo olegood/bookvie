@@ -69,8 +69,8 @@ def data_dir(tmp_path: Path) -> Path:
     return tmp_path / "data"
 
 
-def _app(data_dir: Path, fs=None) -> FastAPI:
-    store = Store.open(data_dir, fs=fs)
+def _app(data_dir: Path) -> FastAPI:
+    store = Store.open(data_dir)
     app = create_app(data_dir / "no-static", data_dir=data_dir, store=store)
 
     @app.post("/api/intents/probe")
@@ -202,8 +202,9 @@ def test_revalidation_error_is_500(
     assert response.status_code == 500
     assert response.json() == COULDNT_SAVE
     assert _library_bytes(data_dir) == before
-    err = capsys.readouterr().err
-    assert "bookvie: couldn't save: the library is not valid: books.0.pages" in err
+    lines = [line for line in capsys.readouterr().err.splitlines() if line.startswith("bookvie:")]
+    assert len(lines) == 1
+    assert "the library is not valid: books.0.pages" in lines[0]
 
 
 def test_unexpected_exception_in_a_change_is_500(
