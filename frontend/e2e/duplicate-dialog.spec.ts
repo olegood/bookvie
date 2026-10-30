@@ -3,6 +3,7 @@
 // API level (backend/tests/test_duplicate_book.py); these tests use the real
 // server's refusal and read every outcome by role and accessible name.
 
+import AxeBuilder from '@axe-core/playwright'
 import type { Locator, Page, Request } from '@playwright/test'
 import { expect, type Server, test } from './fixtures.ts'
 
@@ -10,9 +11,13 @@ const ADD_BOOK = '/api/intents/add-book'
 const COULDNT_SAVE = "Couldn't save. Your data wasn't changed."
 // DESIGN.md ink, light theme.
 const INK = 'rgb(43, 46, 42)'
+// DESIGN.md ink, dark theme.
+const INK_DARK = 'rgb(236, 234, 227)'
 // Ace's Dune: seeded as ISBN-13, typed as the ISBN-10 on older copies.
 const DUNE_ISBN13 = '9780441172719'
 const DUNE_ISBN10 = '0-441-17271-7'
+// Ace's 2005 Dune: another edition, so another ISBN.
+const DUNE_2005_ISBN13 = '978-0-441-01359-3'
 // A complete Book as the cataloging skill types it; Type is picked separately.
 const DUNE = {
   Title: 'Dune',
@@ -48,6 +53,15 @@ async function fillFields(panel: Locator, fields: Record<string, string>): Promi
 async function catalogTitles(page: Page, server: Server): Promise<string[]> {
   const response = await page.request.get(`${server.url}/api/views/catalog`)
   return ((await response.json()) as CatalogBody).books.map((book) => book.title).sort()
+}
+
+/** Every add-book POST the page sends, in order. */
+function addBookRequests(page: Page): Request[] {
+  const sent: Request[] = []
+  page.on('request', (request) => {
+    if (request.method() === 'POST' && new URL(request.url()).pathname === ADD_BOOK) sent.push(request)
+  })
+  return sent
 }
 
 /** The JSON `intent` part of a multipart add-book request. */
@@ -309,5 +323,134 @@ test.describe('Story 1.9 Duplicate dialog (ATDD)', () => {
       await expect(panel.getByLabel(label, { exact: true }), label).toHaveValue(value)
     }
     expect(await catalogTitles(page, server)).toEqual(['Dune', 'Neuromancer'])
+  })
+})
+
+test.describe('Story 1.9 Duplicate dialog (automate)', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.emulateMedia({ colorScheme: 'light' })
+  })
+
+  test('[P1] AC-8 while the Add anyway resend is in flight, Add book sends nothing', async ({ page, seededServer }) => {
+    const server = await seededServer({ books: [{ title: 'Dune', authors: ['Frank Herbert'] }, NEUROMANCER] })
+    // The resend (the second send) is held until the extra presses are made.
+    let release!: () => void
+    const held = new Promise<void>((resolve) => (release = resolve))
+    let resendArrived!: () => void
+    const resendHeld = new Promise<void>((resolve) => (resendArrived = resolve))
+    let sends = 0
+    await page.route(`**${ADD_BOOK}`, async (route) => {
+      if (++sends === 2) {
+        resendArrived()
+        await held
+      }
+      await route.continue()
+    })
+    const sent = addBookRequests(page)
+    await page.goto(`${server.url}/`)
+    const panel = await openNewBook(page)
+    await fillFields(panel, DUNE)
+    await panel.getByRole('button', { name: 'Add book', exact: true }).click()
+    await duplicateDialog(page).getByRole('button', { name: 'Add anyway', exact: true }).click()
+    await resendHeld
+
+    const addBook = panel.getByRole('button', { name: 'Add book', exact: true })
+    await expect(addBook).toHaveAttribute('aria-disabled', 'true')
+    // A real press still lands on an aria-disabled button; Playwright needs force.
+    await addBook.click({ force: true })
+    // A submit that skips the button (a script or agent) reaches the in-flight guard.
+    await panel.locator('form').evaluate((form: HTMLFormElement) => form.requestSubmit())
+    release()
+
+    await expect(page.getByRole('status')).toHaveText('Added Dune.')
+    expect(sent).toHaveLength(2)
+    expect(sent.map(intentOf).map((intent) => intent.confirmDuplicate)).toEqual([undefined, true])
+    await expect(duplicateDialog(page)).toHaveCount(0)
+    expect(await catalogTitles(page, server)).toEqual(['Dune', 'Dune', 'Neuromancer'])
+  })
+
+  test("[P2] AC-7 after Don't add, an ISBN edited to another edition saves without a warning", async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({
+      books: [{ title: 'Dune', authors: ['Frank Herbert'], isbn: DUNE_ISBN13 }, NEUROMANCER],
+    })
+    const sent = addBookRequests(page)
+    await page.goto(`${server.url}/`)
+    const panel = await openNewBook(page)
+    await fillFields(panel, { ...DUNE, ISBN: DUNE_ISBN10 })
+    const addBook = panel.getByRole('button', { name: 'Add book', exact: true })
+    await addBook.click()
+    const dialog = duplicateDialog(page)
+    await dialog.getByRole('button', { name: "Don't add", exact: true }).click()
+    await expect(dialog).toBeHidden()
+
+    // Same title and author, but both Books now have different ISBNs.
+    await panel.getByLabel('ISBN', { exact: true }).fill(DUNE_2005_ISBN13)
+    await addBook.click()
+
+    await expect(page.getByRole('status')).toHaveText('Added Dune.')
+    await expect(dialog).toHaveCount(0)
+    await expect(panel).toBeHidden()
+    expect(sent).toHaveLength(2)
+    expect(sent.map(intentOf).map((intent) => [intent.isbn, intent.confirmDuplicate])).toEqual([
+      [DUNE_ISBN10, undefined],
+      [DUNE_2005_ISBN13, undefined],
+    ])
+    expect(await catalogTitles(page, server)).toEqual(['Dune', 'Dune', 'Neuromancer'])
+  })
+
+  test('[P2] AC-6 Tab and Shift+Tab cycle between the two buttons in both directions', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: [{ title: 'Dune', authors: ['Frank Herbert'] }, NEUROMANCER] })
+    await page.goto(`${server.url}/`)
+    const panel = await openNewBook(page)
+    await fillFields(panel, DUNE)
+    await panel.getByRole('button', { name: 'Add book', exact: true }).click()
+    const dialog = duplicateDialog(page)
+    const dontAdd = dialog.getByRole('button', { name: "Don't add", exact: true })
+    const addAnyway = dialog.getByRole('button', { name: 'Add anyway', exact: true })
+    await expect(dontAdd).toBeFocused()
+
+    for (const [key, focused] of [
+      ['Tab', addAnyway],
+      ['Tab', dontAdd],
+      ['Shift+Tab', addAnyway],
+      ['Shift+Tab', dontAdd],
+    ] as const) {
+      await page.keyboard.press(key)
+      await expect(focused).toBeFocused()
+    }
+  })
+
+  test('[P2] AC-6 the open dialog passes axe in both themes, and its heading is ink in dark', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: [{ title: 'Dune', authors: ['Frank Herbert'] }, NEUROMANCER] })
+    for (const [colorScheme, ink] of [
+      ['light', INK],
+      ['dark', INK_DARK],
+    ] as const) {
+      await page.emulateMedia({ colorScheme })
+      await page.goto(`${server.url}/`)
+      const panel = await openNewBook(page)
+      await fillFields(panel, DUNE)
+      await panel.getByRole('button', { name: 'Add book', exact: true }).click()
+      const dialog = duplicateDialog(page)
+      await expect(dialog).toBeVisible()
+
+      await expect(dialog.getByRole('heading', { name: 'Possible duplicate', exact: true }), colorScheme).toHaveCSS(
+        'color',
+        ink,
+      )
+      const { violations } = await new AxeBuilder({ page })
+        .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
+        .analyze()
+      expect(violations.map(({ id, nodes }) => `${colorScheme}: ${id} (${nodes.length})`)).toEqual([])
+    }
   })
 })

@@ -16,6 +16,7 @@ The tests pin these names:
 """
 
 import json
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -23,10 +24,24 @@ import pytest
 from fastapi.testclient import TestClient
 
 from bookvie.domain import Library, check_invariants
+from bookvie.domain.clock import FakeClock
 from bookvie.http.app import create_app
-from bookvie.intents import COULDNT_SAVE_MESSAGE
+from bookvie.intents import (
+    COULDNT_SAVE_MESSAGE,
+    IntentError,
+    add_book,
+    parse_add_book_intent,
+)
+from bookvie.store import OsFileSystem, Store
 from tests.builder import LibraryBuilder
-from tests.test_add_book import ADD_BOOK, VALID, _client, _library_bytes, _stored_books
+from tests.test_add_book import (
+    ADD_BOOK,
+    TODAY,
+    VALID,
+    _client,
+    _library_bytes,
+    _stored_books,
+)
 from tests.test_store import FaultyFs
 
 # Ace's Dune, as ISBN-13 and as the ISBN-10 printed on older copies.
@@ -355,3 +370,122 @@ def test_titles_and_authors_fold_typographic_punctuation_and_compatibility_forms
     assert authors_match(["Madeleine L\u2019Engle"], ["madeleine l'engle"]) is True
     # Folding never merges different words.
     assert titles_match("Ender's Game", "Enders Game") is False
+
+
+# --- automate: ten matches, listed once, repeated authors, concurrency ----------
+
+
+def test_ten_matches_are_all_listed_and_the_message_names_three(tmp_path: Path) -> None:
+    books = [
+        {"title": f"Dune {n}", "authors": ["Frank Herbert"], "isbn": DUNE_ISBN13}
+        for n in range(1, 11)
+    ]
+    data_dir = _seed(tmp_path, *books)
+
+    response = _send(_client(data_dir), isbn=DUNE_ISBN10)
+
+    assert response.status_code == 409
+    error = response.json()["error"]
+    assert error["message"] == (
+        "Possible duplicate: Dune 1 by Frank Herbert, Dune 2 by Frank Herbert"
+        " and Dune 3 by Frank Herbert are already in your catalog, and 7 more."
+    )
+    assert [match["title"] for match in error["duplicates"]] == [b["title"] for b in books]
+
+
+def test_a_book_matching_on_isbn_and_on_title_and_author_is_listed_once(tmp_path: Path) -> None:
+    data_dir = _seed(
+        tmp_path,
+        {"title": "Dune", "authors": ["Frank Herbert"], "isbn": DUNE_ISBN13},
+        {"title": "Neuromancer", "authors": ["William Gibson"]},
+    )
+
+    response = _send(_client(data_dir), title="Dune", authors="Frank Herbert", isbn=DUNE_ISBN10)
+
+    assert response.status_code == 409
+    assert response.json()["error"]["duplicates"] == [
+        {"title": "Dune", "authors": ["Frank Herbert"], "isbn": DUNE_ISBN13}
+    ]
+
+
+def test_authors_that_repeat_a_name_match_as_that_name_and_are_listed_as_stored(
+    tmp_path: Path,
+) -> None:
+    data_dir = _seed(tmp_path, {"title": "Dune", "authors": ["Frank Herbert", "FRANK HERBERT"]})
+    client = _client(data_dir)
+
+    refused = _send(client, title="Dune", authors="frank herbert; Frank Herbert")
+
+    assert refused.status_code == 409
+    assert refused.json()["error"]["duplicates"] == [
+        {"title": "Dune", "authors": ["Frank Herbert", "FRANK HERBERT"], "isbn": None}
+    ]
+    # Repeating a name that isn't shared doesn't make it shared.
+    saved = _send(client, title="Dune", authors="Brian Herbert; Brian Herbert")
+    assert saved.status_code == 200, saved.json()
+
+
+class _ContendedLock:
+    """The store lock, setting ``contended`` when a second caller has to wait."""
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self.contended = threading.Event()
+
+    def __enter__(self) -> None:
+        if not self._lock.acquire(blocking=False):
+            self.contended.set()
+            self._lock.acquire()
+
+    def __exit__(self, *exc: object) -> None:
+        self._lock.release()
+
+    def locked(self) -> bool:
+        return self._lock.locked()
+
+
+def test_two_simultaneous_identical_adds_save_one_book_and_refuse_the_other(
+    tmp_path: Path,
+) -> None:
+    """The check runs inside the commit, under the store lock (AD-4).
+
+    The first add is held in its rename, lock taken and the new Book not yet
+    committed. The second is released only once it waits on that lock, so a
+    check made before taking the lock would see no Dune and save a second copy.
+    """
+    in_rename = threading.Event()
+    release = threading.Event()
+
+    class Slow(OsFileSystem):
+        def replace(self, src: Path, dst: Path) -> None:
+            in_rename.set()
+            release.wait(5)
+            super().replace(src, dst)
+
+    _seed(tmp_path, {"title": "Neuromancer", "authors": ["William Gibson"]})
+    store = Store.open(tmp_path, fs=Slow())
+    lock = _ContendedLock()
+    store.lock = lock
+    clock = FakeClock(TODAY)
+    outcomes: dict[str, object] = {}
+
+    def add(name: str) -> None:
+        intent = parse_add_book_intent(json.dumps({**VALID, "title": "Dune", "authors": "Frank Herbert"}))
+        try:
+            outcomes[name] = add_book(store, clock, intent)
+        except IntentError as exc:
+            outcomes[name] = exc.status
+
+    first = threading.Thread(target=add, args=("first",))
+    first.start()
+    assert in_rename.wait(5)
+    second = threading.Thread(target=add, args=("second",))
+    second.start()
+    assert lock.contended.wait(5)
+    release.set()
+    first.join(5)
+    second.join(5)
+
+    assert isinstance(outcomes["first"], str)
+    assert outcomes["second"] == 409
+    assert [b["title"] for b in _stored_books(tmp_path)] == ["Neuromancer", "Dune"]

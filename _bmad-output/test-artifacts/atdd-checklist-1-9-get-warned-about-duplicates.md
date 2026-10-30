@@ -165,18 +165,18 @@ Activate one test at a time: delete its `@pytest.mark.skip(reason=RED)` line, or
 
 ### Green-phase follow-ups (secondary branches, not separate red leaves)
 - [x] AC-1: ISBN-13s beginning with 979 never equal a converted ISBN-10; tabs and newlines inside titles count as whitespace; non-ASCII case folding ("ÉMILE ZOLA" against "Émile Zola"); typographic quotes, dashes and NFKC compatibility forms fold (code review of 1.9)
-- [ ] AC-1: a Book whose authors repeat a name
+- [x] AC-1: a Book whose authors repeat a name (automate)
 - [x] AC-2: 1, 2, 3 and 4 matches (the list holds all of them, while the message names three, then "and N more"); a multi-author match's wording ("by Ursula K. Le Guin; Brian Attebery"); the exact multi-match message
-- [ ] AC-2: 10 matches
+- [x] AC-2: 10 matches (automate)
 - [x] AC-3: the title alone (no shared author) or a shared author alone (another title) is not a duplicate
-- [ ] AC-3: a match on both rules at once is listed once
+- [x] AC-3: a match on both rules at once is listed once (automate)
 - [x] AC-4: `confirmDuplicate: false` still checks; `"confirmDuplicate": "true"` (a string) or `null` is a malformed intent (422 on `intent`); `confirmDuplicate: true` on a Book with no match saves as normal
 - [x] AC-6: Esc in the dialog acts as **Don't add** and doesn't close the panel; the live regions are inside the topmost dialog while it is open; the description shows each match's ISBN only when it has one; the description's wording for 2 matches, a multi-author match and 4 matches
-- [ ] AC-6: axe in both themes with the dialog open; the dark theme's ink
+- [x] AC-6: axe in both themes with the dialog open; the dark theme's ink; Tab and Shift+Tab both wrap (automate)
 - [x] AC-7: a duplicate refusal clears the field errors of an earlier refusal
-- [ ] AC-7: after **Don't add**, editing the ISBN so it no longer matches and pressing **Add book** saves without a dialog
+- [x] AC-7: after **Don't add**, editing the ISBN so it no longer matches and pressing **Add book** saves without a dialog (automate)
 - [x] AC-8: a `couldnt_save` on the resend (routed 503) keeps the panel open with every value, and the dialog is not reopened
-- [ ] AC-8: **Add anyway** is guarded against a double press
+- [x] AC-8: **Add anyway** is guarded against a double press: while the resend is in flight, neither a press on Add book nor a `requestSubmit()` sends anything (automate)
 - [ ] AC-9: `book_not_found` doesn't apply to `add-book` (it names no existing Book), so there is no test for it. Story 1.11's `edit-book` takes the duplicate check together with that rule
 - [x] Unit (`src/**/*.test.ts`): `toIntentResult` with a `duplicates` list, including a malformed list counting as `couldnt_save`
 
