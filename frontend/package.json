@@ -11,7 +11,8 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "check:api": "tsc -b && oxlint",
+    "api:gen": "node scripts/api-contract.mjs --write",
+    "check:api": "node scripts/api-contract.mjs && tsc -b && oxlint && node --test src/api/*.test.ts scripts/*.test.mjs",
     "e2e": "playwright test"
   },
   "dependencies": {

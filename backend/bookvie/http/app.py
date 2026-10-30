@@ -20,6 +20,8 @@ from fastapi.responses import FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.types import ASGIApp, Receive, Scope, Send
 
+from .api import install_api
+
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 
 # Path prefixes that belong to the server and must never fall back to the SPA.
@@ -93,7 +95,13 @@ def create_app(
     """Build the app. ``store`` is the opened ``bookvie.store.Store``, if any."""
     static_dir = Path(static_dir).resolve()
     resolved_data_dir = str(Path(data_dir).resolve()) if data_dir is not None else None
-    app = FastAPI(title="bookvie", docs_url=None, redoc_url=None)
+    app = FastAPI(
+        title="bookvie",
+        docs_url=None,
+        redoc_url=None,
+        # One schema per model, so the generated TS types have one name each.
+        separate_input_output_schemas=False,
+    )
     # AD-4: serializes every write; shutdown waits on it before releasing the lock.
     app.state.store = store
     app.state.write_lock = store.lock if store is not None else threading.Lock()
@@ -104,6 +112,9 @@ def create_app(
     @app.get("/api/health")
     async def health() -> dict[str, str | int | None]:
         return {"app": "bookvie", "dataDir": resolved_data_dir, "pid": os.getpid()}
+
+    # Before the SPA catch-all, so /api/views/* match first.
+    install_api(app)
 
     app.mount(
         "/assets",

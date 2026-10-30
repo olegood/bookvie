@@ -28,7 +28,8 @@ runs:
         python-version: "3.14"
         enable-cache: true
         cache-dependency-glob: backend/uv.lock
-        # Jobs like check:api never run uv, so the cache dir is never created.
+        # A job that fails or is cancelled before its first uv command leaves no
+        # cache dir; the post step must not turn that into a second failure.
         ignore-nothing-to-cache: true
 
     - name: Cache Playwright browsers

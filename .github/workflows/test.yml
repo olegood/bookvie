@@ -24,7 +24,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  # check:api: frontend type check and oxlint. Fast, so it gates the rest.
+  # check:api: API contract diff, type check, oxlint, src/api unit tests. Fast, so it gates the rest.
   lint:
     name: Lint (check:api)
     runs-on: ubuntu-latest
