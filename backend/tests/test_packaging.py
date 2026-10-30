@@ -1,5 +1,6 @@
 """The SPA build output, the served folder and the wheel contents must agree."""
 
+import json
 import re
 import tomllib
 from pathlib import Path
@@ -39,3 +40,13 @@ def test_wheel_ships_the_served_folder() -> None:
     static = STATIC_DIR.relative_to(BACKEND_ROOT).as_posix()
     assert f"{static}/**" in wheel["artifacts"]
     assert "custom" in wheel["hooks"], "the SPA build hook is not registered"
+
+
+def test_root_check_runs_the_four_steps_in_order_and_stops_at_the_first_failure() -> None:
+    package = BACKEND_ROOT.parent / "package.json"
+    if not package.is_file():
+        pytest.skip("the repo root is not next to the backend")
+    scripts = json.loads(package.read_text(encoding="utf-8"))["scripts"]
+    steps = ["check:py", "check:api", "check:e2e", "check:smoke"]
+    assert scripts["check"] == " && ".join(f"npm run {step}" for step in steps)
+    assert all(step in scripts for step in steps)

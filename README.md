@@ -2,7 +2,7 @@
 
 A personal, local-first web app for organizing my home library and tracking my reading. It replaces a paper reading diary as the single source of truth for reading progress. The diary can stay on the nightstand for quick notes; I catch up in the app on my next visit by entering the page I reached.
 
-> **Status:** building Epic 1. Stories 1.1, *Scaffold and install bookvie*, and 1.2, *Run one safe instance*, are done: the one-command install works, bookvie opens a placeholder Catalog page, and only one server runs per data folder, reachable only from its own loopback address. The other 39 stories are in backlog (see [Sprint status](_bmad-output/implementation-artifacts/sprint-status.yaml)). The next step is Story 1.3, *One check command guards the repo*.
+> **Status:** building Epic 1. Stories 1.1, *Scaffold and install bookvie*, 1.2, *Run one safe instance*, and 1.3, *One check command guards the repo*, are done: the one-command install works, bookvie opens a placeholder Catalog page, only one server runs per data folder, reachable only from its own loopback address, and `npm run check` guards the repo without touching `~/bookvie-data`. The other 38 stories are in backlog (see [Sprint status](_bmad-output/implementation-artifacts/sprint-status.yaml)). The next step is Story 1.4, *Keep the library in one safe file*.
 
 ## Why
 
@@ -93,7 +93,7 @@ bookvie                                  # serves 127.0.0.1:8765 and opens the b
 
 **Development:** run `npm run dev` (Vite on `:5173`, proxying `/api` and `/media` to `:8765`) next to `bookvie --dev --no-browser`.
 
-**Tests:** `uv run --project backend pytest` for the backend; `cd frontend && npx tsc -b && npm run lint` for the frontend. The single `npm run check` command arrives with Story 1.3.
+**Tests:** `npm run check` at the repo root runs four steps in order and stops at the first failure: `check:py` (pytest with line-coverage gates of 90% on `bookvie/domain/` and 80% on `bookvie/intents/` + `bookvie/store/`), `check:api` (frontend type check and lint), `check:e2e` (builds the SPA, then runs the Playwright suite; each worker starts its own `bookvie` on a free port with a data dir under `$TMPDIR/bookvie-e2e/<run-id>/`) and `check:smoke` (builds, installs bookvie with `uv tool install` into a temp folder, starts it and checks that it serves the SPA). Each step also runs on its own, e.g. `npm run check:py`. No check touches `~/bookvie-data`: pytest runs with a temp `HOME`, and the e2e path guard always refuses the real library.
 
 ## Adding books with AI
 
@@ -117,6 +117,7 @@ Catalog entry happens through my own AI skills rather than an in-app importer or
 - [Epic 1 context](_bmad-output/implementation-artifacts/epic-1-context.md): the planning facts Epic 1's stories build on
 - [Story 1.1 spec](_bmad-output/implementation-artifacts/spec-1-1-scaffold-and-install-bookvie.md): intent, acceptance criteria, review triage and verification for the scaffold
 - [Story 1.2 spec](_bmad-output/implementation-artifacts/spec-1-2-run-one-safe-instance.md): intent, I/O matrix, review findings and verification for the single-instance lock and the Host/Origin guard
+- [Story 1.3 spec](_bmad-output/implementation-artifacts/spec-1-3-one-check-command-guards-the-repo.md): intent, I/O matrix and verification for `npm run check`, the coverage gates, the e2e harness and the install smoke test
 - [Deferred work](_bmad-output/implementation-artifacts/deferred-work.md): review findings deferred to later stories
 - [Brainstorm intent](_bmad-output/brainstorming/brainstorm-personal-library-tracker-2026-10-27/brainstorm-intent.md): the brainstorm's problem statement, pillars and decisions
 - [Brainstorm session](_bmad-output/brainstorming/brainstorm-personal-library-tracker-2026-10-27/brainstorm.html): the full session record

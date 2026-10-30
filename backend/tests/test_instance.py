@@ -1,5 +1,6 @@
 """AD-5 lock, health probe and loopback socket (FND-API-005, FND-API-008)."""
 
+import http.client
 import json
 import os
 import signal
@@ -431,6 +432,8 @@ def test_second_launch_finds_live_server_and_signal_removes_lock(
 
         server.send_signal(sig)
         server.wait(timeout=20)
+        # Logs go to stderr only; stdout stays clean for scripting.
+        assert server.stdout.read() == b""
     finally:
         if server.poll() is None:
             server.kill()
@@ -438,3 +441,101 @@ def test_second_launch_finds_live_server_and_signal_removes_lock(
     assert not (data_dir / LOCK_NAME).exists()
     assert not (tmp_path / "home" / "bookvie-data").exists()
     assert instance.probe_health(port, timeout=0.2) is None
+
+
+# --- no outbound calls ----------------------------------------------------
+
+# Installed in the server process before bookvie is imported. Reports every
+# socket.connect to an address that is not loopback (AF_UNIX paths are local).
+_AUDIT = r"""
+import ipaddress, os, sys
+
+def _loopback(host):
+    if isinstance(host, bytes):
+        host = host.decode("latin-1")
+    if not isinstance(host, str):
+        return True  # None: getaddrinfo for a wildcard/passive address
+    try:
+        return ipaddress.ip_address(host.split("%", 1)[0]).is_loopback
+    except ValueError:
+        return host == "localhost"
+
+def _hook(event, args):
+    if event in ("socket.connect", "socket.sendto"):
+        address = args[1]
+        if not isinstance(address, tuple):
+            return  # AF_UNIX paths are local
+        host = address[0]
+    elif event == "socket.getaddrinfo":
+        host = args[0]
+    else:
+        return
+    if not _loopback(host):
+        os.write(2, f"OUTBOUND-{event} {host!r}\n".encode())
+
+sys.addaudithook(_hook)
+"""
+
+
+def _audited(code: str) -> list[str]:
+    return [sys.executable, "-c", _AUDIT + code]
+
+
+def test_audit_hook_reports_a_non_loopback_connect() -> None:
+    """The hook is not vacuous: each watched event is reported once for a
+    TEST-NET host, and loopback stays silent."""
+    probe = (
+        "import socket\n"
+        "for host in ('192.0.2.1', '127.0.0.1'):\n"
+        "    s = socket.socket(); s.settimeout(0.01)\n"
+        "    try: s.connect((host, 9))\n"
+        "    except OSError: pass\n"
+        "    s.close()\n"
+        "    socket.getaddrinfo(host, 9)\n"
+        "    u = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)\n"
+        "    try: u.sendto(b'x', (host, 9))\n"
+        "    except OSError: pass\n"
+        "    u.close()\n"
+        "socket.getaddrinfo('localhost', 9)\n"
+    )
+    result = subprocess.run(_audited(probe), capture_output=True, text=True, timeout=30)
+    assert result.returncode == 0, result.stderr
+    for event in ("socket.connect", "socket.getaddrinfo", "socket.sendto"):
+        assert result.stderr.count(f"OUTBOUND-{event} '192.0.2.1'") == 1, result.stderr
+    assert result.stderr.count("OUTBOUND-") == 3, result.stderr
+
+
+def test_server_makes_no_outbound_connections(tmp_path: Path) -> None:
+    data_dir = tmp_path / "data"
+    sock = instance.bind_socket(0)
+    port = sock.getsockname()[1]
+    sock.close()
+    argv = ["--no-browser", "--port", str(port), "--data-dir", str(data_dir)]
+    code = f"from bookvie.cli import main\nsys.exit(main({argv!r}))\n"
+    server = subprocess.Popen(
+        _audited(code), env=os.environ | {"HOME": str(tmp_path / "home")},
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+    )
+    try:
+        deadline = time.monotonic() + 20
+        while not instance.same_folder(instance.probe_health(port, timeout=0.2), data_dir):
+            assert server.poll() is None, server.stderr.read().decode()
+            assert time.monotonic() < deadline, "server never answered health"
+            time.sleep(0.1)
+        for path in ("/api/health", "/", "/catalog/x"):
+            conn = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+            try:
+                conn.request("GET", path)
+                conn.getresponse().read()
+            finally:
+                conn.close()
+        server.send_signal(signal.SIGTERM)
+        server.wait(timeout=20)
+        stdout, stderr = server.stdout.read(), server.stderr.read().decode()
+    finally:
+        if server.poll() is None:
+            server.kill()
+            server.wait()
+    assert stdout == b""
+    assert "serving" in stderr  # the hook ran inside a real server
+    assert "OUTBOUND-" not in stderr, stderr
