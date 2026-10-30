@@ -1,6 +1,7 @@
 # bookvie
 
 [![Test](https://github.com/olegood/bookvie/actions/workflows/test.yml/badge.svg?branch=master)](https://github.com/olegood/bookvie/actions/workflows/test.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 A personal, local-first web app for organizing my home library and tracking my reading. It replaces a paper reading diary as the single source of truth for reading progress. The diary can stay on the nightstand for quick notes; I catch up in the app on my next visit by entering the page I reached.
 
