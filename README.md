@@ -2,7 +2,7 @@
 
 A personal, local-first web app for organizing my home library and tracking my reading. It replaces a paper reading diary as the single source of truth for reading progress. The diary can stay on the nightstand for quick notes; I catch up in the app on my next visit by entering the page I reached.
 
-> **Status:** building Epic 1. Stories 1.1, *Scaffold and install bookvie*, 1.2, *Run one safe instance*, and 1.3, *One check command guards the repo*, are done: the one-command install works, bookvie opens a placeholder Catalog page, only one server runs per data folder, reachable only from its own loopback address, and `npm run check` guards the repo without touching `~/bookvie-data`. The other 38 stories are in backlog (see [Sprint status](_bmad-output/implementation-artifacts/sprint-status.yaml)). The next step is Story 1.4, *Keep the library in one safe file*.
+> **Status:** building Epic 1. Stories 1.1, *Scaffold and install bookvie*, 1.2, *Run one safe instance*, and 1.3, *One check command guards the repo*, are done: the one-command install works, bookvie opens a placeholder Catalog page, only one server runs per data folder, reachable only from its own loopback address, and `npm run check` guards the repo without touching `~/bookvie-data`. Story 1.4, *Keep the library in one safe file*, is implemented and awaiting review: bookvie creates, validates and migrates `library.json` at startup and writes it atomically; its `Clock` and time-zone work is deferred. The other 37 stories are in backlog (see [Sprint status](_bmad-output/implementation-artifacts/sprint-status.yaml)).
 
 ## Why
 
@@ -91,6 +91,19 @@ bookvie                                  # serves 127.0.0.1:8765 and opens the b
 
 `bookvie` keeps its data in `~/bookvie-data` (created if missing). Options: `--data-dir DIR`, `--port N`, `--no-browser`, and `--dev` (also accepts requests from the Vite dev origin on `:5173`). A second `bookvie` for the same folder opens the running one instead of starting another server; while it runs, the folder holds a `bookvie.lock` (its PID and port), removed on Ctrl+C or `kill`. If the port is taken by another program or by a bookvie for a different folder, `bookvie` says so and exits; pick another with `--port`. `GET /api/health` reports `{"app", "dataDir", "pid"}`. Requests must use `127.0.0.1:<port>` or `localhost:<port>`, and any other `Host` or `Origin` gets 403.
 
+**Data folder.** Everything bookvie keeps lives in the data folder:
+
+```text
+~/bookvie-data/
+  library.json            # the whole library: one JSON document, written atomically
+  library.v<N>.bak.json   # a copy of the original, made before a schema upgrade
+  covers/                 # cover images
+  .staging/               # scratch space, emptied at every start
+  bookvie.lock            # PID and port of the running server
+```
+
+`library.json` is created on first start as an empty version 1 library. Every save writes a temp file in the same folder, fsyncs it and renames it over the original, so a crash never leaves a half-written file; leftover `library.json.tmp*` files are removed at the next start. bookvie refuses to start, with a one-line `bookvie: …` message naming the path and changing nothing, when the folder isn't writable or `library.json` is invalid or from a newer bookvie. An older `library.json` is backed up to `library.v<N>.bak.json`, then upgraded in memory and saved once.
+
 **Development:** run `npm run dev` (Vite on `:5173`, proxying `/api` and `/media` to `:8765`) next to `bookvie --dev --no-browser`.
 
 **Tests:** `npm run check` at the repo root runs four steps in order and stops at the first failure: `check:py` (pytest with line-coverage gates of 90% on `bookvie/domain/` and 80% on `bookvie/intents/` + `bookvie/store/`), `check:api` (frontend type check and lint), `check:e2e` (builds the SPA, then runs the Playwright suite; each worker starts its own `bookvie` on a free port with a data dir under `$TMPDIR/bookvie-e2e/<run-id>/`) and `check:smoke` (builds, installs bookvie with `uv tool install` into a temp folder, starts it and checks that it serves the SPA). Each step also runs on its own, e.g. `npm run check:py`. No check touches `~/bookvie-data`: pytest runs with a temp `HOME`, and the e2e path guard always refuses the real library.
@@ -118,6 +131,7 @@ Catalog entry happens through my own AI skills rather than an in-app importer or
 - [Story 1.1 spec](_bmad-output/implementation-artifacts/spec-1-1-scaffold-and-install-bookvie.md): intent, acceptance criteria, review triage and verification for the scaffold
 - [Story 1.2 spec](_bmad-output/implementation-artifacts/spec-1-2-run-one-safe-instance.md): intent, I/O matrix, review findings and verification for the single-instance lock and the Host/Origin guard
 - [Story 1.3 spec](_bmad-output/implementation-artifacts/spec-1-3-one-check-command-guards-the-repo.md): intent, I/O matrix and review findings and verification for `npm run check`, the coverage gates, the e2e harness and the install smoke test
+- [Story 1.4 spec](_bmad-output/implementation-artifacts/spec-1-4-keep-the-library-in-one-safe-file.md): intent, I/O matrix and verification for the one-file store, migrations and `LibraryBuilder`
 - [Deferred work](_bmad-output/implementation-artifacts/deferred-work.md): review findings deferred to later stories, each marked with the story that resolved it once done
 - [Brainstorm intent](_bmad-output/brainstorming/brainstorm-personal-library-tracker-2026-10-27/brainstorm-intent.md): the brainstorm's problem statement, pillars and decisions
 - [Brainstorm session](_bmad-output/brainstorming/brainstorm-personal-library-tracker-2026-10-27/brainstorm.html): the full session record

@@ -3,10 +3,11 @@
 // Each worker gets a free port and its own data dir under
 // `$TMPDIR/bookvie-e2e/<run-id>/worker-<n>/`, checked by the path guard before
 // anything is spawned. Tests that import `test` from here get `baseURL` set to
-// their worker's server.
+// their worker's server. `seedLibrary` pre-seeds a data dir before a server
+// starts on it.
 
 import { test as base } from '@playwright/test'
-import { type ChildProcess, spawn } from 'node:child_process'
+import { type ChildProcess, spawn, spawnSync } from 'node:child_process'
 import { mkdirSync, rmSync } from 'node:fs'
 import net from 'node:net'
 import path from 'node:path'
@@ -108,6 +109,29 @@ export async function startServer(
     await new Promise((resolve) => setTimeout(resolve, 100))
   }
   return { url: `http://127.0.0.1:${port}`, port, dataDir: dir, stop }
+}
+
+/**
+ * Writes `<dataDir>/library.json` from a partial camelCase library, with
+ * every missing field filled in by the backend's `LibraryBuilder`
+ * (`python -m tests.builder`). The data dir must pass the guard against `root`.
+ */
+export function seedLibrary(
+  dataDir: string,
+  partial: Record<string, unknown> = {},
+  { root = e2eRoot() }: { root?: string } = {},
+): string {
+  const dir = safeDataDir(dataDir, root) // before any spawn
+  const result = spawnSync(
+    'uv',
+    ['run', '--project', BACKEND, 'python', '-m', 'tests.builder', dir],
+    { cwd: BACKEND, input: JSON.stringify(partial), encoding: 'utf8', timeout: START_TIMEOUT_MS },
+  )
+  if (result.error) throw result.error
+  if (result.status !== 0) {
+    throw new Error(`seeding ${dir} failed (code ${result.status})\n${result.stderr}`)
+  }
+  return path.join(dir, 'library.json')
 }
 
 type WorkerFixtures = {

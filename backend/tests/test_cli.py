@@ -45,8 +45,8 @@ def ephemeral_bind(monkeypatch: pytest.MonkeyPatch) -> None:
 def expose_data_dir(monkeypatch: pytest.MonkeyPatch) -> None:
     real = cli.create_app
 
-    def create_app(static_dir, *, data_dir, port, dev):
-        app = real(static_dir, data_dir=data_dir, port=port, dev=dev)
+    def create_app(static_dir, *, data_dir, port, dev, store=None):
+        app = real(static_dir, data_dir=data_dir, port=port, dev=dev, store=store)
         app.state.data_dir_for_tests = data_dir
         return app
 
@@ -400,6 +400,33 @@ def test_port_held_by_bookvie_for_same_folder_gets_its_lock_back(
     assert json.loads((data_dir / LOCK_NAME).read_text()) == {"pid": running, "port": port}
 
 
+def test_losing_bind_does_not_sweep_or_create_anything(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    fake_server: type[FakeServer],
+    opened: list[str],
+) -> None:
+    """The store opens only after the bind: a launch that loses it touches nothing."""
+    monkeypatch.setattr(cli.instance, "bind_socket", REAL_BIND)
+    data_dir = tmp_path / "d"
+    (data_dir / ".staging").mkdir(parents=True)
+    (data_dir / ".staging" / "live.zip").write_text("restore in flight")
+    (data_dir / "library.json.tmpLIVE").write_text("commit in flight")
+    monkeypatch.setattr(instance, "probe_health", lambda port, timeout=0.5: str(data_dir))
+    monkeypatch.setattr(instance, "probe_pid", lambda port, timeout=0.5: os.getppid())
+    holder = REAL_BIND(0)
+    port = holder.getsockname()[1]
+    try:
+        assert cli.main(["--data-dir", str(data_dir), "--port", str(port), "--no-browser"]) == 0
+    finally:
+        holder.close()
+    assert fake_server.instances == []
+    assert (data_dir / "library.json.tmpLIVE").read_text() == "commit in flight"
+    assert (data_dir / ".staging" / "live.zip").read_text() == "restore in flight"
+    assert not (data_dir / "library.json").exists()
+    assert not (data_dir / "covers").exists()
+
+
 def test_main_release_waits_for_write_lock(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, opened: list[str]
 ) -> None:
@@ -529,4 +556,148 @@ def test_shutdown_waits_for_write_lock_then_removes_lock(
     write_lock.release()
     assert done.wait(5)
     thread.join()
+    assert not (data_dir / LOCK_NAME).exists()
+
+
+# --- Story 1.4: the one-file store ----------------------------------------
+
+EMPTY_V1 = (
+    b'{\n  "schemaVersion": 1,\n  "mainBookId": null,\n  "upNextBookId": null,\n'
+    b'  "sideReadBookIds": [],\n  "books": []\n}\n'
+)
+
+
+def test_start_creates_library_and_wires_the_store(
+    tmp_path: Path, fake_server: type[FakeServer], opened: list[str]
+) -> None:
+    data_dir = tmp_path / "d"
+    assert cli.main(["--data-dir", str(data_dir), "--no-browser"]) == 0
+    assert (data_dir / "library.json").read_bytes() == EMPTY_V1
+    assert (data_dir / "covers").is_dir() and (data_dir / ".staging").is_dir()
+    state = fake_server.instances[0].config.app.state
+    assert state.store.data_dir == data_dir
+    assert state.write_lock is state.store.lock
+
+
+def test_newer_library_exits_1_without_serving(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    fake_server: type[FakeServer],
+    opened: list[str],
+) -> None:
+    data_dir = tmp_path / "d"
+    data_dir.mkdir()
+    raw = EMPTY_V1.replace(b'"schemaVersion": 1', b'"schemaVersion": 2')
+    (data_dir / "library.json").write_bytes(raw)
+    assert cli.main(["--data-dir", str(data_dir), "--no-browser"]) == 1
+    err = capsys.readouterr().err.strip().splitlines()
+    assert err == [
+        f"bookvie: {data_dir / 'library.json'}: has schemaVersion 2, which is newer than "
+        "this bookvie supports (1); update bookvie"
+    ]
+    assert (data_dir / "library.json").read_bytes() == raw
+    assert fake_server.instances == []
+    assert not (data_dir / LOCK_NAME).exists()
+    assert sorted(p.name for p in data_dir.iterdir()) == ["library.json"]
+
+
+def test_invalid_library_exits_1_and_releases_the_lock(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    fake_server: type[FakeServer],
+    opened: list[str],
+) -> None:
+    data_dir = tmp_path / "d"
+    data_dir.mkdir()
+    (data_dir / "library.json").write_bytes(b"{oops")
+    assert cli.main(["--data-dir", str(data_dir), "--no-browser"]) == 1
+    (line,) = capsys.readouterr().err.strip().splitlines()
+    assert line.startswith(f"bookvie: {data_dir / 'library.json'}: is not valid JSON")
+    assert (data_dir / "library.json").read_bytes() == b"{oops"
+    assert not (data_dir / LOCK_NAME).exists()
+    assert fake_server.instances == []
+
+
+def test_unwritable_data_dir_exits_1_before_the_lock(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    fake_server: type[FakeServer],
+    opened: list[str],
+) -> None:
+    claims: list[Path] = []
+    monkeypatch.setattr(instance, "claim_lock", lambda d, p: claims.append(d))
+    data_dir = tmp_path / "d"
+    data_dir.mkdir()
+    data_dir.chmod(0o500)
+    try:
+        assert cli.main(["--data-dir", str(data_dir), "--no-browser"]) == 1
+    finally:
+        data_dir.chmod(0o700)
+    assert capsys.readouterr().err.strip() == f"bookvie: {data_dir}: is not writable"
+    assert claims == []
+    assert list(data_dir.iterdir()) == []
+
+
+def test_unwritable_parent_exits_1(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    fake_server: type[FakeServer],
+    opened: list[str],
+) -> None:
+    parent = tmp_path / "p"
+    parent.mkdir()
+    parent.chmod(0o500)
+    try:
+        assert cli.main(["--data-dir", str(parent / "d"), "--no-browser"]) == 1
+    finally:
+        parent.chmod(0o700)
+    assert str(parent / "d") in capsys.readouterr().err
+    assert not (parent / "d").exists()
+
+
+def test_losing_launch_does_not_sweep_the_live_servers_temp_files(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    fake_server: type[FakeServer],
+    opened: list[str],
+) -> None:
+    data_dir = tmp_path / "d"
+    _write_lock(data_dir, os.getpid(), 8111, age=60)
+    (data_dir / "library.json.tmpLIVE").write_text("in flight")
+    monkeypatch.setattr(instance, "probe_health", lambda port, timeout=0.5: str(data_dir))
+    assert cli.main(["--data-dir", str(data_dir), "--no-browser"]) == 0
+    assert (data_dir / "library.json.tmpLIVE").read_text() == "in flight"
+    assert not (data_dir / "library.json").exists()
+
+
+def test_real_process_start_on_empty_folder(tmp_path: Path) -> None:
+    import signal
+    import subprocess
+    import sys
+    import time
+
+    data_dir = tmp_path / "data"
+    port = _free_port()
+    env = os.environ | {"HOME": str(tmp_path / "home")}
+    cmd = [sys.executable, "-m", "bookvie.cli", "--no-browser",
+           "--port", str(port), "--data-dir", str(data_dir)]  # fmt: skip
+    server = subprocess.Popen(cmd, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    try:
+        deadline = time.monotonic() + 20
+        while not instance.same_folder(instance.probe_health(port, timeout=0.2), data_dir):
+            assert server.poll() is None, server.stderr.read().decode()
+            assert time.monotonic() < deadline, "server never answered health"
+            time.sleep(0.1)
+        assert (data_dir / "library.json").read_bytes() == EMPTY_V1
+        assert (data_dir / "covers").is_dir()
+        assert list((data_dir / ".staging").iterdir()) == []
+        server.send_signal(signal.SIGTERM)
+        server.wait(timeout=20)
+    finally:
+        if server.poll() is None:
+            server.kill()
+            server.wait()
+    assert (data_dir / "library.json").read_bytes() == EMPTY_V1
+    assert not list(data_dir.glob("library.json.tmp*"))
     assert not (data_dir / LOCK_NAME).exists()

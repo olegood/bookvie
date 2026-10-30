@@ -88,12 +88,15 @@ def create_app(
     data_dir: Path | None = None,
     port: int = 8765,
     dev: bool = False,
+    store=None,
 ) -> FastAPI:
+    """Build the app. ``store`` is the opened ``bookvie.store.Store``, if any."""
     static_dir = Path(static_dir).resolve()
     resolved_data_dir = str(Path(data_dir).resolve()) if data_dir is not None else None
     app = FastAPI(title="bookvie", docs_url=None, redoc_url=None)
     # AD-4: serializes every write; shutdown waits on it before releasing the lock.
-    app.state.write_lock = threading.Lock()
+    app.state.store = store
+    app.state.write_lock = store.lock if store is not None else threading.Lock()
     app.add_middleware(
         HostOriginGuard, port=port, extra_origins=DEV_ORIGINS if dev else ()
     )

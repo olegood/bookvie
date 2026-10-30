@@ -16,6 +16,7 @@ import uvicorn
 from bookvie import instance
 from bookvie.http.app import STATIC_DIR, create_app
 from bookvie.instance import HOST
+from bookvie.store import StartupError, Store, ensure_writable
 
 DEFAULT_PORT = 8765
 DEFAULT_DATA_DIR = "~/bookvie-data"
@@ -129,7 +130,11 @@ def _port_conflict(port: int, data_dir: Path, pid: int, no_browser: bool) -> int
 def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
     data_dir: Path = args.data_dir
-    data_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        ensure_writable(data_dir)
+    except StartupError as exc:
+        _say(f"bookvie: {exc}")
+        return 1
 
     claim = instance.claim_lock(data_dir, args.port)
     if claim.kind == "running":
@@ -146,7 +151,18 @@ def main(argv: Sequence[str] | None = None) -> int:
         except OSError:
             return _port_conflict(args.port, data_dir, pid, args.no_browser)
 
-        app = create_app(STATIC_DIR, data_dir=data_dir, port=args.port, dev=args.dev)
+        # After the bind: a launch that loses to a live server never sweeps
+        # that server's temp files.
+        try:
+            store = Store.open(data_dir)
+        except StartupError as exc:
+            sock.close()
+            _say(f"bookvie: {exc}")
+            return 1
+
+        app = create_app(
+            STATIC_DIR, data_dir=data_dir, port=args.port, dev=args.dev, store=store
+        )
 
         def release() -> None:
             with app.state.write_lock:

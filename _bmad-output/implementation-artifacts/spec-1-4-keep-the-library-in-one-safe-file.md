@@ -2,7 +2,8 @@
 title: 'Story 1.4: Keep the library in one safe file'
 type: 'feature'
 created: '2026-10-30'
-status: 'ready-for-dev'
+status: 'done'
+baseline_commit: 'c82adfec94390d8bf9396e6c5054cf53ac1b5ac3'
 route: 'dispatch'
 review_loop_iteration: 0
 context:
@@ -55,14 +56,14 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `backend/bookvie/domain/model.py` -- `Library`, `Book`, `Reading` and `CardNote` as Pydantic models (camelCase alias generator, `populate_by_name`, `extra="forbid"`), with fields in AD-18/AD-19 order. Book fields: `id, createdAt, ownership: "owned", title, subtitle?, authors[], pages ≥1, edition ≥1, language, publisher, type (paperback|hardcover|ebook), isbn?, year?, tags[], coverFile?, spineColorUser?, spineColorFromCover?, spineColorCurated, spineColor, readings[], cardNotes[]`. Reading has the AD-19 fields, with `lastProgressUpdate` nullable, `purposeFulfilled` one of `yes|partly|notYet|null`, and `rating` 1–5 or null. Dates are `date`, timestamps aware `datetime`. Add `Library.empty()`.
-- [ ] `backend/bookvie/domain/invariants.py` -- `check_invariants(library)` raises `InvariantViolation(rule, message)` for each AD-18 rule. Card note pages: `1 ≤ pageStart ≤ (pageEnd or pageStart) ≤ pages`. Unfinished Reading: `0 ≤ currentPage ≤ pages`.
-- [ ] `backend/bookvie/store/fs.py` -- the `FileSystem` seam: `create_temp(dir, prefix) → (fd, path)`, `write`, `fsync`, `close`, `replace`, `remove`. `OsFileSystem` is the default.
-- [ ] `backend/bookvie/store/migrations/__init__.py` -- `CURRENT_VERSION = 1`, `STEPS: dict[int, Callable[[dict], dict]]` (step N→N+1; empty for now), `migrate(doc) → doc`.
-- [ ] `backend/bookvie/store/store.py`, re-exported from `store/__init__.py` -- `serialize(library) → bytes`, `ensure_writable(data_dir)`, `StartupError`, `CouldntSave`. `Store.open(data_dir, fs=…)` handles the startup rows. `Store.library` holds the committed state, and `Store.lock` is the AD-4 lock. `Store.apply(change)`: under the lock, run `change` on a deep copy, then `check_invariants`, commit, swap, and return the new library.
-- [ ] `backend/bookvie/cli.py` + `http/app.py` -- run `ensure_writable` before `claim_lock` and `Store.open` after `bind_socket` succeeds. A `StartupError` releases the lock and returns 1. `create_app(store=…)` sets `app.state.store` and `app.state.write_lock = store.lock`.
-- [ ] `backend/tests/builder.py` -- `LibraryBuilder`: `book(**overrides) → id` with valid defaults (UUIDs, curated color), `reading(...)`, `card_note(...)`, `main`/`up_next`/`side_read(id)`, `build()` (no checks) and `write(data_dir)` (check, then serialize). `python -m tests.builder <data_dir>` reads a partial camelCase JSON library on stdin, fills in the defaults and writes it.
-- [ ] `backend/tests/conftest.py` + `test_model.py`, `test_invariants.py`, `test_store.py`, `test_migrations.py`, `test_cli.py` -- the `library_builder` fixture and tests for:
+- [x] `backend/bookvie/domain/model.py` -- `Library`, `Book`, `Reading` and `CardNote` as Pydantic models (camelCase alias generator, `populate_by_name`, `extra="forbid"`), with fields in AD-18/AD-19 order. Book fields: `id, createdAt, ownership: "owned", title, subtitle?, authors[], pages ≥1, edition ≥1, language, publisher, type (paperback|hardcover|ebook), isbn?, year?, tags[], coverFile?, spineColorUser?, spineColorFromCover?, spineColorCurated, spineColor, readings[], cardNotes[]`. Reading has the AD-19 fields, with `lastProgressUpdate` nullable, `purposeFulfilled` one of `yes|partly|notYet|null`, and `rating` 1–5 or null. Dates are `date`, timestamps aware `datetime`. Add `Library.empty()`.
+- [x] `backend/bookvie/domain/invariants.py` -- `check_invariants(library)` raises `InvariantViolation(rule, message)` for each AD-18 rule. Card note pages: `1 ≤ pageStart ≤ (pageEnd or pageStart) ≤ pages`. Unfinished Reading: `0 ≤ currentPage ≤ pages`.
+- [x] `backend/bookvie/store/fs.py` -- the `FileSystem` seam: `create_temp(dir, prefix) → (fd, path)`, `write`, `fsync`, `close`, `replace`, `remove`. `OsFileSystem` is the default.
+- [x] `backend/bookvie/store/migrations/__init__.py` -- `CURRENT_VERSION = 1`, `STEPS: dict[int, Callable[[dict], dict]]` (step N→N+1; empty for now), `migrate(doc) → doc`.
+- [x] `backend/bookvie/store/store.py`, re-exported from `store/__init__.py` -- `serialize(library) → bytes`, `ensure_writable(data_dir)`, `StartupError`, `CouldntSave`. `Store.open(data_dir, fs=…)` handles the startup rows. `Store.library` holds the committed state, and `Store.lock` is the AD-4 lock. `Store.apply(change)`: under the lock, run `change` on a deep copy, then `check_invariants`, commit, swap, and return the new library.
+- [x] `backend/bookvie/cli.py` + `http/app.py` -- run `ensure_writable` before `claim_lock` and `Store.open` after `bind_socket` succeeds. A `StartupError` releases the lock and returns 1. `create_app(store=…)` sets `app.state.store` and `app.state.write_lock = store.lock`.
+- [x] `backend/tests/builder.py` -- `LibraryBuilder`: `book(**overrides) → id` with valid defaults (UUIDs, curated color), `reading(...)`, `card_note(...)`, `main`/`up_next`/`side_read(id)`, `build()` (no checks) and `write(data_dir)` (check, then serialize). `python -m tests.builder <data_dir>` reads a partial camelCase JSON library on stdin, fills in the defaults and writes it.
+- [x] `backend/tests/conftest.py` + `test_model.py`, `test_invariants.py`, `test_store.py`, `test_migrations.py`, `test_cli.py` -- the `library_builder` fixture and tests for:
   - every matrix row;
   - a failing and a passing case per AD-18 rule;
   - serialize golden bytes and a Hypothesis round trip;
@@ -70,8 +71,8 @@ context:
   - concurrent `apply` loses nothing;
   - readers see the old state until the swap;
   - one real-process start on an empty folder.
-- [ ] `frontend/e2e/fixtures.ts` + `e2e/seed.spec.ts` -- `seedLibrary(dataDir, partial)` checks the path with the guard, then runs `tests.builder` with `cwd` set to the backend. Test: a seeded per-test server starts, and its `library.json` is byte-identical afterwards.
-- [ ] `README.md` -- the data folder layout and the status line.
+- [x] `frontend/e2e/fixtures.ts` + `e2e/seed.spec.ts` -- `seedLibrary(dataDir, partial)` checks the path with the guard, then runs `tests.builder` with `cwd` set to the backend. Test: a seeded per-test server starts, and its `library.json` is byte-identical afterwards.
+- [x] `README.md` -- the data folder layout and the status line.
 
 **Acceptance Criteria:**
 - Given `Store.apply` and a change, when it commits, then the file bytes equal `serialize(new library)`, re-loading them gives an equal model, and `Store.library` changes only after the rename.
@@ -83,6 +84,27 @@ context:
 ## Spec Change Log
 
 ## Review Triage Log
+
+| # | Source | Finding | Verdict | Evidence | Route |
+|---|--------|---------|---------|----------|-------|
+| 1 | blind, edge | `Store.apply` commits a wrong-typed or out-of-bound value that the next start refuses | high | Reproduced: `apply` with `books[0].pages = "300"` commits, then `Store.open` fails with `books.0.pages: Input should be a valid integer`. The models have no `validate_assignment`, and `apply` only checks invariants. Re-validating before the commit is a direct correction. | patch |
+| 2 | verification-gap, blind | Refusing an older file still sweeps leftovers and creates `covers/`/`.staging/` before migrating and validating | low | Confirmed in `Store.open`: `_sweep` and the mkdirs run before `_migrate`. This breaks "exit 1 with no file changed". The fix reorders calls, and the tests only checked `library.json` and the backup. | patch |
+| 3 | verification-gap | The losing-bind path is untested; `test_losing_launch_…` returns at `claim.kind == "running"` | medium | Confirmed: that test uses a live PID and a health probe for the same folder, so `main` returns before `bind_socket`. The bind-loss tests never seed or check temp files. The fix only adds tests. | patch |
+| 4 | blind | `SCHEMA_VERSION` (domain) and `CURRENT_VERSION` (migrations) can drift | low | Two constants; `domain` can't import `store`. The first migration bump would make `Library.empty()` write an outdated version. The fix is one equality test. | patch |
+| 5 | blind, edge | No uniqueness for Book/Reading/Card note IDs or `sideReadBookIds`; Up next can also be a Side read | medium | Real: `check_invariants` uses a set of IDs, and `["a","a"]` counts as two Side reads. AD-18's rule list doesn't name these rules, so the gap is in the architecture, not this change. | defer |
+| 6 | edge | macOS `os.fsync` doesn't flush the drive cache (`F_FULLFSYNC`) | maybe-false | Unverified: would be medium if APFS can leave `library.json` torn or empty after a power cut despite write → fsync → rename. Settled by a power-loss test or the APFS ordering guarantees for rename after fsync. | defer |
+| 7 | blind | Sprint status `in-progress` vs spec `in-review` | false | The workflow syncs the story to `review` in its present step. | reject |
+| 8 | blind | Saves make `library.json` 0600 (via `mkstemp`) | low | Real, but the data is private and lives in the user's home folder. The fix adds mode-copy logic. | reject |
+| 9 | blind | A deeply nested file raises `RecursionError`; duplicate keys and NaN are accepted | low | Needs a hand-crafted, pathological file. The startup failure is still loud. | reject |
+| 10 | blind | The `.staging` sweep and mkdirs bypass the `FileSystem` seam; a symlinked `.staging` is left alone | low | The seam covers commit writes (AD-2); the sweep is not a commit. A symlinked `.staging` is not a plausible state. | reject |
+| 11 | blind | `populate_by_name` is never tested | false | `Library.empty()` builds with snake_case names, and `test_empty_library_is_the_v1_document` covers it. | reject |
+| 12 | blind, edge | The builder CLI guard misses subfolders and case variants of `~/bookvie-data`; a non-object stdin gives a traceback | low | `seedLibrary` runs the e2e path guard first, and pytest isolates `HOME`. A traceback still fails loudly. | reject |
+| 13 | blind | `create_app(store=None)` is untyped | false | `test_layers.py` forbids `http` from importing `store`, so the annotation can't name `Store`; `None` is the existing no-store path. | reject |
+| 14 | blind | Test hygiene: `chmod` tests fail as root, `seed.spec.ts` cleanup isn't in `finally`, a `/tmp` path isn't asserted, `uv run` may sync | low | Nobody runs the suite as root. The temp leftovers are inside the run folder, and `startServer` already uses `uv run`. | reject |
+| 15 | edge | No directory fsync after the rename | low | A lost rename leaves the previous valid file, so atomicity holds. Design Notes chose this per AD-2. | reject |
+| 16 | edge | A `library.json` symlink is replaced by a regular file on the first commit | low | Not a supported setup; the fix would add symlink handling. | reject |
+| 17 | edge | `migrate()` returns a newer document unchanged, and a missing version raises `KeyError` | low | No caller reaches it: `Store._read` refuses those first. Restore (Epic 2) must keep that guard. | reject |
+| 18 | edge | `covers` existing as a file is refused only after the sweep | low | Not a plausible state; the fix adds a pre-check. | reject |
 
 ## Design Notes
 

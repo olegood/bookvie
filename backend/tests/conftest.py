@@ -14,6 +14,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.builder import LibraryBuilder
+
 
 def _uv_dir(*args: str) -> str | None:
     uv = shutil.which("uv")
@@ -53,3 +55,9 @@ def _isolated_home(
     monkeypatch.setenv("HOME", str(home))
     assert Path("~").expanduser() == home
     return home
+
+
+@pytest.fixture
+def library_builder() -> LibraryBuilder:
+    """A fresh :class:`tests.builder.LibraryBuilder` (TC-1)."""
+    return LibraryBuilder()
