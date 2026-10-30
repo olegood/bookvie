@@ -75,6 +75,30 @@ Decisions: the dialog's description is rendered by the client from `duplicates`,
 - Given `npm run check`, when it runs, then it exits 0 with all 9 Story 1.9 scaffolds active and every earlier test passing.
 - Given the open Duplicate dialog, when a screen reader reads the page, then the `status`/`alert` regions are inside it (not inert), and after it closes they are back inside the panel.
 
+### Review Findings
+
+- [x] [Review][Patch] Fold typographic punctuation and compatibility forms in title/author matching (NFKC; curly quotes → straight, en/em dash → hyphen) — decision resolved: widen the key [backend/bookvie/domain/duplicates.py:40]
+- [x] [Review][Patch] 979 test uses an invalid ISBN-13 and a false comment; its ISBN-10 assertion is a tautology [backend/tests/test_duplicate_book.py:323]
+- [x] [Review][Patch] No test that a `duplicate_book` refusal clears earlier field errors (`setErrors({})`) [frontend/src/pages/NewBookPanel.tsx:106]
+- [x] [Review][Patch] Dialog description untested for 2 matches (" and ", no comma), a multi-author match ("; ") and 4 matches (", and 1 more.") [frontend/src/components/DuplicateDialog.tsx:27]
+- [x] [Review][Patch] ATDD checklist follow-up lines bundle done and undone cases, so tested items stay unticked [_bmad-output/test-artifacts/atdd-checklist-1-9-get-warned-about-duplicates.md:166]
+
+**Rejected:**
+- (blind) Spec status `done` vs sprint `review`, `review_loop_iteration`, timestamp — fix edits the spec under review; status is synced at the end of this review.
+- (blind, auditor) Spec Code Map/Tasks/Verification counts out of date (4 vs 5 e2e tests), empty change log — fix edits the spec under review.
+- (blind) Dialog fallback to server `message` untested — low: `duplicate_book` is only raised when `matches` is non-empty, so the branch is unreachable from the real server.
+- (blind) Server `DUPLICATE_NAMED_LIMIT` and client `NAMED` can drift — low: the dialog never shows the server message when `duplicates` is present, so drift changes no user-visible copy; the spec owns both rules.
+- (blind) Agent callers get a server message without ISBNs — the server copy is pinned verbatim by spec Decisions; agents also receive `duplicates` with each `isbn`.
+- (blind) `test_title_alone_or_author_alone_is_not_a_duplicate` hand-builds `BookFields` — low: a new field fails it loudly; "listed once" is already deferred.
+- (blind) `key={index}` in `describe()` — false: the list is fixed for the dialog's lifetime.
+- (blind) A second Esc could force a native close and call `onDontAdd` twice — false: the first Esc unmounts the dialog, so a second Esc reaches the panel, not the dialog.
+- (edge) Tab trap misses when focus isn't on a button — low: needs a mouse click on dialog text then Shift+Tab; with focus on `body` the dialog's `onKeyDown` never fires, so the proposed guard wouldn't help either.
+- (auditor) Checklist AC-6 wording changed — false: it now matches spec Decisions, and the checklist is a test artifact, not a planning doc.
+- (auditor) `authors_match` normalizes beyond "casefold and trim" — false: a superset agreed in build triage #1–2; no pinned case breaks.
+- (auditor) Three `test_add_book.py` tests got new titles — false: each keeps its purpose; only the identical re-add (now a 409) changed.
+- (auditor) `DuplicateDialog` lacks opener focus restore — false: native `close()` restores focus to the pre-`showModal` element; Don't add/Esc focus Title explicitly (build triage #12).
+- (auditor) "Before `commit`" vs inside `change()` — false: the check runs inside the commit before append, as the Design Notes specify.
+
 ## Implementation Notes
 
 ## Spec Change Log

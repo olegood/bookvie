@@ -323,9 +323,10 @@ def test_title_alone_or_author_alone_is_not_a_duplicate(tmp_path: Path) -> None:
 def test_a_979_isbn_never_matches_the_978_isbn_with_the_same_stem() -> None:
     from bookvie.domain.duplicates import isbns_match
 
-    # Same nine-digit stem (044117271) and check digit, different prefix.
-    assert isbns_match("9790441172719", DUNE_ISBN13) is False
-    assert isbns_match("9790441172719", DUNE_ISBN10) is False
+    # Same nine-digit stem (044117271), different prefix; each check digit valid.
+    assert isbns_match("9790441172718", DUNE_ISBN13) is False
+    # An ISBN-10 converts into the 978 range only, so it never equals a 979.
+    assert isbns_match("9790441172718", DUNE_ISBN10) is False
     assert isbns_match(DUNE_ISBN10, DUNE_ISBN13) is True
 
 
@@ -338,3 +339,19 @@ def test_titles_and_authors_compare_by_normalized_whitespace_and_case() -> None:
     assert titles_match("E\u0301mile", "\u00c9mile") is True
     assert authors_match(["E\u0301mile Zola"], ["\u00c9MILE ZOLA"]) is True
     assert authors_match(["Frank  Herbert"], ["frank\therbert"]) is True
+
+
+def test_titles_and_authors_fold_typographic_punctuation_and_compatibility_forms() -> None:
+    from bookvie.domain.duplicates import authors_match, titles_match
+
+    assert titles_match("Ender\u2019s Game", "Ender's Game") is True
+    assert titles_match("\u2018Salem\u2019s Lot", "'Salem's Lot") is True
+    assert titles_match("\u201cQuoted\u201d", '"Quoted"') is True
+    assert titles_match("Twenty Thousand Leagues \u2013 Part One", "Twenty Thousand Leagues - Part One") is True
+    assert titles_match("Spin\u2014Off", "Spin-Off") is True
+    # NFKC: a ligature and full-width letters.
+    assert titles_match("\ufb01re", "fire") is True
+    assert titles_match("\uff24\uff55\uff4e\uff45", "Dune") is True
+    assert authors_match(["Madeleine L\u2019Engle"], ["madeleine l'engle"]) is True
+    # Folding never merges different words.
+    assert titles_match("Ender's Game", "Enders Game") is False

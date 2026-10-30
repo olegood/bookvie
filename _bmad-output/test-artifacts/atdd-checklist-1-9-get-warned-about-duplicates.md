@@ -164,13 +164,19 @@ Activate one test at a time: delete its `@pytest.mark.skip(reason=RED)` line, or
 - [x] Activate AC-7, then AC-8
 
 ### Green-phase follow-ups (secondary branches, not separate red leaves)
-- [ ] AC-1: ISBN-13s beginning with 979 never equal a converted ISBN-10; tabs and newlines inside titles count as whitespace; non-ASCII case folding ("ÉMILE ZOLA" against "Émile Zola"); a Book whose authors repeat a name
-- [ ] AC-2: 1, 3, 4 and 10 matches (the list holds all of them, while the message names three, then "and N more"); a multi-author match's wording ("by Ursula K. Le Guin; Brian Attebery"); the exact multi-match message, once the spec settles it
-- [ ] AC-3: the title alone (no shared author) or a shared author alone (another title) is not a duplicate; a match on both rules at once is listed once
+- [x] AC-1: ISBN-13s beginning with 979 never equal a converted ISBN-10; tabs and newlines inside titles count as whitespace; non-ASCII case folding ("ÉMILE ZOLA" against "Émile Zola"); typographic quotes, dashes and NFKC compatibility forms fold (code review of 1.9)
+- [ ] AC-1: a Book whose authors repeat a name
+- [x] AC-2: 1, 2, 3 and 4 matches (the list holds all of them, while the message names three, then "and N more"); a multi-author match's wording ("by Ursula K. Le Guin; Brian Attebery"); the exact multi-match message
+- [ ] AC-2: 10 matches
+- [x] AC-3: the title alone (no shared author) or a shared author alone (another title) is not a duplicate
+- [ ] AC-3: a match on both rules at once is listed once
 - [x] AC-4: `confirmDuplicate: false` still checks; `"confirmDuplicate": "true"` (a string) or `null` is a malformed intent (422 on `intent`); `confirmDuplicate: true` on a Book with no match saves as normal
-- [ ] AC-6: axe in both themes with the dialog open; the dark theme's ink; Esc in the dialog acts as **Don't add** and doesn't close the panel; the live regions are inside the topmost dialog while it is open; the description shows each match's ISBN only when it has one
+- [x] AC-6: Esc in the dialog acts as **Don't add** and doesn't close the panel; the live regions are inside the topmost dialog while it is open; the description shows each match's ISBN only when it has one; the description's wording for 2 matches, a multi-author match and 4 matches
+- [ ] AC-6: axe in both themes with the dialog open; the dark theme's ink
+- [x] AC-7: a duplicate refusal clears the field errors of an earlier refusal
 - [ ] AC-7: after **Don't add**, editing the ISBN so it no longer matches and pressing **Add book** saves without a dialog
-- [ ] AC-8: a `couldnt_save` on the resend (routed 503) keeps the panel open with every value, and the dialog is not reopened; **Add anyway** is guarded against a double press
+- [x] AC-8: a `couldnt_save` on the resend (routed 503) keeps the panel open with every value, and the dialog is not reopened
+- [ ] AC-8: **Add anyway** is guarded against a double press
 - [ ] AC-9: `book_not_found` doesn't apply to `add-book` (it names no existing Book), so there is no test for it. Story 1.11's `edit-book` takes the duplicate check together with that rule
 - [x] Unit (`src/**/*.test.ts`): `toIntentResult` with a `duplicates` list, including a malformed list counting as `couldnt_save`
 

@@ -215,6 +215,68 @@ test.describe('Story 1.9 Duplicate dialog (ATDD)', () => {
     expect(await catalogTitles(page, server)).toEqual(['Dune', 'Neuromancer'])
   })
 
+  test('[P1] AC-7 a duplicate refusal clears the field errors of an earlier refusal', async ({ page, seededServer }) => {
+    const server = await seededServer({ books: [{ title: 'Dune', authors: ['Frank Herbert'] }, NEUROMANCER] })
+    await page.goto(`${server.url}/`)
+    const panel = await openNewBook(page)
+    const { Pages, ...withoutPages } = DUNE
+    await fillFields(panel, withoutPages)
+    const addBook = panel.getByRole('button', { name: 'Add book', exact: true })
+    await addBook.click()
+    const pages = panel.getByLabel('Pages', { exact: true })
+    await expect(pages).toHaveAttribute('aria-invalid', 'true')
+
+    await pages.fill(Pages)
+    await addBook.click()
+    const dialog = duplicateDialog(page)
+    await expect(dialog).toBeVisible()
+    await expect(panel.locator('[aria-invalid="true"]')).toHaveCount(0)
+    await expect(panel.getByText('Pages is required.', { exact: true })).toHaveCount(0)
+
+    await dialog.getByRole('button', { name: "Don't add", exact: true }).click()
+    await expect(dialog).toBeHidden()
+    await expect(panel.locator('[aria-invalid="true"]')).toHaveCount(0)
+    await expect(panel.getByText('Pages is required.', { exact: true })).toHaveCount(0)
+  })
+
+  // The description's list wording, rendered by the client from `duplicates`.
+  const descriptions = [
+    {
+      name: 'two matches join with " and ", and a multi-author match with "; "',
+      books: [
+        { title: 'Dune', authors: ['Frank Herbert', 'Brian Herbert'] },
+        { title: 'Dune', authors: ['Frank Herbert'], isbn: DUNE_ISBN13 },
+      ],
+      typed: DUNE,
+      description:
+        'Already in your catalog: Dune by Frank Herbert; Brian Herbert and ' +
+        `Dune by Frank Herbert (ISBN ${DUNE_ISBN13}).`,
+    },
+    {
+      name: 'four matches name three, then ", and 1 more."',
+      books: ['Dune', 'Dune (Ace)', 'Dune (Book Club)', 'Dune (Anniversary)'].map((title) => ({
+        title,
+        authors: ['Frank Herbert'],
+        isbn: DUNE_ISBN13,
+      })),
+      typed: { ...DUNE, ISBN: DUNE_ISBN10 },
+      description:
+        `Already in your catalog: Dune by Frank Herbert (ISBN ${DUNE_ISBN13}), ` +
+        `Dune (Ace) by Frank Herbert (ISBN ${DUNE_ISBN13}) and ` +
+        `Dune (Book Club) by Frank Herbert (ISBN ${DUNE_ISBN13}), and 1 more.`,
+    },
+  ]
+  for (const { name, books, typed, description } of descriptions) {
+    test(`[P2] AC-6 description: ${name}`, async ({ page, seededServer }) => {
+      const server = await seededServer({ books: [...books, NEUROMANCER] })
+      await page.goto(`${server.url}/`)
+      const panel = await openNewBook(page)
+      await fillFields(panel, typed)
+      await panel.getByRole('button', { name: 'Add book', exact: true }).click()
+      await expect(duplicateDialog(page)).toHaveAccessibleDescription(description)
+    })
+  }
+
   test("[P1] AC-8 a couldn't save on Add anyway keeps the panel and its values, and doesn't reopen the dialog", async ({
     page,
     seededServer,

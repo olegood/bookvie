@@ -3,8 +3,9 @@
 Two Books are possible duplicates when both have an ISBN and the normalized
 ISBNs are equal. When either Book lacks an ISBN, they are duplicates when the
 titles match and at least one author is shared. Titles and author names are
-compared by one key: Unicode NFC normalized, trimmed, runs of whitespace
-collapsed to one space, and casefolded. Two different ISBNs never match on
+compared by one key: Unicode NFKC normalized, typographic quotes and dashes
+folded to their ASCII forms, trimmed, runs of whitespace collapsed to one
+space, and casefolded. Two different ISBNs never match on
 title and author alone.
 """
 
@@ -16,6 +17,10 @@ from .book_fields import BookFields
 from .model import Book
 
 _WHITESPACE = re.compile(r"\s+")
+# A title pasted from a store page carries ’ and – where a typed one has ' and -.
+_TYPOGRAPHIC = str.maketrans(
+    {"\u2018": "'", "\u2019": "'", "\u02bc": "'", "\u201c": '"', "\u201d": '"', "\u2013": "-", "\u2014": "-"}
+)
 
 
 def normalize_isbn(raw: str) -> str:
@@ -38,8 +43,9 @@ def isbns_match(a: str, b: str) -> bool:
 
 
 def _key(text: str) -> str:
-    """NFC normalized, trimmed, whitespace runs collapsed, casefolded."""
-    return _WHITESPACE.sub(" ", unicodedata.normalize("NFC", text).strip()).casefold()
+    """NFKC normalized, quotes and dashes folded, trimmed, whitespace runs collapsed, casefolded."""
+    folded = unicodedata.normalize("NFKC", text).translate(_TYPOGRAPHIC)
+    return _WHITESPACE.sub(" ", folded.strip()).casefold()
 
 
 def titles_match(a: str, b: str) -> bool:
