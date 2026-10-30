@@ -12,6 +12,7 @@ from fastapi.testclient import TestClient
 
 from bookvie import cli, instance
 from bookvie.instance import LOCK_NAME
+from tests.servers import wait_for_health
 
 REAL_BIND = instance.bind_socket
 
@@ -675,7 +676,6 @@ def test_real_process_start_on_empty_folder(tmp_path: Path) -> None:
     import signal
     import subprocess
     import sys
-    import time
 
     data_dir = tmp_path / "data"
     port = _free_port()
@@ -684,11 +684,7 @@ def test_real_process_start_on_empty_folder(tmp_path: Path) -> None:
            "--port", str(port), "--data-dir", str(data_dir)]  # fmt: skip
     server = subprocess.Popen(cmd, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     try:
-        deadline = time.monotonic() + 20
-        while not instance.same_folder(instance.probe_health(port, timeout=0.2), data_dir):
-            assert server.poll() is None, server.stderr.read().decode()
-            assert time.monotonic() < deadline, "server never answered health"
-            time.sleep(0.1)
+        wait_for_health(server, port, data_dir)
         assert (data_dir / "library.json").read_bytes() == EMPTY_V1
         assert (data_dir / "covers").is_dir()
         assert list((data_dir / ".staging").iterdir()) == []

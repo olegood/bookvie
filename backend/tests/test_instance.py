@@ -9,12 +9,14 @@ import subprocess
 import sys
 import threading
 import time
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
 
 from bookvie import instance
 from bookvie.instance import LOCK_NAME, LockInfo
+from tests.servers import wait_for_health
 
 
 def _dead_pid() -> int:
@@ -342,31 +344,45 @@ def test_young_empty_lock_waits_then_gives_up(
     assert (tmp_path / LOCK_NAME).read_bytes() == b""
 
 
+def _on_first_poll(monkeypatch: pytest.MonkeyPatch, change: Callable[[], None]) -> list[float]:
+    """Run ``change`` in place of the first pause between lock polls.
+
+    The lock then changes while ``claim_lock`` waits, at a known point and
+    without racing a timer. Returns the pauses taken, so a test can check the
+    change happened.
+    """
+    pauses: list[float] = []
+
+    def pause(seconds: float) -> None:
+        if not pauses:
+            change()
+        pauses.append(seconds)
+
+    monkeypatch.setattr(instance.time, "sleep", pause)
+    return pauses
+
+
 def test_young_empty_lock_filled_in_while_waiting(
-    tmp_path: Path, fast: None, health: dict[int, str]
+    tmp_path: Path, fast: None, health: dict[int, str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     (tmp_path / LOCK_NAME).write_bytes(b"")
     health[8111] = str(tmp_path)
-
-    def fill() -> None:
-        time.sleep(0.05)
-        (tmp_path / LOCK_NAME).write_text(json.dumps({"pid": os.getpid(), "port": 8111}))
-
-    threading.Thread(target=fill).start()
+    pauses = _on_first_poll(
+        monkeypatch,
+        lambda: (tmp_path / LOCK_NAME).write_text(json.dumps({"pid": os.getpid(), "port": 8111})),
+    )
     assert instance.claim_lock(tmp_path, 8799) == instance.Claim("running", 8111)
+    assert len(pauses) == 1
 
 
 def test_young_lock_removed_while_waiting_is_acquired(
-    tmp_path: Path, fast: None, health: dict[int, str]
+    tmp_path: Path, fast: None, health: dict[int, str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     path = _write_lock(tmp_path, os.getpid(), 8111)
-
-    def remove() -> None:
-        time.sleep(0.05)
-        path.unlink()
-
-    threading.Thread(target=remove).start()
+    pauses = _on_first_poll(monkeypatch, path.unlink)
     assert instance.claim_lock(tmp_path, 8799).kind == "acquired"
+    assert len(pauses) == 1
+    assert instance.read_lock(tmp_path) == LockInfo(os.getpid(), 8799)
 
 
 def test_takeover_leaves_a_rewritten_lock_alone(
@@ -416,11 +432,7 @@ def test_second_launch_finds_live_server_and_signal_removes_lock(
     cmd = _launch(data_dir, port)
     server = subprocess.Popen(cmd, env=env, stderr=subprocess.PIPE, stdout=subprocess.PIPE)
     try:
-        deadline = time.monotonic() + 20
-        while not instance.same_folder(instance.probe_health(port, timeout=0.2), data_dir):
-            assert server.poll() is None, server.stderr.read().decode()
-            assert time.monotonic() < deadline, "server never answered health"
-            time.sleep(0.1)
+        wait_for_health(server, port, data_dir)
         assert instance.read_lock(data_dir) == LockInfo(pid=server.pid, port=port)
 
         second = subprocess.run(cmd, env=env, capture_output=True, timeout=30)
@@ -517,11 +529,7 @@ def test_server_makes_no_outbound_connections(tmp_path: Path) -> None:
         stdout=subprocess.PIPE, stderr=subprocess.PIPE,
     )
     try:
-        deadline = time.monotonic() + 20
-        while not instance.same_folder(instance.probe_health(port, timeout=0.2), data_dir):
-            assert server.poll() is None, server.stderr.read().decode()
-            assert time.monotonic() < deadline, "server never answered health"
-            time.sleep(0.1)
+        wait_for_health(server, port, data_dir)
         for path in ("/api/health", "/", "/catalog/x"):
             conn = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
             try:
