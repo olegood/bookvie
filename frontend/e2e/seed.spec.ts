@@ -1,11 +1,10 @@
 // A data dir seeded with LibraryBuilder before the server starts is served as
 // is: the server loads it without rewriting a byte.
 
-import { test, expect } from '@playwright/test'
 import { readFileSync, rmSync } from 'node:fs'
 import path from 'node:path'
 import { runDir } from './guard.ts'
-import { freePort, seedLibrary, startServer } from './fixtures.ts'
+import { expect, freePort, seedLibrary, startServer, test } from './fixtures.ts'
 
 test('a seeded per-test server starts and leaves library.json byte-identical', async () => {
   const dataDir = path.join(runDir(process.env.BOOKVIE_E2E_RUN_ID!), `seed-${test.info().workerIndex}`)

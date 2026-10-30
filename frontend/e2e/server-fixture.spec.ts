@@ -1,12 +1,11 @@
 // The server fixture's failure path: a bookvie that exits before answering
 // health fails the fixture with its captured stderr.
 
-import { test, expect } from '@playwright/test'
 import { existsSync } from 'node:fs'
 import net from 'node:net'
 import path from 'node:path'
 import { runDir } from './guard.ts'
-import { startServer } from './fixtures.ts'
+import { expect, startServer, test } from './fixtures.ts'
 
 test('a server that dies before health fails with its stderr', async () => {
   const blocker = net.createServer()

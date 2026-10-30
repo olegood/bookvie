@@ -1,9 +1,9 @@
 // FND-UNIT-003: the e2e data-dir guard. Pure path checks; no server starts.
 
-import { test, expect } from '@playwright/test'
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
+import { expect, test } from './fixtures.ts'
 import { e2eRoot, safeDataDir } from './guard.ts'
 
 let root: string

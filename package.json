@@ -4,6 +4,9 @@
   "version": "0.1.0",
   "description": "Local-first home library and reading tracker.",
   "license": "MIT",
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
     "postinstall": "npm --prefix frontend ci && npm --prefix frontend exec -- playwright install chromium",
     "build": "npm --prefix frontend run build",

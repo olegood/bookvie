@@ -80,7 +80,7 @@ The build is split into 7 epics and 41 stories, each story with Given/When/Then 
 
 ## Getting started
 
-You need Python 3.14 with [uv](https://docs.astral.sh/uv/), and Node with npm to build the frontend.
+You need Python 3.14 with [uv](https://docs.astral.sh/uv/), and Node 24 or newer (see `.nvmrc`) with npm to build the frontend.
 
 ```sh
 npm install                              # installs frontend dependencies and Playwright's Chromium
@@ -106,7 +106,7 @@ bookvie                                  # serves 127.0.0.1:8765 and opens the b
 
 **Development:** run `npm run dev` (Vite on `:5173`, proxying `/api` and `/media` to `:8765`) next to `bookvie --dev --no-browser`.
 
-**Tests:** `npm run check` at the repo root runs four steps in order and stops at the first failure: `check:py` (pytest with line-coverage gates of 90% on `bookvie/domain/` and 80% on `bookvie/intents/` + `bookvie/store/`), `check:api` (frontend type check and lint), `check:e2e` (builds the SPA, then runs the Playwright suite; each worker starts its own `bookvie` on a free port with a data dir under `$TMPDIR/bookvie-e2e/<run-id>/`) and `check:smoke` (builds, installs bookvie with `uv tool install` into a temp folder, starts it and checks that it serves the SPA). Each step also runs on its own, e.g. `npm run check:py`. No check touches `~/bookvie-data`: pytest runs with a temp `HOME`, and the e2e path guard always refuses the real library.
+**Tests:** `npm run check` at the repo root runs four steps in order and stops at the first failure: `check:py` (pytest with line-coverage gates of 90% on `bookvie/domain/` and 80% on `bookvie/intents/` + `bookvie/store/`), `check:api` (frontend type check and lint), `check:e2e` (builds the SPA, then runs the Playwright suite; each worker starts its own `bookvie` on a free port with a data dir under `$TMPDIR/bookvie-e2e/<run-id>/`) and `check:smoke` (builds, installs bookvie with `uv tool install` into a temp folder, starts it and checks that it serves the SPA). Each step also runs on its own, e.g. `npm run check:py`. No check touches `~/bookvie-data`: pytest runs with a temp `HOME`, and the e2e path guard always refuses the real library. A failing e2e test keeps a trace, screenshot and video in `frontend/test-results/`, with HTML and JUnit reports next to it; [`frontend/e2e/README.md`](frontend/e2e/README.md) explains the suite's fixtures, conventions and troubleshooting.
 
 ## Adding books with AI
 
