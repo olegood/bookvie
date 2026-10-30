@@ -179,6 +179,8 @@ test.describe('Story 1.9 Duplicate dialog (ATDD)', () => {
     page.on('request', (request) => {
       if (request.method() === 'POST' && new URL(request.url()).pathname === ADD_BOOK) sent.push(request)
     })
+    // In List view, which Bookcase replaced as the default in Story 1.10.
+    await page.addInitScript(() => window.localStorage.setItem('bookvie.catalogView', 'list'))
     await page.goto(`${server.url}/`)
     const panel = await openNewBook(page)
     await fillFields(panel, DUNE)

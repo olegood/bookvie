@@ -23,6 +23,28 @@ export function matchesTitle(title: string, query: string): boolean {
   return text === '' || title.toLocaleLowerCase().includes(text)
 }
 
+/** The fields of a catalog Book its spine name reads. */
+export interface NamedSpine extends ListedBook {
+  authorCount: number
+  finished: boolean
+}
+
+/**
+ * A spine's accessible name (UX-DR25): "Title by First author, finished",
+ * "… and 1 other, …" or "… and N others, …", always with the full title.
+ */
+export function spineName(book: NamedSpine): string {
+  const others = book.authorCount - 1
+  const more = others === 1 ? ' and 1 other' : others > 1 ? ` and ${others} others` : ''
+  const by = book.firstAuthor === '' ? '' : ` by ${book.firstAuthor}${more}`
+  return `${book.title}${by}, ${book.finished ? 'finished' : 'not read yet'}`
+}
+
+/** The bookcase list's name; it counts every Book, even during a search. */
+export function bookcaseName(total: number): string {
+  return total === 1 ? 'Bookcase, 1 book' : `Bookcase, ${total} books`
+}
+
 /** The count announced after typing pauses. */
 export function matchCountCopy(count: number): string {
   return count === 1 ? '1 book matches.' : `${count} books match.`

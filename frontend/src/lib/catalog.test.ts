@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import {
+  bookcaseName,
   formatDateAdded,
   lastTagSegment,
   matchCountCopy,
@@ -8,6 +9,7 @@ import {
   noMatchCopy,
   pickTag,
   sortBooks,
+  spineName,
   tagSuggestions,
 } from './catalog.ts'
 
@@ -61,6 +63,37 @@ describe('copy', () => {
 
   it('quotes the search text when nothing matches', () => {
     assert.equal(noMatchCopy('zzz '), 'No titles match “zzz”.')
+  })
+})
+
+describe('spineName', () => {
+  const book = { title: 'Dune', firstAuthor: 'Frank Herbert', authorCount: 1, finished: true }
+
+  it('names the title, first author and status', () => {
+    assert.equal(spineName(book), 'Dune by Frank Herbert, finished')
+    assert.equal(spineName({ ...book, finished: false }), 'Dune by Frank Herbert, not read yet')
+  })
+
+  it('counts co-authors as "1 other" or "N others"', () => {
+    assert.equal(
+      spineName({ ...book, title: 'Good Omens', firstAuthor: 'Terry Pratchett', authorCount: 2 }),
+      'Good Omens by Terry Pratchett and 1 other, finished',
+    )
+    assert.equal(
+      spineName({ ...book, title: 'The Science of Discworld', firstAuthor: 'Terry Pratchett', authorCount: 3 }),
+      'The Science of Discworld by Terry Pratchett and 2 others, finished',
+    )
+  })
+
+  it('leaves out "by" when there is no author', () => {
+    assert.equal(spineName({ ...book, firstAuthor: '', authorCount: 0, finished: false }), 'Dune, not read yet')
+  })
+})
+
+describe('bookcaseName', () => {
+  it('counts one book in the singular', () => {
+    assert.equal(bookcaseName(1), 'Bookcase, 1 book')
+    assert.equal(bookcaseName(500), 'Bookcase, 500 books')
   })
 })
 

@@ -146,44 +146,44 @@ None. Every test runs against a real seeded server. Nothing is routed.
 Activate one test at a time: delete its `@pytest.mark.skip(reason=RED)` line, or change `test.skip(` to `test(`, then watch it fail, implement, and watch it pass. Backend: `cd backend && TZ=Europe/Madrid uv run pytest tests/test_bookcase_view.py`. E2E: `npm run build && npm --prefix frontend run e2e -- e2e/bookcase.spec.ts -g "AC-4 "`.
 
 ### AC-2 view data
-- [ ] Un-skip AC-2. It passes today (the view shipped with Story 1.6), so keep it as the regression pin for back-fills, re-reads and color precedence
+- [x] Un-skip AC-2. It passes today (the view shipped with Story 1.6), so keep it as the regression pin for back-fills, re-reads and color precedence
 
 ### AC-1 the toggle (do first: it changes the default view)
-- [ ] `components/ViewToggle` (or a generic `SegmentedToggle` shared with ThemeToggle): `role="group"`, "Catalog view", Bookcase · List, `aria-pressed`, stored in `localStorage` with the try/catch that `lib/theme.ts` uses
-- [ ] `CatalogPage`: render `Bookcase` or `CatalogList` from the choice, with Bookcase as the default. Search titles keeps one `query` for both
-- [ ] **Existing tests that assume the List view is the default** must switch to List first, by clicking **List** or seeding the stored choice: `catalog-list.spec.ts` (all four tests), `new-book-panel.spec.ts` AC-5 (focus on the new row) and `duplicate-dialog.spec.ts` AC-8 (`getByRole('table').locator(':focus')`). This is part of the implementation, not a regression
-- [ ] Activate AC-1
+- [x] `components/ViewToggle` (or a generic `SegmentedToggle` shared with ThemeToggle): `role="group"`, "Catalog view", Bookcase · List, `aria-pressed`, stored in `localStorage` with the try/catch that `lib/theme.ts` uses
+- [x] `CatalogPage`: render `Bookcase` or `CatalogList` from the choice, with Bookcase as the default. Search titles keeps one `query` for both
+- [x] **Existing tests that assume the List view is the default** must switch to List first, by clicking **List** or seeding the stored choice: `catalog-list.spec.ts` (all four tests), `new-book-panel.spec.ts` AC-5 (focus on the new row) and `duplicate-dialog.spec.ts` AC-8 (`getByRole('table').locator(':focus')`). This is part of the implementation, not a regression
+- [x] Activate AC-1
 
 ### AC-3 / AC-4 the spine
-- [ ] `components/Spine`: `<li><button>` with the accessible name from `title`, `firstAuthor`, `authorCount` and `finished` (`aria-label`, or visually hidden text), and the label as visible text
-- [ ] Height: measure the label's natural one-line width in `spine-label` (for example `scrollWidth`, or `canvas.measureText` with the token font and letter spacing), then `min(200, ceil((120 + 0.3 × w) / 8) × 8)`. Keep this as a pure function in `lib/` so it can be unit-tested
-- [ ] Read: fill `spineColor` exactly; `spine-edge` borders on the top and sides; a label strip of at most 96px (label at most 88px, one line, ellipsis). Unread: `spine-unread-fill`, 1.5px `spine-unread-outline` on the top and sides, `spine-unread-text`, no strip
-- [ ] Activate AC-4, then AC-3
+- [x] `components/Spine`: `<li><button>` with the accessible name from `title`, `firstAuthor`, `authorCount` and `finished` (`aria-label`, or visually hidden text), and the label as visible text
+- [x] Height: measure the label's natural one-line width in `spine-label` (for example `scrollWidth`, or `canvas.measureText` with the token font and letter spacing), then `min(200, ceil((120 + 0.3 × w) / 8) × 8)`. Keep this as a pure function in `lib/` so it can be unit-tested
+- [x] Read: fill `spineColor` exactly; `spine-edge` borders on the top and sides; a label strip of at most 96px (label at most 88px, one line, ellipsis). Unread: `spine-unread-fill`, 1.5px `spine-unread-outline` on the top and sides, `spine-unread-text`, no strip
+- [x] Activate AC-4, then AC-3
 
 ### AC-5 / AC-6 the bookcase
-- [ ] `pages/Bookcase`: a `shelf-wall` card, a "BOOKCASE" heading, the meter as a `progressbar` from `view.meter`, the `list` "Bookcase, N books", rows on birch planks (flex-wrap, so rows follow the viewport width), and a legend. Order with the existing `sortBooks`
-- [ ] Render every spine, with no virtualization (NFR7). Keep spine elements light: 500 is the design scale
-- [ ] Reuse the plank styles of `EmptyShelf`, so the empty state and the full bookcase share one look
-- [ ] Activate AC-5, then AC-6
+- [x] `pages/Bookcase`: a `shelf-wall` card, a "BOOKCASE" heading, the meter as a `progressbar` from `view.meter`, the `list` "Bookcase, N books", rows on birch planks (flex-wrap, so rows follow the viewport width), and a legend. Order with the existing `sortBooks`
+- [x] Render every spine, with no virtualization (NFR7). Keep spine elements light: 500 is the design scale
+- [x] Reuse the plank styles of `EmptyShelf`, so the empty state and the full bookcase share one look
+- [x] Activate AC-5, then AC-6
 
 ### AC-7 / AC-8 keyboard and search
-- [ ] Roving tabindex: one `tabIndex=0` spine (the last focused, or the first). Left/Right step through the *visible* spines in sort order. Up/Down use the spines' `getBoundingClientRect()` centres in the row above or below. Home/End. Character keys are ignored
-- [ ] When the tab-stop spine is filtered out, move the tab stop to the nearest visible spine in sort order (see Notes for ties). Move actual focus only when a spine had focus. When none remain, show the no-match line (the existing `noMatchCopy`) in place of the shelf
-- [ ] Activate AC-7, then AC-8
+- [x] Roving tabindex: one `tabIndex=0` spine (the last focused, or the first). Left/Right step through the *visible* spines in sort order. Up/Down use the spines' `getBoundingClientRect()` centres in the row above or below. Home/End. Character keys are ignored
+- [x] When the tab-stop spine is filtered out, move the tab stop to the nearest visible spine in sort order (see Notes for ties). Move actual focus only when a spine had focus. When none remain, show the no-match line (the existing `noMatchCopy`) in place of the shelf
+- [x] Activate AC-7, then AC-8
 
 ### AC-9 / AC-10 after an add, and the skill
-- [ ] `onAdded`: in Bookcase view, scroll the new spine into view (`behavior: 'auto'` under reduced motion), focus it, ring it for `HIGHLIGHT_MS`, then announce. Generalize `titleCells` so it holds the spine buttons too
-- [ ] Activate AC-9, then AC-10
+- [x] `onAdded`: in Bookcase view, scroll the new spine into view (`behavior: 'auto'` under reduced motion), focus it, ring it for `HIGHLIGHT_MS`, then announce. Generalize `titleCells` so it holds the spine buttons too
+- [x] Activate AC-9, then AC-10
 
 ### AC-11 themes
-- [ ] Dark tokens are already in `tokens.css`. Add the forced-colors rules from DESIGN.md → Forced colors (`forced-color-adjust: none` on read fills, a `CanvasText` outline on unread, a `Canvas`/`CanvasText` strip)
-- [ ] Activate AC-11
+- [x] Dark tokens are already in `tokens.css`. Add the forced-colors rules from DESIGN.md → Forced colors (`forced-color-adjust: none` on read fills, a `CanvasText` outline on unread, a `Canvas`/`CanvasText` strip)
+- [x] Activate AC-11
 
 ### Green-phase follow-ups (secondary branches, not separate red leaves)
 - [ ] AC-1: an empty library shows neither the toggle nor Search titles (`catalog-empty.spec.ts` AC-8 "only New book" must keep passing); a broken or unknown stored value falls back to Bookcase; localStorage throwing doesn't break the page; Tab order is Search titles → Bookcase → List → **New book**
-- [ ] AC-3 (unit, `src/**/*.test.ts`): the height function at the boundaries: a width of 0 gives 120; the step rounds up (w = 26.7 → 128, w = 26.8 → 136); the cap starts at 200 (w > 240 → 200)
+- [x] AC-3 (unit, `src/**/*.test.ts`): the height function at the boundaries: a width of 0 gives 120; the step rounds up at w = 80/3 (w = 26.66 → 128, w = 26.67 → 136, w = 26.8 → 136); the cap starts at 200 (w > 240 → 200)
 - [ ] AC-3: the 1.5px outline at `deviceScaleFactor: 2` (Chromium snaps a 1.5px border to 1px at DPR 1); the spines are bottom-aligned on the plank; the strip leaves a 6px band of color on each side; a user-set near-black and pure white are shown exactly; text-spacing overrides grow the spine
-- [ ] AC-4: the wording for exactly one co-author (see Notes); a Book with no authors (`firstAuthor` is "") gets no dangling "by"
+- [x] AC-4: the wording for exactly one co-author (see Notes); a Book with no authors (`firstAuthor` is "") gets no dangling "by"
 - [ ] AC-5: rows reflow when the viewport goes from 1024 to 1440px; about 35 spines a plank at 1280px; 12px inner padding at the row ends; the list name with one Book ("Bookcase, 1 book")
 - [ ] AC-6: a performance budget for the first render of 500 spines (a P3 check)
 - [ ] AC-7: Left on the first spine and Right on the last don't wrap; Up from row 1 and Down from the last row stay put; arrows skip `hidden` spines; Enter and Space do nothing until the popover story
@@ -243,6 +243,13 @@ npm run check
 ---
 
 ## Test Execution Evidence
+
+### Green run (Story 1.10 implemented)
+
+- `TZ=Europe/Madrid uv run pytest tests/test_bookcase_view.py` → **1 passed**.
+- `npm --prefix frontend run e2e -- e2e/bookcase.spec.ts` → **10 passed**.
+- `npm run check` → exit 0 (92 e2e passed, none skipped).
+- Unit: `spine.test.ts` (height boundaries, tie rule), `catalog.test.ts` (`spineName`, `bookcaseName`), `catalogView.test.ts` (junk and throwing storage). The step boundary is w = 80/3 ≈ 26.667, so the unit test pins 26.66 → 128 and 26.67 → 136 (w = 26.7 gives 128.01, which rounds up to 136).
 
 ### Scaffold run (all skipped)
 

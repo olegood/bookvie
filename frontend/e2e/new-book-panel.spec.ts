@@ -251,6 +251,8 @@ test.describe('Story 1.8 New book panel (ATDD)', () => {
     seededServer,
   }) => {
     const server = await seededServer({ books: [NEUROMANCER] })
+    // In List view, which Bookcase replaced as the default in Story 1.10.
+    await page.addInitScript(() => window.localStorage.setItem('bookvie.catalogView', 'list'))
     await page.goto(`${server.url}/`)
     // A search that would hide the new Book is cleared first.
     const search = page.getByRole('searchbox', { name: 'Search titles', exact: true })

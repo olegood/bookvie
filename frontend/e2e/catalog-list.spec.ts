@@ -10,6 +10,11 @@ function bookRows(page: Page): Locator {
 }
 
 test.describe('Story 1.8 List view and Search titles (ATDD)', () => {
+  // Bookcase is the default view since Story 1.10; these run in List view.
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => window.localStorage.setItem('bookvie.catalogView', 'list'))
+  })
+
   test('[P1] AC-9 the List view has fixed columns and sorts by first author with Intl.Collator, then title', async ({
     page,
     seededServer,

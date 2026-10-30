@@ -3,10 +3,14 @@ import { useCatalogView, type ShelfBook } from '../api/index.ts'
 import Button from '../components/Button.tsx'
 import FailureMessage from '../components/FailureMessage.tsx'
 import PageHeading from '../components/PageHeading.tsx'
+import ViewToggle from '../components/ViewToggle.tsx'
 import { announce, clearAnnouncements } from '../lib/announce.ts'
 import { matchCountCopy, matchesTitle, sortBooks } from '../lib/catalog.ts'
+import { readCatalogView, writeCatalogView, type CatalogViewChoice } from '../lib/catalogView.ts'
 import { COULDNT_LOAD } from '../lib/copy.ts'
 import { usePageTitle } from '../lib/page.ts'
+import Bookcase from './Bookcase.tsx'
+import shelf from './Bookcase.module.css'
 import CatalogList from './CatalogList.tsx'
 import NewBookPanel from './NewBookPanel.tsx'
 import SearchTitles from './SearchTitles.tsx'
@@ -16,20 +20,22 @@ const EMPTY_SHELF = 'Your shelf is empty. Add your first book.'
 const EMPTY_PLANKS = 3
 // The count is announced once typing pauses.
 const SEARCH_PAUSE_MS = 500
-// DESIGN.md → Highlight ring: how long the new row keeps it.
+// DESIGN.md → Highlight ring: how long the new spine or row keeps it.
 const HIGHLIGHT_MS = 2000
 
 const NO_BOOKS: readonly ShelfBook[] = []
 
 function EmptyShelf() {
   return (
-    <section className={styles.bookcase} aria-label="Bookcase">
-      {Array.from({ length: EMPTY_PLANKS }, (_, row) => (
-        <div key={row} className={styles.row}>
-          {row === 0 && <p className={styles.empty}>{EMPTY_SHELF}</p>}
-          <div className={styles.plank} />
-        </div>
-      ))}
+    <section className={shelf.card} aria-label="Bookcase">
+      <div className={shelf.emptyRows}>
+        {Array.from({ length: EMPTY_PLANKS }, (_, row) => (
+          <div key={row} className={shelf.row}>
+            {row === 0 && <p className={shelf.empty}>{EMPTY_SHELF}</p>}
+            <div className={shelf.plank} />
+          </div>
+        ))}
+      </div>
     </section>
   )
 }
@@ -47,9 +53,12 @@ export default function CatalogPage() {
 
   const [panelOpen, setPanelOpen] = useState(false)
   const [query, setQuery] = useState('')
+  const [catalogView, setCatalogView] = useState<CatalogViewChoice>(readCatalogView)
   const [added, setAdded] = useState<{ id: string; title: string } | null>(null)
   const [highlightId, setHighlightId] = useState<string | null>(null)
-  const titleCells = useRef(new Map<string, HTMLElement>())
+  // The new Book's spine or title cell, whichever view is showing.
+  const focusTargets = useRef(new Map<string, HTMLElement>())
+  const searchRef = useRef<HTMLInputElement | null>(null)
   const countTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   // What the pending count reads when it fires.
   const latest = useRef({ sorted, query })
@@ -72,15 +81,18 @@ export default function CatalogPage() {
 
   useEffect(() => cancelCount, [])
 
-  // After an add: the refetched list has rendered, so scroll the new row into
-  // view, focus its title, ring it, and only then announce.
+  // After an add: the refetched view has rendered, so scroll the new spine
+  // or row into view, focus it, ring it, and only then announce.
   useEffect(() => {
     if (!added) return
-    const cell = titleCells.current.get(added.id)
-    if (!cell) return
+    const target = focusTargets.current.get(added.id)
+    if (!target) return
     setAdded(null)
-    cell.scrollIntoView({ block: 'nearest', behavior: prefersReducedMotion() ? 'auto' : 'smooth' })
-    cell.focus({ preventScroll: true })
+    // Scroll the slot, not the spine: a list item is one full row high, so
+    // a spine whose measured height hasn't committed yet still lands in view.
+    const slot = target.closest('li') ?? target
+    slot.scrollIntoView({ block: 'nearest', behavior: prefersReducedMotion() ? 'auto' : 'smooth' })
+    target.focus({ preventScroll: true })
     setHighlightId(added.id)
     announce('status', `Added ${added.title}.`)
   }, [added, sorted])
@@ -137,20 +149,35 @@ export default function CatalogPage() {
     setAdded({ id, title })
   }
 
+  const chooseView = (next: CatalogViewChoice) => {
+    setCatalogView(next)
+    writeCatalogView(next)
+  }
+
   const empty = view.data.books.length === 0
   return (
     <div className={styles.page}>
       <PageHeading className={styles.title}>Catalog</PageHeading>
       <div className={styles.toolbar}>
-        {!empty && <SearchTitles value={query} onChange={search} />}
+        {!empty && <SearchTitles value={query} onChange={search} inputRef={searchRef} />}
+        {!empty && <ViewToggle value={catalogView} onChange={chooseView} />}
         <Button variant="primary" className={styles.newBook} onClick={openPanel}>
           New book
         </Button>
       </div>
       {empty ? (
         <EmptyShelf />
+      ) : catalogView === 'bookcase' ? (
+        <Bookcase
+          books={sorted}
+          meter={view.data.meter}
+          query={query}
+          highlightId={highlightId}
+          focusTargets={focusTargets}
+          searchRef={searchRef}
+        />
       ) : (
-        <CatalogList books={sorted} query={query} highlightId={highlightId} titleCells={titleCells} />
+        <CatalogList books={sorted} query={query} highlightId={highlightId} focusTargets={focusTargets} />
       )}
       {panelOpen && (
         <NewBookPanel tags={view.data.tags} onClose={() => setPanelOpen(false)} onAdded={onAdded} />

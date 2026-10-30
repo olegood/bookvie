@@ -144,7 +144,7 @@ test.describe('Story 1.10 Bookcase view (ATDD)', () => {
     await page.emulateMedia({ colorScheme: 'light' })
   })
 
-  test.skip('[P1] AC-1 Bookcase is the default view and the remembered Catalog view toggle switches to List', async ({
+  test('[P1] AC-1 Bookcase is the default view and the remembered Catalog view toggle switches to List', async ({
     page,
     seededServer,
   }) => {
@@ -186,7 +186,7 @@ test.describe('Story 1.10 Bookcase view (ATDD)', () => {
     await expect(bookcase(page)).toBeVisible()
   })
 
-  test.skip('[P0] AC-3 spines are 28px wide, grow with the title up to 200px, read in exact color, unread outlined', async ({
+  test('[P0] AC-3 spines are 28px wide, grow with the title up to 200px, read in exact color, unread outlined', async ({
     page,
     seededServer,
   }) => {
@@ -242,7 +242,7 @@ test.describe('Story 1.10 Bookcase view (ATDD)', () => {
     expect(unread.strip).toBeNull()
   })
 
-  test.skip('[P0] AC-4 each spine is a button in a list item named with full title, first author and status', async ({
+  test('[P0] AC-4 each spine is a button in a list item named with full title, first author and status', async ({
     page,
     seededServer,
   }) => {
@@ -264,7 +264,7 @@ test.describe('Story 1.10 Bookcase view (ATDD)', () => {
     await expect(spines(page)).toHaveCount(3)
   })
 
-  test.skip('[P1] AC-5 the bookcase is a shelf-wall card with header, library meter, legend and a named list in sort order', async ({
+  test('[P1] AC-5 the bookcase is a shelf-wall card with header, library meter, legend and a named list in sort order', async ({
     page,
     seededServer,
   }) => {
@@ -321,7 +321,7 @@ test.describe('Story 1.10 Bookcase view (ATDD)', () => {
     expect(card).toEqual({ onWall: true, scrolls: false })
   })
 
-  test.skip('[P1] AC-6 all 500 spines of a 500-Book library are in the page and reachable by keyboard', async ({
+  test('[P1] AC-6 all 500 spines of a 500-Book library are in the page and reachable by keyboard', async ({
     page,
     seededServer,
   }) => {
@@ -337,7 +337,7 @@ test.describe('Story 1.10 Bookcase view (ATDD)', () => {
     await expect(spine(page, 'Book 500 by Author, not read yet')).toBeFocused()
   })
 
-  test.skip('[P0] AC-7 the bookcase is one Tab stop with roving tabindex, arrows, Home and End, and no type-ahead', async ({
+  test('[P0] AC-7 the bookcase is one Tab stop with roving tabindex, arrows, Home and End, and no type-ahead', async ({
     page,
     seededServer,
   }) => {
@@ -375,10 +375,14 @@ test.describe('Story 1.10 Bookcase view (ATDD)', () => {
     await page.keyboard.press('ArrowUp')
     await expect(all.nth(top[bottom.length - 1])).toBeFocused()
 
-    // Home and End: first and last spine of the bookcase.
+    // Home and End: first and last spine of the bookcase; arrows don't wrap.
     await page.keyboard.press('End')
     await expect(all.last()).toBeFocused()
+    await page.keyboard.press('ArrowRight')
+    await expect(all.last()).toBeFocused()
     await page.keyboard.press('Home')
+    await expect(all.first()).toBeFocused()
+    await page.keyboard.press('ArrowLeft')
     await expect(all.first()).toBeFocused()
 
     // No type-ahead: a letter moves nothing.
@@ -394,7 +398,7 @@ test.describe('Story 1.10 Bookcase view (ATDD)', () => {
     await expect(bookcase(page).locator('[tabindex="0"]')).toHaveCount(1)
   })
 
-  test.skip('[P1] AC-8 Search titles hides spines, closes up the shelf and moves the Tab stop to the nearest spine', async ({
+  test('[P1] AC-8 Search titles hides spines, closes up the shelf and moves the Tab stop to the nearest spine', async ({
     page,
     seededServer,
   }) => {
@@ -426,9 +430,20 @@ test.describe('Story 1.10 Bookcase view (ATDD)', () => {
     ])
     expect(eclipse!.x - (blue!.x + blue!.width)).toBe(4)
     // The Tab stop moved to the nearest remaining spine in sort order (Blue
-    // Moon is one away, Eclipse Moon two).
+    // Moon is one away, Eclipse Moon two), and stays there once the search
+    // is cleared, though no spine was focused in between.
+    await search(page).fill('')
+    await expect(spines(page)).toHaveCount(5)
     await tabIntoBookcase(page)
     await expect(spine(page, name('Blue Moon'))).toBeFocused()
+
+    // Arrows skip hidden spines (Cosmos, Dracula).
+    await search(page).fill('moon')
+    await expect(spines(page)).toHaveCount(2)
+    await tabIntoBookcase(page)
+    await expect(spine(page, name('Blue Moon'))).toBeFocused()
+    await page.keyboard.press('ArrowRight')
+    await expect(spine(page, name('Eclipse Moon'))).toBeFocused()
 
     // None remain: the shelf shows the no-match line and focus stays in Search titles.
     await search(page).fill('zzz')
@@ -437,7 +452,7 @@ test.describe('Story 1.10 Bookcase view (ATDD)', () => {
     await expect(page.getByRole('main').getByText('No titles match “zzz”.', { exact: true })).toBeVisible()
   })
 
-  test.skip('[P0] AC-9 after an add in Bookcase view the new spine is scrolled into view, ringed and focused', async ({
+  test('[P0] AC-9 after an add in Bookcase view the new spine is scrolled into view, ringed and focused', async ({
     page,
     seededServer,
   }) => {
@@ -470,7 +485,7 @@ test.describe('Story 1.10 Bookcase view (ATDD)', () => {
     await expect.poll(ringed, { timeout: 4_000 }).toBe(false)
   })
 
-  test.skip('[P0] AC-10 the cataloging skill confirms a save from a spine named "Dune by …", in Bookcase and List view', async ({
+  test('[P0] AC-10 the cataloging skill confirms a save from a spine named "Dune by …", in Bookcase and List view', async ({
     page,
     seededServer,
   }) => {
@@ -514,7 +529,7 @@ test.describe('Story 1.10 Bookcase view (ATDD)', () => {
     await expect(bookcase(page).getByRole('button', { name: /^Dune by / })).toHaveCount(1)
   })
 
-  test.skip('[P1] AC-11 read and unread spines stay distinct in both themes and forced colors, and axe passes', async ({
+  test('[P1] AC-11 read and unread spines stay distinct in both themes and forced colors, and axe passes', async ({
     page,
     seededServer,
   }) => {
@@ -551,5 +566,65 @@ test.describe('Story 1.10 Bookcase view (ATDD)', () => {
       return { edge: style.borderTopColor, fill: style.backgroundColor }
     })
     expect(outline.edge).not.toBe(outline.fill)
+  })
+  test('[P1] AC-3 a spine first rendered hidden gets its measured height once a search shows it', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({
+      books: [
+        { title: 'Dune', authors: ['Frank Herbert'] },
+        { title: 'The Left Hand of Darkness', authors: ['Ursula K. Le Guin'] },
+      ],
+    })
+    await page.goto(`${server.url}/`)
+    const toggle = viewToggle(page)
+    await toggle.getByRole('button', { name: 'List', exact: true }).click()
+    await search(page).fill('Dune')
+    await toggle.getByRole('button', { name: 'Bookcase', exact: true }).click()
+    await expect(spines(page)).toHaveCount(1)
+
+    await search(page).fill('')
+    const leftHand = spine(page, 'The Left Hand of Darkness by Ursula K. Le Guin, not read yet')
+    await expect(leftHand).toBeVisible()
+    await expect.poll(async () => (await leftHand.boundingBox())?.height).toBe(168)
+  })
+
+  test('[P1] AC-1 a junk stored view opens Bookcase', async ({ page, seededServer }) => {
+    const server = await seededServer({ books: [{ title: 'Dune', authors: ['Frank Herbert'] }] })
+    await page.addInitScript(() => window.localStorage.setItem('bookvie.catalogView', 'shelves'))
+    await page.goto(`${server.url}/`)
+
+    await expect(viewToggle(page).getByRole('button', { name: 'Bookcase', exact: true })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    await expect(spine(page, 'Dune by Frank Herbert, not read yet')).toBeVisible()
+  })
+
+  test('[P1] AC-1 storage that throws opens Bookcase and the toggle still switches', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: [{ title: 'Dune', authors: ['Frank Herbert'] }] })
+    await page.addInitScript(() => {
+      const fail = () => {
+        throw new DOMException('denied', 'SecurityError')
+      }
+      Storage.prototype.getItem = fail
+      Storage.prototype.setItem = fail
+    })
+    await page.goto(`${server.url}/`)
+    const listButton = viewToggle(page).getByRole('button', { name: 'List', exact: true })
+
+    await expect(viewToggle(page).getByRole('button', { name: 'Bookcase', exact: true })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    await expect(bookcase(page)).toBeVisible()
+    await listButton.click()
+    await expect(listButton).toHaveAttribute('aria-pressed', 'true')
+    await expect(bookRows(page)).toHaveCount(1)
+    await expect(bookcase(page)).toBeHidden()
   })
 })

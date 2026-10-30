@@ -1,16 +1,18 @@
-import { useId, type KeyboardEvent } from 'react'
+import { useId, type KeyboardEvent, type Ref } from 'react'
 import styles from './SearchTitles.module.css'
 
 type Props = {
   value: string
   onChange: (value: string) => void
+  /** The input, so the page can focus it (when no spine remains). */
+  inputRef?: Ref<HTMLInputElement>
 }
 
 /**
  * Search titles (EXPERIENCE.md → Search field): a visible label, no
  * placeholder. Esc in a non-empty field clears it.
  */
-export default function SearchTitles({ value, onChange }: Props) {
+export default function SearchTitles({ value, onChange, inputRef }: Props) {
   const id = useId()
   const keyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Escape' && value !== '') {
@@ -30,6 +32,7 @@ export default function SearchTitles({ value, onChange }: Props) {
         </svg>
         <input
           id={id}
+          ref={inputRef}
           type="search"
           className={styles.input}
           value={value}

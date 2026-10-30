@@ -9,8 +9,8 @@ type Props = {
   query: string
   /** The Book whose row carries the highlight ring, if any. */
   highlightId: string | null
-  /** Title cells by Book id, for focus after an add. */
-  titleCells: RefObject<Map<string, HTMLElement>>
+  /** What gets focus after an add, by Book id: here, the title cells. */
+  focusTargets: RefObject<Map<string, HTMLElement>>
 }
 
 const pages = new Intl.NumberFormat('en-GB')
@@ -20,7 +20,7 @@ const pages = new Intl.NumberFormat('en-GB')
  * added, in that fixed order. Rows whose titles don't match Search titles are
  * `hidden`. Title cells are focusable until Story 1.11 makes them links.
  */
-export default function CatalogList({ books, query, highlightId, titleCells }: Props) {
+export default function CatalogList({ books, query, highlightId, focusTargets }: Props) {
   const matches = books.filter((book) => matchesTitle(book.title, query))
   return (
     <>
@@ -48,8 +48,11 @@ export default function CatalogList({ books, query, highlightId, titleCells }: P
                 className={styles.title}
                 tabIndex={0}
                 ref={(cell) => {
-                  if (cell) titleCells.current.set(book.id, cell)
-                  else titleCells.current.delete(book.id)
+                  const targets = focusTargets.current
+                  if (cell) targets.set(book.id, cell)
+                  return () => {
+                    if (targets.get(book.id) === cell) targets.delete(book.id)
+                  }
                 }}
               >
                 {book.title}

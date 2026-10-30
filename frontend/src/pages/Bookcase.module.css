@@ -1,0 +1,320 @@
+/*
+ * DESIGN.md → Bookcase, Spine, Library meter, Highlight ring and Forced
+ * colors. The card and plank are shared with the empty shelf.
+ */
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5) var(--space-6) var(--space-4);
+  border: var(--hairline) solid var(--color-shelf-wall-line);
+  border-radius: var(--radius-xl);
+  background: var(--color-shelf-wall);
+}
+
+/* The empty shelf: bare planks with the empty sentence on the first. */
+.emptyRows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  padding: var(--space-1) 0;
+}
+
+.row {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  min-height: var(--space-shelf-row-height);
+}
+
+.empty {
+  margin: auto 0 var(--space-5);
+  text-align: center;
+  font-family: var(--font-body-family);
+  font-size: var(--font-body-size);
+  line-height: var(--font-body-line-height);
+  color: var(--color-ink-secondary);
+}
+
+.plank {
+  box-sizing: border-box;
+  height: var(--plank-height);
+  border-bottom: var(--plank-edge) solid var(--color-birch-edge);
+  border-radius: var(--radius-plank);
+  background: var(--color-birch-plank);
+  box-shadow: var(--shadow-plank);
+}
+
+/* Header: the BOOKCASE heading, the library meter at the right. */
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  min-height: var(--space-5);
+}
+
+.heading {
+  margin: 0;
+  font-family: var(--font-section-label-family);
+  font-size: var(--font-section-label-size);
+  font-weight: var(--font-section-label-weight);
+  letter-spacing: var(--font-section-label-letter-spacing);
+  text-transform: uppercase;
+  color: var(--color-ink);
+}
+
+.meter {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-left: auto;
+  font-family: var(--font-meta-family);
+  font-size: var(--font-meta-size);
+  line-height: var(--font-meta-line-height);
+  color: var(--color-ink-secondary);
+}
+
+.bar {
+  display: block;
+  width: 180px;
+  height: 4px;
+  overflow: hidden;
+  border-radius: var(--radius-plank);
+  background: var(--color-line);
+}
+
+.barFill {
+  display: block;
+  height: 100%;
+  border-radius: var(--radius-plank);
+  background: var(--color-accent);
+}
+
+/*
+ * The shelf: spines wrap into rows by viewport width. Each item is one row
+ * high (204px) and rows are 36px apart, so a 240px repeating gradient draws a
+ * plank (8px face, 4px edge, a faint shadow) under every row, the last one too.
+ */
+.shelf {
+  --row: var(--space-shelf-row-height);
+  --face-end: calc(var(--row) + var(--plank-height) - var(--plank-edge));
+  --plank-end: calc(var(--row) + var(--plank-height));
+  --period: calc(var(--row) + var(--space-8));
+
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: var(--space-spine-gap);
+  row-gap: var(--space-8);
+  margin: 0;
+  padding: 0 var(--space-3) var(--space-3);
+  list-style: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0 var(--row),
+    var(--color-birch-plank) var(--row) var(--face-end),
+    var(--color-birch-edge) var(--face-end) var(--plank-end),
+    rgb(0 0 0 / 0.1) var(--plank-end),
+    transparent calc(var(--plank-end) + 10px) var(--period)
+  );
+}
+
+.slot {
+  display: flex;
+  align-items: flex-end;
+  height: var(--space-shelf-row-height);
+}
+
+.shelf[hidden],
+.slot[hidden] {
+  display: none;
+}
+
+/* The spine is the button: its border box, fill and borders are the spine. */
+.spine {
+  box-sizing: border-box;
+  display: flex;
+  flex: none;
+  justify-content: center;
+  align-items: flex-start;
+  width: var(--space-spine-width);
+  margin: 0;
+  padding: var(--space-spine-label-strip-top) 0 0;
+  overflow: hidden;
+  border-radius: var(--radius-spine);
+  font: inherit;
+  cursor: default;
+  appearance: none;
+}
+
+.read {
+  border: var(--hairline) solid var(--color-spine-edge);
+  border-bottom: 0;
+  background: var(--spine-color);
+}
+
+.unread {
+  border: 1.5px solid var(--color-spine-unread-outline);
+  border-bottom: 0;
+  background: var(--color-spine-unread-fill);
+}
+
+/* The label strip: 16px wide, label + 4px at each end, at most 96px. */
+.strip {
+  box-sizing: border-box;
+  display: flex;
+  flex: none;
+  justify-content: center;
+  width: 16px;
+  max-height: var(--space-spine-label-strip-max);
+  padding: var(--space-1) 0;
+  border-radius: var(--radius-plank);
+}
+
+.read .strip {
+  background: var(--color-spine-label-strip);
+}
+
+.label {
+  display: block;
+  max-height: calc(var(--space-spine-label-strip-max) - 2 * var(--space-1));
+  overflow: hidden;
+  writing-mode: vertical-rl;
+  text-orientation: sideways;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-family: var(--font-spine-label-family);
+  font-size: var(--font-spine-label-size);
+  font-weight: var(--font-spine-label-weight);
+  line-height: var(--font-spine-label-line-height);
+  letter-spacing: var(--font-spine-label-letter-spacing);
+  color: var(--color-spine-label);
+}
+
+.unread .label {
+  color: var(--color-spine-unread-text);
+}
+
+/*
+ * Focus: the accent outline with a page band in the gap, so it shows against
+ * neighbouring spines and the plank. It is not an accent box-shadow, so the
+ * highlight ring can fade while the spine keeps focus.
+ */
+.spine:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-accent);
+  outline-offset: var(--focus-ring-offset);
+  box-shadow: 0 0 0 var(--focus-ring-offset) var(--color-page);
+}
+
+/* DESIGN.md → Highlight ring, on a newly added spine: on at once, fading off. */
+.spine:not(.highlight) {
+  transition: box-shadow 600ms ease-out;
+}
+
+.spine.highlight {
+  box-shadow: 0 0 0 2px var(--color-page), 0 0 0 4px var(--color-accent);
+}
+
+.noMatch {
+  margin: 0;
+  font-family: var(--font-body-family);
+  font-size: var(--font-body-size);
+  line-height: var(--font-body-line-height);
+  color: var(--color-ink-secondary);
+}
+
+.legend {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  font-family: var(--font-meta-family);
+  font-size: var(--font-meta-size);
+  line-height: var(--font-meta-line-height);
+  color: var(--color-ink-secondary);
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: var(--space-2);
+}
+
+.swatchRead,
+.swatchUnread {
+  box-sizing: border-box;
+  display: inline-block;
+  width: 11px;
+  height: 15px;
+  border-radius: 2px 2px 0 0;
+}
+
+.swatchRead {
+  border: var(--hairline) solid var(--color-spine-edge);
+  border-bottom: 0;
+  background: var(--color-spine-sage);
+}
+
+.swatchUnread {
+  border: 1.5px solid var(--color-spine-unread-outline);
+  border-bottom: 0;
+  background: var(--color-spine-unread-fill);
+}
+
+@media (forced-colors: active) {
+  .plank {
+    border: var(--hairline) solid CanvasText;
+  }
+
+  /* Gradients are dropped under forced colors unless the shelf opts out. */
+  .shelf {
+    forced-color-adjust: none;
+    background: repeating-linear-gradient(
+      to bottom,
+      transparent 0 var(--row),
+      CanvasText var(--row) var(--plank-end),
+      transparent var(--plank-end) var(--period)
+    );
+  }
+
+  /* The meter track keeps an outline so its unfilled part shows. */
+  .bar {
+    border: var(--hairline) solid CanvasText;
+  }
+
+  .slot {
+    forced-color-adjust: auto;
+  }
+
+  .read,
+  .swatchRead,
+  .barFill {
+    forced-color-adjust: none;
+    border-color: CanvasText;
+  }
+
+  .barFill {
+    background: CanvasText;
+  }
+
+  .read .strip {
+    background: Canvas;
+  }
+
+  .read .label {
+    color: CanvasText;
+  }
+
+  .unread,
+  .swatchUnread {
+    border-color: CanvasText;
+    background: Canvas;
+  }
+
+  .spine:focus-visible {
+    outline-color: Highlight;
+  }
+
+  .spine.highlight {
+    outline: 2px solid Highlight;
+  }
+}
