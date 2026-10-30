@@ -2,7 +2,7 @@
 
 ``library.json`` holds the whole textual library. :func:`serialize` is the only
 code that makes its bytes. :meth:`Store.open` prepares the data folder at
-startup (sweep, create, load, migrate), and :meth:`Store.apply` is the only
+startup (load or migrate, then sweep, then create or commit), and :meth:`Store.apply` is the only
 way to change the library: under the AD-4 lock it runs a change on a copy,
 checks the AD-18 invariants, commits atomically and swaps the in-memory state.
 """
@@ -29,7 +29,7 @@ STAGING_DIR = ".staging"
 
 
 class StartupError(Exception):
-    """The data folder can't be served; nothing in it was changed."""
+    """The data folder can't be served; ``library.json`` was not changed."""
 
     def __init__(self, path: Path, reason: str) -> None:
         super().__init__(f"{path}: {reason}")
@@ -92,11 +92,13 @@ class Store:
 
     @classmethod
     def open(cls, data_dir: Path, fs: FileSystem | None = None) -> "Store":
-        """Check, sweep, then create, load or migrate ``library.json``.
+        """Load or migrate ``library.json``, sweep, then create or commit it.
 
         Raises :class:`StartupError` when the folder can't be served. A newer
         or invalid file is refused before anything in the folder changes; a
-        failed migration leaves the original and its backup as they were.
+        refused upgrade leaves the original and its backup. A refusal while
+        creating ``covers/``, ``.staging/`` or the first ``library.json``
+        comes after the sweep.
         """
         fs = fs or OsFileSystem()
         data_dir = Path(data_dir)
@@ -217,7 +219,8 @@ class Store:
         ``change`` gets a deep copy of the committed library and either edits
         it in place (returning ``None``) or returns a new one. The result is
         re-validated against the model, so a wrong-typed or out-of-bound value
-        raises ``ValidationError``. That, an exception from ``change``, an
+        raises ``ValidationError``; a changed ``schemaVersion`` raises
+        :class:`InvariantViolation`. That, an exception from ``change``, an
         :class:`InvariantViolation` or :class:`CouldntSave` leaves the file and
         :attr:`library` unchanged.
         """
@@ -227,6 +230,12 @@ class Store:
             new = draft if result is None else result
             # Assignment isn't validated; re-check so the next start can load it.
             new = Library.model_validate(new.model_dump(warnings=False))
+            if new.schema_version != migrations.CURRENT_VERSION:
+                raise InvariantViolation(
+                    "schema_version",
+                    f"schemaVersion must stay {migrations.CURRENT_VERSION}, "
+                    f"not {new.schema_version}",
+                )
             check_invariants(new)
             self._commit(new)
             self._library = new
@@ -253,10 +262,10 @@ class Store:
             if is_open:
                 try:
                     fs.close(fd)
-                except OSError:
+                except Exception:  # noqa: BLE001 - cleanup must reach remove
                     pass
             try:
                 fs.remove(temp)
-            except OSError:
+            except Exception:  # noqa: BLE001 - the original error is reported
                 pass
             raise CouldntSave(f"can't write {target.name}: {exc}") from exc

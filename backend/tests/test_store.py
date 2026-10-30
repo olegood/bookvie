@@ -356,6 +356,27 @@ def test_failed_startup_create_is_refused(tmp_path: Path) -> None:
     assert _temps(tmp_path) == []
 
 
+def test_unreadable_library_is_refused(tmp_path: Path) -> None:
+    path = LibraryBuilder().write(tmp_path)
+    raw = path.read_bytes()
+    path.chmod(0o000)
+    try:
+        with pytest.raises(StartupError, match="can't be read") as exc:
+            Store.open(tmp_path)
+        assert exc.value.path == path
+    finally:
+        path.chmod(0o600)
+    assert path.read_bytes() == raw
+
+
+@pytest.mark.parametrize("name", ["covers", ".staging"])
+def test_uncreatable_folder_is_refused(tmp_path: Path, name: str) -> None:
+    (tmp_path / name).write_text("not a folder")
+    with pytest.raises(StartupError, match="can't be created") as exc:
+        Store.open(tmp_path)
+    assert exc.value.path == tmp_path / name
+    assert not (tmp_path / "library.json").exists()
+
 def test_failed_backup_stops_migration(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from bookvie.store import migrations
 
@@ -526,6 +547,36 @@ def test_fault_while_cleaning_up_still_reports_couldnt_save(tmp_path: Path) -> N
     assert (tmp_path / "library.json").read_bytes() == before
     assert _temps(tmp_path) == []
 
+
+def test_non_oserror_in_cleanup_still_removes_the_temp_file(tmp_path: Path) -> None:
+    store = _seeded_store(tmp_path)
+    before = (tmp_path / "library.json").read_bytes()
+
+    class OddClose(FaultyFs):
+        def close(self, fd: int) -> None:
+            super().close(fd)
+            raise RuntimeError("close fails oddly")
+
+    store.fs = OddClose("fsync")
+    with pytest.raises(CouldntSave):
+        store.apply(_add_tag("x"))
+    assert (tmp_path / "library.json").read_bytes() == before
+    assert _temps(tmp_path) == []
+
+@pytest.mark.parametrize("version", [0, 2])
+def test_change_to_schema_version_commits_nothing(tmp_path: Path, version: int) -> None:
+    store = _seeded_store(tmp_path)
+    before = (tmp_path / "library.json").read_bytes()
+    old = store.library
+
+    def bump(library: Library) -> None:
+        library.schema_version = version
+
+    with pytest.raises(InvariantViolation) as exc:
+        store.apply(bump)
+    assert exc.value.rule == "schema_version"
+    assert (tmp_path / "library.json").read_bytes() == before
+    assert store.library is old
 
 def test_invariant_failure_commits_nothing(tmp_path: Path) -> None:
     store = _seeded_store(tmp_path)

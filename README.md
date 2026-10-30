@@ -102,7 +102,7 @@ bookvie                                  # serves 127.0.0.1:8765 and opens the b
   bookvie.lock            # PID and port of the running server
 ```
 
-`library.json` is created on first start as an empty version 1 library. Every save writes a temp file in the same folder, fsyncs it and renames it over the original, so a crash never leaves a half-written file; leftover `library.json.tmp*` files are removed at the next start. bookvie refuses to start, with a one-line `bookvie: …` message naming the path and changing nothing, when the folder isn't writable or `library.json` is invalid or from a newer bookvie. An older `library.json` is backed up to `library.v<N>.bak.json`, then upgraded in memory and saved once.
+`library.json` is created on first start as an empty version 1 library. Every save writes a temp file in the same folder, fsyncs it and renames it over the original, so a crash never leaves a half-written file; leftover `library.json.tmp*` files are removed at the next start. bookvie refuses to start, with a one-line `bookvie: …` message naming the path and leaving `library.json` unchanged, when the folder isn't writable or `library.json` is invalid or from a newer bookvie. An older `library.json` is backed up to `library.v<N>.bak.json`, then upgraded in memory and saved once.
 
 **Development:** run `npm run dev` (Vite on `:5173`, proxying `/api` and `/media` to `:8765`) next to `bookvie --dev --no-browser`.
 
