@@ -79,6 +79,38 @@ context:
 - Given two threads each applying one change 50 times, when both finish, then the file and `Store.library` hold all 100 changes.
 - Given `npm run check`, when it runs, then it exits 0, the coverage gates hold, and `~/bookvie-data` is unchanged.
 
+### Review Findings
+
+Code review 2026-10-30 (blind, edge, verification-gap, acceptance): 0 decision-needed, 5 patch, 0 defer, 23 rejected.
+
+- [x] [Review][Patch] Unreadable `library.json` and uncreatable `covers/`/`.staging/` refusals have no test; dropping the `except OSError` in `_read` would turn them into tracebacks with every test still passing [backend/tests/test_store.py]
+- [x] [Review][Patch] `Library.schema_version` is a plain `int`, so `apply` can commit `schemaVersion` 0 or 2 and the next start refuses the file; fixed with a guard in `apply` (`Literal[1]` would break the fixture-chain migration tests) [backend/bookvie/store/store.py:233]
+- [x] [Review][Patch] Store docstrings give the startup order as "sweep, create, load, migrate", but the code reads, validates and migrates first, then sweeps, mkdirs and commits [backend/bookvie/store/store.py:3]
+- [x] [Review][Patch] "Nothing changed" is overstated: the `StartupError` docstring and the README say a refusal changes nothing, but a refused upgrade leaves a backup, and a mkdir or startup-create refusal comes after the sweep [backend/bookvie/store/store.py:32]
+- [x] [Review][Patch] `_write_atomic` cleanup catches only `OSError`, so a seam `close` raising anything else skips `remove(temp)` and escapes as something other than `CouldntSave` [backend/bookvie/store/store.py:256]
+
+**Rejected:**
+- low: the plural "(and N more problems)" branch is untested. It is cosmetic message text.
+- low: `apply` returns the live committed object. That is the same documented "readers must not modify" contract as `Store.library`, and no caller mutates it.
+- low: a re-entrant `apply` from inside `change` deadlocks. No caller does this, and an `RLock` would allow nested commits.
+- low: a dangling-symlink `library.json` is treated as a first start. Symlinked `library.json` is unsupported (build triage #16).
+- low (×2, edge and blind): a non-`StartupError` from `Store.open` leaves the socket to garbage collection and prints a traceback. It needs a pathological file (build triage #9). The process exits and the lock is released.
+- false: `change` returning a non-`Library` fails confusingly. It fails loudly at `model_dump`, which is correct for a programming error.
+- reject (×2, blind and acceptance): the spec status `done` disagrees with the sprint status `review`. The fix edits the spec, and this workflow syncs the status.
+- low: `apply` raises pydantic's `ValidationError`. This is documented in `apply`, and the error envelope belongs to Stories 1.5 and 1.7.
+- false (×2, blind and acceptance): a new backup overwrites an existing `library.v<N>.bak.json`. This is a deliberate Design Notes decision: the old backup is a copy of a file that was already migrated.
+- low: a missing `library.json` next to existing `covers/` starts empty. The matrix defines a missing file as a first start, and a guard would add branches.
+- false: no field-vs-state rules for Readings. The spec's Never list says "No field validation beyond types (Story 1.7)".
+- false: `test_losing_launch_…` is misleading. It still checks the running-claim path, which its name describes.
+- low: fault injection on the migrated startup commit is untested. It uses the same `_commit_at_startup` path as the tested create, and the chain is empty at v1.
+- low: the `EMPTY_V1` golden bytes are duplicated in two test files. If they drift, the tests fail loudly.
+- false: `seedLibrary` prints "code null" on a timeout. On a timeout `spawnSync` sets `result.error`, which is thrown first.
+- reject: the spec has no verification record. The fix edits the spec, and a Verification section exists.
+- low: the README status line doesn't name the next story. This is cosmetic.
+- false: `_validate` parses twice. JSON-mode validation is deliberate, and the cost is negligible.
+- low: a multi-line migration-step exception message breaks "one line". The chain is empty at v1.
+- reject: AC3 can't be checked from the diff. That is no evidence of a violation; it is covered by running `npm run check`.
+
 ## Implementation Notes
 
 ## Spec Change Log
