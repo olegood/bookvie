@@ -83,7 +83,7 @@ The build is split into 7 epics and 41 stories, each story with Given/When/Then 
 You need Python 3.14 with [uv](https://docs.astral.sh/uv/), and Node with npm to build the frontend.
 
 ```sh
-npm install                              # installs frontend dependencies
+npm install                              # installs frontend dependencies and Playwright's Chromium
 npm run build                            # builds the SPA into backend/bookvie/http/static/
 uv tool install --reinstall ./backend    # puts `bookvie` on your PATH
 bookvie                                  # serves 127.0.0.1:8765 and opens the browser
@@ -117,8 +117,8 @@ Catalog entry happens through my own AI skills rather than an in-app importer or
 - [Epic 1 context](_bmad-output/implementation-artifacts/epic-1-context.md): the planning facts Epic 1's stories build on
 - [Story 1.1 spec](_bmad-output/implementation-artifacts/spec-1-1-scaffold-and-install-bookvie.md): intent, acceptance criteria, review triage and verification for the scaffold
 - [Story 1.2 spec](_bmad-output/implementation-artifacts/spec-1-2-run-one-safe-instance.md): intent, I/O matrix, review findings and verification for the single-instance lock and the Host/Origin guard
-- [Story 1.3 spec](_bmad-output/implementation-artifacts/spec-1-3-one-check-command-guards-the-repo.md): intent, I/O matrix and verification for `npm run check`, the coverage gates, the e2e harness and the install smoke test
-- [Deferred work](_bmad-output/implementation-artifacts/deferred-work.md): review findings deferred to later stories
+- [Story 1.3 spec](_bmad-output/implementation-artifacts/spec-1-3-one-check-command-guards-the-repo.md): intent, I/O matrix and review findings and verification for `npm run check`, the coverage gates, the e2e harness and the install smoke test
+- [Deferred work](_bmad-output/implementation-artifacts/deferred-work.md): review findings deferred to later stories, each marked with the story that resolved it once done
 - [Brainstorm intent](_bmad-output/brainstorming/brainstorm-personal-library-tracker-2026-10-27/brainstorm-intent.md): the brainstorm's problem statement, pillars and decisions
 - [Brainstorm session](_bmad-output/brainstorming/brainstorm-personal-library-tracker-2026-10-27/brainstorm.html): the full session record
 
