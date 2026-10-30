@@ -12,7 +12,7 @@
     "build": "npm --prefix frontend run build",
     "dev": "npm --prefix frontend run dev",
     "check": "npm run check:py && npm run check:api && npm run check:e2e && npm run check:smoke",
-    "check:py": "cd backend && uv run pytest --cov=bookvie --cov-report=term --cov-report=json:.coverage.json && uv run python scripts/coverage_gate.py .coverage.json",
+    "check:py": "cd backend && TZ=Europe/Madrid uv run pytest --cov=bookvie --cov-report=term --cov-report=json:.coverage.json && uv run python scripts/coverage_gate.py .coverage.json",
     "check:api": "npm --prefix frontend run check:api",
     "check:e2e": "npm run build && npm --prefix frontend run e2e",
     "check:smoke": "node scripts/smoke.mjs",

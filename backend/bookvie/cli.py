@@ -4,16 +4,19 @@ import argparse
 import asyncio
 import copy
 import os
+import re
 import sys
 import threading
 import time
 import webbrowser
 from collections.abc import Sequence
+from datetime import date
 from pathlib import Path
 
 import uvicorn
 
 from bookvie import instance
+from bookvie.domain.clock import FakeClock, SystemClock
 from bookvie.http.app import STATIC_DIR, create_app
 from bookvie.instance import HOST
 from bookvie.store import StartupError, Store, ensure_writable
@@ -21,6 +24,17 @@ from bookvie.store import StartupError, Store, ensure_writable
 DEFAULT_PORT = 8765
 DEFAULT_DATA_DIR = "~/bookvie-data"
 _BROWSER_WAIT_SECONDS = 30.0
+
+
+def _local_date(value: str) -> date:
+    try:
+        if not re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", value):
+            raise ValueError(value)
+        return date.fromisoformat(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+            f"must be a date as YYYY-MM-DD, got {value!r}"
+        ) from None
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -49,9 +63,18 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="development mode, used alongside the Vite dev server on :5173",
     )
+    parser.add_argument(
+        "--fake-today",
+        type=_local_date,
+        default=None,
+        metavar="YYYY-MM-DD",
+        help="pretend today is this local date (tests only; needs --no-browser)",
+    )
     args = parser.parse_args(argv)
     if not 1 <= args.port <= 65535:
         parser.error(f"--port must be between 1 and 65535, got {args.port}")
+    if args.fake_today is not None and not args.no_browser:
+        parser.error("--fake-today is only allowed with --no-browser")
     args.data_dir = Path(args.data_dir).expanduser().resolve()
     return args
 
@@ -160,8 +183,14 @@ def main(argv: Sequence[str] | None = None) -> int:
             _say(f"bookvie: {exc}")
             return 1
 
+        clock = FakeClock(args.fake_today) if args.fake_today is not None else SystemClock()
         app = create_app(
-            STATIC_DIR, data_dir=data_dir, port=args.port, dev=args.dev, store=store
+            STATIC_DIR,
+            data_dir=data_dir,
+            port=args.port,
+            dev=args.dev,
+            store=store,
+            clock=clock,
         )
 
         def release() -> None:

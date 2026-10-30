@@ -20,6 +20,8 @@ from fastapi.responses import FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.types import ASGIApp, Receive, Scope, Send
 
+from bookvie.intents import Clock, SystemClock
+
 from .api import install_api
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
@@ -91,8 +93,13 @@ def create_app(
     port: int = 8765,
     dev: bool = False,
     store=None,
+    clock: Clock | None = None,
 ) -> FastAPI:
-    """Build the app. ``store`` is the opened ``bookvie.store.Store``, if any."""
+    """Build the app. ``store`` is the opened ``bookvie.store.Store``, if any.
+
+    ``clock`` is what intents read "now" and "today" from (AD-20); the
+    system clock unless ``--fake-today`` or a test pins one.
+    """
     static_dir = Path(static_dir).resolve()
     resolved_data_dir = str(Path(data_dir).resolve()) if data_dir is not None else None
     app = FastAPI(
@@ -104,6 +111,7 @@ def create_app(
     )
     # AD-4: serializes every write; shutdown waits on it before releasing the lock.
     app.state.store = store
+    app.state.clock = clock if clock is not None else SystemClock()
     app.state.write_lock = store.lock if store is not None else threading.Lock()
     app.add_middleware(
         HostOriginGuard, port=port, extra_origins=DEV_ORIGINS if dev else ()

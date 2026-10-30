@@ -17,7 +17,33 @@ class InvariantViolation(Exception):
         self.message = message
 
 
+def _first_repeat(ids: list[str]) -> str | None:
+    seen: set[str] = set()
+    for item in ids:
+        if item in seen:
+            return item
+        seen.add(item)
+    return None
+
+
 def check_invariants(library: Library) -> None:
+    repeated = _first_repeat([book.id for book in library.books])
+    if repeated is not None:
+        raise InvariantViolation("unique_book_ids", f"Book id {repeated} is used more than once")
+    for book in library.books:
+        repeated = _first_repeat([reading.id for reading in book.readings])
+        if repeated is not None:
+            raise InvariantViolation(
+                "unique_reading_ids",
+                f"Book {book.id} has Reading id {repeated} more than once",
+            )
+        repeated = _first_repeat([note.id for note in book.card_notes])
+        if repeated is not None:
+            raise InvariantViolation(
+                "unique_card_note_ids",
+                f"Book {book.id} has Card note id {repeated} more than once",
+            )
+
     ids = {book.id for book in library.books}
 
     pointers = [("mainBookId", library.main_book_id), ("upNextBookId", library.up_next_book_id)]

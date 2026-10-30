@@ -167,3 +167,44 @@ def test_card_note_pages_in_range_pass(
     book = library_builder.book(pages=300)
     library_builder.card_note(book, page_start=start, page_end=end)
     _passes(library_builder)
+
+
+# --- ids are unique --------------------------------------------------------
+
+
+def test_repeated_book_id_fails(library_builder: LibraryBuilder) -> None:
+    library_builder.book(id="same")
+    library_builder.book(id="same")
+    _fails(library_builder, "unique_book_ids")
+
+
+def test_repeated_reading_id_in_a_book_fails(library_builder: LibraryBuilder) -> None:
+    book = library_builder.book()
+    library_builder.reading(book, id="r", finish_date="2026-01-02", current_page=300)
+    library_builder.reading(book, id="r")
+    _fails(library_builder, "unique_reading_ids")
+
+
+def test_repeated_card_note_id_in_a_book_fails(library_builder: LibraryBuilder) -> None:
+    book = library_builder.book()
+    library_builder.card_note(book, id="n")
+    library_builder.card_note(book, id="n")
+    _fails(library_builder, "unique_card_note_ids")
+
+
+def test_same_child_ids_in_different_books_pass(library_builder: LibraryBuilder) -> None:
+    for _ in range(2):
+        book = library_builder.book()
+        library_builder.reading(book, id="r")
+        library_builder.card_note(book, id="n")
+    _passes(library_builder)
+
+
+def test_distinct_ids_pass(library_builder: LibraryBuilder) -> None:
+    book = library_builder.book()
+    library_builder.book()
+    library_builder.reading(book, finish_date="2026-01-02", current_page=300)
+    library_builder.reading(book)
+    library_builder.card_note(book)
+    library_builder.card_note(book)
+    _passes(library_builder)

@@ -3,7 +3,7 @@ import { afterEach, describe, it, mock } from 'node:test'
 import { QueryClient, QueryObserver } from '@tanstack/react-query'
 import { fetchView, toViewState, viewKey, type CatalogView } from './views.ts'
 
-const empty: CatalogView = { meter: { finished: 0, total: 0 }, books: [] }
+const empty: CatalogView = { meter: { finished: 0, total: 0 }, books: [], tags: [] }
 
 describe('viewKey', () => {
   it("keys every view under 'view'", () => {

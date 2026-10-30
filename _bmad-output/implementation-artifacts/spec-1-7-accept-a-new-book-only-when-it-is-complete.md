@@ -2,7 +2,8 @@
 title: 'Story 1.7: Accept a new book only when it is complete'
 type: 'feature'
 created: '2026-10-30'
-status: 'ready-for-dev'
+status: 'done'
+baseline_commit: '166f637c4325025c830a7dc7f6131d22db7f9b71'
 route: 'dispatch'
 review_loop_iteration: 0
 context:
@@ -57,18 +58,18 @@ Decisions: the top-level 422 message names fields by **label** ("Not saved. 2 fi
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `backend/bookvie/domain/clock.py` -- `Clock` protocol (`now()` aware local, `today()`), `SystemClock`, `FakeClock(today)` (now = local noon on today); export from `domain`.
-- [ ] `backend/tests/conftest.py`, `package.json` `check:py` -- pin `TZ=Europe/Madrid` (+ `time.tzset()`); test DST days 2026-03-29/2026-10-25 keep the local date; `test_layers.py`-style AST test: no `datetime.now`/`date.today`/`time.time` in `domain/` outside `clock.py`.
-- [ ] `backend/bookvie/cli.py` -- `--fake-today YYYY-MM-DD`, error unless `--no-browser`; pass `FakeClock`/`SystemClock` to `create_app`; tests in `test_cli.py`.
-- [ ] `backend/bookvie/domain/invariants.py` -- unique Book IDs; unique Reading and Card note IDs within a Book; tests.
-- [ ] `backend/bookvie/domain/book_fields.py` -- pure parse/validate of the raw strings → normalized values or ordered `(key, message)` failures; labels map; curated palette constant.
-- [ ] `backend/bookvie/intents/add_book.py` -- `AddBookIntent` (optional `str` fields, camelCase, `extra="forbid"`, strict); `add_book(store, clock, intent) -> str` validates, then `commit()` appends the Book (uuid4, `clock.now()`, curated, resolved color, back-fill Reading) and returns its id.
-- [ ] `backend/bookvie/intents/contract.py` -- `ids: dict[str, str] | None`; `invalid_fields(errors, labels=None)`.
-- [ ] `backend/bookvie/http/{api,app}.py` -- route reading form part `intent` (str), JSON-parse → `AddBookIntent`, malformed → `intent` field error; returns `OkResponse(ids={"bookId": …})`. Clock via `app.state.clock` (default `intents.SystemClock`, re-exported).
-- [ ] `backend/bookvie/views/{models,shelf}.py` -- `ShelfBook.authors`, `pages`, `created_at`; `CatalogView.tags`.
-- [ ] `backend/tests/test_add_book.py` -- un-skip all 8; add a table test for the matrix rows and the decided messages, label-based top message, malformed `intent`, unknown key, two adds get distinct ids.
-- [ ] `frontend/src/api/envelope.ts` + tests; `npm run api:gen` -- `ids` as object.
-- [ ] `_bmad-output/implementation-artifacts/deferred-work.md` -- mark Clock item `resolved: partly, Story 1.7 (server Clock, --fake-today, TZ pin); Playwright timezoneId/page.clock remain for Story 1.8`, and uniqueness item partly resolved (ID rules; side-read rules remain).
+- [x] `backend/bookvie/domain/clock.py` -- `Clock` protocol (`now()` aware local, `today()`), `SystemClock`, `FakeClock(today)` (now = local noon on today); export from `domain`.
+- [x] `backend/tests/conftest.py`, `package.json` `check:py` -- pin `TZ=Europe/Madrid` (+ `time.tzset()`); test DST days 2026-03-29/2026-10-25 keep the local date; `test_layers.py`-style AST test: no `datetime.now`/`date.today`/`time.time` in `domain/` outside `clock.py`.
+- [x] `backend/bookvie/cli.py` -- `--fake-today YYYY-MM-DD`, error unless `--no-browser`; pass `FakeClock`/`SystemClock` to `create_app`; tests in `test_cli.py`.
+- [x] `backend/bookvie/domain/invariants.py` -- unique Book IDs; unique Reading and Card note IDs within a Book; tests.
+- [x] `backend/bookvie/domain/book_fields.py` -- pure parse/validate of the raw strings → normalized values or ordered `(key, message)` failures; labels map; curated palette constant.
+- [x] `backend/bookvie/intents/add_book.py` -- `AddBookIntent` (optional `str` fields, camelCase, `extra="forbid"`, strict); `add_book(store, clock, intent) -> str` validates, then `commit()` appends the Book (uuid4, `clock.now()`, curated, resolved color, back-fill Reading) and returns its id.
+- [x] `backend/bookvie/intents/contract.py` -- `ids: dict[str, str] | None`; `invalid_fields(errors, labels=None)`.
+- [x] `backend/bookvie/http/{api,app}.py` -- route reading form part `intent` (str), JSON-parse → `AddBookIntent`, malformed → `intent` field error; returns `OkResponse(ids={"bookId": …})`. Clock via `app.state.clock` (default `intents.SystemClock`, re-exported).
+- [x] `backend/bookvie/views/{models,shelf}.py` -- `ShelfBook.authors`, `pages`, `created_at`; `CatalogView.tags`.
+- [x] `backend/tests/test_add_book.py` -- un-skip all 8; add a table test for the matrix rows and the decided messages, label-based top message, malformed `intent`, unknown key, two adds get distinct ids.
+- [x] `frontend/src/api/envelope.ts` + tests; `npm run api:gen` -- `ids` as object.
+- [x] `_bmad-output/implementation-artifacts/deferred-work.md` -- mark Clock item `resolved: partly, Story 1.7 (server Clock, --fake-today, TZ pin); Playwright timezoneId/page.clock remain for Story 1.8`, and uniqueness item partly resolved (ID rules; side-read rules remain).
 
 **Acceptance Criteria:**
 - Given `npm run check`, when it runs, then it exits 0 with all 8 ATDD tests active, coverage gates met, and `~/bookvie-data` unchanged.
@@ -79,6 +80,26 @@ Decisions: the top-level 422 message names fields by **label** ("Not saved. 2 fi
 ## Spec Change Log
 
 ## Review Triage Log
+
+| # | Finding | Verdict | Route | Evidence |
+|---|---------|---------|-------|----------|
+| 1 | `--fake-today` accepts ISO week dates (`2026-W44-5`) | low | patch | Verified: `date.fromisoformat("2026-W44-5")` → 2026-10-30 and the length check passes; fix is a strict regex. |
+| 2 | Deeply nested `intent` JSON → `RecursionError` → 500, not 422 | low | patch | Verified: `json.loads('['*200000)` raises RecursionError, which `parse_add_book_intent` doesn't catch; fix adds it to the except. |
+| 3 | Year `0000` accepted | low | patch | `_year` has no lower bound and `Book.year: int \| None`; "0" isn't a year "like 1965". Direct fix: `1 <= year`. |
+| 4 | Time-read AST guard misses `datetime.today()` | low | patch | `_FORBIDDEN` lacks `("datetime","today")`, which reads the clock; one-entry addition. |
+| 5 | AST guard misses aliased imports, `time_ns`, `fromtimestamp` etc. | low | reject | No such code exists in domain/; alias resolution adds complexity for an unlikely pattern. |
+| 6 | DST tests only check noon; comment says "every hour that exists" but loops hour 2 on 2026-03-29 | low | patch | Noon-only is what the spec asked ("DST days keep the local date"); comment is inaccurate, fix the wording only. |
+| 7 | Deferred-work note under-reports: `check:e2e` TZ pin still open | low | patch | `package.json` pins TZ only on `check:py`; note should say `check:e2e` TZ pin remains for 1.8. |
+| 8 | Unbounded Pages/Edition loses precision in JS | low | reject | Needs a new max constant the spec doesn't define; not met in everyday use. |
+| 9 | `intent` part sent as a file gets pydantic message, not the decided one | low | reject | Only reachable by a hand-crafted client; fix adds UploadFile handling. |
+| 10 | http reaches domain's Clock via `intents` re-export; `FakeClock` exported | false | reject | The spec prescribes this ("default `intents.SystemClock`, re-exported"); layer test passes by design. |
+| 11 | `intent` documented as optional in OpenAPI | low | reject | Cosmetic contract wording; fixing needs a custom missing-field mapping. |
+| 12 | No frontend helper for the multipart body | false | reject | UI is 1.8 (Never list); `intents.ts` already sends `FormData` bodies. |
+| 13 | No length/count limits on text fields | low | reject | Not in intent or EXPERIENCE table; local single-user app; adds new rules. |
+| 14 | Authors not deduplicated | low | reject | Spec decides only tag merging; author duplicates are rare and a new rule. |
+| 15 | User spine color stored in typed case | false | reject | Spec decision: "stored trimmed as entered". |
+| 16 | Spec vs sprint-status status mismatch | false | reject | Workflow sets both; sprint-status syncs at presentation. |
+| 17 | Empty `EXTRA_SCHEMAS` kept; unused `reading_id` minted | low | reject | Mechanism kept for future contract-only models; an unused uuid is harmless. |
 
 ## Design Notes
 

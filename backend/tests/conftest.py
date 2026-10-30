@@ -5,16 +5,25 @@ Every test runs with ``HOME`` pointing at a fresh temp folder, so a default
 process or in any subprocess that inherits the environment. uv derives its
 cache and Python install dir from ``HOME``, so those are pinned to the real
 ones first: tests that call ``uv`` keep working offline.
+
+Local time is pinned to ``Europe/Madrid`` (AD-20) for this process and every
+subprocess, so date tests mean the same thing on every machine; ``npm run
+check:py`` sets the same ``TZ`` before pytest starts.
 """
 
 import os
 import shutil
 import subprocess
+import time
 from pathlib import Path
 
 import pytest
 
 from tests.builder import LibraryBuilder
+
+TEST_TZ = "Europe/Madrid"
+os.environ["TZ"] = TEST_TZ
+time.tzset()
 
 
 def _uv_dir(*args: str) -> str | None:

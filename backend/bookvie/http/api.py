@@ -12,12 +12,13 @@ route, and any other method gets Starlette's 405 ``{detail}``.
 """
 
 import sys
-from typing import Any
+from typing import Annotated, Any
 
-from fastapi import APIRouter, FastAPI, Request
+from fastapi import APIRouter, FastAPI, Form, Request
 from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, PlainTextResponse
+from pydantic import BaseModel
 
 from bookvie import views
 from bookvie.intents import (
@@ -25,8 +26,10 @@ from bookvie.intents import (
     FieldError,
     IntentError,
     OkResponse,
+    add_book,
     couldnt_save,
     invalid_fields,
+    parse_add_book_intent,
 )
 
 # Every /api route documents the envelope for these statuses. Declaring 422
@@ -42,7 +45,7 @@ ERROR_RESPONSES: dict[int | str, dict[str, Any]] = {
 }
 
 # Contract models no route returns yet; they are still part of the schema.
-EXTRA_SCHEMAS = (OkResponse,)
+EXTRA_SCHEMAS: tuple[type[BaseModel], ...] = ()
 
 router = APIRouter(prefix="/api", responses=ERROR_RESPONSES)
 
@@ -55,6 +58,23 @@ def home_view(request: Request) -> views.HomeView:
 @router.get("/views/catalog", response_model=views.CatalogView)
 def catalog_view(request: Request) -> views.CatalogView:
     return views.catalog(request.app.state.store.library)
+
+
+@router.post("/intents/add-book", response_model=OkResponse, response_model_exclude_none=True)
+def add_book_intent(
+    request: Request,
+    intent: Annotated[
+        str | None,
+        Form(
+            media_type="multipart/form-data",
+            description="JSON object of the New book form's fields, as typed.",
+        ),
+    ] = None,
+) -> OkResponse:
+    """Save a new Book only when every field is valid (FR-1)."""
+    parsed = parse_add_book_intent(intent)
+    book_id = add_book(request.app.state.store, request.app.state.clock, parsed)
+    return OkResponse(ok=True, ids={"bookId": book_id})
 
 
 def _is_api(request: Request) -> bool:

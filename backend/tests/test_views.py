@@ -12,7 +12,9 @@ from bookvie.views import catalog, home
 from tests.builder import LibraryBuilder
 
 BASE_URL = "http://127.0.0.1:8765"
-EMPTY = {"meter": {"finished": 0, "total": 0}, "books": []}
+HOME_EMPTY = {"meter": {"finished": 0, "total": 0}, "books": []}
+CATALOG_EMPTY = {**HOME_EMPTY, "tags": []}
+EMPTY = {"home": HOME_EMPTY, "catalog": CATALOG_EMPTY}
 
 
 def _client(data_dir: Path) -> TestClient:
@@ -21,25 +23,29 @@ def _client(data_dir: Path) -> TestClient:
 
 
 def _seed(builder: LibraryBuilder) -> dict[str, str]:
-    dune = builder.book(title="Dune", authors=["Frank Herbert"], spine_color_user="#112233")
-    omens = builder.book(title="Good Omens", authors=["Terry Pratchett", "Neil Gaiman"])
+    dune = builder.book(
+        title="Dune", authors=["Frank Herbert"], spine_color_user="#112233", pages=412
+    )
+    omens = builder.book(
+        title="Good Omens", authors=["Terry Pratchett", "Neil Gaiman"], tags=["Fantasy", "humor"]
+    )
     builder.reading(omens, start_date=None, finish_date="2026-02-01", current_page=300)
-    reading = builder.book(title="Emma", authors=["Jane Austen"])
+    reading = builder.book(title="Emma", authors=["Jane Austen"], tags=["fantasy", "Classics"])
     builder.reading(reading, current_page=10)
     return {"dune": dune, "omens": omens, "emma": reading}
 
 
 def test_empty_library_functions() -> None:
     library = Library.empty()
-    assert catalog(library).model_dump(by_alias=True) == EMPTY
-    assert home(library).model_dump(by_alias=True) == EMPTY
+    assert catalog(library).model_dump(by_alias=True) == CATALOG_EMPTY
+    assert home(library).model_dump(by_alias=True) == HOME_EMPTY
 
 
 @pytest.mark.parametrize("view", ["home", "catalog"])
 def test_empty_library_over_http(tmp_path: Path, view: str) -> None:
     response = _client(tmp_path).get(f"/api/views/{view}")
     assert response.status_code == 200
-    assert response.json() == EMPTY
+    assert response.json() == EMPTY[view]
 
 
 @pytest.mark.parametrize("view", ["home", "catalog"])
@@ -57,6 +63,9 @@ def test_seeded_library(tmp_path: Path, library_builder: LibraryBuilder, view: s
             "title": "Dune",
             "firstAuthor": "Frank Herbert",
             "authorCount": 1,
+            "authors": ["Frank Herbert"],
+            "pages": 412,
+            "createdAt": "2026-01-01T09:01:00+01:00",
             "spineColor": "#112233",
             "finished": False,
         },
@@ -65,6 +74,9 @@ def test_seeded_library(tmp_path: Path, library_builder: LibraryBuilder, view: s
             "title": "Good Omens",
             "firstAuthor": "Terry Pratchett",
             "authorCount": 2,
+            "authors": ["Terry Pratchett", "Neil Gaiman"],
+            "pages": 300,
+            "createdAt": "2026-01-01T09:02:00+01:00",
             "spineColor": "#5B7590",
             "finished": True,
         },
@@ -73,10 +85,18 @@ def test_seeded_library(tmp_path: Path, library_builder: LibraryBuilder, view: s
             "title": "Emma",
             "firstAuthor": "Jane Austen",
             "authorCount": 1,
+            "authors": ["Jane Austen"],
+            "pages": 300,
+            "createdAt": "2026-01-01T09:04:00+01:00",
             "spineColor": "#9B6753",
             "finished": False,
         },
     ]
+    if view == "catalog":
+        # Merged ignoring case; the first spelling in library order wins.
+        assert body["tags"] == ["Fantasy", "humor", "Classics"]
+    else:
+        assert "tags" not in body
     # Side-effect-free: the file is untouched.
     assert (tmp_path / "library.json").read_bytes() == before
 

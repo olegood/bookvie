@@ -15,7 +15,7 @@ export type OkResponse = Schemas['OkResponse']
 export const COULDNT_SAVE_MESSAGE = "Couldn't save. Your data wasn't changed."
 
 export type IntentResult =
-  | { kind: 'ok'; ids: string[]; reachedLastPage: boolean }
+  | { kind: 'ok'; ids: Record<string, string>; reachedLastPage: boolean }
   | {
       kind: 'refusal'
       status: number
@@ -33,6 +33,15 @@ function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
+// The ids an intent minted, by name ({ bookId: '…' }); anything else is none.
+function readIds(value: unknown): Record<string, string> {
+  if (!isObject(value)) return {}
+  const entries = Object.entries(value)
+  return entries.every(([, id]) => typeof id === 'string')
+    ? (Object.fromEntries(entries) as Record<string, string>)
+    : {}
+}
+
 function isFieldError(value: unknown): value is FieldError {
   return isObject(value) && typeof value.field === 'string' && typeof value.message === 'string'
 }
@@ -43,8 +52,7 @@ export function toIntentResult(status: number, body: unknown): IntentResult {
   const success = status >= 200 && status < 300
   if (success) {
     if (body.ok !== true) return couldntSave()
-    const ids = Array.isArray(body.ids) && body.ids.every((id) => typeof id === 'string')
-    return { kind: 'ok', ids: ids ? (body.ids as string[]) : [], reachedLastPage: body.reachedLastPage === true }
+    return { kind: 'ok', ids: readIds(body.ids), reachedLastPage: body.reachedLastPage === true }
   }
   const error = body.error
   if (!isObject(error) || typeof error.code !== 'string' || typeof error.message !== 'string') {

@@ -5,12 +5,14 @@ import json
 import os
 import socket
 import threading
+from datetime import date
 from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
 from bookvie import cli, instance
+from bookvie.domain.clock import FakeClock, SystemClock
 from bookvie.instance import LOCK_NAME
 from tests.servers import wait_for_health
 
@@ -46,8 +48,8 @@ def ephemeral_bind(monkeypatch: pytest.MonkeyPatch) -> None:
 def expose_data_dir(monkeypatch: pytest.MonkeyPatch) -> None:
     real = cli.create_app
 
-    def create_app(static_dir, *, data_dir, port, dev, store=None):
-        app = real(static_dir, data_dir=data_dir, port=port, dev=dev, store=store)
+    def create_app(static_dir, *, data_dir, port, dev, store=None, clock=None):
+        app = real(static_dir, data_dir=data_dir, port=port, dev=dev, store=store, clock=clock)
         app.state.data_dir_for_tests = data_dir
         return app
 
@@ -98,6 +100,29 @@ def test_flags(tmp_path: Path) -> None:
 def test_data_dir_tilde_is_expanded(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setenv("HOME", str(tmp_path))
     assert cli.parse_args(["--data-dir", "~/x"]).data_dir == (tmp_path / "x").resolve()
+
+
+def test_fake_today_is_parsed_with_no_browser() -> None:
+    assert cli.parse_args([]).fake_today is None
+    args = cli.parse_args(["--fake-today", "2026-10-30", "--no-browser"])
+    assert args.fake_today == date(2026, 10, 30)
+
+
+def test_fake_today_without_no_browser_is_a_usage_error(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    with pytest.raises(SystemExit) as exc:
+        cli.parse_args(["--fake-today", "2026-10-30"])
+    assert exc.value.code == 2
+    assert "--fake-today is only allowed with --no-browser" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("value", ["2026-02-30", "30/10/2026", "20261030", "2026-1-5", "", "2026-W44-5"])
+def test_fake_today_must_be_a_date(value: str, capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit) as exc:
+        cli.parse_args(["--fake-today", value, "--no-browser"])
+    assert exc.value.code == 2
+    assert "--fake-today: must be a date as YYYY-MM-DD" in capsys.readouterr().err
 
 
 def test_start_creates_data_dir_and_opens_browser(
@@ -239,6 +264,24 @@ def test_app_rejects_dev_origin_without_dev(
     client = TestClient(app, base_url="http://127.0.0.1:8799")
     response = client.get("/api/health", headers={"Origin": "http://localhost:5173"})
     assert response.status_code == 403
+
+
+def test_app_gets_a_fake_clock_with_fake_today(
+    tmp_path: Path, fake_server: type[FakeServer], opened: list[str]
+) -> None:
+    cli.main(
+        ["--data-dir", str(tmp_path / "d"), "--no-browser", "--fake-today", "2026-03-29"]
+    )
+    clock = fake_server.instances[0].config.app.state.clock
+    assert isinstance(clock, FakeClock)
+    assert clock.today() == date(2026, 3, 29)
+
+
+def test_app_gets_the_system_clock_by_default(
+    tmp_path: Path, fake_server: type[FakeServer], opened: list[str]
+) -> None:
+    cli.main(["--data-dir", str(tmp_path / "d"), "--no-browser"])
+    assert isinstance(fake_server.instances[0].config.app.state.clock, SystemClock)
 
 
 def test_live_lock_opens_recorded_url_without_serving(

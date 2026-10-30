@@ -7,19 +7,19 @@ const json = (body: unknown, status: number) =>
 
 describe('parseIntentResponse', () => {
   it('reads a success with ids', async () => {
-    const result = await parseIntentResponse(json({ ok: true, ids: ['b1'] }, 200))
-    assert.deepEqual(result, { kind: 'ok', ids: ['b1'], reachedLastPage: false })
+    const result = await parseIntentResponse(json({ ok: true, ids: { bookId: 'b1' } }, 200))
+    assert.deepEqual(result, { kind: 'ok', ids: { bookId: 'b1' }, reachedLastPage: false })
   })
 
   it('reads a bare success and reachedLastPage', async () => {
     assert.deepEqual(await parseIntentResponse(json({ ok: true }, 200)), {
       kind: 'ok',
-      ids: [],
+      ids: {},
       reachedLastPage: false,
     })
     assert.deepEqual(await parseIntentResponse(json({ ok: true, reachedLastPage: true }, 200)), {
       kind: 'ok',
-      ids: [],
+      ids: {},
       reachedLastPage: true,
     })
   })
@@ -60,7 +60,7 @@ describe('parseIntentResponse', () => {
     ['an HTML error page', new Response('<html>502</html>', { status: 502 })],
     ['an empty body', new Response('', { status: 500 })],
     ['FastAPI detail', json({ detail: 'Not Found' }, 404)],
-    ['a success without ok', json({ ids: ['x'] }, 200)],
+    ['a success without ok', json({ ids: { bookId: 'x' } }, 200)],
     ['an error body with a 200', json({ error: { kind: 'refusal', code: 'x', message: 'm' } }, 200)],
     ['ok with an error status', json({ ok: true }, 500)],
     ['an unknown kind', json({ error: { kind: 'other', code: 'x', message: 'm' } }, 409)],
@@ -76,11 +76,19 @@ describe('parseIntentResponse', () => {
     })
   }
 
-  it('toIntentResult ignores non-string ids', () => {
-    assert.deepEqual(toIntentResult(200, { ok: true, ids: [1] }), {
-      kind: 'ok',
-      ids: [],
-      reachedLastPage: false,
+  const notIds: [string, unknown][] = [
+    ['a non-string id', { bookId: 1 }],
+    ['a list of ids', ['b1']],
+    ['a string', 'b1'],
+    ['null', null],
+  ]
+  for (const [name, ids] of notIds) {
+    it(`toIntentResult reads ${name} as no ids`, () => {
+      assert.deepEqual(toIntentResult(200, { ok: true, ids }), {
+        kind: 'ok',
+        ids: {},
+        reachedLastPage: false,
+      })
     })
-  })
+  }
 })

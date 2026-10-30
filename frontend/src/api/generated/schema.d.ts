@@ -53,15 +53,45 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/intents/add-book": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add Book Intent
+         * @description Save a new Book only when every field is valid (FR-1).
+         */
+        post: operations["add_book_intent_api_intents_add_book_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** Body_add_book_intent_api_intents_add_book_post */
+        Body_add_book_intent_api_intents_add_book_post: {
+            /**
+             * Intent
+             * @description JSON object of the New book form's fields, as typed.
+             */
+            intent?: string | null;
+        };
         /** CatalogView */
         CatalogView: {
             meter: components["schemas"]["LibraryMeter"];
             /** Books */
             books: components["schemas"]["ShelfBook"][];
+            /** Tags */
+            tags: string[];
         };
         /** ErrorBody */
         ErrorBody: {
@@ -116,15 +146,11 @@ export interface components {
              * @constant
              */
             ok: true;
-            /**
-             * Ids
-             * @default null
-             */
-            ids?: string[] | null;
-            /**
-             * Reachedlastpage
-             * @default null
-             */
+            /** Ids */
+            ids?: {
+                [key: string]: string;
+            } | null;
+            /** Reachedlastpage */
             reachedLastPage?: boolean | null;
         };
         /** ShelfBook */
@@ -137,6 +163,15 @@ export interface components {
             firstAuthor: string;
             /** Authorcount */
             authorCount: number;
+            /** Authors */
+            authors: string[];
+            /** Pages */
+            pages: number;
+            /**
+             * Createdat
+             * Format: date-time
+             */
+            createdAt: string;
             /** Spinecolor */
             spineColor: string;
             /** Finished */
@@ -245,6 +280,66 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CatalogView"];
+                };
+            };
+            /** @description Refused by a library rule */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Invalid fields */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Couldn't save */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Couldn't save */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    add_book_intent_api_intents_add_book_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_add_book_intent_api_intents_add_book_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkResponse"];
                 };
             };
             /** @description Refused by a library rule */

@@ -76,7 +76,7 @@ def _app(data_dir: Path) -> FastAPI:
     @app.post("/api/intents/probe")
     def probe(body: Probe) -> dict:
         commit(app.state.store, _change(body.mode))
-        return OkResponse(ok=True, ids=["x"]).model_dump(by_alias=True, exclude_none=True)
+        return OkResponse(ok=True, ids={"probe": "x"}).model_dump(by_alias=True, exclude_none=True)
 
     @app.post("/api/intents/boom")
     def boom() -> None:
@@ -108,7 +108,7 @@ def _library_bytes(data_dir: Path) -> bytes:
 def test_success_commits_and_returns_ok(client: TestClient, data_dir: Path) -> None:
     response = client.post("/api/intents/probe", json={"mode": "ok", "pageCount": 1})
     assert response.status_code == 200
-    assert response.json() == {"ok": True, "ids": ["x"]}
+    assert response.json() == {"ok": True, "ids": {"probe": "x"}}
     assert b'"probe"' in _library_bytes(data_dir)
 
 
@@ -170,6 +170,19 @@ def test_invalid_fields_message_names_each_field_once() -> None:
     assert error.status == 422
     assert error.body.message == "Not saved. 2 fields need attention: authors.0, pages."
     assert len(error.body.fields or []) == 3
+
+
+def test_invalid_fields_message_names_labels_when_given() -> None:
+    error = invalid_fields(
+        [
+            FieldError(field="pages", message="a"),
+            FieldError(field="finishedOn", message="b"),
+            FieldError(field="intent", message="c"),
+        ],
+        {"pages": "Pages", "finishedOn": "Finished on"},
+    )
+    assert error.body.message == "Not saved. 3 fields need attention: Pages, Finished on, intent."
+    assert [f.field for f in error.body.fields or []] == ["pages", "finishedOn", "intent"]
 
 
 def test_validation_outside_api_keeps_fastapi_shape(client: TestClient) -> None:
@@ -289,8 +302,12 @@ def test_openapi_documents_the_envelope_not_fastapi_errors(openapi: dict) -> Non
     assert schemas["ErrorBody"]["required"] == ["kind", "code", "message"]
     assert schemas["OkResponse"]["required"] == ["ok"]
     assert set(schemas["OkResponse"]["properties"]) == {"ok", "ids", "reachedLastPage"}
-    for path in ("/api/views/home", "/api/views/catalog"):
-        responses = openapi["paths"][path]["get"]["responses"]
+    ids = schemas["OkResponse"]["properties"]["ids"]["anyOf"][0]
+    assert ids == {"type": "object", "additionalProperties": {"type": "string"}}
+    operations = [("get", "/api/views/home"), ("get", "/api/views/catalog")]
+    operations.append(("post", "/api/intents/add-book"))
+    for method, path in operations:
+        responses = openapi["paths"][path][method]["responses"]
         for status in ("409", "422", "500", "503"):
             ref = responses[status]["content"]["application/json"]["schema"]["$ref"]
             assert ref == "#/components/schemas/ErrorResponse"

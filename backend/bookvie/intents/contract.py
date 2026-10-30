@@ -7,7 +7,7 @@ Intents raise :class:`IntentError`; ``http`` turns it into a JSON response.
 Each later story adds its own refusal code here, with its API test.
 """
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from enum import StrEnum
 from typing import Literal
 
@@ -50,7 +50,8 @@ class ErrorResponse(_Wire):
 
 class OkResponse(_Wire):
     ok: Literal[True]
-    ids: list[str] | None = None
+    ids: dict[str, str] | None = None
+    """The ids the intent minted, by name, e.g. ``{"bookId": "<uuid>"}``."""
     reached_last_page: bool | None = None
 
 
@@ -68,10 +69,19 @@ class IntentError(Exception):
         )
 
 
-def invalid_fields(errors: Iterable[FieldError]) -> IntentError:
-    """422 ``invalid_fields`` naming every failing field, in order."""
+def invalid_fields(
+    errors: Iterable[FieldError], labels: Mapping[str, str] | None = None
+) -> IntentError:
+    """422 ``invalid_fields`` naming every failing field, in order.
+
+    The top-level message names each field by its form label when ``labels``
+    has one ("Not saved. 2 fields need attention: Pages, Language."), else by
+    its key.
+    """
     errors = list(errors)
-    names = list(dict.fromkeys(error.field for error in errors))
+    labels = labels or {}
+    keys = dict.fromkeys(error.field for error in errors)
+    names = [labels.get(key, key) for key in keys]
     count = len(names)
     noun = "field needs" if count == 1 else "fields need"
     message = f"Not saved. {count} {noun} attention: {', '.join(names)}."

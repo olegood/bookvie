@@ -1,6 +1,6 @@
 """Response models of the read-only views (camelCase on the wire)."""
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import AwareDatetime, BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
 
 
@@ -20,6 +20,9 @@ class ShelfBook(_View):
     title: str
     first_author: str
     author_count: int
+    authors: list[str]
+    pages: int
+    created_at: AwareDatetime
     spine_color: str
     finished: bool
 
@@ -32,3 +35,5 @@ class HomeView(_View):
 class CatalogView(_View):
     meter: LibraryMeter
     books: list[ShelfBook]
+    tags: list[str]
+    """Every tag in the library once, ignoring case (the Tags suggestions)."""

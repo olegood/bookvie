@@ -58,7 +58,7 @@ describe('sendIntent', () => {
   }
 
   it('posts JSON to the kebab verb route', async () => {
-    const fetch = respond({ ok: true, ids: ['b1'] }, 200)
+    const fetch = respond({ ok: true, ids: { bookId: 'b1' } }, 200)
     await send({ title: 'Dune' })
     const [url, init] = fetch.mock.calls[0].arguments as FetchArgs
     assert.equal(url, '/api/intents/add-book')
@@ -78,9 +78,9 @@ describe('sendIntent', () => {
   })
 
   it('invalidates every view and resolves after the refetch on success', async () => {
-    respond({ ok: true, ids: ['b1'] }, 200)
+    respond({ ok: true, ids: { bookId: 'b1' } }, 200)
     const result = await send()
-    assert.deepEqual(result, { kind: 'ok', ids: ['b1'], reachedLastPage: false })
+    assert.deepEqual(result, { kind: 'ok', ids: { bookId: 'b1' }, reachedLastPage: false })
     assertAllViewsInvalidated()
   })
 
@@ -101,7 +101,7 @@ describe('sendIntent', () => {
   })
 
   it('never patches cached data', async () => {
-    respond({ ok: true, ids: ['b1'] }, 200)
+    respond({ ok: true, ids: { bookId: 'b1' } }, 200)
     await send()
     assert.equal(client.getQueryData(viewKey('home')), 'home data')
   })
