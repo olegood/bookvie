@@ -130,7 +130,7 @@ def _year(value: str, today: date) -> int | None:
     if not _YEAR.fullmatch(value):
         return None
     year = int(value)
-    return year if 1 <= year <= today.year + 1 else None
+    return year if year <= today.year + 1 else None
 
 
 def _date(value: str) -> date | None:

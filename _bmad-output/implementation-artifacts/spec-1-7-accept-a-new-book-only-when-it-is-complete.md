@@ -75,6 +75,18 @@ Decisions: the top-level 422 message names fields by **label** ("Not saved. 2 fi
 - Given `npm run check`, when it runs, then it exits 0 with all 8 ATDD tests active, coverage gates met, and `~/bookvie-data` unchanged.
 - Given `bookvie --fake-today 2026-10-30` without `--no-browser`, when parsed, then it exits with a usage error.
 
+### Review Findings
+
+- [x] [Review][Patch] Drop `_year` lower bound so Year matches the contract table ("Four digits, not after next year"); `0000` → 200 (decision: match the table) [backend/bookvie/domain/book_fields.py:133]
+- [x] [Review][Patch] JSON `null` field values accepted instead of refused as malformed `intent` (spec decision: non-string value → 422 on `intent`); `test_null_values_count_as_omitted` pins the wrong behaviour [backend/bookvie/intents/add_book.py:41]
+- [x] [Review][Patch] Oversized digit-only Pages/Edition guard (`int()` 4300-digit limit) has no test; add `"9" * 5000` rows for `pages` and `edition` to the matrix [backend/tests/test_add_book.py:319]
+- [x] [Review][Defer] Hypothesis property test from ATDD green-phase follow-ups not added [backend/tests/test_add_book.py] — deferred: checklist follow-up, not a spec task; belongs to `bmad-testarch-automate`
+
+**Rejected**
+- `intent` optional in generated OpenAPI/TS types — low; already triaged #11, fix needs custom missing-field mapping, 1.8 client always sends it.
+- Spec `status: done` vs sprint-status `review` — false; the review workflow syncs both at completion (triage #16).
+- Back-filled Reading's `currentPage`/`purpose`/`rating` unasserted — false as a gap; spec and CAT-API-004 pin only `startDate`, `finishDate`, `finishedPages`.
+
 ## Implementation Notes
 
 ## Spec Change Log

@@ -10,7 +10,7 @@ once or changes nothing.
 import json
 import uuid
 
-from pydantic import BaseModel, ConfigDict, ValidationError
+from pydantic import BaseModel, ConfigDict, ValidationError, field_validator
 from pydantic.alias_generators import to_camel
 
 from bookvie.domain import Book, Clock, Library, Reading
@@ -51,6 +51,14 @@ class AddBookIntent(BaseModel):
     finished_on: str | None = None
     tags: str | None = None
     spine_color: str | None = None
+
+    @field_validator("*", mode="before")
+    @classmethod
+    def _no_null(cls, value: object) -> object:
+        # An omitted key stays None (defaults skip validation); an explicit null is malformed.
+        if value is None:
+            raise ValueError("null is not a string")
+        return value
 
 
 def _malformed() -> IntentError:

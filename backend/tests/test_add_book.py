@@ -323,16 +323,17 @@ MALFORMED = "The intent must be a JSON object of the form's fields."
         ({"pages": "+5"}, {"pages": PAGES_MESSAGE}),
         ({"pages": "1e3"}, {"pages": PAGES_MESSAGE}),
         ({"pages": "٣"}, {"pages": PAGES_MESSAGE}),  # a non-ASCII digit
+        ({"pages": "9" * 5000}, {"pages": PAGES_MESSAGE}),  # past int()'s digit limit
         ({"edition": "abc"}, {"edition": EDITION_MESSAGE}),
         ({"edition": "2.0"}, {"edition": EDITION_MESSAGE}),
         ({"edition": "-1"}, {"edition": EDITION_MESSAGE}),
+        ({"edition": "9" * 5000}, {"edition": EDITION_MESSAGE}),  # past int()'s digit limit
         ({"edition": ""}, {"edition": "Edition is required."}),
         ({"edition": "  "}, {"edition": "Edition is required."}),
         ({"year": "65"}, {"year": YEAR_MESSAGE}),
         ({"year": "19650"}, {"year": YEAR_MESSAGE}),
         ({"year": "2028"}, {"year": YEAR_MESSAGE}),  # today + 2 years
         ({"year": "1965a"}, {"year": YEAR_MESSAGE}),
-        ({"year": "0000"}, {"year": YEAR_MESSAGE}),
         ({"isbn": "123456789012"}, {"isbn": ISBN_MESSAGE}),  # 12 digits
         ({"isbn": "12345678901"}, {"isbn": ISBN_MESSAGE}),  # 11 digits
         ({"isbn": "X123456789"}, {"isbn": ISBN_MESSAGE}),  # X not last
@@ -416,11 +417,10 @@ def test_a_missing_required_key_is_required(data_dir: Path, key: str) -> None:
     assert _field_messages(response) == {key: f"{label} is required."}
 
 
-def test_null_values_count_as_omitted(data_dir: Path) -> None:
-    response = _add(_client(data_dir), edition=None, isbn=None)  # type: ignore[arg-type]
+def test_year_0000_is_four_digits_and_accepted(data_dir: Path) -> None:
+    response = _add(_client(data_dir), year="0000")
     assert response.status_code == 200
-    book = _stored_book(data_dir, response.json()["ids"]["bookId"])
-    assert (book["edition"], book["isbn"]) == (1, None)
+    assert _stored_book(data_dir, response.json()["ids"]["bookId"])["year"] == 0
 
 
 def test_fields_are_listed_in_form_order_and_the_message_names_labels(
@@ -494,6 +494,7 @@ def test_top_message_matches_the_experience_example(data_dir: Path) -> None:
         {"intent": (None, json.dumps({**VALID, "finished_on": "2026-03-14"}), "application/json")},
         {"intent": (None, json.dumps({**VALID, "pages": 387}), "application/json")},
         {"intent": (None, json.dumps({**VALID, "authors": ["A", "B"]}), "application/json")},
+        {"intent": (None, json.dumps({**VALID, "edition": None}), "application/json")},
     ],
     ids=[
         "missing",
@@ -505,6 +506,7 @@ def test_top_message_matches_the_experience_example(data_dir: Path) -> None:
         "snake-case-key",
         "number-value",
         "list-value",
+        "null-value",
     ],
 )
 def test_malformed_intent_is_an_intent_field_error(data_dir: Path, files: dict) -> None:
