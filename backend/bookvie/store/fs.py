@@ -4,10 +4,16 @@ Every write the store makes goes through a :class:`FileSystem`, so tests can
 inject a fault at any step of a commit. :class:`OsFileSystem` is the real one.
 """
 
+import errno
+import fcntl
 import os
 import tempfile
 from pathlib import Path
 from typing import Protocol
+
+
+# What a filesystem that doesn't do F_FULLFSYNC answers; anything else is a real I/O failure.
+_FULLFSYNC_UNSUPPORTED = {errno.ENOTSUP, errno.EINVAL, errno.ENOTTY}
 
 
 class FileSystem(Protocol):
@@ -31,6 +37,16 @@ class OsFileSystem:
             view = view[written:]
 
     def fsync(self, fd: int) -> None:
+        # On macOS os.fsync doesn't flush the drive's write cache; F_FULLFSYNC
+        # does. Filesystems that don't support it fall back to os.fsync.
+        full_fsync = getattr(fcntl, "F_FULLFSYNC", None)
+        if full_fsync is not None:
+            try:
+                fcntl.fcntl(fd, full_fsync)
+                return
+            except OSError as error:
+                if error.errno not in _FULLFSYNC_UNSUPPORTED:
+                    raise
         os.fsync(fd)
 
     def close(self, fd: int) -> None:

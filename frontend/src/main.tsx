@@ -7,6 +7,7 @@ import AppShell from './components/AppShell.tsx'
 import { markNavigated } from './lib/page.ts'
 import { applyTheme, readTheme } from './lib/theme.ts'
 import CatalogPage from './pages/CatalogPage.tsx'
+import { BareErrorPage, RouteErrorPage } from './pages/ErrorPage.tsx'
 import NotFoundPage from './pages/NotFoundPage.tsx'
 import './styles/tokens.css'
 import './styles/base.css'
@@ -17,17 +18,20 @@ applyTheme(readTheme())
 const queryClient = createQueryClient()
 
 // The server falls back to index.html for any path, so unknown routes land here.
+// A page that throws lands on the layout's error element, inside the shell; if
+// the shell itself throws, the root's error element renders without it.
 const router = createBrowserRouter([
   {
-    element: <AppShell />,
-    errorElement: (
-      <AppShell>
-        <NotFoundPage />
-      </AppShell>
-    ),
+    errorElement: <BareErrorPage />,
     children: [
-      { path: '/', element: <CatalogPage /> },
-      { path: '*', element: <NotFoundPage /> },
+      {
+        element: <AppShell />,
+        errorElement: <RouteErrorPage />,
+        children: [
+          { path: '/', element: <CatalogPage /> },
+          { path: '*', element: <NotFoundPage /> },
+        ],
+      },
     ],
   },
 ])

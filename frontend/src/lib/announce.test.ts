@@ -115,6 +115,21 @@ describe('region host', () => {
     assert.deepEqual(body.children, [host])
   })
 
+  it('keeps no host when attaching it fails, so the next call tries again', () => {
+    const append = body.appendChild
+    body.appendChild = () => {
+      throw new Error('cannot attach')
+    }
+    try {
+      assert.throws(() => regionHost(doc()), /cannot attach/)
+    } finally {
+      body.appendChild = append
+    }
+    const host = regionHost(doc())
+    assert.equal(created, 2)
+    assert.deepEqual(body.children, [host])
+  })
+
   it('moves the host into a dialog and back to the body', () => {
     const host = regionHost(doc()) as unknown as FakeNode
     const dialog = parent('dialog')

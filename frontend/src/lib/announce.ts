@@ -31,9 +31,12 @@ let stack: RegionParent[] = []
  */
 export function regionHost(doc: Pick<Document, 'createElement' | 'body'> = document): HTMLElement {
   if (!host) {
-    host = doc.createElement('div')
+    // Kept only once it is in the document: a host that failed to attach
+    // would hold regions no screen reader hears.
+    const created = doc.createElement('div')
+    doc.body.appendChild(created)
+    host = created
     home = doc.body
-    home.appendChild(host)
   }
   return host
 }

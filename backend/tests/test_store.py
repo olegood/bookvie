@@ -1,5 +1,7 @@
 """The one-file store: serialize, startup, atomic commits, faults, the AD-4 lock."""
 
+import errno
+import fcntl
 import json
 import os
 import threading
@@ -702,3 +704,44 @@ def test_builder_cli_refuses_invariant_breaks_and_the_real_library(tmp_path: Pat
     assert "refusing the real library" in real.stderr
     assert not (Path.home() / "bookvie-data").exists()
     assert _run_builder([], "").returncode == 2
+
+
+def test_fsync_uses_full_fsync_where_the_platform_has_it(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[tuple[str, int]] = []
+    monkeypatch.setattr(fcntl, "F_FULLFSYNC", 51, raising=False)
+    monkeypatch.setattr(fcntl, "fcntl", lambda fd, cmd: calls.append(("fcntl", cmd)))
+    monkeypatch.setattr(os, "fsync", lambda fd: calls.append(("fsync", fd)))
+    OsFileSystem().fsync(7)
+    assert calls == [("fcntl", 51)]
+
+
+def test_fsync_falls_back_when_full_fsync_is_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[int] = []
+    monkeypatch.delattr(fcntl, "F_FULLFSYNC", raising=False)
+    monkeypatch.setattr(os, "fsync", calls.append)
+    OsFileSystem().fsync(7)
+    assert calls == [7]
+
+
+def test_fsync_falls_back_when_full_fsync_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
+    def refuse(fd: int, cmd: int) -> None:
+        raise OSError(errno.ENOTSUP, "not supported")
+
+    calls: list[int] = []
+    monkeypatch.setattr(fcntl, "F_FULLFSYNC", 51, raising=False)
+    monkeypatch.setattr(fcntl, "fcntl", refuse)
+    monkeypatch.setattr(os, "fsync", calls.append)
+    OsFileSystem().fsync(7)
+    assert calls == [7]
+
+
+def test_fsync_raises_a_real_io_failure_from_full_fsync(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fail(fd: int, cmd: int) -> None:
+        raise OSError(errno.EIO, "I/O error")
+
+    monkeypatch.setattr(fcntl, "F_FULLFSYNC", 51, raising=False)
+    monkeypatch.setattr(fcntl, "fcntl", fail)
+    monkeypatch.setattr(os, "fsync", lambda fd: pytest.fail("fell back after a real failure"))
+    with pytest.raises(OSError) as raised:
+        OsFileSystem().fsync(7)
+    assert raised.value.errno == errno.EIO
