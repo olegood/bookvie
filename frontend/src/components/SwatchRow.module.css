@@ -1,0 +1,28 @@
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.swatch {
+  box-sizing: border-box;
+  width: calc(var(--swatch-size) + 8px);
+  height: calc(var(--swatch-size) + 8px);
+  padding: 0;
+  border: var(--focus-ring-width) solid transparent;
+  border-radius: var(--radius-full);
+  background-clip: content-box;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 2px var(--color-surface);
+}
+
+.swatch[aria-pressed="true"] {
+  border-color: var(--color-accent);
+  box-shadow: inset 0 0 0 2px var(--color-surface), 0 0 0 var(--text-field-halo) var(--color-focus-halo);
+}
+
+@media (forced-colors: active) {
+  .swatch[aria-pressed="true"] {
+    border-color: Highlight;
+  }
+}

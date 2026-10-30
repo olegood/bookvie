@@ -1,8 +1,7 @@
-// Story 1.8 New book panel, ATDD red phase: opening, the Agent Label Contract
-// (CAT-E2E-001), Tags suggestions, swatches, the add flow (CAT-E2E-002),
-// validation (CAT-E2E-004), couldn't save (CAT-E2E-005), closing without
-// saving, and the in-flight guard. Each test stays skipped until its task
-// un-skips it. Fields are found by exact accessible name, never by test id.
+// Story 1.8 New book panel: opening, the Agent Label Contract (CAT-E2E-001),
+// Tags suggestions, swatches, the add flow (CAT-E2E-002), validation
+// (CAT-E2E-004), couldn't save (CAT-E2E-005), closing without saving, and the
+// in-flight guard. Fields are found by exact accessible name, never by test id.
 
 import type { Locator, Page } from '@playwright/test'
 import { expect, type Server, test } from './fixtures.ts'
@@ -99,7 +98,7 @@ test.describe('Story 1.8 New book panel (ATDD)', () => {
     await page.emulateMedia({ colorScheme: 'light' })
   })
 
-  test.skip('[P0] AC-1 New book opens a modal side panel from the right with focus on Title', async ({
+  test('[P0] AC-1 New book opens a modal side panel from the right with focus on Title', async ({
     page,
     seededServer,
   }) => {
@@ -131,7 +130,7 @@ test.describe('Story 1.8 New book panel (ATDD)', () => {
     expect(field.y + field.height).toBeLessThanOrEqual(footerButton.y)
   })
 
-  test.skip('[P0] AC-2 every Agent Label Contract entry is found by exact name with its role', async ({
+  test('[P0] AC-2 every Agent Label Contract entry is found by exact name with its role', async ({
     page,
     seededServer,
   }) => {
@@ -179,7 +178,7 @@ test.describe('Story 1.8 New book panel (ATDD)', () => {
     await expect(panel.getByRole('button', { name: 'New book', exact: true })).toHaveCount(0)
   })
 
-  test.skip('[P1] AC-3 Tags suggests existing tags that start with the typed text and accepts any text', async ({
+  test('[P1] AC-3 Tags suggests existing tags that start with the typed text and accepts any text', async ({
     page,
     seededServer,
   }) => {
@@ -209,6 +208,15 @@ test.describe('Story 1.8 New book panel (ATDD)', () => {
     await expect(tags).toHaveValue(new RegExp(`^${pickedTag}(, )?$`))
     await expect(panel).toBeVisible()
 
+    // Esc with suggestions open closes the list, not the panel.
+    await tags.pressSequentially('sc')
+    await expect(tags).toHaveAttribute('aria-expanded', 'true')
+    const typed = await tags.inputValue()
+    await tags.press('Escape')
+    await expect(panel).toBeVisible()
+    await expect(tags).toHaveValue(typed)
+    await expect(tags).toHaveAttribute('aria-expanded', 'false')
+
     // Text that matches no suggestion is kept and saved as a new tag.
     await tags.fill(`${pickedTag}, zines`)
     await fillFields(panel, DUNE)
@@ -217,7 +225,7 @@ test.describe('Story 1.8 New book panel (ATDD)', () => {
     expect((await catalog(page, server)).tags).toContain('zines')
   })
 
-  test.skip('[P1] AC-4 a swatch fills Spine color with its hex and shows aria-pressed', async ({
+  test('[P1] AC-4 a swatch fills Spine color with its hex and shows aria-pressed', async ({
     page,
     seededServer,
   }) => {
@@ -236,7 +244,7 @@ test.describe('Story 1.8 New book panel (ATDD)', () => {
     }
   })
 
-  test.skip('[P0] AC-5 Add book saves, announces "Added Title.", and focuses the new row in the List view', async ({
+  test('[P0] AC-5 Add book saves, announces "Added Title.", and focuses the new row in the List view', async ({
     page,
     seededServer,
   }) => {
@@ -281,7 +289,7 @@ test.describe('Story 1.8 New book panel (ATDD)', () => {
     expect((await catalog(page, server)).books.map((book) => book.title).sort()).toEqual(['Dune', 'Neuromancer'])
   })
 
-  test.skip('[P0] AC-6 invalid fields save nothing, keep every value and name each field', async ({
+  test('[P0] AC-6 invalid fields save nothing, keep every value and name each field', async ({
     page,
     seededServer,
   }) => {
@@ -319,7 +327,7 @@ test.describe('Story 1.8 New book panel (ATDD)', () => {
     expect((await catalog(page, server)).books.map((book) => book.title)).toEqual(['Neuromancer'])
   })
 
-  test.skip('[P0] AC-7 couldn\'t save keeps the panel open with every value and says so in ink', async ({
+  test('[P0] AC-7 couldn\'t save keeps the panel open with every value and says so in ink', async ({
     page,
     seededServer,
   }) => {
@@ -348,7 +356,7 @@ test.describe('Story 1.8 New book panel (ATDD)', () => {
     expect((await catalog(page, server)).books.map((book) => book.title)).toEqual(['Neuromancer'])
   })
 
-  test.skip('[P1] AC-8 Cancel, Close and Esc discard typed fields without a prompt and refocus New book', async ({
+  test('[P1] AC-8 Cancel, Close and Esc discard typed fields without a prompt and refocus New book', async ({
     page,
     seededServer,
   }) => {
@@ -381,7 +389,35 @@ test.describe('Story 1.8 New book panel (ATDD)', () => {
     expect((await catalog(page, server)).books.map((book) => book.title)).toEqual(['Neuromancer'])
   })
 
-  test.skip('[P1] AC-12 Add book is aria-disabled while the request is in flight and sends nothing more', async ({
+  test('[P0] the live regions move into the open panel and back to the shell on close', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: [NEUROMANCER] })
+    await page.goto(`${server.url}/`)
+    const panel = await openNewBook(page)
+
+    // showModal() makes everything outside the dialog inert, so the regions
+    // must sit inside it while it is open.
+    await expect(panel.getByRole('status')).toHaveCount(1)
+    await expect(panel.getByRole('alert')).toHaveCount(1)
+    expect(
+      await page.evaluate(() =>
+        Array.from(document.querySelectorAll('[role="status"], [role="alert"]')).every(
+          (region) => region.closest('dialog') !== null && region.closest('[inert]') === null,
+        ),
+      ),
+    ).toBe(true)
+
+    await panel.getByRole('button', { name: 'Cancel', exact: true }).click()
+    await expect(panel).toBeHidden()
+    await expect(page.getByRole('status')).toHaveCount(1)
+    await expect(page.getByRole('alert')).toHaveCount(1)
+    await expect(page.getByRole('main').getByRole('status')).toHaveCount(0)
+    await expect(page.getByRole('main').getByRole('alert')).toHaveCount(0)
+  })
+
+  test('[P1] AC-12 Add book is aria-disabled while the request is in flight and sends nothing more', async ({
     page,
     seededServer,
   }) => {

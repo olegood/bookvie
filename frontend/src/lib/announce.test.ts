@@ -1,6 +1,17 @@
 import assert from 'node:assert/strict'
 import { afterEach, beforeEach, describe, it, mock } from 'node:test'
-import { ANNOUNCE_DELAY_MS, announce, clearAnnouncements, registerRegion, type Region } from './announce.ts'
+import {
+  ANNOUNCE_DELAY_MS,
+  adoptRegions,
+  announce,
+  clearAnnouncements,
+  regionHost,
+  registerRegion,
+  releaseRegions,
+  resetRegionHost,
+  type Region,
+  type RegionParent,
+} from './announce.ts'
 
 describe('announce', () => {
   let status: Region
@@ -58,5 +69,70 @@ describe('announce', () => {
     mock.timers.tick(ANNOUNCE_DELAY_MS)
     assert.equal(status.textContent, '')
     assert.equal(alert.textContent, 'Second.')
+  })
+})
+
+describe('region host', () => {
+  type FakeNode = { parent: FakeParent | null }
+  type FakeParent = { name: string; children: FakeNode[]; appendChild(node: FakeNode): void }
+
+  function parent(name: string): FakeParent {
+    const self: FakeParent = {
+      name,
+      children: [],
+      appendChild(node) {
+        if (node.parent) node.parent.children = node.parent.children.filter((child) => child !== node)
+        node.parent = self
+        self.children.push(node)
+      },
+    }
+    return self
+  }
+
+  let body: FakeParent
+  let created: number
+  const doc = () =>
+    ({
+      body,
+      createElement: () => {
+        created += 1
+        return { parent: null }
+      },
+    }) as unknown as Document
+
+  beforeEach(() => {
+    resetRegionHost()
+    body = parent('body')
+    created = 0
+  })
+
+  afterEach(() => resetRegionHost())
+
+  it('creates one host at the end of the body and returns it on every call', () => {
+    const host = regionHost(doc())
+    assert.equal(regionHost(doc()), host)
+    assert.equal(created, 1)
+    assert.deepEqual(body.children, [host])
+  })
+
+  it('moves the host into a dialog and back to the body', () => {
+    const host = regionHost(doc()) as unknown as FakeNode
+    const dialog = parent('dialog')
+
+    adoptRegions(dialog as unknown as RegionParent)
+    assert.equal(host.parent, dialog)
+    assert.deepEqual(body.children, [])
+
+    releaseRegions()
+    assert.equal(host.parent, body)
+    assert.deepEqual(dialog.children, [])
+  })
+
+  it('does nothing before the host exists', () => {
+    const dialog = parent('dialog')
+    adoptRegions(dialog as unknown as RegionParent)
+    releaseRegions()
+    assert.deepEqual(dialog.children, [])
+    assert.deepEqual(body.children, [])
   })
 })

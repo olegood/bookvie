@@ -1,0 +1,46 @@
+.search {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.label {
+  font-family: var(--font-body-sm-family);
+  font-size: var(--font-body-sm-size);
+  line-height: var(--font-body-sm-line-height);
+  color: var(--color-ink-secondary);
+  white-space: nowrap;
+}
+
+.box {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.glyph {
+  position: absolute;
+  left: var(--space-3);
+  width: var(--glyph-size);
+  height: var(--glyph-size);
+  color: var(--color-ink-tertiary);
+  pointer-events: none;
+}
+
+.input {
+  box-sizing: border-box;
+  width: 280px;
+  height: var(--button-height);
+  padding: 0 var(--space-3) 0 calc(var(--space-3) + var(--glyph-size) + var(--space-2));
+  border: var(--text-field-border) solid var(--color-input-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-family: var(--font-body-family);
+  font-size: var(--font-body-size);
+}
+
+.input:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 var(--text-field-halo) var(--color-focus-halo);
+}

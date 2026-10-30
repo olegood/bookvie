@@ -83,6 +83,7 @@ test.describe('Story 1.6 Catalog states (ATDD)', () => {
       await expect(main.getByRole('button', { name: 'New book' }).first()).toBeVisible()
       await expect(main.getByRole('button').filter({ hasNotText: 'New book' })).toHaveCount(0)
       await expect(main.getByRole('textbox')).toHaveCount(0)
+      await expect(main.getByRole('searchbox')).toHaveCount(0)
       await expect(main.getByRole('progressbar')).toHaveCount(0)
     } finally {
       expect(await server.stop()).toBe('')

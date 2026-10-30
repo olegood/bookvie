@@ -176,6 +176,9 @@
   --plank-edge: 4px;
   --wordmark-mark: 12px;
   --glyph-size: 14px;
+  --side-panel-width: 440px;
+  --side-panel-footer-height: 74px;
+  --swatch-size: 16px;
 }
 
 :root[data-theme="dark"] {

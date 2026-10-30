@@ -21,6 +21,8 @@ export default defineConfig({
     ['junit', { outputFile: 'test-results/junit.xml' }],
   ],
   use: {
+    // Dates in the browser are local to the same zone `check:e2e` pins (TZ).
+    timezoneId: 'Europe/Madrid',
     actionTimeout: 15_000,
     navigationTimeout: 30_000,
     trace: 'retain-on-failure-and-retries',

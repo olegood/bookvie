@@ -2,6 +2,13 @@
 // components import from `src/api/`, never call `fetch` themselves.
 
 export {
+  addBook,
+  BOOK_FIELD_KEYS,
+  useAddBook,
+  type BookFieldKey,
+  type BookFields,
+} from './books.ts'
+export {
   COULDNT_SAVE_MESSAGE,
   parseIntentResponse,
   type ErrorCode,

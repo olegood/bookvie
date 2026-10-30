@@ -14,7 +14,7 @@
     "check": "npm run check:py && npm run check:api && npm run check:e2e && npm run check:smoke",
     "check:py": "cd backend && TZ=Europe/Madrid uv run pytest --cov=bookvie --cov-report=term --cov-report=json:.coverage.json && uv run python scripts/coverage_gate.py .coverage.json",
     "check:api": "npm --prefix frontend run check:api",
-    "check:e2e": "npm run build && npm --prefix frontend run e2e",
+    "check:e2e": "npm run build && TZ=Europe/Madrid npm --prefix frontend run e2e",
     "check:smoke": "node scripts/smoke.mjs",
     "e2e:burn-in": "npm run build && npm --prefix frontend run e2e -- --repeat-each=10 --retries=0 && node scripts/e2e-count.mjs --repeat-each=10"
   }

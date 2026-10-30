@@ -1,4 +1,4 @@
-import { useId, type InputHTMLAttributes } from 'react'
+import { useId, type InputHTMLAttributes, type Ref } from 'react'
 import styles from './TextField.module.css'
 
 type Props = Omit<InputHTMLAttributes<HTMLInputElement>, 'disabled' | 'id'> & {
@@ -6,6 +6,7 @@ type Props = Omit<InputHTMLAttributes<HTMLInputElement>, 'disabled' | 'id'> & {
   label: string
   /** One-line message shown below an invalid field. */
   error?: string
+  ref?: Ref<HTMLInputElement>
 }
 
 /**

@@ -1,0 +1,91 @@
+.table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-family: var(--font-body-sm-family);
+  font-size: var(--font-body-sm-size);
+  line-height: var(--font-body-sm-line-height);
+  color: var(--color-ink);
+}
+
+.table th {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: var(--hairline) solid var(--color-line);
+  font-family: var(--font-section-label-family);
+  font-size: var(--font-section-label-size);
+  font-weight: var(--font-section-label-weight);
+  letter-spacing: var(--font-section-label-letter-spacing);
+  text-align: left;
+  text-transform: uppercase;
+  color: var(--color-ink-secondary);
+}
+
+.table td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: var(--hairline) solid var(--color-line);
+  vertical-align: baseline;
+}
+
+.table .number {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.table .title {
+  font-family: var(--font-book-title-sm-family);
+  font-size: var(--font-book-title-sm-size);
+  font-weight: var(--font-book-title-sm-weight);
+  line-height: var(--font-book-title-sm-line-height);
+}
+
+.table .title:focus-visible {
+  outline-offset: calc(var(--focus-ring-width) * -1);
+}
+
+/* DESIGN.md → Highlight ring, on a newly added row: on at once, fading off. */
+.table tr:not(.highlight) {
+  transition: box-shadow 600ms ease-out;
+}
+
+.table .highlight {
+  box-shadow: 0 0 0 2px var(--color-page), 0 0 0 4px var(--color-accent);
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.glyphFinished,
+.glyphUnread {
+  box-sizing: border-box;
+  display: inline-block;
+  width: 6px;
+  height: 14px;
+  border-radius: var(--radius-plank);
+}
+
+.glyphUnread {
+  border: 1.5px solid var(--color-spine-unread-outline);
+  background: var(--color-spine-unread-fill);
+}
+
+.noMatch {
+  margin: 0;
+  font-family: var(--font-body-family);
+  font-size: var(--font-body-size);
+  line-height: var(--font-body-line-height);
+  color: var(--color-ink-secondary);
+}
+
+@media (forced-colors: active) {
+  .table .highlight {
+    outline: 2px solid Highlight;
+  }
+
+  .glyphFinished {
+    forced-color-adjust: none;
+    border: var(--hairline) solid CanvasText;
+  }
+}

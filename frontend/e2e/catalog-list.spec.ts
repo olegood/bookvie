@@ -1,7 +1,6 @@
-// Story 1.8 List view and Search titles, ATDD red phase: fixed columns and
-// author order (UX-DR21), title search with its count and no-match states
-// (UX-DR17, UX-DR18), and the cataloging skill's exact-title check. Each test
-// stays skipped until its task un-skips it.
+// Story 1.8 List view and Search titles: fixed columns and author order
+// (UX-DR21), title search with its count and no-match states (UX-DR17,
+// UX-DR18), and the cataloging skill's exact-title check.
 
 import type { Locator, Page } from '@playwright/test'
 import { expect, test } from './fixtures.ts'
@@ -11,7 +10,7 @@ function bookRows(page: Page): Locator {
 }
 
 test.describe('Story 1.8 List view and Search titles (ATDD)', () => {
-  test.skip('[P1] AC-9 the List view has fixed columns and sorts by first author with Intl.Collator, then title', async ({
+  test('[P1] AC-9 the List view has fixed columns and sorts by first author with Intl.Collator, then title', async ({
     page,
     seededServer,
   }) => {
@@ -41,7 +40,33 @@ test.describe('Story 1.8 List view and Search titles (ATDD)', () => {
     await expect(table.getByText('Nana', { exact: true })).toHaveCSS('font-family', /ui-serif/)
   })
 
-  test.skip('[P0] AC-10 Search titles hides rows whose titles don\'t contain the text and announces the count', async ({
+  test('[P1] AC-9 List view cells show authors, pages, status and the local Date added', async ({
+    page,
+    seededServer,
+  }) => {
+    // 23:30 UTC on 14 March is 00:30 on 15 March in Europe/Madrid (UTC+1),
+    // so a date formatted in UTC would read "14 Mar 2026".
+    const server = await seededServer({
+      books: [
+        {
+          title: 'Dune',
+          authors: ['Frank Herbert', 'Brian Herbert'],
+          pages: 1412,
+          createdAt: '2026-03-14T23:30:00+00:00',
+          readings: [{ startDate: null, currentPage: 1412, finishDate: '2026-03-20', finishedPages: 1412 }],
+        },
+        { title: 'Nana', authors: ['Émile Zola'], pages: 464, createdAt: '2026-03-14T23:30:00+00:00' },
+      ],
+    })
+    await page.goto(`${server.url}/`)
+
+    const cells = (title: string) =>
+      bookRows(page).filter({ has: page.getByText(title, { exact: true }) }).getByRole('cell')
+    await expect(cells('Dune')).toHaveText(['Dune', 'Frank Herbert, Brian Herbert', '1,412', 'Finished', '15 Mar 2026'])
+    await expect(cells('Nana')).toHaveText(['Nana', 'Émile Zola', '464', 'Not read yet', '15 Mar 2026'])
+  })
+
+  test('[P0] AC-10 Search titles hides rows whose titles don\'t contain the text and announces the count', async ({
     page,
     seededServer,
   }) => {
@@ -97,7 +122,7 @@ test.describe('Story 1.8 List view and Search titles (ATDD)', () => {
     await expect(search).toBeFocused()
   })
 
-  test.skip('[P0] AC-11 the cataloging skill confirms a save from the row whose title equals it exactly', async ({
+  test('[P0] AC-11 the cataloging skill confirms a save from the row whose title equals it exactly', async ({
     page,
     seededServer,
   }) => {

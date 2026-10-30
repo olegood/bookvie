@@ -1,0 +1,119 @@
+.panel {
+  position: fixed;
+  inset: 0 0 0 auto;
+  box-sizing: border-box;
+  width: var(--side-panel-width);
+  max-width: 100vw;
+  height: 100%;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-left: var(--hairline) solid var(--color-line);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  box-shadow: var(--shadow-overlay);
+  opacity: 1;
+  transition: opacity 150ms ease-out;
+}
+
+.panel[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+@starting-style {
+  .panel[open] {
+    opacity: 0;
+  }
+}
+
+.panel::backdrop {
+  background: var(--color-scrim);
+}
+
+.header {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-5) var(--space-6) var(--space-4);
+  border-bottom: var(--hairline) solid var(--color-line);
+}
+
+.heading {
+  margin: 0;
+  font-family: var(--font-panel-heading-family);
+  font-size: var(--font-panel-heading-size);
+  font-weight: var(--font-panel-heading-weight);
+  line-height: var(--font-panel-heading-line-height);
+}
+
+.close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-ink-secondary);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+/* The scroll container; the footer sticks to its bottom. */
+.body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  margin: 0;
+  overflow-y: auto;
+  scroll-padding-bottom: var(--side-panel-footer-height);
+}
+
+.fields {
+  flex-shrink: 0;
+  padding: var(--space-5) var(--space-6) var(--space-6);
+}
+
+.footer {
+  position: sticky;
+  bottom: 0;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  min-height: var(--side-panel-footer-height);
+  margin-top: auto;
+  padding: var(--space-4) var(--space-6);
+  border-top: var(--hairline) solid var(--color-line);
+  background: var(--color-surface);
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-3);
+}
+
+/* The live regions' host sits here while the panel is open. The alert shows
+   as one calm line in ink only for an outcome with no field to point at. */
+.regions[data-show-alert="true"] [role="alert"] {
+  position: static;
+  width: auto;
+  height: auto;
+  margin: 0 0 var(--space-2);
+  overflow: visible;
+  clip-path: none;
+  white-space: normal;
+  font-family: var(--font-body-sm-family);
+  font-size: var(--font-body-sm-size);
+  font-weight: var(--font-body-sm-weight);
+  line-height: var(--font-body-sm-line-height);
+  color: var(--color-ink);
+}
