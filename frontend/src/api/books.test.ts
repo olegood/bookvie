@@ -26,4 +26,26 @@ describe('addBook', () => {
     assert.equal(intent.type, 'paperback')
     client.clear()
   })
+
+  it('adds confirmDuplicate: true only when asked, after the form keys', async () => {
+    const fetch = mock.method(globalThis, 'fetch', async (..._args: [string, RequestInit]) =>
+      Response.json({ ok: true, ids: { bookId: 'b1' } }),
+    )
+    const client = new QueryClient()
+    const intentOf = (call: number) =>
+      JSON.parse((fetch.mock.calls[call].arguments[1]!.body as FormData).get('intent') as string) as Record<
+        string,
+        unknown
+      >
+
+    await addBook(client, fields)
+    await addBook(client, fields, {})
+    await addBook(client, fields, { confirmDuplicate: true })
+
+    assert.equal('confirmDuplicate' in intentOf(0), false)
+    assert.equal('confirmDuplicate' in intentOf(1), false)
+    assert.deepEqual(intentOf(2), { ...intentOf(0), confirmDuplicate: true })
+    assert.deepEqual(Object.keys(intentOf(2)), [...BOOK_FIELD_KEYS, 'confirmDuplicate'])
+    client.clear()
+  })
 })

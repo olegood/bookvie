@@ -21,6 +21,8 @@ export interface RegionParent {
 
 let host: HTMLElement | null = null
 let home: RegionParent | null = null
+// The open modals holding the regions, topmost last.
+let stack: RegionParent[] = []
 
 /**
  * The one element both regions render into (the shell portals them here). It
@@ -36,24 +38,38 @@ export function regionHost(doc: Pick<Document, 'createElement' | 'body'> = docum
   return host
 }
 
+function settle(): void {
+  const top = stack.at(-1) ?? home
+  if (host && top) top.appendChild(host)
+}
+
 /**
- * Moves the regions into `container`, inside an open modal dialog. `showModal()`
- * makes everything outside the dialog inert, the regions included, so a
- * screen reader would not hear them there.
+ * Moves the regions into `container`, inside an open modal dialog, on top of
+ * any modal that already holds them. `showModal()` makes everything outside
+ * the topmost dialog inert, the regions included, so a screen reader would
+ * not hear them there.
  */
 export function adoptRegions(container: RegionParent): void {
-  if (host) container.appendChild(host)
+  stack.push(container)
+  settle()
 }
 
-/** Moves the regions back to the end of the document body. */
-export function releaseRegions(): void {
-  if (host && home) home.appendChild(host)
+/**
+ * Gives the regions back to the modal below, or to the end of the document
+ * body. With `container`, releases that modal's hold wherever it is in the
+ * stack (modals may unmount in any order); without, pops the topmost.
+ */
+export function releaseRegions(container?: RegionParent): void {
+  const index = container === undefined ? stack.length - 1 : stack.lastIndexOf(container)
+  if (index >= 0) stack.splice(index, 1)
+  settle()
 }
 
-/** Test seam: forgets the host so the next `regionHost` creates a new one. */
+/** Test seam: forgets the host and the stack so the next `regionHost` creates a new one. */
 export function resetRegionHost(): void {
   host = null
   home = null
+  stack = []
 }
 
 /** Called by the shell with each region element, and with `null` on unmount. */

@@ -6,6 +6,7 @@ from .add_book import AddBookIntent, add_book, parse_add_book_intent
 from .commit import commit
 from .contract import (
     COULDNT_SAVE_MESSAGE,
+    DuplicateMatch,
     ErrorBody,
     ErrorCode,
     ErrorKind,
@@ -14,6 +15,7 @@ from .contract import (
     IntentError,
     OkResponse,
     couldnt_save,
+    duplicate_book,
     invalid_fields,
 )
 
@@ -21,6 +23,7 @@ __all__ = [
     "COULDNT_SAVE_MESSAGE",
     "AddBookIntent",
     "Clock",
+    "DuplicateMatch",
     "ErrorBody",
     "ErrorCode",
     "ErrorKind",
@@ -33,6 +36,7 @@ __all__ = [
     "add_book",
     "commit",
     "couldnt_save",
+    "duplicate_book",
     "invalid_fields",
     "parse_add_book_intent",
 ]

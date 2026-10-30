@@ -128,6 +128,40 @@ describe('region host', () => {
     assert.deepEqual(dialog.children, [])
   })
 
+  it('follows the topmost modal and returns to the one below when it closes', () => {
+    const host = regionHost(doc()) as unknown as FakeNode
+    const panel = parent('panel')
+    const dialog = parent('dialog')
+
+    adoptRegions(panel as unknown as RegionParent)
+    adoptRegions(dialog as unknown as RegionParent)
+    assert.equal(host.parent, dialog)
+
+    releaseRegions()
+    assert.equal(host.parent, panel)
+    assert.deepEqual(dialog.children, [])
+
+    releaseRegions()
+    assert.equal(host.parent, body)
+  })
+
+  it('releases a named modal wherever it is in the stack', () => {
+    const host = regionHost(doc()) as unknown as FakeNode
+    const panel = parent('panel')
+    const dialog = parent('dialog')
+    adoptRegions(panel as unknown as RegionParent)
+    adoptRegions(dialog as unknown as RegionParent)
+
+    // The panel unmounts first: the dialog keeps the regions.
+    releaseRegions(panel as unknown as RegionParent)
+    assert.equal(host.parent, dialog)
+    releaseRegions(dialog as unknown as RegionParent)
+    assert.equal(host.parent, body)
+    // Releasing a modal that holds nothing changes nothing.
+    releaseRegions(dialog as unknown as RegionParent)
+    assert.equal(host.parent, body)
+  })
+
   it('does nothing before the host exists', () => {
     const dialog = parent('dialog')
     adoptRegions(dialog as unknown as RegionParent)

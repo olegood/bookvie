@@ -3,8 +3,10 @@
 The request carries the New book form's raw strings. Every field is trimmed
 and validated before the store is touched (:mod:`bookvie.domain.book_fields`);
 any failure is one 422 ``invalid_fields`` listing every failing field in form
-order. A valid intent appends the Book through :func:`commit`, which commits
-once or changes nothing.
+order. A valid intent that matches a Book already in the catalog is refused
+with 409 ``duplicate_book`` (FR-3, AD-10) unless it carries
+``confirmDuplicate: true``. Otherwise the Book is appended through
+:func:`commit`, which commits once or changes nothing.
 """
 
 import json
@@ -20,17 +22,27 @@ from bookvie.domain.book_fields import (
     parse_book_fields,
     resolve_spine_color,
 )
+from bookvie.domain.duplicates import find_duplicates
 from bookvie.store import Store
 
 from .commit import commit
-from .contract import FieldError, IntentError, invalid_fields
+from .contract import (
+    DuplicateMatch,
+    FieldError,
+    IntentError,
+    duplicate_book,
+    invalid_fields,
+)
 
 INTENT_FIELD = "intent"
 MALFORMED_INTENT_MESSAGE = "The intent must be a JSON object of the form's fields."
 
 
 class AddBookIntent(BaseModel):
-    """The New book form as typed: every value a string, every key optional."""
+    """The New book form as typed: every value a string, every key optional.
+
+    ``confirmDuplicate`` is the one non-form key: a strict JSON boolean.
+    """
 
     model_config = ConfigDict(
         alias_generator=to_camel,
@@ -51,6 +63,8 @@ class AddBookIntent(BaseModel):
     finished_on: str | None = None
     tags: str | None = None
     spine_color: str | None = None
+    confirm_duplicate: bool = False
+    """Add even when the Book matches one already in the catalog. Never stored."""
 
     @field_validator("*", mode="before")
     @classmethod
@@ -83,7 +97,7 @@ def parse_add_book_intent(raw: str | None) -> AddBookIntent:
 
 def add_book(store: Store, clock: Clock, intent: AddBookIntent) -> str:
     """Validate ``intent``, then append the Book and commit; returns its id."""
-    raw = intent.model_dump(by_alias=True)
+    raw = intent.model_dump(by_alias=True, exclude={"confirm_duplicate"})
     parsed = parse_book_fields(raw, clock.today())
     if isinstance(parsed, list):
         raise invalid_fields(
@@ -95,6 +109,13 @@ def add_book(store: Store, clock: Clock, intent: AddBookIntent) -> str:
     created_at = clock.now()
 
     def change(library: Library) -> None:
+        # Inside the commit, so the check sees committed state under the store lock.
+        matches = find_duplicates(library.books, fields)
+        if matches and not intent.confirm_duplicate:
+            raise duplicate_book(
+                DuplicateMatch(title=book.title, authors=list(book.authors), isbn=book.isbn)
+                for book in matches
+            )
         curated = curated_spine_color(len(library.books))
         readings = []
         if fields.finished_on is not None:

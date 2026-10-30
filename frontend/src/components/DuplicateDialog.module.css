@@ -1,0 +1,46 @@
+/* DESIGN.md → Duplicate dialog: {components.dialog}, centered, 440px.
+   No icon and no warning color: the heading is ink like every other. */
+.dialog {
+  box-sizing: border-box;
+  width: var(--dialog-width);
+  max-width: calc(100vw - 2 * var(--space-6));
+  margin: auto;
+  padding: var(--space-6);
+  border: var(--hairline) solid var(--color-line);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  box-shadow: var(--shadow-overlay);
+}
+
+.dialog::backdrop {
+  background: var(--color-scrim);
+}
+
+.heading {
+  margin: 0 0 var(--space-3);
+  font-family: var(--font-panel-heading-family);
+  font-size: var(--font-panel-heading-size);
+  font-weight: var(--font-panel-heading-weight);
+  line-height: var(--font-panel-heading-line-height);
+}
+
+.description {
+  margin: 0 0 var(--space-6);
+  font-family: var(--font-body-family);
+  font-size: var(--font-body-size);
+  font-weight: var(--font-body-weight);
+  line-height: var(--font-body-line-height);
+}
+
+/* Each match's title in serif. */
+.title {
+  font-family: var(--font-book-title-md-family);
+  font-weight: var(--font-book-title-md-weight);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}

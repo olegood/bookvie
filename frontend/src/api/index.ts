@@ -5,12 +5,14 @@ export {
   addBook,
   BOOK_FIELD_KEYS,
   useAddBook,
+  type AddBookOptions,
   type BookFieldKey,
   type BookFields,
 } from './books.ts'
 export {
   COULDNT_SAVE_MESSAGE,
   parseIntentResponse,
+  type DuplicateMatch,
   type ErrorCode,
   type FieldError,
   type IntentResult,

@@ -205,7 +205,7 @@ def test_ac4_p1_authors_are_split_on_semicolons_and_trimmed(data_dir: Path) -> N
     assert [b["authors"] for b in _stored_books(data_dir)] == [
         ["Ursula K. Le Guin", "Brian Attebery"]
     ]
-    _add(client, authors=" ; Ursula K. Le Guin ;; ")
+    _add(client, title="The Lathe of Heaven", authors=" ; Ursula K. Le Guin ;; ")
     assert _stored_books(data_dir)[-1]["authors"] == ["Ursula K. Le Guin"]
     refused = _add(client, authors=" ; ;")
     assert refused.status_code == 422
@@ -533,7 +533,8 @@ def test_a_request_without_a_body_is_an_intent_field_error(data_dir: Path) -> No
 def test_two_adds_get_distinct_ids(data_dir: Path) -> None:
     client = _client(data_dir)
     first = _add(client, finishedOn="2026-03-14").json()["ids"]["bookId"]
-    second = _add(client, finishedOn="2026-03-14").json()["ids"]["bookId"]
+    another = _add(client, title="Always Coming Home", finishedOn="2026-03-14")
+    second = another.json()["ids"]["bookId"]
     assert first != second
     books = _stored_books(data_dir)
     assert [b["id"] for b in books] == [first, second]
@@ -572,7 +573,8 @@ def test_a_broken_library_rule_on_add_is_500_and_commits_nothing(
     client = _client(data_dir)
     assert _add(client).status_code == 200
     before = _library_bytes(data_dir)
-    response = _add(client)  # the same id again breaks unique_book_ids
+    # The same id again breaks unique_book_ids (a new title, so no duplicate refusal).
+    response = _add(client, title="The Word for World Is Forest")
     assert response.status_code == 500
     assert response.json()["error"]["code"] == "couldnt_save"
     assert _library_bytes(data_dir) == before

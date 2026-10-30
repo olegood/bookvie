@@ -7,6 +7,7 @@ import type { Locator, Page, Request } from '@playwright/test'
 import { expect, type Server, test } from './fixtures.ts'
 
 const ADD_BOOK = '/api/intents/add-book'
+const COULDNT_SAVE = "Couldn't save. Your data wasn't changed."
 // DESIGN.md ink, light theme.
 const INK = 'rgb(43, 46, 42)'
 // Ace's Dune: seeded as ISBN-13, typed as the ISBN-10 on older copies.
@@ -60,7 +61,7 @@ test.describe('Story 1.9 Duplicate dialog (ATDD)', () => {
     await page.emulateMedia({ colorScheme: 'light' })
   })
 
-  test.skip('[P0] AC-6 a duplicate refusal opens the "Possible duplicate" alertdialog over an inert panel', async ({
+  test('[P0] AC-6 a duplicate refusal opens the "Possible duplicate" alertdialog over an inert panel', async ({
     page,
     seededServer,
   }) => {
@@ -88,6 +89,12 @@ test.describe('Story 1.9 Duplicate dialog (ATDD)', () => {
     await expect(dialog).toHaveAccessibleDescription(/\(Book Club\)/)
     await expect(dialog).toHaveAccessibleDescription(/and 2 more/)
     await expect(dialog).not.toHaveAccessibleDescription(/Anniversary|Deluxe|Neuromancer/)
+    // Rendered by the client from `duplicates`, each with its stored ISBN.
+    await expect(dialog).toHaveAccessibleDescription(
+      `Already in your catalog: Dune by Frank Herbert (ISBN ${DUNE_ISBN13}), ` +
+        `Dune (Ace) by Frank Herbert (ISBN ${DUNE_ISBN13}) and ` +
+        `Dune (Book Club) by Frank Herbert (ISBN ${DUNE_ISBN13}), and 2 more.`,
+    )
 
     // Stacked over the panel, which is inert: only the dialog's two buttons.
     expect(await dialog.evaluate((element) => element.matches(':modal'))).toBe(true)
@@ -117,7 +124,7 @@ test.describe('Story 1.9 Duplicate dialog (ATDD)', () => {
     ])
   })
 
-  test.skip("[P0] AC-7 Don't add (default focus) closes the warning, saves nothing, keeps every field and refocuses Title", async ({
+  test("[P0] AC-7 Don't add (default focus) closes the warning, saves nothing, keeps every field and refocuses Title", async ({
     page,
     seededServer,
   }) => {
@@ -130,6 +137,8 @@ test.describe('Story 1.9 Duplicate dialog (ATDD)', () => {
     const dialog = duplicateDialog(page)
     await dialog.waitFor()
     const focusedOnOpen = await page.evaluate(() => document.activeElement?.textContent ?? '')
+    // The warning is the dialog alone: no alert text.
+    await expect(page.getByRole('alert')).toHaveText('')
 
     // Enter on the default focus.
     await page.keyboard.press('Enter')
@@ -143,10 +152,11 @@ test.describe('Story 1.9 Duplicate dialog (ATDD)', () => {
     }
     await expect(panel.getByRole('combobox', { name: 'Type', exact: true })).toHaveValue(/paperback/i)
     await expect(page.getByRole('status')).toHaveText('')
+    await expect(page.getByRole('alert')).toHaveText('')
     expect(await catalogTitles(page, server)).toEqual(['Dune', 'Neuromancer'])
   })
 
-  test.skip('[P0] AC-8 Add anyway resends with confirmDuplicate and saves as a normal "Added Title."', async ({
+  test('[P0] AC-8 Add anyway resends with confirmDuplicate and saves as a normal "Added Title."', async ({
     page,
     seededServer,
   }) => {
@@ -174,5 +184,68 @@ test.describe('Story 1.9 Duplicate dialog (ATDD)', () => {
     await expect(page.getByRole('table').locator(':focus')).toHaveText('Dune')
     await expect(page.getByRole('alert')).toHaveText('')
     expect(await catalogTitles(page, server)).toEqual(['Dune', 'Dune', 'Neuromancer'])
+  })
+
+  test('[P1] AC-6 Esc acts as Don\'t add and the live regions follow the topmost modal', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: [{ title: 'Dune', authors: ['Frank Herbert'] }, NEUROMANCER] })
+    await page.goto(`${server.url}/`)
+    const panel = await openNewBook(page)
+    await fillFields(panel, DUNE)
+    await panel.getByRole('button', { name: 'Add book', exact: true }).click()
+    const dialog = duplicateDialog(page)
+    await expect(dialog).toBeVisible()
+    // One match with no ISBN: no "(ISBN …)".
+    await expect(dialog).toHaveAccessibleDescription('Already in your catalog: Dune by Frank Herbert.')
+
+    // While the dialog is open, both regions are inside it (not inert).
+    await expect(dialog.getByRole('status')).toHaveCount(1)
+    await expect(dialog.getByRole('alert')).toHaveCount(1)
+
+    await page.keyboard.press('Escape')
+    await expect(dialog).toBeHidden()
+    await expect(panel).toBeVisible()
+    await expect(panel.getByLabel('Title', { exact: true })).toBeFocused()
+    await expect(panel.getByLabel('Title', { exact: true })).toHaveValue('Dune')
+    // Back inside the panel once the dialog closes.
+    await expect(panel.getByRole('status')).toHaveCount(1)
+    await expect(panel.getByRole('alert')).toHaveCount(1)
+    expect(await catalogTitles(page, server)).toEqual(['Dune', 'Neuromancer'])
+  })
+
+  test("[P1] AC-8 a couldn't save on Add anyway keeps the panel and its values, and doesn't reopen the dialog", async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: [{ title: 'Dune', authors: ['Frank Herbert'] }, NEUROMANCER] })
+    // Only the resend (the second send) fails; the first gets the real refusal.
+    let sends = 0
+    await page.route(`**${ADD_BOOK}`, (route) =>
+      ++sends === 1
+        ? route.continue()
+        : route.fulfill({
+            status: 503,
+            contentType: 'application/json',
+            body: JSON.stringify({ error: { kind: 'couldnt_save', code: 'couldnt_save', message: COULDNT_SAVE } }),
+          }),
+    )
+    await page.goto(`${server.url}/`)
+    const panel = await openNewBook(page)
+    await fillFields(panel, DUNE)
+    await panel.getByRole('button', { name: 'Add book', exact: true }).click()
+    const dialog = duplicateDialog(page)
+
+    await dialog.getByRole('button', { name: 'Add anyway', exact: true }).click()
+    await expect(page.getByRole('alert')).toHaveText(COULDNT_SAVE)
+
+    await expect(dialog).toHaveCount(0)
+    await expect(panel).toBeVisible()
+    await expect(panel.getByText(COULDNT_SAVE, { exact: true })).toBeVisible()
+    for (const [label, value] of Object.entries(DUNE)) {
+      await expect(panel.getByLabel(label, { exact: true }), label).toHaveValue(value)
+    }
+    expect(await catalogTitles(page, server)).toEqual(['Dune', 'Neuromancer'])
   })
 })

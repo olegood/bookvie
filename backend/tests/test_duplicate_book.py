@@ -29,8 +29,6 @@ from tests.builder import LibraryBuilder
 from tests.test_add_book import ADD_BOOK, VALID, _client, _library_bytes, _stored_books
 from tests.test_store import FaultyFs
 
-RED = "ATDD red phase: un-skip when Story 1.9 implements the duplicate check"
-
 # Ace's Dune, as ISBN-13 and as the ISBN-10 printed on older copies.
 DUNE_ISBN13 = "9780441172719"
 DUNE_ISBN10 = "0-441-17271-7"
@@ -55,7 +53,6 @@ def _send(client: TestClient, **intent: Any):
 # --- matching (domain) --------------------------------------------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_ac1_p0_isbn_title_and_author_matching_rules() -> None:
     from bookvie.domain.duplicates import (  # Story 1.9
         authors_match,
@@ -86,7 +83,6 @@ def test_ac1_p0_isbn_title_and_author_matching_rules() -> None:
 # --- the add-book refusal -----------------------------------------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_ac2_p0_same_normalized_isbn_is_409_duplicate_book_and_saves_nothing(
     tmp_path: Path,
 ) -> None:
@@ -117,7 +113,6 @@ def test_ac2_p0_same_normalized_isbn_is_409_duplicate_book_and_saves_nothing(
     assert _library_bytes(data_dir) == before
 
 
-@pytest.mark.skip(reason=RED)
 def test_ac3_p0_without_an_isbn_same_title_and_a_shared_author_is_a_duplicate(
     tmp_path: Path,
 ) -> None:
@@ -142,7 +137,6 @@ def test_ac3_p0_without_an_isbn_same_title_and_a_shared_author_is_a_duplicate(
     assert len(_stored_books(data_dir)) == 2
 
 
-@pytest.mark.skip(reason=RED)
 def test_ac4_p0_resending_with_confirm_duplicate_saves_the_book(tmp_path: Path) -> None:
     data_dir = _seed(tmp_path, {"title": "Dune", "authors": ["Frank Herbert"]})
     client = _client(data_dir)
@@ -161,7 +155,6 @@ def test_ac4_p0_resending_with_confirm_duplicate_saves_the_book(tmp_path: Path) 
     check_invariants(Library.model_validate_json(_library_bytes(data_dir)))
 
 
-@pytest.mark.skip(reason=RED)
 def test_ac5_p1_field_validation_runs_before_the_duplicate_check(tmp_path: Path) -> None:
     data_dir = _seed(tmp_path, {"title": "Dune", "authors": ["Frank Herbert"], "isbn": DUNE_ISBN13})
     client = _client(data_dir)
@@ -183,7 +176,6 @@ def test_ac5_p1_field_validation_runs_before_the_duplicate_check(tmp_path: Path)
 # --- standard intent ACs (TR8) ------------------------------------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_ac9_p0_confirmed_duplicate_add_keeps_the_standard_intent_guarantees(
     tmp_path: Path,
 ) -> None:
@@ -205,3 +197,144 @@ def test_ac9_p0_confirmed_duplicate_add_keeps_the_standard_intent_guarantees(
     schemas = create_app().openapi()["components"]["schemas"]
     assert "duplicate_book" in schemas["ErrorCode"]["enum"]
     assert "duplicates" in schemas["ErrorBody"]["properties"]
+
+
+# --- follow-ups: copy, wire shape, the flag ------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("count", "message"),
+    [
+        (
+            2,
+            "Possible duplicate: Dune 1 by Frank Herbert and Dune 2 by Frank Herbert"
+            " are already in your catalog.",
+        ),
+        (
+            3,
+            "Possible duplicate: Dune 1 by Frank Herbert, Dune 2 by Frank Herbert"
+            " and Dune 3 by Frank Herbert are already in your catalog.",
+        ),
+        (
+            4,
+            "Possible duplicate: Dune 1 by Frank Herbert, Dune 2 by Frank Herbert"
+            " and Dune 3 by Frank Herbert are already in your catalog, and 1 more.",
+        ),
+    ],
+)
+def test_multi_match_message_names_three_then_and_n_more(
+    tmp_path: Path, count: int, message: str
+) -> None:
+    books = [
+        {"title": f"Dune {n}", "authors": ["Frank Herbert"], "isbn": DUNE_ISBN13}
+        for n in range(1, count + 1)
+    ]
+    data_dir = _seed(tmp_path, *books)
+
+    response = _send(_client(data_dir), isbn=DUNE_ISBN10)
+
+    assert response.status_code == 409
+    error = response.json()["error"]
+    assert error["message"] == message
+    assert [match["title"] for match in error["duplicates"]] == [b["title"] for b in books]
+
+
+def test_multi_author_match_joins_names_with_semicolons() -> None:
+    from bookvie.intents.contract import DuplicateMatch, duplicate_message
+
+    match = DuplicateMatch(
+        title="The Dispossessed", authors=["Ursula K. Le Guin", "Brian Attebery"], isbn=None
+    )
+    assert duplicate_message([match]) == (
+        "Possible duplicate: The Dispossessed by Ursula K. Le Guin; Brian Attebery"
+        " is already in your catalog."
+    )
+
+
+def test_a_match_without_an_isbn_keeps_isbn_null_on_the_wire(tmp_path: Path) -> None:
+    data_dir = _seed(tmp_path, {"title": "Dune", "authors": ["Frank Herbert"]})
+
+    response = _send(_client(data_dir), title="Dune", authors="Frank Herbert")
+
+    assert response.status_code == 409
+    assert response.json()["error"]["duplicates"] == [
+        {"title": "Dune", "authors": ["Frank Herbert"], "isbn": None}
+    ]
+
+
+@pytest.mark.parametrize("flag", ["true", None, 1])
+def test_a_non_boolean_confirm_duplicate_is_a_malformed_intent(
+    tmp_path: Path, flag: object
+) -> None:
+    data_dir = _seed(tmp_path, {"title": "Dune", "authors": ["Frank Herbert"]})
+    before = _library_bytes(data_dir)
+
+    response = _send(_client(data_dir), title="Dune", authors="Frank Herbert", confirmDuplicate=flag)
+
+    assert response.status_code == 422
+    error = response.json()["error"]
+    assert error["code"] == "invalid_fields"
+    assert [f["field"] for f in error["fields"]] == ["intent"]
+    assert _library_bytes(data_dir) == before
+
+
+def test_confirm_duplicate_false_still_checks_and_true_without_a_match_saves(
+    tmp_path: Path,
+) -> None:
+    data_dir = _seed(tmp_path, {"title": "Dune", "authors": ["Frank Herbert"]})
+    client = _client(data_dir)
+
+    refused = _send(client, title="Dune", authors="Frank Herbert", confirmDuplicate=False)
+    assert refused.status_code == 409
+    saved = _send(client, title="Neuromancer", authors="William Gibson", confirmDuplicate=True)
+    assert saved.status_code == 200
+    assert [b["title"] for b in _stored_books(data_dir)] == ["Dune", "Neuromancer"]
+
+
+def test_title_alone_or_author_alone_is_not_a_duplicate(tmp_path: Path) -> None:
+    from bookvie.domain.book_fields import BookFields
+    from bookvie.domain.duplicates import find_duplicates
+
+    builder = LibraryBuilder()
+    builder.book(title="Dune", authors=["Frank Herbert"], isbn=DUNE_ISBN13)
+    builder.book(title="Dune", authors=["Someone Else"])
+    builder.book(title="Dune Messiah", authors=["Frank Herbert"])
+    builder.write(tmp_path)
+    books = Library.model_validate_json(_library_bytes(tmp_path)).books
+    fields = BookFields(
+        title="dune",
+        subtitle=None,
+        pages=1,
+        authors=["frank herbert"],
+        edition=1,
+        language="English",
+        publisher="Ace",
+        type="paperback",
+        isbn=None,
+        year=None,
+        finished_on=None,
+        tags=[],
+        spine_color=None,
+    )
+
+    assert [b.title for b in find_duplicates(books, fields)] == ["Dune"]
+
+
+def test_a_979_isbn_never_matches_the_978_isbn_with_the_same_stem() -> None:
+    from bookvie.domain.duplicates import isbns_match
+
+    # Same nine-digit stem (044117271) and check digit, different prefix.
+    assert isbns_match("9790441172719", DUNE_ISBN13) is False
+    assert isbns_match("9790441172719", DUNE_ISBN10) is False
+    assert isbns_match(DUNE_ISBN10, DUNE_ISBN13) is True
+
+
+def test_titles_and_authors_compare_by_normalized_whitespace_and_case() -> None:
+    from bookvie.domain.duplicates import authors_match, titles_match
+
+    assert titles_match("The\tLeft\nHand", "the left hand") is True
+    assert titles_match("\u00c9MILE", "\u00e9mile") is True
+    # NFD "E" + combining acute against NFC "É".
+    assert titles_match("E\u0301mile", "\u00c9mile") is True
+    assert authors_match(["E\u0301mile Zola"], ["\u00c9MILE ZOLA"]) is True
+    assert authors_match(["Frank  Herbert"], ["frank\therbert"]) is True

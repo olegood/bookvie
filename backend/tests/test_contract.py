@@ -289,9 +289,9 @@ def openapi() -> dict:
 
 def test_openapi_error_enums(openapi: dict) -> None:
     schemas = openapi["components"]["schemas"]
-    assert schemas["ErrorCode"]["enum"] == ["invalid_fields", "couldnt_save"]
+    assert schemas["ErrorCode"]["enum"] == ["invalid_fields", "couldnt_save", "duplicate_book"]
     assert schemas["ErrorKind"]["enum"] == ["refusal", "couldnt_save"]
-    assert [code.value for code in ErrorCode] == ["invalid_fields", "couldnt_save"]
+    assert [code.value for code in ErrorCode] == ["invalid_fields", "couldnt_save", "duplicate_book"]
     assert [kind.value for kind in ErrorKind] == ["refusal", "couldnt_save"]
 
 

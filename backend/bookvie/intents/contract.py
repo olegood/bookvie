@@ -1,7 +1,8 @@
 """The AD-9 response envelope and error codes.
 
 Success is ``{ok: true, ids?, reachedLastPage?}``. Every ``/api`` failure is
-``{error: {kind, code, message, fields?}}``. The server owns all message copy.
+``{error: {kind, code, message, fields?, duplicates?}}``. The server owns all
+message copy.
 Intents raise :class:`IntentError`; ``http`` turns it into a JSON response.
 
 Each later story adds its own refusal code here, with its API test.
@@ -29,6 +30,7 @@ class ErrorKind(StrEnum):
 class ErrorCode(StrEnum):
     INVALID_FIELDS = "invalid_fields"
     COULDNT_SAVE = "couldnt_save"
+    DUPLICATE_BOOK = "duplicate_book"
 
 
 class FieldError(_Wire):
@@ -37,11 +39,22 @@ class FieldError(_Wire):
     message: str
 
 
+class DuplicateMatch(_Wire):
+    """A Book already in the catalog that the refused intent would duplicate."""
+
+    title: str
+    authors: list[str]
+    isbn: str | None
+    """As stored; ``null`` on the wire when the Book has none."""
+
+
 class ErrorBody(_Wire):
     kind: ErrorKind
     code: ErrorCode
     message: str
     fields: list[FieldError] | None = None
+    duplicates: list[DuplicateMatch] | None = None
+    """``duplicate_book`` only: every matching Book, in catalog order."""
 
 
 class ErrorResponse(_Wire):
@@ -64,9 +77,15 @@ class IntentError(Exception):
         self.body = body
 
     def response_body(self) -> dict:
-        return ErrorResponse(error=self.body).model_dump(
+        body = ErrorResponse(error=self.body).model_dump(
             mode="json", by_alias=True, exclude_none=True
         )
+        if self.body.duplicates is not None:
+            # exclude_none would drop a match's ``isbn: null``; keep it on the wire.
+            body["error"]["duplicates"] = [
+                match.model_dump(mode="json", by_alias=True) for match in self.body.duplicates
+            ]
+        return body
 
 
 def invalid_fields(
@@ -92,6 +111,43 @@ def invalid_fields(
             code=ErrorCode.INVALID_FIELDS,
             message=message,
             fields=errors,
+        ),
+    )
+
+
+DUPLICATE_NAMED_LIMIT = 3
+
+
+def _named(match: DuplicateMatch) -> str:
+    return f"{match.title} by {'; '.join(match.authors)}"
+
+
+def duplicate_message(matches: list[DuplicateMatch]) -> str:
+    """The refusal copy, naming up to three matches.
+
+    "Possible duplicate: A by X, B by Y and C by Z are already in your
+    catalog, and N more."
+    """
+    names = [_named(match) for match in matches[:DUPLICATE_NAMED_LIMIT]]
+    more = len(matches) - len(names)
+    if len(names) == 1:
+        listed, verb = names[0], "is"
+    else:
+        listed, verb = f"{', '.join(names[:-1])} and {names[-1]}", "are"
+    tail = f", and {more} more." if more else "."
+    return f"Possible duplicate: {listed} {verb} already in your catalog{tail}"
+
+
+def duplicate_book(matches: Iterable[DuplicateMatch]) -> IntentError:
+    """409 ``duplicate_book`` listing every matching Book (AD-10)."""
+    matches = list(matches)
+    return IntentError(
+        409,
+        ErrorBody(
+            kind=ErrorKind.REFUSAL,
+            code=ErrorCode.DUPLICATE_BOOK,
+            message=duplicate_message(matches),
+            duplicates=matches,
         ),
     )
 

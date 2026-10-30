@@ -139,40 +139,40 @@ None. Every test, E2E included, gets its refusal from the real duplicate check o
 Activate one test at a time: delete its `@pytest.mark.skip(reason=RED)` line, or change `test.skip(` to `test(`, then watch it fail, implement, and watch it pass. Backend: `cd backend && TZ=Europe/Madrid uv run pytest tests/test_duplicate_book.py -k ac2`. E2E: `npm run build && npm --prefix frontend run e2e -- e2e/duplicate-dialog.spec.ts -g "AC-6 "`.
 
 ### AC-1 matching rules
-- [ ] `domain/duplicates.py`: `normalize_isbn`, `isbns_match`, `titles_match`, `authors_match` (and a `find_duplicates(books, fields)` helper that keeps the catalog order)
-- [ ] Activate AC-1
+- [x] `domain/duplicates.py`: `normalize_isbn`, `isbns_match`, `titles_match`, `authors_match` (and a `find_duplicates(books, fields)` helper that keeps the catalog order)
+- [x] Activate AC-1
 
 ### AC-2 / AC-3 / AC-9 the refusal
-- [ ] `ErrorCode.DUPLICATE_BOOK`; `ErrorBody.duplicates: list[DuplicateMatch] | None` (`title`, `authors`, `isbn`); a `duplicate_book(matches)` constructor in `contract.py` that builds the message
-- [ ] `add_book`: after `parse_book_fields`, find matches against `store.library.books`. Match on ISBN when both Books have one, otherwise on title plus a shared author. Raise 409 unless `confirm_duplicate`
-- [ ] Update `test_contract.py::test_openapi_error_enums` to the new enum (`["invalid_fields", "couldnt_save", "duplicate_book"]`), then `npm run check:api` to regenerate the TS types
-- [ ] Activate AC-2, AC-3, then AC-9
+- [x] `ErrorCode.DUPLICATE_BOOK`; `ErrorBody.duplicates: list[DuplicateMatch] | None` (`title`, `authors`, `isbn`); a `duplicate_book(matches)` constructor in `contract.py` that builds the message
+- [x] `add_book`: after `parse_book_fields`, find matches against `store.library.books`. Match on ISBN when both Books have one, otherwise on title plus a shared author. Raise 409 unless `confirm_duplicate`
+- [x] Update `test_contract.py::test_openapi_error_enums` to the new enum (`["invalid_fields", "couldnt_save", "duplicate_book"]`), then `npm run check:api` to regenerate the TS types
+- [x] Activate AC-2, AC-3, then AC-9
 
 ### AC-4 / AC-5 confirm and order
-- [ ] `AddBookIntent.confirm_duplicate: bool = False` (strict, camelCase alias `confirmDuplicate`)
-- [ ] Activate AC-4, then AC-5
+- [x] `AddBookIntent.confirm_duplicate: bool = False` (strict, camelCase alias `confirmDuplicate`)
+- [x] Activate AC-4, then AC-5
 
 ### AC-6 the Duplicate dialog
-- [ ] `envelope.ts`: carry `duplicates` on a `refusal` result (validated like `fields`), so `NewBookPanel` can tell `duplicate_book` apart
-- [ ] `components/ConfirmDialog` (or `DuplicateDialog`): `role="alertdialog"`, `aria-labelledby` its heading, `aria-describedby` the server message, opened modally over the panel. Its CSS is `{components.dialog}`, 440px, centered, with buttons right-aligned
-- [ ] Live regions: the 1.8 region host assumes one modal (`adoptRegions`/`releaseRegions`). Make it a stack, so the regions follow the topmost dialog and go back to the panel when it closes
-- [ ] Activate AC-6
+- [x] `envelope.ts`: carry `duplicates` on a `refusal` result (validated like `fields`), so `NewBookPanel` can tell `duplicate_book` apart
+- [x] `components/ConfirmDialog` (or `DuplicateDialog`): `role="alertdialog"`, `aria-labelledby` its heading, `aria-describedby` a description the client renders from `duplicates` (the server `message` is the fallback when no matches arrive), opened modally over the panel. Its CSS is `{components.dialog}`, 440px, centered, with buttons right-aligned
+- [x] Live regions: the 1.8 region host assumes one modal (`adoptRegions`/`releaseRegions`). Make it a stack, so the regions follow the topmost dialog and go back to the panel when it closes
+- [x] Activate AC-6
 
 ### AC-7 / AC-8 the buttons
-- [ ] **Don't add**: close the dialog, keep the form state, focus Title (EXPERIENCE.md → Focus after close)
-- [ ] **Add anyway**: resend `addBook(fields, { confirmDuplicate: true })` through the same in-flight guard, then the normal success path
-- [ ] Activate AC-7, then AC-8
+- [x] **Don't add**: close the dialog, keep the form state, focus Title (EXPERIENCE.md → Focus after close)
+- [x] **Add anyway**: resend `addBook(fields, { confirmDuplicate: true })` through the same in-flight guard, then the normal success path
+- [x] Activate AC-7, then AC-8
 
 ### Green-phase follow-ups (secondary branches, not separate red leaves)
 - [ ] AC-1: ISBN-13s beginning with 979 never equal a converted ISBN-10; tabs and newlines inside titles count as whitespace; non-ASCII case folding ("ÉMILE ZOLA" against "Émile Zola"); a Book whose authors repeat a name
 - [ ] AC-2: 1, 3, 4 and 10 matches (the list holds all of them, while the message names three, then "and N more"); a multi-author match's wording ("by Ursula K. Le Guin; Brian Attebery"); the exact multi-match message, once the spec settles it
 - [ ] AC-3: the title alone (no shared author) or a shared author alone (another title) is not a duplicate; a match on both rules at once is listed once
-- [ ] AC-4: `confirmDuplicate: false` still checks; `"confirmDuplicate": "true"` (a string) or `null` is a malformed intent (422 on `intent`); `confirmDuplicate: true` on a Book with no match saves as normal
+- [x] AC-4: `confirmDuplicate: false` still checks; `"confirmDuplicate": "true"` (a string) or `null` is a malformed intent (422 on `intent`); `confirmDuplicate: true` on a Book with no match saves as normal
 - [ ] AC-6: axe in both themes with the dialog open; the dark theme's ink; Esc in the dialog acts as **Don't add** and doesn't close the panel; the live regions are inside the topmost dialog while it is open; the description shows each match's ISBN only when it has one
 - [ ] AC-7: after **Don't add**, editing the ISBN so it no longer matches and pressing **Add book** saves without a dialog
 - [ ] AC-8: a `couldnt_save` on the resend (routed 503) keeps the panel open with every value, and the dialog is not reopened; **Add anyway** is guarded against a double press
 - [ ] AC-9: `book_not_found` doesn't apply to `add-book` (it names no existing Book), so there is no test for it. Story 1.11's `edit-book` takes the duplicate check together with that rule
-- [ ] Unit (`src/**/*.test.ts`): `toIntentResult` with a `duplicates` list, including a malformed list counting as `couldnt_save`
+- [x] Unit (`src/**/*.test.ts`): `toIntentResult` with a `duplicates` list, including a malformed list counting as `couldnt_save`
 
 ---
 

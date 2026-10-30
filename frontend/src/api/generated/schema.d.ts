@@ -93,6 +93,18 @@ export interface components {
             /** Tags */
             tags: string[];
         };
+        /**
+         * DuplicateMatch
+         * @description A Book already in the catalog that the refused intent would duplicate.
+         */
+        DuplicateMatch: {
+            /** Title */
+            title: string;
+            /** Authors */
+            authors: string[];
+            /** Isbn */
+            isbn: string | null;
+        };
         /** ErrorBody */
         ErrorBody: {
             kind: components["schemas"]["ErrorKind"];
@@ -101,12 +113,14 @@ export interface components {
             message: string;
             /** Fields */
             fields?: components["schemas"]["FieldError"][] | null;
+            /** Duplicates */
+            duplicates?: components["schemas"]["DuplicateMatch"][] | null;
         };
         /**
          * ErrorCode
          * @enum {string}
          */
-        ErrorCode: "invalid_fields" | "couldnt_save";
+        ErrorCode: "invalid_fields" | "couldnt_save" | "duplicate_book";
         /**
          * ErrorKind
          * @enum {string}

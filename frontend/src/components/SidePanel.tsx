@@ -40,10 +40,11 @@ export default function SidePanel({ title, onClose, onSubmit, initialFocus, foot
     if (!element) return
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null
     if (!element.open) element.showModal()
-    if (regionSlot.current) adoptRegions(regionSlot.current)
+    const slot = regionSlot.current
+    if (slot) adoptRegions(slot)
     initialFocus.current?.focus()
     return () => {
-      releaseRegions()
+      if (slot) releaseRegions(slot)
       if (element.open) element.close()
       if (opener?.isConnected) opener.focus()
     }

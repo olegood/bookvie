@@ -38,6 +38,7 @@ describe('parseIntentResponse', () => {
       code: 'invalid_fields',
       message: 'Not saved.',
       fields,
+      duplicates: [],
     })
   })
 
@@ -46,6 +47,23 @@ describe('parseIntentResponse', () => {
     const result = await parseIntentResponse(json(body, 409))
     assert.equal(result.kind, 'refusal')
     assert.deepEqual(result.kind === 'refusal' && result.fields, [])
+    assert.deepEqual(result.kind === 'refusal' && result.duplicates, [])
+  })
+
+  it('reads a duplicate_book refusal with its matches, isbn null included', async () => {
+    const duplicates = [
+      { title: 'Dune', authors: ['Frank Herbert'], isbn: '9780441172719' },
+      { title: 'The Dispossessed', authors: ['Ursula K. Le Guin', 'Brian Attebery'], isbn: null },
+    ]
+    const body = { error: { kind: 'refusal', code: 'duplicate_book', message: 'Possible duplicate.', duplicates } }
+    assert.deepEqual(toIntentResult(409, body), {
+      kind: 'refusal',
+      status: 409,
+      code: 'duplicate_book',
+      message: 'Possible duplicate.',
+      fields: [],
+      duplicates,
+    })
   })
 
   it('keeps the server message for couldnt_save', async () => {
@@ -66,6 +84,19 @@ describe('parseIntentResponse', () => {
     ['an unknown kind', json({ error: { kind: 'other', code: 'x', message: 'm' } }, 409)],
     ['a malformed fields list', json({ error: { kind: 'refusal', code: 'x', message: 'm', fields: [1] } }, 422)],
     ['a JSON array', json([], 200)],
+    ['a duplicates object', json({ error: { kind: 'refusal', code: 'x', message: 'm', duplicates: {} } }, 409)],
+    [
+      'a match without authors',
+      json({ error: { kind: 'refusal', code: 'x', message: 'm', duplicates: [{ title: 'D', isbn: null }] } }, 409),
+    ],
+    [
+      'a match with a numeric isbn',
+      json({ error: { kind: 'refusal', code: 'x', message: 'm', duplicates: [{ title: 'D', authors: [], isbn: 1 }] } }, 409),
+    ],
+    [
+      'a match with a non-string author',
+      json({ error: { kind: 'refusal', code: 'x', message: 'm', duplicates: [{ title: 'D', authors: [1], isbn: null }] } }, 409),
+    ],
   ]
   for (const [name, response] of notEnvelopes) {
     it(`treats ${name} as couldnt_save`, async () => {

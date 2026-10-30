@@ -8,6 +8,7 @@ type Schemas = components['schemas']
 export type ErrorCode = Schemas['ErrorCode']
 export type ErrorKind = Schemas['ErrorKind']
 export type FieldError = Schemas['FieldError']
+export type DuplicateMatch = Schemas['DuplicateMatch']
 export type ErrorBody = Schemas['ErrorBody']
 export type OkResponse = Schemas['OkResponse']
 
@@ -22,6 +23,8 @@ export type IntentResult =
       code: ErrorCode
       message: string
       fields: FieldError[]
+      /** `duplicate_book` only: the matching Books, in catalog order; else empty. */
+      duplicates: DuplicateMatch[]
     }
   | { kind: 'couldnt_save'; message: string }
 
@@ -46,6 +49,16 @@ function isFieldError(value: unknown): value is FieldError {
   return isObject(value) && typeof value.field === 'string' && typeof value.message === 'string'
 }
 
+function isDuplicateMatch(value: unknown): value is DuplicateMatch {
+  return (
+    isObject(value) &&
+    typeof value.title === 'string' &&
+    Array.isArray(value.authors) &&
+    value.authors.every((name) => typeof name === 'string') &&
+    (value.isbn === null || typeof value.isbn === 'string')
+  )
+}
+
 /** The outcome of a parsed body with an HTTP status; pure, for tests. */
 export function toIntentResult(status: number, body: unknown): IntentResult {
   if (!isObject(body)) return couldntSave()
@@ -62,12 +75,15 @@ export function toIntentResult(status: number, body: unknown): IntentResult {
   if (error.kind !== 'refusal') return couldntSave()
   const fields = error.fields ?? []
   if (!Array.isArray(fields) || !fields.every(isFieldError)) return couldntSave()
+  const duplicates = error.duplicates ?? []
+  if (!Array.isArray(duplicates) || !duplicates.every(isDuplicateMatch)) return couldntSave()
   return {
     kind: 'refusal',
     status,
     code: error.code as ErrorCode,
     message: error.message,
     fields,
+    duplicates,
   }
 }
 
