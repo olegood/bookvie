@@ -2,7 +2,9 @@
  * Design tokens: one custom property per primitive in DESIGN.md frontmatter
  * (colors, typography, rounded, spacing). Light values on :root; dark twins
  * override them for data-theme="dark" and for the system dark preference
- * unless data-theme="light" is set. Component tokens are added by later stories.
+ * unless data-theme="light" is set. Elevation and the scrim are literal values
+ * from DESIGN.md → Elevation & Depth. Component dimensions that DESIGN.md gives
+ * as literals (button height, plank, rings) sit under "components".
  */
 
 :root {
@@ -152,6 +154,28 @@
   --space-spine-label-strip-top-marked: 20px;
   --space-spine-label-strip-max: 96px;
   --space-shelf-row-height: 204px;
+
+  /* elevation and scrim (DESIGN.md → Elevation & Depth) */
+  --shadow-cover: 0 14px 30px rgba(60,80,100,.18);
+  --shadow-overlay: 0 18px 40px rgba(40,40,30,.18), 0 2px 6px rgba(40,40,30,.08);
+  --shadow-plank: 0 6px 10px rgba(120,100,60,.12);
+  --color-scrim: rgba(43,46,42,0.24);
+
+  /* components (literal dimensions from DESIGN.md → components) */
+  --hairline: 1px;
+  --focus-ring-width: 2px;
+  --focus-ring-offset: 2px;
+  --indicator-width: 2px;
+  --link-underline-thickness: 1px;
+  --link-underline-offset: 3px;
+  --button-height: 42px;
+  --text-field-border: 1.5px;
+  --text-field-border-invalid: 2px;
+  --text-field-halo: 4px;
+  --plank-height: 12px;
+  --plank-edge: 4px;
+  --wordmark-mark: 12px;
+  --glyph-size: 14px;
 }
 
 :root[data-theme="dark"] {
@@ -179,6 +203,10 @@
   --color-spine-unread-outline: #70766A;
   --color-spine-unread-text: #A39E92;
   --color-spine-edge: #858A7F;
+  --shadow-cover: 0 14px 30px rgba(0,0,0,.45);
+  --shadow-overlay: 0 18px 40px rgba(0,0,0,.5);
+  --shadow-plank: 0 6px 10px rgba(0,0,0,.35);
+  --color-scrim: rgba(25,27,24,0.60);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -207,6 +235,10 @@
     --color-spine-unread-outline: #70766A;
     --color-spine-unread-text: #A39E92;
     --color-spine-edge: #858A7F;
+    --shadow-cover: 0 14px 30px rgba(0,0,0,.45);
+    --shadow-overlay: 0 18px 40px rgba(0,0,0,.5);
+    --shadow-plank: 0 6px 10px rgba(0,0,0,.35);
+    --color-scrim: rgba(25,27,24,0.60);
   }
 }
 

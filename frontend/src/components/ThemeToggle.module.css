@@ -1,0 +1,50 @@
+.group {
+  display: inline-flex;
+  overflow: hidden;
+  border: var(--hairline) solid var(--color-input-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.option {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin: 0;
+  padding: var(--space-1) var(--space-3);
+  border: 0;
+  border-bottom: var(--indicator-width) solid transparent;
+  background: transparent;
+  color: var(--color-ink-secondary);
+  font-family: var(--font-nav-family);
+  font-size: var(--font-body-sm-size);
+  line-height: var(--font-body-sm-line-height);
+  cursor: pointer;
+}
+
+.option + .option {
+  border-left: var(--hairline) solid var(--color-line);
+}
+
+.option[aria-pressed="true"] {
+  border-bottom-color: var(--color-accent);
+  background: var(--color-accent-soft);
+  color: var(--color-ink);
+  font-weight: var(--font-nav-active-weight);
+}
+
+.option:focus-visible {
+  outline-offset: calc(var(--focus-ring-width) * -1);
+}
+
+.glyph {
+  width: var(--glyph-size);
+  height: var(--glyph-size);
+  flex: none;
+}
+
+@media (forced-colors: active) {
+  .option[aria-pressed="true"] {
+    border-bottom-color: Highlight;
+  }
+}

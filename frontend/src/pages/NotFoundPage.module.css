@@ -10,3 +10,10 @@
   line-height: var(--font-page-title-line-height);
   color: var(--color-ink);
 }
+
+.body {
+  margin: var(--space-4) 0 0;
+  font-family: var(--font-body-family);
+  font-size: var(--font-body-size);
+  line-height: var(--font-body-line-height);
+}

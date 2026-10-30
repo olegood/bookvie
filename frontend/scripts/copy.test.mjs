@@ -1,7 +1,7 @@
-// Story 1.6 tone guard, ATDD red phase (UX-DR12, NFR6): every user-facing
+// Story 1.6 tone guard (UX-DR12, NFR6): every user-facing
 // message, in server copy and client copy, stays calm. No exclamation marks,
 // greetings or praise; no red or warning colors; no character-key shortcuts,
-// drag and drop or hover-only affordances. Skipped until the task lands.
+// drag and drop or hover-only affordances.
 
 import assert from 'node:assert/strict'
 import { readdirSync, readFileSync } from 'node:fs'
@@ -70,7 +70,7 @@ function hexHueSaturation(hex) {
 }
 
 describe('copy and interaction guard', () => {
-  it.skip('[P1] AC-14 no message shouts, greets or praises, and nothing is red, key-bound, draggable or hover-only', () => {
+  it('[P1] AC-14 no message shouts, greets or praises, and nothing is red, key-bound, draggable or hover-only', () => {
     const copy = [...serverCopy(), ...clientCopy()]
     assert.deepEqual(copy.filter(({ text }) => text.includes('!')), [])
 

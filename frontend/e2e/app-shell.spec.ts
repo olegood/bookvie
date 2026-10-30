@@ -1,6 +1,5 @@
-// Story 1.6 app shell, ATDD red phase: tokens, top nav, theme toggle,
+// Story 1.6 app shell: tokens, top nav, theme toggle,
 // landmarks, live regions, shared primitives, motion and minimum width.
-// Each test stays skipped until the task that implements it un-skips it.
 
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
@@ -88,7 +87,7 @@ const squash = (values: Record<string, string>) =>
 const catalogHeading = (page: Page) => page.getByRole('heading', { level: 1, name: 'Catalog' })
 
 test.describe('Story 1.6 app shell (ATDD)', () => {
-  test.skip('[P1] AC-1 every DESIGN.md token is a CSS custom property, and UI text is sans', async ({ page }) => {
+  test('[P1] AC-1 every DESIGN.md token is a CSS custom property, and UI text is sans', async ({ page }) => {
     await page.emulateMedia({ colorScheme: 'light' })
     await page.goto('/')
     await expect(catalogHeading(page)).toBeVisible()
@@ -113,7 +112,7 @@ test.describe('Story 1.6 app shell (ATDD)', () => {
     await expect(catalogHeading(page)).toHaveCSS('font-family', /^system-ui/)
   })
 
-  test.skip('[P0] AC-2 the top nav shows Skip to content, the wordmark and only Catalog, marked current', async ({ page }) => {
+  test('[P0] AC-2 the top nav shows Skip to content, the wordmark and only Catalog, marked current', async ({ page }) => {
     await page.goto('/')
 
     const nav = page.getByRole('banner').getByRole('navigation')
@@ -132,7 +131,15 @@ test.describe('Story 1.6 app shell (ATDD)', () => {
     await expect(page.getByRole('main')).toBeFocused()
   })
 
-  test.skip('[P0] AC-3 the theme toggle switches instantly, follows the OS on System and is remembered', async ({ page }) => {
+  test('[P1] AC-2 the active nav item has a 2px accent bottom border', async ({ page }) => {
+    await page.emulateMedia({ colorScheme: 'light' })
+    await page.goto('/')
+    const catalog = page.getByRole('banner').getByRole('navigation').getByRole('link', { name: 'Catalog', exact: true })
+    await expect(catalog).toHaveCSS('border-bottom', '2px solid rgb(85, 112, 89)')
+    await expect(catalog).toHaveCSS('font-weight', '600')
+  })
+
+  test('[P0] AC-3 the theme toggle switches instantly, follows the OS on System and is remembered', async ({ page }) => {
     await page.emulateMedia({ colorScheme: 'light' })
     await page.goto('/')
     const theme = page.getByRole('group', { name: 'Theme' })
@@ -158,7 +165,51 @@ test.describe('Story 1.6 app shell (ATDD)', () => {
     await expect(theme.getByRole('button', { name: 'System', exact: true })).toHaveAttribute('aria-pressed', 'true')
   })
 
-  test.skip('[P1] AC-4 each route has header, nav and main, one h1, its title, and focus on the h1 after navigating', async ({ page }) => {
+  test('[P1] AC-3 storage that throws still renders with System pressed, and toggling works', async ({ page }) => {
+    await page.addInitScript(() => {
+      const refuse = () => {
+        throw new DOMException('storage disabled', 'SecurityError')
+      }
+      Storage.prototype.getItem = refuse
+      Storage.prototype.setItem = refuse
+    })
+    await page.emulateMedia({ colorScheme: 'light' })
+    await page.goto('/')
+    const theme = page.getByRole('group', { name: 'Theme' })
+
+    await expect(theme.getByRole('button', { name: 'System', exact: true })).toHaveAttribute('aria-pressed', 'true')
+    await theme.getByRole('button', { name: 'Dark', exact: true }).click()
+    await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(25, 27, 24)')
+    await expect(theme.getByRole('button', { name: 'Dark', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  test('[P1] AC-3 a junk stored theme falls back to System', async ({ page }) => {
+    await page.goto('/')
+    await page.evaluate(() => localStorage.setItem('bookvie.theme', 'sepia'))
+    await page.reload()
+    const theme = page.getByRole('group', { name: 'Theme' })
+
+    await expect(theme.getByRole('button', { name: 'System', exact: true })).toHaveAttribute('aria-pressed', 'true')
+    await expect(page.locator('html')).not.toHaveAttribute('data-theme', /.*/)
+  })
+
+  test('[P1] AC-10 forced colors keep the pressed theme option and the current nav item marked', async ({ page }) => {
+    await page.emulateMedia({ forcedColors: 'active' })
+    await page.goto('/')
+    const theme = page.getByRole('group', { name: 'Theme' })
+    const borderColor = (locator: ReturnType<Page['locator']>) =>
+      locator.evaluate((el) => getComputedStyle(el).borderBottomColor)
+
+    const pressed = await borderColor(theme.getByRole('button', { name: 'System', exact: true }))
+    const unpressed = await borderColor(theme.getByRole('button', { name: 'Light', exact: true }))
+    const current = await borderColor(
+      page.getByRole('banner').getByRole('navigation').getByRole('link', { name: 'Catalog', exact: true }),
+    )
+    expect(pressed).not.toBe(unpressed)
+    expect(current).not.toBe(unpressed)
+  })
+
+  test('[P1] AC-4 each route has header, nav and main, one h1, its title, and focus on the h1 after navigating', async ({ page }) => {
     await page.goto('/')
     await expect(page).toHaveTitle('Catalog — bookvie')
     await expect(page.getByRole('banner').getByRole('navigation')).toBeVisible()
@@ -171,14 +222,14 @@ test.describe('Story 1.6 app shell (ATDD)', () => {
     await expect(page).toHaveTitle('Catalog — bookvie')
   })
 
-  test.skip('[P1] AC-5 every page holds one status and one alert region', async ({ page }) => {
+  test('[P1] AC-5 every page holds one status and one alert region', async ({ page }) => {
     await page.goto('/')
     await expect(catalogHeading(page)).toBeVisible()
     await expect(page.getByRole('status')).toHaveCount(1)
     await expect(page.getByRole('alert')).toHaveCount(1)
   })
 
-  test.skip('[P2] AC-9 button-primary, link and the focus ring match DESIGN.md', async ({ page }) => {
+  test('[P2] AC-9 button-primary, link and the focus ring match DESIGN.md', async ({ page }) => {
     await page.emulateMedia({ colorScheme: 'light' })
     await page.goto('/')
     const newBook = page.getByRole('button', { name: 'New book' }).first()
@@ -198,7 +249,7 @@ test.describe('Story 1.6 app shell (ATDD)', () => {
     await expect(link).toHaveCSS('text-underline-offset', '3px')
   })
 
-  test.skip('[P1] AC-10 reduced motion turns every transition and animation off', async ({ page }) => {
+  test('[P1] AC-10 reduced motion turns every transition and animation off', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' })
     await page.goto('/')
     await expect(catalogHeading(page)).toBeVisible()
@@ -219,7 +270,7 @@ test.describe('Story 1.6 app shell (ATDD)', () => {
     expect(seconds.animation).toBeLessThanOrEqual(0.001)
   })
 
-  test.skip('[P2] AC-11 below 1024px the page scrolls horizontally instead of reflowing', async ({ page }) => {
+  test('[P2] AC-11 below 1024px the page scrolls horizontally instead of reflowing', async ({ page }) => {
     await page.setViewportSize({ width: 800, height: 700 })
     await page.goto('/')
     await expect(catalogHeading(page)).toBeVisible()

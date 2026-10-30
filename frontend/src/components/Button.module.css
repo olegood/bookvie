@@ -1,0 +1,37 @@
+.button {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--button-height);
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-md);
+  font-family: var(--font-body-family);
+  font-size: var(--font-body-sm-size);
+  font-weight: var(--font-nav-active-weight);
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.primary {
+  border: 0;
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
+
+.secondary {
+  border: var(--hairline) solid var(--color-input-border);
+  background: var(--color-surface-inset);
+  color: var(--color-ink);
+}
+
+.button[aria-disabled="true"] {
+  cursor: default;
+}
+
+@media (forced-colors: active) {
+  .primary {
+    border: var(--hairline) solid ButtonText;
+  }
+}

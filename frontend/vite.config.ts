@@ -12,6 +12,9 @@ export default defineConfig({
   build: {
     outDir: '../backend/bookvie/http/static',
     emptyOutDir: true,
+    // The CSS minifier rewrites rgba() tokens as hex; tokens.css must reach
+    // the browser as DESIGN.md spells it (app-shell.spec.ts AC-1 compares).
+    cssMinify: false,
   },
   server: {
     host: '127.0.0.1',

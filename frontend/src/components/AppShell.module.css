@@ -1,0 +1,103 @@
+.header {
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-7);
+  height: var(--space-topbar-height);
+  padding: 0 var(--space-page-x);
+  border-bottom: var(--hairline) solid var(--color-line);
+  background: var(--color-surface-inset);
+}
+
+.skip {
+  position: absolute;
+  top: var(--space-3);
+  left: var(--space-3);
+  z-index: 1;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  font-family: var(--font-nav-family);
+  font-size: var(--font-nav-size);
+  transform: translateY(calc(-1 * var(--space-topbar-height) - var(--space-3)));
+}
+
+.skip:focus,
+.skip:focus-visible {
+  transform: none;
+}
+
+.wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-wordmark-family);
+  font-size: var(--font-wordmark-size);
+  font-weight: var(--font-wordmark-weight);
+  letter-spacing: var(--font-wordmark-letter-spacing);
+  color: var(--color-ink);
+}
+
+.mark {
+  width: var(--wordmark-mark);
+  height: var(--wordmark-mark);
+  border-radius: var(--radius-plank);
+  background: var(--color-accent);
+}
+
+.nav {
+  display: flex;
+}
+
+.items {
+  display: flex;
+  gap: var(--space-6);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  display: flex;
+}
+
+/* The active indicator sits flush on the header's bottom hairline. */
+.link {
+  display: flex;
+  align-items: center;
+  margin-bottom: calc(-1 * var(--hairline));
+  border-bottom: var(--indicator-width) solid transparent;
+  color: var(--color-ink-secondary);
+  font-family: var(--font-nav-family);
+  font-size: var(--font-nav-size);
+  font-weight: var(--font-nav-weight);
+  text-decoration: none;
+}
+
+.link[aria-current="page"] {
+  border-bottom-color: var(--color-accent);
+  color: var(--color-ink);
+  font-family: var(--font-nav-active-family);
+  font-weight: var(--font-nav-active-weight);
+}
+
+.link:focus-visible {
+  outline-offset: calc(var(--focus-ring-width) * -1);
+}
+
+.end {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+}
+
+.main {
+  display: block;
+}
+
+@media (forced-colors: active) {
+  .link[aria-current="page"] {
+    border-bottom-color: Highlight;
+  }
+}
