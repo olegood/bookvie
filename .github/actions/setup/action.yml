@@ -1,0 +1,51 @@
+name: Set up bookvie
+description: Node from .nvmrc, uv with Python 3.14, and optionally the frontend dependencies and Playwright's Chromium.
+
+inputs:
+  frontend:
+    description: Install frontend dependencies (npm --prefix frontend ci).
+    default: "true"
+  browser:
+    description: Install Chromium and its system libraries through the root `npm ci` postinstall.
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Node
+      uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      with:
+        node-version-file: .nvmrc
+        cache: npm
+        cache-dependency-path: |
+          package-lock.json
+          frontend/package-lock.json
+
+    - name: Set up uv and Python
+      uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      with:
+        version: "0.13.6"
+        python-version: "3.14"
+        enable-cache: true
+        cache-dependency-glob: backend/uv.lock
+
+    - name: Cache Playwright browsers
+      if: inputs.browser == 'true'
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ~/.cache/ms-playwright
+        key: ${{ runner.os }}-playwright-${{ hashFiles('frontend/package-lock.json') }}
+
+    # The documented install path: root postinstall runs `npm --prefix frontend ci`
+    # and `playwright install chromium`. CI adds the browser's system libraries.
+    - name: Install dependencies and Chromium
+      if: inputs.browser == 'true'
+      shell: bash
+      run: |
+        npm ci
+        npm --prefix frontend exec -- playwright install-deps chromium
+
+    - name: Install frontend dependencies
+      if: inputs.browser != 'true' && inputs.frontend == 'true'
+      shell: bash
+      run: npm --prefix frontend ci

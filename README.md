@@ -1,5 +1,7 @@
 # bookvie
 
+[![Test](https://github.com/olegood/bookvie/actions/workflows/test.yml/badge.svg?branch=master)](https://github.com/olegood/bookvie/actions/workflows/test.yml)
+
 A personal, local-first web app for organizing my home library and tracking my reading. It replaces a paper reading diary as the single source of truth for reading progress. The diary can stay on the nightstand for quick notes; I catch up in the app on my next visit by entering the page I reached.
 
 > **Status:** building Epic 1. Stories 1.1, *Scaffold and install bookvie*, 1.2, *Run one safe instance*, 1.3, *One check command guards the repo*, and 1.4, *Keep the library in one safe file*, are done: the one-command install works, bookvie opens a placeholder Catalog page, only one server runs per data folder, reachable only from its own loopback address, `npm run check` guards the repo without touching `~/bookvie-data`, and bookvie creates, validates and migrates `library.json` at startup and writes it atomically. Story 1.4's `Clock` and time-zone work is deferred. The other 37 stories are in backlog (see [Sprint status](_bmad-output/implementation-artifacts/sprint-status.yaml)).
@@ -108,6 +110,8 @@ bookvie                                  # serves 127.0.0.1:8765 and opens the b
 
 **Tests:** `npm run check` at the repo root runs four steps in order and stops at the first failure: `check:py` (pytest with line-coverage gates of 90% on `bookvie/domain/` and 80% on `bookvie/intents/` + `bookvie/store/`), `check:api` (frontend type check and lint), `check:e2e` (builds the SPA, then runs the Playwright suite; each worker starts its own `bookvie` on a free port with a data dir under `$TMPDIR/bookvie-e2e/<run-id>/`) and `check:smoke` (builds, installs bookvie with `uv tool install` into a temp folder, starts it and checks that it serves the SPA). Each step also runs on its own, e.g. `npm run check:py`. No check touches `~/bookvie-data`: pytest runs with a temp `HOME`, and the e2e path guard always refuses the real library. A failing e2e test keeps a trace, screenshot and video in `frontend/test-results/`, with HTML and JUnit reports next to it; [`frontend/e2e/README.md`](frontend/e2e/README.md) explains the suite's fixtures, conventions and troubleshooting.
 
+**CI:** GitHub Actions runs the same four checks as separate jobs on every push to `master` and every pull request, plus a burn-in that runs each e2e test 10 times with retries off (`npm run e2e:burn-in`) on pull requests and weekly. [`docs/ci.md`](docs/ci.md) covers the jobs, gates, artifacts and troubleshooting.
+
 ## Adding books with AI
 
 Catalog entry happens through my own AI skills rather than an in-app importer or API. A browser-driven skill fills the "add book" form from a plain description like "Dune by Frank Herbert, 412 pages", exactly as a person would. That makes the form's labels, accessible names and outcome messages a contract (the Agent Label Contract in the UX spec): renaming one is a breaking change.
@@ -132,6 +136,7 @@ Catalog entry happens through my own AI skills rather than an in-app importer or
 - [Story 1.2 spec](_bmad-output/implementation-artifacts/spec-1-2-run-one-safe-instance.md): intent, I/O matrix, review findings and verification for the single-instance lock and the Host/Origin guard
 - [Story 1.3 spec](_bmad-output/implementation-artifacts/spec-1-3-one-check-command-guards-the-repo.md): intent, I/O matrix and review findings and verification for `npm run check`, the coverage gates, the e2e harness and the install smoke test
 - [Story 1.4 spec](_bmad-output/implementation-artifacts/spec-1-4-keep-the-library-in-one-safe-file.md): intent, I/O matrix, review findings and verification for the one-file store, migrations and `LibraryBuilder`
+- [CI](docs/ci.md): the GitHub Actions jobs, quality gates, burn-in and artifacts
 - [Deferred work](_bmad-output/implementation-artifacts/deferred-work.md): review findings deferred to later stories, each marked with the story that resolved it once done
 - [Brainstorm intent](_bmad-output/brainstorming/brainstorm-personal-library-tracker-2026-10-27/brainstorm-intent.md): the brainstorm's problem statement, pillars and decisions
 - [Brainstorm session](_bmad-output/brainstorming/brainstorm-personal-library-tracker-2026-10-27/brainstorm.html): the full session record
