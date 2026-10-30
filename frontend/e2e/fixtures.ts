@@ -134,13 +134,42 @@ export function seedLibrary(
   return path.join(dir, 'library.json')
 }
 
+type TestFixtures = {
+  /**
+   * Seeds a fresh data dir under the run folder with `seedLibrary` and starts
+   * a server on it. Every server it started is stopped and its data dir
+   * removed after the test; the test fails if one wrote to stdout.
+   */
+  seededServer: (partial?: Record<string, unknown>) => Promise<Server>
+}
+
 type WorkerFixtures = {
   /** Start the worker's server with `--dev` (Vite origin allowed). */
   serverDev: boolean
   server: Server
 }
 
-export const test = base.extend<{}, WorkerFixtures>({
+export const test = base.extend<TestFixtures, WorkerFixtures>({
+  seededServer: async ({ serverDev }, provide, testInfo) => {
+    const runId = process.env.BOOKVIE_E2E_RUN_ID
+    if (!runId) throw new Error('BOOKVIE_E2E_RUN_ID is not set; run through playwright.config.ts')
+    const servers: Server[] = []
+    await provide(async (partial = {}) => {
+      const dataDir = path.join(runDir(runId), `seeded-${testInfo.testId}-${servers.length}`)
+      rmSync(dataDir, { recursive: true, force: true })
+      seedLibrary(dataDir, partial)
+      const server = await startServer(dataDir, { port: await freePort(), dev: serverDev })
+      servers.push(server)
+      return server
+    })
+    const noisy: string[] = []
+    for (const server of servers) {
+      const stdout = await server.stop()
+      rmSync(server.dataDir, { recursive: true, force: true })
+      if (stdout !== '') noisy.push(stdout)
+    }
+    if (noisy.length > 0) throw new Error(`bookvie wrote to stdout:\n${noisy.join('\n')}`)
+  },
   serverDev: [false, { scope: 'worker', option: true }],
   server: [
     // `provide`, not `use`: the React hooks lint rule reads `use` as a hook.
