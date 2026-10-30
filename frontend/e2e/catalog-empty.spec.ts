@@ -40,11 +40,15 @@ test.describe('Story 1.6 Catalog states (ATDD)', () => {
     await page.goto('/')
     await expect(page.getByRole('alert')).toHaveText(COULDNT_LOAD)
     await expect(page.getByRole('banner').getByRole('navigation')).toBeVisible()
+    await expect(page.getByRole('main').getByRole('heading', { level: 1, name: 'Catalog' })).toBeVisible()
 
     down = false
-    await page.getByRole('button', { name: 'Try again' }).click()
+    // Keyboard path: the button unmounts while loading, so focus is parked on main.
+    await page.getByRole('button', { name: 'Try again' }).focus()
+    await page.keyboard.press('Enter')
     await expect(page.getByRole('button', { name: 'New book' }).first()).toBeVisible()
     await expect(page.getByText(COULDNT_LOAD)).toHaveCount(0)
+    await expect(page.getByRole('main')).toBeFocused()
   })
 
   test('[P1] AC-7 a failed background refetch keeps the last data and shows no message', async ({ page }) => {

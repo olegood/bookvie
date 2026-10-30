@@ -73,6 +73,46 @@ context:
 - Given `npm run check`, when it runs, then it exits 0 with all 14 ATDD tests active and `~/bookvie-data` unchanged.
 - Given the Catalog in light and dark, when axe runs with WCAG 2.0–2.2 A/AA tags, then it reports no violations.
 
+### Review Findings
+
+Code review 2026-10-30 (diff `fb3d4a7..fcf1a1d`, `frontend/`; layers: blind, edge, gap, auditor).
+
+- [x] [Review][Patch] Back to the initial history entry doesn't verify that the h1 takes focus (triage #12 fix is unpinned) [frontend/e2e/app-shell.spec.ts:212]
+- [x] [Review][Patch] Try again doesn't verify that focus is parked on `main` (triage #4 fix is unpinned) [frontend/e2e/catalog-empty.spec.ts:36]
+- [x] [Review][Patch] The failed state's `h1` "Catalog" isn't asserted (triage #3 fix is unpinned) [frontend/e2e/catalog-empty.spec.ts:36]
+- [x] [Review][Patch] Not Found's title "Page not found — bookvie" and its shell landmarks aren't asserted [frontend/e2e/app-shell.spec.ts:212]
+- [x] [Review][Defer] The layout `errorElement` shows "Page not found" for any render crash, and re-renders `AppShell` if the shell itself throws [frontend/src/main.tsx:23] — deferred: already recorded in deferred-work.md (triage #5); this review adds the AppShell-throws case
+
+Rejected:
+- False: theme flashes light on first load (maybe-false). It needs CSS painting before the deferred module script runs on a local server; if real, it's low and the fix duplicates `theme.ts` in an inline script.
+- False: no `color-scheme`. `tokens.css:11,182,214` set it for light and both dark blocks.
+- False: the background-refetch e2e test's `focus` event never refetches. `queryClient.ts` wires `focus` into `focusManager`.
+- Low: `cssMinify: false`. Rejected again (triage #7).
+- Low: `clearAnnouncements` cleanup clears other announcements. Rejected again (triage #6).
+- Low: Try again finds `#main` by DOM id. Coupling only, with no failure path; the untested focus path is folded into the Try again patch.
+- False: the `hasNavigated` module state depends on an ordering that might break. `router.subscribe` in main.tsx registers before `RouterProvider`, so it runs first.
+- False: New book does nothing and should be `aria-disabled`. The spec Decision makes it an active no-op (triage #9).
+- Low: no unit tests for TextField, the Button reason and theme.ts. Rejected again (triage #13); they have no consumer yet.
+- Low: `useNow` goes stale at midnight and pulls React into relativeDay.ts. Rejected again (triage #18).
+- Low: the theme doesn't sync across tabs. Rejected again (triage #23).
+- False/low: the dark `--shadow-overlay` drops a layer, and dark tokens are duplicated. DESIGN.md gives dark overlay a single layer; the duplication is triage #20.
+- Low: Button borrows `--font-nav-active-weight`. DESIGN.md gives no button weight; it's coupling with no named breakage.
+- Low: e2e `rmSync` runs after `finally`, so a failed test leaves files. They sit in the per-run dir and are cleared at the next test start.
+- False: inline ref callbacks drop announcements. React swaps refs synchronously during commit, so no timer can fire in between.
+- Low: CatalogPage crashes on a null `books`. The server owns the contract; no path shown to reach it.
+- Low: `relativeDay` returns NaN on an Invalid Date. Rejected again (triage #17).
+- Low: `disabledReason=""`. Rejected again (triage #22).
+- Low: an unavailable Button still runs non-click handlers. No caller.
+- False: the failure line sits above Try again. D:619 means "below the action that failed", which here is the page load; E:303 sets no order.
+- Low: the nav link and theme-option focus rings are inset. The 2px accent ring stays visible; an outside offset would be clipped by the header and `overflow: hidden`.
+- Reject (fix edits DESIGN.md): `--wordmark-mark` and `--glyph-size` have no DESIGN.md source.
+- False: the forced-colors rules live in component modules. The behaviour is present and covered by the AC-10 forced-colors e2e test.
+- Reject (fix edits spec): the h1 focus rule differs from the Code Map text (triage #12 changed it on purpose).
+- False: New book isn't the empty state's focus target. E:389 is Story 1.12 (triage #10).
+- False: the deferred-work.md update is missing. It's in fcf1a1d; the review diff only covered `frontend/`.
+- Not a defect: AC-13 and `npm run check` need a run, not a diff read. The test still asserts `toEqual([])`.
+- Low: background-refetch assertions can pass early. Rejected again (triage #8).
+
 ## Implementation Notes
 
 ## Spec Change Log

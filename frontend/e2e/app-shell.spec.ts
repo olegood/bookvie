@@ -217,9 +217,16 @@ test.describe('Story 1.6 app shell (ATDD)', () => {
     await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1)
 
     await page.goto('/no/such/page')
+    await expect(page).toHaveTitle('Page not found — bookvie')
+    await expect(page.getByRole('banner').getByRole('navigation')).toBeVisible()
+    await expect(page.getByRole('main').getByRole('heading', { level: 1, name: 'Page not found' })).toBeVisible()
     await page.getByRole('link', { name: 'Back to the catalog' }).click()
     await expect(catalogHeading(page)).toBeFocused()
     await expect(page).toHaveTitle('Catalog — bookvie')
+
+    // Back returns to the entry the app loaded on; its h1 still takes focus.
+    await page.goBack()
+    await expect(page.getByRole('heading', { level: 1, name: 'Page not found' })).toBeFocused()
   })
 
   test('[P1] AC-5 every page holds one status and one alert region', async ({ page }) => {
