@@ -1,93 +1,114 @@
 ---
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03c-aggregate', 'step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
-lastSaved: '2026-10-29'
+lastSaved: '2026-10-30'
+storyId: '1.6'
 inputDocuments:
-  - _bmad-output/implementation-artifacts/spec-1-1-scaffold-and-install-bookvie.md
-  - _bmad-output/implementation-artifacts/epic-1-context.md
-  - _bmad-output/implementation-artifacts/deferred-work.md
-  - _bmad-output/planning-artifacts/epics.md (Story 1.1)
-  - _bmad-output/planning-artifacts/architecture/architecture-bookvie-2026-10-29/ARCHITECTURE-SPINE.md (Stack)
+  - _bmad-output/implementation-artifacts/spec-1-6-open-bookvie-to-an-empty-shelf.md
+  - _bmad-output/test-artifacts/atdd-checklist-1-6-open-bookvie-to-an-empty-shelf.md
   - _bmad-output/test-artifacts/test-design-qa.md
+  - _bmad-output/planning-artifacts/ux-designs/ux-bookvie-2026-10-28/DESIGN.md (components)
   - _bmad/tea/config.yaml
+  - frontend/playwright.config.ts
+  - frontend/e2e/fixtures.ts
   - knowledge/test-levels-framework.md
   - knowledge/test-priorities-matrix.md
   - knowledge/data-factories.md
   - knowledge/selective-testing.md
   - knowledge/ci-burn-in.md
   - knowledge/test-quality.md
+  - knowledge/fixture-architecture.md
+  - knowledge/network-first.md
+  - knowledge/playwright-cli.md
 ---
 
-# Automation Summary: Story 1.1, Scaffold and install bookvie
+# Automation Summary: Story 1.6, Open bookvie to an empty shelf
 
-**Execution mode:** BMad-Integrated (story spec + epic ACs + system test design)
-**Detected stack:** fullstack, run scoped to **backend** (see Assumptions)
-**Subagent execution:** SEQUENTIAL (4 small targets; parallel workers would cost more than they save)
-**Playwright Utils mandate:** not applicable (no Playwright tests generated)
-**Pact.js Utils mandate:** not applicable (no contract testing in this repo)
-**Total tests added:** 40 (suite 37 → 77, all green; 5 burn-in runs, ~1.2 s each)
+The Story 1.1 summary that used to live in this file is in git history (`28f0bfa`).
+
+**Execution mode:** BMad-Integrated (story spec + ATDD checklist + system test design)
+**Detected stack:** fullstack, run scoped to **frontend**. Story 1.6 changed only `frontend/`, and it adds no endpoint.
+**Playwright Utils mandate:** off (`tea_use_playwright_utils: false`), so the vanilla `fixture-architecture` / `network-first` patterns apply.
+**Pact.js Utils mandate:** not applicable (the repo has no contract testing).
+**Subagent execution:** SEQUENTIAL. Config resolves to subagent mode, but 12 small targets in 5 files cost less to write inline. No API or backend worker ran: the story has no endpoint and no backend change.
+**Total tests added:** 13 new tests plus 4 assertions in existing tests (unit 41 → 48, e2e 47 → 53, all green).
+**Browser exploration:** skipped. `playwright-cli` is not installed, and the shell is small enough to map from source. Every selector reuses a role or name the green ATDD tests already pin.
 
 ## Baseline
 
-The story shipped with 37 pytest tests at 99 % line coverage (`cli.py:101`, the `__main__` guard, is the only miss). Every I/O-matrix row, the CLI flags and the layer direction were already covered. The gaps were acceptance criteria that no test checked, plus `hatch_build.py`, which is not counted by coverage at all.
+- `npm --prefix frontend run check:api`: 41 unit tests, all pass.
+- `npx playwright test`: 47 e2e tests, all pass (5.9 s).
+- All 14 ATDD criteria are active. The code review added 9 more e2e tests: storage that throws, junk stored theme, background refetch, the nav underline, forced colors, a non-empty shelf, the 404 title, Back focus, and Try again focus.
 
 ## Coverage Plan by Test Level and Priority
 
-| Target (AC / constraint) | Level | Priority | Tests | File |
+Scope: **selective**. Only behaviour in the spec (Always rules, I/O matrix, ACs) with no test that can fail on it.
+
+| # | Target (AC / constraint) | Level | Priority | File |
 |---|---|---|---|---|
-| Every dependency stays inside the Spine → Stack series (declared range and locked version) | Unit (static contract) | P1 | 36 | `backend/tests/test_stack_pins.py` (new) |
-| The built SPA ships in the wheel; the build hook refuses a wheel without it | Integration (real `uv build`) | P1 | 2 | `backend/tests/test_wheel_build.py` (new) |
-| Vite dev proxy sends `/api` and `/media` to the CLI's `HOST:DEFAULT_PORT`, dev server on :5173 | Unit (static contract) | P2 | 1 | `backend/tests/test_packaging.py` (updated) |
-| "Logs go to stderr only": startup writes nothing to stdout | Unit | P2 | 1 | `backend/tests/test_cli.py` (updated) |
+| 1 | Light wins over an OS dark preference (`:root:not([data-theme="light"])`) | E2E | P1 | `e2e/app-shell.spec.ts` |
+| 2 | Theme is applied before the first render: `data-theme` is set before `#root` gets content | E2E | P2 | `e2e/app-shell.spec.ts` |
+| 3 | AC-2 Skip to content is off-screen until it takes focus | E2E | P2 | `e2e/app-shell.spec.ts` |
+| 4 | AC-5 live regions sit outside `main`; `status` is polite | E2E | P2 | `e2e/app-shell.spec.ts` |
+| 5 | AC-9 `button-secondary` (Try again) matches DESIGN.md | E2E | P2 | `e2e/catalog-empty.spec.ts` |
+| 6 | AC-7 a second failed Try again shows and announces Couldn't load again | E2E | P2 | `e2e/catalog-empty.spec.ts` |
+| 7 | AC-6 matrix "`main` empty" while loading | E2E (added assertion) | P1 | `e2e/catalog-empty.spec.ts` |
+| 8 | AC-7 matrix "visible … in `main`": the failure line is visible, not only in the hidden alert | E2E (added assertion) | P0 | `e2e/catalog-empty.spec.ts` |
+| 9 | AC-9 link underline is 1px | E2E (added assertion) | P2 | `e2e/app-shell.spec.ts` |
+| 10 | AC-12 month/year boundaries, leap year, spring-forward DST, across four time zones | Unit | P2 | `src/lib/relativeDay.test.ts` |
+| 11 | AC-14 the copy guard's detectors flag known-bad samples, so the guard can fail | Unit | P2 | `scripts/copy.test.mjs` |
+| 12 | Always: pages get data only via `src/api/` (no raw `fetch`/XHR elsewhere); no `data-testid` in `src/` or `e2e/` | Unit (static) | P1 | `scripts/boundaries.test.mjs` (new) |
+
+**Not added (and why):**
+- Non-2xx first load at E2E: `views.test.ts` "rejects on an error status" and `toViewState` cover it at unit level. The abort path already drives the same `failed` UI.
+- An explicit "h1 not focused on first load" test: AC-2 already pins it, because Tab must land on Skip to content first.
+- TextField, Button `disabledReason`, `theme.ts` units, `useNow`, cross-tab sync, Invalid Date: the code review rejected these twice (triage #13, #17, #18, #22, #23) because they have no consumer yet. This run does not reopen that.
+- `errorElement` for render crashes: deferred in `deferred-work.md` (triage #5).
+
+## Priority Totals
 
 | Level | P0 | P1 | P2 | P3 | Total |
 |---|---|---|---|---|---|
-| Unit | 0 | 36 | 2 | 0 | 38 |
-| Integration | 0 | 2 | 0 | 0 | 2 |
-| **Total** | 0 | 38 | 2 | 0 | **40** |
+| E2E (new tests) | 0 | 1 | 5 | 0 | 6 |
+| Unit (new tests) | 0 | 2 | 5 | 0 | 7 |
+| **Total new** | 0 | 3 | 10 | 0 | **13** |
 
-Scope: **selective**. Only ACs with no automated check got tests. Story 1.1 carries no P0 risk; FND-API-005 (bind 127.0.0.1) is already asserted in `test_cli.py`.
+Added assertions in existing tests: AC-6 `main` is empty while loading (P1), AC-7 the failure line is visible in `main` (P0), and AC-9 the link underline is 1px (P2). The unit P2 count is the relativeDay case run once per zone (4) plus the copy-guard detector self-test (1).
 
 ## Files Created/Updated
 
 ### Created
-- `backend/tests/test_stack_pins.py`: parses the Stack table in ARCHITECTURE-SPINE.md, so the Spine stays the single source of truth. It fails if a Spine row is not mapped to a manifest entry, if a Python specifier admits the next or the previous series, if an npm range is not `~X.Y.` or `^X.`, or if `uv.lock` or `package-lock.json` resolves outside the series.
-- `backend/tests/test_wheel_build.py`: builds real wheels with `uv build` from a copy of `backend/` that sits under the repo `.gitignore`. Each build takes about 0.5 s. Skips only when `uv` is not on PATH.
+- `frontend/scripts/boundaries.test.mjs`: two static guards. Only `src/api/` may call `fetch`/XHR/EventSource/WebSocket/`sendBeacon`. No `data-testid`, `getByTestId` or `testIdAttribute` may appear in `src/` or `e2e/`. Each guard first checks that it scanned something (`src/api/views.ts`, `e2e/app-shell.spec.ts`), so neither can pass on an empty scan.
 
 ### Updated
-- `backend/tests/test_packaging.py`: adds `test_vite_dev_proxy_targets_the_cli_server`.
-- `backend/tests/test_cli.py`: adds `test_start_writes_nothing_to_stdout`.
-
-No fixtures, factories or conftest were needed. The tests reuse the existing `fake_server` and `opened` fixtures, plus `tmp_path`.
+- `frontend/e2e/app-shell.spec.ts`: new `(automate)` describe with 4 tests: Light holds over an OS dark preference; the stored theme reaches `<html>` before `#root` gets content (a MutationObserver records the order); Skip to content stays off-screen until focused; the live regions sit outside `main` and status is polite. AC-9 also asserts the link's 1px underline now.
+- `frontend/e2e/catalog-empty.spec.ts`: new `(automate)` describe with 2 tests. A second failed Try again shows Couldn't load again and re-announces it (the alert's text history must read `['', COULDNT_LOAD]`). Try again matches `button-secondary`. AC-6 and AC-7 each get one added assertion (see above).
+- `frontend/src/lib/relativeDay.test.ts`: one case per zone (Madrid, New York, Chatham, Kolkata) for month and year ends, the leap day, 365 against 366 days across 29 Feb 2028, and the 2026 DST changes in both hemispheres. TZ is put back after each case.
+- `frontend/scripts/copy.test.mjs`: the AC-14 checks are lifted into named detectors (`shouting`, `greetingsOrPraise`, `redColors`, `hoverOnly`, `forbiddenCode`). The ATDD test runs the same checks over the same files. A new test shows each detector flags a bad sample and passes a calm one (accent and wood hexes, the `:hover` + `:focus-visible` pair, `event.key === 'Escape'`).
 
 ## Validation
 
-- **Mutation check.** Each new test was run against a deliberately broken source and failed:
-  - `fastapi<0.164` and `react ^19.3.1` failed the pin tests.
-  - Disabling the hook guard failed the refusal test.
-  - Moving the proxy to :8000 failed the proxy test.
-  - Sending the banner to stdout failed the stdout test.
-- **Burn-in.** 5 full-suite runs, 77 passed each time, no flakes.
-- **Isolation.** All writes go to `tmp_path`. No test touches `~/bookvie-data`.
-- **Quality checklist.**
-  - No hard waits, no conditionals in test bodies, no committed skips.
-  - Assertions sit in the test bodies, and the remaining skips each name the condition they wait for.
-  - Priority lives in this summary, not in `[P1]` tags, because the existing suite uses none.
+- `npm run check`: exit 0. pytest 353 passed, `check:api` 48/48, e2e 53/53, smoke ok.
+- Burn-in: `app-shell.spec.ts` + `catalog-empty.spec.ts` `--repeat-each=10 --retries=0` → 240/240 in 18.1 s.
+- Mutation checks, each reverted and rebuilt afterwards (only test files differ in `git status`):
+  - `relativeDay` with `Math.round(ms / DAY_MS)` → all 4 zone cases fail, as does the ATDD case.
+  - A raw `fetch` in `NotFoundPage.tsx` → "only src/api/ talks to the server" fails.
+  - Dropping the `:not([data-theme="light"])` guard in tokens.css → "Light holds when the OS prefers dark" fails.
+  - Theme applied from a `ThemeToggle` effect instead of before `createRoot` → "stored theme is on <html> before the app renders" fails. `setTimeout(applyTheme, 0)` passes, correctly: it still lands before React's first commit.
+- One self-inflicted failure, fixed in the same run: the theme-order observer at first recorded one `render` for each of the shell's 4 top-level nodes. It now records only the first insertion.
+- Quality: no hard waits, every `page.route` is set before `goto`, role and name selectors only, tests grouped and named for behaviour, one assertion dialect per file. No CLI browser sessions were opened.
 
 ## Key Assumptions and Risks
 
-1. **Frontend is out of scope for this run.** `frontend/` has no `playwright.config.ts` or unit runner. The spec's Never list puts e2e fixtures, the smoke test and `npm run check` in Story 1.3. These frontend ACs stay unautomated until then:
-   - `tsc -b` passes and reports 5.9.x
-   - React Router library mode
-   - one CSS Module per component over `tokens.css`
-   - frontend directory layout
-   - the frontend calls the server only through `src/api/`
-2. **The `artifacts` rule is not load-bearing today (finding).** I removed `artifacts = ["bookvie/http/static/**"]` and built the real `backend/`. The wheel still contained `static/`, because hatchling 1.33 does not apply the repo-root `.gitignore` pattern `backend/bookvie/http/static/` to this build. `test_packaging.py::test_wheel_ships_the_served_folder` asserts the config line exists. `test_wheel_build.py` asserts the outcome. Either way the SPA ships, but the rule would only matter if someone added a `backend/.gitignore`. Worth a one-line note in the spec, or nothing.
-3. **`~/bookvie-data` exists on this machine.** It was created empty at 2026-10-29 18:06, before this run. Story 1.1 verification says never to create it. No current test creates it (`test_defaults` points `HOME` at `tmp_path`). Most likely a manual `bookvie` run during development created it. Delete it if it was not intentional. FND-UNIT-003 (Story 1.3) will guard this for e2e.
-4. **The wheel build test needs uv.** It also needs hatchling 1.33 in the uv cache, or network access. It is offline-safe once the cache is warm.
-5. **Deferred work is unchanged.** The build → isolated install → `GET /` smoke test (FND-SMOKE-001) still belongs to Story 1.3. `test_wheel_build.py` covers the build half, not install or serve.
+- The theme-order test reads DOM mutation order, not pixels. It proves the theme is set before React's first commit. It does not prove that no frame painted first; the code review rejected that flash as maybe-false.
+- The RGB values in the AC-9 `button-secondary` test are DESIGN.md light tokens, written in by hand as the ATDD tests do. A token change will turn this test red together with AC-1, which is intended.
+- `boundaries.test.mjs` copies the small file walker and comment stripper from `copy.test.mjs` instead of sharing them. That's two copies of about 10 lines; extract a helper if a third scanner appears.
+
+## Playwright Utils deviations
+
+None. The mandate is off (`tea_use_playwright_utils: false`).
 
 ## Next Recommended Workflow
 
-- `bmad-testarch-test-review` on `backend/tests/`, or `bmad-testarch-trace` for Story 1.1 to record AC → test mapping and a gate decision.
-- Story 1.3 picks up the frontend checks listed in Assumption 1 and FND-SMOKE-001.
+- `bmad-testarch-trace` for Story 1.6, to roll the 14 ACs and these additions into the traceability matrix and gate decision.
+- Optionally `bmad-testarch-test-review` on `app-shell.spec.ts`. At about 360 lines it's the largest spec in the suite.
