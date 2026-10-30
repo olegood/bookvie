@@ -28,6 +28,8 @@ runs:
         python-version: "3.14"
         enable-cache: true
         cache-dependency-glob: backend/uv.lock
+        # Jobs like check:api never run uv, so the cache dir is never created.
+        ignore-nothing-to-cache: true
 
     - name: Cache Playwright browsers
       if: inputs.browser == 'true'
