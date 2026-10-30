@@ -72,6 +72,21 @@ context:
 - Given a failing `check:py`, when `npm run check` runs, then `check:api`, `check:e2e` and `check:smoke` do not run.
 - Given the Playwright suite with 2 workers, when it runs, then each worker gets its own port and data dir under `$TMPDIR/bookvie-e2e/<run-id>/`.
 
+### Review Findings
+
+Code review (2026-10-30), Acceptance Auditor only; the build loop's Blind, Edge Case and Verification Gap review is in the Review Triage Log.
+
+- [x] [Review][Patch] `deferred-work.md` still lists the Story 1.1 smoke item and the Story 1.2 Vite-proxy item as open, though the Code Map says this story does both (`scripts/smoke.mjs`, `frontend/e2e/dev-proxy.spec.ts`) [_bmad-output/implementation-artifacts/deferred-work.md:1]
+
+**Rejected:**
+- `false` -- Coverage gate fails a group with no measured files, against the "Empty packages | 0 statements | Passes" row. Empty packages still pass: the real run prints `domain 100.00% (0/0 lines) ok` because each `__init__.py` is measured. Only a group that matched no file at all fails, which means mis-measurement (triage #5). Recording that would be a spec edit.
+- `false` -- AC3 not shown to hold. Verified: `npm --prefix frontend run e2e -- --workers=2` and `npm run check` (4 workers) both pass 27/27, including the per-worker data-dir test. Two servers on the same port would fail to bind and fail the fixture.
+- `false` -- `dies-<n>` data dir in `server-fixture.spec.ts` breaks the `worker-<n>` rule. It is not a worker's data dir but a second, deliberately dying server inside the run folder, still guarded and removed with the run.
+- `low` -- `postinstall` now runs `playwright install chromium`, beyond the Code Map. A deliberate fix for triage #1 (fresh clone fails `check:e2e`); install already needs the network for `npm ci`. The only remedy is spec text.
+- `false` -- Spec, README and sprint status disagree on the status. Resolved by this review's status sync.
+- `false` -- AC1 not checked by any step. Verified: `npm run check` exit 0; `ls -la` and recursive mtimes of `~/bookvie-data` are identical before and after.
+- `false` -- Verification probe never run. Verified: `bookvie/domain/_probe.py` with an untested function makes `npm run check:py` print `domain 0.00% (0/4 lines) FAIL` and exit 1; probe deleted.
+
 ## Implementation Notes
 
 - `check:py` runs from `backend/` (`cd backend && uv run pytest ...`): from the repo root pytest finds no config and would also collect tests under `.claude/skills`.
