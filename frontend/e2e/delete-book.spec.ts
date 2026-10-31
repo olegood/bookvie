@@ -4,19 +4,24 @@
 // at API level (backend/tests/test_delete_book.py); these tests read what the
 // browser shows by role and exact accessible name.
 
+import AxeBuilder from '@axe-core/playwright'
 import type { Locator, Page, Request } from '@playwright/test'
 import { expect, type Server, test } from './fixtures.ts'
 
 const DELETE_BOOK = '/api/intents/delete-book'
 const COULDNT_SAVE = "Couldn't save. Your data wasn't changed."
 const CONSEQUENCE = 'Its readings and card notes are deleted too.'
+const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']
+const COULDNT_SAVE_BODY = JSON.stringify({
+  error: { kind: 'couldnt_save', code: 'couldnt_save', message: COULDNT_SAVE },
+})
 
 const DUNE_ID = '6f1c1d2e-9a4b-4c3d-8e5f-0a1b2c3d4e5f'
 const NEUROMANCER_ID = '1b6e2c4a-3d5f-4e7a-9b8c-0d1e2f3a4b5c'
 const DISPOSSESSED_ID = '7c2d9e1f-4a6b-4c8d-a0e1-2f3a4b5c6d7e'
 const PIRANESI_ID = '9e4f0a2b-5c7d-4e9f-b1a2-3c4d5e6f7a8b'
 
-type CatalogBody = { books: { title: string }[] }
+type CatalogBody = { books: { id: string; title: string }[] }
 
 /** The Confirm dialog: the only `alertdialog` on Book detail. */
 function confirmDialog(page: Page): Locator {
@@ -34,6 +39,17 @@ async function openBook(page: Page, server: Server, bookId: string): Promise<voi
 async function catalogTitles(page: Page, server: Server): Promise<string[]> {
   const response = await page.request.get(`${server.url}/api/views/catalog`)
   return ((await response.json()) as CatalogBody).books.map((book) => book.title).sort()
+}
+
+/** The catalog's Books as `[id, title]`, in catalog order. */
+async function catalogBooks(page: Page, server: Server): Promise<[string, string][]> {
+  const response = await page.request.get(`${server.url}/api/views/catalog`)
+  return ((await response.json()) as CatalogBody).books.map((book) => [book.id, book.title])
+}
+
+/** Waits until `element` and its subtree finish their open animations, so axe sees final colors. */
+async function settled(element: Locator): Promise<void> {
+  await element.evaluate((node) => Promise.all(node.getAnimations({ subtree: true }).map((a) => a.finished)))
 }
 
 /** Every delete-book POST the page sends, in order. */
@@ -150,7 +166,7 @@ test.describe('Story 1.12 Delete a book (ATDD)', () => {
         route.fulfill({
           status: 503,
           contentType: 'application/json',
-          body: JSON.stringify({ error: { kind: 'couldnt_save', code: 'couldnt_save', message: COULDNT_SAVE } }),
+          body: COULDNT_SAVE_BODY,
         }),
       )
       await openBook(page, server, PIRANESI_ID)
@@ -292,7 +308,7 @@ test.describe('Story 1.12 Delete a book (ATDD)', () => {
       await route.fulfill({
         status: 503,
         contentType: 'application/json',
-        body: JSON.stringify({ error: { kind: 'couldnt_save', code: 'couldnt_save', message: COULDNT_SAVE } }),
+        body: COULDNT_SAVE_BODY,
       })
     })
     await openBook(page, server, PIRANESI_ID)
@@ -370,6 +386,161 @@ test.describe('Story 1.12 Delete a book (ATDD)', () => {
     await expect(confirm).toBeFocused()
     await page.keyboard.press('Shift+Tab')
     await expect(cancel).toBeFocused()
+  })
+
+  test('[P1] Flow 8 Add anyway, then Delete on the copy removes the copy and keeps the original', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({
+      books: [
+        { id: DUNE_ID, title: 'Dune', authors: ['Frank Herbert'], pages: 412 },
+        { id: NEUROMANCER_ID, title: 'Neuromancer', authors: ['William Gibson'], pages: 271 },
+      ],
+    })
+    // List view: Add anyway focuses the new Book's title link.
+    await page.addInitScript(() => window.localStorage.setItem('bookvie.catalogView', 'list'))
+    await page.goto(`${server.url}/`)
+    await page.getByRole('button', { name: 'New book', exact: true }).click()
+    const panel = page.getByRole('dialog', { name: 'New book', exact: true })
+    const fields = {
+      Title: 'Dune',
+      Pages: '412',
+      'Author(s)': 'Frank Herbert',
+      Language: 'English',
+      Publisher: 'Chilton Books',
+    }
+    for (const [label, value] of Object.entries(fields)) {
+      await panel.getByLabel(label, { exact: true }).fill(value)
+    }
+    await panel.getByRole('combobox', { name: 'Type', exact: true }).selectOption('Paperback')
+    await panel.getByRole('button', { name: 'Add book', exact: true }).click()
+    await page
+      .getByRole('alertdialog', { name: 'Possible duplicate', exact: true })
+      .getByRole('button', { name: 'Add anyway', exact: true })
+      .click()
+    await expect(page.getByRole('status')).toHaveText('Added Dune.')
+    const added = await catalogBooks(page, server)
+    expect(added.map(([, title]) => title).sort()).toEqual(['Dune', 'Dune', 'Neuromancer'])
+    const copyId = added.find(([id, title]) => title === 'Dune' && id !== DUNE_ID)![0]
+
+    // The focused link is the copy: open it and delete it.
+    const focused = page.getByRole('table').locator(':focus')
+    await expect(focused).toHaveText('Dune')
+    await focused.press('Enter')
+    await expect(page).toHaveURL(`${server.url}/book/${copyId}`)
+    await deleteButton(page).click()
+    await confirmDialog(page).getByRole('button', { name: 'Delete book', exact: true }).click()
+
+    await expect(page).toHaveURL(`${server.url}/`)
+    await expect(page.getByRole('status')).toHaveText('Deleted Dune.')
+    // The original, by id, is the Dune that stays.
+    expect((await catalogBooks(page, server)).sort()).toEqual(
+      [
+        [DUNE_ID, 'Dune'],
+        [NEUROMANCER_ID, 'Neuromancer'],
+      ].sort(),
+    )
+  })
+
+  test('[P2] AC-1 AC-2 the dialog is modal, holds the emptied live regions, and a Side read gets no role line', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({
+      ...ROLES_LIBRARY,
+      sideReadBookIds: [PIRANESI_ID],
+      books: ROLES_LIBRARY.books.map((book) =>
+        book.id === PIRANESI_ID ? { ...book, readings: [{ currentPage: 40 }] } : book,
+      ),
+    })
+    await openBook(page, server, PIRANESI_ID)
+    await expect(page.getByRole('heading', { level: 1, name: 'Piranesi', exact: true })).toBeVisible()
+    // Stale text from an earlier outcome must not be re-read inside the dialog.
+    await page.evaluate(() => {
+      document.querySelector('[role="status"]')!.textContent = 'Stale status.'
+      document.querySelector('[role="alert"]')!.textContent = 'Stale alert.'
+    })
+
+    await deleteButton(page).click()
+    const dialog = confirmDialog(page)
+    await expect(dialog).toBeVisible()
+    // showModal(): everything behind the dialog is inert.
+    expect(await dialog.evaluate((element) => element.matches(':modal'))).toBe(true)
+    // Both regions moved inside the dialog and were emptied on open.
+    await expect(dialog.getByRole('status')).toHaveCount(1)
+    await expect(dialog.getByRole('alert')).toHaveCount(1)
+    await expect(dialog.getByRole('status')).toHaveText('')
+    await expect(dialog.getByRole('alert')).toHaveText('')
+    // Being a Side read alone gives no role line.
+    await expect(dialog).toContainText(CONSEQUENCE)
+    await expect(dialog).not.toContainText('It is ')
+
+    await page.keyboard.press('Escape')
+    await expect(dialog).toBeHidden()
+    // Back in the shell once the dialog closes.
+    await expect(page.getByRole('status')).toHaveCount(1)
+    await expect(page.getByRole('alert')).toHaveCount(1)
+    expect(await page.evaluate(() => document.querySelector('dialog [role="status"]'))).toBeNull()
+  })
+
+  test("[P2] AC-1 AC-4 the open Confirm dialog passes axe in both themes, with its role line and a couldn't-save line", async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer(ROLES_LIBRARY)
+    await page.route(`**${DELETE_BOOK}`, (route) =>
+      route.fulfill({ status: 503, contentType: 'application/json', body: COULDNT_SAVE_BODY }),
+    )
+    const axe = async (where: string): Promise<string[]> => {
+      const { violations } = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze()
+      return violations.map(({ id, nodes }) => `${where}: ${id} (${nodes.length})`)
+    }
+    const dialog = confirmDialog(page)
+
+    for (const colorScheme of ['light', 'dark'] as const) {
+      await page.emulateMedia({ colorScheme })
+      await openBook(page, server, DUNE_ID)
+      await deleteButton(page).click()
+      await expect(dialog).toContainText('It is your Main book.')
+      await settled(dialog)
+      expect(await axe(`${colorScheme} dialog`)).toEqual([])
+
+      await dialog.getByRole('button', { name: 'Delete book', exact: true }).click()
+      await expect(dialog.getByRole('alert')).toHaveText(COULDNT_SAVE)
+      expect(await axe(`${colorScheme} couldn't save`)).toEqual([])
+      await dialog.getByRole('button', { name: 'Cancel', exact: true }).click()
+      await expect(dialog).toBeHidden()
+    }
+  })
+
+  test('[P3] AC-1 a long title wraps inside the dialog heading', async ({ page, seededServer }) => {
+    const title =
+      'The Extraordinary and Somewhat Interminable Chronicle of a Library That Kept Growing Long After Its Shelves Ran Out'
+    const server = await seededServer({
+      books: [{ id: PIRANESI_ID, title, authors: ['Anonymous'], pages: 999 }],
+    })
+    await openBook(page, server, PIRANESI_ID)
+    await deleteButton(page).click()
+    const dialog = confirmDialog(page)
+    const heading = dialog.getByRole('heading', { level: 2 })
+    await expect(heading).toHaveText(`Delete ${title}?`)
+    await settled(dialog)
+
+    const fits = await heading.evaluate((element) => {
+      const box = element.getBoundingClientRect()
+      const lineHeight = parseFloat(getComputedStyle(element).lineHeight)
+      return {
+        noOverflow: element.scrollWidth <= element.clientWidth,
+        wraps: box.height >= 2 * lineHeight - 1,
+      }
+    })
+    expect(fits).toEqual({ noOverflow: true, wraps: true })
+    // The dialog stays inside the viewport, and its buttons stay reachable.
+    const box = await dialog.boundingBox()
+    const viewport = page.viewportSize()!
+    expect(box && box.x >= 0 && box.x + box.width <= viewport.width).toBe(true)
+    await expect(dialog.getByRole('button', { name: 'Cancel', exact: true })).toBeInViewport()
   })
 })
 

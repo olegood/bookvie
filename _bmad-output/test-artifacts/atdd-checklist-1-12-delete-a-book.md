@@ -144,11 +144,11 @@ Activate one test at a time: delete its `@pytest.mark.skip(reason=RED)` line, or
 
 ### Green-phase follow-ups (secondary branches, not separate red leaves)
 - [x] **AC-3 (E2E, write while AC-3 goes green):** **Delete book** → URL `/`, Catalog `h1`, **Search titles** focused, the Book is gone from the shelf/list. When the last Book is deleted, the empty shelf shows and `main`'s **New book** is focused. Check that the views refetch (no stale Book detail) and that a status line, if one is added, follows focus
-- [ ] AC-1: a Book that is both Up next and paused shows "It is Up next." only (Up next wins over Waiting for you). A Side read gets no role line (the criteria name none). Long titles wrap in the heading. axe AA on the open dialog in both themes
-- [ ] AC-2: Tab cycles **Delete book** ↔ **Cancel** inside the dialog; the page behind is inert; live regions are emptied on open
+- [x] AC-1: a Book that is both Up next and paused shows "It is Up next." only (Up next wins over Waiting for you). A Side read gets no role line (the criteria name none). Long titles wrap in the heading. axe AA on the open dialog in both themes
+- [x] AC-2: Tab cycles **Delete book** ↔ **Cancel** inside the dialog; the page behind is inert; live regions are emptied on open
 - [x] AC-3 (API): deleting a Book that is both Up next and a Side read (allowed by the invariants) clears both pointers; a malformed `intent` (missing `bookId`, extra key, `null`) → 422 on `intent`
 - [x] AC-4: after a 503, a second **Delete book** that succeeds goes to Catalog (retry works); `aria-disabled` in flight (mirror `book-detail.spec.ts` AC-12)
-- [ ] Flow 8's failure path: Add anyway → Book detail of the copy → Delete → the original stays (EXPERIENCE.md, Flow 8)
+- [x] Flow 8's failure path: Add anyway → Book detail of the copy → Delete → the original stays (EXPERIENCE.md, Flow 8)
 
 ---
 
@@ -183,7 +183,7 @@ npm run check
 
 1. ~~Write the story spec~~ (done: `spec-1-12-delete-a-book.md`).
 2. ~~Implement Story 1.12, activating the scaffolds~~ (done; see the green run below).
-3. Run `bmad-testarch-automate` for the green-phase follow-ups that are still unticked.
+3. ~~Run `bmad-testarch-automate` for the green-phase follow-ups~~ (done: see `automation-summary.md`).
 
 ---
 
