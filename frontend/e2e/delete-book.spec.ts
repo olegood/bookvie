@@ -82,7 +82,7 @@ test.describe('Story 1.12 Delete a book (ATDD)', () => {
     await page.emulateMedia({ colorScheme: 'light' })
   })
 
-  test.skip('[P0] AC-1 Delete opens the Confirm dialog: consequence, role line, Delete book · Cancel, Cancel focused', async ({
+  test('[P0] AC-1 Delete opens the Confirm dialog: consequence, role line, Delete book · Cancel, Cancel focused', async ({
     page,
     seededServer,
   }) => {
@@ -119,7 +119,7 @@ test.describe('Story 1.12 Delete a book (ATDD)', () => {
     }
   })
 
-  test.skip('[P1] AC-2 Cancel or Esc changes nothing and returns focus to Delete', async ({ page, seededServer }) => {
+  test('[P1] AC-2 Cancel or Esc changes nothing and returns focus to Delete', async ({ page, seededServer }) => {
     const server = await seededServer(ROLES_LIBRARY)
     const sent = deleteBookRequests(page)
     await openBook(page, server, DUNE_ID)
@@ -142,7 +142,7 @@ test.describe('Story 1.12 Delete a book (ATDD)', () => {
     expect(await catalogTitles(page, server)).toEqual(['Dune', 'Neuromancer', 'Piranesi', 'The Dispossessed'])
   })
 
-  test.skip(
+  test(
     "[P1] AC-4 couldn't save keeps the Confirm dialog open with the alert line above its buttons; the Book is unchanged",
     async ({ page, seededServer }) => {
       const server = await seededServer(ROLES_LIBRARY)
@@ -173,4 +173,198 @@ test.describe('Story 1.12 Delete a book (ATDD)', () => {
       await expect(page.getByRole('status')).toHaveText('')
     },
   )
+
+  test('[P0] AC-3 Delete book goes to Catalog with Search titles focused; Back does not return to the deleted Book', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer(ROLES_LIBRARY)
+    // Catalog first, so there is a history entry behind Book detail.
+    await page.goto(server.url)
+    await openBook(page, server, DUNE_ID)
+    await expect(page.getByRole('heading', { level: 1, name: 'Dune', exact: true })).toBeVisible()
+    // Record any moment the not-found page renders between the commit and Catalog.
+    const notFound: string[] = []
+    await page.exposeFunction('sawNotFound', (text: string) => notFound.push(text))
+    await page.evaluate(() => {
+      const report = (window as unknown as { sawNotFound: (text: string) => void }).sawNotFound
+      // Read the added nodes, not the live DOM: a not-found page replaced
+      // within the same task would be gone by the time the callback runs.
+      new MutationObserver((records) => {
+        for (const record of records) {
+          for (const node of Array.from(record.addedNodes)) {
+            if (node instanceof HTMLElement && /Page not found/.test(node.textContent ?? '')) {
+              void report(node.textContent ?? '')
+            }
+          }
+        }
+      }).observe(document.body, { subtree: true, childList: true, characterData: true })
+    })
+
+    await deleteButton(page).click()
+    await confirmDialog(page).getByRole('button', { name: 'Delete book', exact: true }).click()
+
+    await expect(page).toHaveURL(`${server.url}/`)
+    await expect(page.getByRole('heading', { level: 1, name: 'Catalog', exact: true })).toBeVisible()
+    await expect(page.getByLabel('Search titles', { exact: true })).toBeFocused()
+    await expect(page.getByRole('status')).toHaveText('Deleted Dune.')
+    await expect(page.getByRole('main').getByRole('button', { name: /^Dune by / })).toHaveCount(0)
+    expect(await catalogTitles(page, server)).toEqual(['Neuromancer', 'Piranesi', 'The Dispossessed'])
+    expect(notFound).toEqual([])
+
+    // The Book detail entry was replaced: Back skips it.
+    await page.goBack()
+    await expect(page).toHaveURL(`${server.url}/`)
+    await expect(page.getByRole('heading', { level: 1, name: 'Catalog', exact: true })).toBeVisible()
+  })
+
+  test('[P1] AC-3 Back to the Catalog entry a delete replaced does not focus Search titles or announce again', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer(ROLES_LIBRARY)
+    // The title links are in the List view.
+    await page.addInitScript(() => window.localStorage.setItem('bookvie.catalogView', 'list'))
+    // Opened directly: the delete replaces this entry with Catalog, carrying the hand-off.
+    await openBook(page, server, DUNE_ID)
+    await deleteButton(page).click()
+    await confirmDialog(page).getByRole('button', { name: 'Delete book', exact: true }).click()
+    const search = page.getByLabel('Search titles', { exact: true })
+    await expect(search).toBeFocused()
+    await expect(page.getByRole('status')).toHaveText('Deleted Dune.')
+
+    // Open another Book client-side, then come back to that Catalog entry.
+    await page.getByRole('table').getByRole('link', { name: 'Piranesi', exact: true }).click()
+    await expect(page.getByRole('heading', { level: 1, name: 'Piranesi', exact: true })).toBeVisible()
+    // The status region keeps its last text across pages; empty it so only a
+    // new announcement could put "Deleted Dune." back, and record every text set.
+    await page.evaluate(() => {
+      const status = document.querySelector('[role="status"]')!
+      status.textContent = ''
+      const seen: string[] = []
+      ;(window as unknown as { statusSeen: string[] }).statusSeen = seen
+      new MutationObserver(() => seen.push(status.textContent ?? '')).observe(status, {
+        childList: true,
+        characterData: true,
+        subtree: true,
+      })
+    })
+    await page.goBack()
+
+    await expect(page.getByRole('heading', { level: 1, name: 'Catalog', exact: true })).toBeFocused()
+    await expect(search).not.toBeFocused()
+    // Let a re-announcement's delay (ANNOUNCE_DELAY_MS, 100 ms) pass in the page's own timers.
+    await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 300)))
+    const seen = await page.evaluate(() => (window as unknown as { statusSeen: string[] }).statusSeen)
+    expect(seen).not.toContain('Deleted Dune.')
+    await expect(page.getByRole('status')).not.toHaveText('Deleted Dune.')
+  })
+
+  test('[P1] AC-3 deleting the last Book leaves the empty shelf with New book focused', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: [{ id: PIRANESI_ID, title: 'Piranesi', authors: ['Susanna Clarke'] }] })
+    await openBook(page, server, PIRANESI_ID)
+
+    await deleteButton(page).click()
+    await confirmDialog(page).getByRole('button', { name: 'Delete book', exact: true }).click()
+
+    await expect(page).toHaveURL(`${server.url}/`)
+    await expect(page.getByText('Your shelf is empty. Add your first book.')).toBeVisible()
+    await expect(page.getByRole('main').getByRole('button', { name: 'New book', exact: true })).toBeFocused()
+    await expect(page.getByRole('status')).toHaveText('Deleted Piranesi.')
+    expect(await catalogTitles(page, server)).toEqual([])
+  })
+
+  test('[P1] AC-4 Delete book and Cancel are aria-disabled in flight, Esc is ignored, and a retry succeeds', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer(ROLES_LIBRARY)
+    let release!: () => void
+    const held = new Promise<void>((resolve) => (release = resolve))
+    let calls = 0
+    await page.route(`**${DELETE_BOOK}`, async (route) => {
+      calls += 1
+      if (calls > 1) return route.continue()
+      await held
+      await route.fulfill({
+        status: 503,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: { kind: 'couldnt_save', code: 'couldnt_save', message: COULDNT_SAVE } }),
+      })
+    })
+    await openBook(page, server, PIRANESI_ID)
+    const dialog = confirmDialog(page)
+    await deleteButton(page).click()
+    const confirm = dialog.getByRole('button', { name: 'Delete book', exact: true })
+    const cancel = dialog.getByRole('button', { name: 'Cancel', exact: true })
+    const sent = page.waitForRequest((request) => new URL(request.url()).pathname === DELETE_BOOK)
+
+    await confirm.click()
+    await sent
+    await expect(confirm).toHaveAttribute('aria-disabled', 'true')
+    await expect(cancel).toHaveAttribute('aria-disabled', 'true')
+    // Neither Cancel nor Esc closes the dialog while the request is in flight.
+    await cancel.click({ force: true })
+    await page.keyboard.press('Escape')
+    await expect(dialog).toBeVisible()
+    release()
+
+    await expect(dialog.getByRole('alert')).toHaveText(COULDNT_SAVE)
+    await expect(dialog).toBeVisible()
+    await expect(confirm).not.toHaveAttribute('aria-disabled', 'true')
+    await expect(cancel).not.toHaveAttribute('aria-disabled', 'true')
+
+    // A second press that succeeds goes to Catalog.
+    await confirm.click()
+    await expect(page).toHaveURL(`${server.url}/`)
+    await expect(page.getByLabel('Search titles', { exact: true })).toBeFocused()
+    expect(await catalogTitles(page, server)).toEqual(['Dune', 'Neuromancer', 'The Dispossessed'])
+  })
+
+  test('[P1] AC-3 a Book already gone answers book_not_found; the views refetch and Book detail shows not-found', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer(ROLES_LIBRARY)
+    await openBook(page, server, PIRANESI_ID)
+    await deleteButton(page).click()
+    await expect(confirmDialog(page)).toBeVisible()
+    // Another tab deletes it first.
+    const first = await page.request.post(`${server.url}${DELETE_BOOK}`, {
+      multipart: { intent: JSON.stringify({ bookId: PIRANESI_ID }) },
+    })
+    expect(first.status()).toBe(200)
+
+    const refused = page.waitForResponse((response) => new URL(response.url()).pathname === DELETE_BOOK)
+    await confirmDialog(page).getByRole('button', { name: 'Delete book', exact: true }).click()
+    expect((await refused).status()).toBe(409)
+
+    await expect(page).toHaveURL(`${server.url}/book/${PIRANESI_ID}`)
+    await expect(page.getByRole('main').getByRole('heading', { level: 1, name: 'Page not found' })).toBeVisible()
+    await expect(confirmDialog(page)).toHaveCount(0)
+    expect(await catalogTitles(page, server)).toEqual(['Dune', 'Neuromancer', 'The Dispossessed'])
+  })
+
+  test('[P2] AC-1 Up next with a paused Reading says only "It is Up next."; Tab stays inside the dialog', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer(ROLES_LIBRARY)
+    await openBook(page, server, NEUROMANCER_ID)
+    await deleteButton(page).click()
+    const dialog = confirmDialog(page)
+    await expect(dialog).toContainText('It is Up next.')
+    await expect(dialog).not.toContainText('waiting')
+    const confirm = dialog.getByRole('button', { name: 'Delete book', exact: true })
+    const cancel = dialog.getByRole('button', { name: 'Cancel', exact: true })
+    await expect(cancel).toBeFocused()
+    await page.keyboard.press('Tab')
+    await expect(confirm).toBeFocused()
+    await page.keyboard.press('Shift+Tab')
+    await expect(cancel).toBeFocused()
+  })
 })
+

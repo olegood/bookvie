@@ -29,9 +29,11 @@ from bookvie.intents import (
     add_book,
     book_not_found,
     couldnt_save,
+    delete_book,
     edit_book,
     invalid_fields,
     parse_add_book_intent,
+    parse_delete_book_intent,
     parse_edit_book_intent,
 )
 
@@ -107,6 +109,23 @@ def edit_book_intent(
     """Correct a Book's details (FR-1, FR-3)."""
     parsed = parse_edit_book_intent(intent)
     edit_book(request.app.state.store, request.app.state.clock, parsed)
+    return OkResponse(ok=True)
+
+
+@router.post("/intents/delete-book", response_model=OkResponse, response_model_exclude_none=True)
+def delete_book_intent(
+    request: Request,
+    intent: Annotated[
+        str | None,
+        Form(
+            media_type="multipart/form-data",
+            description='JSON object {"bookId": ...}: the Book to delete.',
+        ),
+    ] = None,
+) -> OkResponse:
+    """Remove a Book with its Readings and Card notes, and clear every pointer to it (FR-1)."""
+    parsed = parse_delete_book_intent(intent)
+    delete_book(request.app.state.store, parsed)
     return OkResponse(ok=True)
 
 

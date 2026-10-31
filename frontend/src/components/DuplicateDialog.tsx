@@ -1,6 +1,6 @@
-import { Fragment, useId, useLayoutEffect, useRef, type KeyboardEvent, type ReactNode } from 'react'
+import { Fragment, useId, type ReactNode } from 'react'
 import type { DuplicateMatch } from '../api/index.ts'
-import { adoptRegions, clearAnnouncements, releaseRegions } from '../lib/announce.ts'
+import { useAlertDialog } from '../lib/useAlertDialog.ts'
 import Button from './Button.tsx'
 import styles from './DuplicateDialog.module.css'
 
@@ -63,61 +63,16 @@ export default function DuplicateDialog({ mode = 'new', duplicates, message, onD
   const labels = LABELS[mode]
   const headingId = useId()
   const descriptionId = useId()
-  const dialog = useRef<HTMLDialogElement>(null)
-  const regionSlot = useRef<HTMLDivElement>(null)
-
-  useLayoutEffect(() => {
-    const element = dialog.current
-    if (!element) return
-    if (!element.open) element.showModal()
-    const slot = regionSlot.current
-    if (slot) adoptRegions(slot)
-    clearAnnouncements()
-    // Don't add is the first button: the default focus.
-    element.querySelector<HTMLButtonElement>('button')?.focus()
-    return () => {
-      if (slot) releaseRegions(slot)
-      if (element.open) element.close()
-    }
-  }, [])
-
-  // Tab and Shift+Tab cycle between the two buttons.
-  const keepFocusInside = (event: KeyboardEvent<HTMLDialogElement>) => {
-    if (event.key !== 'Tab') return
-    const buttons = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('button'))
-    const first = buttons[0]
-    const last = buttons.at(-1)
-    if (!first || !last) return
-    const active = document.activeElement
-    if (event.shiftKey && active === first) {
-      event.preventDefault()
-      last.focus()
-    } else if (!event.shiftKey && active === last) {
-      event.preventDefault()
-      first.focus()
-    }
-  }
+  // Don't add / Don't save is the first button: the default focus.
+  const { dialog, regionSlot, dialogProps } = useAlertDialog({ onDismiss })
 
   return (
     <dialog
       ref={dialog}
-      role="alertdialog"
+      {...dialogProps}
       className={styles.dialog}
       aria-labelledby={headingId}
       aria-describedby={descriptionId}
-      onKeyDown={keepFocusInside}
-      onCancel={(event) => {
-        // Esc acts as Don't add / Don't save; the panel behind stays open.
-        event.preventDefault()
-        event.stopPropagation()
-        onDismiss()
-      }}
-      // A native close that skips `cancel` still reaches the owner; a queued
-      // close that lands after a StrictMode reopen is stale and ignored.
-      onClose={(event) => {
-        event.stopPropagation()
-        if (!event.currentTarget.open) onDismiss()
-      }}
     >
       <h2 id={headingId} className={styles.heading}>
         Possible duplicate

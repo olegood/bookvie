@@ -74,7 +74,8 @@ Priorities: P0 is R-01 (pointer integrity, AD-18) and R-03 (one commit or none):
 
 - **Story ID:** `1.12`
 - **Story Key:** `1-12-delete-a-book`
-- **Story File:** `_bmad-output/planning-artifacts/epics.md` (Story 1.12). When `spec-1-12-delete-a-book.md` is written, link this checklist from it.
+- **Story File:** `_bmad-output/planning-artifacts/epics.md` (Story 1.12).
+- **Story Spec:** [`spec-1-12-delete-a-book.md`](../implementation-artifacts/spec-1-12-delete-a-book.md)
 - **Checklist Path:** `_bmad-output/test-artifacts/atdd-checklist-1-12-delete-a-book.md`
 - **Generated Test Files:** `backend/tests/test_delete_book.py`, `frontend/e2e/delete-book.spec.ts`
 
@@ -125,28 +126,28 @@ One route: AC-4 fulfils `POST /api/intents/delete-book` with the real `couldnt_s
 Activate one test at a time: delete its `@pytest.mark.skip(reason=RED)` line, or change `test.skip(` to `test(`. Watch it fail, implement, then watch it pass. Backend: `cd backend && TZ=Europe/Madrid uv run pytest tests/test_delete_book.py -k ac3`. E2E: `npm run build && npm --prefix frontend run e2e -- e2e/delete-book.spec.ts -g "AC-1 "`.
 
 ### AC-3 / AC-5 the intent (do first)
-- [ ] `intents/delete_book.py`: `DeleteBookIntent(bookId)` and its parser (422 on a malformed `intent`, as `parse_form_intent` does)
-- [ ] `change(library)`: `book_not_found` when the id is gone; remove the Book; null `main_book_id` / `up_next_book_id` when they match; filter `side_read_book_ids`; one `commit(store, change)`
-- [ ] `http/api.py`: `POST /api/intents/delete-book` → `OkResponse(ok=True)`; regenerate the TS types (`npm run check:api`)
-- [ ] Activate AC-3, then AC-5
+- [x] `intents/delete_book.py`: `DeleteBookIntent(bookId)` and its parser (422 on a malformed `intent`, as `parse_form_intent` does)
+- [x] `change(library)`: `book_not_found` when the id is gone; remove the Book; null `main_book_id` / `up_next_book_id` when they match; filter `side_read_book_ids`; one `commit(store, change)`
+- [x] `http/api.py`: `POST /api/intents/delete-book` → `OkResponse(ok=True)`; regenerate the TS types (`npm run check:api`)
+- [x] Activate AC-3, then AC-5
 
 ### AC-1 / AC-2 the Confirm dialog
-- [ ] `api/books.ts`: `useDeleteBook` (mirroring `useEditBook`), refetching the views on success (AD-7)
-- [ ] A `ConfirmDialog` component: native `<dialog>` with `showModal()`, `role="alertdialog"`, `aria-labelledby` the heading, `aria-describedby` the consequence; **Cancel** focused on open; Esc → Cancel; it adopts the live regions (the same lifecycle as `DuplicateDialog`). Restore, Delete card note and Pause reuse it later
-- [ ] The role line from the Book detail view: whether the Book is Main or Up next, and the paused page (extend `BookDetailView` if it doesn't carry these yet)
-- [ ] `BookDetailPage.tsx`: **Delete** after **Edit**; closing returns focus to **Delete**
-- [ ] Activate AC-1, then AC-2
+- [x] `api/books.ts`: `useDeleteBook` (mirroring `useEditBook`), refetching the views on success (AD-7)
+- [x] A `ConfirmDialog` component: native `<dialog>` with `showModal()`, `role="alertdialog"`, `aria-labelledby` the heading, `aria-describedby` the consequence; **Cancel** focused on open; Esc → Cancel; it adopts the live regions (the same lifecycle as `DuplicateDialog`). Restore, Delete card note and Pause reuse it later
+- [x] The role line from the Book detail view: whether the Book is Main or Up next, and the paused page (extend `BookDetailView` if it doesn't carry these yet)
+- [x] `BookDetailPage.tsx`: **Delete** after **Edit**; closing returns focus to **Delete**
+- [x] Activate AC-1, then AC-2
 
 ### AC-4 couldn't save
-- [ ] On 503, the `alert` line inside the dialog above the buttons, in ink; the dialog stays open; **Delete book** is `aria-disabled` while in flight
-- [ ] Activate AC-4
+- [x] On 503, the `alert` line inside the dialog above the buttons, in ink; the dialog stays open; **Delete book** is `aria-disabled` while in flight
+- [x] Activate AC-4
 
 ### Green-phase follow-ups (secondary branches, not separate red leaves)
-- [ ] **AC-3 (E2E, write while AC-3 goes green):** **Delete book** → URL `/`, Catalog `h1`, **Search titles** focused, the Book is gone from the shelf/list. When the last Book is deleted, the empty shelf shows and `main`'s **New book** is focused. Check that the views refetch (no stale Book detail) and that a status line, if one is added, follows focus
+- [x] **AC-3 (E2E, write while AC-3 goes green):** **Delete book** → URL `/`, Catalog `h1`, **Search titles** focused, the Book is gone from the shelf/list. When the last Book is deleted, the empty shelf shows and `main`'s **New book** is focused. Check that the views refetch (no stale Book detail) and that a status line, if one is added, follows focus
 - [ ] AC-1: a Book that is both Up next and paused shows "It is Up next." only (Up next wins over Waiting for you). A Side read gets no role line (the criteria name none). Long titles wrap in the heading. axe AA on the open dialog in both themes
 - [ ] AC-2: Tab cycles **Delete book** ↔ **Cancel** inside the dialog; the page behind is inert; live regions are emptied on open
-- [ ] AC-3 (API): deleting a Book that is both Up next and a Side read (allowed by the invariants) clears both pointers; a malformed `intent` (missing `bookId`, extra key, `null`) → 422 on `intent`
-- [ ] AC-4: after a 503, a second **Delete book** that succeeds goes to Catalog (retry works); `aria-disabled` in flight (mirror `book-detail.spec.ts` AC-12)
+- [x] AC-3 (API): deleting a Book that is both Up next and a Side read (allowed by the invariants) clears both pointers; a malformed `intent` (missing `bookId`, extra key, `null`) → 422 on `intent`
+- [x] AC-4: after a 503, a second **Delete book** that succeeds goes to Catalog (retry works); `aria-disabled` in flight (mirror `book-detail.spec.ts` AC-12)
 - [ ] Flow 8's failure path: Add anyway → Book detail of the copy → Delete → the original stays (EXPERIENCE.md, Flow 8)
 
 ---

@@ -113,6 +113,8 @@ const dune: BookDetailView = {
   spineColorUser: null,
   latestFinishDate: null,
   readings: [],
+  role: null,
+  waitingPage: null,
 }
 
 describe('the book view', () => {

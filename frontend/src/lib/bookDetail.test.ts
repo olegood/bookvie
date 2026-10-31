@@ -1,7 +1,15 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import { BOOK_FIELD_KEYS } from '../api/index.ts'
-import { metadata, readingLines, shortDate, toPanelFields, type EditableBook } from './bookDetail.ts'
+import {
+  deletedTitle,
+  metadata,
+  readingLines,
+  roleLine,
+  shortDate,
+  toPanelFields,
+  type EditableBook,
+} from './bookDetail.ts'
 
 const dune: EditableBook = {
   title: 'Dune',
@@ -114,5 +122,27 @@ describe('metadata', () => {
       ['ISBN', '9780441172719'],
       ['Year', '1965'],
     ])
+  })
+})
+
+describe('roleLine', () => {
+  it('names Main book, Up next and Waiting for you, and nothing else', () => {
+    assert.equal(roleLine({ role: 'main', waitingPage: null }), 'It is your Main book.')
+    assert.equal(roleLine({ role: 'upNext', waitingPage: null }), 'It is Up next.')
+    assert.equal(roleLine({ role: 'waiting', waitingPage: 120 }), 'It is waiting for you at p.120.')
+    assert.equal(roleLine({ role: null, waitingPage: null }), null)
+    // A waiting role without its page has no line to say.
+    assert.equal(roleLine({ role: 'waiting', waitingPage: null }), null)
+  })
+})
+
+describe('deletedTitle', () => {
+  it('reads the delete hand-off from a location state', () => {
+    assert.equal(deletedTitle({ deleted: { title: 'Dune' } }), 'Dune')
+    assert.equal(deletedTitle(null), null)
+    assert.equal(deletedTitle(undefined), null)
+    assert.equal(deletedTitle({}), null)
+    assert.equal(deletedTitle({ deleted: { title: 7 } }), null)
+    assert.equal(deletedTitle('Dune'), null)
   })
 })

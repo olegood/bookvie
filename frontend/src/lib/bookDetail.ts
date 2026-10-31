@@ -106,3 +106,65 @@ export function readingLines(readings: readonly ListedReading[]): { id: string; 
     .sort((a, b) => order(b.reading).localeCompare(order(a.reading)) || b.index - a.index)
     .map(({ reading }) => ({ id: reading.id, text: readingLine(reading) }))
 }
+
+/** The fields of the `book` view the Confirm dialog's role line reads. */
+export type RoledBook = Pick<BookDetailView, 'role' | 'waitingPage'>
+
+/**
+ * The Delete book Confirm dialog's role line: "It is your Main book.", "It
+ * is Up next." or "It is waiting for you at p.120."; `null` for a Book with
+ * no role. The server decides the role (Up next wins over a paused Reading).
+ */
+export function roleLine(book: RoledBook): string | null {
+  switch (book.role) {
+    case 'main':
+      return 'It is your Main book.'
+    case 'upNext':
+      return 'It is Up next.'
+    case 'waiting':
+      return book.waitingPage === null ? null : `It is waiting for you at p.${book.waitingPage}.`
+    default:
+      return null
+  }
+}
+
+/** What Book detail hands Catalog after a delete, in the router location state. */
+export type DeletedState = { deleted: { title: string } }
+
+/** The deleted Book's title from a location state, or `null` when it carries none. */
+export function deletedTitle(state: unknown): string | null {
+  if (typeof state !== 'object' || state === null) return null
+  const deleted = (state as Partial<DeletedState>).deleted
+  return typeof deleted?.title === 'string' ? deleted.title : null
+}
+
+// The location keys whose delete hand-off Catalog has handled, kept in
+// sessionStorage so a remount (Back) or a reload of the same history entry
+// doesn't focus and announce again. Not domain data. Without storage it
+// degrades to once per mount.
+const HANDLED_DELETES = 'bookvie.handledDeletes'
+const HANDLED_KEEP = 20
+
+function readHandled(): string[] {
+  try {
+    const parsed: unknown = JSON.parse(sessionStorage.getItem(HANDLED_DELETES) ?? '[]')
+    return Array.isArray(parsed) ? parsed.filter((key): key is string => typeof key === 'string') : []
+  } catch {
+    return []
+  }
+}
+
+/** Whether the delete hand-off on history entry `key` was already handled. */
+export function deleteHandled(key: string): boolean {
+  return readHandled().includes(key)
+}
+
+/** Records that the delete hand-off on history entry `key` has been handled. */
+export function markDeleteHandled(key: string): void {
+  try {
+    const keys = [...readHandled().filter((other) => other !== key), key].slice(-HANDLED_KEEP)
+    sessionStorage.setItem(HANDLED_DELETES, JSON.stringify(keys))
+  } catch {
+    // Storage unavailable: the per-mount ref still guards this mount.
+  }
+}

@@ -316,6 +316,7 @@ def test_openapi_documents_the_envelope_not_fastapi_errors(openapi: dict) -> Non
     operations.append(("get", "/api/views/book"))
     operations.append(("post", "/api/intents/add-book"))
     operations.append(("post", "/api/intents/edit-book"))
+    operations.append(("post", "/api/intents/delete-book"))
     for method, path in operations:
         responses = openapi["paths"][path][method]["responses"]
         for status in ("409", "422", "500", "503"):

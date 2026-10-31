@@ -81,7 +81,7 @@ def malformed() -> IntentError:
     return invalid_fields([FieldError(field=INTENT_FIELD, message=MALFORMED_INTENT_MESSAGE)])
 
 
-def parse_form_intent[T: BookFormIntent](model: type[T], raw: str | None) -> T:
+def parse_form_intent[T: BaseModel](model: type[T], raw: str | None) -> T:
     """The ``intent`` form part as ``model``, or 422 on ``intent``."""
     if raw is None:
         raise malformed()

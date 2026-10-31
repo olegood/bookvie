@@ -1,5 +1,7 @@
 """The ``home``, ``catalog`` and ``book`` views: pure functions of the committed library."""
 
+from typing import Literal
+
 from bookvie.domain import Book, Library
 from bookvie.domain.book_fields import merge_tags
 
@@ -56,12 +58,30 @@ def home(library: Library) -> HomeView:
     return HomeView(meter=view.meter, books=view.books)
 
 
+type Role = Literal["main", "upNext", "waiting"] | None
+
+
+def _role(library: Library, book: Book) -> tuple[Role, int | None]:
+    """The Book's role and, for ``waiting``, the paused Reading's page."""
+    if library.main_book_id == book.id:
+        return "main", None
+    if library.up_next_book_id == book.id:
+        return "upNext", None
+    paused = next(
+        (r for r in book.readings if not r.finished and r.paused_at is not None), None
+    )
+    if paused is not None:
+        return "waiting", paused.current_page
+    return None, None
+
+
 def book_detail(library: Library, book_id: str) -> BookDetailView | None:
     """One Book for Book detail, or ``None`` when there is no such Book."""
     book = library.book(book_id)
     if book is None:
         return None
     latest = book.latest_finished()
+    role, waiting_page = _role(library, book)
     return BookDetailView(
         id=book.id,
         title=book.title,
@@ -81,4 +101,6 @@ def book_detail(library: Library, book_id: str) -> BookDetailView | None:
             BookReading(id=r.id, start_date=r.start_date, finish_date=r.finish_date)
             for r in book.readings
         ],
+        role=role,
+        waiting_page=waiting_page,
     )

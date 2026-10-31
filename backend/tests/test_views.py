@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 from bookvie.domain import Library
 from bookvie.http.app import create_app
 from bookvie.store import Store
-from bookvie.views import catalog, home
+from bookvie.views import book_detail, catalog, home
 from tests.builder import LibraryBuilder
 
 BASE_URL = "http://127.0.0.1:8765"
@@ -119,3 +119,53 @@ def test_views_read_only_committed_state(tmp_path: Path, library_builder: Librar
 
 def _raise() -> None:
     raise RuntimeError("abandoned change")
+
+
+# --- The book view's role (the Confirm dialog's role line) ---------------------
+
+
+def test_book_view_role_names_main_up_next_and_waiting(
+    tmp_path: Path, library_builder: LibraryBuilder
+) -> None:
+    dune = library_builder.book(title="Dune", pages=412)
+    library_builder.reading(dune, current_page=120)
+    neuromancer = library_builder.book(title="Neuromancer", pages=271)
+    library_builder.reading(neuromancer, current_page=80, paused_at="2026-10-01")
+    dispossessed = library_builder.book(title="The Dispossessed", pages=387)
+    library_builder.reading(dispossessed, current_page=120, paused_at="2026-09-15")
+    accelerate = library_builder.book(title="Accelerate", pages=288)
+    library_builder.reading(accelerate, current_page=40)
+    finished = library_builder.book(title="Emma", pages=300)
+    library_builder.reading(
+        finished, current_page=300, paused_at="2026-08-01", finish_date="2026-09-01",
+        finished_pages=300,
+    )
+    plain = library_builder.book(title="Piranesi", pages=245)
+    library_builder.main(dune).up_next(neuromancer).side_read(accelerate)
+    library_builder.write(tmp_path)
+    client = _client(tmp_path)
+
+    def role(book_id: str) -> tuple[str | None, int | None]:
+        body = client.get("/api/views/book", params={"id": book_id}).json()
+        return body["role"], body["waitingPage"]
+
+    assert role(dune) == ("main", None)
+    # Up next wins over its paused Reading.
+    assert role(neuromancer) == ("upNext", None)
+    assert role(dispossessed) == ("waiting", 120)
+    # A Side read has no role line; neither does a finished paused Reading.
+    assert role(accelerate) == (None, None)
+    assert role(finished) == (None, None)
+    assert role(plain) == (None, None)
+
+
+def test_book_detail_function_gives_the_role_and_none_for_an_unknown_id(
+    library_builder: LibraryBuilder,
+) -> None:
+    dune = library_builder.book(title="Dune", pages=412)
+    library_builder.reading(dune, current_page=120, paused_at="2026-10-01")
+    library = library_builder.build()
+    view = book_detail(library, dune)
+    assert view is not None
+    assert (view.role, view.waiting_page) == ("waiting", 120)
+    assert book_detail(library, "nope") is None

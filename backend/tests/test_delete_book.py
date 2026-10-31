@@ -26,10 +26,8 @@ from bookvie.domain import Library, check_invariants
 from bookvie.http.app import create_app
 from bookvie.intents import COULDNT_SAVE_MESSAGE
 from tests.builder import LibraryBuilder
-from tests.test_add_book import _client, _library_bytes, _stored_books
+from tests.test_add_book import _client, _field_messages, _library_bytes, _stored_books
 from tests.test_store import FaultyFs
-
-RED = "ATDD red phase: un-skip when Story 1.12 builds delete-book"
 
 DELETE_BOOK = "/api/intents/delete-book"
 GONE_ID = "00000000-0000-4000-8000-000000000000"
@@ -63,7 +61,6 @@ def _assert_invariants(data_dir: Path) -> None:
 # --- AC-3: the Book, its Readings and Card notes, and every pointer, in one commit ---
 
 
-@pytest.mark.skip(reason=RED)
 def test_ac3_p0_delete_book_removes_the_book_with_its_readings_and_notes_and_clears_pointers(
     tmp_path: Path, library_builder: LibraryBuilder
 ) -> None:
@@ -130,7 +127,6 @@ def test_ac3_p0_delete_book_removes_the_book_with_its_readings_and_notes_and_cle
 # --- AC-5: the standard intent guarantees (TR8) ---------------------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_ac5_p0_delete_book_keeps_the_standard_intent_guarantees(tmp_path: Path) -> None:
     for step in ("write", "fsync", "replace"):
         data_dir = tmp_path / step
@@ -180,3 +176,60 @@ def test_ac5_p0_delete_book_keeps_the_standard_intent_guarantees(tmp_path: Path)
     # delete-book adds no error code; the one it uses is in the contract (AD-8).
     codes = create_app().openapi()["components"]["schemas"]["ErrorCode"]["enum"]
     assert "book_not_found" in codes
+
+
+# --- follow-ups -------------------------------------------------------------------
+
+
+def test_deleting_a_book_that_is_up_next_and_a_side_read_clears_both(
+    tmp_path: Path, library_builder: LibraryBuilder
+) -> None:
+    dune = library_builder.book(title="Dune", pages=412)
+    library_builder.reading(dune, current_page=120, paused_at="2026-10-01")
+    accelerate = library_builder.book(title="Accelerate", pages=288)
+    library_builder.reading(accelerate, current_page=40)
+    piranesi = library_builder.book(title="Piranesi", pages=245)
+    library_builder.reading(piranesi, current_page=12)
+    library_builder.up_next(dune).side_read(accelerate).side_read(dune).side_read(piranesi)
+    library_builder.write(tmp_path)
+
+    response = _delete(_client(tmp_path), dune)
+
+    assert response.status_code == 200
+    assert _pointers(tmp_path) == (None, None, [accelerate, piranesi])
+    assert _book_ids(tmp_path) == [accelerate, piranesi]
+    _assert_invariants(tmp_path)
+
+
+@pytest.mark.parametrize(
+    "intent",
+    [
+        None,
+        "{",
+        "null",
+        "[]",
+        json.dumps({}),
+        json.dumps({"bookId": None}),
+        json.dumps({"bookId": 7}),
+        json.dumps({"bookId": GONE_ID, "confirm": True}),
+    ],
+    ids=["no-part", "not-json", "null", "array", "missing", "null-id", "number-id", "extra-key"],
+)
+def test_a_malformed_delete_intent_is_an_intent_field_error(
+    tmp_path: Path, library_builder: LibraryBuilder, intent: str | None
+) -> None:
+    library_builder.book(title="Dune")
+    library_builder.write(tmp_path)
+    before = _library_bytes(tmp_path)
+    client = _client(tmp_path)
+    if intent is None:
+        response = client.post(DELETE_BOOK)
+    else:
+        response = client.post(
+            DELETE_BOOK, files={"intent": (None, intent, "application/json")}
+        )
+    assert response.status_code == 422
+    assert _field_messages(response) == {
+        "intent": "The intent must be a JSON object of the form's fields."
+    }
+    assert _library_bytes(tmp_path) == before

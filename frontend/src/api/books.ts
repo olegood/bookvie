@@ -1,7 +1,8 @@
 // Book intents. `add-book` and `edit-book` are multipart: one `intent` part
 // holding the book form's raw strings as JSON, keyed by the camelCase intent
 // keys (the server trims and validates them; Story 1.13 adds the cover file
-// part). `edit-book` also names the Book, as `bookId`, first.
+// part). `edit-book` also names the Book, as `bookId`, first. `delete-book`'s
+// intent part is only `{ bookId }`.
 
 import { useQueryClient, type QueryClient } from '@tanstack/react-query'
 import type { IntentResult } from './envelope.ts'
@@ -77,4 +78,21 @@ export function editBook(
 export function useEditBook(): (bookId: string, fields: BookFields, options?: EditBookOptions) => Promise<IntentResult> {
   const client = useQueryClient()
   return (bookId, fields, options) => editBook(client, bookId, fields, options)
+}
+
+export function deleteBookForm(bookId: string): FormData {
+  const form = new FormData()
+  form.set('intent', JSON.stringify({ bookId }))
+  return form
+}
+
+/** Sends `delete-book`; resolves after the views have refetched. */
+export function deleteBook(client: QueryClient, bookId: string): Promise<IntentResult> {
+  return sendIntent(client, 'delete-book', deleteBookForm(bookId))
+}
+
+/** `deleteBook` bound to the app's QueryClient. */
+export function useDeleteBook(): (bookId: string) => Promise<IntentResult> {
+  const client = useQueryClient()
+  return (bookId) => deleteBook(client, bookId)
 }

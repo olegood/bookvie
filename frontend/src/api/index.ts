@@ -4,8 +4,10 @@
 export {
   addBook,
   BOOK_FIELD_KEYS,
+  deleteBook,
   editBook,
   useAddBook,
+  useDeleteBook,
   useEditBook,
   type AddBookOptions,
   type BookFieldKey,

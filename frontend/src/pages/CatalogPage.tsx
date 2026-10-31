@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useLocation } from 'react-router'
 import { useCatalogView, type ShelfBook } from '../api/index.ts'
 import Button from '../components/Button.tsx'
 import FailureMessage from '../components/FailureMessage.tsx'
 import PageHeading from '../components/PageHeading.tsx'
 import ViewToggle from '../components/ViewToggle.tsx'
 import { announce, clearAnnouncements } from '../lib/announce.ts'
+import { deleteHandled, deletedTitle, markDeleteHandled } from '../lib/bookDetail.ts'
 import { matchCountCopy, matchesTitle, sortBooks } from '../lib/catalog.ts'
 import { readCatalogView, writeCatalogView, type CatalogViewChoice } from '../lib/catalogView.ts'
 import { COULDNT_LOAD } from '../lib/copy.ts'
@@ -59,6 +61,12 @@ export default function CatalogPage() {
   // The new Book's spine or title cell, whichever view is showing.
   const focusTargets = useRef(new Map<string, HTMLElement>())
   const searchRef = useRef<HTMLInputElement | null>(null)
+  const newBookRef = useRef<HTMLButtonElement | null>(null)
+  const location = useLocation()
+  const deleted = deletedTitle(location.state)
+  // The location key whose delete hand-off this mount has handled; across
+  // remounts and reloads, sessionStorage remembers (deleteHandled).
+  const handledDelete = useRef<string | null>(null)
   const countTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   // What the pending count reads when it fires.
   const latest = useRef({ sorted, query })
@@ -96,6 +104,21 @@ export default function CatalogPage() {
     setHighlightId(added.id)
     announce('status', `Added ${added.title}.`)
   }, [added, sorted])
+
+  // After a delete on Book detail: focus Search titles (the empty state's New
+  // book when no Book is left), then announce. This runs after PageHeading's
+  // own focus effect, so it wins over the `h1`.
+  const ready = view.status === 'ready'
+  useEffect(() => {
+    if (deleted === null || !ready || handledDelete.current === location.key) return
+    handledDelete.current = location.key
+    // Back to this entry, or a reload of it, keeps focus and stays quiet.
+    if (deleteHandled(location.key)) return
+    markDeleteHandled(location.key)
+    const target = searchRef.current ?? newBookRef.current
+    target?.focus()
+    announce('status', `Deleted ${deleted}.`)
+  }, [deleted, ready, location.key])
 
   useEffect(() => {
     if (highlightId === null) return
@@ -161,7 +184,7 @@ export default function CatalogPage() {
       <div className={styles.toolbar}>
         {!empty && <SearchTitles value={query} onChange={search} inputRef={searchRef} />}
         {!empty && <ViewToggle value={catalogView} onChange={chooseView} />}
-        <Button variant="primary" className={styles.newBook} onClick={openPanel}>
+        <Button ref={newBookRef} variant="primary" className={styles.newBook} onClick={openPanel}>
           New book
         </Button>
       </div>

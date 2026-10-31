@@ -68,3 +68,12 @@ class BookDetailView(_View):
     """The most recent finish date: what the Edit book panel prefills in Finished on."""
     readings: list[BookReading]
     """In stored order; the client lists them newest first."""
+    role: Literal["main", "upNext", "waiting"] | None
+    """The Book's place in the reading plan, as the Confirm dialog names it.
+
+    ``main`` (Main book), else ``upNext`` (Up next wins over a paused Reading),
+    else ``waiting`` (an unfinished paused Reading), else ``None``. A Side read
+    has no role here.
+    """
+    waiting_page: int | None
+    """The paused Reading's current page; set only when ``role`` is ``waiting``."""
