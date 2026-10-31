@@ -44,7 +44,7 @@ As Oleg, I want to delete a Book after an explicit confirmation, so that an acci
 
 The server half is a new intent, `delete-book`. It removes the Book (its Readings and Card notes are nested in it), and in the same commit it clears every pointer naming the Book. Nothing is promoted into a vacated Main book or Up next. The client half adds **Delete** to Book detail's action stack (after **Edit**, DESIGN.md) and the Confirm dialog. Deleting the cover file belongs to Story 1.13, when covers arrive (see Notes).
 
-**Story source:** `epics.md` → Story 1.12. No `spec-1-12-*.md` exists yet (the story is `backlog` in `sprint-status.yaml`). The scaffolds take their names from the criteria, EXPERIENCE.md and the 1.11 code.
+**Story source:** `epics.md` → Story 1.12, specified in `_bmad-output/implementation-artifacts/spec-1-12-delete-a-book.md`. The scaffolds took their names from the criteria, EXPERIENCE.md and the 1.11 code, before the spec was written.
 
 **Stack:** detected `fullstack` (`backend/pyproject.toml` + `frontend/playwright.config.ts`). `tea_use_playwright_utils` is false, so the specs use the project's `fixtures.ts` and plain Playwright, as in Stories 1.6 to 1.11.
 
@@ -181,8 +181,8 @@ npm run check
 
 ## Next Steps
 
-1. Write the story spec (`bmad-build`, or the story-creation step), and record this checklist under its ATDD artifacts.
-2. Implement Story 1.12, activating the scaffolds in the order above.
+1. ~~Write the story spec~~ (done: `spec-1-12-delete-a-book.md`).
+2. ~~Implement Story 1.12, activating the scaffolds~~ (done; see the green run below).
 3. Run `bmad-testarch-automate` for the green-phase follow-ups that are still unticked.
 
 ---
@@ -219,6 +219,11 @@ npm run check
 | AC-5 | fail | `write: assert 405 == 503` |
 
 Every seed was valid: the API seeds passed `check_invariants()` in `LibraryBuilder.write`, and every E2E server started and served Book detail. The failures come from the missing feature, not from the data.
+
+### GREEN run (after implementation and code review, 2026-10-31)
+
+- `npm run check` → **exit 0**: pytest 549 passed, 0 skipped (coverage gate passed); `check:api` (contract, `tsc -b`, oxlint, unit tests) clean; Playwright 131 passed, 0 skipped; smoke passed.
+- All 5 scaffolds are active and pass, along with the follow-ups added in implementation and review (the paused Side read role, the busy dialog's reopen after a native close, the delete hand-off bookkeeping unit tests).
 
 ---
 

@@ -310,6 +310,11 @@ test.describe('Story 1.12 Delete a book (ATDD)', () => {
     await cancel.click({ force: true })
     await page.keyboard.press('Escape')
     await expect(dialog).toBeVisible()
+    // A native close that skips `cancel` is undone, and Cancel keeps focus.
+    await page.evaluate(() => document.querySelector('dialog')?.close())
+    await expect(dialog).toBeVisible()
+    expect(await page.evaluate(() => document.querySelector('dialog')?.open)).toBe(true)
+    await expect(cancel).toBeFocused()
     release()
 
     await expect(dialog.getByRole('alert')).toHaveText(COULDNT_SAVE)

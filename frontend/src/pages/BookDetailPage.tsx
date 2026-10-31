@@ -70,6 +70,8 @@ function BookDetail({ book, onDelete }: { book: BookDetailView; onDelete: Delete
 
   const cancelConfirm = () => {
     if (inFlight.current) return
+    // A couldn't-save line (or one still pending) must not outlive the dialog.
+    clearAnnouncements()
     setConfirming(false)
     setRefocus((count) => count + 1)
   }
@@ -197,8 +199,9 @@ export default function BookDetailPage() {
     return { ok: false, message: result.message }
   }
 
-  if (view.status === 'loading') return null
-  if (view.status === 'missing') return deleting ? null : <NotFoundPage />
+  // While the delete is out, any non-ready view (missing, or a failed refetch) renders nothing.
+  if (view.status === 'loading' || (deleting && view.status !== 'ready')) return null
+  if (view.status === 'missing') return <NotFoundPage />
   if (view.status === 'failed') return <FailedBook retry={view.retry} />
   return <BookDetail key={view.data.id} book={view.data} onDelete={onDelete} />
 }

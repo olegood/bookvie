@@ -7,6 +7,10 @@ from pydantic import AwareDatetime, BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
 
 
+Role = Literal["main", "upNext", "waiting"] | None
+"""A Book's place in the reading plan, as the Confirm dialog names it (``BookDetailView.role``)."""
+
+
 class _View(BaseModel):
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
@@ -68,12 +72,12 @@ class BookDetailView(_View):
     """The most recent finish date: what the Edit book panel prefills in Finished on."""
     readings: list[BookReading]
     """In stored order; the client lists them newest first."""
-    role: Literal["main", "upNext", "waiting"] | None
+    role: Role
     """The Book's place in the reading plan, as the Confirm dialog names it.
 
     ``main`` (Main book), else ``upNext`` (Up next wins over a paused Reading),
-    else ``waiting`` (an unfinished paused Reading), else ``None``. A Side read
-    has no role here.
+    else ``waiting`` (an unfinished paused Reading, a Side read's included),
+    else ``None``. Being a Side read alone gives no role.
     """
     waiting_page: int | None
     """The paused Reading's current page; set only when ``role`` is ``waiting``."""

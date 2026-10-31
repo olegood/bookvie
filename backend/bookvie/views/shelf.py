@@ -1,7 +1,5 @@
 """The ``home``, ``catalog`` and ``book`` views: pure functions of the committed library."""
 
-from typing import Literal
-
 from bookvie.domain import Book, Library
 from bookvie.domain.book_fields import merge_tags
 
@@ -11,6 +9,7 @@ from .models import (
     CatalogView,
     HomeView,
     LibraryMeter,
+    Role,
     ShelfBook,
 )
 
@@ -56,9 +55,6 @@ def home(library: Library) -> HomeView:
     """Placeholder slice: the Catalog's books and meter until Stories 3.1/3.5."""
     view = catalog(library)
     return HomeView(meter=view.meter, books=view.books)
-
-
-type Role = Literal["main", "upNext", "waiting"] | None
 
 
 def _role(library: Library, book: Book) -> tuple[Role, int | None]:

@@ -140,8 +140,11 @@ def test_book_view_role_names_main_up_next_and_waiting(
         finished, current_page=300, paused_at="2026-08-01", finish_date="2026-09-01",
         finished_pages=300,
     )
+    # A Side read with a paused Reading is waiting for you like any other.
+    paused_side = library_builder.book(title="Hyperion", pages=482)
+    library_builder.reading(paused_side, current_page=210, paused_at="2026-10-10")
     plain = library_builder.book(title="Piranesi", pages=245)
-    library_builder.main(dune).up_next(neuromancer).side_read(accelerate)
+    library_builder.main(dune).up_next(neuromancer).side_read(accelerate).side_read(paused_side)
     library_builder.write(tmp_path)
     client = _client(tmp_path)
 
@@ -153,8 +156,9 @@ def test_book_view_role_names_main_up_next_and_waiting(
     # Up next wins over its paused Reading.
     assert role(neuromancer) == ("upNext", None)
     assert role(dispossessed) == ("waiting", 120)
-    # A Side read has no role line; neither does a finished paused Reading.
+    # Being a Side read alone gives no role line; neither does a finished paused Reading.
     assert role(accelerate) == (None, None)
+    assert role(paused_side) == ("waiting", 210)
     assert role(finished) == (None, None)
     assert role(plain) == (None, None)
 

@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict'
-import { describe, it } from 'node:test'
+import { afterEach, describe, it } from 'node:test'
 import { BOOK_FIELD_KEYS } from '../api/index.ts'
 import {
+  deleteHandled,
   deletedTitle,
+  markDeleteHandled,
   metadata,
   readingLines,
   roleLine,
@@ -144,5 +146,67 @@ describe('deletedTitle', () => {
     assert.equal(deletedTitle({}), null)
     assert.equal(deletedTitle({ deleted: { title: 7 } }), null)
     assert.equal(deletedTitle('Dune'), null)
+  })
+})
+
+describe('delete hand-off bookkeeping', () => {
+  const scope = globalThis as { sessionStorage?: unknown }
+  const KEY = 'bookvie.handledDeletes'
+
+  function withStorage(initial: string | null = null): Map<string, string> {
+    const store = new Map<string, string>()
+    if (initial !== null) store.set(KEY, initial)
+    scope.sessionStorage = {
+      getItem: (key: string) => store.get(key) ?? null,
+      setItem: (key: string, value: string) => void store.set(key, value),
+    }
+    return store
+  }
+
+  afterEach(() => {
+    delete scope.sessionStorage
+  })
+
+  it('remembers a handled key under bookvie.handledDeletes', () => {
+    const store = withStorage()
+    assert.equal(deleteHandled('a'), false)
+    markDeleteHandled('a')
+    assert.equal(deleteHandled('a'), true)
+    assert.deepEqual(JSON.parse(store.get(KEY) ?? ''), ['a'])
+  })
+
+  it('keeps the 20 most recent keys, a repeated key moving last', () => {
+    const store = withStorage()
+    for (let i = 0; i < 21; i += 1) markDeleteHandled(`k${i}`)
+    assert.equal(deleteHandled('k0'), false)
+    assert.equal(deleteHandled('k1'), true)
+    markDeleteHandled('k1')
+    const keys = JSON.parse(store.get(KEY) ?? '') as string[]
+    assert.equal(keys.length, 20)
+    assert.equal(keys.at(-1), 'k1')
+    assert.equal(keys.filter((key) => key === 'k1').length, 1)
+  })
+
+  it('treats a corrupt or non-array value as nothing handled, keeping only string keys', () => {
+    withStorage('{not json')
+    assert.equal(deleteHandled('a'), false)
+    withStorage('{"a": true}')
+    assert.equal(deleteHandled('a'), false)
+    withStorage('["a", 1, null]')
+    assert.equal(deleteHandled('a'), true)
+    markDeleteHandled('b')
+    assert.deepEqual(JSON.parse((scope.sessionStorage as Storage).getItem(KEY) ?? ''), ['a', 'b'])
+  })
+
+  it('handles nothing, and never throws, when storage throws or is missing', () => {
+    const fail = () => {
+      throw new Error('denied')
+    }
+    scope.sessionStorage = { getItem: fail, setItem: fail }
+    assert.equal(deleteHandled('a'), false)
+    assert.doesNotThrow(() => markDeleteHandled('a'))
+    delete scope.sessionStorage
+    assert.equal(deleteHandled('a'), false)
+    assert.doesNotThrow(() => markDeleteHandled('a'))
   })
 })

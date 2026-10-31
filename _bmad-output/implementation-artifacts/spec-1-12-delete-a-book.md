@@ -71,6 +71,35 @@ Decisions: The role line is computed server-side on the `book` view: Main → "I
 - Given `npm run check`, when it runs, then it exits 0 with all 5 Story 1.12 scaffolds active and every earlier test passing.
 - Given a deleted Book's Book detail, when the delete succeeds, then the not-found page never renders and Back from Catalog does not return to it.
 
+### Review Findings
+
+Code review 2026-10-31, range `53bb451..f7c39cc`. Layers: Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor (none failed).
+
+- [x] [Review][Patch] Cancel after a couldn't-save leaves the alert text in the page's `alert` region; Cancel within `ANNOUNCE_DELAY_MS` announces it on Book detail after the dialog has closed — add `clearAnnouncements()` to `cancelConfirm` [frontend/src/pages/BookDetailPage.tsx:71]
+- [x] [Review][Patch] A views refetch that fails while `deleting` renders `FailedBook` ("Couldn't load") between the commit and navigation, contradicting "Book detail renders nothing" — return `null` for any non-ready status while `deleting` [frontend/src/pages/BookDetailPage.tsx:201]
+- [x] [Review][Patch] The busy dialog's "reopen after a native close" branch is never reached by a test (the AC-4 in-flight Esc is cancelled before any native close) — add a `dialog.close()` via `page.evaluate` while held, assert visible + Cancel focused, then the alert after release [frontend/e2e/delete-book.spec.ts:280]
+- [x] [Review][Patch] No test pins "a paused Side read gets the waiting line" (triage #12) — add a paused, unfinished Side read to the role view test and assert `("waiting", <page>)` [backend/tests/test_views.py:127]
+- [x] [Review][Patch] `BookDetailView.role` docstring says "A Side read has no role here", which is wrong for a paused Side read — say being a Side read alone gives no role [backend/bookvie/views/models.py:75]
+- [x] [Review][Patch] The sessionStorage hand-off helpers (`readHandled`, `deleteHandled`, `markDeleteHandled`) have no unit tests — cover trim to `HANDLED_KEEP`, a repeated key moving last, a corrupt/non-array value, and storage that throws (stub `sessionStorage` on `globalThis`) [frontend/src/lib/bookDetail.ts:148]
+- [x] [Review][Patch] The ATDD checklist is stale: "No `spec-1-12-*.md` exists yet (…`backlog`…)" and Next Steps 1 "Write the story spec"; Test Execution Evidence records no green run [_bmad-output/test-artifacts/atdd-checklist-1-12-delete-a-book.md:47]
+- [x] [Review][Patch] The `Role` literal is declared twice; a role added in `shelf.py` only fails at runtime in pydantic, one added in `models.py` only is silently never produced — define it once in `models.py` and import it [backend/bookvie/views/shelf.py:61]
+
+**Rejected:**
+
+- false — Spec `done` vs sprint `review`: the expected state between build and code review; this review's status sync settles it.
+- false — `waiting_page` set without `waiting` (no validator): `_role` is the only producer and always pairs them; no path to a mismatch was shown.
+- false — README not updated for 1.12: README updates land in a separate post-completion commit (239e409 pattern).
+- false — Native close before `busy` re-renders leaves a closed, mounted dialog: React flushes discrete-event updates synchronously, so `busy` is rendered before any later Esc or close event is dispatched.
+- false — Paused Side read gets "waiting" vs the spec's literal "a Side read gets no line": settled by triage #12 (epics.md:1464/1693, EXPERIENCE.md); the fix would edit the frozen spec.
+- false — `sessionStorage` breaks AD-15: AD-15 governs state kept out of the export and where UI preferences live; a session-scoped focus/announce dedupe is neither domain data nor a preference and never reaches the export.
+- reject (spec edit) — Empty Implementation Notes / Spec Change Log: the fix is to edit the spec under review.
+- low — Unticked ATDD follow-ups hide partial coverage: already rejected as triage #5; splitting boxes is bookkeeping, not a defect anyone meets.
+- low — No test pins Delete after Edit / `button-secondary`: the code is correct (Acceptance Auditor confirmed); a regression is unlikely and the guard is new test code.
+- low — Hand-off key evicted after 20 later deletes re-announces on Back: needs 20+ deletes in one tab session; the fix is a redesign.
+- low — Without sessionStorage the hand-off re-fires per remount: storage is unavailable only in unusual browser settings; clearing state with a replace navigation changes `location.key`, re-triggering PageHeading's `h1` focus, so the fix is not a direct correction.
+- low — "Once per history entry" claim weaker than stated: same root as the two rows above.
+- low — On success the dialog unmounts before `navigate()`, focus on `body` for one tick: nothing renders (as specified), Catalog focuses Search titles immediately after; no one can act in that gap.
+
 ## Implementation Notes
 
 ## Spec Change Log
