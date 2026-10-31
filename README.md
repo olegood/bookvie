@@ -5,7 +5,7 @@
 
 A personal, local-first web app for organizing my home library and tracking my reading. It replaces a paper reading diary as the single source of truth for reading progress. The diary can stay on the nightstand for quick notes; I catch up in the app on my next visit by entering the page I reached.
 
-> **Status:** building Epic 1 (10 of 41 stories done). You can install and run bookvie, add books through the New book panel (with duplicate warnings), see the Catalog as a bookcase of spines or as a list, and search it. See [Sprint status](_bmad-output/implementation-artifacts/sprint-status.yaml) for details.
+> **Status:** building Epic 1 (11 of 41 stories done). You can install and run bookvie, add books through the New book panel (with duplicate warnings), see the Catalog as a bookcase of spines or as a list, search it, and open a Book to see its details and edit it. See [Sprint status](_bmad-output/implementation-artifacts/sprint-status.yaml) for details.
 
 ## Why
 
@@ -148,7 +148,9 @@ Catalog entry happens through my own AI skills rather than an in-app importer or
 - [Story 1.9 ATDD checklist](_bmad-output/test-artifacts/atdd-checklist-1-9-get-warned-about-duplicates.md): the acceptance tests (AC-1 to AC-9) written red before duplicate warnings were built
 - [Story 1.10 spec](_bmad-output/implementation-artifacts/spec-1-10-see-the-library-as-a-bookcase.md): intent, constraints, review findings and verification for the Bookcase view, spines, the library meter and the Catalog view toggle
 - [Story 1.10 ATDD checklist](_bmad-output/test-artifacts/atdd-checklist-1-10-see-the-library-as-a-bookcase.md): the acceptance tests (AC-1 to AC-11) written red before the Bookcase view was built
-- [Test automation summary](_bmad-output/test-artifacts/automation-summary.md): the latest test automation pass (currently story 1.10): what was covered and the tests it added
+- [Story 1.11 spec](_bmad-output/implementation-artifacts/spec-1-11-open-and-edit-a-book.md): intent, constraints, review findings and verification for the `edit-book` intent, the `book` view, the Book detail page and the New book panel in edit mode
+- [Story 1.11 ATDD checklist](_bmad-output/test-artifacts/atdd-checklist-1-11-open-and-edit-a-book.md): the acceptance tests (AC-1 to AC-12) written red before Book detail and editing were built
+- [Test automation summary](_bmad-output/test-artifacts/automation-summary.md): the latest test automation pass (currently story 1.11): what was covered and the tests it added
 - [CI](docs/ci.md): the GitHub Actions jobs, quality gates, burn-in and artifacts
 - [Deferred work](_bmad-output/implementation-artifacts/deferred-work.md): review findings deferred to later stories, each marked with the story that resolved it once done
 - [Brainstorm intent](_bmad-output/brainstorming/brainstorm-personal-library-tracker-2026-10-27/brainstorm-intent.md): the brainstorm's problem statement, pillars and decisions
