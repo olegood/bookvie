@@ -8,7 +8,7 @@ from .models import (
     LibraryMeter,
     ShelfBook,
 )
-from .shelf import book_detail, catalog, home
+from .shelf import book_detail, catalog, cover_path, home
 
 __all__ = [
     "BookDetailView",
@@ -19,5 +19,6 @@ __all__ = [
     "ShelfBook",
     "book_detail",
     "catalog",
+    "cover_path",
     "home",
 ]

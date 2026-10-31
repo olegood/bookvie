@@ -68,6 +68,10 @@ class BookDetailView(_View):
     year: int | None
     tags: list[str]
     spine_color_user: str | None
+    cover_file: str | None
+    """``covers/<name>``, served at ``/media/<coverFile>``; ``None`` without a cover."""
+    spine_color_from_cover: str | None
+    """The color the cover gave (the "From cover" swatch); ``None`` without one."""
     latest_finish_date: date | None
     """The most recent finish date: what the Edit book panel prefills in Finished on."""
     readings: list[BookReading]

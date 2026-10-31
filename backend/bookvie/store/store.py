@@ -10,8 +10,9 @@ checks the AD-18 invariants, commits atomically and swaps the in-memory state.
 import json
 import os
 import shutil
+import sys
 import threading
-from collections.abc import Callable
+from collections.abc import Callable, Iterable, Mapping
 from pathlib import Path
 
 from pydantic import ValidationError
@@ -26,6 +27,31 @@ LIBRARY_NAME = "library.json"
 TEMP_PREFIX = "library.json.tmp"
 COVERS_DIR = "covers"
 STAGING_DIR = ".staging"
+
+
+def _log(message: str) -> None:
+    print(f"bookvie: {message}", file=sys.stderr, flush=True)
+
+
+def cover_name(cover_file: str) -> str | None:
+    """The file name in ``covers/`` that ``cover_file`` names, or ``None`` if it names none.
+
+    Only ``covers/<name>`` with a plain name counts, so a hand-edited
+    ``coverFile`` can never reach a file outside ``covers/``.
+    """
+    prefix = f"{COVERS_DIR}/"
+    if not cover_file.startswith(prefix):
+        return None
+    name = cover_file[len(prefix) :]
+    if not name or name in (".", "..") or "/" in name or "\\" in name or "\0" in name:
+        return None
+    return name
+
+
+def referenced_covers(library: Library) -> set[str]:
+    """The names in ``covers/`` that some Book's ``coverFile`` names."""
+    names = (cover_name(book.cover_file) for book in library.books if book.cover_file)
+    return {name for name in names if name is not None}
 
 
 class StartupError(Exception):
@@ -113,7 +139,9 @@ class Store:
                 # Backup, chain and validation all run before the sweep, so a
                 # refused upgrade changes nothing but the backup.
                 migrated = store._migrate(raw, doc, version)
-        store._sweep()
+        # Without a library.json nothing was read, so no cover can be known
+        # to be unreferenced: covers/ is left alone.
+        store._sweep(migrated if migrated is not None else store._library if exists else None)
         for name in (COVERS_DIR, STAGING_DIR):
             try:
                 (data_dir / name).mkdir(exist_ok=True)
@@ -125,7 +153,9 @@ class Store:
             store._commit_at_startup(migrated)
         return store
 
-    def _sweep(self) -> None:
+    def _sweep(self, library: Library | None) -> None:
+        if library is not None:
+            self._sweep_covers(library)
         try:
             for leftover in self.data_dir.glob(f"{TEMP_PREFIX}*"):
                 if leftover.is_file() or leftover.is_symlink():
@@ -140,6 +170,38 @@ class Store:
         except OSError as exc:
             path = Path(exc.filename) if exc.filename else self.data_dir
             raise StartupError(path, f"can't remove a leftover file ({exc.strerror})") from None
+
+    def _sweep_covers(self, library: Library) -> None:
+        """Delete files in ``covers/`` that no Book references (AD-12).
+
+        A cleanup that failed after a commit, or a temp file from a crash,
+        leaves them. A file that can't be deleted is logged and left.
+        """
+        covers = self.data_dir / COVERS_DIR
+        if not covers.is_dir() or covers.is_symlink():
+            return
+        keep = referenced_covers(library)
+        try:
+            entries = sorted(covers.iterdir())
+        except OSError as exc:
+            _log(f"couldn't sweep {COVERS_DIR}/: {exc}")
+            return
+        stale = [
+            entry
+            for entry in entries
+            if entry.name not in keep and (entry.is_symlink() or entry.is_file())
+        ]
+        self._remove_covers(stale)
+
+    def _remove_covers(self, paths: Iterable[Path]) -> None:
+        """Delete each file through the seam; log each failure (never raises)."""
+        for path in paths:
+            try:
+                self.fs.remove(path)
+            except FileNotFoundError:
+                pass
+            except Exception as exc:  # noqa: BLE001 - one bad file mustn't stop the rest
+                _log(f"couldn't delete {COVERS_DIR}/{path.name}: {exc}")
 
     def _read(self) -> tuple[bytes, dict, int]:
         """The file's bytes, parsed document and version, or a refusal."""
@@ -213,8 +275,20 @@ class Store:
 
     # --- commits -----------------------------------------------------------
 
-    def apply(self, change: Callable[[Library], Library | None]) -> Library:
-        """Apply ``change`` and commit it once, or change nothing.
+    def apply(
+        self,
+        change: Callable[[Library], Library | None],
+        new_files: Mapping[str, bytes] | None = None,
+    ) -> Library:
+        """Write ``new_files``, apply ``change`` and commit it once, or change nothing.
+
+        ``new_files`` maps paths relative to the data folder (``covers/<name>``)
+        to their bytes. Under the AD-4 lock the order is AD-12's: each new
+        file is written (temp + rename), then the change is applied and the
+        document committed, then every cover the old document referenced and
+        the new one doesn't is deleted. When anything before the swap fails,
+        the new files are removed again; a failed deletion after the commit
+        is only logged, and the next startup sweeps the file.
 
         ``change`` gets a deep copy of the committed library and either edits
         it in place (returning ``None``) or returns a new one. The result is
@@ -225,30 +299,45 @@ class Store:
         :attr:`library` unchanged.
         """
         with self.lock:
-            draft = self._library.model_copy(deep=True)
-            result = change(draft)
-            new = draft if result is None else result
-            # Assignment isn't validated; re-check so the next start can load it.
-            new = Library.model_validate(new.model_dump(warnings=False))
-            if new.schema_version != migrations.CURRENT_VERSION:
-                raise InvariantViolation(
-                    "schema_version",
-                    f"schemaVersion must stay {migrations.CURRENT_VERSION}, "
-                    f"not {new.schema_version}",
-                )
-            check_invariants(new)
-            self._commit(new)
+            written: list[Path] = []
+            try:
+                for relative, data in (new_files or {}).items():
+                    target = self.data_dir / relative
+                    self._write_atomic(target, data, prefix=f"{target.name}.tmp")
+                    written.append(target)
+                draft = self._library.model_copy(deep=True)
+                result = change(draft)
+                new = draft if result is None else result
+                # Assignment isn't validated; re-check so the next start can load it.
+                new = Library.model_validate(new.model_dump(warnings=False))
+                if new.schema_version != migrations.CURRENT_VERSION:
+                    raise InvariantViolation(
+                        "schema_version",
+                        f"schemaVersion must stay {migrations.CURRENT_VERSION}, "
+                        f"not {new.schema_version}",
+                    )
+                check_invariants(new)
+                self._commit(new)
+            except BaseException:
+                self._remove_covers(written)
+                raise
+            old = self._library
             self._library = new
+            unreferenced = referenced_covers(old) - referenced_covers(new)
+            self._remove_covers(self.data_dir / COVERS_DIR / name for name in sorted(unreferenced))
             return new
 
     def _commit(self, library: Library) -> None:
         self._write_atomic(self.path, serialize(library))
 
-    def _write_atomic(self, target: Path, data: bytes) -> None:
-        """temp file in the data folder -> write -> fsync -> rename (AD-2)."""
+    def _write_atomic(self, target: Path, data: bytes, prefix: str = TEMP_PREFIX) -> None:
+        """temp file beside ``target`` -> write -> fsync -> rename (AD-2).
+
+        The temp file is removed when any step fails.
+        """
         fs = self.fs
         try:
-            fd, temp = fs.create_temp(self.data_dir, TEMP_PREFIX)
+            fd, temp = fs.create_temp(target.parent, prefix)
         except Exception as exc:
             raise CouldntSave(f"can't create a temp file: {exc}") from exc
         is_open = True

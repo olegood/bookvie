@@ -1,7 +1,13 @@
-"""The ``home``, ``catalog`` and ``book`` views: pure functions of the committed library."""
+"""The ``home``, ``catalog`` and ``book`` views: pure functions of the committed library.
+
+:func:`cover_path` is the lookup behind ``/media/covers/<name>``.
+"""
+
+from pathlib import Path
 
 from bookvie.domain import Book, Library
 from bookvie.domain.book_fields import merge_tags
+from bookvie.store import COVERS_DIR, Store, referenced_covers
 
 from .models import (
     BookDetailView,
@@ -92,6 +98,8 @@ def book_detail(library: Library, book_id: str) -> BookDetailView | None:
         year=book.year,
         tags=list(book.tags),
         spine_color_user=book.spine_color_user,
+        cover_file=book.cover_file,
+        spine_color_from_cover=book.spine_color_from_cover,
         latest_finish_date=latest.finish_date if latest else None,
         readings=[
             BookReading(id=r.id, start_date=r.start_date, finish_date=r.finish_date)
@@ -100,3 +108,11 @@ def book_detail(library: Library, book_id: str) -> BookDetailView | None:
         role=role,
         waiting_page=waiting_page,
     )
+
+
+def cover_path(store: Store, name: str) -> Path | None:
+    """The file of cover ``name`` when a Book's ``coverFile`` names it and it exists."""
+    if name not in referenced_covers(store.library):
+        return None
+    path = store.data_dir / COVERS_DIR / name
+    return path if path.is_file() else None

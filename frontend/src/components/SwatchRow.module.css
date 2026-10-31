@@ -1,6 +1,7 @@
 .row {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: var(--space-2);
 }
 
@@ -16,13 +17,49 @@
   box-shadow: inset 0 0 0 2px var(--color-surface);
 }
 
-.swatch[aria-pressed="true"] {
+/* DESIGN.md → New book panel: the "From cover" chip with the derived color dot. */
+.chip {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: calc(var(--swatch-size) + 8px);
+  padding: 0 10px 0 4px;
+  border: var(--hairline) solid var(--color-input-border);
+  border-radius: var(--radius-full);
+  background: var(--color-surface-inset);
+  color: var(--color-ink);
+  font-family: var(--font-meta-family);
+  font-size: var(--font-meta-size);
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.chip:not(:has(.dot)) {
+  padding-left: 10px;
+}
+
+.dot {
+  width: var(--swatch-size);
+  height: var(--swatch-size);
+  border-radius: var(--radius-full);
+}
+
+.swatch[aria-pressed="true"],
+.chip[aria-pressed="true"] {
   border-color: var(--color-accent);
   box-shadow: inset 0 0 0 2px var(--color-surface), 0 0 0 var(--text-field-halo) var(--color-focus-halo);
 }
 
+.chip[aria-pressed="true"] {
+  border-width: 2px;
+  box-shadow: 0 0 0 var(--text-field-halo) var(--color-focus-halo);
+}
+
 @media (forced-colors: active) {
-  .swatch[aria-pressed="true"] {
+  .swatch[aria-pressed="true"],
+  .chip[aria-pressed="true"] {
     border-color: Highlight;
   }
 }

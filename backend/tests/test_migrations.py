@@ -177,3 +177,19 @@ def test_migrated_result_that_breaks_an_invariant_is_refused(
     assert (tmp_path / "library.json").read_bytes() == original
     assert (tmp_path / "library.v1.bak.json").read_bytes() == original
     _assert_only_original_backup_and_leftovers(tmp_path)
+
+
+def test_a_migration_sweeps_covers_against_the_migrated_library(
+    tmp_path: Path, chain_to_2: None
+) -> None:
+    builder = LibraryBuilder()
+    builder.book(title="Dune", cover_file="covers/x.jpg")
+    builder.write(tmp_path)
+    (tmp_path / "covers").mkdir()
+    (tmp_path / "covers" / "x.jpg").write_bytes(b"jpeg")
+    (tmp_path / "covers" / "stray.jpg").write_bytes(b"jpeg")
+
+    store = Store.open(tmp_path)
+
+    assert store.library.schema_version == 2
+    assert sorted(p.name for p in (tmp_path / "covers").iterdir()) == ["x.jpg"]

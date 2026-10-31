@@ -4,6 +4,8 @@ The backend matrix rows run against test-only routes added to a
 ``create_app`` instance, since no real intent exists yet (Story 1.7).
 """
 
+import asyncio
+import json
 from pathlib import Path
 from typing import Literal
 
@@ -14,6 +16,7 @@ from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
 
 from bookvie.domain import Library
+from bookvie.http.api import BODY_LIMIT, CoverSizeCap
 from bookvie.http.app import create_app
 from bookvie.intents import (
     COULDNT_SAVE_MESSAGE,
@@ -296,6 +299,7 @@ def test_openapi_error_enums(openapi: dict) -> None:
         "book_not_found",
         "pages_below_current_page",
         "pages_below_card_note",
+        "cover_too_large",
     ]
     assert schemas["ErrorCode"]["enum"] == codes
     assert schemas["ErrorKind"]["enum"] == ["refusal", "couldnt_save"]
@@ -322,6 +326,13 @@ def test_openapi_documents_the_envelope_not_fastapi_errors(openapi: dict) -> Non
         for status in ("409", "422", "500", "503"):
             ref = responses[status]["content"]["application/json"]["schema"]["$ref"]
             assert ref == "#/components/schemas/ErrorResponse"
+    # The two intents that take a cover document 413 cover_too_large too.
+    for path in ("/api/intents/add-book", "/api/intents/edit-book"):
+        responses = openapi["paths"][path]["post"]["responses"]
+        ref = responses["413"]["content"]["application/json"]["schema"]["$ref"]
+        assert ref == "#/components/schemas/ErrorResponse"
+        body = openapi["paths"][path]["post"]["requestBody"]["content"]["multipart/form-data"]
+        assert body["schema"]["$ref"].startswith("#/components/schemas/Body_")
 
 
 def test_openapi_is_cached_and_stable() -> None:
@@ -330,3 +341,137 @@ def test_openapi_is_cached_and_stable() -> None:
     names = list(app.openapi()["components"]["schemas"])
     assert names == sorted(names)
     assert "OkResponse" in names
+
+
+# --- 413 cover_too_large (Story 1.13) -------------------------------------------
+
+COVER_TOO_LARGE = {
+    "error": {
+        "kind": "refusal",
+        "code": "cover_too_large",
+        "message": "Not saved. 1 field needs attention: Cover.",
+        "fields": [{"field": "cover", "message": "Cover must be 20 MB or smaller."}],
+    }
+}
+
+
+def _run_asgi(app, scope: dict, chunks) -> tuple[list[dict], int]:
+    """Run ``app`` on one request whose body arrives in ``chunks``; (sent messages, chunks pulled)."""
+    sent: list[dict] = []
+    pulled = 0
+    source = iter(chunks)
+
+    async def receive() -> dict:
+        nonlocal pulled
+        chunk = next(source, None)
+        if chunk is None:
+            return {"type": "http.request", "body": b"", "more_body": False}
+        pulled += 1
+        return {"type": "http.request", "body": chunk, "more_body": True}
+
+    async def send(message: dict) -> None:
+        sent.append(message)
+
+    asyncio.run(app(scope, receive, send))
+    return sent, pulled
+
+
+def _response(sent: list[dict]) -> tuple[int, dict]:
+    start = next(m for m in sent if m["type"] == "http.response.start")
+    body = b"".join(m.get("body", b"") for m in sent if m["type"] == "http.response.body")
+    return start["status"], json.loads(body)
+
+
+COVER_ROUTES = ("/api/intents/add-book", "/api/intents/edit-book")
+
+
+def _streamed_add_book_scope(
+    content_length: int | None = None, path: str = "/api/intents/add-book"
+) -> dict:
+    headers = [
+        (b"host", b"127.0.0.1:8765"),
+        (b"content-type", b"multipart/form-data; boundary=xyz"),
+    ]
+    if content_length is not None:
+        headers.append((b"content-length", str(content_length).encode()))
+    return {
+        "type": "http",
+        "asgi": {"version": "3.0"},
+        "http_version": "1.1",
+        "method": "POST",
+        "scheme": "http",
+        "path": path,
+        "raw_path": path.encode(),
+        "query_string": b"",
+        "root_path": "",
+        "headers": headers,
+        "client": ("127.0.0.1", 50000),
+        "server": ("127.0.0.1", 8765),
+    }
+
+
+def _endless_cover(chunk_size: int):
+    yield (
+        b'--xyz\r\nContent-Disposition: form-data; name="intent"\r\n\r\n{}\r\n'
+        b'--xyz\r\nContent-Disposition: form-data; name="cover"; filename="big.png"\r\n'
+        b"Content-Type: image/png\r\n\r\n"
+    )
+    while True:
+        yield b"\x00" * chunk_size
+
+
+@pytest.mark.parametrize("path", COVER_ROUTES)
+def test_a_streamed_body_past_the_cover_limit_is_413_and_is_not_read_further(
+    data_dir: Path, path: str
+) -> None:
+    before = _library_bytes(data_dir)
+    chunk = 1024 * 1024
+    # No Content-Length: the body is counted as it arrives.
+    scope = _streamed_add_book_scope(path=path)
+    sent, pulled = _run_asgi(_app(data_dir), scope, _endless_cover(chunk))
+
+    assert _response(sent) == (413, COVER_TOO_LARGE)
+    # Reading stopped at the first chunk past the limit.
+    assert pulled == 1 + BODY_LIMIT // chunk + 1
+    assert _library_bytes(data_dir) == before
+    assert sorted((data_dir / "covers").iterdir()) == []
+
+
+@pytest.mark.parametrize("path", COVER_ROUTES)
+def test_a_content_length_past_the_cover_limit_is_413_before_any_read(
+    data_dir: Path, path: str
+) -> None:
+    scope = _streamed_add_book_scope(content_length=BODY_LIMIT + 1, path=path)
+    sent, pulled = _run_asgi(_app(data_dir), scope, _endless_cover(1024))
+
+    assert _response(sent) == (413, COVER_TOO_LARGE)
+    assert pulled == 0
+
+
+def test_the_cover_cap_leaves_other_routes_and_small_bodies_alone() -> None:
+    async def echo(scope, receive, send) -> None:
+        body = b""
+        while True:
+            message = await receive()
+            body += message.get("body", b"")
+            if not message.get("more_body"):
+                break
+        await send({"type": "http.response.start", "status": 200, "headers": []})
+        await send({"type": "http.response.body", "body": str(len(body)).encode()})
+
+    capped = CoverSizeCap(echo, limit=10)
+    small = _run_asgi(capped, _streamed_add_book_scope(), [b"12345", b"12345"])[0]
+    assert small[0]["status"] == 200 and small[1]["body"] == b"10"
+    other = {**_streamed_add_book_scope(), "path": "/api/intents/delete-book"}
+    assert _run_asgi(capped, other, [b"x" * 20])[0][1]["body"] == b"20"
+    # A route that fails on the cut-off body is answered with 413 instead.
+    status, body = _response(_run_asgi(capped, _streamed_add_book_scope(), [b"x" * 11])[0])
+    assert (status, body) == (413, COVER_TOO_LARGE)
+
+
+def test_an_error_that_is_not_the_cap_still_propagates() -> None:
+    async def broken(scope, receive, send) -> None:
+        raise RuntimeError("route exploded")
+
+    with pytest.raises(RuntimeError, match="route exploded"):
+        _run_asgi(CoverSizeCap(broken), _streamed_add_book_scope(), [])

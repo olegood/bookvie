@@ -15,7 +15,8 @@ from datetime import date
 
 from .model import BookType
 
-# Form order (Title … Spine color), key -> visible label.
+# Form order (Title … Spine color), key -> visible label. Cover is a file
+# part, not a text field, but it has its place in the order.
 LABELS: dict[str, str] = {
     "title": "Title",
     "subtitle": "Subtitle",
@@ -29,6 +30,7 @@ LABELS: dict[str, str] = {
     "year": "Year",
     "finishedOn": "Finished on",
     "tags": "Tags",
+    "cover": "Cover",
     "spineColor": "Spine color",
 }
 
@@ -63,6 +65,9 @@ YEAR_MESSAGE = "Year must be a year, like 1965."
 FINISHED_ON_FORMAT_MESSAGE = "Finished on must be a date, like 2026-03-14."
 FINISHED_ON_FUTURE_MESSAGE = "Finished on can't be in the future."
 SPINE_COLOR_MESSAGE = "Spine color must be #RRGGBB or empty."
+COVER_IMAGE_MESSAGE = "Cover must be an image file."
+COVER_FORMAT_MESSAGE = "Cover must be a JPEG, PNG or WebP image."
+COVER_TOO_LARGE_MESSAGE = "Cover must be 20 MB or smaller."
 # Edit mode only (Story 1.11).
 FINISH_DATE_REMOVED_MESSAGE = "A finish date can't be removed here."
 

@@ -25,7 +25,8 @@ const SWATCHES = {
 }
 // The panel's fields from the Agent Label Contract (EXPERIENCE.md), in form
 // order: accessible name, role, required. Finished on (a date input) has no
-// ARIA role and is checked on its own; Cover arrives with Story 1.13.
+// ARIA role and is checked on its own; Cover (`input type=file`) has the
+// implicit role `button`, and its type is checked on its own.
 const CONTRACT_FIELDS = [
   ['Title', 'textbox', true],
   ['Subtitle', 'textbox', false],
@@ -38,6 +39,7 @@ const CONTRACT_FIELDS = [
   ['ISBN', 'textbox', false],
   ['Year', 'spinbutton', false],
   ['Tags', 'combobox', false],
+  ['Cover', 'button', false],
   ['Spine color', 'textbox', false],
 ] as const
 // A complete Book as the cataloging skill types it; Type is picked separately.
@@ -163,6 +165,9 @@ test.describe('Story 1.8 New book panel (ATDD)', () => {
       'Ebook',
     ])
     await expect(panel.getByLabel('Finished on', { exact: true })).toHaveAttribute('type', 'date')
+    await expect(panel.getByLabel('Cover', { exact: true })).toHaveAttribute('type', 'file')
+    // Remove cover is edit mode only, for a Book with a cover.
+    await expect(panel.getByRole('button', { name: 'Remove cover', exact: true })).toHaveCount(0)
 
     for (const swatch of Object.keys(SWATCHES)) {
       await expect(panel.getByRole('button', { name: swatch, exact: true }), swatch).toHaveAttribute('aria-pressed', 'false')

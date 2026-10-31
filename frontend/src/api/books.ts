@@ -1,8 +1,10 @@
 // Book intents. `add-book` and `edit-book` are multipart: one `intent` part
 // holding the book form's raw strings as JSON, keyed by the camelCase intent
-// keys (the server trims and validates them; Story 1.13 adds the cover file
-// part). `edit-book` also names the Book, as `bookId`, first. `delete-book`'s
-// intent part is only `{ bookId }`.
+// keys (the server trims and validates them), plus an optional `cover` file
+// part with the chosen file as is (the server decodes and checks it).
+// `edit-book` also names the Book, as `bookId`, first, and takes
+// `removeCover: true` to clear the cover. `delete-book`'s intent part is only
+// `{ bookId }`.
 
 import { useQueryClient, type QueryClient } from '@tanstack/react-query'
 import type { IntentResult } from './envelope.ts'
@@ -36,14 +38,21 @@ export type BookFields = Record<BookFieldKey, string>
  * a first send.
  */
 export type BookSaveOptions = { confirmDuplicate?: true }
-export type AddBookOptions = BookSaveOptions
-export type EditBookOptions = BookSaveOptions
+/** `cover`: the file chosen in Cover, sent as the `cover` part. */
+export type AddBookOptions = BookSaveOptions & { cover?: File }
+/** `removeCover: true` clears the Book's cover (Remove cover); never sent with `cover`. */
+export type EditBookOptions = AddBookOptions & { removeCover?: true }
+
+function withCover(form: FormData, cover: File | undefined): FormData {
+  if (cover) form.append('cover', cover, cover.name)
+  return form
+}
 
 export function addBookForm(fields: BookFields, options: AddBookOptions = {}): FormData {
   const form = new FormData()
   const intent = options.confirmDuplicate ? { ...fields, confirmDuplicate: true } : fields
   form.set('intent', JSON.stringify(intent))
-  return form
+  return withCover(form, options.cover)
 }
 
 /** Sends `add-book`; resolves after the views have refetched. */
@@ -59,9 +68,12 @@ export function useAddBook(): (fields: BookFields, options?: AddBookOptions) => 
 
 export function editBookForm(bookId: string, fields: BookFields, options: EditBookOptions = {}): FormData {
   const form = new FormData()
-  const intent = options.confirmDuplicate ? { bookId, ...fields, confirmDuplicate: true } : { bookId, ...fields }
+  const intent: Record<string, unknown> = { bookId, ...fields }
+  // A chosen file replaces the cover, so it wins over a pending removal.
+  if (options.removeCover && !options.cover) intent.removeCover = true
+  if (options.confirmDuplicate) intent.confirmDuplicate = true
   form.set('intent', JSON.stringify(intent))
-  return form
+  return withCover(form, options.cover)
 }
 
 /** Sends `edit-book`; resolves after the views have refetched. */

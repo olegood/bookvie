@@ -2,10 +2,12 @@ import assert from 'node:assert/strict'
 import { afterEach, describe, it } from 'node:test'
 import { BOOK_FIELD_KEYS } from '../api/index.ts'
 import {
+  coverSrc,
   deleteHandled,
   deletedTitle,
   markDeleteHandled,
   metadata,
+  panelCover,
   readingLines,
   roleLine,
   shortDate,
@@ -28,6 +30,25 @@ const dune: EditableBook = {
   spineColorUser: null,
   latestFinishDate: null,
 }
+
+describe('panelCover', () => {
+  it('is null without a stored cover, else carries the cover color', () => {
+    assert.equal(panelCover({ coverFile: null, spineColorFromCover: null }), null)
+    assert.deepEqual(panelCover({ coverFile: 'covers/a-b.jpg', spineColorFromCover: '#A85A4A' }), {
+      spineColorFromCover: '#A85A4A',
+    })
+    assert.deepEqual(panelCover({ coverFile: 'covers/a-b.png', spineColorFromCover: null }), {
+      spineColorFromCover: null,
+    })
+  })
+})
+
+describe('coverSrc', () => {
+  it('serves the cover under /media, keeping the covers/ folder', () => {
+    assert.equal(coverSrc('covers/6f1c-0f0e.jpg'), '/media/covers/6f1c-0f0e.jpg')
+    assert.equal(coverSrc('covers/a b#.png'), '/media/covers/a%20b%23.png')
+  })
+})
 
 describe('toPanelFields', () => {
   it('types the stored Book into the form, empty for absent values', () => {

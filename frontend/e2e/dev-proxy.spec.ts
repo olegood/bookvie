@@ -43,4 +43,9 @@ test('GET /api/health through the Vite proxy answers 200', async ({ server, page
   await expect(page.getByRole('heading', { level: 1, name: 'Catalog' })).toBeVisible()
   const status = await page.evaluate(async () => (await fetch('/api/health')).status)
   expect(status).toBe(200)
+
+  // /media is forwarded too: bookvie's 404 for an unknown cover, not Vite's SPA fallback.
+  const media = await fetch(`${origin}/media/covers/none.jpg`)
+  expect(media.status).toBe(404)
+  expect(media.headers.get('content-type') ?? '').not.toContain('text/html')
 })

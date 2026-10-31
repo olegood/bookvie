@@ -86,7 +86,7 @@ Priorities: P0 is R-14 (hostile uploads: AC-2, and AC-3's name minted from the o
 - **Story ID:** `1.13`
 - **Story Key:** `1-13-add-a-cover`
 - **Story File:** `_bmad-output/planning-artifacts/epics.md` (Story 1.13)
-- **Story Spec:** not written yet (expected at `_bmad-output/implementation-artifacts/spec-1-13-add-a-cover.md`)
+- **Story Spec:** [`_bmad-output/implementation-artifacts/spec-1-13-add-a-cover.md`](../implementation-artifacts/spec-1-13-add-a-cover.md)
 - **Checklist Path:** `_bmad-output/test-artifacts/atdd-checklist-1-13-add-a-cover.md`
 - **Generated Test Files:** `backend/tests/test_cover.py`, `frontend/e2e/cover.spec.ts`
 
@@ -149,38 +149,38 @@ None. Every scaffold runs against a real server or a real `Store`. Faults go thr
 Activate one test at a time: delete its `@pytest.mark.skip(reason=RED)` line, or change `test.skip(` to `test(`. Watch it fail, implement, then watch it pass. Backend: `cd backend && TZ=Europe/Madrid uv run pytest tests/test_cover.py -k ac2`. E2E: `npm run build && npm --prefix frontend run e2e -- e2e/cover.spec.ts -g "AC-1 "`.
 
 ### AC-2 / AC-3 the upload pipeline (do first)
-- [ ] `ErrorCode.COVER_TOO_LARGE`, the three messages, `LABELS["cover"] = "Cover"`
-- [ ] Count the upload while streaming and refuse past 20 MiB with 413 before reading the rest (a size-capped `UploadFile` read, or an ASGI receive wrapper on the two routes)
-- [ ] A cover module (e.g. `store/covers.py` plus a pure `domain/` color function): `Image.open` + `load()` with `DecompressionBombWarning` raised as an error; HEIC/HEIF (and other recognised but unsupported signatures) → formats message; `exif_transpose`; first frame; CMYK/P/LA → RGB or RGBA; transparency → PNG, else JPEG; `thumbnail((1200, 1200))`
-- [ ] `add-book` / `edit-book` routes take `cover: UploadFile | None = File(None)`; the intents take the processed bytes
-- [ ] Activate AC-2, then AC-3
+- [x] `ErrorCode.COVER_TOO_LARGE`, the three messages, `LABELS["cover"] = "Cover"`
+- [x] Count the upload while streaming and refuse past 20 MiB with 413 before reading the rest (a size-capped `UploadFile` read, or an ASGI receive wrapper on the two routes)
+- [x] A cover module (e.g. `store/covers.py` plus a pure `domain/` color function): `Image.open` + `load()` with `DecompressionBombWarning` raised as an error; HEIC/HEIF (and other recognised but unsupported signatures) → formats message; `exif_transpose`; first frame; CMYK/P/LA → RGB or RGBA; transparency → PNG, else JPEG; `thumbnail((1200, 1200))`
+- [x] `add-book` / `edit-book` routes take `cover: UploadFile | None = File(None)`; the intents take the processed bytes
+- [x] Activate AC-2, then AC-3
 
 ### AC-4 / AC-5 / AC-6 / AC-11 the AD-12 order
-- [ ] Inside `Store.apply`'s lock: write the new cover (temp in `covers/` or the data folder, then `fs.replace`), then commit, then `fs.remove` every unreferenced cover. On a failed commit or a refusal raised by the change, `fs.remove` the new file. After a successful commit, log and swallow `remove` failures (still 200)
-- [ ] `Store.open` sweeps unreferenced covers (beside the `.staging/` sweep)
-- [ ] Activate AC-4, AC-5, AC-6, then AC-11
+- [x] Inside `Store.apply`'s lock: write the new cover (temp in `covers/` or the data folder, then `fs.replace`), then commit, then `fs.remove` every unreferenced cover. On a failed commit or a refusal raised by the change, `fs.remove` the new file. After a successful commit, log and swallow `remove` failures (still 200)
+- [x] `Store.open` sweeps unreferenced covers (beside the `.staging/` sweep)
+- [x] Activate AC-4, AC-5, AC-6, then AC-11
 
 ### AC-7 / AC-8 media and color
-- [ ] `/media/covers/{name}` route: only names in `covers/` (no separators, no `..`), referenced by a Book, `Cache-Control: public, max-age=31536000, immutable`
-- [ ] `delete-book` removes its cover after the commit (via the same "delete unreferenced" step)
-- [ ] `spine_color_from_cover(image)`: ≈64px sample, ignore S < 0.15 or L < 0.10 or > 0.90, 24 hue bins, average of the fullest bin, cap S at 0.45, `None` when no pixel remains; set on new or replaced cover only; re-resolve `spineColor` (user, else cover, else curated)
-- [ ] Activate AC-7, then AC-8
+- [x] `/media/covers/{name}` route: only names in `covers/` (no separators, no `..`), referenced by a Book, `Cache-Control: public, max-age=31536000, immutable`
+- [x] `delete-book` removes its cover after the commit (via the same "delete unreferenced" step)
+- [x] `spine_color_from_cover(image)`: ≈64px sample, ignore S < 0.15 or L < 0.10 or > 0.90, 24 hue bins, average of the fullest bin, cap S at 0.45, `None` when no pixel remains; set on new or replaced cover only; re-resolve `spineColor` (user, else cover, else curated)
+- [x] Activate AC-7, then AC-8
 
 ### AC-1 / AC-9 / AC-10 the client
-- [ ] `api/books.ts`: send `cover` as a file part (and `removeCover`) in `useAddBook` / `useEditBook`; `BookDetailView` gains the cover fields (regenerate types, `npm run check:api`)
-- [ ] `NewBookPanel.tsx`: **Cover** `input type=file` (`accept="image/jpeg,image/png,image/webp"`) between Tags and Spine color, with field errors like any other; **Remove cover** in edit mode when a cover exists; "From cover" swatch only with a cover, which empties Spine color
-- [ ] `BookDetailPage.tsx`: `img` "Cover of *Title*" or the `role="img"` "No cover" placeholder, 200×300, `rounded.cover`, DESIGN.md styling
-- [ ] Activate AC-1, AC-9, then AC-10
+- [x] `api/books.ts`: send `cover` as a file part (and `removeCover`) in `useAddBook` / `useEditBook`; `BookDetailView` gains the cover fields (regenerate types, `npm run check:api`)
+- [x] `NewBookPanel.tsx`: **Cover** `input type=file` (`accept="image/jpeg,image/png,image/webp"`) between Tags and Spine color, with field errors like any other; **Remove cover** in edit mode when a cover exists; "From cover" swatch only with a cover, which empties Spine color
+- [x] `BookDetailPage.tsx`: `img` "Cover of *Title*" or the `role="img"` "No cover" placeholder, 200×300, `rounded.cover`, DESIGN.md styling
+- [x] Activate AC-1, AC-9, then AC-10
 
 ### Green-phase follow-ups (secondary branches, not separate red leaves)
-- [ ] **AC-1:** in the Edit book panel, choosing a file sends `cover` in the one `edit-book` call, and Book detail then shows "Cover of Dune" with `src` under `/media/covers/`. Without a chosen file, no `cover` part is sent. The Agent Label Contract test (`new-book-panel.spec.ts` `CONTRACT_FIELDS`) gains Cover in its place
-- [ ] **AC-2:** each cover message shows on **Cover** in the panel (`aria-describedby`, the `alert` summary names Cover), and a cover error lists with other field errors in form order (Tags < Cover < Spine color). The 413 is returned before the whole body is read: an ASGI-level test whose `receive` stops being drained past the cap. Boundary: exactly 20 MiB of image data is not refused for size. WebP is accepted
-- [ ] **AC-3:** RGBA with partial alpha → PNG `.png`; fully opaque RGBA → JPEG; CMYK JPEG → RGB; an animated GIF keeps only frame 1 (its color); a 40×60 image is not upscaled; 3000×1000 → 1200×400; a `cover` part whose filename has `../` or no extension is still stored under a minted name
-- [ ] **AC-4/5:** a refusal raised inside the commit (`duplicate_book`, `pages_below_*`, `invalid_fields` on another field) with a cover also removes the new file. A cover with invalid other fields is refused before any file is written, where cheap
-- [ ] **AC-7:** a HEAD request is served too; the dev proxy (`--dev`) forwards `/media` (Vite config already proxies it; add a `dev-proxy.spec.ts` check)
-- [ ] **AC-8:** replacing a cover recomputes `spineColorFromCover`; an edit without a new cover leaves it and `spineColor` untouched (AD-11); a user color stays when the cover changes. Unit tests on the pure color function (bins, neutrals, cap, the B&W case) to meet the `domain/` coverage gate
-- [ ] **AC-9:** with a cover, Book detail shows "Cover of Dune" at 200×300 and no "No cover"; the panel's "From cover" with a user Spine color: pressing it empties Spine color and sets `aria-pressed="true"`; axe AA on Book detail with the placeholder and with a cover, in both themes
-- [ ] **AC-10 (API):** `removeCover: true` clears `coverFile` and `spineColorFromCover`, deletes the file after the commit, and `spineColor` falls back to the user color, else curated. `removeCover` on a Book without a cover is a no-op 200. `removeCover: "true"` (a string) → 422 on `intent`. A new `cover` with `removeCover: true` in one call: decide in the spec (suggest: 422 on `intent`, or the new cover wins)
+- [x] **AC-1:** in the Edit book panel, choosing a file sends `cover` in the one `edit-book` call, and Book detail then shows "Cover of Dune" with `src` under `/media/covers/`. Without a chosen file, no `cover` part is sent. The Agent Label Contract test (`new-book-panel.spec.ts` `CONTRACT_FIELDS`) gains Cover in its place
+- [x] **AC-2:** each cover message shows on **Cover** in the panel (`aria-describedby`, the `alert` summary names Cover), and a cover error lists with other field errors in form order (Tags < Cover < Spine color). The 413 is returned before the whole body is read: an ASGI-level test whose `receive` stops being drained past the cap. Boundary: exactly 20 MiB of image data is not refused for size. WebP is accepted
+- [x] **AC-3:** RGBA with partial alpha → PNG `.png`; fully opaque RGBA → JPEG; CMYK JPEG → RGB; an animated GIF keeps only frame 1 (its color); a 40×60 image is not upscaled; 3000×1000 → 1200×400; a `cover` part whose filename has `../` or no extension is still stored under a minted name
+- [x] **AC-4/5:** a refusal raised inside the commit (`duplicate_book`, `pages_below_*`, `invalid_fields` on another field) with a cover also removes the new file. A cover with invalid other fields is refused before any file is written, where cheap
+- [x] **AC-7:** a HEAD request is served too; the dev proxy (`--dev`) forwards `/media` (Vite config already proxies it; add a `dev-proxy.spec.ts` check)
+- [x] **AC-8:** replacing a cover recomputes `spineColorFromCover`; an edit without a new cover leaves it and `spineColor` untouched (AD-11); a user color stays when the cover changes. Unit tests on the pure color function (bins, neutrals, cap, the B&W case) to meet the `domain/` coverage gate
+- [x] **AC-9:** with a cover, Book detail shows "Cover of Dune" at 200×300 and no "No cover"; the panel's "From cover" with a user Spine color: pressing it empties Spine color and sets `aria-pressed="true"`; axe AA on Book detail with the placeholder and with a cover, in both themes
+- [x] **AC-10 (API):** `removeCover: true` clears `coverFile` and `spineColorFromCover`, deletes the file after the commit, and `spineColor` falls back to the user color, else curated. `removeCover` on a Book without a cover is a no-op 200. `removeCover: "true"` (a string) → 422 on `intent`. A new `cover` with `removeCover: true` in one call: decide in the spec (suggest: 422 on `intent`, or the new cover wins)
 
 ---
 

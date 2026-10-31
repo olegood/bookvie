@@ -765,6 +765,8 @@ def test_book_view_returns_the_book_and_its_latest_finish(
         "year": 1965,
         "tags": ["sci-fi"],
         "spineColorUser": "#112233",
+        "coverFile": None,
+        "spineColorFromCover": None,
         "latestFinishDate": "2024-02-10",
         "role": None,
         "waitingPage": None,

@@ -111,6 +111,8 @@ const dune: BookDetailView = {
   year: null,
   tags: [],
   spineColorUser: null,
+  coverFile: null,
+  spineColorFromCover: null,
   latestFinishDate: null,
   readings: [],
   role: null,

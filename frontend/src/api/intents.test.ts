@@ -77,6 +77,24 @@ describe('sendIntent', () => {
     assert.equal(init.headers, undefined)
   })
 
+  it('sends a FormData with a file as its encoded multipart bytes, with the boundary header', async () => {
+    const fetch = respond({ ok: true }, 200)
+    const form = new FormData()
+    form.set('intent', '{"title":"Dune"}')
+    form.append('cover', new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], 'dune.png', { type: 'image/png' }))
+    await send(form)
+    const [, init] = fetch.mock.calls[0].arguments as FetchArgs
+    const type = (init.headers as Record<string, string>)['Content-Type']
+    assert.match(type, /^multipart\/form-data; boundary=/)
+    // The bytes decode back to the same parts.
+    const decoded = await new Response(init.body as ArrayBuffer, { headers: { 'Content-Type': type } }).formData()
+    assert.equal(decoded.get('intent'), '{"title":"Dune"}')
+    const cover = decoded.get('cover') as File
+    assert.equal(cover.name, 'dune.png')
+    assert.equal(cover.type, 'image/png')
+    assert.deepEqual(new Uint8Array(await cover.arrayBuffer()), new Uint8Array([0x89, 0x50, 0x4e, 0x47]))
+  })
+
   it('invalidates every view and resolves after the refetch on success', async () => {
     respond({ ok: true, ids: { bookId: 'b1' } }, 200)
     const result = await send()

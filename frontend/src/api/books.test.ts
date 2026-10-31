@@ -1,7 +1,16 @@
 import assert from 'node:assert/strict'
 import { afterEach, describe, it, mock } from 'node:test'
 import { QueryClient } from '@tanstack/react-query'
-import { addBook, BOOK_FIELD_KEYS, deleteBook, deleteBookForm, editBook, type BookFields } from './books.ts'
+import {
+  addBook,
+  addBookForm,
+  BOOK_FIELD_KEYS,
+  deleteBook,
+  deleteBookForm,
+  editBook,
+  editBookForm,
+  type BookFields,
+} from './books.ts'
 
 const fields = Object.fromEntries(BOOK_FIELD_KEYS.map((key) => [key, ''])) as BookFields
 
@@ -88,6 +97,36 @@ describe('editBook', () => {
     assert.deepEqual(Object.keys(intentOf(1)), ['bookId', ...BOOK_FIELD_KEYS, 'confirmDuplicate'])
     assert.equal(intentOf(1).confirmDuplicate, true)
     client.clear()
+  })
+})
+
+describe('cover', () => {
+  const cover = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], 'dune.png', { type: 'image/png' })
+  const keys = (form: FormData) => [...(form as unknown as Iterable<[string, unknown]>)].map(([key]) => key)
+  const intent = (form: FormData) => JSON.parse(form.get('intent') as string) as Record<string, unknown>
+
+  it('sends the chosen file as the cover part, after the intent part, as is', async () => {
+    const form = addBookForm(fields, { cover })
+    assert.deepEqual(keys(form), ['intent', 'cover'])
+    const sent = form.get('cover') as File
+    assert.equal(sent.name, 'dune.png')
+    assert.deepEqual(new Uint8Array(await sent.arrayBuffer()), new Uint8Array([0x89, 0x50, 0x4e, 0x47]))
+    assert.equal('cover' in intent(form), false)
+    assert.deepEqual(keys(addBookForm(fields)), ['intent'])
+    assert.deepEqual(keys(editBookForm('b1', fields, { cover, confirmDuplicate: true })), ['intent', 'cover'])
+    assert.deepEqual(keys(editBookForm('b1', fields)), ['intent'])
+  })
+
+  it('puts removeCover: true in the edit intent, before confirmDuplicate, only without a file', () => {
+    assert.equal('removeCover' in intent(editBookForm('b1', fields)), false)
+    const removing = editBookForm('b1', fields, { removeCover: true, confirmDuplicate: true })
+    assert.deepEqual(Object.keys(intent(removing)), ['bookId', ...BOOK_FIELD_KEYS, 'removeCover', 'confirmDuplicate'])
+    assert.equal(intent(removing).removeCover, true)
+    assert.deepEqual(keys(removing), ['intent'])
+    // A chosen file cancels the removal: never both.
+    const both = editBookForm('b1', fields, { removeCover: true, cover })
+    assert.equal('removeCover' in intent(both), false)
+    assert.deepEqual(keys(both), ['intent', 'cover'])
   })
 })
 

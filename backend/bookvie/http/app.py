@@ -4,6 +4,9 @@ Serves the built SPA from ``static/``: ``/assets`` holds the hashed build
 output, and every other path outside ``/api`` and ``/media`` falls back to
 ``index.html`` so client-side routes work on reload.
 
+Covers are served at ``/media/covers/<name>`` (AD-12), only while a Book's
+``coverFile`` names them, with immutable caching.
+
 Every request passes a Host/Origin guard (AD-16) first. It rejects a foreign
 Host and any foreign Origin, so a cross-site page cannot make credentialed,
 CORS or state-changing requests. Simple cross-site GETs carry no Origin and
@@ -20,14 +23,18 @@ from fastapi.responses import FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.types import ASGIApp, Receive, Scope, Send
 
+from bookvie import views
 from bookvie.intents import Clock, SystemClock
 
-from .api import install_api
+from .api import CoverSizeCap, install_api
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 
 # Path prefixes that belong to the server and must never fall back to the SPA.
 _SERVER_PREFIXES = ("api", "media")
+
+# Cover names are never reused (AD-12), so a served cover never changes.
+COVER_CACHE_CONTROL = "public, max-age=31536000, immutable"
 
 # Vite dev server origins, accepted only with `--dev`.
 DEV_ORIGINS = ("http://127.0.0.1:5173", "http://localhost:5173")
@@ -113,6 +120,8 @@ def create_app(
     app.state.store = store
     app.state.clock = clock if clock is not None else SystemClock()
     app.state.write_lock = store.lock if store is not None else threading.Lock()
+    # Added first, so it runs inside the guard.
+    app.add_middleware(CoverSizeCap)
     app.add_middleware(
         HostOriginGuard, port=port, extra_origins=DEV_ORIGINS if dev else ()
     )
@@ -123,6 +132,16 @@ def create_app(
 
     # Before the SPA catch-all, so /api/views/* match first.
     install_api(app)
+
+    @app.api_route("/media/covers/{name}", methods=["GET", "HEAD"], include_in_schema=False)
+    def cover(name: str):
+        """A cover some Book references, cached for good; anything else 404s."""
+        # Plain def: the file check and the library scan run in the threadpool.
+        store = app.state.store
+        path = views.cover_path(store, name) if store is not None else None
+        if path is None:
+            raise HTTPException(status_code=404)
+        return FileResponse(path, headers={"Cache-Control": COVER_CACHE_CONTROL})
 
     app.mount(
         "/assets",

@@ -54,6 +54,22 @@ export function metadata(book: DescribedBook): [string, string][] {
   return rows.filter((row): row is [string, string] => row[1] !== null && row[1] !== '')
 }
 
+/** The fields of the `book` view the cover reads. */
+export type CoveredBook = Pick<BookDetailView, 'coverFile' | 'spineColorFromCover'>
+
+/** A stored cover as the Edit book panel needs it: Remove cover and "From cover". */
+export type PanelCover = { spineColorFromCover: string | null }
+
+/** The Book's stored cover for the Edit book panel, or `null` when it has none. */
+export function panelCover(book: CoveredBook): PanelCover | null {
+  return book.coverFile === null ? null : { spineColorFromCover: book.spineColorFromCover }
+}
+
+/** Where the server serves a stored cover: `/media/<coverFile>`, each segment URL-encoded. */
+export function coverSrc(coverFile: string): string {
+  return `/media/${coverFile.split('/').map(encodeURIComponent).join('/')}`
+}
+
 /** A Reading as Book detail lists it. */
 export type ListedReading = BookReading
 

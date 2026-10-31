@@ -7,7 +7,9 @@ Card notes are nested in it), ``mainBookId`` / ``upNextBookId`` become
 Nothing is promoted into a vacated pointer (CAT-API-007).
 
 409 ``book_not_found`` when the Book is gone, checked inside the commit.
-The cover file is left alone until Story 1.13 adds covers.
+Its cover file, no longer referenced, is deleted after the commit by
+:meth:`Store.apply` (AD-12); a failed deletion is logged and swept at the
+next startup.
 """
 
 from pydantic import BaseModel, ConfigDict, field_validator

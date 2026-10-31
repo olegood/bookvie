@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 from bookvie.domain import Library
 from bookvie.http.app import create_app
 from bookvie.store import Store
-from bookvie.views import book_detail, catalog, home
+from bookvie.views import book_detail, catalog, cover_path, home
 from tests.builder import LibraryBuilder
 
 BASE_URL = "http://127.0.0.1:8765"
@@ -173,3 +173,43 @@ def test_book_detail_function_gives_the_role_and_none_for_an_unknown_id(
     assert view is not None
     assert (view.role, view.waiting_page) == ("waiting", 120)
     assert book_detail(library, "nope") is None
+
+
+# --- Covers (Story 1.13) ------------------------------------------------------
+
+
+def test_book_view_carries_the_cover_file_and_its_color(
+    tmp_path: Path, library_builder: LibraryBuilder
+) -> None:
+    covered = library_builder.book(
+        title="Dune", cover_file="covers/dune.jpg", spine_color_from_cover="#A85A4A"
+    )
+    bare = library_builder.book(title="Emma")
+    library_builder.write(tmp_path)
+    client = _client(tmp_path)
+
+    body = client.get("/api/views/book", params={"id": covered}).json()
+    assert (body["coverFile"], body["spineColorFromCover"]) == ("covers/dune.jpg", "#A85A4A")
+    body = client.get("/api/views/book", params={"id": bare}).json()
+    assert (body["coverFile"], body["spineColorFromCover"]) == (None, None)
+    # The shelf views don't carry covers yet (later stories).
+    assert "coverFile" not in client.get("/api/views/catalog").json()["books"][0]
+
+
+def test_cover_path_finds_only_referenced_existing_files(
+    tmp_path: Path, library_builder: LibraryBuilder
+) -> None:
+    library_builder.book(title="Dune", cover_file="covers/dune.jpg")
+    library_builder.book(title="Emma", cover_file="covers/missing.jpg")
+    library_builder.book(title="Odd", cover_file="covers/../library.json")
+    library_builder.write(tmp_path)
+    (tmp_path / "covers").mkdir()
+    (tmp_path / "covers" / "dune.jpg").write_bytes(b"jpeg")
+    (tmp_path / "covers" / "missing.jpg").mkdir()  # not a file
+    store = Store.open(tmp_path)
+
+    assert cover_path(store, "dune.jpg") == tmp_path / "covers" / "dune.jpg"
+    assert cover_path(store, "missing.jpg") is None
+    assert cover_path(store, "stray.jpg") is None
+    assert cover_path(store, "../library.json") is None
+    assert cover_path(store, "..") is None

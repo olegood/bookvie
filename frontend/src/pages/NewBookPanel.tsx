@@ -10,12 +10,14 @@ import {
 } from '../api/index.ts'
 import Button from '../components/Button.tsx'
 import DuplicateDialog from '../components/DuplicateDialog.tsx'
+import FileField from '../components/FileField.tsx'
 import SelectField from '../components/SelectField.tsx'
 import SidePanel from '../components/SidePanel.tsx'
 import SwatchRow from '../components/SwatchRow.tsx'
 import TagsCombobox from '../components/TagsCombobox.tsx'
 import TextField from '../components/TextField.tsx'
 import { announce, clearAnnouncements } from '../lib/announce.ts'
+import type { PanelCover } from '../lib/bookDetail.ts'
 import styles from './NewBookPanel.module.css'
 
 const TYPES = [
@@ -25,6 +27,12 @@ const TYPES = [
 ] as const
 
 const SAVING = 'Saving the book.'
+const COVER_TYPES = 'image/jpeg,image/png,image/webp'
+const COVER_REMOVED = 'The cover will be removed when you save.'
+
+/** The keys a refusal's `fields` can mark: the text fields, and Cover. */
+type FieldKey = BookFieldKey | 'cover'
+const FIELD_KEYS = new Set<string>([...BOOK_FIELD_KEYS, 'cover'])
 
 function emptyFields(): BookFields {
   const fields = Object.fromEntries(BOOK_FIELD_KEYS.map((key) => [key, ''])) as BookFields
@@ -52,8 +60,11 @@ const MODES = {
 type Props = {
   /** The library's existing tags, for the Tags suggestions. */
   tags: readonly string[]
-  /** The Book to edit, with its fields as the panel prefills them; omitted for New book. */
-  book?: { id: string; fields: BookFields }
+  /**
+   * The Book to edit, with its fields as the panel prefills them and its
+   * stored cover (`null` when it has none); omitted for New book.
+   */
+  book?: { id: string; fields: BookFields; cover: PanelCover | null }
   onClose: () => void
   /** Called after the save and the views' refetch; the page closes the panel. */
   onSaved: (bookId: string, title: string) => void
@@ -69,7 +80,13 @@ type Props = {
  * **Don't add** returns to Title (**Don't save** to Save changes), **Add
  * anyway** / **Save anyway** resends with `confirmDuplicate: true` through the
  * same guard and outcome handling. Any refusal with `fields` (a 422, or a 409
- * such as `pages_below_current_page`) marks those fields.
+ * such as `pages_below_current_page`, or a 413 on Cover) marks those fields.
+ *
+ * Cover sends the chosen file with the save, as is (the server decodes and
+ * checks it). In edit mode, when the Book has a stored cover, **Remove cover**
+ * beside Cover marks it for removal on save: the button and "From cover" go,
+ * a line under Cover says so, and focus moves to Cover. Choosing a file after
+ * that cancels the removal (the new file replaces the cover).
  */
 export default function NewBookPanel({ tags, book, onClose, onSaved }: Props) {
   const modeKey = book ? 'edit' : 'new'
@@ -77,7 +94,12 @@ export default function NewBookPanel({ tags, book, onClose, onSaved }: Props) {
   const addBook = useAddBook()
   const editBook = useEditBook()
   const [fields, setFields] = useState(() => (book ? { ...book.fields } : emptyFields()))
-  const [errors, setErrors] = useState<Partial<Record<BookFieldKey, string>>>({})
+  const [errors, setErrors] = useState<Partial<Record<FieldKey, string>>>({})
+  const [cover, setCover] = useState<File | null>(null)
+  const [removeCover, setRemoveCover] = useState(false)
+  const coverInput = useRef<HTMLInputElement>(null)
+  // The stored cover, while it isn't marked for removal.
+  const storedCover = book?.cover && !removeCover ? book.cover : null
   // The alert shows as a line in the panel when no field carries the outcome.
   const [showAlert, setShowAlert] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -123,7 +145,10 @@ export default function NewBookPanel({ tags, book, onClose, onSaved }: Props) {
     clearAnnouncements()
     setShowAlert(false)
     setBusy(true)
-    const result = book ? await editBook(book.id, fields, options) : await addBook(fields, options)
+    const withCover = { ...options, ...(cover ? { cover } : {}) }
+    const result = book
+      ? await editBook(book.id, fields, { ...withCover, ...(removeCover && !cover ? { removeCover: true } : {}) })
+      : await addBook(fields, withCover)
     inFlight.current = false
     setBusy(false)
     if (result.kind === 'ok') {
@@ -136,15 +161,30 @@ export default function NewBookPanel({ tags, book, onClose, onSaved }: Props) {
       setDuplicate({ duplicates: result.duplicates, message: result.message })
       return
     }
-    const known = new Set<string>(BOOK_FIELD_KEYS)
     const mapped =
       result.kind === 'refusal'
-        ? result.fields.filter((failure) => known.has(failure.field)).map((failure) => [failure.field, failure.message])
+        ? result.fields
+            .filter((failure) => FIELD_KEYS.has(failure.field))
+            .map((failure) => [failure.field, failure.message])
         : []
     setErrors(Object.fromEntries(mapped))
     if (mapped.length > 0) setFocusInvalid((count) => count + 1)
     else setShowAlert(true)
     announce('alert', result.message)
+  }
+
+  const chooseCover = (file: File | null) => {
+    setCover(file)
+    // A new file replaces the cover, so a pending removal is cancelled.
+    if (file) setRemoveCover(false)
+  }
+
+  const markCoverRemoved = () => {
+    // A file chosen earlier would replace the cover; removing drops it too.
+    if (coverInput.current) coverInput.current.value = ''
+    setCover(null)
+    setRemoveCover(true)
+    coverInput.current?.focus()
   }
 
   const dismissDuplicate = () => {
@@ -187,9 +227,22 @@ export default function NewBookPanel({ tags, book, onClose, onSaved }: Props) {
           <TextField label="Year" type="number" inputMode="numeric" {...text('year')} />
           <TextField label="Finished on" type="date" {...text('finishedOn')} />
           <TagsCombobox label="Tags" tags={tags} value={fields.tags} onChange={set('tags')} error={errors.tags} />
+          <FileField
+            label="Cover"
+            ref={coverInput}
+            accept={COVER_TYPES}
+            error={errors.cover}
+            note={removeCover && !cover ? COVER_REMOVED : undefined}
+            onChoose={chooseCover}
+            action={storedCover && <Button onClick={markCoverRemoved}>Remove cover</Button>}
+          />
           <div className={styles.spineColor}>
             <TextField label="Spine color" autoComplete="off" spellCheck={false} {...text('spineColor')} />
-            <SwatchRow value={fields.spineColor} onPick={set('spineColor')} />
+            <SwatchRow
+              value={fields.spineColor}
+              onPick={set('spineColor')}
+              fromCover={storedCover ? { color: storedCover.spineColorFromCover } : undefined}
+            />
           </div>
         </div>
       </SidePanel>

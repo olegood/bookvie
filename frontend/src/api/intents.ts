@@ -8,8 +8,28 @@ import { VIEW_ROOT } from './views.ts'
 
 export const INTENTS_BASE = '/api/intents'
 
-function requestInit(body: unknown): RequestInit {
-  if (body instanceof FormData) return { method: 'POST', body }
+function hasFile(form: FormData): boolean {
+  let found = false
+  form.forEach((value) => {
+    if (typeof value !== 'string') found = true
+  })
+  return found
+}
+
+async function requestInit(body: unknown): Promise<RequestInit> {
+  if (body instanceof FormData) {
+    if (!hasFile(body)) return { method: 'POST', body }
+    // A form with a file (the cover) is encoded to its multipart bytes here, by
+    // the platform, and sent as such: the same body on the wire, but one the
+    // browser's network tools (and the e2e tests) can read in full; Chromium
+    // leaves file parts out of a FormData request's recorded body.
+    const encoded = new Response(body)
+    return {
+      method: 'POST',
+      headers: { 'Content-Type': encoded.headers.get('Content-Type') ?? 'multipart/form-data' },
+      body: await encoded.arrayBuffer(),
+    }
+  }
   return {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -24,7 +44,7 @@ export async function sendIntent(
 ): Promise<IntentResult> {
   let result: IntentResult
   try {
-    const response = await fetch(`${INTENTS_BASE}/${verb}`, requestInit(body))
+    const response = await fetch(`${INTENTS_BASE}/${verb}`, await requestInit(body))
     result = await parseIntentResponse(response)
   } catch {
     // Network failure. The server may still have committed, so refetch anyway.

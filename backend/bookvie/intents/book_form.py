@@ -18,16 +18,19 @@ from bookvie.domain.book_fields import (
     LABELS,
     BookFields,
     FieldFailure,
+    in_form_order,
     parse_book_fields,
 )
 
 from .contract import (
+    COVER_FIELD,
     DuplicateMatch,
     FieldError,
     IntentError,
     duplicate_book,
     invalid_fields,
 )
+from .cover import RefusedCover, UploadedCover
 
 INTENT_FIELD = "intent"
 MALFORMED_INTENT_MESSAGE = "The intent must be a JSON object of the form's fields."
@@ -104,11 +107,22 @@ def refuse_fields(failures: Iterable[FieldFailure]) -> IntentError:
     )
 
 
-def valid_fields(intent: BookFormIntent, today: date) -> BookFields:
-    """The parsed fields, or 422 listing every failing field."""
+def cover_failures(cover: UploadedCover | None) -> list[FieldFailure]:
+    """The refused cover as a ``cover`` field failure; none when it was accepted or absent."""
+    if isinstance(cover, RefusedCover):
+        return [(COVER_FIELD, cover.message)]
+    return []
+
+
+def valid_fields(
+    intent: BookFormIntent, today: date, extra: Iterable[FieldFailure] = ()
+) -> BookFields:
+    """The parsed fields, or 422 listing every failing field (``extra`` too) in form order."""
     parsed = parse_book_fields(intent.form(), today)
-    if isinstance(parsed, list):
-        raise refuse_fields(parsed)
+    failures = in_form_order([*(parsed if isinstance(parsed, list) else []), *extra])
+    if failures:
+        raise refuse_fields(failures)
+    assert not isinstance(parsed, list)
     return parsed
 
 

@@ -2,9 +2,10 @@
 title: 'Story 1.13: Add a cover'
 type: 'feature'
 created: '2026-10-31'
-status: 'ready-for-dev'
+status: 'done'
 route: 'dispatch'
 review_loop_iteration: 0
+baseline_commit: 'cc103c17fb6c53e33df0c81cd8aac142017157bc'
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-1-context.md'
   - '{project-root}/_bmad-output/test-artifacts/atdd-checklist-1-13-add-a-cover.md'
@@ -67,17 +68,17 @@ Decisions:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `backend/bookvie/domain/cover_color.py` (+ `tests/test_cover_color.py`) -- the pure color rule; unit-test bins, neutrals, the cap and B&W.
-- [ ] `backend/bookvie/intents/cover.py`, `contract.py`, `domain/book_fields.py` -- decode/normalize, the refusals, the code and messages.
-- [ ] `backend/bookvie/store/store.py` -- `apply(new_files=…)`, the cleanup after the commit, the startup sweep.
-- [ ] `backend/bookvie/intents/{add_book,edit_book,delete_book}.py` -- covers, `removeCover`, the 422 for both together.
-- [ ] `backend/bookvie/http/{api,app}.py`, `views/{models,shelf}.py` -- file parts, the size cap, media serving, view fields.
-- [ ] `backend/tests/test_cover.py`, `test_contract.py`, `test_views.py` -- un-skip all 8; add the checklist's green-phase API follow-ups (AC-2 boundary, WebP and the streaming refusal; AC-3 PNG/opaque RGBA/CMYK/GIF/no-upscale/hostile filenames; AC-4/5 refusal removes the file; AC-7 HEAD; AC-8 recompute and leave-alone; AC-10 API).
-- [ ] `frontend/src/api/books.ts` (+ test) -- cover part and `removeCover`; run `npm run check:api`.
-- [ ] `frontend/src/components/{FileField,SwatchRow}.tsx`, `pages/NewBookPanel.tsx`, `lib/bookDetail.ts` (+ test) -- Cover, Remove cover, From cover, per the Decisions.
-- [ ] `frontend/src/pages/BookDetailPage.tsx` (+ CSS) -- the cover or placeholder.
-- [ ] `frontend/e2e/cover.spec.ts`, `new-book-panel.spec.ts` -- un-skip all 3; add the AC-1 edit-mode follow-up, the AC-2 field error on Cover, AC-9 with a cover plus From cover pressing, and axe AA on Book detail in both themes with and without a cover.
-- [ ] `_bmad-output/test-artifacts/atdd-checklist-1-13-add-a-cover.md` -- tick the implementation checklist; link this spec.
+- [x] `backend/bookvie/domain/cover_color.py` (+ `tests/test_cover_color.py`) -- the pure color rule; unit-test bins, neutrals, the cap and B&W.
+- [x] `backend/bookvie/intents/cover.py`, `contract.py`, `domain/book_fields.py` -- decode/normalize, the refusals, the code and messages.
+- [x] `backend/bookvie/store/store.py` -- `apply(new_files=…)`, the cleanup after the commit, the startup sweep.
+- [x] `backend/bookvie/intents/{add_book,edit_book,delete_book}.py` -- covers, `removeCover`, the 422 for both together.
+- [x] `backend/bookvie/http/{api,app}.py`, `views/{models,shelf}.py` -- file parts, the size cap, media serving, view fields.
+- [x] `backend/tests/test_cover.py`, `test_contract.py`, `test_views.py` -- un-skip all 8; add the checklist's green-phase API follow-ups (AC-2 boundary, WebP and the streaming refusal; AC-3 PNG/opaque RGBA/CMYK/GIF/no-upscale/hostile filenames; AC-4/5 refusal removes the file; AC-7 HEAD; AC-8 recompute and leave-alone; AC-10 API).
+- [x] `frontend/src/api/books.ts` (+ test) -- cover part and `removeCover`; run `npm run check:api`.
+- [x] `frontend/src/components/{FileField,SwatchRow}.tsx`, `pages/NewBookPanel.tsx`, `lib/bookDetail.ts` (+ test) -- Cover, Remove cover, From cover, per the Decisions.
+- [x] `frontend/src/pages/BookDetailPage.tsx` (+ CSS) -- the cover or placeholder.
+- [x] `frontend/e2e/cover.spec.ts`, `new-book-panel.spec.ts` -- un-skip all 3; add the AC-1 edit-mode follow-up, the AC-2 field error on Cover, AC-9 with a cover plus From cover pressing, and axe AA on Book detail in both themes with and without a cover.
+- [x] `_bmad-output/test-artifacts/atdd-checklist-1-13-add-a-cover.md` -- tick the implementation checklist; link this spec.
 
 **Acceptance Criteria:**
 - Given `npm run check`, when it runs, then it exits 0 with all 11 Story 1.13 scaffolds active, every earlier test passing, and the coverage gates met.
@@ -88,6 +89,34 @@ Decisions:
 ## Spec Change Log
 
 ## Review Triage Log
+
+Iteration 0 (blind hunter, edge-case hunter, verification gap):
+
+| # | Finding | Verdict | Route | Evidence |
+|---|---------|---------|-------|----------|
+| V1 | Startup cover sweep on a migrated library is untested | medium | patch | Pre-verified: no migration test puts a file in `covers/`; reverting to `_sweep(store._library)` would delete every cover on a schema bump unnoticed. |
+| V2 | Streaming 413 cap only tested on add-book | medium | patch | Pre-verified: `_streamed_add_book_scope` hard-codes the add-book path; dropping `EDIT_BOOK_PATH` from `paths` fails no test. |
+| V3 | `CoverSizeCap` truncates a response already started | low | reject | Both routes read the whole form before answering, so `started` is never true when the limit is crossed; a fix adds a branch. |
+| V4 | Intent part over 64 KiB is blamed on Cover | low | reject | The 20 MiB + 64 KiB budget is a spec Decision; a 64 KiB intent JSON never occurs in normal use. |
+| E1 | Media route 500s when a cover is deleted between `is_file` and `FileResponse` | low | reject | Needs a replace/remove racing a GET in a single-user app; a fix adds a guard. |
+| E2 | `Store.open` with no `library.json` deletes every file in `covers/` | medium | patch | Verified in `store.py` `open`: when `exists` is false the sweep runs against `Library.empty()`, so covers left by a lost/moved `library.json` are deleted irreversibly; skipping the cover sweep when no file was read is a one-condition fix. |
+| E3 | `warnings.catch_warnings` is not thread-safe; sync routes decode in the threadpool | low | patch | Verified `cover.py` `_decode`: concurrent uploads can restore the filter mid-decode so a 1x-2x bomb is accepted; replacing it with an explicit `width*height > MAX_IMAGE_PIXELS` check is a direct correction. |
+| E4 | 16-bit grayscale images clip to near-white | low | reject | Rare input for a cover; fix adds mode branches. |
+| E5 | Book detail shows a broken image when a referenced cover is missing | low | reject | Only reachable by hand-deleting a referenced file; fix adds state; spec does not ask for a fallback. |
+| E6 | Client buffers the whole chosen file before sending (`intents.ts`) | low | reject | Verified: `new Response(form).arrayBuffer()` buffers the body; covers are a few MB, and the wire bytes are identical; moving the observability into the test is more than a direct correction (it touches a pinned scaffold). Raised to the human. |
+| B1 | Reds straddling 0 deg split across bins; test name overclaims | low | reject | The 24-bin rule is DESIGN.md's (planning docs are out of bounds); the averaged bin is still red, only the winner can shift when another hue is close. |
+| B2 | ICC profile dropped on re-encode | low | reject | Slight desaturation of P3 photos; spec says no metadata is carried over; sRGB conversion adds code. |
+| B3 | GIF/BMP/TIFF accepted though the message names JPEG, PNG, WebP | false | reject | Checklist contract: formats message is for formats Pillow can't decode without a plugin; AC-3 pins GIF and CMYK inputs. |
+| B4 | `edit_book` writes the file before checking fields | low | reject | The file is removed on refusal (tested); only an extra write; checklist says "where cheap". |
+| B5 | Same as E5 (no `onError` fallback) | low | reject | See E5. |
+| B6 | "From cover" dot shows the old color after a new file is chosen | low | reject | Spec defines the chip from the stored cover; saving recomputes; cosmetic. |
+| B7 | `sendIntent` buffers multipart for test observability | low | reject | Same root cause as E6. |
+| B8 | 413 may arrive as a connection reset in a real browser | maybe-false (medium if true) | defer | Unverified: needs an e2e upload of a > 20 MiB file against real uvicorn. |
+| B9 | Sprint status and spec sections out of sync | false | reject | Status sync and Verification results are written in the present step, after review. |
+| B10 | `async` media route stats the file on the event loop | low | patch | Verified `app.py`: `async def cover` calls `is_file()` and scans books on the loop; making it a plain `def` is a direct correction. |
+| B11 | MB vs MiB wording | low | reject | Message "20 MB" is pinned by the checklist, which defines 20 MB = 20 x 1024 x 1024. |
+| B12 | No cover-specific pixel cap below Pillow's | low | reject | Single-user local app; adds a parameter. |
+| B13 | Empty `cover` part (`filename=""`) refused instead of ignored | low | reject | The client never sends it; spec does not decide; adds a branch. |
 
 ## Verification
 

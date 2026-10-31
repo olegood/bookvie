@@ -14,7 +14,16 @@ order, and the first that fails refuses the whole intent:
    changed (trimmed values), against every other Book.
 
 Then the Book is replaced in place, keeping its id, ``createdAt``,
-``ownership``, cover, curated color and Card notes.
+``ownership``, curated color and Card notes, and its cover unless the intent
+changes it.
+
+Covers (Story 1.13): a refused cover is a ``cover`` failure in step 2. An
+accepted one is written under a new minted name before the commit, and its
+color replaces ``spineColorFromCover``; ``removeCover: true`` clears
+``coverFile`` and ``spineColorFromCover`` (a no-op without a cover). Either
+re-resolves ``spineColor`` (AD-11); the old file is deleted after the
+commit (AD-12). A cover part together with ``removeCover: true`` is a
+malformed intent (422 on ``intent``).
 
 Finished on in edit: with ``latest`` the finished Reading with the greatest
 ``finishDate`` (the later in list order on a tie), an empty value is refused,
@@ -42,25 +51,45 @@ from bookvie.domain.duplicates import find_duplicates
 from bookvie.store import Store
 
 from .book_form import (
+    INTENT_FIELD,
     BookFormIntent,
     backfill_reading,
+    cover_failures,
     parse_form_intent,
     refuse_duplicates,
     refuse_fields,
 )
 from .commit import commit
-from .contract import ErrorCode, book_not_found, pages_refusal
+from .contract import (
+    ErrorCode,
+    FieldError,
+    book_not_found,
+    invalid_fields,
+    pages_refusal,
+)
+from .cover import PreparedCover, UploadedCover, mint_cover_file
+
+COVER_AND_REMOVE_MESSAGE = "The intent can't both send a cover and remove it."
 
 
 class EditBookIntent(BookFormIntent):
     """The Edit book panel as typed, plus the Book it edits."""
 
     book_id: str
+    remove_cover: bool = False
+    """Clear the Book's cover (Remove cover). Never sent with a cover part."""
 
 
-def parse_edit_book_intent(raw: str | None) -> EditBookIntent:
-    """The ``intent`` form part as an :class:`EditBookIntent`, or 422 on ``intent``."""
-    return parse_form_intent(EditBookIntent, raw)
+def parse_edit_book_intent(raw: str | None, has_cover: bool = False) -> EditBookIntent:
+    """The ``intent`` form part as an :class:`EditBookIntent`, or 422 on ``intent``.
+
+    ``has_cover`` says a cover part came too; with ``removeCover: true`` that
+    is refused.
+    """
+    intent = parse_form_intent(EditBookIntent, raw)
+    if has_cover and intent.remove_cover:
+        raise invalid_fields([FieldError(field=INTENT_FIELD, message=COVER_AND_REMOVE_MESSAGE)])
+    return intent
 
 
 def _finished_on_failure(book: Book, finished_on: date | None) -> str | None:
@@ -74,7 +103,9 @@ def _finished_on_failure(book: Book, finished_on: date | None) -> str | None:
     return None
 
 
-def _valid_fields(book: Book, intent: EditBookIntent, today: date) -> BookFields:
+def _valid_fields(
+    book: Book, intent: EditBookIntent, today: date, extra: list[FieldFailure]
+) -> BookFields:
     form = intent.form()
     parsed = parse_book_fields(form, today)
     failures: list[FieldFailure] = parsed if isinstance(parsed, list) else []
@@ -82,7 +113,8 @@ def _valid_fields(book: Book, intent: EditBookIntent, today: date) -> BookFields
         finished_on, _ = parse_finished_on(form["finishedOn"], today)
         message = _finished_on_failure(book, finished_on)
         if message is not None:
-            failures = in_form_order([*failures, ("finishedOn", message)])
+            failures = [*failures, ("finishedOn", message)]
+    failures = in_form_order([*failures, *extra])
     if failures:
         raise refuse_fields(failures)
     assert not isinstance(parsed, list)
@@ -127,10 +159,34 @@ def _readings(book: Book, fields: BookFields, reading_id: str) -> list[Reading]:
     return readings
 
 
-def edit_book(store: Store, clock: Clock, intent: EditBookIntent) -> None:
-    """Check ``intent`` against the stored Book, then replace it and commit."""
+def _cover_update(
+    book: Book, intent: EditBookIntent, cover_file: str | None, from_cover: str | None
+) -> dict[str, object]:
+    """The cover keys a new cover or Remove cover changes; empty when neither does."""
+    if cover_file is not None:
+        return {"cover_file": cover_file, "spine_color_from_cover": from_cover}
+    if intent.remove_cover and book.cover_file is not None:
+        return {"cover_file": None, "spine_color_from_cover": None}
+    return {}
+
+
+def edit_book(
+    store: Store, clock: Clock, intent: EditBookIntent, cover: UploadedCover | None = None
+) -> None:
+    """Check ``intent`` (and ``cover``) against the stored Book, then replace it and commit."""
     today = clock.today()
     reading_id = str(uuid.uuid4())
+    extra = cover_failures(cover)
+    new_files: dict[str, bytes] = {}
+    cover_file: str | None = None
+    from_cover: str | None = None
+    if isinstance(cover, PreparedCover):
+        # Don't write a file for a Book that is already gone (checked again in the commit).
+        if store.library.book(intent.book_id) is None:
+            raise book_not_found()
+        cover_file = mint_cover_file(intent.book_id, cover.ext)
+        new_files[cover_file] = cover.data
+        from_cover = cover.color
 
     def change(library: Library) -> None:
         index = next(
@@ -139,7 +195,7 @@ def edit_book(store: Store, clock: Clock, intent: EditBookIntent) -> None:
         if index is None:
             raise book_not_found()
         book = library.books[index]
-        fields = _valid_fields(book, intent, today)
+        fields = _valid_fields(book, intent, today, extra)
         _check_pages_floors(book, fields.pages)
         if _identity_changed(book, fields):
             others = [other for other in library.books if other.id != book.id]
@@ -159,12 +215,16 @@ def edit_book(store: Store, clock: Clock, intent: EditBookIntent) -> None:
             "tags": fields.tags,
             "readings": _readings(book, fields, reading_id),
         }
-        if fields.spine_color != book.spine_color_user:
+        covers = _cover_update(book, intent, cover_file, from_cover)
+        update.update(covers)
+        if covers or fields.spine_color != book.spine_color_user:
             # AD-11: re-resolve only when a color input changes.
             update["spine_color_user"] = fields.spine_color
             update["spine_color"] = resolve_spine_color(
-                fields.spine_color, book.spine_color_from_cover, book.spine_color_curated
+                fields.spine_color,
+                covers.get("spine_color_from_cover", book.spine_color_from_cover),  # type: ignore[arg-type]
+                book.spine_color_curated,
             )
         library.books[index] = book.model_copy(update=update)
 
-    commit(store, change)
+    commit(store, change, new_files)

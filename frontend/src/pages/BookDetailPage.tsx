@@ -6,7 +6,15 @@ import ConfirmDialog from '../components/ConfirmDialog.tsx'
 import FailureMessage from '../components/FailureMessage.tsx'
 import PageHeading from '../components/PageHeading.tsx'
 import { announce, clearAnnouncements } from '../lib/announce.ts'
-import { metadata, readingLines, roleLine, toPanelFields, type DeletedState } from '../lib/bookDetail.ts'
+import {
+  coverSrc,
+  metadata,
+  panelCover,
+  readingLines,
+  roleLine,
+  toPanelFields,
+  type DeletedState,
+} from '../lib/bookDetail.ts'
 import { COULDNT_LOAD } from '../lib/copy.ts'
 import { usePageTitle } from '../lib/page.ts'
 import NewBookPanel from './NewBookPanel.tsx'
@@ -100,11 +108,28 @@ function BookDetail({ book, onDelete }: { book: BookDetailView; onDelete: Delete
   return (
     <div className={styles.page}>
       <div className={styles.card}>
-        <div className={styles.actions}>
-          <Button onClick={() => setEditing(true)}>Edit</Button>
-          <Button ref={deleteButton} onClick={openConfirm}>
-            Delete
-          </Button>
+        <div className={styles.side}>
+          {book.coverFile !== null ? (
+            <img
+              className={styles.cover}
+              src={coverSrc(book.coverFile)}
+              alt={`Cover of ${book.title}`}
+              width={200}
+              height={300}
+            />
+          ) : (
+            // DESIGN.md → No-cover placeholder: not interactive; the title is beside it.
+            <div className={styles.noCover} role="img" aria-label="No cover">
+              <span className={styles.titleBar} />
+              <span className={`${styles.titleBar} ${styles.titleBarShort}`} />
+            </div>
+          )}
+          <div className={styles.actions}>
+            <Button onClick={() => setEditing(true)}>Edit</Button>
+            <Button ref={deleteButton} onClick={openConfirm}>
+              Delete
+            </Button>
+          </div>
         </div>
         <div className={styles.info}>
           <PageHeading className={styles.title}>{book.title}</PageHeading>
@@ -146,7 +171,7 @@ function BookDetail({ book, onDelete }: { book: BookDetailView; onDelete: Delete
       {editing && (
         <NewBookPanel
           tags={tags}
-          book={{ id: book.id, fields: toPanelFields(book) }}
+          book={{ id: book.id, fields: toPanelFields(book), cover: panelCover(book) }}
           onClose={() => setEditing(false)}
           onSaved={onSaved}
         />
@@ -169,8 +194,9 @@ function BookDetail({ book, onDelete }: { book: BookDetailView; onDelete: Delete
 
 /**
  * Book detail (EXPERIENCE.md → Book detail) at `/book/:bookId`: one surface
- * card, the action stack on the left (**Edit**, then **Delete**) and the Book
- * on the right. An unknown id shows the not-found page. The title is set by
+ * card; on the left the cover (an `img` "Cover of *Title*") or the no-cover
+ * placeholder (`role="img"` "No cover"), 200×300, then the action stack
+ * (**Edit**, then **Delete**); the Book on the right. An unknown id shows the not-found page. The title is set by
  * the child that renders, never here: child effects run first, so a title
  * set here would overwrite the not-found page's.
  *

@@ -15,7 +15,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
 
-from bookvie.domain.book_fields import LABELS
+from bookvie.domain.book_fields import COVER_TOO_LARGE_MESSAGE, LABELS
 
 COULDNT_SAVE_MESSAGE = "Couldn't save. Your data wasn't changed."
 
@@ -36,6 +36,7 @@ class ErrorCode(StrEnum):
     BOOK_NOT_FOUND = "book_not_found"
     PAGES_BELOW_CURRENT_PAGE = "pages_below_current_page"
     PAGES_BELOW_CARD_NOTE = "pages_below_card_note"
+    COVER_TOO_LARGE = "cover_too_large"
 
 
 class FieldError(_Wire):
@@ -139,6 +140,25 @@ def pages_refusal(code: ErrorCode, message: str) -> IntentError:
             kind=ErrorKind.REFUSAL,
             code=code,
             message=fields_summary(errors, {PAGES_FIELD: LABELS[PAGES_FIELD]}),
+            fields=errors,
+        ),
+    )
+
+
+COVER_FIELD = "cover"
+COVER_LIMIT = 20 * 1024 * 1024
+"""The largest cover upload, in bytes: 20 MB (AD-12)."""
+
+
+def cover_too_large() -> IntentError:
+    """413 ``cover_too_large``, with one ``cover`` field, like a field refusal."""
+    errors = [FieldError(field=COVER_FIELD, message=COVER_TOO_LARGE_MESSAGE)]
+    return IntentError(
+        413,
+        ErrorBody(
+            kind=ErrorKind.REFUSAL,
+            code=ErrorCode.COVER_TOO_LARGE,
+            message=fields_summary(errors, {COVER_FIELD: LABELS[COVER_FIELD]}),
             fields=errors,
         ),
     )

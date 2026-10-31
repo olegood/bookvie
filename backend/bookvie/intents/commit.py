@@ -9,7 +9,7 @@ unexpected exception is 500 ``couldnt_save``; a failed write is 503
 """
 
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 
 from pydantic import ValidationError
 
@@ -25,10 +25,13 @@ def log(message: str) -> None:
     print(f"bookvie: {message}", file=sys.stderr, flush=True)
 
 
-def commit(store: Store, change: Change) -> Library:
-    """Apply ``change`` and commit it once, or raise :class:`IntentError`."""
+def commit(store: Store, change: Change, new_files: Mapping[str, bytes] | None = None) -> Library:
+    """Write ``new_files``, apply ``change`` and commit it once, or raise :class:`IntentError`.
+
+    See :meth:`Store.apply` for the AD-12 order of files and the commit.
+    """
     try:
-        return store.apply(change)
+        return store.apply(change, new_files)
     except IntentError:
         raise
     except InvariantViolation as exc:

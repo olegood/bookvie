@@ -7,6 +7,12 @@ FastAPI's ``{detail}`` shape never reaches the browser from a route here.
 Unknown ``/api`` paths are not enveloped: a GET or HEAD 404s through the SPA
 route, and any other method gets Starlette's 405 ``{detail}``.
 
+``add-book`` and ``edit-book`` take an optional ``cover`` file part (AD-3).
+:class:`CoverSizeCap` refuses a body past the cover limit with 413
+``cover_too_large`` while it streams; the route refuses a ``cover`` part over
+exactly 20 MB the same way, then has Pillow decode it before the intent takes
+the store lock.
+
 ``http`` may not import ``store`` or ``domain``: the store on
 ``app.state.store`` is duck-typed and only its ``library`` is read.
 """
@@ -14,27 +20,32 @@ route, and any other method gets Starlette's 405 ``{detail}``.
 import sys
 from typing import Annotated, Any
 
-from fastapi import APIRouter, FastAPI, Form, Request
+from fastapi import APIRouter, FastAPI, File, Form, Request, UploadFile
 from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, PlainTextResponse
 from pydantic import BaseModel
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from bookvie import views
 from bookvie.intents import (
+    COVER_LIMIT,
     ErrorResponse,
     FieldError,
     IntentError,
     OkResponse,
+    UploadedCover,
     add_book,
     book_not_found,
     couldnt_save,
+    cover_too_large,
     delete_book,
     edit_book,
     invalid_fields,
     parse_add_book_intent,
     parse_delete_book_intent,
     parse_edit_book_intent,
+    prepare_cover,
 )
 
 # Every /api route documents the envelope for these statuses. Declaring 422
@@ -44,6 +55,7 @@ ERROR_RESPONSES: dict[int | str, dict[str, Any]] = {
     for status, description in (
         (422, "Invalid fields"),
         (409, "Refused by a library rule"),
+        (413, "Cover too large"),
         (500, "Couldn't save"),
         (503, "Couldn't save"),
     )
@@ -53,6 +65,95 @@ ERROR_RESPONSES: dict[int | str, dict[str, Any]] = {
 EXTRA_SCHEMAS: tuple[type[BaseModel], ...] = ()
 
 router = APIRouter(prefix="/api", responses=ERROR_RESPONSES)
+
+ADD_BOOK_PATH = "/api/intents/add-book"
+EDIT_BOOK_PATH = "/api/intents/edit-book"
+# The cover plus room for the intent part and the multipart framing.
+BODY_LIMIT = COVER_LIMIT + 64 * 1024
+
+
+class _BodyTooLarge(Exception):
+    """Raised from ``receive`` once a capped body passes its limit."""
+
+
+class CoverSizeCap:
+    """Pure-ASGI cap on the bodies of the routes that take a cover (R-14).
+
+    A ``Content-Length`` over ``limit`` is refused before anything is read.
+    Otherwise the bytes are counted as they arrive, and past ``limit`` the
+    body stops being read: whatever the route answers is replaced by 413
+    ``cover_too_large``.
+    """
+
+    def __init__(
+        self,
+        app: ASGIApp,
+        *,
+        paths: tuple[str, ...] = (ADD_BOOK_PATH, EDIT_BOOK_PATH),
+        limit: int = BODY_LIMIT,
+    ) -> None:
+        self.app = app
+        self.paths = paths
+        self.limit = limit
+
+    async def _refuse(self, scope: Scope, receive: Receive, send: Send) -> None:
+        response = JSONResponse(cover_too_large().response_body(), status_code=413)
+        await response(scope, receive, send)
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http" or scope["path"] not in self.paths:
+            await self.app(scope, receive, send)
+            return
+        for name, value in scope.get("headers", []):
+            if name == b"content-length" and value.isdigit() and int(value) > self.limit:
+                await self._refuse(scope, receive, send)
+                return
+        received = 0
+        exceeded = False
+        started = False
+
+        async def capped_receive() -> Message:
+            nonlocal received, exceeded
+            if exceeded:
+                raise _BodyTooLarge()
+            message = await receive()
+            if message["type"] == "http.request":
+                received += len(message.get("body", b""))
+                if received > self.limit:
+                    exceeded = True
+                    raise _BodyTooLarge()
+            return message
+
+        async def guarded_send(message: Message) -> None:
+            nonlocal started
+            if exceeded:
+                return  # the route's answer to a cut-off body is replaced
+            started = True
+            await send(message)
+
+        try:
+            await self.app(scope, capped_receive, guarded_send)
+        except Exception:
+            if not exceeded:
+                raise
+        if exceeded and not started:
+            await self._refuse(scope, receive, send)
+
+
+def _uploaded_cover(cover: UploadFile | None) -> UploadedCover | None:
+    """The ``cover`` part decoded, or ``None`` when none was sent; 413 past 20 MB."""
+    if cover is None:
+        return None
+    data = cover.file.read(COVER_LIMIT + 1)
+    if len(data) > COVER_LIMIT:
+        raise cover_too_large()
+    return prepare_cover(data)
+
+
+CoverPart = Annotated[
+    UploadFile | None,
+    File(description="The cover image: JPEG, PNG or WebP, 20 MB or smaller. Optional."),
+]
 
 
 @router.get("/views/home", response_model=views.HomeView)
@@ -88,10 +189,12 @@ def add_book_intent(
             description="JSON object of the New book form's fields, as typed.",
         ),
     ] = None,
+    cover: CoverPart = None,
 ) -> OkResponse:
-    """Save a new Book only when every field is valid (FR-1)."""
+    """Save a new Book only when every field is valid (FR-1), with its cover if one is sent."""
     parsed = parse_add_book_intent(intent)
-    book_id = add_book(request.app.state.store, request.app.state.clock, parsed)
+    uploaded = _uploaded_cover(cover)
+    book_id = add_book(request.app.state.store, request.app.state.clock, parsed, uploaded)
     return OkResponse(ok=True, ids={"bookId": book_id})
 
 
@@ -102,13 +205,18 @@ def edit_book_intent(
         str | None,
         Form(
             media_type="multipart/form-data",
-            description="JSON object of the Edit book form's fields, as typed, plus bookId.",
+            description=(
+                "JSON object of the Edit book form's fields, as typed, plus bookId "
+                "and, to clear the cover, removeCover: true."
+            ),
         ),
     ] = None,
+    cover: CoverPart = None,
 ) -> OkResponse:
-    """Correct a Book's details (FR-1, FR-3)."""
-    parsed = parse_edit_book_intent(intent)
-    edit_book(request.app.state.store, request.app.state.clock, parsed)
+    """Correct a Book's details (FR-1, FR-3); a cover part replaces its cover."""
+    parsed = parse_edit_book_intent(intent, has_cover=cover is not None)
+    uploaded = _uploaded_cover(cover)
+    edit_book(request.app.state.store, request.app.state.clock, parsed, uploaded)
     return OkResponse(ok=True)
 
 

@@ -84,7 +84,7 @@ export interface paths {
         put?: never;
         /**
          * Add Book Intent
-         * @description Save a new Book only when every field is valid (FR-1).
+         * @description Save a new Book only when every field is valid (FR-1), with its cover if one is sent.
          */
         post: operations["add_book_intent_api_intents_add_book_post"];
         delete?: never;
@@ -104,7 +104,7 @@ export interface paths {
         put?: never;
         /**
          * Edit Book Intent
-         * @description Correct a Book's details (FR-1, FR-3).
+         * @description Correct a Book's details (FR-1, FR-3); a cover part replaces its cover.
          */
         post: operations["edit_book_intent_api_intents_edit_book_post"];
         delete?: never;
@@ -144,6 +144,11 @@ export interface components {
              * @description JSON object of the New book form's fields, as typed.
              */
             intent?: string | null;
+            /**
+             * Cover
+             * @description The cover image: JPEG, PNG or WebP, 20 MB or smaller. Optional.
+             */
+            cover?: string | null;
         };
         /** Body_delete_book_intent_api_intents_delete_book_post */
         Body_delete_book_intent_api_intents_delete_book_post: {
@@ -157,9 +162,14 @@ export interface components {
         Body_edit_book_intent_api_intents_edit_book_post: {
             /**
              * Intent
-             * @description JSON object of the Edit book form's fields, as typed, plus bookId.
+             * @description JSON object of the Edit book form's fields, as typed, plus bookId and, to clear the cover, removeCover: true.
              */
             intent?: string | null;
+            /**
+             * Cover
+             * @description The cover image: JPEG, PNG or WebP, 20 MB or smaller. Optional.
+             */
+            cover?: string | null;
         };
         /**
          * BookDetailView
@@ -195,6 +205,10 @@ export interface components {
             tags: string[];
             /** Spinecoloruser */
             spineColorUser: string | null;
+            /** Coverfile */
+            coverFile: string | null;
+            /** Spinecolorfromcover */
+            spineColorFromCover: string | null;
             /** Latestfinishdate */
             latestFinishDate: string | null;
             /** Readings */
@@ -248,7 +262,7 @@ export interface components {
          * ErrorCode
          * @enum {string}
          */
-        ErrorCode: "invalid_fields" | "couldnt_save" | "duplicate_book" | "book_not_found" | "pages_below_current_page" | "pages_below_card_note";
+        ErrorCode: "invalid_fields" | "couldnt_save" | "duplicate_book" | "book_not_found" | "pages_below_current_page" | "pages_below_card_note" | "cover_too_large";
         /**
          * ErrorKind
          * @enum {string}
@@ -377,6 +391,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Cover too large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Invalid fields */
             422: {
                 headers: {
@@ -426,6 +449,15 @@ export interface operations {
             };
             /** @description Refused by a library rule */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Cover too large */
+            413: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -500,6 +532,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Cover too large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Invalid fields */
             422: {
                 headers: {
@@ -553,6 +594,15 @@ export interface operations {
             };
             /** @description Refused by a library rule */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Cover too large */
+            413: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -620,6 +670,15 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description Cover too large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description Invalid fields */
             422: {
                 headers: {
@@ -673,6 +732,15 @@ export interface operations {
             };
             /** @description Refused by a library rule */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Cover too large */
+            413: {
                 headers: {
                     [name: string]: unknown;
                 };
