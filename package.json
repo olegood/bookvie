@@ -10,6 +10,7 @@
   "scripts": {
     "postinstall": "npm --prefix frontend ci && npm --prefix frontend exec -- playwright install chromium",
     "build": "npm --prefix frontend run build",
+    "install:local": "npm --prefix frontend ci && npm run build && uv tool install --reinstall ./backend",
     "dev": "npm --prefix frontend run dev",
     "check": "npm run check:py && npm run check:api && npm run check:e2e && npm run check:smoke",
     "check:py": "cd backend && TZ=Europe/Madrid uv run pytest --cov=bookvie --cov-report=term --cov-report=json:.coverage.json && uv run python scripts/coverage_gate.py .coverage.json",

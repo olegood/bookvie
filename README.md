@@ -92,6 +92,8 @@ uv tool install --reinstall ./backend    # puts `bookvie` on your PATH
 bookvie                                  # serves 127.0.0.1:8765 and opens the browser
 ```
 
+To bring `bookvie` up to date later, `npm run install:local` does a clean frontend install, builds the SPA and reinstalls the tool in one step.
+
 `bookvie` keeps its data in `~/bookvie-data` (created if missing). Options: `--data-dir DIR`, `--port N`, `--no-browser`, `--dev` (also accepts requests from the Vite dev origin on `:5173`), and `--fake-today YYYY-MM-DD` (pretends today is that local date; for tests, and only with `--no-browser`). A second `bookvie` for the same folder opens the running one instead of starting another server; while it runs, the folder holds a `bookvie.lock` (its PID and port), removed on Ctrl+C or `kill`. If the port is taken by another program or by a bookvie for a different folder, `bookvie` says so and exits; pick another with `--port`. `GET /api/health` reports `{"app", "dataDir", "pid"}`. Requests must use `127.0.0.1:<port>` or `localhost:<port>`, and any other `Host` or `Origin` gets 403.
 
 **Data folder.** Everything bookvie keeps lives in the data folder:
