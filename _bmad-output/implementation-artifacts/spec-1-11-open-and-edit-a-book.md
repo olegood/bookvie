@@ -68,6 +68,35 @@ Decisions: Book detail lives at `/book/:bookId`; an unknown id shows the not-fou
 - Given `/book/<unknown id>`, when it loads, then the not-found page shows with `document.title` "Page not found — bookvie".
 - Given an add from the New book panel in List view, when it saves, then the new row's title link takes focus and the highlight ring (new-book-panel AC-5 still passes).
 
+### Review Findings
+
+Code review of `28dbb46..4305f07`, run 2026-10-31. The diff left out `_bmad-output/**` and `frontend/src/api/generated/`. Four layers ran: blind, edge, verification-gap and acceptance. None failed.
+
+- [x] [Review][Patch] Pin "Pages floors before duplicate": no test hits both rules at once, so swapping `_check_pages_floors` and `refuse_duplicates` passes every test. Add a test that edits Neuromancer (unfinished Reading at p.200) to "Dune" / Frank Herbert / pages 100. Expect 409 `pages_below_current_page` and the library bytes unchanged. [backend/tests/test_edit_book.py]
+- [x] [Review][Patch] The ATDD checklist still says no spec exists (line 55, "there is no story spec file yet…"). Next Steps step 1 still says "Write the story spec". [_bmad-output/test-artifacts/atdd-checklist-1-11-open-and-edit-a-book.md:55]
+- [x] [Review][Patch] The Book detail failed-load e2e stubs the GET view with the `couldnt_save` write envelope. Use a plain 503 body so the stub matches the view's contract: any non-404 response is a `ViewLoadError`. [frontend/e2e/book-detail.spec.ts:423]
+- [x] [Review][Patch] `EditableBook` / `DescribedBook` / `ListedReading` hand-copy the generated `BookDetailView` / `BookReading` shapes and widen `type` to `string`. Derive them with `Pick<…>` so a contract change breaks the compiler, and narrow `TYPE_LABELS` to the literal union. [frontend/src/lib/bookDetail.ts:8]
+- [x] [Review][Defer] No test covers the edit-mode Tags suggestions wiring: `BookDetail` passes `useCatalogView().tags`, but none of the `book-detail.spec.ts` tests types into Tags. [frontend/src/pages/BookDetailPage.tsx:43] — deferred: the suggestion logic is covered via New book and no AC names edit-mode suggestions. Extending the AC-2 e2e would close it.
+
+**Rejected:**
+- *Stale prefill, last write wins, no version check (blind, edge ×2), low.* Two tabs with the panel open are rare in a single-user local app. The fix needs a new version field in the intent contract.
+- *Moving the latest finish before another finished Reading (blind, edge), low.* Today's intents create at most one finished Reading (a back-fill only when none exists). The fix would change the spec's Finished on rules.
+- *`book_not_found` mid-edit unmounts the panel (blind), low.* No intent deletes a Book until 1.12, so this can't happen yet. Revisit with Delete.
+- *`reading is latest` identity lookup (blind), false.* `latest_finished()` returns an element of `book.readings`, and `readings` is a shallow copy of that list.
+- *Book detail fetches the catalog view (blind), low.* It's the shared cached `['view','catalog']` query, a local request.
+- *Loading renders `null` and keeps the old title (blind), low.* It matches `CatalogPage`, and the spec says "loading → null".
+- *Redundant `tabIndex` and the dropped inset focus-ring offset (blind, edge), low.* The spec requires the `tabIndex`. The inset was for a focused `td`, and an inline link needs none.
+- *Malformed `bookId` variants untested (blind), low.* `parse_form_intent` validates strictly. The tests would only add surface.
+- *"Saved …" uses the client-trimmed title (blind), false.* `parse_book_fields` uses `.strip()` too, so the two titles are identical.
+- *A back-fill can overlap the unfinished Reading (edge), false.* This is intended: AC-10 back-fills and leaves the current Reading untouched.
+- *Any 404 shows not-found (edge), low.* Only an unrouted URL produces a non-`book_not_found` 404. The fix adds a branch.
+- *Generated schema and checklist missing from the diff (acceptance), false.* They were left out of the review scope on purpose. `schema.d.ts` has `BookDetailView`.
+- *Checklist follow-ups untested, e.g. "Back keeps the search" or axe (acceptance), low.* The spec doesn't require them. "Search kept" isn't in epics.md or the UX docs, and `CatalogPage` keeps the query in `useState`.
+- *Malformed intent refused before `book_not_found` (acceptance), false.* The spec says edit-book reuses "add-book's parsing", which also runs before the commit.
+- *A case-only spine color change re-resolves (acceptance), low.* The resolved color comes out the same.
+- *The failed-load `h1` "Book" isn't in the contract (acceptance), low.* It's a reasonable gap-fill, and e2e pins it.
+- *Unfinished Readings are sorted by a `9999` sentinel (acceptance), false.* A Book has at most one unfinished Reading, as the code comment says.
+
 ## Implementation Notes
 
 ## Spec Change Log

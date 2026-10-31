@@ -544,6 +544,27 @@ def test_below_both_floors_the_higher_floor_wins(
     assert _library_bytes(tmp_path) == before
 
 
+def test_pages_floors_come_before_the_duplicate_check(
+    tmp_path: Path, library_builder: LibraryBuilder
+) -> None:
+    library_builder.book(**{**DUNE, "isbn": None})
+    neuromancer = library_builder.book(**NEUROMANCER)
+    library_builder.reading(neuromancer, current_page=200)
+    library_builder.write(tmp_path)
+    client = _client(tmp_path)
+    before = _library_bytes(tmp_path)
+
+    # Both rules apply: Pages drops below the current page, and the new
+    # identity matches Dune. The floor answers first.
+    response = _edit(
+        client, neuromancer, NEUROMANCER_FORM, title="Dune", authors="Frank Herbert", pages="100"
+    )
+
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "pages_below_current_page"
+    assert _library_bytes(tmp_path) == before
+
+
 def test_a_paused_reading_is_a_pages_floor(
     tmp_path: Path, library_builder: LibraryBuilder
 ) -> None:

@@ -52,7 +52,7 @@ As Oleg, I want a page for each Book where I can see and correct its details, so
 
 The story has two halves. The server half adds a new intent, `edit-book`. It reuses add-book's field parsing and duplicate rules, and it adds the edit-only rules: the Pages floors (current page and highest Card note page), Finished on in edit mode (change the latest finish, never clear it, not before that Reading's start, back-fill when there is none), and spine color re-resolution (AD-11). The client half adds the Book detail route (linked from List view titles) and the New book panel in edit mode, with the Duplicate dialog's Don't save · Save anyway. The rest of Book detail is not in this story: the action stack beyond **Edit**, Current reading, Card notes, the Pace calculator and Change color arrive with Stories 1.12, 1.14 and Epics 3 to 6. Covers (and **Remove cover**) arrive with Story 1.13.
 
-**Story source:** there is no story spec file yet (`sprint-status.yaml` lists `1-11-open-and-edit-a-book` as `backlog`). The criteria come from `epics.md` → Story 1.11. When `spec-1-11-…md` is written, add an `### ATDD Artifacts` link to this checklist under its Dev Notes.
+**Story source:** [`spec-1-11-open-and-edit-a-book.md`](../implementation-artifacts/spec-1-11-open-and-edit-a-book.md). The criteria come from `epics.md` → Story 1.11.
 
 **Stack:** detected `fullstack` (`backend/pyproject.toml` + `frontend/playwright.config.ts`). `tea_use_playwright_utils` is false (the package isn't installed), so the specs use the project's own `fixtures.ts` and plain Playwright, as in Stories 1.6 to 1.10.
 
@@ -228,9 +228,9 @@ npm run check
 
 ## Next Steps
 
-1. Write the story spec (`spec-1-11-open-and-edit-a-book.md`), settle the open points in Notes, and link this checklist from its Dev Notes.
-2. Implement Story 1.11 with `bmad-build` (or dev-story), activating tests one criterion at a time.
-3. After implementation, run `bmad-testarch-automate` for the green-phase follow-ups above.
+1. ~~Write the story spec~~ (done: `spec-1-11-open-and-edit-a-book.md`).
+2. ~~Implement Story 1.11~~ (done: all 12 scaffolds active).
+3. Run `bmad-testarch-automate` for the green-phase follow-ups above that are still unticked.
 
 ---
 

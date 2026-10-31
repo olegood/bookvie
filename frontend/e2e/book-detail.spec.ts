@@ -417,11 +417,8 @@ test.describe('Story 1.11 Book detail and Edit book (ATDD)', () => {
     await page.route('**/api/views/book**', async (route) => {
       if (!down) return route.continue()
       down = false
-      await route.fulfill({
-        status: 503,
-        contentType: 'application/json',
-        body: JSON.stringify({ error: { kind: 'couldnt_save', code: 'couldnt_save', message: COULDNT_SAVE } }),
-      })
+      // Any non-404 failure is a load failure; the body is never read.
+      await route.fulfill({ status: 503, contentType: 'text/plain', body: 'Service Unavailable' })
     })
 
     await page.goto(`${server.url}/book/${DUNE_ID}`)

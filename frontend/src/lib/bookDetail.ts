@@ -2,43 +2,39 @@
 // panel: the metadata grid, the panel's prefill and the Readings lines. The server computes the
 // domain values (including the latest finish date); these only format.
 
-import { BOOK_FIELD_KEYS, type BookFields } from '../api/index.ts'
+import { BOOK_FIELD_KEYS, type BookDetailView, type BookFields, type BookReading } from '../api/index.ts'
 
 /** The fields of the `book` view the panel prefill reads. */
-export interface EditableBook {
-  title: string
-  subtitle: string | null
-  authors: string[]
-  pages: number
-  edition: number
-  language: string
-  publisher: string
-  type: string
-  isbn: string | null
-  year: number | null
-  tags: string[]
-  spineColorUser: string | null
-  latestFinishDate: string | null
-}
+export type EditableBook = Pick<
+  BookDetailView,
+  | 'title'
+  | 'subtitle'
+  | 'authors'
+  | 'pages'
+  | 'edition'
+  | 'language'
+  | 'publisher'
+  | 'type'
+  | 'isbn'
+  | 'year'
+  | 'tags'
+  | 'spineColorUser'
+  | 'latestFinishDate'
+>
 
 const pages = new Intl.NumberFormat('en-GB')
 
-export const TYPE_LABELS: Record<string, string> = {
+export const TYPE_LABELS: Record<BookDetailView['type'], string> = {
   paperback: 'Paperback',
   hardcover: 'Hardcover',
   ebook: 'Ebook',
 }
 
 /** The fields of the `book` view the metadata grid reads. */
-export interface DescribedBook {
-  pages: number
-  edition: number
-  language: string
-  publisher: string
-  type: string
-  isbn: string | null
-  year: number | null
-}
+export type DescribedBook = Pick<
+  BookDetailView,
+  'pages' | 'edition' | 'language' | 'publisher' | 'type' | 'isbn' | 'year'
+>
 
 /**
  * The metadata grid's rows, in DESIGN.md order: Pages, Edition (only when it
@@ -51,7 +47,7 @@ export function metadata(book: DescribedBook): [string, string][] {
     ['Edition', book.edition === 1 ? null : String(book.edition)],
     ['Language', book.language],
     ['Publisher', book.publisher],
-    ['Type', TYPE_LABELS[book.type] ?? book.type],
+    ['Type', TYPE_LABELS[book.type]],
     ['ISBN', book.isbn],
     ['Year', book.year === null ? null : String(book.year)],
   ]
@@ -59,11 +55,7 @@ export function metadata(book: DescribedBook): [string, string][] {
 }
 
 /** A Reading as Book detail lists it. */
-export interface ListedReading {
-  id: string
-  startDate: string | null
-  finishDate: string | null
-}
+export type ListedReading = BookReading
 
 /** The Edit book panel's fields, as the stored Book would be typed. */
 export function toPanelFields(book: EditableBook): BookFields {
