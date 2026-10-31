@@ -1,4 +1,4 @@
-import { useId, type ButtonHTMLAttributes, type MouseEvent } from 'react'
+import { useId, type ButtonHTMLAttributes, type MouseEvent, type Ref } from 'react'
 import styles from './Button.module.css'
 
 type Props = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'disabled'> & {
@@ -9,6 +9,7 @@ type Props = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'disabled'> & {
    * are ignored. Native `disabled` is never used.
    */
   disabledReason?: string
+  ref?: Ref<HTMLButtonElement>
 }
 
 export default function Button({
@@ -18,6 +19,7 @@ export default function Button({
   type = 'button',
   onClick,
   children,
+  ref,
   ...rest
 }: Props) {
   const reasonId = useId()
@@ -34,6 +36,7 @@ export default function Button({
     <>
       <button
         {...rest}
+        ref={ref}
         type={type}
         className={[styles.button, styles[variant], className].filter(Boolean).join(' ')}
         aria-disabled={unavailable ? 'true' : undefined}

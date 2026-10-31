@@ -63,6 +63,40 @@ YEAR_MESSAGE = "Year must be a year, like 1965."
 FINISHED_ON_FORMAT_MESSAGE = "Finished on must be a date, like 2026-03-14."
 FINISHED_ON_FUTURE_MESSAGE = "Finished on can't be in the future."
 SPINE_COLOR_MESSAGE = "Spine color must be #RRGGBB or empty."
+# Edit mode only (Story 1.11).
+FINISH_DATE_REMOVED_MESSAGE = "A finish date can't be removed here."
+
+_MONTHS = (
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
+)
+
+
+def long_date(day: date) -> str:
+    """The date as "12 March 2026": day, full English month name, year (locale-free)."""
+    return f"{day.day} {_MONTHS[day.month - 1]} {day.year}"
+
+
+def finished_before_start_message(start: date) -> str:
+    return f"Finished on can't be before {long_date(start)}, when this reading started."
+
+
+def pages_below_current_page_message(page: int) -> str:
+    return f"Pages can't be less than {page}, the page you're on."
+
+
+def pages_below_card_note_message(page: int) -> str:
+    return f"Pages can't be less than {page}, where a card note is."
 
 
 def required_message(key: str) -> str:
@@ -142,6 +176,25 @@ def _date(value: str) -> date | None:
         return None
 
 
+def parse_finished_on(raw: str | None, today: date) -> tuple[date | None, str | None]:
+    """Finished on as ``(date or None when empty, failure message or None)``."""
+    text = (raw or "").strip()
+    if not text:
+        return None, None
+    finished_on = _date(text)
+    if finished_on is None:
+        return None, FINISHED_ON_FORMAT_MESSAGE
+    if finished_on > today:
+        return None, FINISHED_ON_FUTURE_MESSAGE
+    return finished_on, None
+
+
+def in_form_order(failures: Iterable[FieldFailure]) -> list[FieldFailure]:
+    """``failures`` sorted by the form order of their keys (stable)."""
+    order = {key: index for index, key in enumerate(LABELS)}
+    return sorted(failures, key=lambda failure: order.get(failure[0], len(order)))
+
+
 def parse_book_fields(
     raw: Mapping[str, str | None], today: date
 ) -> BookFields | list[FieldFailure]:
@@ -198,13 +251,9 @@ def parse_book_fields(
         if year is None:
             failures.append(("year", YEAR_MESSAGE))
 
-    finished_on = None
-    if text["finishedOn"]:
-        finished_on = _date(text["finishedOn"])
-        if finished_on is None:
-            failures.append(("finishedOn", FINISHED_ON_FORMAT_MESSAGE))
-        elif finished_on > today:
-            failures.append(("finishedOn", FINISHED_ON_FUTURE_MESSAGE))
+    finished_on, finished_on_failure = parse_finished_on(text["finishedOn"], today)
+    if finished_on_failure is not None:
+        failures.append(("finishedOn", finished_on_failure))
 
     tags = split_tags(text["tags"])
 

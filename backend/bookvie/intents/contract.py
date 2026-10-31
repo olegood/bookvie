@@ -15,6 +15,8 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
 
+from bookvie.domain.book_fields import LABELS
+
 COULDNT_SAVE_MESSAGE = "Couldn't save. Your data wasn't changed."
 
 
@@ -31,6 +33,9 @@ class ErrorCode(StrEnum):
     INVALID_FIELDS = "invalid_fields"
     COULDNT_SAVE = "couldnt_save"
     DUPLICATE_BOOK = "duplicate_book"
+    BOOK_NOT_FOUND = "book_not_found"
+    PAGES_BELOW_CURRENT_PAGE = "pages_below_current_page"
+    PAGES_BELOW_CARD_NOTE = "pages_below_card_note"
 
 
 class FieldError(_Wire):
@@ -88,29 +93,68 @@ class IntentError(Exception):
         return body
 
 
-def invalid_fields(
-    errors: Iterable[FieldError], labels: Mapping[str, str] | None = None
-) -> IntentError:
-    """422 ``invalid_fields`` naming every failing field, in order.
+def fields_summary(errors: Iterable[FieldError], labels: Mapping[str, str] | None = None) -> str:
+    """"Not saved. 2 fields need attention: Pages, Language."
 
-    The top-level message names each field by its form label when ``labels``
-    has one ("Not saved. 2 fields need attention: Pages, Language."), else by
-    its key.
+    Each field is named by its form label when ``labels`` has one, else by its
+    key; a field listed twice is named once.
     """
-    errors = list(errors)
     labels = labels or {}
     keys = dict.fromkeys(error.field for error in errors)
     names = [labels.get(key, key) for key in keys]
     count = len(names)
     noun = "field needs" if count == 1 else "fields need"
-    message = f"Not saved. {count} {noun} attention: {', '.join(names)}."
+    return f"Not saved. {count} {noun} attention: {', '.join(names)}."
+
+
+def invalid_fields(
+    errors: Iterable[FieldError], labels: Mapping[str, str] | None = None
+) -> IntentError:
+    """422 ``invalid_fields`` naming every failing field, in order (see :func:`fields_summary`)."""
+    errors = list(errors)
     return IntentError(
         422,
         ErrorBody(
             kind=ErrorKind.REFUSAL,
             code=ErrorCode.INVALID_FIELDS,
-            message=message,
+            message=fields_summary(errors, labels),
             fields=errors,
+        ),
+    )
+
+
+PAGES_FIELD = "pages"
+
+
+def pages_refusal(code: ErrorCode, message: str) -> IntentError:
+    """409 refusing the Pages value (a Pages floor), with one ``pages`` field.
+
+    The top-level message is the 422 summary ("Not saved. 1 field needs
+    attention: Pages."), so the panel shows it the same way.
+    """
+    errors = [FieldError(field=PAGES_FIELD, message=message)]
+    return IntentError(
+        409,
+        ErrorBody(
+            kind=ErrorKind.REFUSAL,
+            code=code,
+            message=fields_summary(errors, {PAGES_FIELD: LABELS[PAGES_FIELD]}),
+            fields=errors,
+        ),
+    )
+
+
+BOOK_NOT_FOUND_MESSAGE = "This book isn't in your catalog anymore."
+
+
+def book_not_found(status: int = 409) -> IntentError:
+    """``book_not_found``: 409 from an intent, 404 from a view."""
+    return IntentError(
+        status,
+        ErrorBody(
+            kind=ErrorKind.REFUSAL,
+            code=ErrorCode.BOOK_NOT_FOUND,
+            message=BOOK_NOT_FOUND_MESSAGE,
         ),
     )
 

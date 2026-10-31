@@ -10,6 +10,8 @@ export type HomeView = Schemas['HomeView']
 export type CatalogView = Schemas['CatalogView']
 export type ShelfBook = Schemas['ShelfBook']
 export type LibraryMeter = Schemas['LibraryMeter']
+export type BookDetailView = Schemas['BookDetailView']
+export type BookReading = Schemas['BookReading']
 
 export interface Views {
   home: HomeView
@@ -67,4 +69,31 @@ export function useHomeView(): ViewState<HomeView> {
 
 export function useCatalogView(): ViewState<CatalogView> {
   return useView('catalog')
+}
+
+/** The `book` view's key: under 'view', so every intent refetches it. */
+export function bookViewKey(id: string): readonly ['view', 'book', string] {
+  return [VIEW_ROOT, 'book', id] as const
+}
+
+/** GET /api/views/book?id=…; `null` when there is no such Book (404). */
+export async function fetchBookView(id: string): Promise<BookDetailView | null> {
+  const url = `${VIEWS_BASE}/book?${new URLSearchParams({ id })}`
+  const response = await fetch(url)
+  if (response.status === 404) return null
+  if (!response.ok) throw new ViewLoadError(`GET ${url}: ${response.status}`)
+  return (await response.json()) as BookDetailView
+}
+
+/** A view state, plus `missing` when the Book doesn't exist. */
+export type BookViewState = ViewState<BookDetailView> | { status: 'missing' }
+
+export function toBookViewState(query: ViewQuery<BookDetailView | null>): BookViewState {
+  if (query.data === null) return { status: 'missing' }
+  return toViewState<BookDetailView>({ ...query, data: query.data })
+}
+
+export function useBookView(id: string): BookViewState {
+  const query = useQuery({ queryKey: bookViewKey(id), queryFn: () => fetchBookView(id) })
+  return toBookViewState(query)
 }

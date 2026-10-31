@@ -2,7 +2,8 @@
 title: 'Story 1.11: Open and edit a book'
 type: 'feature'
 created: '2026-10-31'
-status: 'ready-for-dev'
+status: 'done'
+baseline_commit: '28dbb46a71092fe1ba17cdfd4f5394bed9dd93e8'
 route: 'dispatch'
 review_loop_iteration: 0
 context:
@@ -52,15 +53,15 @@ Decisions: Book detail lives at `/book/:bookId`; an unknown id shows the not-fou
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `backend/bookvie/intents/contract.py`, `domain/book_fields.py` -- new codes, a `pages_refusal(code, message)` 409 helper, the edit messages and `long_date`. Unit-test `long_date`.
-- [ ] `backend/bookvie/intents/edit_book.py` (+ `__init__.py` exports, shared helpers in `add_book.py` or a new `intents/book_form.py`) -- `EditBookIntent` (add-book's fields + required `bookId`), `edit_book(store, clock, intent)` with the check order above, Finished on rules, Pages floors, conditional duplicate check, AD-11 spine color, and in-place replacement keeping id, `createdAt`, `ownership`, cover fields, curated color and `cardNotes`.
-- [ ] `backend/bookvie/views/*`, `http/api.py` -- the `book` view and both routes.
-- [ ] `backend/tests/test_edit_book.py`, `test_contract.py` -- un-skip the 8 leaves; extend the contract test. Add a `book` view API test (found, 404, `latestFinishDate`, reading order is not asserted server-side) and the checklist's AC-3/AC-6/AC-8 follow-ups (case-only title edit, both floors at once, same-date resend no-op, paused Reading floor).
-- [ ] `frontend/src/api/*` (+ tests) -- `editBookForm`, `useEditBook`, `useBookView`.
-- [ ] `frontend/src/pages/BookDetailPage.tsx` (+ `.module.css`), `src/lib/bookDetail.ts` (+ test) -- route component (loading → null; failed → `COULDNT_LOAD` + **Try again**; missing → `NotFoundPage`; ready → the detail), the layout above, `toPanelFields(view)` and `readingLines(readings)` with en-GB short dates. Edit opens the panel with `tags` from `useCatalogView`; on save, close the panel and `announce('status', 'Saved <Title>.')`; `SidePanel` already returns focus to **Edit**.
-- [ ] `frontend/src/pages/NewBookPanel.tsx`, `components/DuplicateDialog.tsx`, `components/Button.tsx`, `pages/CatalogList.tsx`, `pages/CatalogPage.tsx`, `main.tsx` -- wiring as in the Code Map.
-- [ ] `frontend/e2e/book-detail.spec.ts` -- un-skip all 4; add the AC-12 routed-503 follow-up (panel stays open with values, couldn't-save line, `aria-disabled` in flight) and Cancel/Esc returning focus to **Edit**. Re-run `new-book-panel.spec.ts` and `duplicate-dialog.spec.ts`.
-- [ ] `_bmad-output/test-artifacts/atdd-checklist-1-11-…md` -- tick the implementation checklist; link this spec.
+- [x] `backend/bookvie/intents/contract.py`, `domain/book_fields.py` -- new codes, a `pages_refusal(code, message)` 409 helper, the edit messages and `long_date`. Unit-test `long_date`.
+- [x] `backend/bookvie/intents/edit_book.py` (+ `__init__.py` exports, shared helpers in `add_book.py` or a new `intents/book_form.py`) -- `EditBookIntent` (add-book's fields + required `bookId`), `edit_book(store, clock, intent)` with the check order above, Finished on rules, Pages floors, conditional duplicate check, AD-11 spine color, and in-place replacement keeping id, `createdAt`, `ownership`, cover fields, curated color and `cardNotes`.
+- [x] `backend/bookvie/views/*`, `http/api.py` -- the `book` view and both routes.
+- [x] `backend/tests/test_edit_book.py`, `test_contract.py` -- un-skip the 8 leaves; extend the contract test. Add a `book` view API test (found, 404, `latestFinishDate`, reading order is not asserted server-side) and the checklist's AC-3/AC-6/AC-8 follow-ups (case-only title edit, both floors at once, same-date resend no-op, paused Reading floor).
+- [x] `frontend/src/api/*` (+ tests) -- `editBookForm`, `useEditBook`, `useBookView`.
+- [x] `frontend/src/pages/BookDetailPage.tsx` (+ `.module.css`), `src/lib/bookDetail.ts` (+ test) -- route component (loading → null; failed → `COULDNT_LOAD` + **Try again**; missing → `NotFoundPage`; ready → the detail), the layout above, `toPanelFields(view)` and `readingLines(readings)` with en-GB short dates. Edit opens the panel with `tags` from `useCatalogView`; on save, close the panel and `announce('status', 'Saved <Title>.')`; `SidePanel` already returns focus to **Edit**.
+- [x] `frontend/src/pages/NewBookPanel.tsx`, `components/DuplicateDialog.tsx`, `components/Button.tsx`, `pages/CatalogList.tsx`, `pages/CatalogPage.tsx`, `main.tsx` -- wiring as in the Code Map.
+- [x] `frontend/e2e/book-detail.spec.ts` -- un-skip all 4; add the AC-12 routed-503 follow-up (panel stays open with values, couldn't-save line, `aria-disabled` in flight) and Cancel/Esc returning focus to **Edit**. Re-run `new-book-panel.spec.ts` and `duplicate-dialog.spec.ts`.
+- [x] `_bmad-output/test-artifacts/atdd-checklist-1-11-…md` -- tick the implementation checklist; link this spec.
 
 **Acceptance Criteria:**
 - Given `npm run check`, when it runs, then it exits 0 with all 12 Story 1.11 scaffolds active and every earlier test passing.
@@ -72,6 +73,33 @@ Decisions: Book detail lives at `/book/:bookId`; an unknown id shows the not-fou
 ## Spec Change Log
 
 ## Review Triage Log
+
+Iteration 0 (blind-hunter, edge-case-hunter, verification-gap):
+
+| # | Source | Finding | Verdict | Evidence | Route |
+|---|---|---|---|---|---|
+| 1 | edge | Omitted optional keys in `edit-book` reset Edition to 1 / clear subtitle, tags, color | false | Same omitted-key semantics as add-book (`parse_book_fields` `raw.get("edition") is not None`), which the intent mandates ("add-book's parsing"); edit-book is a full-form replace and `editBookForm` always sends every key. | reject |
+| 2 | edge, blind | A changed Finished on can move the latest finish before another finished Reading / overlap the unfinished one | low | Real, but the Design Notes define exactly these rules; the next prefill then shows the true latest date. Fix would add new refusal branches. | reject |
+| 3 | edge | Hyphenated / ISBN-10 retype counts as identity change and overwrites stored ISBN | false | Running the check then is harmless (self excluded; another Book with that ISBN is a real duplicate); storing the trimmed typed value is add-book's behavior. | reject |
+| 4 | edge, blind | `book_not_found` on save: panel vanishes (edge) / user stuck in panel (blind) | low | `sendIntent` invalidates views on every outcome, the `book` view refetches to 404 and the not-found page replaces Book detail, so "stuck" is false; losing edits to a Book deleted elsewhere is acceptable. Fix adds branches. | reject |
+| 5 | verif | No test that an author-only or ISBN-only edit runs the duplicate check | low | Pre-verified: dropping the authors/ISBN terms from `_identity_changed` passes every test. | patch |
+| 6 | verif | `latest_finished` only tested with Readings stored oldest first | low | Pre-verified: "last finished in list order" passes all tests. | patch |
+| 7 | verif | Book detail's failed-load state never rendered by a test | low | Pre-verified: no e2e routes `views/book` to a failure. | patch |
+| 8 | blind | sprint-status says in-progress while spec says in-review | false | The workflow syncs sprint-status at presentation; in-review is the spec's transient review state. | reject |
+| 9 | blind | Spec ticks every task while checklist follow-ups stay open | false | The spec's tasks name only the follow-ups they require (AC-3/6/8/10/12, Cancel/Esc); all are done. | reject |
+| 10 | blind | AC-3 checklist item ticked with an untested ISBN-10↔13 exception in its label | low | Checklist line 142 ticks an item whose text says part is missing. Direct correction. | patch |
+| 11 | blind | Book detail has no Back link | false | The frozen intent lists exactly what Book detail shows ("only what this story owns"); browser Back and the app nav remain. | reject |
+| 12 | blind | Back-filled Reading appended after newer Readings breaks the tie rule | false | A back-fill is appended only when no finished Reading exists, so it cannot tie at that moment; latest is by date first. | reject |
+| 13 | blind | `readingLine` renders an empty `<li>` for a Reading with neither date | low | No current intent creates such a Reading (only back-fills, which have a finish date). Unreachable today. | reject |
+| 14 | blind | `_identity_changed` list vs tuple makes it always true | false | `BookFields.authors` and `Book.authors` are both `list[str]`. | reject |
+| 15 | blind | Case-only test name overclaims that the check runs | low | It only asserts 200; rename is a direct correction (finding 5 adds the real proof). | patch |
+| 16 | blind | Contract test misses the view's 404 and a missing `id` | low | Missing `id` goes through `_validation_error` into the envelope; 404 is declared. Unlikely to regress; adds test surface only. | reject |
+| 17 | blind | Pages label duplicated in `contract.py` (`PAGES_LABEL`) vs `book_fields.LABELS` | low | A label change in `LABELS` would make the 409 and 422 summaries drift. Direct correction. | patch |
+| 18 | blind | `assert` narrowing and `# type: ignore` in `_valid_fields` / `latest_finished` | false | Under `-O` the logic is unchanged (failures already raised); the assert only narrows types. | reject |
+| 19 | blind | `NewBookPanel` misnamed; mode key derived twice | low | Name is what the spec mandates; the duplicated `book ? 'edit' : 'new'` is a direct correction. | patch (mode key only) |
+| 20 | blind | Readings heading id built from server id instead of `useId()` | low | Codebase convention is `useId()`; direct correction. | patch |
+| 21 | blind | Redundant `tabIndex` on the title link; focus-ring offset rule dropped | false | The spec requires the link to take the `tabIndex`; the removed offset was for the `td`, an inline link needs none. | reject |
+| 22 | blind | `metadata()` rules (Edition ≠ 1, order, Type labels) untested | low | Only the no-ISBN/Year case is exercised; moving it next to `toPanelFields` and unit-testing it is direct. | patch |
 
 ## Design Notes
 

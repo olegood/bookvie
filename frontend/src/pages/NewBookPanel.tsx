@@ -2,9 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import {
   BOOK_FIELD_KEYS,
   useAddBook,
-  type AddBookOptions,
+  useEditBook,
   type BookFieldKey,
   type BookFields,
+  type BookSaveOptions,
   type DuplicateMatch,
 } from '../api/index.ts'
 import Button from '../components/Button.tsx'
@@ -31,26 +32,51 @@ function emptyFields(): BookFields {
   return fields
 }
 
+// Everything that differs between New book and Edit book (EXPERIENCE.md →
+// New book panel, Duplicate dialog, Focus after close).
+const MODES = {
+  new: {
+    title: 'New book',
+    submit: 'Add book',
+    // After Don't add, focus returns to Title.
+    afterDismiss: 'title',
+  },
+  edit: {
+    title: 'Edit book',
+    submit: 'Save changes',
+    // After Don't save, focus returns to Save changes.
+    afterDismiss: 'submit',
+  },
+} as const
+
 type Props = {
   /** The library's existing tags, for the Tags suggestions. */
   tags: readonly string[]
+  /** The Book to edit, with its fields as the panel prefills them; omitted for New book. */
+  book?: { id: string; fields: BookFields }
   onClose: () => void
   /** Called after the save and the views' refetch; the page closes the panel. */
-  onAdded: (bookId: string, title: string) => void
+  onSaved: (bookId: string, title: string) => void
 }
 
 /**
- * The New book panel (EXPERIENCE.md → New book panel). Every field follows the
- * Agent Label Contract, in its order. The server validates (`noValidate`) and
+ * The New book panel (EXPERIENCE.md → New book panel), and the Edit book panel
+ * when `book` is given: prefilled, **Save changes**, `edit-book`. Every field
+ * follows the Agent Label Contract, in its order. The server validates (`noValidate`) and
  * owns every message: field messages are its `fields[].message`, the alert is
  * its top-level `message`. Values are kept on every outcome but success.
  * A `duplicate_book` refusal opens the Duplicate dialog over the panel:
- * **Don't add** returns to Title, **Add anyway** resends with
- * `confirmDuplicate: true` through the same guard and outcome handling.
+ * **Don't add** returns to Title (**Don't save** to Save changes), **Add
+ * anyway** / **Save anyway** resends with `confirmDuplicate: true` through the
+ * same guard and outcome handling. Any refusal with `fields` (a 422, or a 409
+ * such as `pages_below_current_page`) marks those fields.
  */
-export default function NewBookPanel({ tags, onClose, onAdded }: Props) {
+export default function NewBookPanel({ tags, book, onClose, onSaved }: Props) {
+  const modeKey = book ? 'edit' : 'new'
+  const mode = MODES[modeKey]
   const addBook = useAddBook()
-  const [fields, setFields] = useState(emptyFields)
+  const editBook = useEditBook()
+  const [fields, setFields] = useState(() => (book ? { ...book.fields } : emptyFields()))
   const [errors, setErrors] = useState<Partial<Record<BookFieldKey, string>>>({})
   // The alert shows as a line in the panel when no field carries the outcome.
   const [showAlert, setShowAlert] = useState(false)
@@ -60,8 +86,9 @@ export default function NewBookPanel({ tags, onClose, onAdded }: Props) {
   const [focusInvalid, setFocusInvalid] = useState(0)
   // The open Duplicate dialog's refusal, or null when it is closed.
   const [duplicate, setDuplicate] = useState<{ duplicates: DuplicateMatch[]; message: string } | null>(null)
-  const [focusTitle, setFocusTitle] = useState(0)
+  const [refocus, setRefocus] = useState(0)
   const title = useRef<HTMLInputElement>(null)
+  const submitButton = useRef<HTMLButtonElement>(null)
   const fieldsBox = useRef<HTMLDivElement>(null)
 
   // Opening empties both live regions.
@@ -75,11 +102,13 @@ export default function NewBookPanel({ tags, onClose, onAdded }: Props) {
     fieldsBox.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus()
   }, [focusInvalid])
 
-  // After Don't add closes the dialog, focus returns to Title.
+  // After Don't add / Don't save closes the dialog, focus returns to Title / Save changes.
+  const afterDismiss = mode.afterDismiss
   useEffect(() => {
-    if (focusTitle === 0) return
-    title.current?.focus()
-  }, [focusTitle])
+    if (refocus === 0) return
+    const target = afterDismiss === 'title' ? title.current : submitButton.current
+    target?.focus()
+  }, [refocus, afterDismiss])
 
   const set = (key: BookFieldKey) => (value: string) => setFields((current) => ({ ...current, [key]: value }))
   const text = (key: BookFieldKey) => ({
@@ -88,17 +117,17 @@ export default function NewBookPanel({ tags, onClose, onAdded }: Props) {
     onChange: (event: { target: { value: string } }) => set(key)(event.target.value),
   })
 
-  const submit = async (options?: AddBookOptions) => {
+  const submit = async (options?: BookSaveOptions) => {
     if (inFlight.current) return
     inFlight.current = true
     clearAnnouncements()
     setShowAlert(false)
     setBusy(true)
-    const result = await addBook(fields, options)
+    const result = book ? await editBook(book.id, fields, options) : await addBook(fields, options)
     inFlight.current = false
     setBusy(false)
     if (result.kind === 'ok') {
-      onAdded(result.ids.bookId ?? '', fields.title.trim())
+      onSaved(book ? book.id : (result.ids.bookId ?? ''), fields.title.trim())
       return
     }
     // The warning is the dialog alone: no alert line and no field errors.
@@ -118,12 +147,12 @@ export default function NewBookPanel({ tags, onClose, onAdded }: Props) {
     announce('alert', result.message)
   }
 
-  const dontAdd = () => {
+  const dismissDuplicate = () => {
     setDuplicate(null)
-    setFocusTitle((count) => count + 1)
+    setRefocus((count) => count + 1)
   }
 
-  const addAnyway = () => {
+  const confirmDuplicate = () => {
     setDuplicate(null)
     void submit({ confirmDuplicate: true })
   }
@@ -131,15 +160,15 @@ export default function NewBookPanel({ tags, onClose, onAdded }: Props) {
   return (
     <>
       <SidePanel
-        title="New book"
+        title={mode.title}
         onClose={onClose}
         onSubmit={() => void submit()}
         initialFocus={title}
         showAlert={showAlert}
         footer={
           <>
-            <Button type="submit" variant="primary" disabledReason={busy ? SAVING : undefined}>
-              Add book
+            <Button ref={submitButton} type="submit" variant="primary" disabledReason={busy ? SAVING : undefined}>
+              {mode.submit}
             </Button>
             <Button onClick={onClose}>Cancel</Button>
           </>
@@ -166,10 +195,11 @@ export default function NewBookPanel({ tags, onClose, onAdded }: Props) {
       </SidePanel>
       {duplicate && (
         <DuplicateDialog
+          mode={modeKey}
           duplicates={duplicate.duplicates}
           message={duplicate.message}
-          onDontAdd={dontAdd}
-          onAddAnyway={addAnyway}
+          onDismiss={dismissDuplicate}
+          onConfirm={confirmDuplicate}
         />
       )}
     </>

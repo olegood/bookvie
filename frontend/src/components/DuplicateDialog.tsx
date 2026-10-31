@@ -7,15 +7,23 @@ import styles from './DuplicateDialog.module.css'
 // The description names this many matches, then "and N more".
 const NAMED = 3
 
+/** The two buttons' labels, by the panel's mode (EXPERIENCE.md → Duplicate dialog). */
+const LABELS = {
+  new: { dismiss: "Don't add", confirm: 'Add anyway' },
+  edit: { dismiss: "Don't save", confirm: 'Save anyway' },
+} as const
+
 type Props = {
+  /** New book (Don't add · Add anyway) or Edit book (Don't save · Save anyway). */
+  mode?: keyof typeof LABELS
   /** The matching Books from the `duplicate_book` refusal, in catalog order. */
   duplicates: DuplicateMatch[]
   /** The server's message, shown only if no matches came with the refusal. */
   message: string
-  /** Don't add, and Esc: the owner unmounts the dialog. */
-  onDontAdd: () => void
-  /** Add anyway: the owner unmounts the dialog and resends. */
-  onAddAnyway: () => void
+  /** Don't add / Don't save, and Esc: the owner unmounts the dialog. */
+  onDismiss: () => void
+  /** Add anyway / Save anyway: the owner unmounts the dialog and resends. */
+  onConfirm: () => void
 }
 
 function separator(index: number, count: number): string {
@@ -45,12 +53,14 @@ function describe(duplicates: DuplicateMatch[]): ReactNode {
 
 /**
  * The Duplicate dialog (DESIGN.md → Duplicate dialog): an `alertdialog`
- * "Possible duplicate" stacked over the New book panel, a native `<dialog>`
- * opened with `showModal()` for as long as it is mounted, so the panel behind
- * is inert. **Don't add** comes first and takes focus; Esc acts as it. While
- * open it holds the live regions; on close they go back to the panel.
+ * "Possible duplicate" stacked over the New or Edit book panel, a native
+ * `<dialog>` opened with `showModal()` for as long as it is mounted, so the
+ * panel behind is inert. **Don't add** (**Don't save** in edit mode) comes
+ * first and takes focus; Esc acts as it. While open it holds the live
+ * regions; on close they go back to the panel.
  */
-export default function DuplicateDialog({ duplicates, message, onDontAdd, onAddAnyway }: Props) {
+export default function DuplicateDialog({ mode = 'new', duplicates, message, onDismiss, onConfirm }: Props) {
+  const labels = LABELS[mode]
   const headingId = useId()
   const descriptionId = useId()
   const dialog = useRef<HTMLDialogElement>(null)
@@ -97,16 +107,16 @@ export default function DuplicateDialog({ duplicates, message, onDontAdd, onAddA
       aria-describedby={descriptionId}
       onKeyDown={keepFocusInside}
       onCancel={(event) => {
-        // Esc acts as Don't add; the panel behind stays open.
+        // Esc acts as Don't add / Don't save; the panel behind stays open.
         event.preventDefault()
         event.stopPropagation()
-        onDontAdd()
+        onDismiss()
       }}
       // A native close that skips `cancel` still reaches the owner; a queued
       // close that lands after a StrictMode reopen is stale and ignored.
       onClose={(event) => {
         event.stopPropagation()
-        if (!event.currentTarget.open) onDontAdd()
+        if (!event.currentTarget.open) onDismiss()
       }}
     >
       <h2 id={headingId} className={styles.heading}>
@@ -116,9 +126,9 @@ export default function DuplicateDialog({ duplicates, message, onDontAdd, onAddA
         {duplicates.length > 0 ? describe(duplicates) : message}
       </p>
       <div className={styles.actions}>
-        <Button onClick={onDontAdd}>Don't add</Button>
-        <Button variant="primary" onClick={onAddAnyway}>
-          Add anyway
+        <Button onClick={onDismiss}>{labels.dismiss}</Button>
+        <Button variant="primary" onClick={onConfirm}>
+          {labels.confirm}
         </Button>
       </div>
       <div ref={regionSlot} />

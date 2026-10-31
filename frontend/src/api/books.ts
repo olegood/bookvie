@@ -1,6 +1,7 @@
-// Book intents. `add-book` is multipart: one `intent` part holding the New
-// book form's raw strings as JSON, keyed by the camelCase intent keys (the
-// server trims and validates them; Story 1.13 adds the cover file part).
+// Book intents. `add-book` and `edit-book` are multipart: one `intent` part
+// holding the book form's raw strings as JSON, keyed by the camelCase intent
+// keys (the server trims and validates them; Story 1.13 adds the cover file
+// part). `edit-book` also names the Book, as `bookId`, first.
 
 import { useQueryClient, type QueryClient } from '@tanstack/react-query'
 import type { IntentResult } from './envelope.ts'
@@ -29,10 +30,13 @@ export type BookFieldKey = (typeof BOOK_FIELD_KEYS)[number]
 export type BookFields = Record<BookFieldKey, string>
 
 /**
- * `confirmDuplicate: true` adds the Book even though it matches one already in
- * the catalog (the Duplicate dialog's Add anyway). Omitted on a first send.
+ * `confirmDuplicate: true` saves the Book even though it matches another one
+ * in the catalog (the Duplicate dialog's Add anyway / Save anyway). Omitted on
+ * a first send.
  */
-export type AddBookOptions = { confirmDuplicate?: true }
+export type BookSaveOptions = { confirmDuplicate?: true }
+export type AddBookOptions = BookSaveOptions
+export type EditBookOptions = BookSaveOptions
 
 export function addBookForm(fields: BookFields, options: AddBookOptions = {}): FormData {
   const form = new FormData()
@@ -50,4 +54,27 @@ export function addBook(client: QueryClient, fields: BookFields, options?: AddBo
 export function useAddBook(): (fields: BookFields, options?: AddBookOptions) => Promise<IntentResult> {
   const client = useQueryClient()
   return (fields, options) => addBook(client, fields, options)
+}
+
+export function editBookForm(bookId: string, fields: BookFields, options: EditBookOptions = {}): FormData {
+  const form = new FormData()
+  const intent = options.confirmDuplicate ? { bookId, ...fields, confirmDuplicate: true } : { bookId, ...fields }
+  form.set('intent', JSON.stringify(intent))
+  return form
+}
+
+/** Sends `edit-book`; resolves after the views have refetched. */
+export function editBook(
+  client: QueryClient,
+  bookId: string,
+  fields: BookFields,
+  options?: EditBookOptions,
+): Promise<IntentResult> {
+  return sendIntent(client, 'edit-book', editBookForm(bookId, fields, options))
+}
+
+/** `editBook` bound to the app's QueryClient. */
+export function useEditBook(): (bookId: string, fields: BookFields, options?: EditBookOptions) => Promise<IntentResult> {
+  const client = useQueryClient()
+  return (bookId, fields, options) => editBook(client, bookId, fields, options)
 }

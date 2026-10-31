@@ -141,7 +141,7 @@ export default function CatalogPage() {
     setPanelOpen(true)
   }
 
-  const onAdded = (id: string, title: string) => {
+  const onSaved = (id: string, title: string) => {
     // Clear a search that could hide the new Book, then close the panel.
     cancelCount()
     setQuery('')
@@ -180,7 +180,7 @@ export default function CatalogPage() {
         <CatalogList books={sorted} query={query} highlightId={highlightId} focusTargets={focusTargets} />
       )}
       {panelOpen && (
-        <NewBookPanel tags={view.data.tags} onClose={() => setPanelOpen(false)} onAdded={onAdded} />
+        <NewBookPanel tags={view.data.tags} onClose={() => setPanelOpen(false)} onSaved={onSaved} />
       )}
     </div>
   )

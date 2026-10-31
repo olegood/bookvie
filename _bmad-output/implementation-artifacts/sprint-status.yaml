@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-29-2026 17:21
-last_updated: 10-30-2026 23:05
+last_updated: 10-31-2026 11:12
 project: bookvie
 project_key: NOKEY
 tracking_system: file-system
@@ -46,7 +46,7 @@ development_status:
   1-8-add-a-book-with-the-new-book-panel: done
   1-9-get-warned-about-duplicates: done
   1-10-see-the-library-as-a-bookcase: done
-  1-11-open-and-edit-a-book: backlog
+  1-11-open-and-edit-a-book: review
   1-12-delete-a-book: backlog
   1-13-add-a-cover: backlog
   1-14-change-a-book-s-color-from-the-shelf: backlog

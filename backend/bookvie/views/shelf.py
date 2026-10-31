@@ -1,9 +1,16 @@
-"""The ``home`` and ``catalog`` views: pure functions of the committed library."""
+"""The ``home``, ``catalog`` and ``book`` views: pure functions of the committed library."""
 
 from bookvie.domain import Book, Library
 from bookvie.domain.book_fields import merge_tags
 
-from .models import CatalogView, HomeView, LibraryMeter, ShelfBook
+from .models import (
+    BookDetailView,
+    BookReading,
+    CatalogView,
+    HomeView,
+    LibraryMeter,
+    ShelfBook,
+)
 
 
 def _finished(book: Book) -> bool:
@@ -47,3 +54,31 @@ def home(library: Library) -> HomeView:
     """Placeholder slice: the Catalog's books and meter until Stories 3.1/3.5."""
     view = catalog(library)
     return HomeView(meter=view.meter, books=view.books)
+
+
+def book_detail(library: Library, book_id: str) -> BookDetailView | None:
+    """One Book for Book detail, or ``None`` when there is no such Book."""
+    book = library.book(book_id)
+    if book is None:
+        return None
+    latest = book.latest_finished()
+    return BookDetailView(
+        id=book.id,
+        title=book.title,
+        subtitle=book.subtitle,
+        authors=list(book.authors),
+        pages=book.pages,
+        edition=book.edition,
+        language=book.language,
+        publisher=book.publisher,
+        type=book.type,
+        isbn=book.isbn,
+        year=book.year,
+        tags=list(book.tags),
+        spine_color_user=book.spine_color_user,
+        latest_finish_date=latest.finish_date if latest else None,
+        readings=[
+            BookReading(id=r.id, start_date=r.start_date, finish_date=r.finish_date)
+            for r in book.readings
+        ],
+    )

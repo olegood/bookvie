@@ -38,8 +38,15 @@
   line-height: var(--font-book-title-sm-line-height);
 }
 
-.table .title:focus-visible {
-  outline-offset: calc(var(--focus-ring-width) * -1);
+/* DESIGN.md: a serif title link in ink, underlined on hover and focus only. */
+.titleLink {
+  color: var(--color-ink);
+  text-decoration-line: none;
+}
+
+.titleLink:hover,
+.titleLink:focus-visible {
+  text-decoration-line: underline;
 }
 
 /* DESIGN.md → Highlight ring, on a newly added row: on at once, fading off. */

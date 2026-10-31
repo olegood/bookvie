@@ -80,6 +80,16 @@ class Book(_Model):
     readings: list[Reading]
     card_notes: list[CardNote]
 
+    def latest_finished(self) -> Reading | None:
+        """The finished Reading with the greatest ``finishDate``; the later in list order on a tie."""
+        latest: Reading | None = None
+        for reading in self.readings:
+            if reading.finish_date is None:
+                continue
+            if latest is None or reading.finish_date >= latest.finish_date:  # type: ignore[operator]
+                latest = reading
+        return latest
+
 
 class Library(_Model):
     schema_version: int

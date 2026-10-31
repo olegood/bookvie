@@ -18,6 +18,7 @@ The tests pin these names:
 """
 
 import json
+from datetime import date
 from pathlib import Path
 from typing import Any
 
@@ -25,6 +26,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from bookvie.domain import Library, check_invariants
+from bookvie.domain.book_fields import long_date
 from bookvie.http.app import create_app
 from bookvie.intents import COULDNT_SAVE_MESSAGE
 from tests.builder import CURATED, LibraryBuilder
@@ -36,8 +38,6 @@ from tests.test_add_book import (
     _stored_books,
 )
 from tests.test_store import FaultyFs
-
-RED = "ATDD red phase: un-skip when Story 1.11 builds edit-book"
 
 EDIT_BOOK = "/api/intents/edit-book"
 # Ace's Dune, as stored and as typed with the hyphens printed on the copy.
@@ -97,7 +97,6 @@ def _readings(data_dir: Path, book_id: str) -> list[dict[str, Any]]:
 # --- AC-3: the same validation and duplicate flow as add-book -----------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_ac3_p0_edit_book_validates_like_add_book_and_skips_the_edited_book_in_the_duplicate_check(
     tmp_path: Path, library_builder: LibraryBuilder
 ) -> None:
@@ -152,7 +151,6 @@ def test_ac3_p0_edit_book_validates_like_add_book_and_skips_the_edited_book_in_t
 # --- AC-6: Pages below the current page ------------------------------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_ac6_p0_pages_below_the_current_page_is_409_and_finished_readings_keep_their_pages(
     tmp_path: Path, library_builder: LibraryBuilder
 ) -> None:
@@ -189,7 +187,6 @@ def test_ac6_p0_pages_below_the_current_page_is_409_and_finished_readings_keep_t
 # --- AC-7: Pages below the highest Card note page ----------------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_ac7_p0_pages_below_the_highest_card_note_page_is_refused(
     tmp_path: Path, library_builder: LibraryBuilder
 ) -> None:
@@ -233,7 +230,6 @@ def test_ac7_p0_pages_below_the_highest_card_note_page_is_refused(
 # --- AC-8: Finished on edits the most recent finish ---------------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_ac8_p0_finished_on_changes_the_most_recent_finish_and_cannot_be_cleared(
     tmp_path: Path, library_builder: LibraryBuilder
 ) -> None:
@@ -273,7 +269,6 @@ def test_ac8_p0_finished_on_changes_the_most_recent_finish_and_cannot_be_cleared
 # --- AC-9: not before the Reading's start --------------------------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_ac9_p1_finished_on_before_the_readings_start_date_is_422_and_saves_nothing(
     tmp_path: Path, library_builder: LibraryBuilder
 ) -> None:
@@ -301,7 +296,6 @@ def test_ac9_p1_finished_on_before_the_readings_start_date_is_422_and_saves_noth
 # --- AC-10: Finished on on a Book with no finished Reading --------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_ac10_p0_finished_on_back_fills_a_reading_and_leaves_the_current_one_untouched(
     tmp_path: Path, library_builder: LibraryBuilder
 ) -> None:
@@ -336,7 +330,6 @@ def test_ac10_p0_finished_on_back_fills_a_reading_and_leaves_the_current_one_unt
 # --- AC-11: spine color is re-resolved only when an input changes -------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_ac11_p1_changing_spine_color_re_resolves_it_and_other_edits_leave_it_alone(
     tmp_path: Path, library_builder: LibraryBuilder
 ) -> None:
@@ -372,7 +365,6 @@ def test_ac11_p1_changing_spine_color_re_resolves_it_and_other_edits_leave_it_al
 # --- AC-12: standard intent ACs (TR8) -----------------------------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_ac12_p0_edit_book_keeps_the_standard_intent_guarantees(tmp_path: Path) -> None:
     for step in ("write", "fsync", "replace"):
         data_dir = tmp_path / step
@@ -414,3 +406,333 @@ def test_ac12_p0_edit_book_keeps_the_standard_intent_guarantees(tmp_path: Path) 
     # Every new code is in the contract (AD-8, AD-9).
     codes = create_app().openapi()["components"]["schemas"]["ErrorCode"]["enum"]
     assert {"book_not_found", "pages_below_current_page", "pages_below_card_note"} <= set(codes)
+
+
+# --- Follow-ups (green phase) ---------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("day", "text"),
+    [
+        (date(2026, 3, 12), "12 March 2026"),
+        (date(2019, 1, 1), "1 January 2019"),
+        (date(2024, 12, 31), "31 December 2024"),
+        (date(2025, 9, 5), "5 September 2025"),
+    ],
+)
+def test_long_date_is_day_full_month_year(day: date, text: str) -> None:
+    assert long_date(day) == text
+
+
+def test_a_case_only_title_edit_saves_without_matching_itself(
+    tmp_path: Path, library_builder: LibraryBuilder
+) -> None:
+    dune = library_builder.book(**DUNE)
+    library_builder.book(**NEUROMANCER)
+    library_builder.write(tmp_path)
+    client = _client(tmp_path)
+
+    assert _edit(client, dune, DUNE_FORM, title="DUNE").status_code == 200
+    assert _stored_book(tmp_path, dune)["title"] == "DUNE"
+
+    # Trimmed values are compared: padding alone is no change.
+    response = _edit(client, dune, {**DUNE_FORM, "title": "DUNE"}, title="  DUNE  ")
+    assert response.status_code == 200
+
+
+def test_a_case_only_title_edit_onto_another_book_is_a_duplicate(
+    tmp_path: Path, library_builder: LibraryBuilder
+) -> None:
+    library_builder.book(**{**DUNE, "isbn": None})
+    neuromancer = library_builder.book(**NEUROMANCER)
+    library_builder.write(tmp_path)
+    client = _client(tmp_path)
+
+    response = _edit(client, neuromancer, NEUROMANCER_FORM, title="dune", authors="Frank Herbert")
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "duplicate_book"
+
+
+def test_an_author_only_edit_onto_another_book_is_a_duplicate(
+    tmp_path: Path, library_builder: LibraryBuilder
+) -> None:
+    library_builder.book(title="Dune", authors=["Frank Herbert"], pages=412)
+    other = library_builder.book(title="Dune", authors=["Someone Else"], pages=412)
+    library_builder.write(tmp_path)
+    client = _client(tmp_path)
+    form = {**NEUROMANCER_FORM, "title": "Dune", "authors": "Someone Else", "pages": "412"}
+    before = _library_bytes(tmp_path)
+
+    response = _edit(client, other, form, authors="Frank Herbert")
+
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "duplicate_book"
+    assert _library_bytes(tmp_path) == before
+
+
+def test_an_isbn_only_edit_onto_another_books_isbn_is_a_duplicate(
+    tmp_path: Path, library_builder: LibraryBuilder
+) -> None:
+    library_builder.book(**DUNE)
+    neuromancer = library_builder.book(**NEUROMANCER)
+    library_builder.write(tmp_path)
+    client = _client(tmp_path)
+    before = _library_bytes(tmp_path)
+
+    response = _edit(client, neuromancer, NEUROMANCER_FORM, isbn=DUNE_ISBN13)
+
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "duplicate_book"
+    assert _library_bytes(tmp_path) == before
+
+
+def test_the_latest_finish_is_by_date_not_by_stored_order(
+    tmp_path: Path, library_builder: LibraryBuilder
+) -> None:
+    dune = library_builder.book(**DUNE)
+    newer = library_builder.reading(
+        dune, start_date=None, finish_date="2025-06-01", current_page=412, finished_pages=412
+    )
+    older = library_builder.reading(
+        dune, start_date=None, finish_date="2019-08-14", current_page=412, finished_pages=412
+    )
+    library_builder.write(tmp_path)
+    client = _client(tmp_path)
+
+    view = client.get("/api/views/book", params={"id": dune}).json()
+    assert view["latestFinishDate"] == "2025-06-01"
+
+    form = {**DUNE_FORM, "finishedOn": "2025-06-01"}
+    assert _edit(client, dune, form, finishedOn="2025-06-03").status_code == 200
+    by_id = {r["id"]: r["finishDate"] for r in _readings(tmp_path, dune)}
+    assert by_id == {newer: "2025-06-03", older: "2019-08-14"}
+
+
+def test_below_both_floors_the_higher_floor_wins(
+    tmp_path: Path, library_builder: LibraryBuilder
+) -> None:
+    dune = library_builder.book(**DUNE)
+    library_builder.reading(dune, current_page=300)
+    library_builder.card_note(dune, page_start=320)
+    hyperion = library_builder.book(title="Hyperion", authors=["Dan Simmons"], pages=482)
+    library_builder.reading(hyperion, current_page=330)
+    library_builder.card_note(hyperion, page_start=320)
+    # A tie names the current page.
+    emma = library_builder.book(title="Emma", authors=["Jane Austen"], pages=400)
+    library_builder.reading(emma, current_page=200)
+    library_builder.card_note(emma, page_start=150, page_end=200)
+    library_builder.write(tmp_path)
+    client = _client(tmp_path)
+    before = _library_bytes(tmp_path)
+
+    by_note = _edit(client, dune, DUNE_FORM, pages="100")
+    assert by_note.status_code == 409
+    assert by_note.json()["error"] == {
+        "kind": "refusal",
+        "code": "pages_below_card_note",
+        "message": "Not saved. 1 field needs attention: Pages.",
+        "fields": [{"field": "pages", "message": "Pages can't be less than 320, where a card note is."}],
+    }
+
+    other = {**DUNE_FORM, "isbn": "", "year": "", "publisher": "Publisher"}
+    by_page = _edit(client, hyperion, {**other, "title": "Hyperion", "authors": "Dan Simmons"}, pages="100")
+    assert by_page.json()["error"]["code"] == "pages_below_current_page"
+    assert _field_messages(by_page) == {"pages": "Pages can't be less than 330, the page you're on."}
+
+    tie = _edit(client, emma, {**other, "title": "Emma", "authors": "Jane Austen"}, pages="100")
+    assert tie.json()["error"]["code"] == "pages_below_current_page"
+    assert _library_bytes(tmp_path) == before
+
+
+def test_a_paused_reading_is_a_pages_floor(
+    tmp_path: Path, library_builder: LibraryBuilder
+) -> None:
+    dune = library_builder.book(**DUNE)
+    library_builder.reading(dune, current_page=300, paused_at="2026-10-01")
+    library_builder.write(tmp_path)
+    client = _client(tmp_path)
+
+    response = _edit(client, dune, DUNE_FORM, pages="250")
+
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "pages_below_current_page"
+
+
+def test_field_failures_come_before_the_pages_floors_in_form_order(
+    tmp_path: Path, library_builder: LibraryBuilder
+) -> None:
+    dune = library_builder.book(**DUNE)
+    library_builder.reading(
+        dune, start_date="2026-03-12", finish_date="2026-04-02", current_page=412, finished_pages=412
+    )
+    library_builder.card_note(dune, page_start=270)
+    library_builder.write(tmp_path)
+    client = _client(tmp_path)
+
+    response = _edit(client, dune, DUNE_FORM, pages="100", finishedOn="", spineColor="red", title="")
+
+    assert response.status_code == 422
+    assert [f["field"] for f in response.json()["error"]["fields"]] == [
+        "title",
+        "finishedOn",
+        "spineColor",
+    ]
+    assert response.json()["error"]["message"] == (
+        "Not saved. 3 fields need attention: Title, Finished on, Spine color."
+    )
+
+
+def test_the_same_finish_date_resent_is_a_no_op_and_a_tie_edits_the_later_reading(
+    tmp_path: Path, library_builder: LibraryBuilder
+) -> None:
+    dune = library_builder.book(**DUNE)
+    first = library_builder.reading(
+        dune, start_date=None, finish_date="2025-06-01", current_page=412, finished_pages=412
+    )
+    second = library_builder.reading(
+        dune, start_date="2025-05-01", finish_date="2025-06-01", current_page=412, finished_pages=412
+    )
+    library_builder.write(tmp_path)
+    client = _client(tmp_path)
+    form = {**DUNE_FORM, "finishedOn": "2025-06-01"}
+    before = _library_bytes(tmp_path)
+
+    assert _edit(client, dune, form).status_code == 200
+    assert _library_bytes(tmp_path) == before
+
+    assert _edit(client, dune, form, finishedOn="2025-06-02").status_code == 200
+    by_id = {r["id"]: r["finishDate"] for r in _readings(tmp_path, dune)}
+    assert by_id == {first: "2025-06-01", second: "2025-06-02"}
+
+
+def test_an_empty_finished_on_is_fine_without_a_finished_reading(
+    tmp_path: Path, library_builder: LibraryBuilder
+) -> None:
+    dune = library_builder.book(**DUNE)
+    library_builder.reading(dune, current_page=10)
+    library_builder.write(tmp_path)
+    client = _client(tmp_path)
+
+    assert _edit(client, dune, DUNE_FORM, subtitle="A Novel").status_code == 200
+    (reading,) = _readings(tmp_path, dune)
+    assert reading["finishDate"] is None
+
+
+def test_a_paused_book_back_fill_leaves_paused_at_and_up_next_alone(
+    tmp_path: Path, library_builder: LibraryBuilder
+) -> None:
+    dune = library_builder.book(**DUNE)
+    paused = library_builder.reading(dune, current_page=50, paused_at="2026-10-01")
+    library_builder.write(tmp_path)
+    doc = json.loads(_library_bytes(tmp_path))
+    doc["upNextBookId"] = dune
+    (tmp_path / "library.json").write_text(json.dumps(doc))
+    client = _client(tmp_path)
+
+    assert _edit(client, dune, DUNE_FORM, finishedOn="2020-01-01").status_code == 200
+    stored = json.loads(_library_bytes(tmp_path))
+    assert stored["upNextBookId"] == dune
+    by_id = {r["id"]: r for r in _readings(tmp_path, dune)}
+    assert by_id[paused]["pausedAt"] == "2026-10-01"
+    assert len(by_id) == 2
+
+
+def test_edit_keeps_identity_cover_curated_color_and_card_notes(
+    tmp_path: Path, library_builder: LibraryBuilder
+) -> None:
+    dune = library_builder.book(**DUNE, cover_file="covers/x.jpg", spine_color_from_cover="#336699")
+    library_builder.card_note(dune, page_start=12)
+    library_builder.write(tmp_path)
+    before = _stored_book(tmp_path, dune)
+    client = _client(tmp_path)
+
+    assert _edit(client, dune, DUNE_FORM, title="Dune (Ace)", tags="sci-fi, SCI-FI, classics").status_code == 200
+    after = _stored_book(tmp_path, dune)
+    for key in ("id", "createdAt", "ownership", "coverFile", "spineColorCurated", "spineColor", "cardNotes"):
+        assert after[key] == before[key], key
+    assert after["tags"] == ["sci-fi", "classics"]
+    assert after["title"] == "Dune (Ace)"
+
+
+@pytest.mark.parametrize(
+    "intent",
+    [None, "[]", "{", json.dumps({**DUNE_FORM}), json.dumps({"bookId": None, **DUNE_FORM})],
+)
+def test_a_malformed_edit_intent_is_an_intent_field_error(tmp_path: Path, intent: str | None) -> None:
+    client = _client(tmp_path)
+    files = {"intent": (None, intent, "application/json")} if intent is not None else None
+    response = client.post(EDIT_BOOK, files=files) if files else client.post(EDIT_BOOK)
+    assert response.status_code == 422
+    assert _field_messages(response) == {
+        "intent": "The intent must be a JSON object of the form's fields."
+    }
+
+
+# --- The book view (Book detail) ----------------------------------------------
+
+
+def test_book_view_returns_the_book_and_its_latest_finish(
+    tmp_path: Path, library_builder: LibraryBuilder
+) -> None:
+    dune = library_builder.book(
+        **DUNE, subtitle="A Novel", tags=["sci-fi"], type="hardcover", spine_color_user="#112233"
+    )
+    old = library_builder.reading(
+        dune, start_date=None, finish_date="2019-08-14", current_page=412, finished_pages=412
+    )
+    new = library_builder.reading(
+        dune, start_date="2024-01-02", finish_date="2024-02-10", current_page=412, finished_pages=412
+    )
+    library_builder.write(tmp_path)
+    before = _library_bytes(tmp_path)
+
+    response = _client(tmp_path).get("/api/views/book", params={"id": dune})
+
+    assert response.status_code == 200
+    body = response.json()
+    readings = body.pop("readings")
+    assert body == {
+        "id": dune,
+        "title": "Dune",
+        "subtitle": "A Novel",
+        "authors": ["Frank Herbert"],
+        "pages": 412,
+        "edition": 1,
+        "language": "English",
+        "publisher": "Chilton Books",
+        "type": "hardcover",
+        "isbn": DUNE_ISBN13,
+        "year": 1965,
+        "tags": ["sci-fi"],
+        "spineColorUser": "#112233",
+        "latestFinishDate": "2024-02-10",
+    }
+    assert sorted(readings, key=lambda r: r["id"]) == sorted(
+        [
+            {"id": old, "startDate": None, "finishDate": "2019-08-14"},
+            {"id": new, "startDate": "2024-01-02", "finishDate": "2024-02-10"},
+        ],
+        key=lambda r: r["id"],
+    )
+    assert _library_bytes(tmp_path) == before
+
+
+def test_book_view_without_a_finish_has_no_latest_finish_date(
+    tmp_path: Path, library_builder: LibraryBuilder
+) -> None:
+    dune = library_builder.book(**DUNE)
+    library_builder.reading(dune, current_page=10)
+    library_builder.write(tmp_path)
+
+    body = _client(tmp_path).get("/api/views/book", params={"id": dune}).json()
+
+    assert body["latestFinishDate"] is None
+    assert [r["finishDate"] for r in body["readings"]] == [None]
+
+
+def test_book_view_for_an_unknown_id_is_404_book_not_found(tmp_path: Path) -> None:
+    response = _client(tmp_path).get("/api/views/book", params={"id": "nope"})
+
+    assert response.status_code == 404
+    error = response.json()["error"]
+    assert (error["kind"], error["code"]) == ("refusal", "book_not_found")

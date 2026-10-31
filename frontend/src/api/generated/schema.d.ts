@@ -53,6 +53,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/views/book": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Book View
+         * @description One Book as Book detail shows it; 404 ``book_not_found`` when it is gone.
+         */
+        get: operations["book_view_api_views_book_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/intents/add-book": {
         parameters: {
             query?: never;
@@ -73,6 +93,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/intents/edit-book": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Edit Book Intent
+         * @description Correct a Book's details (FR-1, FR-3).
+         */
+        post: operations["edit_book_intent_api_intents_edit_book_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -84,6 +124,62 @@ export interface components {
              * @description JSON object of the New book form's fields, as typed.
              */
             intent?: string | null;
+        };
+        /** Body_edit_book_intent_api_intents_edit_book_post */
+        Body_edit_book_intent_api_intents_edit_book_post: {
+            /**
+             * Intent
+             * @description JSON object of the Edit book form's fields, as typed, plus bookId.
+             */
+            intent?: string | null;
+        };
+        /**
+         * BookDetailView
+         * @description One Book as Book detail and the Edit book panel show it.
+         */
+        BookDetailView: {
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
+            /** Subtitle */
+            subtitle: string | null;
+            /** Authors */
+            authors: string[];
+            /** Pages */
+            pages: number;
+            /** Edition */
+            edition: number;
+            /** Language */
+            language: string;
+            /** Publisher */
+            publisher: string;
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "paperback" | "hardcover" | "ebook";
+            /** Isbn */
+            isbn: string | null;
+            /** Year */
+            year: number | null;
+            /** Tags */
+            tags: string[];
+            /** Spinecoloruser */
+            spineColorUser: string | null;
+            /** Latestfinishdate */
+            latestFinishDate: string | null;
+            /** Readings */
+            readings: components["schemas"]["BookReading"][];
+        };
+        /** BookReading */
+        BookReading: {
+            /** Id */
+            id: string;
+            /** Startdate */
+            startDate: string | null;
+            /** Finishdate */
+            finishDate: string | null;
         };
         /** CatalogView */
         CatalogView: {
@@ -120,7 +216,7 @@ export interface components {
          * ErrorCode
          * @enum {string}
          */
-        ErrorCode: "invalid_fields" | "couldnt_save" | "duplicate_book";
+        ErrorCode: "invalid_fields" | "couldnt_save" | "duplicate_book" | "book_not_found" | "pages_below_current_page" | "pages_below_card_note";
         /**
          * ErrorKind
          * @enum {string}
@@ -334,6 +430,73 @@ export interface operations {
             };
         };
     };
+    book_view_api_views_book_get: {
+        parameters: {
+            query: {
+                id: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BookDetailView"];
+                };
+            };
+            /** @description No such Book */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Refused by a library rule */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Invalid fields */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Couldn't save */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Couldn't save */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     add_book_intent_api_intents_add_book_post: {
         parameters: {
             query?: never;
@@ -344,6 +507,66 @@ export interface operations {
         requestBody?: {
             content: {
                 "multipart/form-data": components["schemas"]["Body_add_book_intent_api_intents_add_book_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkResponse"];
+                };
+            };
+            /** @description Refused by a library rule */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Invalid fields */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Couldn't save */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Couldn't save */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    edit_book_intent_api_intents_edit_book_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_edit_book_intent_api_intents_edit_book_post"];
             };
         };
         responses: {

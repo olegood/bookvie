@@ -9,130 +9,46 @@ with 409 ``duplicate_book`` (FR-3, AD-10) unless it carries
 :func:`commit`, which commits once or changes nothing.
 """
 
-import json
 import uuid
 
-from pydantic import BaseModel, ConfigDict, ValidationError, field_validator
-from pydantic.alias_generators import to_camel
-
-from bookvie.domain import Book, Clock, Library, Reading
-from bookvie.domain.book_fields import (
-    LABELS,
-    curated_spine_color,
-    parse_book_fields,
-    resolve_spine_color,
-)
+from bookvie.domain import Book, Clock, Library
+from bookvie.domain.book_fields import curated_spine_color, resolve_spine_color
 from bookvie.domain.duplicates import find_duplicates
 from bookvie.store import Store
 
-from .commit import commit
-from .contract import (
-    DuplicateMatch,
-    FieldError,
-    IntentError,
-    duplicate_book,
-    invalid_fields,
+from .book_form import (
+    BookFormIntent,
+    backfill_reading,
+    parse_form_intent,
+    refuse_duplicates,
+    valid_fields,
 )
-
-INTENT_FIELD = "intent"
-MALFORMED_INTENT_MESSAGE = "The intent must be a JSON object of the form's fields."
+from .commit import commit
 
 
-class AddBookIntent(BaseModel):
-    """The New book form as typed: every value a string, every key optional.
-
-    ``confirmDuplicate`` is the one non-form key: a strict JSON boolean.
-    """
-
-    model_config = ConfigDict(
-        alias_generator=to_camel,
-        extra="forbid",
-        strict=True,
-    )
-
-    title: str | None = None
-    subtitle: str | None = None
-    pages: str | None = None
-    authors: str | None = None
-    edition: str | None = None
-    language: str | None = None
-    publisher: str | None = None
-    type: str | None = None
-    isbn: str | None = None
-    year: str | None = None
-    finished_on: str | None = None
-    tags: str | None = None
-    spine_color: str | None = None
-    confirm_duplicate: bool = False
-    """Add even when the Book matches one already in the catalog. Never stored."""
-
-    @field_validator("*", mode="before")
-    @classmethod
-    def _no_null(cls, value: object) -> object:
-        # An omitted key stays None (defaults skip validation); an explicit null is malformed.
-        if value is None:
-            raise ValueError("null is not a string")
-        return value
-
-
-def _malformed() -> IntentError:
-    return invalid_fields([FieldError(field=INTENT_FIELD, message=MALFORMED_INTENT_MESSAGE)])
+class AddBookIntent(BookFormIntent):
+    """The New book form as typed (see :class:`BookFormIntent`)."""
 
 
 def parse_add_book_intent(raw: str | None) -> AddBookIntent:
     """The ``intent`` form part as an :class:`AddBookIntent`, or 422 on ``intent``."""
-    if raw is None:
-        raise _malformed()
-    try:
-        doc = json.loads(raw)
-    except (ValueError, RecursionError):
-        raise _malformed() from None
-    if not isinstance(doc, dict):
-        raise _malformed()
-    try:
-        return AddBookIntent.model_validate(doc)
-    except ValidationError:
-        raise _malformed() from None
+    return parse_form_intent(AddBookIntent, raw)
 
 
 def add_book(store: Store, clock: Clock, intent: AddBookIntent) -> str:
     """Validate ``intent``, then append the Book and commit; returns its id."""
-    raw = intent.model_dump(by_alias=True, exclude={"confirm_duplicate"})
-    parsed = parse_book_fields(raw, clock.today())
-    if isinstance(parsed, list):
-        raise invalid_fields(
-            [FieldError(field=key, message=message) for key, message in parsed], LABELS
-        )
-    fields = parsed
+    fields = valid_fields(intent, clock.today())
     book_id = str(uuid.uuid4())
     reading_id = str(uuid.uuid4())
     created_at = clock.now()
 
     def change(library: Library) -> None:
         # Inside the commit, so the check sees committed state under the store lock.
-        matches = find_duplicates(library.books, fields)
-        if matches and not intent.confirm_duplicate:
-            raise duplicate_book(
-                DuplicateMatch(title=book.title, authors=list(book.authors), isbn=book.isbn)
-                for book in matches
-            )
+        refuse_duplicates(find_duplicates(library.books, fields), intent.confirm_duplicate)
         curated = curated_spine_color(len(library.books))
         readings = []
         if fields.finished_on is not None:
-            readings.append(
-                Reading(
-                    id=reading_id,
-                    start_date=None,
-                    current_page=fields.pages,
-                    purpose=None,
-                    last_progress_update=None,
-                    paused_at=None,
-                    finish_date=fields.finished_on,
-                    finished_pages=fields.pages,
-                    purpose_fulfilled=None,
-                    rating=None,
-                )
-            )
+            readings.append(backfill_reading(reading_id, fields.finished_on, fields.pages))
         library.books.append(
             Book(
                 id=book_id,

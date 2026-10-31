@@ -4,10 +4,14 @@
 export {
   addBook,
   BOOK_FIELD_KEYS,
+  editBook,
   useAddBook,
+  useEditBook,
   type AddBookOptions,
   type BookFieldKey,
   type BookFields,
+  type BookSaveOptions,
+  type EditBookOptions,
 } from './books.ts'
 export {
   COULDNT_SAVE_MESSAGE,
@@ -20,9 +24,13 @@ export {
 export { sendIntent } from './intents.ts'
 export { createQueryClient } from './queryClient.ts'
 export {
+  useBookView,
   useCatalogView,
   useHomeView,
   viewKey,
+  type BookDetailView,
+  type BookReading,
+  type BookViewState,
   type CatalogView,
   type HomeView,
   type LibraryMeter,

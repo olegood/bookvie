@@ -6,6 +6,7 @@ import { createQueryClient } from './api/index.ts'
 import AppShell from './components/AppShell.tsx'
 import { markNavigated } from './lib/page.ts'
 import { applyTheme, readTheme } from './lib/theme.ts'
+import BookDetailPage from './pages/BookDetailPage.tsx'
 import CatalogPage from './pages/CatalogPage.tsx'
 import { BareErrorPage, RouteErrorPage } from './pages/ErrorPage.tsx'
 import NotFoundPage from './pages/NotFoundPage.tsx'
@@ -29,6 +30,7 @@ const router = createBrowserRouter([
         errorElement: <RouteErrorPage />,
         children: [
           { path: '/', element: <CatalogPage /> },
+          { path: '/book/:bookId', element: <BookDetailPage /> },
           { path: '*', element: <NotFoundPage /> },
         ],
       },

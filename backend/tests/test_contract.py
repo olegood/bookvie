@@ -289,9 +289,17 @@ def openapi() -> dict:
 
 def test_openapi_error_enums(openapi: dict) -> None:
     schemas = openapi["components"]["schemas"]
-    assert schemas["ErrorCode"]["enum"] == ["invalid_fields", "couldnt_save", "duplicate_book"]
+    codes = [
+        "invalid_fields",
+        "couldnt_save",
+        "duplicate_book",
+        "book_not_found",
+        "pages_below_current_page",
+        "pages_below_card_note",
+    ]
+    assert schemas["ErrorCode"]["enum"] == codes
     assert schemas["ErrorKind"]["enum"] == ["refusal", "couldnt_save"]
-    assert [code.value for code in ErrorCode] == ["invalid_fields", "couldnt_save", "duplicate_book"]
+    assert [code.value for code in ErrorCode] == codes
     assert [kind.value for kind in ErrorKind] == ["refusal", "couldnt_save"]
 
 
@@ -305,7 +313,9 @@ def test_openapi_documents_the_envelope_not_fastapi_errors(openapi: dict) -> Non
     ids = schemas["OkResponse"]["properties"]["ids"]["anyOf"][0]
     assert ids == {"type": "object", "additionalProperties": {"type": "string"}}
     operations = [("get", "/api/views/home"), ("get", "/api/views/catalog")]
+    operations.append(("get", "/api/views/book"))
     operations.append(("post", "/api/intents/add-book"))
+    operations.append(("post", "/api/intents/edit-book"))
     for method, path in operations:
         responses = openapi["paths"][path][method]["responses"]
         for status in ("409", "422", "500", "503"):

@@ -1,7 +1,16 @@
 import assert from 'node:assert/strict'
 import { afterEach, describe, it, mock } from 'node:test'
 import { QueryClient, QueryObserver } from '@tanstack/react-query'
-import { fetchView, toViewState, viewKey, type CatalogView } from './views.ts'
+import {
+  bookViewKey,
+  fetchBookView,
+  fetchView,
+  toBookViewState,
+  toViewState,
+  viewKey,
+  type BookDetailView,
+  type CatalogView,
+} from './views.ts'
 
 const empty: CatalogView = { meter: { finished: 0, total: 0 }, books: [], tags: [] }
 
@@ -85,5 +94,54 @@ describe('fetchView', () => {
       unsubscribe()
       client.clear()
     }
+  })
+})
+
+const dune: BookDetailView = {
+  id: 'b1',
+  title: 'Dune',
+  subtitle: null,
+  authors: ['Frank Herbert'],
+  pages: 412,
+  edition: 1,
+  language: 'English',
+  publisher: 'Chilton Books',
+  type: 'paperback',
+  isbn: null,
+  year: null,
+  tags: [],
+  spineColorUser: null,
+  latestFinishDate: null,
+  readings: [],
+}
+
+describe('the book view', () => {
+  afterEach(() => mock.restoreAll())
+
+  it("is keyed under 'view' by id", () => {
+    assert.deepEqual(bookViewKey('b1'), ['view', 'book', 'b1'])
+  })
+
+  it('GETs the book route with the id as a query parameter', async () => {
+    const fetch = mock.method(globalThis, 'fetch', async (..._args: [string]) => Response.json(dune))
+    assert.deepEqual(await fetchBookView('a b&c'), dune)
+    assert.equal(fetch.mock.calls[0].arguments[0], '/api/views/book?id=a+b%26c')
+  })
+
+  it('is null on 404 and rejects on any other error status', async () => {
+    mock.method(globalThis, 'fetch', async () =>
+      Response.json({ error: { kind: 'refusal', code: 'book_not_found', message: 'm' } }, { status: 404 }),
+    )
+    assert.equal(await fetchBookView('gone'), null)
+    mock.method(globalThis, 'fetch', async () => new Response('', { status: 500 }))
+    await assert.rejects(fetchBookView('b1'))
+  })
+
+  it('maps null to missing and otherwise behaves like any view', () => {
+    const refetch = () => undefined
+    assert.deepEqual(toBookViewState({ data: null, status: 'success', refetch }), { status: 'missing' })
+    assert.deepEqual(toBookViewState({ data: dune, status: 'success', refetch }), { status: 'ready', data: dune })
+    assert.deepEqual(toBookViewState({ data: undefined, status: 'pending', refetch }), { status: 'loading' })
+    assert.equal(toBookViewState({ data: undefined, status: 'error', refetch }).status, 'failed')
   })
 })

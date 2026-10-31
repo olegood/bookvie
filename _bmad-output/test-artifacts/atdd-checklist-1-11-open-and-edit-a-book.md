@@ -89,7 +89,7 @@ Level split (no duplicate coverage): every `edit-book` rule is proven at API. Th
 
 - **Story ID:** `1.11`
 - **Story Key:** `1-11-open-and-edit-a-book`
-- **Story File:** none yet; criteria from `_bmad-output/planning-artifacts/epics.md` (Story 1.11)
+- **Story File:** [`spec-1-11-open-and-edit-a-book.md`](../implementation-artifacts/spec-1-11-open-and-edit-a-book.md); criteria from `_bmad-output/planning-artifacts/epics.md` (Story 1.11)
 - **Checklist Path:** `_bmad-output/test-artifacts/atdd-checklist-1-11-open-and-edit-a-book.md`
 - **Generated Test Files:** `backend/tests/test_edit_book.py`, `frontend/e2e/book-detail.spec.ts`
 
@@ -150,49 +150,50 @@ None. Every test runs against a real server or a real `Store`. Nothing is routed
 Activate one test at a time: delete its `@pytest.mark.skip(reason=RED)` line, or change `test.skip(` to `test(`, then watch it fail, implement, and watch it pass. Backend: `cd backend && TZ=Europe/Madrid uv run pytest tests/test_edit_book.py -k ac6`. E2E: `npm run build && npm --prefix frontend run e2e -- e2e/book-detail.spec.ts -g "AC-2 "`.
 
 ### AC-3 the intent (do first: every other API leaf posts to it)
-- [ ] `intents/edit_book.py`: `EditBookIntent` = `AddBookIntent`'s fields + `book_id` (required); parse with `parse_book_fields` against `clock.today()`; refuse with `book_not_found` inside the commit when the id is gone
-- [ ] Duplicate check inside the commit, only when title, authors or ISBN differ from the stored Book; run `find_duplicates` over every Book except this one; `confirmDuplicate` as in add-book
-- [ ] `http/api.py`: `POST /api/intents/edit-book` → `OkResponse(ok=True)`; regenerate the TS types (`npm run check:api`)
-- [ ] Activate AC-3, then AC-12 (TR8: FaultyFs, invariants, `book_not_found`, codes in `ErrorCode`)
+- [x] `intents/edit_book.py`: `EditBookIntent` = `AddBookIntent`'s fields + `book_id` (required); parse with `parse_book_fields` against `clock.today()`; refuse with `book_not_found` inside the commit when the id is gone
+- [x] Duplicate check inside the commit, only when title, authors or ISBN differ from the stored Book; run `find_duplicates` over every Book except this one; `confirmDuplicate` as in add-book
+- [x] `http/api.py`: `POST /api/intents/edit-book` → `OkResponse(ok=True)`; regenerate the TS types (`npm run check:api`)
+- [x] Activate AC-3, then AC-12 (TR8: FaultyFs, invariants, `book_not_found`, codes in `ErrorCode`)
 
 ### AC-6 / AC-7 Pages floors
-- [ ] `ErrorCode.PAGES_BELOW_CURRENT_PAGE`, `PAGES_BELOW_CARD_NOTE`, `BOOK_NOT_FOUND`; a 409 helper that carries one `FieldError` on `pages`
-- [ ] Current page: the unfinished Reading (active or paused) of this Book. Card note page: `max(pageEnd or pageStart)`. Check after field validation, and only when Pages is valid
-- [ ] Never touch `finishedPages` on Pages change
-- [ ] Activate AC-6, then AC-7
+- [x] `ErrorCode.PAGES_BELOW_CURRENT_PAGE`, `PAGES_BELOW_CARD_NOTE`, `BOOK_NOT_FOUND`; a 409 helper that carries one `FieldError` on `pages`
+- [x] Current page: the unfinished Reading (active or paused) of this Book. Card note page: `max(pageEnd or pageStart)`. Check after field validation, and only when Pages is valid
+- [x] Never touch `finishedPages` on Pages change
+- [x] Activate AC-6, then AC-7
 
 ### AC-8 / AC-9 / AC-10 Finished on in edit
-- [ ] The latest finished Reading by `finishDate`: empty Finished on refused ("A finish date can't be removed here."); a changed date sets that Reading's `finishDate`; not before its `startDate` ("Finished on can't be before 12 March 2026, when this reading started.", the same formatter Finish dialog / FIN-API-003 will use); not in the future (already in `parse_book_fields`)
-- [ ] No finished Reading and a date given: append a back-filled Reading exactly as add-book does; leave the unfinished Reading and `mainBookId` alone
-- [ ] Same date as stored: no change
-- [ ] Activate AC-8, AC-9, AC-10
+- [x] The latest finished Reading by `finishDate`: empty Finished on refused ("A finish date can't be removed here."); a changed date sets that Reading's `finishDate`; not before its `startDate` ("Finished on can't be before 12 March 2026, when this reading started.", the same formatter Finish dialog / FIN-API-003 will use); not in the future (already in `parse_book_fields`)
+- [x] No finished Reading and a date given: append a back-filled Reading exactly as add-book does; leave the unfinished Reading and `mainBookId` alone
+- [x] Same date as stored: no change
+- [x] Activate AC-8, AC-9, AC-10
 
 ### AC-11 spine color
-- [ ] Re-resolve `spineColor` only when `spineColor` (the user input) differs from `spineColorUser`; then `resolve_spine_color(user, fromCover, curated)`
-- [ ] Activate AC-11
+- [x] Re-resolve `spineColor` only when `spineColor` (the user input) differs from `spineColorUser`; then `resolve_spine_color(user, fromCover, curated)`
+- [x] Activate AC-11
 
 ### AC-1 Book detail
-- [ ] A Book detail view. AD-6 allows `GET /api/views/book?id=…` or similar; the E2E leaves don't pin the URL. It returns what the page shows: fields, tags and Readings (start, finish)
-- [ ] Route (e.g. `/books/:bookId`) in `main.tsx`; `pages/BookDetail.tsx`: `surface` card, `h1` in `book-title-lg`, subtitle, author, a `dl` metadata grid, tag chips, a `section` "Readings" labelled by its heading; `usePageTitle` (or the existing `lib/page.ts`) for "*Title* — bookvie" and focus on `h1`
-- [ ] `CatalogList.tsx`: the title cell becomes a `Link` to Book detail (the comment there already says so). The add-flow focus target becomes that link. Re-run `new-book-panel.spec.ts` AC-5 (`row.locator(':focus')` must still read "Dune") and `duplicate-dialog.spec.ts` AC-8
-- [ ] Format a Reading as "Finished 14 Aug 2019" (en-GB short month), with "Started …" only when `startDate` is set
-- [ ] Activate AC-1
+- [x] A Book detail view. AD-6 allows `GET /api/views/book?id=…` or similar; the E2E leaves don't pin the URL. It returns what the page shows: fields, tags and Readings (start, finish)
+- [x] Route (e.g. `/books/:bookId`) in `main.tsx`; `pages/BookDetail.tsx`: `surface` card, `h1` in `book-title-lg`, subtitle, author, a `dl` metadata grid, tag chips, a `section` "Readings" labelled by its heading; `usePageTitle` (or the existing `lib/page.ts`) for "*Title* — bookvie" and focus on `h1`
+- [x] `CatalogList.tsx`: the title cell becomes a `Link` to Book detail (the comment there already says so). The add-flow focus target becomes that link. Re-run `new-book-panel.spec.ts` AC-5 (`row.locator(':focus')` must still read "Dune") and `duplicate-dialog.spec.ts` AC-8
+- [x] Format a Reading as "Finished 14 Aug 2019" (en-GB short month), with "Started …" only when `startDate` is set
+- [x] Activate AC-1
 
 ### AC-2 / AC-4 / AC-5 the Edit book panel
-- [ ] Generalize `NewBookPanel` with a `mode: 'new' | 'edit'` (or a `book` prop): dialog name, prefill, **Save changes**, `useEditBook` in `api/books.ts` (mirroring `addBook`, with `bookId` first), and `onSaved` → `announce('status', 'Saved <Title>.')` after the views refetch (AD-7), with focus on **Edit**
-- [ ] `DuplicateDialog`: labels by mode (**Don't add** · **Add anyway** / **Don't save** · **Save anyway**); in edit mode **Don't save** returns focus to **Save changes**, not Title
-- [ ] Map a 409 with `fields` through the same field-error path as 422
-- [ ] Activate AC-2, AC-4, AC-5
+- [x] Generalize `NewBookPanel` with a `mode: 'new' | 'edit'` (or a `book` prop): dialog name, prefill, **Save changes**, `useEditBook` in `api/books.ts` (mirroring `addBook`, with `bookId` first), and `onSaved` → `announce('status', 'Saved <Title>.')` after the views refetch (AD-7), with focus on **Edit**
+- [x] `DuplicateDialog`: labels by mode (**Don't add** · **Add anyway** / **Don't save** · **Save anyway**); in edit mode **Don't save** returns focus to **Save changes**, not Title
+- [x] Map a 409 with `fields` through the same field-error path as 422
+- [x] Activate AC-2, AC-4, AC-5
 
 ### Green-phase follow-ups (secondary branches, not separate red leaves)
-- [ ] AC-12 (E2E, TR9): a routed 503 on **Save changes** keeps the Edit book panel open with every edited value, the `alert` and the in-panel line read "Couldn't save. Your data wasn't changed." in ink, and **Save changes** is `aria-disabled` while in flight (mirror `new-book-panel.spec.ts` AC-7 and AC-12)
+- [x] AC-12 (E2E, TR9): a routed 503 on **Save changes** keeps the Edit book panel open with every edited value, the `alert` and the in-panel line read "Couldn't save. Your data wasn't changed." in ink, and **Save changes** is `aria-disabled` while in flight (mirror `new-book-panel.spec.ts` AC-7 and AC-12)
 - [ ] AC-1: a Book with no subtitle, ISBN or Year (no empty rows or dangling labels); several authors on the author line; an unknown Book id in the URL lands on the not-found page; a Reading with a start date reads "Started … · Finished …"; Back returns to Catalog in List view with the search kept; axe AA in both themes
 - [ ] AC-2: **Cancel**, **Close** and Esc discard edits and return focus to **Edit**; the live regions are emptied on open and at each press; Tags suggestions work in edit mode; a swatch press fills Spine color
-- [ ] AC-3: whitespace-only or case-only changes to title or authors. Decide whether "changed" compares raw strings or normalized keys (see Notes); an ISBN-10 ↔ ISBN-13 rewrite of the same number
+- [x] AC-3: whitespace-only or case-only changes to title or authors. Decide whether "changed" compares raw strings or normalized keys (see Notes)
+- [ ] AC-3: an ISBN-10 ↔ ISBN-13 rewrite of the same number
 - [ ] AC-4: Esc on the dialog acts as **Don't save**; Tab cycles the two buttons; axe on the open dialog
-- [ ] AC-6: a *paused* Reading (not Main) at p.300 refuses the same way; Pages below both floors at once. Decide which message wins, or list both (see Notes)
-- [ ] AC-8: the same date resent is a no-op success; when two finished Readings share the latest date, the later one in list order is edited
-- [ ] AC-10: on a paused Book (Waiting for you) the back-fill leaves `pausedAt` and Up next alone
+- [x] AC-6: a *paused* Reading (not Main) at p.300 refuses the same way; Pages below both floors at once. Decide which message wins, or list both (see Notes)
+- [x] AC-8: the same date resent is a no-op success; when two finished Readings share the latest date, the later one in list order is edited
+- [x] AC-10: on a paused Book (Waiting for you) the back-fill leaves `pausedAt` and Up next alone
 - [ ] AC-11: a swatch in edit mode; a Book with a cover color and a user color, cleared back to the cover color (done at API; repeat in E2E only if the panel logic grows)
 - [ ] CAT-E2E-007 (Flow 9): back-fill via Edit on Book detail, then the spine in Bookcase view shows the color and the meter counts it
 

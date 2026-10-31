@@ -27,9 +27,12 @@ from bookvie.intents import (
     IntentError,
     OkResponse,
     add_book,
+    book_not_found,
     couldnt_save,
+    edit_book,
     invalid_fields,
     parse_add_book_intent,
+    parse_edit_book_intent,
 )
 
 # Every /api route documents the envelope for these statuses. Declaring 422
@@ -60,6 +63,19 @@ def catalog_view(request: Request) -> views.CatalogView:
     return views.catalog(request.app.state.store.library)
 
 
+@router.get(
+    "/views/book",
+    response_model=views.BookDetailView,
+    responses={404: {"model": ErrorResponse, "description": "No such Book"}},
+)
+def book_view(request: Request, id: str) -> views.BookDetailView:
+    """One Book as Book detail shows it; 404 ``book_not_found`` when it is gone."""
+    view = views.book_detail(request.app.state.store.library, id)
+    if view is None:
+        raise book_not_found(404)
+    return view
+
+
 @router.post("/intents/add-book", response_model=OkResponse, response_model_exclude_none=True)
 def add_book_intent(
     request: Request,
@@ -75,6 +91,23 @@ def add_book_intent(
     parsed = parse_add_book_intent(intent)
     book_id = add_book(request.app.state.store, request.app.state.clock, parsed)
     return OkResponse(ok=True, ids={"bookId": book_id})
+
+
+@router.post("/intents/edit-book", response_model=OkResponse, response_model_exclude_none=True)
+def edit_book_intent(
+    request: Request,
+    intent: Annotated[
+        str | None,
+        Form(
+            media_type="multipart/form-data",
+            description="JSON object of the Edit book form's fields, as typed, plus bookId.",
+        ),
+    ] = None,
+) -> OkResponse:
+    """Correct a Book's details (FR-1, FR-3)."""
+    parsed = parse_edit_book_intent(intent)
+    edit_book(request.app.state.store, request.app.state.clock, parsed)
+    return OkResponse(ok=True)
 
 
 def _is_api(request: Request) -> bool:
