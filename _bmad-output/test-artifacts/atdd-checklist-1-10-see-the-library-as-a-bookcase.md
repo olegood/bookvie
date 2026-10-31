@@ -180,17 +180,17 @@ Activate one test at a time: delete its `@pytest.mark.skip(reason=RED)` line, or
 - [x] Activate AC-11
 
 ### Green-phase follow-ups (secondary branches, not separate red leaves)
-- [ ] AC-1: an empty library shows neither the toggle nor Search titles (`catalog-empty.spec.ts` AC-8 "only New book" must keep passing); a broken or unknown stored value falls back to Bookcase; localStorage throwing doesn't break the page; Tab order is Search titles → Bookcase → List → **New book**
+- [x] AC-1: an empty library shows neither the toggle nor Search titles (`catalog-empty.spec.ts` AC-8 "only New book" must keep passing); a broken or unknown stored value falls back to Bookcase; localStorage throwing doesn't break the page; Tab order is Search titles → Bookcase → List → **New book** (empty library: `catalog-empty.spec.ts` AC-8; the rest: `bookcase.spec.ts` and `bookcase-details.spec.ts`)
 - [x] AC-3 (unit, `src/**/*.test.ts`): the height function at the boundaries: a width of 0 gives 120; the step rounds up at w = 80/3 (w = 26.66 → 128, w = 26.67 → 136, w = 26.8 → 136); the cap starts at 200 (w > 240 → 200)
-- [ ] AC-3: the 1.5px outline at `deviceScaleFactor: 2` (Chromium snaps a 1.5px border to 1px at DPR 1); the spines are bottom-aligned on the plank; the strip leaves a 6px band of color on each side; a user-set near-black and pure white are shown exactly; text-spacing overrides grow the spine
+- [ ] AC-3: (done in `bookcase-details.spec.ts`: the spines are bottom-aligned on the plank; the strip leaves a 6px band of color on each side; a user-set near-black and pure white are shown exactly; text-spacing overrides grow the spine) open: the 1.5px outline. Playwright 1.64's Chromium computes a 1.5px border as 1px at `deviceScaleFactor: 2` too, even on a plain `div`, so no browser test can pin it
 - [x] AC-4: the wording for exactly one co-author (see Notes); a Book with no authors (`firstAuthor` is "") gets no dangling "by"
-- [ ] AC-5: rows reflow when the viewport goes from 1024 to 1440px; about 35 spines a plank at 1280px; 12px inner padding at the row ends; the list name with one Book ("Bookcase, 1 book")
-- [ ] AC-6: a performance budget for the first render of 500 spines (a P3 check)
-- [ ] AC-7: (done: Left on the first spine and Right on the last don't wrap; Up from row 1 and Down from the last row stay put; arrows skip `hidden` spines) open: Enter and Space do nothing until the popover story
-- [ ] AC-8: the nearest-neighbour tie rule; clearing the search keeps the tab stop; when the focused spine itself is hidden (filters and delete come in Epic 7 and Story 1.12), real focus moves, and it goes to Search titles when none remain
-- [ ] AC-9: reduced motion shows the ring instantly and scrolls with `behavior: 'auto'`; a search that would hide the new Book is cleared first; Add anyway from the Duplicate dialog lands on the spine the same way
-- [ ] AC-10: the remembered List view after a reload runs the List form of the check
-- [ ] AC-11: axe with 500 spines; the dark-theme computed colors of the edge, strip and unread outline; the two-tone focus ring on a spine (`page` band, then `accent`)
+- [x] AC-5: rows reflow when the viewport goes from 1024 to 1440px; about 35 spines a plank at 1280px; 12px inner padding at the row ends; the list name with one Book ("Bookcase, 1 book": unit, `catalog.test.ts`)
+- [ ] AC-6: a performance budget for the first render of 500 spines (a P3 check). Open: NFR7 sets a scale, not a time, so there is no budget to assert
+- [x] AC-7: Left on the first spine and Right on the last don't wrap; Up from row 1 and Down from the last row stay put; arrows skip `hidden` spines; Enter and Space do nothing until the popover story
+- [x] AC-8: the nearest-neighbour tie rule; clearing the search keeps the tab stop; when the focused spine itself is hidden (filters and delete come in Epic 7 and Story 1.12), real focus moves, and it goes to Search titles when none remain (driven by setting Search titles from a script, so focus stays on the spine)
+- [x] AC-9: reduced motion shows the ring instantly and scrolls with `behavior: 'auto'`; a search that would hide the new Book is cleared first; Add anyway from the Duplicate dialog lands on the spine the same way
+- [x] AC-10: the remembered List view after a reload runs the List form of the check (AC-1 reloads into List; AC-10 runs the List form)
+- [x] AC-11: axe with 500 spines; the dark-theme computed colors of the edge, strip and unread outline; the two-tone focus ring on a spine (`page` band, then `accent`)
 
 ---
 
