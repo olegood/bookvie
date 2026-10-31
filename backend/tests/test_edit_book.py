@@ -43,6 +43,8 @@ EDIT_BOOK = "/api/intents/edit-book"
 # Ace's Dune, as stored and as typed with the hyphens printed on the copy.
 DUNE_ISBN13 = "9780441172719"
 DUNE_ISBN13_HYPHENATED = "978-0-441-17271-9"
+# The same number as the ISBN-10 printed on older copies.
+DUNE_ISBN10 = "0-441-17271-7"
 
 # Dune as the builder seeds it (snake_case) and as the Edit book panel
 # prefills it (camelCase form strings). Edition 1, so the panel sends "1".
@@ -483,6 +485,43 @@ def test_an_isbn_only_edit_onto_another_books_isbn_is_a_duplicate(
 
     assert response.status_code == 409
     assert response.json()["error"]["code"] == "duplicate_book"
+    assert _library_bytes(tmp_path) == before
+
+
+def test_rewriting_the_isbn_as_its_isbn10_saves_as_typed_without_matching_itself(
+    tmp_path: Path, library_builder: LibraryBuilder
+) -> None:
+    dune = library_builder.book(**DUNE)
+    library_builder.book(**NEUROMANCER)
+    library_builder.write(tmp_path)
+    client = _client(tmp_path)
+
+    response = _edit(client, dune, DUNE_FORM, isbn=DUNE_ISBN10)
+
+    assert response.status_code == 200
+    assert _stored_book(tmp_path, dune)["isbn"] == DUNE_ISBN10
+
+    # And back to the ISBN-13: the same number again, still no warning.
+    response = _edit(client, dune, {**DUNE_FORM, "isbn": DUNE_ISBN10}, isbn=DUNE_ISBN13)
+    assert response.status_code == 200
+    assert _stored_book(tmp_path, dune)["isbn"] == DUNE_ISBN13
+
+
+def test_an_isbn10_edit_onto_another_books_isbn13_is_a_duplicate(
+    tmp_path: Path, library_builder: LibraryBuilder
+) -> None:
+    library_builder.book(**DUNE)
+    neuromancer = library_builder.book(**NEUROMANCER)
+    library_builder.write(tmp_path)
+    client = _client(tmp_path)
+    before = _library_bytes(tmp_path)
+
+    response = _edit(client, neuromancer, NEUROMANCER_FORM, isbn=DUNE_ISBN10)
+
+    assert response.status_code == 409
+    error = response.json()["error"]
+    assert error["code"] == "duplicate_book"
+    assert [book["title"] for book in error["duplicates"]] == ["Dune"]
     assert _library_bytes(tmp_path) == before
 
 

@@ -186,16 +186,16 @@ Activate one test at a time: delete its `@pytest.mark.skip(reason=RED)` line, or
 
 ### Green-phase follow-ups (secondary branches, not separate red leaves)
 - [x] AC-12 (E2E, TR9): a routed 503 on **Save changes** keeps the Edit book panel open with every edited value, the `alert` and the in-panel line read "Couldn't save. Your data wasn't changed." in ink, and **Save changes** is `aria-disabled` while in flight (mirror `new-book-panel.spec.ts` AC-7 and AC-12)
-- [ ] AC-1: a Book with no subtitle, ISBN or Year (no empty rows or dangling labels); several authors on the author line; an unknown Book id in the URL lands on the not-found page; a Reading with a start date reads "Started … · Finished …"; Back returns to Catalog in List view with the search kept; axe AA in both themes
-- [ ] AC-2: **Cancel**, **Close** and Esc discard edits and return focus to **Edit**; the live regions are emptied on open and at each press; Tags suggestions work in edit mode; a swatch press fills Spine color
+- [x] AC-1: a Book with no subtitle, ISBN or Year (no empty rows or dangling labels); several authors on the author line; an unknown Book id in the URL lands on the not-found page; a Reading with a start date reads "Started … · Finished …"; Back returns to Catalog in List view with the search kept (dropped: not in the spec, see the 1.11 review); axe AA in both themes
+- [x] AC-2: **Cancel**, **Close** and Esc discard edits and return focus to **Edit**; the live regions are emptied on open and at each press; Tags suggestions work in edit mode; a swatch press fills Spine color
 - [x] AC-3: whitespace-only or case-only changes to title or authors. Decide whether "changed" compares raw strings or normalized keys (see Notes)
-- [ ] AC-3: an ISBN-10 ↔ ISBN-13 rewrite of the same number
-- [ ] AC-4: Esc on the dialog acts as **Don't save**; Tab cycles the two buttons; axe on the open dialog
+- [x] AC-3: an ISBN-10 ↔ ISBN-13 rewrite of the same number
+- [x] AC-4: Esc on the dialog acts as **Don't save**; Tab cycles the two buttons; axe on the open dialog
 - [x] AC-6: a *paused* Reading (not Main) at p.300 refuses the same way; Pages below both floors at once. Decide which message wins, or list both (see Notes)
 - [x] AC-8: the same date resent is a no-op success; when two finished Readings share the latest date, the later one in list order is edited
 - [x] AC-10: on a paused Book (Waiting for you) the back-fill leaves `pausedAt` and Up next alone
-- [ ] AC-11: a swatch in edit mode; a Book with a cover color and a user color, cleared back to the cover color (done at API; repeat in E2E only if the panel logic grows)
-- [ ] CAT-E2E-007 (Flow 9): back-fill via Edit on Book detail, then the spine in Bookcase view shows the color and the meter counts it
+- [x] AC-11: a swatch in edit mode; a Book with a cover color and a user color, cleared back to the cover color (done at API; repeat in E2E only if the panel logic grows)
+- [x] CAT-E2E-007 (Flow 9): back-fill via Edit on Book detail, then the spine in Bookcase view shows the color and the meter counts it
 
 ---
 

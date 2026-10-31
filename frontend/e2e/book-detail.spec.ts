@@ -5,7 +5,9 @@
 // (backend/tests/test_edit_book.py); these tests read what the browser shows by
 // role and exact accessible name.
 
+import AxeBuilder from '@axe-core/playwright'
 import type { Locator, Page, Request } from '@playwright/test'
+import { spine, viewToggle } from './bookcase.ts'
 import { expect, type Server, test } from './fixtures.ts'
 
 const EDIT_BOOK = '/api/intents/edit-book'
@@ -17,6 +19,9 @@ const COULDNT_SAVE = "Couldn't save. Your data wasn't changed."
 const COULDNT_LOAD = "Couldn't load. Is bookvie still running?"
 // DESIGN.md ink, light theme.
 const INK = 'rgb(43, 46, 42)'
+// DESIGN.md → Spine colors: the Clay swatch, as typed and as computed.
+const CLAY = { hex: '#9B6753', rgb: 'rgb(155, 103, 83)' }
+const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']
 
 type CatalogBody = { books: { title: string }[] }
 
@@ -46,6 +51,11 @@ async function openEdit(page: Page): Promise<Locator> {
 async function catalogTitles(page: Page, server: Server): Promise<string[]> {
   const response = await page.request.get(`${server.url}/api/views/catalog`)
   return ((await response.json()) as CatalogBody).books.map((book) => book.title).sort()
+}
+
+/** Waits until `element` and its subtree finish their open animations, so axe sees final colors. */
+async function settled(element: Locator): Promise<void> {
+  await element.evaluate((node) => Promise.all(node.getAnimations({ subtree: true }).map((a) => a.finished)))
 }
 
 /** Every edit-book POST the page sends, in order. */
@@ -430,5 +440,170 @@ test.describe('Story 1.11 Book detail and Edit book (ATDD)', () => {
     await expect(page.getByRole('heading', { level: 1, name: 'Dune', exact: true })).toBeVisible()
     await expect(page).toHaveTitle('Dune — bookvie')
     await expect(page.getByText(COULDNT_LOAD)).toHaveCount(0)
+  })
+
+  test('[P1] CAT-E2E-007 a back-fill and a swatch saved through Edit show on the bookcase spine and in the meter', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({
+      books: [
+        { id: DUNE_ID, title: 'Dune', authors: ['Frank Herbert'], pages: 412 },
+        { title: 'Neuromancer', authors: ['William Gibson'], pages: 271 },
+      ],
+    })
+    await openBook(page, server, 'Dune')
+    await expect(page.getByRole('region', { name: 'Readings', exact: true })).toHaveText(/Not read yet\./)
+    const panel = await openEdit(page)
+    const clay = panel.getByRole('button', { name: 'Clay', exact: true })
+
+    await clay.click()
+    await expect(panel.getByLabel('Spine color', { exact: true })).toHaveValue(new RegExp(`^${CLAY.hex}$`, 'i'))
+    await expect(clay).toHaveAttribute('aria-pressed', 'true')
+    await panel.getByLabel('Finished on', { exact: true }).fill('2026-03-20')
+    await panel.getByRole('button', { name: 'Save changes', exact: true }).click()
+    await expect(page.getByRole('status')).toHaveText('Saved Dune.')
+    await expect(panel).toBeHidden()
+    await expect(page.getByRole('region', { name: 'Readings', exact: true }).getByRole('listitem')).toHaveText([
+      'Finished 20 Mar 2026',
+    ])
+
+    // Reopened: prefilled with what was saved, and the live regions start empty.
+    await openEdit(page)
+    await expect(page.getByRole('status')).toHaveText('')
+    await expect(page.getByRole('alert')).toHaveText('')
+    await expect(panel.getByLabel('Finished on', { exact: true })).toHaveValue('2026-03-20')
+    await expect(panel.getByLabel('Spine color', { exact: true })).toHaveValue(new RegExp(`^${CLAY.hex}$`, 'i'))
+    await expect(clay).toHaveAttribute('aria-pressed', 'true')
+    await panel.getByRole('button', { name: 'Cancel', exact: true }).click()
+
+    // The Bookcase view: the spine reads as finished, in Clay, and the meter counts it.
+    await page.goto(`${server.url}/`)
+    await viewToggle(page).getByRole('button', { name: 'Bookcase', exact: true }).click()
+    const dune = spine(page, 'Dune by Frank Herbert, finished')
+    await expect(dune).toBeVisible()
+    await expect(dune).toHaveCSS('background-color', CLAY.rgb)
+    const meter = page.getByRole('main').getByRole('progressbar')
+    await expect(meter).toHaveAttribute('aria-valuetext', '1 of 2 finished')
+    await expect(meter).toHaveAttribute('aria-valuenow', '1')
+  })
+
+  test('[P2] AC-2 Tags suggests existing tags in edit mode and the picked tag is saved', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({
+      books: [
+        { title: 'Dune', authors: ['Frank Herbert'], pages: 412, tags: ['sci-fi'] },
+        { title: 'Cosmos', authors: ['Carl Sagan'], pages: 365, tags: ['science', 'classics'] },
+      ],
+    })
+    await openBook(page, server, 'Dune')
+    const panel = await openEdit(page)
+    const tags = panel.getByRole('combobox', { name: 'Tags', exact: true })
+    await expect(tags).toHaveValue('sci-fi')
+
+    await tags.press('End')
+    await tags.pressSequentially(', cl')
+    const suggestions = panel.getByRole('listbox')
+    await expect(suggestions.getByRole('option')).toHaveText(['classics'])
+    await expect(tags).toHaveAttribute('aria-expanded', 'true')
+
+    await tags.press('ArrowDown')
+    await tags.press('Enter')
+    await expect(tags).toHaveValue(/^sci-fi, classics(, )?$/)
+    await expect(panel).toBeVisible()
+    await panel.getByRole('button', { name: 'Save changes', exact: true }).click()
+    await expect(page.getByRole('status')).toHaveText('Saved Dune.')
+    const main = page.getByRole('main')
+    for (const tag of ['sci-fi', 'classics']) {
+      await expect(main.getByText(tag, { exact: true }), tag).toBeVisible()
+    }
+  })
+
+  test("[P2] AC-4 Esc on Possible duplicate acts as Don't save; Tab and Shift+Tab cycle its two buttons", async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({
+      books: [
+        { title: 'Dune', authors: ['Frank Herbert'], pages: 412 },
+        { title: 'Dune Messiah', authors: ['Frank Herbert'], pages: 256 },
+      ],
+    })
+    await openBook(page, server, 'Dune Messiah')
+    const panel = await openEdit(page)
+    const save = panel.getByRole('button', { name: 'Save changes', exact: true })
+    await panel.getByLabel('Title', { exact: true }).fill('Dune')
+    await save.click()
+    const dialog = duplicateDialog(page)
+    const dontSave = dialog.getByRole('button', { name: "Don't save", exact: true })
+    const saveAnyway = dialog.getByRole('button', { name: 'Save anyway', exact: true })
+    await expect(dontSave).toBeFocused()
+
+    for (const [key, focused] of [
+      ['Tab', saveAnyway],
+      ['Tab', dontSave],
+      ['Shift+Tab', saveAnyway],
+      ['Shift+Tab', dontSave],
+    ] as const) {
+      await page.keyboard.press(key)
+      await expect(focused, key).toBeFocused()
+    }
+
+    await page.keyboard.press('Escape')
+    await expect(dialog).toBeHidden()
+    await expect(panel).toBeVisible()
+    await expect(panel.getByLabel('Title', { exact: true })).toHaveValue('Dune')
+    await expect(save).toBeFocused()
+    expect(await catalogTitles(page, server)).toEqual(['Dune', 'Dune Messiah'])
+  })
+
+  test('[P2] AC-1 AC-4 Book detail, the Edit book panel and the edit-mode duplicate dialog pass axe in both themes', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({
+      books: [
+        {
+          title: 'Dune',
+          subtitle: 'A Novel',
+          authors: ['Frank Herbert'],
+          pages: 412,
+          isbn: DUNE_ISBN13,
+          year: 1965,
+          tags: ['sci-fi', 'classics'],
+          readings: [
+            { startDate: '2024-01-02', currentPage: 412, finishDate: '2024-02-10', finishedPages: 412 },
+            { startDate: '2026-09-02', currentPage: 30 },
+          ],
+        },
+        { title: 'Dune Messiah', authors: ['Frank Herbert'], pages: 256 },
+      ],
+    })
+    const axe = async (where: string): Promise<string[]> => {
+      const { violations } = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze()
+      return violations.map(({ id, nodes }) => `${where}: ${id} (${nodes.length})`)
+    }
+
+    for (const colorScheme of ['light', 'dark'] as const) {
+      await page.emulateMedia({ colorScheme })
+      await openBook(page, server, 'Dune')
+      await expect(page.getByRole('heading', { level: 1, name: 'Dune', exact: true })).toBeFocused()
+      expect(await axe(`${colorScheme} detail`)).toEqual([])
+
+      const panel = await openEdit(page)
+      await expect(panel.getByLabel('Title', { exact: true })).toBeFocused()
+      await settled(panel)
+      expect(await axe(`${colorScheme} panel`)).toEqual([])
+
+      // Retitled onto Dune Messiah: the duplicate dialog over the panel.
+      await panel.getByLabel('Title', { exact: true }).fill('Dune Messiah')
+      await panel.getByLabel('ISBN', { exact: true }).fill('')
+      await panel.getByRole('button', { name: 'Save changes', exact: true }).click()
+      await expect(duplicateDialog(page)).toBeVisible()
+      await settled(duplicateDialog(page))
+      expect(await axe(`${colorScheme} dialog`)).toEqual([])
+    }
   })
 })
