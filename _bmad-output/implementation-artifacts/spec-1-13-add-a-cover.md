@@ -84,6 +84,37 @@ Decisions:
 - Given `npm run check`, when it runs, then it exits 0 with all 11 Story 1.13 scaffolds active, every earlier test passing, and the coverage gates met.
 - Given a running bookvie, when a cover is added, replaced and removed, then `covers/` holds exactly the files `library.json` references after each step.
 
+### Review Findings
+
+Code review 2026-10-31 (blind hunter, edge-case hunter, verification gap, acceptance auditor) of `cc103c1..5250c62`.
+
+- [x] [Review][Patch] A missing `library.json` only spares `covers/` for one restart [backend/bookvie/store/store.py:144] — resolved by the user (option 1): refuse to start with a `StartupError` when `library.json` is missing and `covers/` holds files, so nothing is deleted. `Store.open` skips the sweep when no file exists, then commits `Library.empty()`. On the next start the empty library is read and `_sweep_covers` deletes every cover. So the E2 fix only postpones the loss. `test_a_missing_library_json_leaves_existing_covers_alone` opens the store once, so it can't see this. (medium, acceptance-auditor)
+- [x] [Review][Patch] Choosing a file and then pressing Remove cover is untested [frontend/e2e/cover.spec.ts] — if `markCoverRemoved` stopped dropping the chosen file, `editBookForm` would upload it instead of removing the cover. AC-9 and AC-10 would still pass. Add an e2e: choose a file, press Remove cover, save, then assert `removeCover: true`, no `cover` part and "No cover". (verification-gap)
+- [x] [Review][Patch] 413 is declared on every `/api` route [backend/bookvie/http/api.py:58] — `ERROR_RESPONSES` is router-wide, so the generated `schema.d.ts` lists `cover_too_large` on the GET views and on `delete-book`. Declare it only on `add-book` and `edit-book` with `responses=`, then rerun `check:api`. (blind-hunter+acceptance-auditor)
+- [x] [Review][Patch] The deferred-work entry is under the story 1.11 heading and in a key/value format [_bmad-output/implementation-artifacts/deferred-work.md:100] — give it its own `## Deferred from: code review of spec-1-13-add-a-cover.md (2026-10-31)` heading and make it a prose bullet like the rest. (blind-hunter)
+- [x] [Review][Patch] Rename `_streamed_add_book_scope`, since it also builds edit-book scopes [backend/tests/test_contract.py:388] — rename it `_streamed_cover_scope`. (blind-hunter)
+- [x] [Review][Patch] A rewrapped doc comment line runs to 114 characters [frontend/src/pages/BookDetailPage.tsx:199] — rewrap it to the block's width. (blind-hunter)
+- [x] [Review][Patch] The `removeCover && !cover` rule is enforced twice [frontend/src/pages/NewBookPanel.tsx:150] — `editBookForm` already drops `removeCover` when a file is sent, and `books.test.ts` pins that. Pass `removeCover` straight through from the panel. (blind-hunter)
+
+**Rejected:**
+- A cover between 20 MiB and 20 MiB + 64 KiB is read in full before the 413 (edge-case) — low: the spec's Decisions set this two-stage cap. "While streaming" in the commit message is loose, but commits are not rewritten.
+- No client-side size check before upload (edge-case, blind) — the spec says "No client-side … size check"; changing that means editing the spec.
+- HEIC/AVIF recognised only by the major brand (edge-case, auditor) — low: the major-brand list already covers `mif1`/`msf1`/`heic`/`avif`. Other brands are rare, and handling them adds a box scan.
+- A hand-edited `covers/./x.jpg` could be swept (edge-case) — low: only reachable by hand-editing `library.json`, and the fix adds normalisation.
+- Remove cover → pick a file → cancel the picker drops the removal (edge-case) — false: `chooseCover(null)` sets `removeCover` back only when a file is passed (`NewBookPanel.tsx:179`), so the removal and its note stay.
+- The old Cover error stays after a new file is picked (edge-case) — low: every field keeps its error until the next save (`setErrors` runs only in `submit`); changing that only for Cover adds a branch.
+- No accepted-formats hint on Cover (blind) — low: the spec defines the field without a hint, and adding one is a design addition.
+- No way to clear a chosen file in New book (blind) — low: it only matters in Firefox/Safari after a mistaken pick, and the fix adds a control the spec doesn't have.
+- The media route could serve a symlink or `.html` (blind) — low: names come only from referenced `coverFile`s minted by the server, so it needs hand edits or local file planting. Guards add code.
+- `views/shelf.py` is no longer "pure" (blind) — low: the layer rule allows views → store, and the docstring already names `cover_path`.
+- The cover is decoded before the fields are checked (blind) — low: the same issue as B4 from the build review. It only costs time on a refused save.
+- Spec `status: done` vs sprint `review` (blind, auditor) — fixing it means editing the spec under review; the status is synced in the review's own final step (B9).
+- The axe test skips the note, error and pressed-chip states (blind) — low: the spec's requirement (Book detail in both themes, with and without a cover) is met. Adding more states is extra scope.
+- The "From cover" chip has no unit test, and black-and-white with no dot is untested (blind) — low: the frontend has no component unit tests (`node:test` covers `lib/` and `api/`), and the e2e covers the chip.
+- The bomb check is not `DecompressionBombWarning` as the Code Map says (auditor) — E3 approved the explicit pixel check; fixing it means editing the spec.
+- An oversize cover sent with a bad intent gets 422, not 413 (auditor) — false: the spec doesn't fix the order of checks, and either refusal is correct.
+- The client buffers the multipart body (auditor) — already raised as E6/B7. Note for B8: the real client always sends `Content-Length`, so only the header branch of `CoverSizeCap` runs for it.
+
 ## Implementation Notes
 
 ## Spec Change Log

@@ -48,6 +48,16 @@ def cover_name(cover_file: str) -> str | None:
     return name
 
 
+def _has_covers(covers: Path) -> bool:
+    """Whether ``covers/`` is a real folder holding at least one file."""
+    if not covers.is_dir() or covers.is_symlink():
+        return False
+    try:
+        return any(entry.is_file() or entry.is_symlink() for entry in covers.iterdir())
+    except OSError as exc:
+        raise StartupError(covers, f"can't be read ({exc.strerror})") from None
+
+
 def referenced_covers(library: Library) -> set[str]:
     """The names in ``covers/`` that some Book's ``coverFile`` names."""
     names = (cover_name(book.cover_file) for book in library.books if book.cover_file)
@@ -121,7 +131,8 @@ class Store:
         """Load or migrate ``library.json``, sweep, then create or commit it.
 
         Raises :class:`StartupError` when the folder can't be served. A newer
-        or invalid file is refused before anything in the folder changes; a
+        or invalid file, or a missing one while ``covers/`` holds files, is
+        refused before anything in the folder changes; a
         refused upgrade leaves the original and its backup. A refusal while
         creating ``covers/``, ``.staging/`` or the first ``library.json``
         comes after the sweep.
@@ -139,9 +150,15 @@ class Store:
                 # Backup, chain and validation all run before the sweep, so a
                 # refused upgrade changes nothing but the backup.
                 migrated = store._migrate(raw, doc, version)
-        # Without a library.json nothing was read, so no cover can be known
-        # to be unreferenced: covers/ is left alone.
-        store._sweep(migrated if migrated is not None else store._library if exists else None)
+        elif _has_covers(data_dir / COVERS_DIR):
+            # Covers without a library.json mean the file was lost or moved.
+            # Starting would commit an empty library whose next sweep deletes
+            # every cover, so the folder is refused before anything changes.
+            raise StartupError(
+                store.path,
+                f"is missing but {COVERS_DIR}/ holds covers; restore library.json or empty {COVERS_DIR}/",
+            )
+        store._sweep(migrated if migrated is not None else store._library)
         for name in (COVERS_DIR, STAGING_DIR):
             try:
                 (data_dir / name).mkdir(exist_ok=True)
@@ -153,9 +170,8 @@ class Store:
             store._commit_at_startup(migrated)
         return store
 
-    def _sweep(self, library: Library | None) -> None:
-        if library is not None:
-            self._sweep_covers(library)
+    def _sweep(self, library: Library) -> None:
+        self._sweep_covers(library)
         try:
             for leftover in self.data_dir.glob(f"{TEMP_PREFIX}*"):
                 if leftover.is_file() or leftover.is_symlink():

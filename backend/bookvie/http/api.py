@@ -55,10 +55,14 @@ ERROR_RESPONSES: dict[int | str, dict[str, Any]] = {
     for status, description in (
         (422, "Invalid fields"),
         (409, "Refused by a library rule"),
-        (413, "Cover too large"),
         (500, "Couldn't save"),
         (503, "Couldn't save"),
     )
+}
+
+# Only the two routes that take a cover part can refuse one as too large.
+COVER_RESPONSES: dict[int | str, dict[str, Any]] = {
+    413: {"model": ErrorResponse, "description": "Cover too large"},
 }
 
 # Contract models no route returns yet; they are still part of the schema.
@@ -179,7 +183,12 @@ def book_view(request: Request, id: str) -> views.BookDetailView:
     return view
 
 
-@router.post("/intents/add-book", response_model=OkResponse, response_model_exclude_none=True)
+@router.post(
+    "/intents/add-book",
+    response_model=OkResponse,
+    response_model_exclude_none=True,
+    responses=COVER_RESPONSES,
+)
 def add_book_intent(
     request: Request,
     intent: Annotated[
@@ -198,7 +207,12 @@ def add_book_intent(
     return OkResponse(ok=True, ids={"bookId": book_id})
 
 
-@router.post("/intents/edit-book", response_model=OkResponse, response_model_exclude_none=True)
+@router.post(
+    "/intents/edit-book",
+    response_model=OkResponse,
+    response_model_exclude_none=True,
+    responses=COVER_RESPONSES,
+)
 def edit_book_intent(
     request: Request,
     intent: Annotated[

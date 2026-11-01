@@ -97,6 +97,6 @@
 
 - The edit-mode Tags suggestions wiring is untested. `BookDetailPage.tsx` passes `useCatalogView().tags` to the Edit book panel, but none of the `book-detail.spec.ts` tests types into Tags or checks the listbox, so dropping the catalog query would go unnoticed. Suggestion logic itself is covered by New book (`new-book-panel.spec.ts` AC-3). Close it by extending the AC-2 e2e with a Tags typing check. **Closed 2026-10-31** by `book-detail.spec.ts` "[P2] AC-2 Tags suggests existing tags in edit mode and the picked tag is saved" (testarch-automate).
 
-- source_spec: `_bmad-output/implementation-artifacts/spec-1-13-add-a-cover.md`
-  summary: Confirm that an over-20 MiB cover shows "Cover must be 20 MB or smaller." on Cover in a real browser, not "Couldn't save" from a connection reset.
-  evidence: Unverified (medium if true). `CoverSizeCap` answers 413 before reading the body; uvicorn then closes the connection with unread data, which can surface in Chromium as a reset before the response is read. Only ASGI-level and TestClient tests cover the 413. Settle it with a Playwright upload of a > 20 MiB file against the built bookvie.
+## Deferred from: build review of spec-1-13-add-a-cover.md (2026-10-31)
+
+- Check whether a cover over 20 MiB shows "Cover must be 20 MB or smaller." on Cover in a real browser, rather than "Couldn't save" from a connection reset. Unverified; medium if true. `CoverSizeCap` answers 413 before reading the body, then uvicorn closes the connection with unread data, which Chromium can surface as a reset before it reads the response. Only ASGI-level and TestClient tests cover the 413. The real client always sends `Content-Length`, so for it only the header branch runs. Settle it with a Playwright upload of a file over 20 MiB against the built bookvie.

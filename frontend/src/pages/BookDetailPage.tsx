@@ -196,9 +196,10 @@ function BookDetail({ book, onDelete }: { book: BookDetailView; onDelete: Delete
  * Book detail (EXPERIENCE.md → Book detail) at `/book/:bookId`: one surface
  * card; on the left the cover (an `img` "Cover of *Title*") or the no-cover
  * placeholder (`role="img"` "No cover"), 200×300, then the action stack
- * (**Edit**, then **Delete**); the Book on the right. An unknown id shows the not-found page. The title is set by
- * the child that renders, never here: child effects run first, so a title
- * set here would overwrite the not-found page's.
+ * (**Edit**, then **Delete**); the Book on the right. An unknown id shows
+ * the not-found page. The title is set by the child that renders, never
+ * here: child effects run first, so a title set here would overwrite the
+ * not-found page's.
  *
  * Delete: once `delete-book` is sent, the refetched view may already say the
  * Book is gone before the request resolves. Until the outcome is known the

@@ -38,7 +38,7 @@ from PIL import Image
 from bookvie.domain import Library, check_invariants
 from bookvie.intents import COULDNT_SAVE_MESSAGE
 from bookvie.intents.contract import ErrorCode
-from bookvie.store import OsFileSystem, Store
+from bookvie.store import OsFileSystem, StartupError, Store
 from tests.builder import CURATED, LibraryBuilder
 from tests.test_add_book import ADD_BOOK, VALID, _client, _library_bytes, _stored_books
 from tests.test_edit_book import DUNE, DUNE_FORM, EDIT_BOOK
@@ -882,13 +882,28 @@ def test_the_startup_sweep_logs_a_cover_it_cannot_delete_and_starts_anyway(
     assert (data_dir / "covers" / "subfolder").is_dir()
 
 
-def test_a_missing_library_json_leaves_existing_covers_alone(tmp_path: Path) -> None:
+def test_a_missing_library_json_with_covers_refuses_to_start(tmp_path: Path) -> None:
+    # Starting would commit an empty library, and the next start's sweep
+    # would delete every cover; the folder is refused untouched instead.
     data_dir = tmp_path / "data"
     (data_dir / "covers").mkdir(parents=True)
     (data_dir / "covers" / "kept.jpg").write_bytes(b"jpeg")
     (data_dir / "library.json.tmp123").write_bytes(b"leftover")
 
-    Store.open(data_dir)
+    for _ in range(2):
+        with pytest.raises(StartupError, match="is missing but covers/ holds covers") as exc:
+            Store.open(data_dir)
+        assert exc.value.path == data_dir / "library.json"
 
     assert _cover_files(data_dir) == {"covers/kept.jpg"}
-    assert not (data_dir / "library.json.tmp123").exists()
+    assert not (data_dir / "library.json").exists()
+    assert (data_dir / "library.json.tmp123").exists()
+
+
+def test_a_missing_library_json_with_an_empty_covers_folder_starts(tmp_path: Path) -> None:
+    data_dir = tmp_path / "data"
+    (data_dir / "covers").mkdir(parents=True)
+
+    Store.open(data_dir)
+
+    assert (data_dir / "library.json").exists()

@@ -391,15 +391,6 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Cover too large */
-            413: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
             /** @description Invalid fields */
             422: {
                 headers: {
@@ -449,15 +440,6 @@ export interface operations {
             };
             /** @description Refused by a library rule */
             409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Cover too large */
-            413: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -525,15 +507,6 @@ export interface operations {
             };
             /** @description Refused by a library rule */
             409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Cover too large */
-            413: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -732,15 +705,6 @@ export interface operations {
             };
             /** @description Refused by a library rule */
             409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
-            /** @description Cover too large */
-            413: {
                 headers: {
                     [name: string]: unknown;
                 };

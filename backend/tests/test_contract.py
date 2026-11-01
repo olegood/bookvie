@@ -333,6 +333,9 @@ def test_openapi_documents_the_envelope_not_fastapi_errors(openapi: dict) -> Non
         assert ref == "#/components/schemas/ErrorResponse"
         body = openapi["paths"][path]["post"]["requestBody"]["content"]["multipart/form-data"]
         assert body["schema"]["$ref"].startswith("#/components/schemas/Body_")
+    # Routes without a cover part can't answer 413, so they don't document it.
+    for method, path in operations[:3] + [("post", "/api/intents/delete-book")]:
+        assert "413" not in openapi["paths"][path][method]["responses"]
 
 
 def test_openapi_is_cached_and_stable() -> None:
@@ -385,7 +388,7 @@ def _response(sent: list[dict]) -> tuple[int, dict]:
 COVER_ROUTES = ("/api/intents/add-book", "/api/intents/edit-book")
 
 
-def _streamed_add_book_scope(
+def _streamed_cover_scope(
     content_length: int | None = None, path: str = "/api/intents/add-book"
 ) -> dict:
     headers = [
@@ -427,7 +430,7 @@ def test_a_streamed_body_past_the_cover_limit_is_413_and_is_not_read_further(
     before = _library_bytes(data_dir)
     chunk = 1024 * 1024
     # No Content-Length: the body is counted as it arrives.
-    scope = _streamed_add_book_scope(path=path)
+    scope = _streamed_cover_scope(path=path)
     sent, pulled = _run_asgi(_app(data_dir), scope, _endless_cover(chunk))
 
     assert _response(sent) == (413, COVER_TOO_LARGE)
@@ -441,7 +444,7 @@ def test_a_streamed_body_past_the_cover_limit_is_413_and_is_not_read_further(
 def test_a_content_length_past_the_cover_limit_is_413_before_any_read(
     data_dir: Path, path: str
 ) -> None:
-    scope = _streamed_add_book_scope(content_length=BODY_LIMIT + 1, path=path)
+    scope = _streamed_cover_scope(content_length=BODY_LIMIT + 1, path=path)
     sent, pulled = _run_asgi(_app(data_dir), scope, _endless_cover(1024))
 
     assert _response(sent) == (413, COVER_TOO_LARGE)
@@ -460,12 +463,12 @@ def test_the_cover_cap_leaves_other_routes_and_small_bodies_alone() -> None:
         await send({"type": "http.response.body", "body": str(len(body)).encode()})
 
     capped = CoverSizeCap(echo, limit=10)
-    small = _run_asgi(capped, _streamed_add_book_scope(), [b"12345", b"12345"])[0]
+    small = _run_asgi(capped, _streamed_cover_scope(), [b"12345", b"12345"])[0]
     assert small[0]["status"] == 200 and small[1]["body"] == b"10"
-    other = {**_streamed_add_book_scope(), "path": "/api/intents/delete-book"}
+    other = {**_streamed_cover_scope(), "path": "/api/intents/delete-book"}
     assert _run_asgi(capped, other, [b"x" * 20])[0][1]["body"] == b"20"
     # A route that fails on the cut-off body is answered with 413 instead.
-    status, body = _response(_run_asgi(capped, _streamed_add_book_scope(), [b"x" * 11])[0])
+    status, body = _response(_run_asgi(capped, _streamed_cover_scope(), [b"x" * 11])[0])
     assert (status, body) == (413, COVER_TOO_LARGE)
 
 
@@ -474,4 +477,4 @@ def test_an_error_that_is_not_the_cap_still_propagates() -> None:
         raise RuntimeError("route exploded")
 
     with pytest.raises(RuntimeError, match="route exploded"):
-        _run_asgi(CoverSizeCap(broken), _streamed_add_book_scope(), [])
+        _run_asgi(CoverSizeCap(broken), _streamed_cover_scope(), [])

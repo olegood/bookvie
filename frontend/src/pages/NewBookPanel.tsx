@@ -147,7 +147,7 @@ export default function NewBookPanel({ tags, book, onClose, onSaved }: Props) {
     setBusy(true)
     const withCover = { ...options, ...(cover ? { cover } : {}) }
     const result = book
-      ? await editBook(book.id, fields, { ...withCover, ...(removeCover && !cover ? { removeCover: true } : {}) })
+      ? await editBook(book.id, fields, { ...withCover, ...(removeCover ? { removeCover: true } : {}) })
       : await addBook(fields, withCover)
     inFlight.current = false
     setBusy(false)

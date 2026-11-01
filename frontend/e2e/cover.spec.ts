@@ -192,6 +192,29 @@ test.describe('Story 1.13 Add a cover (ATDD)', () => {
     await expect(reopened.getByRole('button', { name: 'From cover', exact: true })).toHaveCount(0)
   })
 
+  test('[P2] AC-10 Remove cover after choosing a file drops the file and still removes the cover', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: [DUNE] })
+    await attachCover(page, server)
+    await page.goto(`${server.url}/book/${DUNE_ID}`)
+    const panel = await openEdit(page)
+    const sent = requestsTo(page, EDIT_BOOK)
+
+    await coverInput(panel).setInputFiles({ name: 'dune.png', mimeType: 'image/png', buffer: COVER_PNG })
+    await panel.getByRole('button', { name: 'Remove cover', exact: true }).click()
+    expect(await coverInput(panel).evaluate((input) => (input as HTMLInputElement).files?.length ?? 0)).toBe(0)
+    await panel.getByRole('button', { name: 'Save changes', exact: true }).click()
+    await expect(panel).toBeHidden()
+
+    expect(sent).toHaveLength(1)
+    expect(intentOf(sent[0]!).removeCover).toBe(true)
+    expect(bodyOf(sent[0]!)).not.toContain('name="cover"')
+    await expect(noCover(page)).toBeVisible()
+    await expect(coverImage(page, 'Dune')).toHaveCount(0)
+  })
+
   test('[P1] AC-1 in the Edit book panel a chosen file is sent in the one edit-book call and Book detail shows it', async ({
     page,
     seededServer,
