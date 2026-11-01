@@ -432,6 +432,10 @@ class FaultyFs(OsFileSystem):
         self._maybe_fail("replace")
         super().replace(src, dst)
 
+    def fsync_dir(self, directory: Path) -> None:
+        self._maybe_fail("fsync_dir")
+        super().fsync_dir(directory)
+
     def remove(self, path: Path) -> None:
         self._maybe_fail("remove")
         super().remove(path)
@@ -528,6 +532,37 @@ def test_fault_leaves_file_and_state_unchanged(tmp_path: Path, step: str) -> Non
     store.fs = OsFileSystem()
     store.apply(_add_tag("y"))
     assert store.library.books[0].tags == ["y"]
+
+
+def test_commit_fsyncs_the_folder_after_the_rename(tmp_path: Path) -> None:
+    events: list[tuple[str, Path]] = []
+
+    class Recording(OsFileSystem):
+        def replace(self, src: Path, dst: Path) -> None:
+            super().replace(src, dst)
+            events.append(("replace", Path(dst)))
+
+        def fsync_dir(self, directory: Path) -> None:
+            super().fsync_dir(directory)
+            events.append(("fsync_dir", Path(directory)))
+
+    store = _seeded_store(tmp_path, fs=Recording())
+    store.apply(_add_tag("x"))
+    assert events == [("replace", tmp_path / "library.json"), ("fsync_dir", tmp_path)]
+
+
+def test_folder_fsync_fault_after_the_rename_still_commits(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """The rename is the commit; a failed folder flush is logged, not rolled back."""
+    store = _seeded_store(tmp_path)
+    store.fs = FaultyFs("fsync_dir")
+    new = store.apply(_add_tag("x"), new_files={"covers/c.jpg": b"cover"})
+    assert store.library is new
+    assert (tmp_path / "library.json").read_bytes() == serialize(new)
+    assert (tmp_path / "covers" / "c.jpg").read_bytes() == b"cover"
+    assert _temps(tmp_path) == []
+    assert "couldn't flush" in capsys.readouterr().err
 
 
 def test_fault_while_cleaning_up_still_reports_couldnt_save(tmp_path: Path) -> None:
@@ -744,4 +779,46 @@ def test_fsync_raises_a_real_io_failure_from_full_fsync(monkeypatch: pytest.Monk
     monkeypatch.setattr(os, "fsync", lambda fd: pytest.fail("fell back after a real failure"))
     with pytest.raises(OSError) as raised:
         OsFileSystem().fsync(7)
+    assert raised.value.errno == errno.EIO
+
+
+def test_fsync_dir_flushes_a_real_folder(tmp_path: Path) -> None:
+    OsFileSystem().fsync_dir(tmp_path)
+
+
+def test_fsync_dir_flushes_through_fsync(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    flushed: list[int] = []
+    monkeypatch.setattr(OsFileSystem, "fsync", lambda self, fd: flushed.append(fd))
+    OsFileSystem().fsync_dir(tmp_path)
+    assert len(flushed) == 1
+
+
+@pytest.mark.parametrize("code", [errno.EINVAL, errno.ENOTSUP, errno.EBADF])
+@pytest.mark.parametrize("step", ["open", "fsync"])
+def test_fsync_dir_skips_a_folder_the_filesystem_cannot_flush(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, step: str, code: int
+) -> None:
+    def refuse(*args: object) -> None:
+        raise OSError(code, "not supported")
+
+    if step == "open":
+        monkeypatch.setattr(os, "open", refuse)
+    else:
+        monkeypatch.setattr(OsFileSystem, "fsync", refuse)
+    OsFileSystem().fsync_dir(tmp_path)
+
+
+@pytest.mark.parametrize("step", ["open", "fsync"])
+def test_fsync_dir_raises_a_real_io_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, step: str
+) -> None:
+    def fail(*args: object) -> None:
+        raise OSError(errno.EIO, "I/O error")
+
+    if step == "open":
+        monkeypatch.setattr(os, "open", fail)
+    else:
+        monkeypatch.setattr(OsFileSystem, "fsync", fail)
+    with pytest.raises(OSError) as raised:
+        OsFileSystem().fsync_dir(tmp_path)
     assert raised.value.errno == errno.EIO

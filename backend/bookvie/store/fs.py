@@ -15,6 +15,9 @@ from typing import Protocol
 # What a filesystem that doesn't do F_FULLFSYNC answers; anything else is a real I/O failure.
 _FULLFSYNC_UNSUPPORTED = {errno.ENOTSUP, errno.EINVAL, errno.ENOTTY}
 
+# What a filesystem that can't open or fsync a folder answers; the flush is skipped.
+_DIR_FSYNC_UNSUPPORTED = {errno.ENOTSUP, errno.EINVAL, errno.EBADF}
+
 
 class FileSystem(Protocol):
     def create_temp(self, directory: Path, prefix: str) -> tuple[int, Path]: ...
@@ -22,6 +25,7 @@ class FileSystem(Protocol):
     def fsync(self, fd: int) -> None: ...
     def close(self, fd: int) -> None: ...
     def replace(self, src: Path, dst: Path) -> None: ...
+    def fsync_dir(self, directory: Path) -> None: ...
     def remove(self, path: Path) -> None: ...
 
 
@@ -54,6 +58,23 @@ class OsFileSystem:
 
     def replace(self, src: Path, dst: Path) -> None:
         os.replace(src, dst)
+
+    def fsync_dir(self, directory: Path) -> None:
+        # Makes a rename in ``directory`` survive a power cut. Filesystems that
+        # can't open or fsync a folder skip it; real I/O failures raise.
+        try:
+            fd = os.open(directory, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
+        except OSError as error:
+            if error.errno in _DIR_FSYNC_UNSUPPORTED:
+                return
+            raise
+        try:
+            self.fsync(fd)
+        except OSError as error:
+            if error.errno not in _DIR_FSYNC_UNSUPPORTED:
+                raise
+        finally:
+            os.close(fd)
 
     def remove(self, path: Path) -> None:
         os.remove(path)

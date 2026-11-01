@@ -62,6 +62,11 @@ def check_invariants(library: Library) -> None:
             "main_not_side_read", f"Book {main} is both Main book and a Side read"
         )
 
+    repeated = _first_repeat(library.side_read_book_ids)
+    if repeated is not None:
+        raise InvariantViolation(
+            "unique_side_reads", f"Book {repeated} is a Side read more than once"
+        )
     if len(library.side_read_book_ids) > MAX_SIDE_READS:
         raise InvariantViolation(
             "side_reads_max",

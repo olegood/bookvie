@@ -56,7 +56,7 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
 
 - **Binds:** A3, Data-safety NFR, FR-22, FR-23
 - **Prevents:** partial writes; a second store; two code paths serializing differently.
-- **Rule:** All textual data is a single `library.json` with the shape in AD-18. `store.serialize()` is the only function that produces its bytes: UTF-8, camelCase keys, nulls kept, keys in model order, 2-space indent, non-ASCII written as is (`ensure_ascii=False`), LF line endings, exactly one trailing newline. Every commit writes a temp file in the same folder, fsyncs it, and renames it over the original. If any step fails, the original is untouched and the intent reports `couldnt_save`. At startup the server deletes leftover `library.json.tmp*` files from an interrupted commit, and exits non-zero with a message naming the path if the data folder isn't writable.
+- **Rule:** All textual data is a single `library.json` with the shape in AD-18. `store.serialize()` is the only function that produces its bytes: UTF-8, camelCase keys, nulls kept, keys in model order, 2-space indent, non-ASCII written as is (`ensure_ascii=False`), LF line endings, exactly one trailing newline. Every commit writes a temp file in the same folder, fsyncs it, renames it over the original, and then fsyncs the folder so the rename survives a power cut (skipped on filesystems that can't fsync a folder). The rename is the commit: a failed folder fsync after it is logged, not reported. If any step fails, the original is untouched and the intent reports `couldnt_save`. At startup the server deletes leftover `library.json.tmp*` files from an interrupted commit, and exits non-zero with a message naming the path if the data folder isn't writable.
 
 ### AD-3: Domain rules live only in the server; mutations arrive only as intents [ADOPTED]
 
@@ -206,7 +206,7 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
   - Main book, Up next and Side reads exist only as root pointers. `domain.check_invariants()` runs before every commit and enforces:
     - every pointer references an existing Book;
     - the Main book is neither Up next nor a Side read;
-    - there are at most 3 Side reads;
+    - no Book is a Side read more than once, and there are at most 3 Side reads;
     - a Book has at most one unfinished Reading;
     - the Main book has an unfinished Reading;
     - card-note pages and unfinished Reading pages are within the Book's page count.

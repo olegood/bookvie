@@ -23,7 +23,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-4-keep-the-library-in-one-safe-file.md`
   summary: Add uniqueness invariants to AD-18 and `check_invariants()`: unique Book IDs, unique Reading and Card note IDs within a Book, no repeated ID in `sideReadBookIds`, and the Up next book not also a Side read.
   evidence: `check_invariants` builds a set of Book IDs, so duplicates pass, and `sideReadBookIds: ["a","a"]` counts as two Side reads. AD-18's rule list doesn't name these rules. Needed before Story 1.7 creates IDs.
-  resolved: partly, Story 1.7 (unique Book IDs; unique Reading and Card note IDs within a Book); the sideReadBookIds rules (no repeated ID, Up next not also a Side read) remain.
+  resolved: Story 1.7 (unique Book IDs; unique Reading and Card note IDs within a Book) and spec-unique-side-reads-and-directory-fsync (2026-11-01), rule `unique_side_reads` (no repeated ID in `sideReadBookIds`). Rejected: "the Up next book not also a Side read". Epic 4 and EXPERIENCE.md allow a Side read to be Up next too ("a Side read stays in On the side as well").
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-4-keep-the-library-in-one-safe-file.md`
   summary: Decide whether commits on macOS need `fcntl(F_FULLFSYNC)` instead of `os.fsync`.
   evidence: Unverified, medium if true. `os.fsync` on darwin doesn't flush the drive's write cache. Settled by whether APFS can leave `library.json` empty or torn after a power cut when write → fsync → rename was done (SQLite uses `F_FULLFSYNC` for this reason).
@@ -84,10 +84,11 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-router-error-screen-and-full-fsync.md`
   summary: Fsync the data directory after the commit's rename, so an acknowledged commit survives a power cut (add a directory-fsync step to the `FileSystem` protocol).
   evidence: `Store._write_atomic` (`backend/bookvie/store/store.py`) does write → fsync → close → replace and never fsyncs the directory, so after a power cut the rename may be lost and the old `library.json` returns. Existed before this change; AD-2 names only temp-file fsync + rename.
+  resolved: spec-unique-side-reads-and-directory-fsync (2026-11-01), `FileSystem.fsync_dir` runs after the rename in `Store._write_atomic` (a failure is logged; the rename is the commit); AD-2 updated.
 
 ## Deferred from: code review of spec-1-10-see-the-library-as-a-bookcase (2026-10-30)
 
-- Exact 168px spine height pinned in `frontend/e2e/bookcase.spec.ts` (AC-3 scaffold line 215 and the hidden-then-shown test) was measured with macOS system fonts; on the `ubuntu-latest` CI runner the `system-ui` stack falls back to another font and the label's length may cross an 8px step. Unverified (medium if true); the first CI run after pushing story 1.10 settles it.
+- Exact 168px spine height pinned in `frontend/e2e/bookcase.spec.ts` (AC-3 scaffold line 215 and the hidden-then-shown test) was measured with macOS system fonts; on the `ubuntu-latest` CI runner the `system-ui` stack falls back to another font and the label's length may cross an 8px step. Unverified (medium if true); the first CI run after pushing story 1.10 settles it. **Closed 2026-11-01**: the `ubuntu-latest` Test workflow has been green on every run since Story 1.10, including run 41293213733 on 2026-11-01.
 
 ## Deferred from: bmad-testarch-automate for Story 1.10 (2026-10-31)
 
@@ -100,3 +101,9 @@
 ## Deferred from: build review of spec-1-13-add-a-cover.md (2026-10-31)
 
 - Check whether a cover over 20 MiB shows "Cover must be 20 MB or smaller." on Cover in a real browser, rather than "Couldn't save" from a connection reset. Unverified; medium if true. `CoverSizeCap` answers 413 before reading the body, then uvicorn closes the connection with unread data, which Chromium can surface as a reset before it reads the response. Only ASGI-level and TestClient tests cover the 413. The real client always sends `Content-Length`, so for it only the header branch runs. Settle it with a Playwright upload of a file over 20 MiB against the built bookvie. **Closed 2026-11-01**: it doesn't reproduce. `cover.spec.ts` "[P1] AC-2 a cover over 20 MB shows "Cover must be 20 MB or smaller." on Cover in a real browser" uploads 21 MiB (refused on the header) and 20 MiB + 1 byte (refused on the part). Chromium reads both 413s, and the panel shows the Cover error (testarch-automate).
+
+## Deferred from: review of spec-unique-side-reads-and-directory-fsync (2026-11-01)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-unique-side-reads-and-directory-fsync.md`
+  summary: Fsync the parent folder after creating `data_dir`, `covers/` and `.staging/`, so a fresh setup's first commit survives a power cut.
+  evidence: `Store.open` (`backend/bookvie/store/store.py` lines 91 and 164) calls `mkdir` without flushing the parent. A rename inside `covers/` can be durable while `covers/` itself is not. This existed before the change.

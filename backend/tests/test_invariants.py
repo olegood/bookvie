@@ -65,6 +65,29 @@ def test_main_up_next_and_side_read_on_different_books_pass(
     _passes(library_builder)
 
 
+# --- no Book is a Side read twice ----------------------------------------
+
+
+def test_repeated_side_read_fails(library_builder: LibraryBuilder) -> None:
+    book = library_builder.book()
+    library_builder.side_read(book).side_read(book)
+    _fails(library_builder, "unique_side_reads")
+
+
+def test_four_copies_of_one_side_read_report_the_repeat(library_builder: LibraryBuilder) -> None:
+    book = library_builder.book()
+    for _ in range(4):
+        library_builder.side_read(book)
+    _fails(library_builder, "unique_side_reads")
+
+
+def test_side_read_that_is_also_up_next_passes(library_builder: LibraryBuilder) -> None:
+    """Epic 4 allows it: the Book shows in On the side and in Up next."""
+    book = library_builder.book()
+    library_builder.up_next(book).side_read(book)
+    _passes(library_builder)
+
+
 # --- at most 3 Side reads ---------------------------------------------------
 
 

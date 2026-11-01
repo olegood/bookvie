@@ -347,7 +347,7 @@ class Store:
         self._write_atomic(self.path, serialize(library))
 
     def _write_atomic(self, target: Path, data: bytes, prefix: str = TEMP_PREFIX) -> None:
-        """temp file beside ``target`` -> write -> fsync -> rename (AD-2).
+        """temp file beside ``target`` -> write -> fsync -> rename -> fsync folder (AD-2).
 
         The temp file is removed when any step fails.
         """
@@ -374,3 +374,9 @@ class Store:
             except Exception:  # noqa: BLE001 - the original error is reported
                 pass
             raise CouldntSave(f"can't write {target.name}: {exc}") from exc
+        # The rename is the commit: a failed folder flush after it only weakens
+        # durability across a power cut, so it is logged, never rolled back.
+        try:
+            fs.fsync_dir(target.parent)
+        except Exception as exc:  # noqa: BLE001 - the commit already happened
+            _log(f"couldn't flush {target.parent.name}/ after writing {target.name}: {exc}")
