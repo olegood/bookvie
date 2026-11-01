@@ -6,16 +6,30 @@
 // browser shows by role and exact accessible name.
 
 import AxeBuilder from '@axe-core/playwright'
+import { readdirSync, readFileSync } from 'node:fs'
+import path from 'node:path'
 import type { Locator, Page, Request } from '@playwright/test'
 import { expect, type Server, test } from './fixtures.ts'
 
 const ADD_BOOK = '/api/intents/add-book'
 const EDIT_BOOK = '/api/intents/edit-book'
+const DELETE_BOOK = '/api/intents/delete-book'
+const MIB = 1024 * 1024
 const DUNE_ID = '6f1c1d2e-9a4b-4c3d-8e5f-0a1b2c3d4e5f'
 
 // A 40×60 solid red-orange PNG (rgb 200, 60, 40): a colored cover.
 const COVER_PNG = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAACgAAAA8CAIAAACb22+3AAAAO0lEQVR42u3NMQ0AMAgAMJgaROA/yJoHHp7WQHO64sKLI2KxWCwWi8VisVgsFovFYrFYLBaLxWKxeOMD/k0BpCMi0m0AAAAASUVORK5CYII=',
+  'base64',
+)
+// A 40×60 solid blue PNG (rgb 40, 90, 200): a second, different cover.
+const BLUE_PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAACgAAAA8CAIAAACb22+3AAAAZUlEQVR4nO3NMQHDQADEsI/RFFMRF1bXHAFniEVA1+f7O0/gkfUUizCzu2INXrWKNXjVKtbgVatYg1etYg1etYo1eNUq1uBVq1iDV61iDV61ijV41SrW4FWrWINXrWINXnVeHv8BT9UBwsEIGK8AAAAASUVORK5CYII=',
+  'base64',
+)
+// A 40×60 solid gray PNG (L 90): a black-and-white cover, so no spineColorFromCover.
+const GRAY_PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAACgAAAA8CAAAAAAx0qc8AAAAPUlEQVR4nO3QoREAMAzDwFRjdv9BCs10YSV+aiGfOzssu2mo8DkaKnyOhgqfo6HC52io8DkaKnyOhurjPQ+q9QDSd9oi6wAAAABJRU5ErkJggg==',
   'base64',
 )
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
@@ -83,6 +97,33 @@ async function attachCover(page: Page, server: Server): Promise<void> {
       cover: { name: 'dune.png', mimeType: 'image/png', buffer: COVER_PNG },
     },
   })
+}
+
+type StoredLibrary = { books: { id: string; coverFile: string | null }[] }
+
+/** The server's library.json, read from its data folder. */
+function library(server: Server): StoredLibrary {
+  return JSON.parse(readFileSync(path.join(server.dataDir, 'library.json'), 'utf8')) as StoredLibrary
+}
+
+/** The files in covers/, as `covers/<name>`, sorted. */
+function onDisk(server: Server): string[] {
+  return readdirSync(path.join(server.dataDir, 'covers'))
+    .map((name) => `covers/${name}`)
+    .sort()
+}
+
+/** Every coverFile library.json names, sorted. */
+function referenced(server: Server): string[] {
+  return library(server)
+    .books.flatMap((book) => (book.coverFile ? [book.coverFile] : []))
+    .sort()
+}
+
+/** `#rrggbb` as the `rgb(r, g, b)` computed style reports. */
+function rgbOf(hex: string): string {
+  const [r, g, b] = [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16))
+  return `rgb(${r}, ${g}, ${b})`
 }
 
 /** Every POST to `path` the page sends, in order. */
@@ -353,5 +394,143 @@ test.describe('Story 1.13 Add a cover (ATDD)', () => {
         expect(await axe(`${where} panel`)).toEqual([])
       }
     }
+  })
+
+  test('[P1] AC-2 a cover over 20 MB shows "Cover must be 20 MB or smaller." on Cover in a real browser, not Couldn\'t save', async ({
+    page,
+    seededServer,
+  }) => {
+    // Two sizes, one per branch of the cap: past 20 MiB + 64 KiB the Content-Length
+    // header alone is refused (the body is never read); just past 20 MiB the
+    // body is parsed and the cover part is refused for its size.
+    const server = await seededServer({ books: [] })
+    await page.goto(`${server.url}/`)
+    await page.getByRole('main').getByRole('button', { name: 'New book', exact: true }).click()
+    const panel = newBookPanel(page)
+    for (const [label, value] of Object.entries({
+      Title: 'Dune',
+      Pages: '412',
+      'Author(s)': 'Frank Herbert',
+      Language: 'English',
+      Publisher: 'Chilton Books',
+    })) {
+      await panel.getByLabel(label, { exact: true }).fill(value)
+    }
+    await panel.getByRole('combobox', { name: 'Type', exact: true }).selectOption('Paperback')
+
+    for (const size of [21 * MIB, 20 * MIB + 1]) {
+      await coverInput(panel).setInputFiles({ name: 'huge.jpg', mimeType: 'image/jpeg', buffer: Buffer.alloc(size) })
+      const answered = page.waitForResponse((r) => new URL(r.url()).pathname === ADD_BOOK)
+      await panel.getByRole('button', { name: 'Add book', exact: true }).click()
+      expect((await answered).status(), `${size} bytes`).toBe(413)
+
+      await expect(page.getByRole('alert')).toHaveText('Not saved. 1 field needs attention: Cover.')
+      await expect(coverInput(panel)).toHaveAttribute('aria-invalid', 'true')
+      await expect(coverInput(panel)).toHaveAccessibleDescription('Cover must be 20 MB or smaller.')
+      await expect(panel).toBeVisible()
+    }
+    // Nothing was added and no file was written.
+    expect(onDisk(server)).toEqual([])
+    expect(referenced(server)).toEqual([])
+  })
+
+  test('[P1] adding, replacing, removing and deleting a cover in the app leaves covers/ holding exactly what library.json references', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: [] })
+    const inSync = (): void => expect(onDisk(server)).toEqual(referenced(server))
+
+    // Add: a new Book with a cover.
+    await page.goto(`${server.url}/`)
+    await page.getByRole('main').getByRole('button', { name: 'New book', exact: true }).click()
+    const newPanel = newBookPanel(page)
+    for (const [label, value] of Object.entries({
+      Title: 'Dune',
+      Pages: '412',
+      'Author(s)': 'Frank Herbert',
+      Language: 'English',
+      Publisher: 'Chilton Books',
+    })) {
+      await newPanel.getByLabel(label, { exact: true }).fill(value)
+    }
+    await newPanel.getByRole('combobox', { name: 'Type', exact: true }).selectOption('Paperback')
+    await coverInput(newPanel).setInputFiles({ name: 'dune.png', mimeType: 'image/png', buffer: COVER_PNG })
+    await newPanel.getByRole('button', { name: 'Add book', exact: true }).click()
+    await expect(newPanel).toBeHidden()
+    inSync()
+    const bookId = library(server).books[0]!.id
+    const [added] = onDisk(server)
+    expect(added).toMatch(new RegExp(`^covers/${bookId}-[0-9a-f-]{32,36}\\.jpg$`))
+
+    // Replace: a new name, the old file gone.
+    await page.goto(`${server.url}/book/${bookId}`)
+    let panel = await openEdit(page)
+    await coverInput(panel).setInputFiles({ name: 'blue.png', mimeType: 'image/png', buffer: BLUE_PNG })
+    await panel.getByRole('button', { name: 'Save changes', exact: true }).click()
+    await expect(panel).toBeHidden()
+    inSync()
+    expect(onDisk(server)).toHaveLength(1)
+    expect(onDisk(server)).not.toContain(added)
+
+    // Remove: no file left, coverFile cleared.
+    panel = await openEdit(page)
+    await panel.getByRole('button', { name: 'Remove cover', exact: true }).click()
+    await panel.getByRole('button', { name: 'Save changes', exact: true }).click()
+    await expect(panel).toBeHidden()
+    await expect(noCover(page)).toBeVisible()
+    inSync()
+    expect(onDisk(server)).toEqual([])
+
+    // A cover again, then Delete: the Book and its file go together.
+    panel = await openEdit(page)
+    await coverInput(panel).setInputFiles({ name: 'dune.png', mimeType: 'image/png', buffer: COVER_PNG })
+    await panel.getByRole('button', { name: 'Save changes', exact: true }).click()
+    await expect(panel).toBeHidden()
+    await expect(coverImage(page, 'Dune')).toBeVisible()
+    inSync()
+    expect(onDisk(server)).toHaveLength(1)
+    await page.getByRole('main').getByRole('button', { name: 'Delete', exact: true }).click()
+    const deleted = page.waitForResponse((r) => new URL(r.url()).pathname === DELETE_BOOK)
+    await page.getByRole('alertdialog').getByRole('button', { name: 'Delete book', exact: true }).click()
+    expect((await deleted).status()).toBe(200)
+    expect(library(server).books).toEqual([])
+    expect(onDisk(server)).toEqual([])
+  })
+
+  test('[P3] AC-9 the From cover chip carries a dot in the cover color, and none for a black-and-white cover', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: [DUNE] })
+    const fromCover = (panel: Locator): Locator => panel.getByRole('button', { name: 'From cover', exact: true })
+
+    // A colored cover: the dot is spineColorFromCover, as the view reports it.
+    await attachCover(page, server)
+    const view = (await (await page.request.get(`${server.url}/api/views/book?id=${DUNE_ID}`)).json()) as {
+      spineColorFromCover: string | null
+    }
+    expect(view.spineColorFromCover).toMatch(/^#[0-9a-f]{6}$/i)
+    await page.goto(`${server.url}/book/${DUNE_ID}`)
+    let panel = await openEdit(page)
+    const dot = fromCover(panel).locator('[aria-hidden="true"]')
+    await expect(dot).toHaveCount(1)
+    await expect(dot).toHaveCSS('background-color', rgbOf(view.spineColorFromCover!))
+    await expect(fromCover(panel)).toHaveAccessibleName('From cover')
+    await page.keyboard.press('Escape')
+    await expect(panel).toBeHidden()
+
+    // A grayscale cover: no color, so the chip is there but has no dot.
+    await page.request.post(`${server.url}${EDIT_BOOK}`, {
+      multipart: {
+        intent: JSON.stringify(DUNE_FORM),
+        cover: { name: 'gray.png', mimeType: 'image/png', buffer: GRAY_PNG },
+      },
+    })
+    await page.reload()
+    panel = await openEdit(page)
+    await expect(fromCover(panel)).toBeVisible()
+    await expect(fromCover(panel)).toHaveAttribute('aria-pressed', 'true')
+    await expect(fromCover(panel).locator('[aria-hidden="true"]')).toHaveCount(0)
   })
 })
