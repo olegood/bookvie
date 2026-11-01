@@ -25,6 +25,11 @@ from .contract import (
 from .cover import PreparedCover, RefusedCover, UploadedCover, prepare_cover
 from .delete_book import DeleteBookIntent, delete_book, parse_delete_book_intent
 from .edit_book import EditBookIntent, edit_book, parse_edit_book_intent
+from .set_spine_color import (
+    SetSpineColorIntent,
+    parse_set_spine_color_intent,
+    set_spine_color,
+)
 
 __all__ = [
     "COULDNT_SAVE_MESSAGE",
@@ -44,6 +49,7 @@ __all__ = [
     "OkResponse",
     "PreparedCover",
     "RefusedCover",
+    "SetSpineColorIntent",
     "SystemClock",
     "UploadedCover",
     "add_book",
@@ -59,5 +65,7 @@ __all__ = [
     "parse_add_book_intent",
     "parse_delete_book_intent",
     "parse_edit_book_intent",
+    "parse_set_spine_color_intent",
     "prepare_cover",
+    "set_spine_color",
 ]

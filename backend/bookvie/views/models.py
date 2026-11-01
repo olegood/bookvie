@@ -25,12 +25,19 @@ class LibraryMeter(_View):
 class ShelfBook(_View):
     id: str
     title: str
+    subtitle: str | None
     first_author: str
     author_count: int
     authors: list[str]
     pages: int
+    year: int | None
     created_at: AwareDatetime
     spine_color: str
+    """The resolved color: user, else from cover, else curated (AD-11)."""
+    spine_color_user: str | None
+    spine_color_from_cover: str | None
+    has_cover: bool
+    """Whether the Book has a cover (the Spine popover's "From cover" swatch)."""
     finished: bool
 
 
@@ -67,6 +74,8 @@ class BookDetailView(_View):
     isbn: str | None
     year: int | None
     tags: list[str]
+    spine_color: str
+    """The resolved color: user, else from cover, else curated (AD-11)."""
     spine_color_user: str | None
     cover_file: str | None
     """``covers/<name>``, served at ``/media/<coverFile>``; ``None`` without a cover."""

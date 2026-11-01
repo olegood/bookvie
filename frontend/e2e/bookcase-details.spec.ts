@@ -1,6 +1,6 @@
 // Story 1.10 Bookcase view, the secondary branches of its criteria: Tab
 // order through the toolbar, spine geometry and text spacing, rows by
-// viewport width, keys that do nothing yet, focus when a focused spine is
+// viewport width, Enter and Space (which open the Spine popover since Story 1.14), focus when a focused spine is
 // hidden, focus after an add under reduced motion or from Add anyway, the
 // dark tokens, the focus ring and axe at 500 spines. The main paths are in
 // bookcase.spec.ts.
@@ -205,7 +205,10 @@ test.describe('Story 1.10 Bookcase view details (automate)', () => {
     await expect.poll(topRow).toBeGreaterThan(capacity)
   })
 
-  test('[P2] AC-7 Enter and Space on a spine do nothing yet', async ({ page, seededServer }) => {
+  test('[P2] AC-7 Enter and Space on a spine open its popover (Story 1.14), never a modal or another page', async ({
+    page,
+    seededServer,
+  }) => {
     const server = await seededServer({ books: shelfOf(3) })
     await page.goto(`${server.url}/`)
     const url = page.url()
@@ -216,10 +219,13 @@ test.describe('Story 1.10 Bookcase view details (automate)', () => {
     await expect(focused).toBeFocused()
     for (const key of ['Enter', 'Space']) {
       await page.keyboard.press(key)
-      await expect(focused, key).toBeFocused()
-      await expect(page.getByRole('dialog')).toHaveCount(0)
+      await expect(page.getByRole('dialog', { name: 'Book 002', exact: true }), key).toBeVisible()
+      await expect(page.getByRole('dialog', { name: 'Book 002', exact: true })).not.toHaveAttribute('aria-modal', 'true')
       await expect(page.getByRole('alertdialog')).toHaveCount(0)
       expect(page.url(), key).toBe(url)
+      await page.keyboard.press('Escape')
+      await expect(page.getByRole('dialog')).toHaveCount(0)
+      await expect(focused, key).toBeFocused()
     }
     await expect(bookcase(page).locator('[tabindex="0"]')).toHaveAccessibleName('Book 002 by Author, not read yet')
   })

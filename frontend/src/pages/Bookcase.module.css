@@ -200,7 +200,8 @@
  * neighbouring spines and the plank. It is not an accent box-shadow, so the
  * highlight ring can fade while the spine keeps focus.
  */
-.spine:focus-visible {
+.spine:focus-visible,
+.spine.open {
   outline: var(--focus-ring-width) solid var(--color-accent);
   outline-offset: var(--focus-ring-offset);
   box-shadow: 0 0 0 var(--focus-ring-offset) var(--color-page);
@@ -310,7 +311,8 @@
     background: Canvas;
   }
 
-  .spine:focus-visible {
+  .spine:focus-visible,
+  .spine.open {
     outline-color: Highlight;
   }
 

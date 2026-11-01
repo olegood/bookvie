@@ -110,6 +110,7 @@ const dune: BookDetailView = {
   isbn: null,
   year: null,
   tags: [],
+  spineColor: '#749076',
   spineColorUser: null,
   coverFile: null,
   spineColorFromCover: null,

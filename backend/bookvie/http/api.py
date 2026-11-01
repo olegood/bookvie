@@ -45,7 +45,9 @@ from bookvie.intents import (
     parse_add_book_intent,
     parse_delete_book_intent,
     parse_edit_book_intent,
+    parse_set_spine_color_intent,
     prepare_cover,
+    set_spine_color,
 )
 
 # Every /api route documents the envelope for these statuses. Declaring 422
@@ -248,6 +250,30 @@ def delete_book_intent(
     """Remove a Book with its Readings and Card notes, and clear every pointer to it (FR-1)."""
     parsed = parse_delete_book_intent(intent)
     delete_book(request.app.state.store, parsed)
+    return OkResponse(ok=True)
+
+
+@router.post(
+    "/intents/set-spine-color",
+    response_model=OkResponse,
+    response_model_exclude_none=True,
+)
+def set_spine_color_intent(
+    request: Request,
+    intent: Annotated[
+        str | None,
+        Form(
+            media_type="multipart/form-data",
+            description=(
+                'JSON object {"bookId": ..., "spineColor": "#RRGGBB" | null}: '
+                "null is From cover."
+            ),
+        ),
+    ] = None,
+) -> OkResponse:
+    """Set or clear a Book's own spine color and re-resolve its spine color (FR-24)."""
+    parsed = parse_set_spine_color_intent(intent)
+    set_spine_color(request.app.state.store, parsed)
     return OkResponse(ok=True)
 
 

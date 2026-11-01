@@ -28,12 +28,17 @@ def _shelf_book(book: Book) -> ShelfBook:
     return ShelfBook(
         id=book.id,
         title=book.title,
+        subtitle=book.subtitle,
         first_author=book.authors[0] if book.authors else "",
         author_count=len(book.authors),
         authors=list(book.authors),
         pages=book.pages,
+        year=book.year,
         created_at=book.created_at,
         spine_color=book.spine_color,
+        spine_color_user=book.spine_color_user,
+        spine_color_from_cover=book.spine_color_from_cover,
+        has_cover=book.cover_file is not None,
         finished=_finished(book),
     )
 
@@ -97,6 +102,7 @@ def book_detail(library: Library, book_id: str) -> BookDetailView | None:
         isbn=book.isbn,
         year=book.year,
         tags=list(book.tags),
+        spine_color=book.spine_color,
         spine_color_user=book.spine_color_user,
         cover_file=book.cover_file,
         spine_color_from_cover=book.spine_color_from_cover,

@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { useBookView, useCatalogView, useDeleteBook, type BookDetailView } from '../api/index.ts'
 import Button from '../components/Button.tsx'
+import ChangeColor from '../components/ChangeColor.tsx'
 import ConfirmDialog from '../components/ConfirmDialog.tsx'
 import FailureMessage from '../components/FailureMessage.tsx'
 import PageHeading from '../components/PageHeading.tsx'
@@ -58,6 +59,7 @@ function BookDetail({ book, onDelete }: { book: BookDetailView; onDelete: Delete
   const [editing, setEditing] = useState(false)
   const readings = readingLines(book.readings)
   const readingsId = useId()
+  const colorId = useId()
   const [confirming, setConfirming] = useState(false)
   const [busy, setBusy] = useState(false)
   const [showAlert, setShowAlert] = useState(false)
@@ -165,6 +167,20 @@ function BookDetail({ book, onDelete }: { book: BookDetailView; onDelete: Delete
                 ))}
               </ul>
             )}
+          </section>
+          <section className={styles.block} aria-labelledby={colorId}>
+            <ChangeColor
+              book={{
+                id: book.id,
+                spineColor: book.spineColor,
+                spineColorUser: book.spineColorUser,
+                spineColorFromCover: book.spineColorFromCover,
+                hasCover: book.coverFile !== null,
+                finished: book.readings.some((reading) => reading.finishDate !== null),
+              }}
+              level={2}
+              headingId={colorId}
+            />
           </section>
         </div>
       </div>

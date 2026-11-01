@@ -107,3 +107,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-unique-side-reads-and-directory-fsync.md`
   summary: Fsync the parent folder after creating `data_dir`, `covers/` and `.staging/`, so a fresh setup's first commit survives a power cut.
   evidence: `Store.open` (`backend/bookvie/store/store.py` lines 91 and 164) calls `mkdir` without flushing the parent. A rename inside `covers/` can be durable while `covers/` itself is not. This existed before the change.
+
+## Deferred from: build review of spec-1-14-change-a-book-s-color-from-the-shelf.md (2026-11-01)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-1-14-change-a-book-s-color-from-the-shelf.md`
+  summary: Verify the Spine popover's "press inside" focus branch (`SpinePopover.tsx` `blur`, the `pressing` check) in a browser that doesn't focus a pressed button (WebKit/Safari).
+  evidence: Unverified; medium if true. `playwright.config.ts` defines only a Chromium project, and Chromium focuses a clicked button, so `relatedTarget` is inside the card and the branch never runs. Without it, a swatch click in Safari would close the popover before the pick lands. Settle it by adding a WebKit project (a repo-wide CI decision), or with a test that sends `focusout` with no related target while a press is active.

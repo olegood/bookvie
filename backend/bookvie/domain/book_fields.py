@@ -263,7 +263,7 @@ def parse_book_fields(
     tags = split_tags(text["tags"])
 
     spine_color = text["spineColor"] or None
-    if spine_color is not None and not _HEX_COLOR.fullmatch(spine_color):
+    if spine_color is not None and not is_hex_color(spine_color):
         failures.append(("spineColor", SPINE_COLOR_MESSAGE))
 
     if failures:
@@ -283,6 +283,11 @@ def parse_book_fields(
         tags=tags,
         spine_color=spine_color,
     )
+
+
+def is_hex_color(value: str) -> bool:
+    """``#RRGGBB`` in either case, nothing around it (the Spine color rule)."""
+    return _HEX_COLOR.fullmatch(value) is not None
 
 
 def curated_spine_color(book_count: int) -> str:

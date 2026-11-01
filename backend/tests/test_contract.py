@@ -321,6 +321,7 @@ def test_openapi_documents_the_envelope_not_fastapi_errors(openapi: dict) -> Non
     operations.append(("post", "/api/intents/add-book"))
     operations.append(("post", "/api/intents/edit-book"))
     operations.append(("post", "/api/intents/delete-book"))
+    operations.append(("post", "/api/intents/set-spine-color"))
     for method, path in operations:
         responses = openapi["paths"][path][method]["responses"]
         for status in ("409", "422", "500", "503"):
@@ -334,7 +335,14 @@ def test_openapi_documents_the_envelope_not_fastapi_errors(openapi: dict) -> Non
         body = openapi["paths"][path]["post"]["requestBody"]["content"]["multipart/form-data"]
         assert body["schema"]["$ref"].startswith("#/components/schemas/Body_")
     # Routes without a cover part can't answer 413, so they don't document it.
-    for method, path in operations[:3] + [("post", "/api/intents/delete-book")]:
+    coverless = [
+        ("get", "/api/views/home"),
+        ("get", "/api/views/catalog"),
+        ("get", "/api/views/book"),
+        ("post", "/api/intents/delete-book"),
+        ("post", "/api/intents/set-spine-color"),
+    ]
+    for method, path in coverless:
         assert "413" not in openapi["paths"][path][method]["responses"]
 
 

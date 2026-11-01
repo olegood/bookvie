@@ -5,9 +5,10 @@
 // proven at API level (backend/tests/test_set_spine_color.py); these tests
 // read what the browser shows by role, exact accessible name and geometry.
 
+import AxeBuilder from '@axe-core/playwright'
 import type { Locator, Page, Request } from '@playwright/test'
-import { expect, test } from './fixtures.ts'
-import { finished, shelfOf, spine } from './bookcase.ts'
+import { expect, type Server, test } from './fixtures.ts'
+import { finished, search, shelfOf, spine, spines } from './bookcase.ts'
 
 const SET_SPINE_COLOR = '/api/intents/set-spine-color'
 const COULDNT_SAVE = "Couldn't save. Your data wasn't changed."
@@ -17,6 +18,13 @@ const COULDNT_SAVE_BODY = JSON.stringify({
 const SWATCH_NAMES = ['Sage', 'Slate', 'Clay', 'Ochre', 'Plum', 'Teal', 'Moss', 'Stone']
 const SAGE = '#749076'
 const TEAL = '#4B7C7B'
+const EDIT_BOOK = '/api/intents/edit-book'
+const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']
+// A 40×60 solid red-orange PNG (rgb 200, 60, 40): a colored cover (as cover.spec.ts).
+const COVER_PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAACgAAAA8CAIAAACb22+3AAAAO0lEQVR42u3NMQ0AMAgAMJgaROA/yJoHHp7WQHO64sKLI2KxWCwWi8VisVgsFovFYrFYLBaLxWKxeOMD/k0BpCMi0m0AAAAASUVORK5CYII=',
+  'base64',
+)
 
 const DUNE_ID = '6f1c1d2e-9a4b-4c3d-8e5f-0a1b2c3d4e5f'
 const NEUROMANCER_ID = '1b6e2c4a-3d5f-4e7a-9b8c-0d1e2f3a4b5c'
@@ -83,7 +91,7 @@ test.describe('Story 1.14 Change a book’s color from the shelf (ATDD)', () => 
     await page.emulateMedia({ colorScheme: 'light' })
   })
 
-  test.skip('[P1] AC-1 a click, Enter or Space opens one non-modal dialog popover above the spine (below on the top row), inside the viewport', async ({
+  test('[P1] AC-1 a click, Enter or Space opens one non-modal dialog popover above the spine (below on the top row), inside the viewport', async ({
     page,
     seededServer,
   }) => {
@@ -144,7 +152,7 @@ test.describe('Story 1.14 Change a book’s color from the shelf (ATDD)', () => 
     expect(firstBox.x + firstBox.width).toBeLessThanOrEqual(viewport.width)
   })
 
-  test.skip('[P1] AC-2 focus moves into the popover on open; Esc, an outside click, ×, Tab past the last control and Shift+Tab from the first close it and return focus to the spine', async ({
+  test('[P1] AC-2 focus moves into the popover on open; Esc, an outside click, ×, Tab past the last control and Shift+Tab from the first close it and return focus to the spine', async ({
     page,
     seededServer,
   }) => {
@@ -194,7 +202,7 @@ test.describe('Story 1.14 Change a book’s color from the shelf (ATDD)', () => 
     await expect(page.getByRole('dialog')).toHaveCount(0)
   })
 
-  test.skip('[P1] AC-3 the popover shows title, subtitle, authors, "N pages · year", the status and color lines and "Open book →", with no primary action', async ({
+  test('[P1] AC-3 the popover shows title, subtitle, authors, "N pages · year", the status and color lines and "Open book →", with no primary action', async ({
     page,
     seededServer,
   }) => {
@@ -235,7 +243,7 @@ test.describe('Story 1.14 Change a book’s color from the shelf (ATDD)', () => 
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Dune')
   })
 
-  test.skip('[P0] AC-4 picking a swatch in the popover or on Book detail sends set-spine-color at once, announces "Color set to Teal." and names where the color comes from', async ({
+  test('[P0] AC-4 picking a swatch in the popover or on Book detail sends set-spine-color at once, announces "Color set to Teal." and names where the color comes from', async ({
     page,
     seededServer,
   }) => {
@@ -286,7 +294,7 @@ test.describe('Story 1.14 Change a book’s color from the shelf (ATDD)', () => 
     await expect(popover(page, 'Neuromancer').getByText(/^Change color\s*· shown once read$/)).toBeVisible()
   })
 
-  test.skip("[P1] AC-5 a color change that couldn't be saved shows the failure line and keeps the previous selection", async ({
+  test("[P1] AC-5 a color change that couldn't be saved shows the failure line and keeps the previous selection", async ({
     page,
     seededServer,
   }) => {
@@ -312,5 +320,376 @@ test.describe('Story 1.14 Change a book’s color from the shelf (ATDD)', () => 
     await expect(swatch(card, 'Teal')).toHaveAttribute('aria-pressed', 'false')
     await expect(card.getByText('Color: Sage', { exact: true })).toBeVisible()
     await expect(dune).toHaveCSS('background-color', rgbOf(SAGE))
+  })
+})
+
+/** Setup: gives the seeded Dune a cover through edit-book, as the Edit book panel would. */
+async function attachCover(page: Page, server: Server): Promise<void> {
+  const response = await page.request.post(`${server.url}${EDIT_BOOK}`, {
+    multipart: {
+      intent: JSON.stringify({
+        bookId: DUNE_ID,
+        title: 'Dune',
+        subtitle: 'Book One',
+        pages: '412',
+        authors: 'Frank Herbert',
+        edition: '1',
+        language: 'English',
+        publisher: 'Publisher',
+        type: 'paperback',
+        isbn: '',
+        year: '1965',
+        finishedOn: '2026-03-20',
+        tags: '',
+        spineColor: '',
+      }),
+      cover: { name: 'dune.png', mimeType: 'image/png', buffer: COVER_PNG },
+    },
+  })
+  expect(response.status()).toBe(200)
+}
+
+/** The popover's pointer: its first child, a rotated square. */
+function pointerOf(card: Locator): Locator {
+  return card.locator(':scope > span[aria-hidden="true"]').first()
+}
+
+/** The horizontal centre of a box. */
+function centre(box: { x: number; width: number }): number {
+  return box.x + box.width / 2
+}
+
+test.describe('Story 1.14 Change a book’s color from the shelf (follow-ups)', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'reduce' })
+  })
+
+  test('[P1] AC-1 at 1024px every popover is inside the viewport, at most 992px wide, its pointer at the spine; shifted inward at the right edge', async ({
+    page,
+    seededServer,
+  }) => {
+    await page.setViewportSize({ width: 1024, height: 900 })
+    const server = await seededServer({ books: [DUNE, NEUROMANCER, ...shelfOf(60)] })
+    await page.goto(`${server.url}/`)
+
+    // The first spine (top row, left edge), the last spine of the second row
+    // (right edge), Dune (above) and the very last spine.
+    const boxes = await spines(page).evaluateAll((all) =>
+      all.map((el) => {
+        const rect = el.getBoundingClientRect()
+        return { name: el.getAttribute('aria-label')!, x: rect.x, bottom: Math.round(rect.bottom) }
+      }),
+    )
+    const rows = [...new Set(boxes.map((box) => box.bottom))].sort((a, b) => a - b)
+    expect(rows.length).toBeGreaterThanOrEqual(3)
+    const secondRow = boxes.filter((box) => box.bottom === rows[1])
+    const rightmost = secondRow.reduce((a, b) => (b.x > a.x ? b : a))
+    const names = [boxes[0].name, rightmost.name, DUNE_SPINE, boxes.at(-1)!.name]
+
+    for (const name of names) {
+      const button = spine(page, name)
+      await button.scrollIntoViewIfNeeded()
+      await button.click()
+      const card = page.getByRole('dialog')
+      await expect(card).toBeVisible()
+      const viewport = page.viewportSize()!
+      const spineBox = (await button.boundingBox())!
+      const cardBox = (await card.boundingBox())!
+      expect(cardBox.width, name).toBeLessThanOrEqual(viewport.width - 32)
+      expect(cardBox.x, name).toBeGreaterThanOrEqual(16)
+      expect(cardBox.x + cardBox.width, name).toBeLessThanOrEqual(viewport.width - 16 + 0.5)
+      expect(cardBox.y, name).toBeGreaterThanOrEqual(0)
+      expect(cardBox.y + cardBox.height, name).toBeLessThanOrEqual(viewport.height)
+      const pointer = (await pointerOf(card).boundingBox())!
+      expect(Math.abs(centre(pointer) - centre(spineBox)), name).toBeLessThanOrEqual(1)
+      if (name === rightmost.name) {
+        // Shifted inward: not centred on a spine this close to the right edge.
+        expect(centre(cardBox)).toBeLessThan(centre(spineBox) - 1)
+      }
+      // The pointer sits between the card and the spine.
+      if (cardBox.y > spineBox.y) expect(pointer.y).toBeLessThan(cardBox.y)
+      else expect(pointer.y + pointer.height).toBeGreaterThan(cardBox.y + cardBox.height)
+      await page.keyboard.press('Escape')
+      await expect(card).toBeHidden()
+    }
+  })
+
+  test('[P2] AC-3 a Book with no subtitle or year shows no empty line and no " · "; several authors are joined with "; "', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({
+      books: [{ title: 'Good Omens', authors: ['Terry Pratchett', 'Neil Gaiman'], pages: 1 }],
+    })
+    await page.goto(`${server.url}/`)
+    await spine(page, 'Good Omens by Terry Pratchett and 1 other, not read yet').click()
+    const card = popover(page, 'Good Omens')
+    await expect(card.getByText('Terry Pratchett; Neil Gaiman', { exact: true })).toBeVisible()
+    await expect(card.getByText('1 page', { exact: true })).toBeVisible()
+    await expect(card).not.toContainText(' · 1')
+    // Title, authors, pages, status: no blank subtitle line.
+    const lines = await card.locator('p').evaluateAll((all) => all.map((el) => el.textContent ?? ''))
+    expect(lines.filter((line) => line.trim() === '')).toEqual([])
+  })
+
+  test('[P1] AC-4 with a cover, From cover comes first and is pressed; a swatch, then From cover, send their colors and the line names the source', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: [DUNE, NEUROMANCER] })
+    await attachCover(page, server)
+    const sent = requestsTo(page, SET_SPINE_COLOR)
+    await page.goto(`${server.url}/`)
+    const dune = spine(page, DUNE_SPINE)
+    await dune.click()
+    const card = popover(page, 'Dune')
+    const fromCover = card.getByRole('button', { name: 'From cover', exact: true })
+
+    await expect(fromCover).toHaveAttribute('aria-pressed', 'true')
+    for (const name of SWATCH_NAMES) await expect(swatch(card, name)).toHaveAttribute('aria-pressed', 'false')
+    const names = await card.getByRole('button').evaluateAll((all) => all.map((el) => el.textContent || el.getAttribute('aria-label')))
+    expect(names.slice(0, 2)).toEqual(['From cover', 'Sage'])
+    // rgb(200, 60, 40) is nearest to Clay.
+    await expect(card.getByText('Color: Clay, from cover', { exact: true })).toBeVisible()
+    const coverFill = await dune.evaluate((el) => getComputedStyle(el).backgroundColor)
+
+    await swatch(card, 'Teal').click()
+    await expect(page.getByRole('status')).toHaveText('Color set to Teal.')
+    await expect(card.getByText('Color: set by you', { exact: true })).toBeVisible()
+    await expect(fromCover).toHaveAttribute('aria-pressed', 'false')
+    await expect(swatch(card, 'Teal')).toBeFocused()
+
+    await fromCover.click()
+    await expect(page.getByRole('status')).toHaveText('Color set to Clay.')
+    await expect(fromCover).toHaveAttribute('aria-pressed', 'true')
+    await expect(card.getByText('Color: Clay, from cover', { exact: true })).toBeVisible()
+    await expect(dune).toHaveCSS('background-color', coverFill)
+    expect(sent.map(intentOf)).toEqual([
+      { bookId: DUNE_ID, spineColor: TEAL },
+      { bookId: DUNE_ID, spineColor: null },
+    ])
+  })
+
+  test('[P2] AC-4 picking the pressed swatch sends nothing; the swatches are reached with Tab and picked with Space', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: [DUNE, NEUROMANCER] })
+    const sent = requestsTo(page, SET_SPINE_COLOR)
+    await page.goto(`${server.url}/`)
+    await spine(page, DUNE_SPINE).click()
+    const card = popover(page, 'Dune')
+
+    await swatch(card, 'Sage').click()
+    await expect(card).toBeVisible()
+    // Tab from "Open book →" reaches Sage, then Slate; Space picks it.
+    await card.getByRole('link', { name: 'Open book →', exact: true }).focus()
+    await page.keyboard.press('Tab')
+    await expect(swatch(card, 'Sage')).toBeFocused()
+    await page.keyboard.press('Tab')
+    await expect(swatch(card, 'Slate')).toBeFocused()
+    await page.keyboard.press('Space')
+    await expect(page.getByRole('status')).toHaveText('Color set to Slate.')
+    await expect(swatch(card, 'Slate')).toHaveAttribute('aria-pressed', 'true')
+    await expect(swatch(card, 'Slate')).toBeFocused()
+    // Only the Slate pick reached the server.
+    expect(sent.map(intentOf)).toEqual([{ bookId: DUNE_ID, spineColor: '#5B7590' }])
+  })
+
+  test('[P1] AC-2 an outside click on Search titles closes the popover and leaves focus there; a search that hides the open spine closes it', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: [DUNE, NEUROMANCER] })
+    await page.goto(`${server.url}/`)
+    const dune = spine(page, DUNE_SPINE)
+    await dune.click()
+    await expect(popover(page, 'Dune')).toBeVisible()
+
+    await search(page).click()
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    await expect(search(page)).toBeFocused()
+    await expect(dune).toHaveAttribute('aria-expanded', 'false')
+
+    // Clicking the open spine again closes it.
+    await dune.click()
+    await expect(popover(page, 'Dune')).toBeVisible()
+    await dune.click()
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    await expect(dune).toBeFocused()
+
+    // Opening another spine's popover moves focus into it.
+    await dune.click()
+    await spine(page, NEUROMANCER_SPINE).click()
+    await expect(
+      popover(page, 'Neuromancer').getByRole('link', { name: 'Open book →', exact: true }),
+    ).toBeFocused()
+
+    // A search that hides the open spine closes its popover.
+    await page.keyboard.press('Escape')
+    await dune.click()
+    await search(page).focus()
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    await dune.click()
+    await expect(popover(page, 'Dune')).toBeVisible()
+    await search(page).evaluate((input: HTMLInputElement) => {
+      // Typed without moving focus out of the popover first would close it anyway;
+      // set the value as typing would, to prove the search alone closes it.
+      const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!
+      setter.call(input, 'Neuro')
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+  })
+
+  test('[P1] AC-5 the failure line clears on the next pick and when the popover closes; on Book detail it shows under the block', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: [DUNE, NEUROMANCER] })
+    let fail = true
+    await page.route(`**${SET_SPINE_COLOR}`, async (route) => {
+      if (fail) await route.fulfill({ status: 500, contentType: 'application/json', body: COULDNT_SAVE_BODY })
+      else await route.continue()
+    })
+    await page.goto(`${server.url}/`)
+    const dune = spine(page, DUNE_SPINE)
+    await dune.click()
+    const card = popover(page, 'Dune')
+
+    await swatch(card, 'Teal').click()
+    await expect(card.getByText(COULDNT_SAVE, { exact: true })).toBeVisible()
+    await expect(page.getByRole('alert')).toHaveText(COULDNT_SAVE)
+    // Closing clears it.
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('alert')).toHaveText('')
+    await dune.click()
+    await expect(card.getByText(COULDNT_SAVE, { exact: true })).toHaveCount(0)
+
+    // The next pick clears it too.
+    await swatch(card, 'Teal').click()
+    await expect(card.getByText(COULDNT_SAVE, { exact: true })).toBeVisible()
+    fail = false
+    await swatch(card, 'Plum').click()
+    await expect(page.getByRole('status')).toHaveText('Color set to Plum.')
+    await expect(card.getByText(COULDNT_SAVE, { exact: true })).toHaveCount(0)
+    await expect(page.getByRole('alert')).toHaveText('')
+
+    // Book detail: under the block, the previous selection kept.
+    fail = true
+    await page.goto(`${server.url}/book/${DUNE_ID}`)
+    const block = changeColor(page)
+    await swatch(block, 'Moss').click()
+    await expect(block.getByText(COULDNT_SAVE, { exact: true })).toBeVisible()
+    await expect(page.getByRole('alert')).toHaveText(COULDNT_SAVE)
+    await expect(swatch(block, 'Plum')).toHaveAttribute('aria-pressed', 'true')
+    await expect(swatch(block, 'Moss')).toHaveAttribute('aria-pressed', 'false')
+    await expect(block.getByText('Color: set by you', { exact: true })).toBeVisible()
+  })
+
+  test('[P1] AC-4 on Book detail with a cover, From cover comes first and is pressed; a swatch, then From cover, send their colors', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: [DUNE, NEUROMANCER] })
+    await attachCover(page, server)
+    const sent = requestsTo(page, SET_SPINE_COLOR)
+    await page.goto(`${server.url}/book/${DUNE_ID}`)
+    const block = changeColor(page)
+    const fromCover = block.getByRole('button', { name: 'From cover', exact: true })
+
+    await expect(fromCover).toHaveAttribute('aria-pressed', 'true')
+    const names = await block.getByRole('button').evaluateAll((all) => all.map((el) => el.textContent || el.getAttribute('aria-label')))
+    expect(names.slice(0, 2)).toEqual(['From cover', 'Sage'])
+    await expect(block.getByText('Color: Clay, from cover', { exact: true })).toBeVisible()
+
+    await swatch(block, 'Teal').click()
+    await expect(page.getByRole('status')).toHaveText('Color set to Teal.')
+    await expect(block.getByText('Color: set by you', { exact: true })).toBeVisible()
+    await expect(fromCover).toHaveAttribute('aria-pressed', 'false')
+
+    await fromCover.click()
+    await expect(page.getByRole('status')).toHaveText('Color set to Clay.')
+    await expect(fromCover).toHaveAttribute('aria-pressed', 'true')
+    await expect(block.getByText('Color: Clay, from cover', { exact: true })).toBeVisible()
+    expect(sent.map(intentOf)).toEqual([
+      { bookId: DUNE_ID, spineColor: TEAL },
+      { bookId: DUNE_ID, spineColor: null },
+    ])
+  })
+
+  test('[P2] AC-4 a pick made while one is in flight is ignored; the first pick ends up pressed', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: [DUNE, NEUROMANCER] })
+    const sent = requestsTo(page, SET_SPINE_COLOR)
+    let release!: () => void
+    const held = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    await page.route(`**${SET_SPINE_COLOR}`, async (route) => {
+      await held
+      await route.continue()
+    })
+    await page.goto(`${server.url}/`)
+    await spine(page, DUNE_SPINE).click()
+    const card = popover(page, 'Dune')
+
+    await swatch(card, 'Teal').click()
+    await expect.poll(() => sent.length).toBe(1)
+    await swatch(card, 'Plum').click()
+    release()
+    await expect(page.getByRole('status')).toHaveText('Color set to Teal.')
+    await expect(swatch(card, 'Teal')).toHaveAttribute('aria-pressed', 'true')
+    await expect(swatch(card, 'Plum')).toHaveAttribute('aria-pressed', 'false')
+    expect(sent.map(intentOf)).toEqual([{ bookId: DUNE_ID, spineColor: TEAL }])
+  })
+
+  test('[P2] AC-1 the popover follows its spine when the page scrolls', async ({ page, seededServer }) => {
+    await page.setViewportSize({ width: 1024, height: 700 })
+    const server = await seededServer({ books: [DUNE, NEUROMANCER, ...shelfOf(80)] })
+    await page.goto(`${server.url}/`)
+    const dune = spine(page, DUNE_SPINE)
+    await dune.scrollIntoViewIfNeeded()
+    await dune.click()
+    const card = popover(page, 'Dune')
+    await expect(card).toBeVisible()
+
+    const check = async (when: string) => {
+      const viewport = page.viewportSize()!
+      const spineBox = (await dune.boundingBox())!
+      const cardBox = (await card.boundingBox())!
+      const pointer = (await pointerOf(card).boundingBox())!
+      expect(Math.abs(centre(pointer) - centre(spineBox)), when).toBeLessThanOrEqual(1)
+      expect(cardBox.x, when).toBeGreaterThanOrEqual(0)
+      expect(cardBox.x + cardBox.width, when).toBeLessThanOrEqual(viewport.width)
+      expect(cardBox.y, when).toBeGreaterThanOrEqual(0)
+      expect(cardBox.y + cardBox.height, when).toBeLessThanOrEqual(viewport.height)
+      return spineBox.y
+    }
+    const before = await check('before scrolling')
+    await card.hover()
+    await page.mouse.wheel(0, -120)
+    await expect.poll(async () => (await dune.boundingBox())!.y).not.toBe(before)
+    await expect(card).toBeVisible()
+    await check('after scrolling')
+  })
+
+  test('[P2] AC-1 axe finds nothing on the open popover, in both themes', async ({ page, seededServer }) => {
+    const server = await seededServer({ books: [DUNE, NEUROMANCER] })
+    await attachCover(page, server)
+    const found: string[] = []
+    for (const colorScheme of ['light', 'dark'] as const) {
+      await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' })
+      for (const name of [DUNE_SPINE, NEUROMANCER_SPINE]) {
+        await page.goto(`${server.url}/`)
+        await spine(page, name).click()
+        await expect(page.getByRole('dialog')).toBeVisible()
+        const { violations } = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze()
+        found.push(...violations.map(({ id, nodes }) => `${colorScheme} ${name}: ${id} (${nodes.length})`))
+      }
+    }
+    expect(found).toEqual([])
   })
 })

@@ -1,0 +1,181 @@
+/* DESIGN.md → Spine popover: {components.spine-popover}. */
+.popover {
+  --pointer-size: 14px;
+
+  position: fixed;
+  z-index: 20;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  width: 500px;
+  max-width: calc(100vw - 32px);
+  padding: var(--space-5) var(--space-6);
+  border: var(--hairline) solid var(--color-line);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  box-shadow: var(--shadow-overlay);
+  animation: fade-in 120ms ease-out;
+}
+
+.popover:focus {
+  outline: none;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .popover {
+    animation: none;
+  }
+}
+
+/* The 14px rotated-square pointer, its tip in the 8px gap, at the spine's centre. */
+.pointer {
+  position: absolute;
+  /* --pointer-x is from the border edge; `left` is from the padding edge. */
+  left: calc(var(--pointer-x) - var(--pointer-size) / 2 - var(--hairline));
+  width: var(--pointer-size);
+  height: var(--pointer-size);
+  border: var(--hairline) solid var(--color-line);
+  background: var(--color-surface);
+  transform: rotate(45deg);
+}
+
+.popover[data-side="above"] .pointer {
+  bottom: -5px;
+  border-top: 0;
+  border-left: 0;
+}
+
+.popover[data-side="below"] .pointer {
+  top: -5px;
+  border-right: 0;
+  border-bottom: 0;
+}
+
+.details {
+  display: grid;
+  align-content: start;
+  gap: var(--space-1);
+  min-width: 0;
+  padding-right: var(--space-5);
+}
+
+.details p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.title {
+  padding-right: var(--space-2);
+  font-family: var(--font-book-title-md-family);
+  font-size: var(--font-book-title-md-size);
+  font-weight: var(--font-book-title-md-weight);
+  line-height: var(--font-book-title-md-line-height);
+}
+
+.subtitle,
+.meta,
+.status {
+  font-family: var(--font-meta-family);
+  font-size: var(--font-meta-size);
+  line-height: var(--font-meta-line-height);
+  color: var(--color-ink-secondary);
+}
+
+.authors {
+  font-family: var(--font-body-sm-family);
+  font-size: var(--font-body-sm-size);
+  line-height: var(--font-body-sm-line-height);
+  color: var(--color-ink);
+}
+
+.status {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-2);
+}
+
+/* The mini spine glyph, as the bookcase legend draws it. */
+.glyphRead,
+.glyphUnread {
+  box-sizing: border-box;
+  display: inline-block;
+  flex: none;
+  width: 9px;
+  height: 13px;
+  margin-bottom: 3px;
+  border-radius: 2px 2px 0 0;
+  border-bottom: 0;
+}
+
+.glyphRead {
+  border: var(--hairline) solid var(--color-spine-edge);
+  border-bottom: 0;
+  background: var(--color-spine-sage);
+}
+
+.glyphUnread {
+  border: 1.5px solid var(--color-spine-unread-outline);
+  border-bottom: 0;
+  background: var(--color-spine-unread-fill);
+}
+
+.actions {
+  display: grid;
+  align-content: start;
+  gap: var(--space-4);
+  min-width: 0;
+  padding-left: var(--space-5);
+  border-left: var(--hairline) solid var(--color-line);
+}
+
+.open {
+  justify-self: start;
+  font-family: var(--font-body-sm-family);
+  font-size: var(--font-body-sm-size);
+  line-height: var(--font-body-sm-line-height);
+}
+
+.close {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-ink-tertiary);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+@media (forced-colors: active) {
+  .popover {
+    border-color: CanvasText;
+  }
+
+  .pointer {
+    border-color: CanvasText;
+  }
+
+  .glyphRead,
+  .glyphUnread {
+    border-color: CanvasText;
+  }
+
+  .glyphUnread {
+    background: Canvas;
+  }
+}

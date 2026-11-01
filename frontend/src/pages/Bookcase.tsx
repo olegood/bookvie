@@ -1,4 +1,6 @@
 import {
+  useCallback,
+  useEffect,
   useId,
   useLayoutEffect,
   useMemo,
@@ -9,6 +11,7 @@ import {
   type RefObject,
 } from 'react'
 import type { LibraryMeter, ShelfBook } from '../api/index.ts'
+import SpinePopover from '../components/SpinePopover.tsx'
 import { bookcaseName, matchesTitle, noMatchCopy, spineName } from '../lib/catalog.ts'
 import { nearestVisible, spineHeight } from '../lib/spine.ts'
 import styles from './Bookcase.module.css'
@@ -27,6 +30,15 @@ type Props = {
 }
 
 type Measured = Record<string, { title: string; height: number }>
+
+/**
+ * The controls an outside click may land on and keep focus (a `label` focuses
+ * its control, as Search titles' does). Containers with
+ * `tabindex="-1"` (`main`, the page `h1`) are not controls: a click there
+ * returns focus to the spine.
+ */
+const FOCUSABLE =
+  'a[href], button, input, select, textarea, summary, label, [tabindex]:not([tabindex^="-"]), [contenteditable="true"]'
 
 const MOVES = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'])
 
@@ -88,6 +100,13 @@ export default function Bookcase({ books, meter, query, highlightId, focusTarget
   const labels = useRef(new Map<string, HTMLElement>())
   const [measured, setMeasured] = useState<Measured>({})
   const [stopId, setStopId] = useState<string | null>(null)
+  // The Book whose Spine popover is open: at most one.
+  const [openId, setOpenId] = useState<string | null>(null)
+  const popoverRef = useRef<HTMLDivElement>(null)
+  // A press on the open spine closes its popover; the click that follows must not reopen it.
+  const closedByPress = useRef<{ id: string; at: number } | null>(null)
+  const shelfRef = useRef<HTMLUListElement>(null)
+  const shelf = useCallback(() => shelfRef.current, [])
 
   const ids = useMemo(() => books.map((book) => book.id), [books])
   const visibleIds = useMemo(
@@ -104,6 +123,46 @@ export default function Bookcase({ books, meter, query, highlightId, focusTarget
   // Keep a moved stop, so clearing the search leaves it where it went; with
   // no spine focused yet, the stop starts on the first spine.
   if (stop !== null && stop !== (stopId ?? ids[0])) setStopId(stop)
+
+  // A search that hides the open spine (or a delete) closes its popover.
+  if (openId !== null && !visible.has(openId)) setOpenId(null)
+  const openBook = openId === null ? undefined : books.find((book) => book.id === openId)
+
+  const anchor = useCallback(() => (openId === null ? null : (buttons.current.get(openId) ?? null)), [openId])
+
+  // Closing returns focus to the spine, unless the user put it somewhere else.
+  const closePopover = useCallback(
+    (refocus: boolean) => {
+      const spine = anchor()
+      setOpenId(null)
+      if (refocus) spine?.focus()
+    },
+    [anchor],
+  )
+
+  // An outside click closes the popover. A click on the open spine is left to
+  // its own toggle. Focus stays on a control the click landed on (Search
+  // titles, another spine); otherwise it returns to the spine once the
+  // click's own focus change has happened.
+  useEffect(() => {
+    if (openId === null) return
+    const down = (event: PointerEvent) => {
+      const target = event.target
+      if (!(target instanceof Element)) return
+      if (popoverRef.current?.contains(target)) return
+      const spine = anchor()
+      setOpenId(null)
+      if (spine?.contains(target)) {
+        // Pressing the open spine toggles it shut; it keeps the focus the press gives it.
+        closedByPress.current = { id: openId, at: event.timeStamp }
+        return
+      }
+      if (target.closest(FOCUSABLE)) return
+      setTimeout(() => spine?.focus(), 0)
+    }
+    document.addEventListener('pointerdown', down, true)
+    return () => document.removeEventListener('pointerdown', down, true)
+  }, [openId, anchor])
 
   // Real focus follows only when a spine that had it is now hidden; with no
   // spine left it goes to Search titles. Runs before the measuring below
@@ -161,6 +220,7 @@ export default function Bookcase({ books, meter, query, highlightId, focusTarget
       </div>
       {visibleIds.length === 0 && <p className={styles.noMatch}>{noMatchCopy(query)}</p>}
       <ul
+        ref={shelfRef}
         role="list"
         aria-label={bookcaseName(books.length)}
         className={styles.shelf}
@@ -170,6 +230,7 @@ export default function Bookcase({ books, meter, query, highlightId, focusTarget
         {books.map((book) => {
           const classes = [styles.spine, book.finished ? styles.read : styles.unread]
           if (book.id === highlightId) classes.push(styles.highlight)
+          if (book.id === openId) classes.push(styles.open)
           const style: CSSProperties & Record<'--spine-color', string | undefined> = {
             height: measured[book.id]?.height ?? spineHeight(0),
             '--spine-color': book.finished ? book.spineColor : undefined,
@@ -182,7 +243,15 @@ export default function Bookcase({ books, meter, query, highlightId, focusTarget
                 style={style}
                 tabIndex={book.id === stop ? 0 : -1}
                 aria-label={spineName(book)}
+                aria-haspopup="dialog"
+                aria-expanded={book.id === openId ? 'true' : 'false'}
                 onFocus={() => setStopId(book.id)}
+                onClick={(event) => {
+                  const pressed = closedByPress.current
+                  closedByPress.current = null
+                  if (pressed?.id === book.id && event.timeStamp - pressed.at < 1000) return
+                  setOpenId((open) => (open === book.id ? null : book.id))
+                }}
                 ref={(button) => {
                   const targets = focusTargets.current
                   const spines = buttons.current
@@ -215,6 +284,11 @@ export default function Bookcase({ books, meter, query, highlightId, focusTarget
           )
         })}
       </ul>
+      {openBook && (
+        <div ref={popoverRef}>
+          <SpinePopover key={openBook.id} book={openBook} anchor={anchor} shelf={shelf} onClose={closePopover} />
+        </div>
+      )}
       <div className={styles.legend}>
         <span className={styles.legendItem}>
           <span aria-hidden="true" className={styles.swatchRead} />

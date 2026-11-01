@@ -27,12 +27,11 @@ from bookvie.domain import Library, check_invariants
 from bookvie.http.app import create_app
 from bookvie.intents import COULDNT_SAVE_MESSAGE
 from tests.builder import LibraryBuilder
-from tests.test_add_book import _client, _library_bytes, _stored_book
+from tests.test_add_book import _client, _field_messages, _library_bytes, _stored_book
 from tests.test_cover import DUNE_ID, _seed_dune_with_cover
 from tests.test_store import FaultyFs
 
 SET_SPINE_COLOR = "/api/intents/set-spine-color"
-RED = "red phase: set-spine-color and the Spine popover are not built yet (Story 1.14)"
 GONE_ID = "00000000-0000-4000-8000-000000000000"
 SAGE = "#749076"
 SLATE = "#5B7590"
@@ -68,7 +67,6 @@ def _assert_invariants(data_dir: Path) -> None:
 # --- AC-6: the standard intent guarantees (TR8) ---------------------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_ac6_p0_set_spine_color_keeps_the_standard_intent_guarantees(
     tmp_path: Path,
 ) -> None:
@@ -131,3 +129,103 @@ def test_ac6_p0_set_spine_color_keeps_the_standard_intent_guarantees(
     schema = create_app().openapi()
     assert SET_SPINE_COLOR in schema["paths"]
     assert "book_not_found" in schema["components"]["schemas"]["ErrorCode"]["enum"]
+
+
+# --- AC-4 (API): what a pick stores ---------------------------------------------
+
+
+def test_a_lowercase_hex_is_accepted_and_stored_as_sent(tmp_path: Path) -> None:
+    _seed_dune_with_cover(tmp_path)
+    response = _set(_client(tmp_path), DUNE_ID, "#4b7c7b")
+    assert response.status_code == 200
+    assert _colors(tmp_path, DUNE_ID) == ("#4b7c7b", FROM_COVER, SAGE, "#4b7c7b")
+
+
+def test_a_repeated_pick_still_commits_and_returns_ok(tmp_path: Path) -> None:
+    builder = LibraryBuilder()
+    dune = builder.book(title="Dune", pages=412, spine_color_user=TEAL)
+    builder.write(tmp_path)
+    client = _client(tmp_path)
+    response = _set(client, dune, TEAL)
+    assert response.status_code == 200
+    assert response.json() == {"ok": True}
+    assert _colors(tmp_path, dune) == (TEAL, None, SAGE, TEAL)
+    _assert_invariants(tmp_path)
+
+
+def test_only_the_user_color_and_the_resolved_color_change(tmp_path: Path) -> None:
+    _seed_dune_with_cover(tmp_path)
+    before = _stored_book(tmp_path, DUNE_ID)
+    client = _client(tmp_path)
+    for color in (TEAL, SLATE, None, TEAL):
+        assert _set(client, DUNE_ID, color).status_code == 200
+        after = _stored_book(tmp_path, DUNE_ID)
+        changed = {key for key in before if before[key] != after[key]}
+        assert changed <= {"spineColorUser", "spineColor"}, color
+        assert after["spineColorFromCover"] == FROM_COVER
+        assert after["spineColorCurated"] == SAGE
+
+
+@pytest.mark.parametrize(
+    "color", ["Teal", "#12345", "", "#4B7C7BFF", " #4B7C7B", "#GGGGGG"]
+)
+def test_a_color_that_is_not_hex_is_refused_on_spine_color(
+    tmp_path: Path, color: str
+) -> None:
+    _seed_dune_with_cover(tmp_path)
+    before = _library_bytes(tmp_path)
+    response = _set(_client(tmp_path), DUNE_ID, color)
+    assert response.status_code == 422
+    body = response.json()["error"]
+    assert body["code"] == "invalid_fields"
+    assert body["message"] == "Not saved. 1 field needs attention: Spine color."
+    assert _field_messages(response) == {
+        "spineColor": "Spine color must be #RRGGBB or empty."
+    }
+    assert _library_bytes(tmp_path) == before
+
+
+@pytest.mark.parametrize(
+    "intent",
+    [
+        None,
+        "not json",
+        "null",
+        "[]",
+        json.dumps({"bookId": DUNE_ID}),
+        json.dumps({"spineColor": TEAL}),
+        json.dumps({"bookId": None, "spineColor": TEAL}),
+        json.dumps({"bookId": 7, "spineColor": TEAL}),
+        json.dumps({"bookId": DUNE_ID, "spineColor": 7}),
+        json.dumps({"bookId": DUNE_ID, "spineColor": TEAL, "extra": True}),
+    ],
+    ids=[
+        "no-part",
+        "not-json",
+        "null",
+        "array",
+        "missing-color",
+        "missing-id",
+        "null-id",
+        "number-id",
+        "number-color",
+        "extra-key",
+    ],
+)
+def test_a_malformed_set_spine_color_intent_is_an_intent_field_error(
+    tmp_path: Path, intent: str | None
+) -> None:
+    _seed_dune_with_cover(tmp_path)
+    before = _library_bytes(tmp_path)
+    client = _client(tmp_path)
+    if intent is None:
+        response = client.post(SET_SPINE_COLOR)
+    else:
+        response = client.post(
+            SET_SPINE_COLOR, files={"intent": (None, intent, "application/json")}
+        )
+    assert response.status_code == 422
+    assert _field_messages(response) == {
+        "intent": "The intent must be a JSON object of the form's fields."
+    }
+    assert _library_bytes(tmp_path) == before

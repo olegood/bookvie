@@ -133,6 +133,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/intents/set-spine-color": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Set Spine Color Intent
+         * @description Set or clear a Book's own spine color and re-resolve its spine color (FR-24).
+         */
+        post: operations["set_spine_color_intent_api_intents_set_spine_color_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -171,6 +191,14 @@ export interface components {
              */
             cover?: string | null;
         };
+        /** Body_set_spine_color_intent_api_intents_set_spine_color_post */
+        Body_set_spine_color_intent_api_intents_set_spine_color_post: {
+            /**
+             * Intent
+             * @description JSON object {"bookId": ..., "spineColor": "#RRGGBB" | null}: null is From cover.
+             */
+            intent?: string | null;
+        };
         /**
          * BookDetailView
          * @description One Book as Book detail and the Edit book panel show it.
@@ -203,6 +231,8 @@ export interface components {
             year: number | null;
             /** Tags */
             tags: string[];
+            /** Spinecolor */
+            spineColor: string;
             /** Spinecoloruser */
             spineColorUser: string | null;
             /** Coverfile */
@@ -315,6 +345,8 @@ export interface components {
             id: string;
             /** Title */
             title: string;
+            /** Subtitle */
+            subtitle: string | null;
             /** Firstauthor */
             firstAuthor: string;
             /** Authorcount */
@@ -323,6 +355,8 @@ export interface components {
             authors: string[];
             /** Pages */
             pages: number;
+            /** Year */
+            year: number | null;
             /**
              * Createdat
              * Format: date-time
@@ -330,6 +364,12 @@ export interface components {
             createdAt: string;
             /** Spinecolor */
             spineColor: string;
+            /** Spinecoloruser */
+            spineColorUser: string | null;
+            /** Spinecolorfromcover */
+            spineColorFromCover: string | null;
+            /** Hascover */
+            hasCover: boolean;
             /** Finished */
             finished: boolean;
         };
@@ -691,6 +731,66 @@ export interface operations {
         requestBody?: {
             content: {
                 "multipart/form-data": components["schemas"]["Body_delete_book_intent_api_intents_delete_book_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkResponse"];
+                };
+            };
+            /** @description Refused by a library rule */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Invalid fields */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Couldn't save */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Couldn't save */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    set_spine_color_intent_api_intents_set_spine_color_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_set_spine_color_intent_api_intents_set_spine_color_post"];
             };
         };
         responses: {

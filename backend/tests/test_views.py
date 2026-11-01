@@ -61,34 +61,49 @@ def test_seeded_library(tmp_path: Path, library_builder: LibraryBuilder, view: s
         {
             "id": ids["dune"],
             "title": "Dune",
+            "subtitle": None,
             "firstAuthor": "Frank Herbert",
             "authorCount": 1,
             "authors": ["Frank Herbert"],
             "pages": 412,
+            "year": None,
             "createdAt": "2026-01-01T09:01:00+01:00",
             "spineColor": "#112233",
+            "spineColorUser": "#112233",
+            "spineColorFromCover": None,
+            "hasCover": False,
             "finished": False,
         },
         {
             "id": ids["omens"],
             "title": "Good Omens",
+            "subtitle": None,
             "firstAuthor": "Terry Pratchett",
             "authorCount": 2,
             "authors": ["Terry Pratchett", "Neil Gaiman"],
             "pages": 300,
+            "year": None,
             "createdAt": "2026-01-01T09:02:00+01:00",
             "spineColor": "#5B7590",
+            "spineColorUser": None,
+            "spineColorFromCover": None,
+            "hasCover": False,
             "finished": True,
         },
         {
             "id": ids["emma"],
             "title": "Emma",
+            "subtitle": None,
             "firstAuthor": "Jane Austen",
             "authorCount": 1,
             "authors": ["Jane Austen"],
             "pages": 300,
+            "year": None,
             "createdAt": "2026-01-01T09:04:00+01:00",
             "spineColor": "#9B6753",
+            "spineColorUser": None,
+            "spineColorFromCover": None,
+            "hasCover": False,
             "finished": False,
         },
     ]
@@ -192,8 +207,48 @@ def test_book_view_carries_the_cover_file_and_its_color(
     assert (body["coverFile"], body["spineColorFromCover"]) == ("covers/dune.jpg", "#A85A4A")
     body = client.get("/api/views/book", params={"id": bare}).json()
     assert (body["coverFile"], body["spineColorFromCover"]) == (None, None)
-    # The shelf views don't carry covers yet (later stories).
+    # The shelf views don't carry covers (later stories), only whether one exists.
     assert "coverFile" not in client.get("/api/views/catalog").json()["books"][0]
+
+
+# --- The Spine popover's fields (Story 1.14) -----------------------------------
+
+
+@pytest.mark.parametrize("view", ["home", "catalog"])
+def test_shelf_books_carry_what_the_spine_popover_shows(
+    tmp_path: Path, library_builder: LibraryBuilder, view: str
+) -> None:
+    library_builder.book(
+        title="Dune",
+        subtitle="Book One",
+        year=1965,
+        cover_file="covers/dune.jpg",
+        spine_color_from_cover="#A85A4A",
+        spine_color_user="#4B7C7B",
+    )
+    library_builder.book(title="Emma")
+    library_builder.write(tmp_path)
+    books = _client(tmp_path).get(f"/api/views/{view}").json()["books"]
+    fields = ("subtitle", "year", "spineColor", "spineColorUser", "spineColorFromCover", "hasCover")
+    assert [tuple(book[key] for key in fields) for book in books] == [
+        ("Book One", 1965, "#4B7C7B", "#4B7C7B", "#A85A4A", True),
+        (None, None, "#5B7590", None, None, False),
+    ]
+
+
+def test_book_view_carries_the_resolved_spine_color(
+    tmp_path: Path, library_builder: LibraryBuilder
+) -> None:
+    covered = library_builder.book(title="Dune", spine_color_from_cover="#A85A4A")
+    picked = library_builder.book(title="Emma", spine_color_user="#4B7C7B")
+    curated = library_builder.book(title="Piranesi")
+    library_builder.write(tmp_path)
+    client = _client(tmp_path)
+
+    def color(book_id: str) -> str:
+        return client.get("/api/views/book", params={"id": book_id}).json()["spineColor"]
+
+    assert (color(covered), color(picked), color(curated)) == ("#A85A4A", "#4B7C7B", "#9B6753")
 
 
 def test_cover_path_finds_only_referenced_existing_files(
