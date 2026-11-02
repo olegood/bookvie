@@ -83,6 +83,40 @@ Decisions:
 - Given `npm run check`, when it runs, then it exits 0 with all 6 Story 1.14 scaffolds active, every earlier test passing, and the coverage gates met.
 - Given a 1024px viewport, when any spine's popover opens, then it is fully inside the viewport and its pointer points at that spine.
 
+### Review Findings
+
+Code review 2026-11-02 (blind hunter, edge-case hunter, verification gap, acceptance auditor) of `e1d19c2..0a64687`.
+
+- [x] [Review][Patch] The open popover stays pinned on screen after its spine scrolls out of view. Decided (2026-11-02): the card scrolls away with its spine. Clamp `top` to the 16px margins only while the spine is at least partly in the viewport, and add a unit test for an off-screen spine. [frontend/src/lib/spineColor.ts:139]
+- [x] [Review][Patch] Repositioning on viewport resize and on the popover's own size change is untested (V3 is only partly closed). Add a P2 test: open Dune's popover, call `setViewportSize`, then re-check the geometry. In the AC-5 failure follow-up, also check the card's bottom is still at or above the spine's top once the failure line shows. [frontend/e2e/spine-popover.spec.ts:649]
+- [x] [Review][Patch] The E3 fix (`label` in `FOCUSABLE`) has no test. The outside-click test clicks the searchbox `<input>`, so removing `label` passes. Add a step: with the popover open, click the "Search titles" label text, then expect no dialog and the searchbox focused. [frontend/e2e/spine-popover.spec.ts:509]
+- [x] [Review][Patch] The e2e geometry checks allow 0px from the viewport edges, not the spec's 16px. Vertically in the AC-1 follow-up; vertically and horizontally in the scroll follow-up. [frontend/e2e/spine-popover.spec.ts:401]
+- [x] [Review][Patch] The ticked AC-4 (API) checklist line still says "decide" in two places. The spec decided both: stored as sent, and a repeat pick commits. [_bmad-output/test-artifacts/atdd-checklist-1-14-change-a-book-s-color-from-the-shelf.md:163]
+- [x] [Review][Patch] The "AC-1 (deferred): the same checks on Home's slice" follow-up is only an unticked checklist line, with no `deferred-work.md` entry. [_bmad-output/implementation-artifacts/deferred-work.md]
+- [x] [Review][Patch] Found while verifying the patches: the AC-2 test's Tab loop (it pressed Tab while the card was visible) was flaky, 6 of 15 runs before this review's changes, because an extra Tab during the close moved focus off the spine. It now tabs until × has focus, then once more: 20 of 20 pass. [frontend/e2e/spine-popover.spec.ts:183]
+
+Rejected:
+- Spec `status: done` vs sprint `review`; the Code Map's `api/announce.ts` path; the placement change recorded in the Implementation Notes rather than the Change Log. All three fixes would edit the spec under review; the status is synced by this review.
+- 422 message "…or empty." on `set-spine-color`, which refuses `""`: low. The spec's Decision says to reuse `SPINE_COLOR_MESSAGE`, so changing the message means editing the spec.
+- The clamp pushing the card over its spine, and the pointer then pointing wrong: low. This needs a viewport where neither side fits, which is the already-rejected E10.
+- No test for B9 (`awaiting` cleared at the start of `pick`): low. A one-line guard, and the same-root V2 in-flight test already covers the pick path.
+- A search hiding the open spine leaves focus unchecked: low and hard to reach. Typing in Search titles first closes the popover through the outside press.
+- Status words inlined in `SpinePopover.tsx`, and `pagesLine` in the component: low. The extraction adds surface and no caller diverges today.
+- `attachCover`/`COVER_PNG` copied into `spine-popover.spec.ts`: low. A test-helper refactor with no wrong outcome now.
+- WebKit "press inside" branch untested: already deferred (V4).
+- The backend loop never checks the resolved color: false. `test_ac6_p0_…` asserts the resolved `spineColor` after TEAL, `None` (back to from-cover) and the curated fallback.
+- OpenAPI `intent?` optional: low. It predates this story and is shared by all four intent routes; a missing part still gets 422.
+- axe skips Book detail's Change color: false. `book-detail.spec.ts:562` runs axe on the whole Book detail page in both themes, and the block is rendered there.
+- The popover's Change color `h3` has no labelled group: false. The heading names the block for heading navigation; no harm named.
+- Book detail derives `finished` on the client: low. This is B3, already rejected; it matches `Reading.finished` (`finish_date is not None`) exactly.
+- The color line is in the right column, not the left (DESIGN.md): low. The spec's Code Map puts it in `ChangeColor`, so the fix edits the spec.
+- `FOCUSABLE` matches disabled controls and labels with no control: low. The Bookcase page has neither near the shelf, and the fix adds a branch.
+- `epic-1-context.md` edits bundled into the diff: false. This is B14.
+- The spine moves with no scroll, resize or size change: low and unproven. A color pick doesn't change layout, and a delete or search closes the popover.
+- Popover unmounted while a pick is in flight, so the result is never announced: low. The user closed it, and with no optimistic update the spine shows the true color.
+- Intent ok but the refetch fails, so nothing is announced: low. On localhost the refetch fails only if the server dies after the commit; the fix adds a fallback branch.
+- A From cover pick after the cover was removed in another tab, so the success is not announced: low. It needs a second tab; the color is still right.
+
 ## Implementation Notes
 
 - **Room above ends at the shelf.** `placePopover` (`lib/spineColor.ts`) puts the popover above only when it fits both 16px below the viewport top and below the shelf's top edge (the `<ul>`). Without that, a top-row spine with page space above got its popover over the "Bookcase" heading, which AC-2's outside-click branch clicks, and AC-1/DESIGN.md name the top row as the flip case.

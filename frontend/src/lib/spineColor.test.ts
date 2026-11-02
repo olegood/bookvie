@@ -139,6 +139,17 @@ describe('placePopover', () => {
     assert.equal(huge.top, 16)
   })
 
+  it('scrolls away with a spine that has left the viewport, instead of staying pinned', () => {
+    // Scrolled off the top: below its spine, partly above the viewport.
+    const up = placePopover({ left: 500, top: -200, width: 28, height: 136 }, size, viewport)
+    assert.equal(up.side, 'below')
+    assert.equal(up.top, -200 + 136 + 8)
+    // Scrolled off the bottom: above its spine, partly below the viewport.
+    const down = placePopover({ left: 500, top: 900, width: 28, height: 136 }, size, viewport)
+    assert.equal(down.side, 'above')
+    assert.equal(down.top, 900 - 8 - 200)
+  })
+
   it('takes the side with more space when neither has room', () => {
     const tall = { width: 500, height: 700 }
     assert.equal(placePopover({ left: 500, top: 100, width: 28, height: 136 }, tall, viewport).side, 'below')

@@ -135,8 +135,12 @@ export function placePopover(
   // With room on neither side, the side with more space wins.
   const side = roomAbove || (!roomBelow && spine.top > viewport.height - spine.top - spine.height) ? 'above' : 'below'
   const pointerX = Math.max(POINTER_INSET, Math.min(centre - left, size.width - POINTER_INSET))
-  // Kept 16px inside the top and bottom edges too (16 from the top when it can't fit).
+  const beside = side === 'above' ? above : below
+  // While the spine shows, kept 16px inside the top and bottom edges too (16
+  // from the top when it can't fit). A spine scrolled out of view takes its
+  // popover with it rather than leaving it pinned at the edge.
+  const spineShows = spine.top + spine.height > 0 && spine.top < viewport.height
   const maxTop = viewport.height - VIEWPORT_MARGIN - size.height
-  const top = Math.max(VIEWPORT_MARGIN, Math.min(side === 'above' ? above : below, maxTop))
+  const top = spineShows ? Math.max(VIEWPORT_MARGIN, Math.min(beside, maxTop)) : beside
   return { left, top, side, pointerX }
 }

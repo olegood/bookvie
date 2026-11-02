@@ -181,9 +181,14 @@ test.describe('Story 1.14 Change a book’s color from the shelf (ATDD)', () => 
     // Tab through every control; Tab from the last one closes it.
     await page.keyboard.press('Enter')
     await expect(openBook).toBeFocused()
-    for (let step = 0; step < 20 && (await card.isVisible()); step += 1) {
+    // Tab until × (the last control) has focus, then once more: a loop on the
+    // card's visibility could send an extra Tab while the close is rendering.
+    const close = card.getByRole('button', { name: 'Close', exact: true })
+    for (let step = 0; step < 20 && !(await close.evaluate((el) => el === document.activeElement)); step += 1) {
       await page.keyboard.press('Tab')
     }
+    await expect(close).toBeFocused()
+    await page.keyboard.press('Tab')
     await expect(card).toBeHidden()
     await expect(dune).toBeFocused()
 
@@ -398,8 +403,8 @@ test.describe('Story 1.14 Change a book’s color from the shelf (follow-ups)', 
       expect(cardBox.width, name).toBeLessThanOrEqual(viewport.width - 32)
       expect(cardBox.x, name).toBeGreaterThanOrEqual(16)
       expect(cardBox.x + cardBox.width, name).toBeLessThanOrEqual(viewport.width - 16 + 0.5)
-      expect(cardBox.y, name).toBeGreaterThanOrEqual(0)
-      expect(cardBox.y + cardBox.height, name).toBeLessThanOrEqual(viewport.height)
+      expect(cardBox.y, name).toBeGreaterThanOrEqual(16 - 0.5)
+      expect(cardBox.y + cardBox.height, name).toBeLessThanOrEqual(viewport.height - 16 + 0.5)
       const pointer = (await pointerOf(card).boundingBox())!
       expect(Math.abs(centre(pointer) - centre(spineBox)), name).toBeLessThanOrEqual(1)
       if (name === rightmost.name) {
@@ -511,6 +516,13 @@ test.describe('Story 1.14 Change a book’s color from the shelf (follow-ups)', 
     await expect(search(page)).toBeFocused()
     await expect(dune).toHaveAttribute('aria-expanded', 'false')
 
+    // A click on the "Search titles" label focuses its field, so focus stays there too.
+    await dune.click()
+    await expect(popover(page, 'Dune')).toBeVisible()
+    await page.getByText('Search titles', { exact: true }).click()
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    await expect(search(page)).toBeFocused()
+
     // Clicking the open spine again closes it.
     await dune.click()
     await expect(popover(page, 'Dune')).toBeVisible()
@@ -560,6 +572,14 @@ test.describe('Story 1.14 Change a book’s color from the shelf (follow-ups)', 
     await swatch(card, 'Teal').click()
     await expect(card.getByText(COULDNT_SAVE, { exact: true })).toBeVisible()
     await expect(page.getByRole('alert')).toHaveText(COULDNT_SAVE)
+    // The taller card is placed again, still clear of its spine.
+    await expect
+      .poll(async () => {
+        const spineBox = (await dune.boundingBox())!
+        const cardBox = (await card.boundingBox())!
+        return cardBox.y + cardBox.height <= spineBox.y || cardBox.y >= spineBox.y + spineBox.height
+      })
+      .toBe(true)
     // Closing clears it.
     await page.keyboard.press('Escape')
     await expect(page.getByRole('alert')).toHaveText('')
@@ -662,10 +682,10 @@ test.describe('Story 1.14 Change a book’s color from the shelf (follow-ups)', 
       const cardBox = (await card.boundingBox())!
       const pointer = (await pointerOf(card).boundingBox())!
       expect(Math.abs(centre(pointer) - centre(spineBox)), when).toBeLessThanOrEqual(1)
-      expect(cardBox.x, when).toBeGreaterThanOrEqual(0)
-      expect(cardBox.x + cardBox.width, when).toBeLessThanOrEqual(viewport.width)
-      expect(cardBox.y, when).toBeGreaterThanOrEqual(0)
-      expect(cardBox.y + cardBox.height, when).toBeLessThanOrEqual(viewport.height)
+      expect(cardBox.x, when).toBeGreaterThanOrEqual(16 - 0.5)
+      expect(cardBox.x + cardBox.width, when).toBeLessThanOrEqual(viewport.width - 16 + 0.5)
+      expect(cardBox.y, when).toBeGreaterThanOrEqual(16 - 0.5)
+      expect(cardBox.y + cardBox.height, when).toBeLessThanOrEqual(viewport.height - 16 + 0.5)
       return spineBox.y
     }
     const before = await check('before scrolling')
@@ -674,6 +694,38 @@ test.describe('Story 1.14 Change a book’s color from the shelf (follow-ups)', 
     await expect.poll(async () => (await dune.boundingBox())!.y).not.toBe(before)
     await expect(card).toBeVisible()
     await check('after scrolling')
+  })
+
+  test('[P2] AC-1 the popover follows its spine when the window is resized', async ({ page, seededServer }) => {
+    await page.setViewportSize({ width: 1024, height: 900 })
+    const server = await seededServer({ books: [DUNE, NEUROMANCER, ...shelfOf(40)] })
+    await page.goto(`${server.url}/`)
+    const dune = spine(page, DUNE_SPINE)
+    await dune.click()
+    const card = popover(page, 'Dune')
+    await expect(card).toBeVisible()
+    const before = (await dune.boundingBox())!
+
+    // Wider: the spines reflow, so Dune moves and its popover must follow.
+    await page.setViewportSize({ width: 1400, height: 800 })
+    await expect.poll(async () => {
+      const box = (await dune.boundingBox())!
+      return box.x !== before.x || box.y !== before.y
+    }).toBe(true)
+    await expect(card).toBeVisible()
+    await expect
+      .poll(async () => {
+        const spineBox = (await dune.boundingBox())!
+        const pointer = (await pointerOf(card).boundingBox())!
+        return Math.abs(centre(pointer) - centre(spineBox))
+      })
+      .toBeLessThanOrEqual(1)
+    const viewport = page.viewportSize()!
+    const cardBox = (await card.boundingBox())!
+    expect(cardBox.x).toBeGreaterThanOrEqual(16 - 0.5)
+    expect(cardBox.x + cardBox.width).toBeLessThanOrEqual(viewport.width - 16 + 0.5)
+    expect(cardBox.y).toBeGreaterThanOrEqual(16 - 0.5)
+    expect(cardBox.y + cardBox.height).toBeLessThanOrEqual(viewport.height - 16 + 0.5)
   })
 
   test('[P2] AC-1 axe finds nothing on the open popover, in both themes', async ({ page, seededServer }) => {
