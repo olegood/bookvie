@@ -5,7 +5,7 @@
 
 A personal, local-first web app for organizing my home library and tracking my reading. It replaces a paper reading diary as the single source of truth for reading progress. The diary can stay on the nightstand for quick notes; I catch up in the app on my next visit by entering the page I reached.
 
-> **Status:** building Epic 1 (13 of 41 stories done). You can install and run bookvie, add books through the New book panel (with duplicate warnings), see the Catalog as a bookcase of spines or as a list, search it, open a Book to see its details, edit it, give it a cover whose color can tint its spine, and delete it after a confirmation. See [Sprint status](_bmad-output/implementation-artifacts/sprint-status.yaml) for details.
+> **Status:** building Epic 1 (14 of 41 stories done; all 14 of Epic 1's stories are done, and its retrospective is next). You can install and run bookvie, add books through the New book panel (with duplicate warnings), see the Catalog as a bookcase of spines or as a list, search it, open a Book to see its details, edit it, give it a cover whose color can tint its spine, press a spine to see the Book in a popover and change its color there or on Book detail, and delete it after a confirmation. See [Sprint status](_bmad-output/implementation-artifacts/sprint-status.yaml) for details.
 
 ## Why
 
@@ -156,6 +156,8 @@ Catalog entry happens through my own AI skills rather than an in-app importer or
 - [Story 1.12 ATDD checklist](_bmad-output/test-artifacts/atdd-checklist-1-12-delete-a-book.md): the acceptance tests (AC-1 to AC-5) written red before deleting a book was built
 - [Story 1.13 spec](_bmad-output/implementation-artifacts/spec-1-13-add-a-cover.md): intent, constraints, review findings and verification for the `cover` part and `removeCover` on `add-book` and `edit-book`, the 20 MiB cap, `/media/covers/`, the From cover swatch and the cover on Book detail
 - [Story 1.13 ATDD checklist](_bmad-output/test-artifacts/atdd-checklist-1-13-add-a-cover.md): the acceptance tests (AC-1 to AC-11) written red before covers were built
+- [Story 1.14 spec](_bmad-output/implementation-artifacts/spec-1-14-change-a-book-s-color-from-the-shelf.md): intent, constraints, review findings and verification for the `set-spine-color` intent, the Spine popover and the Change color block on the popover and Book detail
+- [Story 1.14 ATDD checklist](_bmad-output/test-artifacts/atdd-checklist-1-14-change-a-book-s-color-from-the-shelf.md): the acceptance tests (AC-1 to AC-6) written red before changing a book's color from the shelf was built
 - [Test automation summary](_bmad-output/test-artifacts/automation-summary.md): the latest test automation pass (currently story 1.13): what was covered and the tests it added
 - [CI](docs/ci.md): the GitHub Actions jobs, quality gates, burn-in and artifacts
 - [Deferred work](_bmad-output/implementation-artifacts/deferred-work.md): review findings deferred to later stories, each marked with the story that resolved it once done
