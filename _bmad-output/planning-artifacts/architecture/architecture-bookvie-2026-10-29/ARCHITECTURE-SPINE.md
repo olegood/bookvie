@@ -61,8 +61,9 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
 ### AD-3: Domain rules live only in the server; mutations arrive only as intents [ADOPTED]
 
 - **Binds:** FR-1, FR-3, FR-5 to FR-10, FR-14, FR-17, FR-22, FR-23, A2, A3
-- **Prevents:** rules duplicated in TypeScript and Python; stale whole-document writes overwriting another browser's changes; one user action split across several calls that can half-fail.
+- **Prevents:** rules duplicated in TypeScript and Python; stale whole-library writes overwriting another browser's changes; one user action split across several calls that can half-fail.
 - **Rule:** Each user action is exactly one intent call: `POST /api/intents/<verb>`. An intent validates, applies **every** consequence, runs `domain.check_invariants()`, and commits once (AD-2), or it changes nothing and returns a refusal. No CRUD or PATCH endpoints on entities, and no whole-document write endpoint. Every intent is `multipart/form-data` with a JSON part named `intent`, including those with no file (`delete-book`, `set-spine-color`), so every route parses its body one way. Intents that carry a file (`add-book`, `edit-book`, `restore`) add a file part. Each is still one call and one commit.
+- **Concurrency across tabs:** intents carry no version and no precondition. Each applies to the server's current state (AD-4 serializes them; AD-19 Targeting), so the last intent wins for every field it sends (A2). An open form keeps the values it opened with, and AD-7's refetch doesn't change them, so a stale form in one tab can undo a change made in another: an Edit panel opened before a popover color change puts the old color back on save, and a stale "Remove cover" removes a cover uploaded later. Within one tab the Edit panel is modal, so this can't happen; reloading shows the current data. This is A2 as written; the silent loss it allows (retro F-R1) is closed as an accepted deviation for single-tab use (Oleg, 2026-11-03). Revisit, with a document `revision` and an `expectedRevision` refusal, if the cataloging agent ever edits an existing Book while the app is open in a tab.
 
 ### AD-4: All writes, export and restore are serialized
 
@@ -365,5 +366,5 @@ bookvie/
 - **Distribution beyond the user's machine** (PyPI, Homebrew, signed binaries): out of scope.
 - **CI provider:** none is required. pytest, Playwright, `check:api` and the install smoke test run locally until a CI is chosen.
 - **Later features** (Shelves, Goals, Sequences, Donation, Wishlist): each adds fields under a new `schemaVersion` plus a migration (AD-13). No structure is reserved now.
-- **Stale confirmation guard:** not built (AD-19, A2). Revisit if a stale Start dialog ever pauses the wrong book in practice.
+- **Stale confirmation guard (a version precondition on intents):** not built (AD-3, AD-19, A2; retro F-R1). The shape would be a document `revision` returned by every view and an `expectedRevision` that intents send and the server refuses on mismatch. Revisit if a stale Start dialog ever pauses the wrong book in practice, or if the cataloging agent edits an existing Book while the app is open in a tab.
 - **Performance:** the full rewrite per intent and in-memory views are sized for about 500 Books and a few thousand Card notes. Revisit if `library.json` grows past roughly 10 MB.

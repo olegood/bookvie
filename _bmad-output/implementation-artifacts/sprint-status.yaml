@@ -146,7 +146,7 @@ action_items:
     action: "Record in AD-3 that intents are last-writer-wins (single-tab use accepted
       2026-11-03) (F-R1)"
     owner: "Winston (Architect)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-11-03.md"
   - id: "epic-1-retro-item-8-put-the-error-envelope-on-body-parse-fai"
     epic: 1
