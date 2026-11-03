@@ -85,8 +85,30 @@ def serialize(library: Library) -> bytes:
     return (json.dumps(data, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
 
 
-def ensure_writable(data_dir: Path) -> None:
-    """Create ``data_dir`` if needed and make sure it is a writable folder."""
+def _flush_parent(folder: Path, fs: FileSystem) -> None:
+    """Fsync the folder holding ``folder``, so its entry survives a power cut."""
+    try:
+        fs.fsync_dir(folder.parent)
+    except PermissionError as exc:
+        # A parent we can write into but not read (a `-wx` drop folder) can't be
+        # opened to flush. Nothing more can be done there; don't refuse to start.
+        _log(f"couldn't flush {folder.parent} ({exc.strerror}); continuing")
+    except OSError as exc:
+        raise StartupError(
+            folder, f"can't be made durable: {folder.parent} can't be flushed ({exc.strerror})"
+        ) from None
+
+
+def ensure_writable(data_dir: Path, fs: FileSystem | None = None) -> None:
+    """Create ``data_dir`` if needed and make sure it is a writable folder.
+
+    The parent of ``data_dir`` is fsynced on every start, so a data folder
+    created by an earlier, interrupted start is made durable too. Each missing
+    ancestor this creates has its own parent fsynced, outermost first.
+    """
+    fs = fs or OsFileSystem()
+    data_dir = Path(os.path.abspath(data_dir))
+    missing = [path for path in data_dir.parents if not os.path.lexists(path)]
     try:
         data_dir.mkdir(parents=True, exist_ok=True)
     except FileExistsError:
@@ -97,6 +119,9 @@ def ensure_writable(data_dir: Path) -> None:
         raise StartupError(data_dir, "is not a folder")
     if not os.access(data_dir, os.W_OK | os.X_OK):
         raise StartupError(data_dir, "is not writable")
+    for created in reversed(missing):
+        _flush_parent(created, fs)
+    _flush_parent(data_dir, fs)
 
 
 def _validation_reason(exc: ValidationError) -> str:
@@ -134,8 +159,8 @@ class Store:
         or invalid file, or a missing one while ``covers/`` holds files, is
         refused before anything in the folder changes; a
         refused upgrade leaves the original and its backup. A refusal while
-        creating ``covers/``, ``.staging/`` or the first ``library.json``
-        comes after the sweep.
+        creating or flushing ``covers/``, ``.staging/`` or the first
+        ``library.json`` comes after the sweep.
         """
         fs = fs or OsFileSystem()
         data_dir = Path(data_dir)
@@ -164,6 +189,9 @@ class Store:
                 (data_dir / name).mkdir(exist_ok=True)
             except OSError as exc:
                 raise StartupError(data_dir / name, f"can't be created ({exc.strerror})") from None
+        # Flushed on every start, not only when created: a start interrupted
+        # between mkdir and this flush must not leave covers/ unflushed for good.
+        _flush_parent(data_dir / COVERS_DIR, fs)
         if not exists:
             store._commit_at_startup(Library.empty())
         elif migrated is not None:

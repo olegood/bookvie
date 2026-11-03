@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-29-2026 17:21
-last_updated: 11-03-2026 11:53
+last_updated: 11-03-2026 12:45
 project: bookvie
 project_key: NOKEY
 tracking_system: file-system
@@ -117,7 +117,7 @@ action_items:
     action: "Before story 2.1: refuse cross-site simple GETs and fsync the parent
       folder after mkdir of data folder, covers/ and .staging/ (F-S8)"
     owner: "Amelia (Dev)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-11-03.md"
   - id: "epic-1-retro-item-4-backend-refactor-before-epic-2-library-i"
     epic: 1

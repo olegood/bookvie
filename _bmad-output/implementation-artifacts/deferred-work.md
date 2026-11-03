@@ -108,6 +108,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-unique-side-reads-and-directory-fsync.md`
   summary: Fsync the parent folder after creating `data_dir`, `covers/` and `.staging/`, so a fresh setup's first commit survives a power cut.
   evidence: `Store.open` (`backend/bookvie/store/store.py` lines 91 and 164) calls `mkdir` without flushing the parent. A rename inside `covers/` can be durable while `covers/` itself is not. This existed before the change.
+  resolved: `spec-fsync-parent-after-mkdir.md`; `ensure_writable` and `Store.open` fsync the data folder's parent and the data folder on every start (and the parent of any ancestor they create).
 
 ## Deferred from: build review of spec-1-14-change-a-book-s-color-from-the-shelf.md (2026-11-01)
 
@@ -124,6 +125,7 @@
 - source_spec: none
   summary: Fsync the parent folder after `mkdir` of the data folder, `covers/` and `.staging/` (Epic 1 retro action item 3, part b; same as the 2026-11-01 entry above).
   evidence: Split from the cross-site GET guard build (retro action item 3) because it is an independent store durability change; do it as the next build.
+  resolved: `spec-fsync-parent-after-mkdir.md`; `ensure_writable` and `Store.open` fsync the data folder's parent and the data folder on every start (and the parent of any ancestor they create).
 
 ## Deferred from: review of spec-refuse-cross-site-simple-gets (2026-11-03)
 

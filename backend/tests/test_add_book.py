@@ -56,7 +56,9 @@ def data_dir(tmp_path: Path) -> Path:
 
 
 def _client(data_dir: Path, fs: FaultyFs | None = None) -> TestClient:
-    store = Store.open(data_dir, fs=fs)
+    store = Store.open(data_dir)
+    if fs is not None:
+        store.fs = fs  # inject faults into intents, not startup
     app = create_app(
         data_dir / "no-static", data_dir=data_dir, store=store, clock=FakeClock(TODAY)
     )

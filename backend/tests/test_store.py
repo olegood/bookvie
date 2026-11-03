@@ -547,6 +547,7 @@ def test_commit_fsyncs_the_folder_after_the_rename(tmp_path: Path) -> None:
             events.append(("fsync_dir", Path(directory)))
 
     store = _seeded_store(tmp_path, fs=Recording())
+    events.clear()  # startup flushes the data folder on every open
     store.apply(_add_tag("x"))
     assert events == [("replace", tmp_path / "library.json"), ("fsync_dir", tmp_path)]
 
@@ -822,3 +823,97 @@ def test_fsync_dir_raises_a_real_io_failure(
     with pytest.raises(OSError) as raised:
         OsFileSystem().fsync_dir(tmp_path)
     assert raised.value.errno == errno.EIO
+
+
+# --- folder creation is flushed (F-S8) ----------------------------------------
+
+
+class _EventFs(OsFileSystem):
+    """Records folder flushes and renames, in order."""
+
+    def __init__(self) -> None:
+        self.events: list[tuple[str, Path]] = []
+
+    def replace(self, src: Path, dst: Path) -> None:
+        super().replace(src, dst)
+        self.events.append(("replace", Path(dst)))
+
+    def fsync_dir(self, directory: Path) -> None:
+        super().fsync_dir(directory)
+        self.events.append(("fsync_dir", Path(directory)))
+
+
+def test_ensure_writable_flushes_every_created_folder_outermost_first(tmp_path: Path) -> None:
+    fs = _EventFs()
+    ensure_writable(tmp_path / "a" / "b" / "data", fs=fs)
+    assert fs.events == [
+        ("fsync_dir", tmp_path),
+        ("fsync_dir", tmp_path / "a"),
+        ("fsync_dir", tmp_path / "a" / "b"),
+    ]
+
+
+def test_ensure_writable_flushes_the_parent_of_an_existing_folder(tmp_path: Path) -> None:
+    # An earlier start may have created it and died before flushing.
+    (tmp_path / "data").mkdir()
+    fs = _EventFs()
+    ensure_writable(tmp_path / "data", fs=fs)
+    assert fs.events == [("fsync_dir", tmp_path)]
+
+
+def test_ensure_writable_normalizes_dot_dot(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    fs = _EventFs()
+    ensure_writable(Path("x/../data"), fs=fs)
+    assert (tmp_path / "data").is_dir() and not (tmp_path / "x").exists()
+    assert fs.events == [("fsync_dir", tmp_path.resolve())]
+
+
+def test_ensure_writable_refuses_a_failed_flush(tmp_path: Path) -> None:
+    with pytest.raises(StartupError, match="can't be flushed") as exc:
+        ensure_writable(tmp_path / "data", fs=FaultyFs("fsync_dir"))
+    assert exc.value.path == tmp_path / "data"
+
+
+def test_fresh_open_flushes_new_folders_before_the_first_commit(tmp_path: Path) -> None:
+    fs = _EventFs()
+    Store.open(tmp_path, fs=fs)
+    assert fs.events == [
+        ("fsync_dir", tmp_path),
+        ("replace", tmp_path / "library.json"),
+        ("fsync_dir", tmp_path),
+    ]
+    assert (tmp_path / "covers").is_dir() and (tmp_path / ".staging").is_dir()
+
+
+def test_open_flushes_the_data_folder_every_time(tmp_path: Path) -> None:
+    _seeded_store(tmp_path)
+    fs = _EventFs()
+    Store.open(tmp_path, fs=fs)
+    assert fs.events == [("fsync_dir", tmp_path)]
+
+
+def test_retry_after_a_failed_flush_flushes_before_the_first_commit(tmp_path: Path) -> None:
+    with pytest.raises(StartupError, match="can't be flushed") as exc:
+        Store.open(tmp_path, fs=FaultyFs("fsync_dir"))
+    assert exc.value.path == tmp_path / "covers"
+    assert not (tmp_path / "library.json").exists()
+    assert (tmp_path / "covers").is_dir()  # left behind, as after a crash
+    fs = _EventFs()
+    Store.open(tmp_path, fs=fs)
+    assert fs.events[:2] == [("fsync_dir", tmp_path), ("replace", tmp_path / "library.json")]
+
+
+def test_unreadable_parent_is_not_flushed_but_startup_continues(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    parent = tmp_path / "drop"
+    parent.mkdir()
+    parent.chmod(0o333)  # writable and traversable, not readable
+    try:
+        ensure_writable(parent / "data")
+        Store.open(parent / "data")
+    finally:
+        parent.chmod(0o700)
+    assert (parent / "data" / "library.json").is_file()
+    assert f"couldn't flush {parent}" in capsys.readouterr().err
