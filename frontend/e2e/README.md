@@ -27,7 +27,7 @@ Node 24 or newer (see `.nvmrc`) and `uv` on `PATH` are required. `npm install` a
 
 ## Config and artifacts
 
-`playwright.config.ts` sets a 60 s test timeout, 15 s per action, 30 s per navigation and 10 s for `expect`. In CI (`CI` set) it adds 2 retries and 2 workers, and fails on `.only`.
+`playwright.config.ts` sets a 60 s test timeout, 15 s per action, 30 s per navigation and 10 s for `expect`. In CI (`CI` set) it adds 2 retries and 2 workers, and fails on `.only`. Locally there are no retries, so timeouts on a busy machine fail the run; see [Machine load](../../docs/ci.md#machine-load).
 
 A failing test keeps a trace, a screenshot and a video in `test-results/`. Reports go to `playwright-report/` (HTML) and `test-results/junit.xml`. Both folders are gitignored. To inspect a failure:
 

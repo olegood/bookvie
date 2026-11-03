@@ -167,7 +167,7 @@ action_items:
     action: "Run npm run check and burn-in only on a quiet machine with sleep disabled,
       or cap Playwright workers by load; document in docs/ci.md (PL-1)"
     owner: "Oleg"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-11-03.md"
   - id: "epic-1-retro-item-11-keep-spec-frontmatter-status-in-sync-wit"
     epic: 1

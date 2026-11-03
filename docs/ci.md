@@ -52,6 +52,28 @@ npm run e2e:burn-in    # the burn-in job
 CI=1 npm --prefix frontend run e2e   # the e2e suite with CI settings (2 workers, 2 retries, forbidOnly)
 ```
 
+### Machine load
+
+Run the full check and burn-in on a quiet machine. Locally, Playwright starts a worker for every two logical cores (7 on a 14-core Mac), and retries are off (`retries: CI ? 2 : 0`), so a test that times out under load fails the run. In Epic 1, most failed local runs came from load, not from the code: at load averages of 12–33, `npm run check` took up to 49 minutes, focus assertions and the server health check timed out, and a run died when the Mac went to sleep. On a quiet machine, the full suite (162 e2e tests at the end of Epic 1) passed first time.
+
+1. **Check the load first.** Run `uptime` and compare the 1-minute load average with the core count (`sysctl -n hw.ncpu` on macOS, `nproc` on Linux). If the load is above half the core count, treat the machine as busy.
+2. **Keep the machine awake.** On macOS, prefix the run with `caffeinate -i`, for example `caffeinate -i npm run check`. A prefix covers only one command, so wrap a `&&` chain in `sh -c`, as below. On Linux, use `systemd-inhibit --what=sleep` the same way. Don't let the laptop sleep or close its lid mid-run.
+3. **Quiet machine:** run `npm run check` and `npm run e2e:burn-in` as usual.
+4. **Busy machine:** run the steps by hand with Playwright capped at 4 workers. Extra arguments to `npm run check` or `e2e:burn-in` don't reach Playwright, so call it directly. These blocks mirror the `check` and `e2e:burn-in` scripts in `package.json`; change them together:
+
+   ```bash
+   caffeinate -i sh -c 'npm run check:py && npm run check:api && npm run build &&
+     (cd frontend && TZ=Europe/Madrid npx playwright test --workers=4) &&
+     npm run check:smoke'
+
+   # burn-in, capped
+   caffeinate -i sh -c 'npm run build &&
+     (cd frontend && TZ=Europe/Madrid npx playwright test --repeat-each=10 --retries=0 --workers=4) &&
+     node scripts/e2e-count.mjs --repeat-each=10'
+   ```
+
+   If tests still time out, stop the other load, or lower `--workers` further, rather than raising timeouts or adding retries.
+
 ## Scaling
 
 - **Sharding.** The suite runs in seconds, so the e2e matrix has one shard (`"1/1"`). When a shard passes about 5 minutes, change the matrix to `["1/2", "2/2"]`. The count check already takes the same `--shard`.
@@ -60,6 +82,7 @@ CI=1 npm --prefix frontend run e2e   # the e2e suite with CI settings (2 workers
 ## Troubleshooting
 
 - **`e2e-count: executed count does not match`**: a test was skipped (`test.skip`, `test.fixme`) or didn't run. Remove the skip, or delete the test.
+- **Local timeouts in focus assertions or the server health check, or a very slow `npm run check`**: usually machine load, not a bug. Check `uptime` and follow [Machine load](#machine-load) before debugging the test.
 - **Passes locally, fails in CI**: run `CI=1 npm --prefix frontend run e2e` to get CI's worker and retry settings, then open the failure's trace from the `e2e-<n>` artifact.
 - **Burn-in fails, E2E passes**: the test is flaky. The `burn-in-failures` artifact has the trace of the failing repetition. See [`frontend/e2e/README.md`](../frontend/e2e/README.md) for the suite's conventions.
 - **Chromium missing or cache stale**: the browser cache is keyed on `frontend/package-lock.json`. Bumping Playwright changes the key, and the next run downloads the matching browser.
