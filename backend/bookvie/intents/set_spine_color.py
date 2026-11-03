@@ -12,9 +12,6 @@ commits.
 ``book_not_found`` when the Book is gone, checked inside the commit.
 """
 
-from pydantic import BaseModel, ConfigDict, field_validator
-from pydantic.alias_generators import to_camel
-
 from bookvie.domain import Library
 from bookvie.domain.book_fields import (
     SPINE_COLOR_MESSAGE,
@@ -23,31 +20,20 @@ from bookvie.domain.book_fields import (
 )
 from bookvie.store import Store
 
-from .book_form import parse_form_intent, refuse_fields
 from .commit import commit
 from .contract import book_not_found
+from .intent_model import IntentModel, parse_form_intent, refuse_fields
 
 SPINE_COLOR_FIELD = "spineColor"
 
 
-class SetSpineColorIntent(BaseModel):
+class SetSpineColorIntent(IntentModel):
     """The Book and the color a Change color block picked (``None``: From cover)."""
 
-    model_config = ConfigDict(
-        alias_generator=to_camel,
-        extra="forbid",
-        strict=True,
-    )
+    nullable = frozenset({"spine_color"})
 
     book_id: str
     spine_color: str | None
-
-    @field_validator("book_id", mode="before")
-    @classmethod
-    def _no_null(cls, value: object) -> object:
-        if value is None:
-            raise ValueError("null is not a string")
-        return value
 
 
 def parse_set_spine_color_intent(raw: str | None) -> SetSpineColorIntent:
@@ -68,19 +54,18 @@ def set_spine_color(store: Store, intent: SetSpineColorIntent) -> None:
     user = intent.spine_color
 
     def change(library: Library) -> None:
-        index = next(
-            (i for i, book in enumerate(library.books) if book.id == book_id), None
-        )
-        if index is None:
+        book = library.book(book_id)
+        if book is None:
             raise book_not_found()
-        book = library.books[index]
-        library.books[index] = book.model_copy(
-            update={
-                "spine_color_user": user,
-                "spine_color": resolve_spine_color(
-                    user, book.spine_color_from_cover, book.spine_color_curated
-                ),
-            }
+        library.replace_book(
+            book.model_copy(
+                update={
+                    "spine_color_user": user,
+                    "spine_color": resolve_spine_color(
+                        user, book.spine_color_from_cover, book.spine_color_curated
+                    ),
+                }
+            )
         )
 
     commit(store, change)

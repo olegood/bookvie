@@ -26,12 +26,12 @@ from .book_form import (
     BookFormIntent,
     backfill_reading,
     cover_failures,
-    parse_form_intent,
     refuse_duplicates,
     valid_fields,
 )
 from .commit import commit
 from .cover import PreparedCover, UploadedCover, mint_cover_file
+from .intent_model import parse_form_intent
 
 
 class AddBookIntent(BookFormIntent):

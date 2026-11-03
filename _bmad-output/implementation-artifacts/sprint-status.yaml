@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-29-2026 17:21
-last_updated: 11-03-2026 12:45
+last_updated: 11-03-2026 12:50
 project: bookvie
 project_key: NOKEY
 tracking_system: file-system
@@ -124,7 +124,7 @@ action_items:
     action: "Backend refactor before Epic 2: Library index/replace helper, shared
       intent model base, merge _valid_fields into valid_fields (F-A1, F-A2)"
     owner: "Amelia (Dev)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-11-03.md"
   - id: "epic-1-retro-item-5-consolidate-test-helpers-backend-conftes"
     epic: 1

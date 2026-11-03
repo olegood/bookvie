@@ -9,7 +9,7 @@ reuse this module.
 """
 
 import re
-from collections.abc import Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from datetime import date
 
@@ -127,6 +127,9 @@ class BookFields:
 
 FieldFailure = tuple[str, str]
 
+FinishedOnRule = Callable[[date | None], str | None]
+"""An extra Finished on check: the parsed date (``None`` when empty) to a failure message."""
+
 
 def split_authors(raw: str) -> list[str]:
     """Semicolon-separated names, trimmed, empty entries dropped."""
@@ -201,13 +204,20 @@ def in_form_order(failures: Iterable[FieldFailure]) -> list[FieldFailure]:
 
 
 def parse_book_fields(
-    raw: Mapping[str, str | None], today: date
+    raw: Mapping[str, str | None],
+    today: date,
+    finished_on_rule: FinishedOnRule | None = None,
 ) -> BookFields | list[FieldFailure]:
     """Normalized fields, or every failure in form order (one per field).
 
     ``raw`` maps intent keys to the form's strings; a missing key or ``None``
     means the field was omitted. An omitted Edition is 1; an empty one is
     refused as required.
+
+    ``finished_on_rule`` is a caller's extra Finished on check (edit mode),
+    called once with the parsed date (``None`` when empty) only when the
+    value itself is well-formed; its message, if any, is the ``finishedOn``
+    failure.
     """
     failures: list[FieldFailure] = []
     text = {key: (raw.get(key) or "").strip() for key in LABELS}
@@ -257,6 +267,8 @@ def parse_book_fields(
             failures.append(("year", YEAR_MESSAGE))
 
     finished_on, finished_on_failure = parse_finished_on(text["finishedOn"], today)
+    if finished_on_failure is None and finished_on_rule is not None:
+        finished_on_failure = finished_on_rule(finished_on)
     if finished_on_failure is not None:
         failures.append(("finishedOn", finished_on_failure))
 

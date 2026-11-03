@@ -108,5 +108,21 @@ class Library(_Model):
             books=[],
         )
 
+    def book_index(self, book_id: str) -> int | None:
+        """The position of the Book with ``book_id`` in ``books``, or ``None``."""
+        return next((i for i, b in enumerate(self.books) if b.id == book_id), None)
+
     def book(self, book_id: str) -> Book | None:
-        return next((b for b in self.books if b.id == book_id), None)
+        index = self.book_index(book_id)
+        return None if index is None else self.books[index]
+
+    def replace_book(self, book: Book) -> None:
+        """Put ``book`` in place of the stored Book with its id, keeping its position.
+
+        Raises ``KeyError`` when no Book has that id: callers look the Book
+        up first and refuse a missing one.
+        """
+        index = self.book_index(book.id)
+        if index is None:
+            raise KeyError(book.id)
+        self.books[index] = book

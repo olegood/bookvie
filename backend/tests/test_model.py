@@ -139,3 +139,23 @@ def test_library_book_lookup(library_builder: LibraryBuilder) -> None:
     library = library_builder.build()
     assert library.book(book).title == "Dune"
     assert library.book("missing") is None
+
+
+def test_library_book_index_and_replace(library_builder: LibraryBuilder) -> None:
+    first = library_builder.book(title="Dune")
+    second = library_builder.book(title="Emma")
+    library = library_builder.build()
+    assert library.book_index(second) == 1
+    assert library.book_index("missing") is None
+
+    library.replace_book(library.books[0].model_copy(update={"title": "Dune Messiah"}))
+    assert [book.title for book in library.books] == ["Dune Messiah", "Emma"]
+    assert library.books[0].id == first
+
+
+def test_library_replace_book_refuses_an_unknown_id(library_builder: LibraryBuilder) -> None:
+    library_builder.book()
+    library = library_builder.build()
+    stranger = library.books[0].model_copy(update={"id": "missing"})
+    with pytest.raises(KeyError):
+        library.replace_book(stranger)

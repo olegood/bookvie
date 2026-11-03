@@ -12,34 +12,18 @@ Its cover file, no longer referenced, is deleted after the commit by
 next startup.
 """
 
-from pydantic import BaseModel, ConfigDict, field_validator
-from pydantic.alias_generators import to_camel
-
 from bookvie.domain import Library
 from bookvie.store import Store
 
-from .book_form import parse_form_intent
 from .commit import commit
 from .contract import book_not_found
+from .intent_model import IntentModel, parse_form_intent
 
 
-class DeleteBookIntent(BaseModel):
+class DeleteBookIntent(IntentModel):
     """The Book the Confirm dialog deletes."""
 
-    model_config = ConfigDict(
-        alias_generator=to_camel,
-        extra="forbid",
-        strict=True,
-    )
-
     book_id: str
-
-    @field_validator("*", mode="before")
-    @classmethod
-    def _no_null(cls, value: object) -> object:
-        if value is None:
-            raise ValueError("null is not a string")
-        return value
 
 
 def parse_delete_book_intent(raw: str | None) -> DeleteBookIntent:

@@ -1,52 +1,33 @@
 """What ``add-book`` and ``edit-book`` share: the form intent and its steps.
 
 Both intents carry the New book form's raw strings in a JSON part named
-``intent``. This module parses that part (generic over the intent model),
-validates the fields, builds the duplicate refusal and the back-filled
-Reading.
+``intent`` (parsed by :func:`~bookvie.intents.intent_model.parse_form_intent`).
+This module validates the fields, builds the duplicate refusal and the
+back-filled Reading.
 """
 
-import json
 from collections.abc import Iterable
 from datetime import date
 
-from pydantic import BaseModel, ConfigDict, ValidationError, field_validator
-from pydantic.alias_generators import to_camel
-
 from bookvie.domain import Book, Reading
 from bookvie.domain.book_fields import (
-    LABELS,
     BookFields,
     FieldFailure,
+    FinishedOnRule,
     in_form_order,
     parse_book_fields,
 )
 
-from .contract import (
-    COVER_FIELD,
-    DuplicateMatch,
-    FieldError,
-    IntentError,
-    duplicate_book,
-    invalid_fields,
-)
+from .contract import COVER_FIELD, DuplicateMatch, duplicate_book
 from .cover import RefusedCover, UploadedCover
-
-INTENT_FIELD = "intent"
-MALFORMED_INTENT_MESSAGE = "The intent must be a JSON object of the form's fields."
+from .intent_model import IntentModel, refuse_fields
 
 
-class BookFormIntent(BaseModel):
+class BookFormIntent(IntentModel):
     """The book form as typed: every value a string, every key optional.
 
     ``confirmDuplicate`` is the one non-form key: a strict JSON boolean.
     """
-
-    model_config = ConfigDict(
-        alias_generator=to_camel,
-        extra="forbid",
-        strict=True,
-    )
 
     title: str | None = None
     subtitle: str | None = None
@@ -64,47 +45,12 @@ class BookFormIntent(BaseModel):
     confirm_duplicate: bool = False
     """Save even when the Book matches another in the catalog. Never stored."""
 
-    @field_validator("*", mode="before")
-    @classmethod
-    def _no_null(cls, value: object) -> object:
-        # An omitted key stays None (defaults skip validation); an explicit null is malformed.
-        if value is None:
-            raise ValueError("null is not a string")
-        return value
-
     def form(self) -> dict[str, str | None]:
         """The form's fields by intent key, as :func:`parse_book_fields` takes them."""
         return self.model_dump(by_alias=True, include=set(_FORM_FIELDS))
 
 
 _FORM_FIELDS = [name for name in BookFormIntent.model_fields if name != "confirm_duplicate"]
-
-
-def malformed() -> IntentError:
-    return invalid_fields([FieldError(field=INTENT_FIELD, message=MALFORMED_INTENT_MESSAGE)])
-
-
-def parse_form_intent[T: BaseModel](model: type[T], raw: str | None) -> T:
-    """The ``intent`` form part as ``model``, or 422 on ``intent``."""
-    if raw is None:
-        raise malformed()
-    try:
-        doc = json.loads(raw)
-    except (ValueError, RecursionError):
-        raise malformed() from None
-    if not isinstance(doc, dict):
-        raise malformed()
-    try:
-        return model.model_validate(doc)
-    except ValidationError:
-        raise malformed() from None
-
-
-def refuse_fields(failures: Iterable[FieldFailure]) -> IntentError:
-    """422 ``invalid_fields`` for ``(key, message)`` failures, named by label."""
-    return invalid_fields(
-        [FieldError(field=key, message=message) for key, message in failures], LABELS
-    )
 
 
 def cover_failures(cover: UploadedCover | None) -> list[FieldFailure]:
@@ -115,10 +61,17 @@ def cover_failures(cover: UploadedCover | None) -> list[FieldFailure]:
 
 
 def valid_fields(
-    intent: BookFormIntent, today: date, extra: Iterable[FieldFailure] = ()
+    intent: BookFormIntent,
+    today: date,
+    extra: Iterable[FieldFailure] = (),
+    finished_on_rule: FinishedOnRule | None = None,
 ) -> BookFields:
-    """The parsed fields, or 422 listing every failing field (``extra`` too) in form order."""
-    parsed = parse_book_fields(intent.form(), today)
+    """The parsed fields, or 422 listing every failing field (``extra`` too) in form order.
+
+    ``finished_on_rule`` adds a caller's Finished on check (see
+    :func:`parse_book_fields`); ``edit-book`` passes its latest-finished rule.
+    """
+    parsed = parse_book_fields(intent.form(), today, finished_on_rule)
     failures = in_form_order([*(parsed if isinstance(parsed, list) else []), *extra])
     if failures:
         raise refuse_fields(failures)

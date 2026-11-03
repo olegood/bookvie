@@ -33,31 +33,26 @@ a date before ``latest``'s start is refused, and any other changed date sets
 
 import uuid
 from datetime import date
+from functools import partial
 
 from bookvie.domain import Book, Clock, Library, Reading
 from bookvie.domain.book_fields import (
     FINISH_DATE_REMOVED_MESSAGE,
     BookFields,
-    FieldFailure,
     finished_before_start_message,
-    in_form_order,
     pages_below_card_note_message,
     pages_below_current_page_message,
-    parse_book_fields,
-    parse_finished_on,
     resolve_spine_color,
 )
 from bookvie.domain.duplicates import find_duplicates
 from bookvie.store import Store
 
 from .book_form import (
-    INTENT_FIELD,
     BookFormIntent,
     backfill_reading,
     cover_failures,
-    parse_form_intent,
     refuse_duplicates,
-    refuse_fields,
+    valid_fields,
 )
 from .commit import commit
 from .contract import (
@@ -68,6 +63,7 @@ from .contract import (
     pages_refusal,
 )
 from .cover import PreparedCover, UploadedCover, mint_cover_file
+from .intent_model import INTENT_FIELD, parse_form_intent
 
 COVER_AND_REMOVE_MESSAGE = "The intent can't both send a cover and remove it."
 
@@ -101,24 +97,6 @@ def _finished_on_failure(book: Book, finished_on: date | None) -> str | None:
     if latest.start_date is not None and finished_on < latest.start_date:
         return finished_before_start_message(latest.start_date)
     return None
-
-
-def _valid_fields(
-    book: Book, intent: EditBookIntent, today: date, extra: list[FieldFailure]
-) -> BookFields:
-    form = intent.form()
-    parsed = parse_book_fields(form, today)
-    failures: list[FieldFailure] = parsed if isinstance(parsed, list) else []
-    if not any(key == "finishedOn" for key, _ in failures):
-        finished_on, _ = parse_finished_on(form["finishedOn"], today)
-        message = _finished_on_failure(book, finished_on)
-        if message is not None:
-            failures = [*failures, ("finishedOn", message)]
-    failures = in_form_order([*failures, *extra])
-    if failures:
-        raise refuse_fields(failures)
-    assert not isinstance(parsed, list)
-    return parsed
 
 
 def _check_pages_floors(book: Book, pages: int) -> None:
@@ -189,13 +167,10 @@ def edit_book(
         from_cover = cover.color
 
     def change(library: Library) -> None:
-        index = next(
-            (i for i, book in enumerate(library.books) if book.id == intent.book_id), None
-        )
-        if index is None:
+        book = library.book(intent.book_id)
+        if book is None:
             raise book_not_found()
-        book = library.books[index]
-        fields = _valid_fields(book, intent, today, extra)
+        fields = valid_fields(intent, today, extra, partial(_finished_on_failure, book))
         _check_pages_floors(book, fields.pages)
         if _identity_changed(book, fields):
             others = [other for other in library.books if other.id != book.id]
@@ -225,6 +200,6 @@ def edit_book(
                 covers.get("spine_color_from_cover", book.spine_color_from_cover),  # type: ignore[arg-type]
                 book.spine_color_curated,
             )
-        library.books[index] = book.model_copy(update=update)
+        library.replace_book(book.model_copy(update=update))
 
     commit(store, change, new_files)
