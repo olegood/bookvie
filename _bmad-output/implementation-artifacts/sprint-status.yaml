@@ -153,7 +153,7 @@ action_items:
     action: "Put the error envelope on body-parse failures and add guard and malformed-body
       tests on the real intent routes (F-R2, F-R6, VG1, VG2)"
     owner: "Amelia (Dev)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-11-03.md"
   - id: "epic-1-retro-item-9-before-epic-3-extract-usespinepopover-fr"
     epic: 1

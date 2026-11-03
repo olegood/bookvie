@@ -2,7 +2,9 @@
 
 Every ``/api`` error body is ``{error: {kind, code, message, fields?}}``:
 :class:`IntentError` from an intent, 422 ``invalid_fields`` for a request
-that fails validation, and 500 ``couldnt_save`` for anything unexpected.
+that fails validation or, on an intent route, whose body can't be parsed
+(broken multipart, a non-file part over 1 MB, too many fields or files), and
+500 ``couldnt_save`` for anything unexpected.
 FastAPI's ``{detail}`` shape never reaches the browser from a route here.
 Unknown ``/api`` paths are not enveloped: a GET or HEAD 404s through the SPA
 route, and any other method gets Starlette's 405 ``{detail}``.
@@ -21,10 +23,14 @@ import sys
 from typing import Annotated, Any
 
 from fastapi import APIRouter, FastAPI, File, Form, Request, UploadFile
-from fastapi.exception_handlers import request_validation_exception_handler
+from fastapi.exception_handlers import (
+    http_exception_handler,
+    request_validation_exception_handler,
+)
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse, PlainTextResponse
+from fastapi.responses import JSONResponse, PlainTextResponse, Response
 from pydantic import BaseModel
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from bookvie import views
@@ -42,6 +48,7 @@ from bookvie.intents import (
     delete_book,
     edit_book,
     invalid_fields,
+    malformed_intent,
     parse_add_book_intent,
     parse_delete_book_intent,
     parse_edit_book_intent,
@@ -308,6 +315,29 @@ async def _validation_error(request: Request, exc: Exception) -> JSONResponse:
     return await _intent_error(request, invalid_fields(errors))
 
 
+def _is_intent(request: Request) -> bool:
+    parts = request.url.path.lstrip("/").lower().split("/", 2)
+    return len(parts) == 3 and parts[:2] == ["api", "intents"]
+
+
+async def _http_error(request: Request, exc: Exception) -> Response:
+    """A body an intent route can't parse is a malformed intent (422).
+
+    Starlette and FastAPI raise 400 for broken multipart framing, a missing
+    boundary, a non-file part over 1 MB, or more than 1000 fields or files.
+    Every other status, and every other path, keeps FastAPI's own answer.
+    """
+    assert isinstance(exc, StarletteHTTPException)
+    if exc.status_code == 400 and _is_intent(request):
+        print(
+            f"bookvie: unparseable body on {request.method} {request.url.path}: {exc.detail}",
+            file=sys.stderr,
+            flush=True,
+        )
+        return await _intent_error(request, malformed_intent())
+    return await http_exception_handler(request, exc)
+
+
 async def _unexpected_error(request: Request, exc: Exception):
     print(
         f"bookvie: unexpected {type(exc).__name__} on {request.method} {request.url.path}: {exc}",
@@ -345,5 +375,6 @@ def install_api(app: FastAPI) -> None:
     app.include_router(router)
     app.add_exception_handler(IntentError, _intent_error)
     app.add_exception_handler(RequestValidationError, _validation_error)
+    app.add_exception_handler(StarletteHTTPException, _http_error)
     app.add_exception_handler(Exception, _unexpected_error)
     app.openapi = _openapi_with_extras(app)  # type: ignore[method-assign]
