@@ -139,3 +139,12 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-consolidate-test-helpers-and-cover-fault-tests.md`
   summary: Share the remaining e2e duplicates (AXE_TAGS in 4 specs, COULDNT_SAVE in 5, COULDNT_SAVE_BODY in 2, DUNE_ISBN13 in 2) and rename new-book-panel's route-glob ADD_BOOK so it can't be confused with intents.ts's path.
   evidence: The retro's F-A9 list didn't name them; the Blind Hunter review of this spec found them after consolidation.
+
+## Deferred from: review of spec-reconcile-architecture-spine-with-epic-1 (2026-11-03)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-reconcile-architecture-spine-with-epic-1.md`
+  summary: Bring the spine's Structural Seed and Capability → Architecture Map in line with the as-built modules (the lock is in `instance.py`, not `store/`; views are `views/shelf.py` + `views/models.py`, not `views/catalog`/`views/home`; covers are `intents/cover.py` + `store.py`).
+  evidence: Retro item 2 named only the AD drift; the review of this spec found the seed and map lag too. Low; they mislead navigation, not rules.
+- source_spec: `_bmad-output/implementation-artifacts/spec-reconcile-architecture-spine-with-epic-1.md`
+  summary: On a same-folder port conflict where health reports no usable `pid`, the launch skips the hand-over and its `finally: release_lock` deletes the lock, leaving the live server without one; decide whether to leave the lock in place instead.
+  evidence: `cli.py:139-142` hands over only when `probe_pid` returns a live pid; `release_lock` removes a lock naming this launch. Reachable only if a bookvie without `pid` in health (pre-1.2) holds the port. Low, unverified by a test.

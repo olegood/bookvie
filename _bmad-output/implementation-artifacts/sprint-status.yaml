@@ -110,7 +110,7 @@ action_items:
       multipart, AD-5/AD-16 health pid and same-folder hand-over, AD-9 view 404, AD-2/AD-12
       startup refusal and unused .staging; fix epic-1-context.md:48 (F-S2, F-R5)"
     owner: "Winston (Architect), applied by Oleg"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-11-03.md"
   - id: "epic-1-retro-item-3-before-story-2-1-refuse-cross-site-simpl"
     epic: 1

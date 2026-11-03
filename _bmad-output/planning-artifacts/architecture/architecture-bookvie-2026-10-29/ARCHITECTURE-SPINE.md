@@ -7,7 +7,7 @@ paradigm: 'server-owned domain behind an intent (command) API with server-comput
 scope: 'bookvie MVP: whole system (CLI launcher, Python server, data folder, React client)'
 status: final
 created: '2026-10-29'
-updated: '2026-10-29'
+updated: '2026-11-03'
 binds: [FR-1, FR-2, FR-3, FR-4, FR-5, FR-6, FR-7, FR-8, FR-9, FR-10, FR-11, FR-14, FR-15, FR-16, FR-17, FR-18, FR-19, FR-20, FR-21, FR-22, FR-23, FR-24, A1, A2, A3, A4, A5, A6]
 sources:
   - _bmad-output/planning-artifacts/prds/prd-bookvie-2026-10-28/prd.md
@@ -56,13 +56,13 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
 
 - **Binds:** A3, Data-safety NFR, FR-22, FR-23
 - **Prevents:** partial writes; a second store; two code paths serializing differently.
-- **Rule:** All textual data is a single `library.json` with the shape in AD-18. `store.serialize()` is the only function that produces its bytes: UTF-8, camelCase keys, nulls kept, keys in model order, 2-space indent, non-ASCII written as is (`ensure_ascii=False`), LF line endings, exactly one trailing newline. Every commit writes a temp file in the same folder, fsyncs it, renames it over the original, and then fsyncs the folder so the rename survives a power cut (skipped on filesystems that can't fsync a folder). The rename is the commit: a failed folder fsync after it is logged, not reported. If any step fails, the original is untouched and the intent reports `couldnt_save`. Before the first commit, every start fsyncs the data folder's parent (and the parent of any ancestor it creates) and the data folder itself, so the data folder, `covers/` and `.staging/` survive a power cut even after an interrupted earlier start. A failed flush refuses startup, except for a parent bookvie can't read, which is logged and skipped. At startup the server deletes leftover `library.json.tmp*` files from an interrupted commit, and exits non-zero with a message naming the path if the data folder isn't writable.
+- **Rule:** All textual data is a single `library.json` with the shape in AD-18. `store.serialize()` is the only function that produces its bytes: UTF-8, camelCase keys, nulls kept, keys in model order, 2-space indent, non-ASCII written as is (`ensure_ascii=False`), LF line endings, exactly one trailing newline. Every commit writes a temp file in the same folder, fsyncs it, renames it over the original, and then fsyncs the folder so the rename survives a power cut (skipped on filesystems that can't fsync a folder). The rename is the commit: a failed folder fsync after it is logged, not reported. If any step fails, the original is untouched and the intent reports `couldnt_save`. Before the first commit, every start fsyncs the data folder's parent (and the parent of any ancestor it creates) and the data folder itself, so the data folder, `covers/` and `.staging/` survive a power cut even after an interrupted earlier start. A failed flush refuses startup, except for a parent bookvie can't read, which is logged and skipped. At startup the server deletes leftover `library.json.tmp*` files from an interrupted commit, and exits non-zero with a message naming the path if the data folder isn't writable. If `library.json` is missing but `covers/` holds files, startup is refused before `library.json` or `covers/` changes (any entry in `covers/` counts, and an unreadable `covers/` is refused too): an empty library would let the AD-12 sweep delete every cover (decided in story 1.13). The message says to restore `library.json` or empty `covers/`.
 
 ### AD-3: Domain rules live only in the server; mutations arrive only as intents [ADOPTED]
 
 - **Binds:** FR-1, FR-3, FR-5 to FR-10, FR-14, FR-17, FR-22, FR-23, A2, A3
 - **Prevents:** rules duplicated in TypeScript and Python; stale whole-document writes overwriting another browser's changes; one user action split across several calls that can half-fail.
-- **Rule:** Each user action is exactly one intent call: `POST /api/intents/<verb>`. An intent validates, applies **every** consequence, runs `domain.check_invariants()`, and commits once (AD-2), or it changes nothing and returns a refusal. No CRUD or PATCH endpoints on entities, and no whole-document write endpoint. Intents that carry a file (`add-book`, `edit-book`, `restore`) are `multipart/form-data` with a JSON part named `intent` and a file part. They are still one call and one commit.
+- **Rule:** Each user action is exactly one intent call: `POST /api/intents/<verb>`. An intent validates, applies **every** consequence, runs `domain.check_invariants()`, and commits once (AD-2), or it changes nothing and returns a refusal. No CRUD or PATCH endpoints on entities, and no whole-document write endpoint. Every intent is `multipart/form-data` with a JSON part named `intent`, including those with no file (`delete-book`, `set-spine-color`), so every route parses its body one way. Intents that carry a file (`add-book`, `edit-book`, `restore`) add a file part. Each is still one call and one commit.
 
 ### AD-4: All writes, export and restore are serialized
 
@@ -74,7 +74,7 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
 
 - **Binds:** AD-1, CLI
 - **Prevents:** two processes writing the same folder.
-- **Rule:** The server holds `bookvie.lock` (PID and port) in the data folder, created with exclusive-create so two launches can't both take it. When `bookvie` finds a live lock, it opens the browser at the recorded URL and exits. A lock is live only when its PID is alive **and** `GET /api/health` on the recorded port answers `{ "app": "bookvie", "dataDir": "<path>" }` for this data folder. Any other lock (dead PID, a reused PID, no answer) is taken over. On SIGINT or SIGTERM the server waits for the AD-4 lock, then removes `bookvie.lock` and exits.
+- **Rule:** The server holds `bookvie.lock` (PID and port) in the data folder, created with exclusive-create so two launches can't both take it. When `bookvie` finds a live lock, it opens the browser at the recorded URL and exits. A lock is live only when its PID is alive **and** `GET /api/health` on the recorded port answers `{ "app": "bookvie", "dataDir": "<path>", "pid": <int> }` for this data folder (`pid` added in story 1.2 for the AD-16 hand-over). A lock younger than 5 seconds may belong to a server that is still starting: a second launch polls health instead of taking it over, and if nothing answers in time it says "bookvie is starting in another window; try again." and exits 1. Any other lock (dead PID, a reused PID, no answer) is taken over. On SIGINT or SIGTERM the server waits for the AD-4 lock, then removes `bookvie.lock` and exits.
 
 ### AD-6: The server owns domain numbers and selections; the client owns presentation [ADOPTED]
 
@@ -114,6 +114,9 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
     - HTTP 422 means field validation. `code` is `invalid_fields`, and `fields` lists every failing field. 422 also covers a rejected upload: a cover that isn't a supported image is a field error, and a refused restore archive uses the AD-14 codes.
     - HTTP 413 `cover_too_large` means a cover upload over 20 MB (AD-12); `fields` carries "Cover must be 20 MB or smaller."
     - HTTP 409 means a state rule (e.g. `duplicate_book`, `pages_below_current_page`). An intent whose target is no longer in a state it can act on is refused, never applied to another Book: `book_not_found` (the Book was deleted), `not_main_book` (`update-page` or `pause` for a Book that isn't Main), `reading_already_finished`, `already_main` (`start-reading` for the Main book), `main_cannot_be_up_next`, `main_cannot_be_side_read`, `side_reads_full` ("You already have 3 side reads. Remove one first."). A 409 refusal about one field (e.g. `pages_below_current_page`) includes `fields`.
+    - HTTP 404 `book_not_found` (kind `refusal`) comes from a view, not an intent: `GET /api/views/book` for an id no Book has (decided in story 1.11). The client shows its not-found page.
+    - On an intent route, a body that can't be parsed (broken multipart, a part over 1 MB, too many fields) is 422 `invalid_fields` on `intent`, the same refusal as a malformed `intent` part (retro item 8).
+  - Unknown `/api` paths aren't enveloped: a GET or HEAD 404s through the SPA route, and any other method gets Starlette's 405 `{detail}`. No real route answers `{detail}`.
     - An intent that would change nothing is a no-op success, not a refusal: `set-up-next` for the Book already Up next returns 200, changes nothing and commits nothing.
     - HTTP 500 or 503 means `couldnt_save`. When `check_invariants()` fails after validation passed, that is a server bug: the intent commits nothing, logs the failed rule to stderr, and returns 500 `couldnt_save`.
     - HTTP 503 with kind and code `couldnt_export` means export failed to read the data; nothing was sent (AD-14).
@@ -147,7 +150,8 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
   - **After the commit:** once the document commit succeeds, the intent has succeeded. A failure while deleting unreferenced files or emptying `.staging/` is logged to stderr and left for the startup sweep; the response is still 200, never `couldnt_save`.
   - **Remove cover:** `edit-book` with `removeCover: true` (offered only when a cover exists) clears `coverFile` and `spineColorFromCover`, re-resolves `spineColor` (AD-11), and deletes the file after the commit, per the order above.
   - Covers are served at `/media/covers/<file>` with immutable caching.
-  - At startup the server removes cover files that no Book references.
+  - **No staging for covers:** each new cover is written as `covers/<name>.tmp*`, fsynced and renamed into place. `.staging/` is reserved for restore scratch (AD-14). Until restore exists it is only created, flushed and emptied at startup (retro F-R5).
+  - At startup the server removes cover files that no Book references, including `covers/*.tmp*` leftovers. When `library.json` is missing but `covers/` holds files, startup is refused instead (AD-2).
 
 ### AD-13: Versioned document; one migration chain [ADOPTED]
 
@@ -186,7 +190,7 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
 - **Prevents:** the cataloging skill losing the app behind a random port; LAN or cross-site access to the user's data.
 - **Rule:**
   - **Binding:** the server binds `127.0.0.1` only, on port `8765` by default. `--port` overrides it, and the lock records the actual port.
-  - **Port conflict:** if the port is held by a process that isn't bookvie, startup exits with a message naming the port and `--port`. If `GET /api/health` on that port answers as bookvie for another data folder, the message says so and names that folder instead.
+  - **Port conflict:** if the port is held by a process that isn't bookvie, startup exits with a message naming the port and `--port`. If `GET /api/health` on that port answers as bookvie for another data folder, the message says so and names that folder instead. If it answers for this data folder, this launch took over the lock of a server that is in fact alive. When health reports a live `pid`, it hands the lock back by rewriting `bookvie.lock` as the running server's `{pid, port}`. Either way it then opens the browser at that server (prints the URL with `--no-browser`) and exits 0 (decided in story 1.2).
   - **Request guard:** requests are rejected when their `Host` isn't `127.0.0.1:<port>` or `localhost:<port>`, or when an `Origin` is present and isn't one of those. With `--dev`, the Vite dev origin is also allowed.
   - **Fetch metadata:** a simple cross-site GET carries no `Origin`, so requests to `/api/*` and `/media/*` are also rejected when `Sec-Fetch-Site` is present and isn't `same-origin` or `none`. `same-site` is refused because any app on another loopback port is same-site. A missing header passes (curl, the cataloging agent, browsers too old to send it), so GET routes still avoid side effects where they can. SPA routes and `/assets` stay open to cross-site links. `--dev` needs no exception: the Vite proxy forwards the browser's `same-origin` value.
   - **No authentication:** anything on the machine that can reach the loopback port is trusted.
@@ -205,6 +209,7 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
 - **Rule:**
   - `library.json` is `{ schemaVersion, mainBookId|null, upNextBookId|null, sideReadBookIds[], books[] }`. Each Book carries `id`, `createdAt` (timestamp, for the Date added sort), `ownership` (`owned`), `coverFile|null`, the AD-11 color fields, and its PRD fields. It owns its nested `readings[]` and `cardNotes[]` (`{ id, text, pageStart, pageEnd|null, createdAt }`). Nothing else is top-level.
   - Main book, Up next and Side reads exist only as root pointers. `domain.check_invariants()` runs before every commit and enforces:
+    - Book ids are unique in the library, and Reading and Card note ids are unique within their Book (added with the Side-read rule, `spec-unique-side-reads-and-directory-fsync.md`);
     - every pointer references an existing Book;
     - the Main book is neither Up next nor a Side read;
     - no Book is a Side read more than once, and there are at most 3 Side reads;
