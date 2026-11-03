@@ -152,3 +152,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-sync-spec-status-and-spine-check.md`
   summary: When bmad-code-review sends a story back to `in-progress`, its unresolved patch findings stay only in the review output; bmad-build's step-03 implements from the spec alone, so the rework has no defined path into the spec.
   evidence: Blind Hunter round 2 on retro item 11; `bmad-code-review/steps/step-04-present.md:92` leaves patches "as action items" and bmad-build `step-03-implement.md` treats the spec as the sole source of truth.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-readme-local-run-friction.md`
+  summary: Serve the SPA's `index.html` with `Cache-Control: no-cache` so a reinstall shows the new bundle without a hard reload; then drop the hard-reload step from the README (retro PL-8).
+  evidence: `backend/bookvie/http/app.py` `spa` returns `FileResponse(index)` with no `Cache-Control`, so browsers may reuse a cached `index.html` pointing at the old hashed bundle.
