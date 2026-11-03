@@ -9,8 +9,11 @@ Covers are served at ``/media/covers/<name>`` (AD-12), only while a Book's
 
 Every request passes a Host/Origin guard (AD-16) first. It rejects a foreign
 Host and any foreign Origin, so a cross-site page cannot make credentialed,
-CORS or state-changing requests. Simple cross-site GETs carry no Origin and
-do pass, so GET routes must stay free of side effects.
+CORS or state-changing requests. Simple cross-site GETs carry no Origin, so
+on server paths (``/api``, ``/media``) the guard also refuses any
+``Sec-Fetch-Site`` other than ``same-origin`` or ``none``. A request without
+the header (curl, the cataloging agent, tests, browsers too old to send it)
+still passes, so GET routes should still avoid side effects where they can.
 """
 
 import os
@@ -36,6 +39,9 @@ _SERVER_PREFIXES = ("api", "media")
 # Cover names are never reused (AD-12), so a served cover never changes.
 COVER_CACHE_CONTROL = "public, max-age=31536000, immutable"
 
+# Sec-Fetch-Site values a server path accepts; a missing header passes too.
+_ALLOWED_FETCH_SITES = frozenset({"same-origin", "none"})
+
 # Vite dev server origins, accepted only with `--dev`.
 DEV_ORIGINS = ("http://127.0.0.1:5173", "http://localhost:5173")
 
@@ -56,7 +62,14 @@ class _AssetFiles(StaticFiles):
 
 
 class HostOriginGuard:
-    """Pure-ASGI guard: 403 unless Host and any Origin are this server's own."""
+    """Pure-ASGI guard: 403 unless Host and any Origin are this server's own.
+
+    On server paths it also refuses a cross-site or same-site
+    ``Sec-Fetch-Site``, so a simple GET from another page (an ``<img>``, a
+    no-cors fetch, a link) cannot reach an ``/api`` or ``/media`` route.
+    ``same-site`` is refused too: ports don't count toward a site, so any
+    other app on a loopback port is same-site.
+    """
 
     def __init__(
         self, app: ASGIApp, *, port: int, extra_origins: Iterable[str] = ()
@@ -68,14 +81,21 @@ class HostOriginGuard:
     def _allowed(self, scope: Scope) -> bool:
         hosts: list[str] = []
         origins: list[str] = []
+        fetch_sites: list[str] = []
         for name, value in scope.get("headers", []):
             if name == b"host":
                 hosts.append(value.decode("latin-1").lower())
             elif name == b"origin":
                 origins.append(value.decode("latin-1").lower())
+            elif name == b"sec-fetch-site":
+                fetch_sites.append(value.decode("latin-1").strip().lower())
         if len(hosts) != 1 or hosts[0] not in self.hosts:
             return False
-        return all(origin in self.origins for origin in origins)
+        if not all(origin in self.origins for origin in origins):
+            return False
+        if fetch_sites and _is_server_path(scope.get("path", "")):
+            return len(fetch_sites) == 1 and fetch_sites[0] in _ALLOWED_FETCH_SITES
+        return True
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] in ("http", "websocket") and not self._allowed(scope):

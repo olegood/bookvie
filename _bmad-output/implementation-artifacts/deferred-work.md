@@ -5,6 +5,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-2-run-one-safe-instance.md`
   summary: Before `GET /api/export` (Epic 2) ships, reject cross-site simple GETs (e.g. `Sec-Fetch-Site: cross-site`) or make sure no GET route has side effects such as recording "Last export".
   evidence: The Host/Origin guard passes a cross-site `<img>`/no-cors GET because it sends `Host: 127.0.0.1:<port>` and no Origin. The page can't read the response, but a full export download would record "Last export".
+  resolved: `spec-refuse-cross-site-simple-gets.md`; `HostOriginGuard` refuses any `Sec-Fetch-Site` other than `same-origin`/`none` on `/api` and `/media` (AD-16). A browser that sends no `Sec-Fetch-Site` still passes; see the story 2.1 entry below.
 
 ## Deferred from: code review of spec-1-2-run-one-safe-instance (2026-10-29)
 
@@ -119,3 +120,13 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-14-change-a-book-s-color-from-the-shelf.md`
   summary: Run the Spine popover's AC-1 checks (inside the viewport, at most 992px wide, pointer at the spine, shifted inward at the edges) on Home's bookcase slice.
   evidence: Home's bookcase is still a placeholder until Stories 3.1/3.5, so `e2e/spine-popover.spec.ts` opens spines on Catalog (`/`) only. The checklist line "AC-1 (deferred): the same checks on Home's slice" is unticked. Close it when Story 3.1 or 3.5 renders the slice, by running the same geometry checks there.
+
+- source_spec: none
+  summary: Fsync the parent folder after `mkdir` of the data folder, `covers/` and `.staging/` (Epic 1 retro action item 3, part b; same as the 2026-11-01 entry above).
+  evidence: Split from the cross-site GET guard build (retro action item 3) because it is an independent store durability change; do it as the next build.
+
+## Deferred from: review of spec-refuse-cross-site-simple-gets (2026-11-03)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-refuse-cross-site-simple-gets.md`
+  summary: In story 2.1, decide how `GET /api/export` records "Last export" so that a cross-site GET from a browser that sends no `Sec-Fetch-Site` (Safari before 16.4, old Firefox) can't trigger it — e.g. record it with a separate POST after the download, or require the header on that route.
+  evidence: The guard passes requests without `Sec-Fetch-Site`, so an `<img src=".../api/export">` from such a browser still reaches the route. Medium for story 2.1 only; no GET route has a side effect today.

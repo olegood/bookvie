@@ -188,6 +188,7 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
   - **Binding:** the server binds `127.0.0.1` only, on port `8765` by default. `--port` overrides it, and the lock records the actual port.
   - **Port conflict:** if the port is held by a process that isn't bookvie, startup exits with a message naming the port and `--port`. If `GET /api/health` on that port answers as bookvie for another data folder, the message says so and names that folder instead.
   - **Request guard:** requests are rejected when their `Host` isn't `127.0.0.1:<port>` or `localhost:<port>`, or when an `Origin` is present and isn't one of those. With `--dev`, the Vite dev origin is also allowed.
+  - **Fetch metadata:** a simple cross-site GET carries no `Origin`, so requests to `/api/*` and `/media/*` are also rejected when `Sec-Fetch-Site` is present and isn't `same-origin` or `none`. `same-site` is refused because any app on another loopback port is same-site. A missing header passes (curl, the cataloging agent, browsers too old to send it), so GET routes still avoid side effects where they can. SPA routes and `/assets` stay open to cross-site links. `--dev` needs no exception: the Vite proxy forwards the browser's `same-origin` value.
   - **No authentication:** anything on the machine that can reach the loopback port is trusted.
   - **SPA routes:** the server serves the built SPA and falls back to `index.html` for client routes.
 
