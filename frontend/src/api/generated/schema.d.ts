@@ -239,6 +239,10 @@ export interface components {
             coverFile: string | null;
             /** Spinecolorfromcover */
             spineColorFromCover: string | null;
+            /** Hascover */
+            hasCover: boolean;
+            /** Finished */
+            finished: boolean;
             /** Latestfinishdate */
             latestFinishDate: string | null;
             /** Readings */

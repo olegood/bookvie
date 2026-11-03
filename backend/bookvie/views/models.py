@@ -81,6 +81,11 @@ class BookDetailView(_View):
     """``covers/<name>``, served at ``/media/<coverFile>``; ``None`` without a cover."""
     spine_color_from_cover: str | None
     """The color the cover gave (the "From cover" swatch); ``None`` without one."""
+    has_cover: bool
+    """Whether a cover is recorded, as ``ShelfBook`` says: the domain flag Change color
+    reads. ``cover_file`` is only the path the page renders the image from."""
+    finished: bool
+    """Whether any Reading is finished, as ``ShelfBook`` says (the "shown once read" note)."""
     latest_finish_date: date | None
     """The most recent finish date: what the Edit book panel prefills in Finished on."""
     readings: list[BookReading]

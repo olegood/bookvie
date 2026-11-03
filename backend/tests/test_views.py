@@ -249,6 +249,30 @@ def test_book_view_carries_the_resolved_spine_color(
     assert (color(covered), color(picked), color(curated)) == ("#A85A4A", "#4B7C7B", "#9B6753")
 
 
+def test_book_view_carries_finished_and_has_cover_as_the_shelf_does(
+    tmp_path: Path, library_builder: LibraryBuilder
+) -> None:
+    """Book detail's Change color reads the server's flags, not its own (F-A7)."""
+    covered_read = library_builder.book(title="Dune", cover_file="covers/dune.jpg")
+    library_builder.reading(covered_read, start_date=None, finish_date="2026-02-01", current_page=300)
+    covered_reading = library_builder.book(title="Emma", cover_file="covers/emma.jpg")
+    library_builder.reading(covered_reading, current_page=40)
+    bare_read = library_builder.book(title="Piranesi")
+    library_builder.reading(bare_read, start_date=None, finish_date="2026-03-01", current_page=300)
+    bare = library_builder.book(title="Kindred")
+    library_builder.write(tmp_path)
+    client = api_client(tmp_path, raise_server_exceptions=True)
+
+    def flags(book: dict[str, object]) -> tuple[object, object]:
+        return book["finished"], book["hasCover"]
+
+    ids = (covered_read, covered_reading, bare_read, bare)
+    detail = {i: flags(client.get("/api/views/book", params={"id": i}).json()) for i in ids}
+    assert [detail[i] for i in ids] == [(True, True), (False, True), (True, False), (False, False)]
+    shelf = {book["id"]: flags(book) for book in client.get("/api/views/catalog").json()["books"]}
+    assert detail == shelf
+
+
 def test_cover_path_finds_only_referenced_existing_files(
     tmp_path: Path, library_builder: LibraryBuilder
 ) -> None:

@@ -24,6 +24,10 @@ def _finished(book: Book) -> bool:
     return any(reading.finished for reading in book.readings)
 
 
+def _has_cover(book: Book) -> bool:
+    return book.cover_file is not None
+
+
 def _shelf_book(book: Book) -> ShelfBook:
     return ShelfBook(
         id=book.id,
@@ -38,7 +42,7 @@ def _shelf_book(book: Book) -> ShelfBook:
         spine_color=book.spine_color,
         spine_color_user=book.spine_color_user,
         spine_color_from_cover=book.spine_color_from_cover,
-        has_cover=book.cover_file is not None,
+        has_cover=_has_cover(book),
         finished=_finished(book),
     )
 
@@ -106,6 +110,8 @@ def book_detail(library: Library, book_id: str) -> BookDetailView | None:
         spine_color_user=book.spine_color_user,
         cover_file=book.cover_file,
         spine_color_from_cover=book.spine_color_from_cover,
+        has_cover=_has_cover(book),
+        finished=_finished(book),
         latest_finish_date=latest.finish_date if latest else None,
         readings=[
             BookReading(id=r.id, start_date=r.start_date, finish_date=r.finish_date)

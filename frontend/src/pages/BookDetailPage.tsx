@@ -169,18 +169,7 @@ function BookDetail({ book, onDelete }: { book: BookDetailView; onDelete: Delete
             )}
           </section>
           <section className={styles.block} aria-labelledby={colorId}>
-            <ChangeColor
-              book={{
-                id: book.id,
-                spineColor: book.spineColor,
-                spineColorUser: book.spineColorUser,
-                spineColorFromCover: book.spineColorFromCover,
-                hasCover: book.coverFile !== null,
-                finished: book.readings.some((reading) => reading.finishDate !== null),
-              }}
-              level={2}
-              headingId={colorId}
-            />
+            <ChangeColor book={book} level={2} headingId={colorId} />
           </section>
         </div>
       </div>

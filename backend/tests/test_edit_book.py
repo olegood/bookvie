@@ -738,6 +738,8 @@ def test_book_view_returns_the_book_and_its_latest_finish(
         "spineColorUser": "#112233",
         "coverFile": None,
         "spineColorFromCover": None,
+        "hasCover": False,
+        "finished": True,
         "latestFinishDate": "2024-02-10",
         "role": None,
         "waitingPage": None,
