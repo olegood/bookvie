@@ -5,7 +5,7 @@ import fcntl
 import json
 import os
 import threading
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -20,6 +20,7 @@ from bookvie.store import (
     StartupError,
     Store,
     ensure_writable,
+    read_last_export,
     serialize,
 )
 from tests.builder import LibraryBuilder
@@ -239,6 +240,66 @@ def test_leftovers_are_swept(tmp_path: Path) -> None:
     assert _temps(tmp_path) == []
     assert list(staging.iterdir()) == []
     assert (tmp_path / "keep.txt").read_text() == "keep"
+
+
+def test_local_state_temp_files_are_swept_and_local_state_kept(tmp_path: Path) -> None:
+    (tmp_path / "local-state.json.tmp").write_text("x")
+    (tmp_path / "local-state.json.tmpabc123").write_text("y")
+    (tmp_path / "local-state.json").write_text('{"lastExportAt": "2026-10-01T09:30:00+02:00"}')
+    Store.open(tmp_path)
+    assert sorted(tmp_path.glob("local-state.json*")) == [tmp_path / "local-state.json"]
+
+
+def test_record_export_writes_local_state_atomically(tmp_path: Path) -> None:
+    store = Store.open(tmp_path)
+    library = (tmp_path / "library.json").read_bytes()
+    when = datetime(2026, 10, 30, 12, tzinfo=timezone(timedelta(hours=1)))
+    store.record_export(when)
+    raw = (tmp_path / "local-state.json").read_bytes()
+    assert json.loads(raw) == {"lastExportAt": "2026-10-30T12:00:00+01:00"}
+    assert read_last_export(tmp_path) == when
+    assert (tmp_path / "library.json").read_bytes() == library
+    assert sorted(tmp_path.glob("local-state.json.tmp*")) == []
+
+
+@pytest.mark.parametrize("step", ["create_temp", "write", "fsync", "replace"])
+def test_failed_record_export_keeps_the_earlier_record(tmp_path: Path, step: str) -> None:
+    earlier = b'{"lastExportAt": "2026-10-01T09:30:00+02:00"}'
+    (tmp_path / "local-state.json").write_bytes(earlier)
+    store = Store.open(tmp_path)
+    store.fs = FaultyFs(step)
+    with pytest.raises(CouldntSave):
+        store.record_export(datetime(2026, 10, 30, 12, tzinfo=UTC))
+    assert (tmp_path / "local-state.json").read_bytes() == earlier
+    assert sorted(tmp_path.glob("local-state.json.tmp*")) == []
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        b"{not json",
+        b"\xff\xfe",
+        b"[]",
+        b"{}",
+        b'{"lastExportAt": 5}',
+        b'{"lastExportAt": "yesterday"}',
+        b'{"lastExportAt": "2026-10-01T09:30:00"}',
+    ],
+    ids=["bad-json", "not-utf8", "array", "no-key", "number", "not-a-date", "no-offset"],
+)
+def test_malformed_local_state_reads_as_no_export_and_is_logged(
+    tmp_path: Path, raw: bytes, capsys: pytest.CaptureFixture[str]
+) -> None:
+    (tmp_path / "local-state.json").write_bytes(raw)
+    assert read_last_export(tmp_path) is None
+    assert "bookvie: local-state.json" in capsys.readouterr().err
+
+
+def test_missing_local_state_reads_as_no_export_silently(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    assert read_last_export(tmp_path) is None
+    assert capsys.readouterr().err == ""
 
 
 def test_valid_v1_is_loaded_and_bytes_unchanged(tmp_path: Path) -> None:

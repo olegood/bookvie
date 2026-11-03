@@ -30,6 +30,12 @@
   cursor: default;
 }
 
+/* DESIGN.md → Busy button: the same colors at 60% opacity, no spinner. */
+.busy {
+  opacity: 0.6;
+  cursor: default;
+}
+
 @media (forced-colors: active) {
   .primary {
     border: var(--hairline) solid ButtonText;

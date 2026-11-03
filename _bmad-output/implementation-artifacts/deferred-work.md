@@ -166,3 +166,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-epic-1-trace-and-gate.md`
   summary: Add one e2e that adds a Book through the New book panel with every optional field (Subtitle, ISBN with spaces, Year, Tags, Spine color, Finished on) and reads each value back.
   evidence: Story 1.8 checklist AC-5. The UI add tests fill only the required fields plus Tags (`frontend/e2e/new-book-panel.spec.ts:213`); the optional fields are pinned at the API (`backend/tests/test_add_book.py:362`) and in edit mode. Low; CAT-E2E-002 itself is covered.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-1-export-all-data-with-one-click.md`
+  summary: Reconcile ARCHITECTURE-SPINE with Story 2.1's export. Four places differ. AD-1: `intents/export.py` reads `library.json` and covers itself instead of through `store/`; either route the reads through a store helper or amend AD-1. AD-4: `Store.record_export` writes `local-state.json` outside the lock. AD-14: only referenced covers are exported. AD-2/AD-15: the `local-state.json.tmp*` atomic write and its startup sweep are not described.
+  evidence: The spine-check review of Story 2.1 found the code and spine disagree on each of these. AD-1 matters before Story 2.2, whose restore also touches the data folder from `intents/`.

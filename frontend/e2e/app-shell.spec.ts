@@ -117,7 +117,7 @@ test.describe('Story 1.6 app shell (ATDD)', () => {
 
     const nav = page.getByRole('banner').getByRole('navigation')
     await expect(nav.getByRole('link', { name: 'Catalog', exact: true })).toHaveAttribute('aria-current', 'page')
-    for (const later of ['Home', 'Stats', 'Card notes', 'Backup']) {
+    for (const later of ['Home', 'Stats', 'Card notes']) {
       await expect(nav.getByRole('link', { name: later, exact: true })).toHaveCount(0)
     }
     await expect(page.getByRole('banner')).toContainText('bookvie')

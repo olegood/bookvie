@@ -1,6 +1,6 @@
 """Story 2.1: export all data with one click (FR-22, AD-4, AD-14, AD-15).
 
-Red-phase tests for the three server-side acceptance criteria (numbered in the
+Tests for the three server-side acceptance criteria (numbered in the
 order of epics.md, Story 2.1): AC-3 what the zip holds and when the lock is
 held, AC-5 when "Last export" is recorded, AC-6 a failed export. AC-1, AC-2 and
 AC-4 are the Backup page, in ``frontend/e2e/backup.spec.ts``.
@@ -36,10 +36,16 @@ import pytest
 from starlette.types import ASGIApp, Message
 
 from tests.builder import LibraryBuilder
-from tests.helpers import DUNE, DUNE_ID, api_client, image_bytes, library_bytes
+from tests.helpers import (
+    DUNE,
+    DUNE_ID,
+    FaultyFs,
+    api_client,
+    image_bytes,
+    library_bytes,
+)
 
 EXPORT = "/api/export"
-RED = "red phase: GET /api/export and local-state.json are not built yet (Story 2.1)"
 COULDNT_EXPORT_MESSAGE = "Couldn't export. Your data wasn't changed."
 
 LOCAL_STATE = "local-state.json"
@@ -204,7 +210,6 @@ def _run(
 # --- AC-3: one zip with exactly library.json and covers/, built under the lock --
 
 
-@pytest.mark.skip(reason=RED)
 def test_ac3_p0_export_is_one_zip_of_library_json_and_covers_built_under_the_lock(
     tmp_path: Path,
 ) -> None:
@@ -260,7 +265,6 @@ def test_ac3_p0_export_is_one_zip_of_library_json_and_covers_built_under_the_loc
 # --- AC-5: "Last export" is a complete download, recorded outside the export ----
 
 
-@pytest.mark.skip(reason=RED)
 def test_ac5_p1_only_a_complete_download_records_last_export_in_local_state(
     tmp_path: Path,
 ) -> None:
@@ -294,8 +298,10 @@ def test_ac5_p1_only_a_complete_download_records_last_export_in_local_state(
     _seed_rich_library(head_dir)
     head_client = api_client(head_dir)
 
-    head_client.head(EXPORT)
+    head = head_client.head(EXPORT)
 
+    # The route is GET-only: HEAD falls through to the SPA catch-all's 404.
+    assert head.status_code == 404
     assert _local_state(head_dir) is None
     (head_dir / LOCAL_STATE).write_bytes(EARLIER_EXPORT)
 
@@ -307,7 +313,6 @@ def test_ac5_p1_only_a_complete_download_records_last_export_in_local_state(
 # --- AC-6: a failed export is a 503 before any header, and changes nothing ------
 
 
-@pytest.mark.skip(reason=RED)
 @pytest.mark.skipif(os.geteuid() == 0, reason="root can read a chmod 000 cover")
 def test_ac6_p1_an_unreadable_cover_fails_the_export_with_503_couldnt_export(
     tmp_path: Path,
@@ -341,3 +346,112 @@ def test_ac6_p1_an_unreadable_cover_fails_the_export_with_503_couldnt_export(
     assert "couldnt_export" in schema["components"]["schemas"]["ErrorKind"]["enum"]
     assert "couldnt_export" in schema["components"]["schemas"]["ErrorCode"]["enum"]
     assert "503" in schema["paths"][EXPORT]["get"]["responses"]
+
+
+# --- Follow-ups: the download name, a missing cover, a failed record ------------
+
+
+def test_export_is_named_for_today_and_streams_in_64k_chunks(tmp_path: Path) -> None:
+    data_dir = tmp_path / "named"
+    _seed_rich_library(data_dir, cover=_incompressible(BIG_COVER_BYTES))
+    app = api_client(data_dir).app
+
+    run = _run(app)
+
+    (start,) = [m for m in run.messages if m["type"] == "http.response.start"]
+    headers = {name.decode(): value.decode() for name, value in start["headers"]}
+    assert headers["content-type"] == "application/zip"
+    assert headers["content-disposition"] == 'attachment; filename="bookvie-export-2026-10-30.zip"'
+    assert int(headers["content-length"]) == len(run.body)
+    bodies = [m for m in run.messages if m["type"] == "http.response.body"]
+    assert all(len(m["body"]) <= 64 * 1024 for m in bodies)
+    assert len(bodies) > BIG_COVER_BYTES // (64 * 1024)
+    assert bodies[-1] == {"type": "http.response.body", "body": b"", "more_body": False}
+    archive = zipfile.ZipFile(io.BytesIO(run.body))
+    assert archive.getinfo(f"covers/{COVER_NAME}").compress_type == zipfile.ZIP_STORED
+
+
+def test_a_cover_older_than_1980_still_exports(tmp_path: Path) -> None:
+    data_dir = tmp_path / "old"
+    cover = _seed_rich_library(data_dir)
+    client = api_client(data_dir)
+    os.utime(data_dir / "covers" / COVER_NAME, (0, 0))
+
+    response = client.get(EXPORT)
+
+    assert response.status_code == 200
+    archive = zipfile.ZipFile(io.BytesIO(response.content))
+    assert archive.read(f"covers/{COVER_NAME}") == cover
+    assert archive.getinfo(f"covers/{COVER_NAME}").date_time == (1980, 1, 1, 0, 0, 0)
+
+
+def test_unreferenced_and_temp_files_are_not_exported(tmp_path: Path) -> None:
+    data_dir = tmp_path / "strays"
+    _seed_rich_library(data_dir)
+    client = api_client(data_dir)
+    # Written after startup, so the sweep hasn't removed them.
+    (data_dir / "covers" / "stray.jpg").write_bytes(b"x")
+    (data_dir / "covers" / f"{COVER_NAME}.tmpabc").write_bytes(b"x")
+    (data_dir / "library.json.tmpabc").write_bytes(b"x")
+
+    archive = zipfile.ZipFile(io.BytesIO(client.get(EXPORT).content))
+
+    assert sorted(archive.namelist()) == ["covers/", f"covers/{COVER_NAME}", "library.json"]
+
+
+def test_a_missing_cover_fails_the_export_with_503(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    data_dir = tmp_path / "missing"
+    _seed_rich_library(data_dir)
+    client = api_client(data_dir)
+    (data_dir / "covers" / COVER_NAME).unlink()
+
+    response = client.get(EXPORT)
+
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "couldnt_export"
+    assert _local_state(data_dir) is None
+    assert "bookvie: couldn't export" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("step", ["create_temp", "write", "fsync", "replace"])
+def test_a_failed_record_is_logged_and_the_download_still_succeeds(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], step: str
+) -> None:
+    data_dir = tmp_path / "faulty"
+    _seed_rich_library(data_dir)
+    (data_dir / LOCAL_STATE).write_bytes(EARLIER_EXPORT)
+    app = api_client(data_dir, FaultyFs(step)).app
+
+    run = _run(app)
+
+    assert run.statuses == [200]
+    assert zipfile.ZipFile(io.BytesIO(run.body)).namelist()
+    assert _local_state(data_dir) == EARLIER_EXPORT
+    assert sorted(p.name for p in data_dir.iterdir()) == [
+        ".staging",
+        "covers",
+        "library.json",
+        LOCAL_STATE,
+    ]
+    assert "bookvie: couldn't record the export" in capsys.readouterr().err
+
+
+def test_export_changes_nothing_in_the_data_folder_but_local_state(tmp_path: Path) -> None:
+    data_dir = tmp_path / "unchanged"
+    _seed_rich_library(data_dir)
+    app = api_client(data_dir).app
+
+    def snapshot() -> dict[str, bytes]:
+        return {
+            str(p.relative_to(data_dir)): p.read_bytes()
+            for p in sorted(data_dir.rglob("*"))
+            if p.is_file() and p.name != LOCAL_STATE
+        }
+
+    before = snapshot()
+    _run(app)
+
+    assert snapshot() == before
+    assert _last_export_at(data_dir) == LAST_EXPORT_NOW

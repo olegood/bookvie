@@ -36,6 +36,11 @@ export default function AppShell({ children }: { children?: ReactNode }) {
                 Catalog
               </NavLink>
             </li>
+            <li className={styles.item}>
+              <NavLink to="/backup" className={styles.link}>
+                Backup
+              </NavLink>
+            </li>
           </ul>
         </nav>
         <div className={styles.end}>

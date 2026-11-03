@@ -20,8 +20,12 @@ the store lock.
 """
 
 import sys
-from typing import Annotated, Any
+from collections.abc import Callable
+from typing import IO, Annotated, Any
 
+import anyio
+import anyio.lowlevel
+import anyio.to_thread
 from fastapi import APIRouter, FastAPI, File, Form, Request, UploadFile
 from fastapi.exception_handlers import (
     http_exception_handler,
@@ -36,6 +40,7 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from bookvie import views
 from bookvie.intents import (
     COVER_LIMIT,
+    EXPORT_CHUNK,
     ErrorResponse,
     FieldError,
     IntentError,
@@ -43,10 +48,12 @@ from bookvie.intents import (
     UploadedCover,
     add_book,
     book_not_found,
+    build_export,
     couldnt_save,
     cover_too_large,
     delete_book,
     edit_book,
+    export_filename,
     invalid_fields,
     malformed_intent,
     parse_add_book_intent,
@@ -54,6 +61,7 @@ from bookvie.intents import (
     parse_edit_book_intent,
     parse_set_spine_color_intent,
     prepare_cover,
+    record_export,
     set_spine_color,
 )
 
@@ -167,6 +175,120 @@ CoverPart = Annotated[
     UploadFile | None,
     File(description="The cover image: JPEG, PNG or WebP, 20 MB or smaller. Optional."),
 ]
+
+
+class ExportResponse(Response):
+    """Sends a built export in :data:`EXPORT_CHUNK` body messages, then calls ``on_complete``.
+
+    ``on_complete`` runs (in a worker thread) only when every body message
+    went out and no ``http.disconnect`` arrived before the last one, so an
+    aborted download records nothing. Not a ``BackgroundTask``: Starlette runs
+    those even after the client has gone. ``receive`` is watched in a task
+    while sending; a server like uvicorn answers it with a disconnect once
+    the response is complete, so only a disconnect seen before the final
+    send counts as an abort.
+    """
+
+    media_type = "application/zip"
+
+    def __init__(
+        self,
+        file: IO[bytes],
+        *,
+        filename: str,
+        on_complete: Callable[[], None],
+        status_code: int = 200,
+    ) -> None:
+        file.seek(0, 2)
+        size = file.tell()
+        file.seek(0)
+        super().__init__(
+            status_code=status_code,
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"',
+                "Content-Length": str(size),
+                "Cache-Control": "no-store",
+            },
+        )
+        self.file = file
+        self.on_complete = on_complete
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        gone = False
+
+        async def watch_for_disconnect() -> None:
+            nonlocal gone
+            while (await receive())["type"] != "http.disconnect":
+                pass
+            gone = True
+
+        try:
+            async with anyio.create_task_group() as tasks:
+                tasks.start_soon(watch_for_disconnect)
+                await send(
+                    {
+                        "type": "http.response.start",
+                        "status": self.status_code,
+                        "headers": self.raw_headers,
+                    }
+                )
+                while not gone:
+                    chunk = await anyio.to_thread.run_sync(self.file.read, EXPORT_CHUNK)
+                    if not chunk:
+                        break
+                    await send({"type": "http.response.body", "body": chunk, "more_body": True})
+                    await anyio.lowlevel.checkpoint()  # let the watcher see a disconnect
+                if not gone:
+                    await send({"type": "http.response.body", "body": b"", "more_body": False})
+                # Read before any await: the server's post-response disconnect isn't an abort.
+                complete = not gone
+                tasks.cancel_scope.cancel()
+        finally:
+            self.file.close()
+        if complete:
+            await anyio.to_thread.run_sync(self.on_complete)
+
+
+def _json_error(description: str) -> dict[str, Any]:
+    # Spelled out, not ``model``: FastAPI files a model under the route's own
+    # media type, which for the export is application/zip.
+    schema = {"$ref": "#/components/schemas/ErrorResponse"}
+    return {"description": description, "content": {"application/json": {"schema": schema}}}
+
+
+EXPORT_RESPONSES: dict[int | str, dict[str, Any]] = {
+    200: {
+        "content": {"application/zip": {"schema": {"type": "string", "format": "binary"}}},
+        "description": "The export, bookvie-export-<YYYY-MM-DD>.zip: library.json and covers/",
+    },
+    **{
+        status: _json_error(str(response["description"]))
+        for status, response in ERROR_RESPONSES.items()
+    },
+    503: _json_error("Couldn't export"),
+}
+
+
+@router.get("/export", response_class=ExportResponse, responses=EXPORT_RESPONSES)
+def export(request: Request) -> ExportResponse:
+    """Download all data as one zip (FR-22); 503 ``couldnt_export`` before any byte is sent.
+
+    Plain ``def``: the zip is built under the store lock in the threadpool.
+    "Last export" is recorded only once the whole download went out.
+    """
+    store = request.app.state.store
+    clock = request.app.state.clock
+    archive = build_export(store)
+    return ExportResponse(
+        archive,
+        filename=export_filename(clock.today()),
+        on_complete=lambda: record_export(store, clock),
+    )
+
+
+@router.get("/views/backup", response_model=views.BackupView)
+def backup_view(request: Request) -> views.BackupView:
+    return views.backup(request.app.state.store)
 
 
 @router.get("/views/home", response_model=views.HomeView)

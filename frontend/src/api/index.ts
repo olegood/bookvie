@@ -25,13 +25,21 @@ export {
   type FieldError,
   type IntentResult,
 } from './envelope.ts'
+export {
+  COULDNT_EXPORT_MESSAGE,
+  ExportError,
+  exportAll,
+  refreshLastExport,
+} from './export.ts'
 export { sendIntent } from './intents.ts'
 export { createQueryClient } from './queryClient.ts'
 export {
+  useBackupView,
   useBookView,
   useCatalogView,
   useHomeView,
   viewKey,
+  type BackupView,
   type BookDetailView,
   type BookReading,
   type BookViewState,

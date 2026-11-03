@@ -99,3 +99,10 @@ class BookDetailView(_View):
     """
     waiting_page: int | None
     """The paused Reading's current page; set only when ``role`` is ``waiting``."""
+
+
+class BackupView(_View):
+    """What the Backup page shows."""
+
+    last_export_at: AwareDatetime | None
+    """When the last complete export download finished; ``None`` before the first."""

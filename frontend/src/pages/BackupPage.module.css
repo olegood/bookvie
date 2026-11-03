@@ -1,0 +1,54 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: var(--space-page-top) var(--space-page-x);
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-page-title-family);
+  font-size: var(--font-page-title-size);
+  font-weight: var(--font-page-title-weight);
+  line-height: var(--font-page-title-line-height);
+  color: var(--color-ink);
+}
+
+/* DESIGN.md → Backup page: two blocks on `surface` cards. */
+.card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+  max-width: 560px;
+  padding: var(--space-5) var(--space-6);
+  border: var(--hairline) solid var(--color-line);
+  border-radius: var(--radius-xl);
+  background: var(--color-surface);
+}
+
+.text {
+  margin: 0;
+  font-family: var(--font-body-sm-family);
+  font-size: var(--font-body-sm-size);
+  font-weight: var(--font-body-sm-weight);
+  line-height: var(--font-body-sm-line-height);
+  color: var(--color-ink-secondary);
+}
+
+/* "Last export: N days ago" in `meta`/`ink-tertiary`: informational, never a warning. */
+.lastExport {
+  margin: 0;
+  font-family: var(--font-meta-family);
+  font-size: var(--font-meta-size);
+  font-weight: var(--font-meta-weight);
+  line-height: var(--font-meta-line-height);
+  color: var(--color-ink-tertiary);
+}
+
+.failure {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+}

@@ -13,6 +13,7 @@ import shutil
 import sys
 import threading
 from collections.abc import Callable, Iterable, Mapping
+from datetime import datetime
 from pathlib import Path
 
 from pydantic import ValidationError
@@ -22,6 +23,7 @@ from bookvie.domain.model import Library
 
 from . import migrations
 from .fs import FileSystem, OsFileSystem
+from .local_state import LOCAL_STATE_NAME, LOCAL_STATE_TEMP_PREFIX, local_state_bytes
 
 LIBRARY_NAME = "library.json"
 TEMP_PREFIX = "library.json.tmp"
@@ -201,9 +203,10 @@ class Store:
     def _sweep(self, library: Library) -> None:
         self._sweep_covers(library)
         try:
-            for leftover in self.data_dir.glob(f"{TEMP_PREFIX}*"):
-                if leftover.is_file() or leftover.is_symlink():
-                    self.fs.remove(leftover)
+            for prefix in (TEMP_PREFIX, LOCAL_STATE_TEMP_PREFIX):
+                for leftover in self.data_dir.glob(f"{prefix}*"):
+                    if leftover.is_file() or leftover.is_symlink():
+                        self.fs.remove(leftover)
             staging = self.data_dir / STAGING_DIR
             if staging.is_dir() and not staging.is_symlink():
                 for entry in staging.iterdir():
@@ -370,6 +373,19 @@ class Store:
             unreferenced = referenced_covers(old) - referenced_covers(new)
             self._remove_covers(self.data_dir / COVERS_DIR / name for name in sorted(unreferenced))
             return new
+
+    def record_export(self, now: datetime) -> None:
+        """Write ``local-state.json`` saying the last complete export was at ``now`` (AD-15).
+
+        Atomic through the filesystem seam, like a commit; raises
+        :class:`CouldntSave` when it can't be written. It doesn't take the
+        lock: it never touches ``library.json`` or ``covers/``.
+        """
+        self._write_atomic(
+            self.data_dir / LOCAL_STATE_NAME,
+            local_state_bytes(now),
+            prefix=LOCAL_STATE_TEMP_PREFIX,
+        )
 
     def _commit(self, library: Library) -> None:
         self._write_atomic(self.path, serialize(library))

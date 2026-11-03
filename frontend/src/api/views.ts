@@ -12,10 +12,12 @@ export type ShelfBook = Schemas['ShelfBook']
 export type LibraryMeter = Schemas['LibraryMeter']
 export type BookDetailView = Schemas['BookDetailView']
 export type BookReading = Schemas['BookReading']
+export type BackupView = Schemas['BackupView']
 
 export interface Views {
   home: HomeView
   catalog: CatalogView
+  backup: BackupView
 }
 export type ViewName = keyof Views
 
@@ -69,6 +71,10 @@ export function useHomeView(): ViewState<HomeView> {
 
 export function useCatalogView(): ViewState<CatalogView> {
   return useView('catalog')
+}
+
+export function useBackupView(): ViewState<BackupView> {
+  return useView('backup')
 }
 
 /** The `book` view's key: under 'view', so every intent refetches it. */

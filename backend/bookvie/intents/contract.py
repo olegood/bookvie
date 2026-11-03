@@ -18,6 +18,7 @@ from pydantic.alias_generators import to_camel
 from bookvie.domain.book_fields import COVER_TOO_LARGE_MESSAGE, LABELS
 
 COULDNT_SAVE_MESSAGE = "Couldn't save. Your data wasn't changed."
+COULDNT_EXPORT_MESSAGE = "Couldn't export. Your data wasn't changed."
 
 
 class _Wire(BaseModel):
@@ -27,6 +28,7 @@ class _Wire(BaseModel):
 class ErrorKind(StrEnum):
     REFUSAL = "refusal"
     COULDNT_SAVE = "couldnt_save"
+    COULDNT_EXPORT = "couldnt_export"
 
 
 class ErrorCode(StrEnum):
@@ -37,6 +39,7 @@ class ErrorCode(StrEnum):
     PAGES_BELOW_CURRENT_PAGE = "pages_below_current_page"
     PAGES_BELOW_CARD_NOTE = "pages_below_card_note"
     COVER_TOO_LARGE = "cover_too_large"
+    COULDNT_EXPORT = "couldnt_export"
 
 
 class FieldError(_Wire):
@@ -224,5 +227,17 @@ def couldnt_save(status: int) -> IntentError:
             kind=ErrorKind.COULDNT_SAVE,
             code=ErrorCode.COULDNT_SAVE,
             message=COULDNT_SAVE_MESSAGE,
+        ),
+    )
+
+
+def couldnt_export() -> IntentError:
+    """503 ``couldnt_export``: the export couldn't be built; nothing was sent or changed."""
+    return IntentError(
+        503,
+        ErrorBody(
+            kind=ErrorKind.COULDNT_EXPORT,
+            code=ErrorCode.COULDNT_EXPORT,
+            message=COULDNT_EXPORT_MESSAGE,
         ),
     )

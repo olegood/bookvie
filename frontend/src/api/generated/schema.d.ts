@@ -19,6 +19,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Export
+         * @description Download all data as one zip (FR-22); 503 ``couldnt_export`` before any byte is sent.
+         *
+         *     Plain ``def``: the zip is built under the store lock in the threadpool.
+         *     "Last export" is recorded only once the whole download went out.
+         */
+        get: operations["export_api_export_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/views/backup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Backup View */
+        get: operations["backup_view_api_views_backup_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/views/home": {
         parameters: {
             query?: never;
@@ -157,6 +197,14 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * BackupView
+         * @description What the Backup page shows.
+         */
+        BackupView: {
+            /** Lastexportat */
+            lastExportAt: string | null;
+        };
         /** Body_add_book_intent_api_intents_add_book_post */
         Body_add_book_intent_api_intents_add_book_post: {
             /**
@@ -296,12 +344,12 @@ export interface components {
          * ErrorCode
          * @enum {string}
          */
-        ErrorCode: "invalid_fields" | "couldnt_save" | "duplicate_book" | "book_not_found" | "pages_below_current_page" | "pages_below_card_note" | "cover_too_large";
+        ErrorCode: "invalid_fields" | "couldnt_save" | "duplicate_book" | "book_not_found" | "pages_below_current_page" | "pages_below_card_note" | "cover_too_large" | "couldnt_export";
         /**
          * ErrorKind
          * @enum {string}
          */
-        ErrorKind: "refusal" | "couldnt_save";
+        ErrorKind: "refusal" | "couldnt_save" | "couldnt_export";
         /** ErrorResponse */
         ErrorResponse: {
             error: components["schemas"]["ErrorBody"];
@@ -404,6 +452,118 @@ export interface operations {
                     "application/json": {
                         [key: string]: string | number | null;
                     };
+                };
+            };
+        };
+    };
+    export_api_export_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The export, bookvie-export-<YYYY-MM-DD>.zip: library.json and covers/ */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/zip": string;
+                };
+            };
+            /** @description Refused by a library rule */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Invalid fields */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Couldn't save */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Couldn't export */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    backup_view_api_views_backup_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BackupView"];
+                };
+            };
+            /** @description Refused by a library rule */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Invalid fields */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Couldn't save */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Couldn't save */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };

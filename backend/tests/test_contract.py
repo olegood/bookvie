@@ -295,11 +295,13 @@ def test_openapi_error_enums(openapi: dict) -> None:
         "pages_below_current_page",
         "pages_below_card_note",
         "cover_too_large",
+        "couldnt_export",
     ]
+    kinds = ["refusal", "couldnt_save", "couldnt_export"]
     assert schemas["ErrorCode"]["enum"] == codes
-    assert schemas["ErrorKind"]["enum"] == ["refusal", "couldnt_save"]
+    assert schemas["ErrorKind"]["enum"] == kinds
     assert [code.value for code in ErrorCode] == codes
-    assert [kind.value for kind in ErrorKind] == ["refusal", "couldnt_save"]
+    assert [kind.value for kind in ErrorKind] == kinds
 
 
 def test_openapi_documents_the_envelope_not_fastapi_errors(openapi: dict) -> None:
@@ -317,6 +319,8 @@ def test_openapi_documents_the_envelope_not_fastapi_errors(openapi: dict) -> Non
     operations.append(("post", "/api/intents/edit-book"))
     operations.append(("post", "/api/intents/delete-book"))
     operations.append(("post", "/api/intents/set-spine-color"))
+    operations.append(("get", "/api/views/backup"))
+    operations.append(("get", "/api/export"))
     for method, path in operations:
         responses = openapi["paths"][path][method]["responses"]
         for status in ("409", "422", "500", "503"):
@@ -334,11 +338,19 @@ def test_openapi_documents_the_envelope_not_fastapi_errors(openapi: dict) -> Non
         ("get", "/api/views/home"),
         ("get", "/api/views/catalog"),
         ("get", "/api/views/book"),
+        ("get", "/api/views/backup"),
+        ("get", "/api/export"),
         ("post", "/api/intents/delete-book"),
         ("post", "/api/intents/set-spine-color"),
     ]
     for method, path in coverless:
         assert "413" not in openapi["paths"][path][method]["responses"]
+
+
+def test_openapi_documents_the_export_download(openapi: dict) -> None:
+    responses = openapi["paths"]["/api/export"]["get"]["responses"]
+    assert set(responses["200"]["content"]) == {"application/zip"}
+    assert responses["503"]["description"] == "Couldn't export"
 
 
 def test_openapi_is_cached_and_stable() -> None:
