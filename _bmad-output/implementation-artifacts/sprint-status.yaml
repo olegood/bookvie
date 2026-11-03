@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-29-2026 17:21
-last_updated: 11-02-2026 10:53
+last_updated: 11-03-2026 11:53
 project: bookvie
 project_key: NOKEY
 tracking_system: file-system
@@ -50,7 +50,7 @@ development_status:
   1-12-delete-a-book: done
   1-13-add-a-cover: done
   1-14-change-a-book-s-color-from-the-shelf: done
-  epic-1-retrospective: optional
+  epic-1-retrospective: done
 
   epic-2: backlog
   2-1-export-all-data-with-one-click: backlog
@@ -96,3 +96,90 @@ development_status:
   7-1-sort-my-catalog: backlog
   7-2-filter-my-catalog: backlog
   epic-7-retrospective: optional
+action_items:
+  - id: "epic-1-retro-item-1-run-an-epic-1-trace-and-gate-against-tr7"
+    epic: 1
+    action: "Run an Epic 1 trace and gate against TR7 (P0 = 100%, P1 >= 95%); tick
+      or retire stale ATDD checklist lines (F-S1, F-S6)"
+    owner: "Murat (TEA)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-11-03.md"
+  - id: "epic-1-retro-item-2-reconcile-architecture-spine-ad-18-id-un"
+    epic: 1
+    action: "Reconcile ARCHITECTURE-SPINE: AD-18 ID uniqueness, AD-3 every intent
+      multipart, AD-5/AD-16 health pid and same-folder hand-over, AD-9 view 404, AD-2/AD-12
+      startup refusal and unused .staging; fix epic-1-context.md:48 (F-S2, F-R5)"
+    owner: "Winston (Architect), applied by Oleg"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-11-03.md"
+  - id: "epic-1-retro-item-3-before-story-2-1-refuse-cross-site-simpl"
+    epic: 1
+    action: "Before story 2.1: refuse cross-site simple GETs and fsync the parent
+      folder after mkdir of data folder, covers/ and .staging/ (F-S8)"
+    owner: "Amelia (Dev)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-11-03.md"
+  - id: "epic-1-retro-item-4-backend-refactor-before-epic-2-library-i"
+    epic: 1
+    action: "Backend refactor before Epic 2: Library index/replace helper, shared
+      intent model base, merge _valid_fields into valid_fields (F-A1, F-A2)"
+    owner: "Amelia (Dev)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-11-03.md"
+  - id: "epic-1-retro-item-5-consolidate-test-helpers-backend-conftes"
+    epic: 1
+    action: "Consolidate test helpers (backend conftest/helpers, e2e intents.ts/library.ts
+      with one multipart-aware intentOf) and add missing TR8 cover-path fault tests
+      (F-A5, F-A9, F-S4)"
+    owner: "Amelia (Dev)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-11-03.md"
+  - id: "epic-1-retro-item-6-add-finished-and-hascover-to-bookdetailv"
+    epic: 1
+    action: "Add finished and hasCover to BookDetailView; stop working them out on
+      the client (F-A7)"
+    owner: "Amelia (Dev)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-11-03.md"
+  - id: "epic-1-retro-item-7-record-in-ad-3-that-intents-are-last-wri"
+    epic: 1
+    action: "Record in AD-3 that intents are last-writer-wins (single-tab use accepted
+      2026-11-03) (F-R1)"
+    owner: "Winston (Architect)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-11-03.md"
+  - id: "epic-1-retro-item-8-put-the-error-envelope-on-body-parse-fai"
+    epic: 1
+    action: "Put the error envelope on body-parse failures and add guard and malformed-body
+      tests on the real intent routes (F-R2, F-R6, VG1, VG2)"
+    owner: "Amelia (Dev)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-11-03.md"
+  - id: "epic-1-retro-item-9-before-epic-3-extract-usespinepopover-fr"
+    epic: 1
+    action: "Before Epic 3: extract useSpinePopover from Bookcase.tsx and split domain/book_fields.py
+      (F-A11, F-A3)"
+    owner: "Amelia (Dev)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-11-03.md"
+  - id: "epic-1-retro-item-10-run-npm-run-check-and-burn-in-only-on-a"
+    epic: 1
+    action: "Run npm run check and burn-in only on a quiet machine with sleep disabled,
+      or cap Playwright workers by load; document in docs/ci.md (PL-1)"
+    owner: "Oleg"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-11-03.md"
+  - id: "epic-1-retro-item-11-keep-spec-frontmatter-status-in-sync-wit"
+    epic: 1
+    action: "Keep spec frontmatter status in sync with sprint-status from one step;
+      story reviews check the spine diff when an AD changes (PL-3, F-S2)"
+    owner: "Oleg / bmad-build config"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-11-03.md"
+  - id: "epic-1-retro-item-12-readme-npm-run-dev-needs-the-backend-run"
+    epic: 1
+    action: "README: npm run dev needs the backend running; hard reload after install:local
+      (PL-8)"
+    owner: "Amelia (Dev)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-11-03.md"
