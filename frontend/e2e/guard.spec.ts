@@ -45,6 +45,17 @@ for (const [name, dir] of [
   })
 }
 
+// A missing --data-dir would make bookvie fall back to ~/bookvie-data, so an
+// empty or blank dir must never pass (it resolves to the working directory).
+for (const [name, dir] of [
+  ['an empty data dir', ''],
+  ['a blank data dir', '   '],
+] as const) {
+  test(`refuses ${name}`, () => {
+    expect(() => safeDataDir(dir, root)).toThrow(/e2e guard: refusing data dir/)
+  })
+}
+
 test('refuses a symlink that points out of the root', () => {
   mkdirSync(path.join(root, 'run'))
   const link = path.join(root, 'run', 'link')

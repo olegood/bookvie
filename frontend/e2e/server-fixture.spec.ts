@@ -27,3 +27,9 @@ test('the guard runs before anything is spawned', async () => {
   await expect(startServer(outside, { port: 1 })).rejects.toThrow(outside)
   expect(existsSync(outside)).toBe(false)
 })
+
+test('a server with no data dir is refused before anything is spawned', async () => {
+  // startServer always passes --data-dir, so bookvie never falls back to
+  // ~/bookvie-data; an empty dir is refused by the guard first.
+  await expect(startServer('', { port: 1 })).rejects.toThrow(/e2e guard: refusing data dir/)
+})
