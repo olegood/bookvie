@@ -19,7 +19,6 @@ from bookvie.domain import Library
 from bookvie.http.api import BODY_LIMIT, CoverSizeCap
 from bookvie.http.app import create_app
 from bookvie.intents import (
-    COULDNT_SAVE_MESSAGE,
     ErrorBody,
     ErrorCode,
     ErrorKind,
@@ -31,12 +30,12 @@ from bookvie.intents import (
 )
 from bookvie.store import Store
 from tests.builder import LibraryBuilder
-from tests.test_store import FaultyFs
-
-BASE_URL = "http://127.0.0.1:8765"
-COULDNT_SAVE = {
-    "error": {"kind": "couldnt_save", "code": "couldnt_save", "message": COULDNT_SAVE_MESSAGE}
-}
+from tests.helpers import (
+    BASE_URL,
+    COULDNT_SAVE_BODY,
+    FaultyFs,
+    library_bytes,
+)
 
 
 class Probe(BaseModel):
@@ -101,10 +100,6 @@ def client(data_dir: Path) -> TestClient:
     return TestClient(_app(data_dir), base_url=BASE_URL, raise_server_exceptions=False)
 
 
-def _library_bytes(data_dir: Path) -> bytes:
-    return (data_dir / "library.json").read_bytes()
-
-
 # --- success and refusals -----------------------------------------------------
 
 
@@ -112,11 +107,11 @@ def test_success_commits_and_returns_ok(client: TestClient, data_dir: Path) -> N
     response = client.post("/api/intents/probe", json={"mode": "ok", "pageCount": 1})
     assert response.status_code == 200
     assert response.json() == {"ok": True, "ids": {"probe": "x"}}
-    assert b'"probe"' in _library_bytes(data_dir)
+    assert b'"probe"' in library_bytes(data_dir)
 
 
 def test_refusal_from_a_change_passes_through(client: TestClient, data_dir: Path) -> None:
-    before = _library_bytes(data_dir)
+    before = library_bytes(data_dir)
     response = client.post("/api/intents/probe", json={"mode": "refuse", "pageCount": 1})
     assert response.status_code == 422
     assert response.json() == {
@@ -127,7 +122,7 @@ def test_refusal_from_a_change_passes_through(client: TestClient, data_dir: Path
             "fields": [{"field": "title", "message": "Required"}],
         }
     }
-    assert _library_bytes(data_dir) == before
+    assert library_bytes(data_dir) == before
 
 
 # --- bad body -----------------------------------------------------------------
@@ -147,7 +142,7 @@ def test_refusal_from_a_change_passes_through(client: TestClient, data_dir: Path
 def test_bad_body_is_invalid_fields(
     client: TestClient, data_dir: Path, kwargs: dict, fields: list[str]
 ) -> None:
-    before = _library_bytes(data_dir)
+    before = library_bytes(data_dir)
     response = client.post("/api/intents/probe", **kwargs)
     assert response.status_code == 422
     body = response.json()
@@ -159,7 +154,7 @@ def test_bad_body_is_invalid_fields(
     assert all(f["message"] for f in error["fields"])
     noun = "field needs" if len(fields) == 1 else "fields need"
     assert error["message"] == f"Not saved. {len(fields)} {noun} attention: {', '.join(fields)}."
-    assert _library_bytes(data_dir) == before
+    assert library_bytes(data_dir) == before
 
 
 def test_invalid_fields_message_names_each_field_once() -> None:
@@ -200,11 +195,11 @@ def test_validation_outside_api_keeps_fastapi_shape(client: TestClient) -> None:
 def test_failed_invariant_is_500_and_names_the_rule(
     client: TestClient, data_dir: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    before = _library_bytes(data_dir)
+    before = library_bytes(data_dir)
     response = client.post("/api/intents/probe", json={"mode": "invariant", "pageCount": 1})
     assert response.status_code == 500
-    assert response.json() == COULDNT_SAVE
-    assert _library_bytes(data_dir) == before
+    assert response.json() == COULDNT_SAVE_BODY
+    assert library_bytes(data_dir) == before
     lines = [line for line in capsys.readouterr().err.splitlines() if line.startswith("bookvie:")]
     assert len(lines) == 1
     assert "pointer_exists" in lines[0]
@@ -213,11 +208,11 @@ def test_failed_invariant_is_500_and_names_the_rule(
 def test_revalidation_error_is_500(
     client: TestClient, data_dir: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    before = _library_bytes(data_dir)
+    before = library_bytes(data_dir)
     response = client.post("/api/intents/probe", json={"mode": "invalid", "pageCount": 1})
     assert response.status_code == 500
-    assert response.json() == COULDNT_SAVE
-    assert _library_bytes(data_dir) == before
+    assert response.json() == COULDNT_SAVE_BODY
+    assert library_bytes(data_dir) == before
     lines = [line for line in capsys.readouterr().err.splitlines() if line.startswith("bookvie:")]
     assert len(lines) == 1
     assert "the library is not valid: books.0.pages" in lines[0]
@@ -226,11 +221,11 @@ def test_revalidation_error_is_500(
 def test_unexpected_exception_in_a_change_is_500(
     client: TestClient, data_dir: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    before = _library_bytes(data_dir)
+    before = library_bytes(data_dir)
     response = client.post("/api/intents/probe", json={"mode": "raise", "pageCount": 1})
     assert response.status_code == 500
-    assert response.json() == COULDNT_SAVE
-    assert _library_bytes(data_dir) == before
+    assert response.json() == COULDNT_SAVE_BODY
+    assert library_bytes(data_dir) == before
     lines = [line for line in capsys.readouterr().err.splitlines() if line.startswith("bookvie:")]
     assert lines == ["bookvie: couldn't save: unexpected RuntimeError: probe exploded"]
 
@@ -240,7 +235,7 @@ def test_unexpected_exception_outside_commit_is_500_envelope(
 ) -> None:
     response = client.post("/api/intents/boom")
     assert response.status_code == 500
-    assert response.json() == COULDNT_SAVE
+    assert response.json() == COULDNT_SAVE_BODY
     assert "bookvie: unexpected RuntimeError on POST /api/intents/boom" in capsys.readouterr().err
 
 
@@ -258,11 +253,11 @@ def test_seam_fault_is_503(
     app = _app(data_dir)
     app.state.store.fs = FaultyFs(step)
     client = TestClient(app, base_url=BASE_URL, raise_server_exceptions=False)
-    before = _library_bytes(data_dir)
+    before = library_bytes(data_dir)
     response = client.post("/api/intents/probe", json={"mode": "ok", "pageCount": 1})
     assert response.status_code == 503
-    assert response.json() == COULDNT_SAVE
-    assert _library_bytes(data_dir) == before
+    assert response.json() == COULDNT_SAVE_BODY
+    assert library_bytes(data_dir) == before
     assert sorted(data_dir.glob("library.json.tmp*")) == []
     lines = [line for line in capsys.readouterr().err.splitlines() if line.startswith("bookvie:")]
     assert len(lines) == 1
@@ -435,7 +430,7 @@ def _endless_cover(chunk_size: int):
 def test_a_streamed_body_past_the_cover_limit_is_413_and_is_not_read_further(
     data_dir: Path, path: str
 ) -> None:
-    before = _library_bytes(data_dir)
+    before = library_bytes(data_dir)
     chunk = 1024 * 1024
     # No Content-Length: the body is counted as it arrives.
     scope = _streamed_cover_scope(path=path)
@@ -444,7 +439,7 @@ def test_a_streamed_body_past_the_cover_limit_is_413_and_is_not_read_further(
     assert _response(sent) == (413, COVER_TOO_LARGE)
     # Reading stopped at the first chunk past the limit.
     assert pulled == 1 + BODY_LIMIT // chunk + 1
-    assert _library_bytes(data_dir) == before
+    assert library_bytes(data_dir) == before
     assert sorted((data_dir / "covers").iterdir()) == []
 
 

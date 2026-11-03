@@ -13,13 +13,18 @@ from pathlib import Path
 
 import pytest
 from fastapi import HTTPException
-from fastapi.testclient import TestClient
 from starlette.requests import Request
 
 from bookvie.http.api import BODY_LIMIT, _http_error
 from bookvie.intents.intent_model import MALFORMED_INTENT_MESSAGE
-from tests.test_add_book import VALID, _client, _library_bytes
-from tests.test_cover import DUNE_ID, VALID_FORM, _seed_dune_with_cover
+from tests.helpers import (
+    DUNE_ID,
+    VALID,
+    VALID_FORM,
+    api_client,
+    library_bytes,
+    seed_dune_with_cover,
+)
 
 INTENT_ROUTES = {
     "add-book": VALID,
@@ -75,7 +80,7 @@ def _intent_files(intent: dict) -> dict:
 @pytest.fixture
 def cover_file(tmp_path: Path) -> str:
     """Seeds Dune with a stored cover; returns its ``coverFile``."""
-    return _seed_dune_with_cover(tmp_path)
+    return seed_dune_with_cover(tmp_path)
 
 
 @pytest.fixture
@@ -91,11 +96,11 @@ def data_dir(tmp_path: Path, cover_file: str) -> Path:
 def test_unparseable_body_is_malformed_intent(
     data_dir: Path, route: str, body: dict, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    before = _library_bytes(data_dir)
-    response = _client(data_dir).post(f"/api/intents/{route}", **body)
+    before = library_bytes(data_dir)
+    response = api_client(data_dir).post(f"/api/intents/{route}", **body)
     assert response.status_code == 422
     assert response.json() == MALFORMED_INTENT
-    assert _library_bytes(data_dir) == before
+    assert library_bytes(data_dir) == before
     # The parser's reason is kept on stderr, so a client bug stays traceable.
     lines = [line for line in capsys.readouterr().err.splitlines() if line.startswith("bookvie:")]
     assert len(lines) == 1
@@ -104,11 +109,11 @@ def test_unparseable_body_is_malformed_intent(
 
 @pytest.mark.parametrize("route", INTENT_ROUTES)
 def test_missing_intent_part_is_malformed_intent(data_dir: Path, route: str) -> None:
-    before = _library_bytes(data_dir)
-    response = _client(data_dir).post(f"/api/intents/{route}", files={"other": (None, "{}")})
+    before = library_bytes(data_dir)
+    response = api_client(data_dir).post(f"/api/intents/{route}", files={"other": (None, "{}")})
     assert response.status_code == 422
     assert response.json() == MALFORMED_INTENT
-    assert _library_bytes(data_dir) == before
+    assert library_bytes(data_dir) == before
 
 
 @pytest.mark.parametrize(
@@ -125,7 +130,7 @@ def test_other_http_errors_keep_fastapi_shape(
     data_dir: Path, method: str, path: str, status: int
 ) -> None:
     # Unknown /api paths and methods stay unenveloped, as api.py documents.
-    response = _client(data_dir).request(method, path)
+    response = api_client(data_dir).request(method, path)
     assert response.status_code == status
     if method != "HEAD":
         assert "detail" in response.json()
@@ -148,13 +153,13 @@ def test_a_400_off_the_intent_routes_keeps_fastapi_shape(path: str) -> None:
 @pytest.mark.parametrize("route", INTENT_ROUTES)
 @pytest.mark.parametrize("headers", FOREIGN.values(), ids=FOREIGN.keys())
 def test_foreign_caller_is_403_on_intent_route(data_dir: Path, route: str, headers: dict) -> None:
-    client = _client(data_dir)
+    client = api_client(data_dir)
     files = _intent_files(INTENT_ROUTES[route])
-    before = _library_bytes(data_dir)
+    before = library_bytes(data_dir)
     response = client.post(f"/api/intents/{route}", files=files, headers=headers)
     assert response.status_code == 403
     assert response.headers["content-type"].startswith("text/plain")
-    assert _library_bytes(data_dir) == before
+    assert library_bytes(data_dir) == before
     # Control: the same intent from the app itself is saved.
     own = client.post(f"/api/intents/{route}", files=files)
     assert own.status_code == 200
@@ -166,7 +171,7 @@ def test_foreign_caller_is_403_on_intent_route(data_dir: Path, route: str, heade
 def test_foreign_caller_is_403_on_cover(
     data_dir: Path, cover_file: str, headers: dict, method: str
 ) -> None:
-    client = _client(data_dir)
+    client = api_client(data_dir)
     path = f"/media/{cover_file}"
     response = client.request(method, path, headers=headers)
     assert response.status_code == 403
@@ -180,13 +185,13 @@ def test_foreign_caller_is_403_on_cover(
 def test_guard_runs_before_the_cover_cap(data_dir: Path, route: str, caller: dict) -> None:
     # A foreign caller with an oversized body is refused by the guard (403),
     # not answered by CoverSizeCap (413).
-    client = _client(data_dir)
+    client = api_client(data_dir)
     body = b"x" * (BODY_LIMIT + 1)
     path = f"/api/intents/{route}"
     headers = {"content-type": MULTIPART}
-    before = _library_bytes(data_dir)
+    before = library_bytes(data_dir)
     foreign = client.post(path, content=body, headers=headers | caller)
     assert foreign.status_code == 403
-    assert _library_bytes(data_dir) == before
+    assert library_bytes(data_dir) == before
     # Control: from the app itself, the same body reaches the cap.
     assert client.post(path, content=body, headers=headers).status_code == 413

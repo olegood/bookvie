@@ -35,28 +35,37 @@ import pytest
 from fastapi.testclient import TestClient
 from PIL import Image
 
-from bookvie.domain import Library, check_invariants
-from bookvie.intents import COULDNT_SAVE_MESSAGE
 from bookvie.intents.contract import ErrorCode
 from bookvie.store import OsFileSystem, StartupError, Store
 from tests.builder import CURATED, LibraryBuilder
-from tests.test_add_book import ADD_BOOK, VALID, _client, _library_bytes, _stored_books
-from tests.test_edit_book import DUNE, DUNE_FORM, EDIT_BOOK
-from tests.test_store import FaultyFs
+from tests.helpers import (
+    ADD_BOOK,
+    COULDNT_SAVE_BODY,
+    DELETE_BOOK,
+    DUNE,
+    DUNE_FORM,
+    DUNE_ID,
+    EDIT_BOOK,
+    RED_ORANGE,
+    VALID,
+    VALID_FORM,
+    FaultyFs,
+    api_client,
+    assert_invariants,
+    image_bytes,
+    library_bytes,
+    seed_dune_with_cover,
+    stored_books,
+)
 
 IMAGE_MESSAGE = "Cover must be an image file."
 FORMAT_MESSAGE = "Cover must be a JPEG, PNG or WebP image."
 TOO_LARGE_MESSAGE = "Cover must be 20 MB or smaller."
 COVER_LIMIT = 20 * 1024 * 1024
-DUNE_ID = "6f1c1d2e-9a4b-4c3d-8e5f-0a1b2c3d4e5f"
 _UUID = r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
 COVER_NAME = re.compile(
     rf"^covers/(?P<book>{_UUID})-(?P<minted>{_UUID})\.(?P<ext>jpg|png)$"
 )
-# A saturated red-orange: hue ~8°, lightness 0.47, saturation 0.67 (capped to 0.45).
-RED_ORANGE = (200, 60, 40)
-# VALID (The Dispossessed) as the Edit book panel prefills it.
-VALID_FORM = {**DUNE_FORM, **VALID, "isbn": "", "year": ""}
 # HEIC's ISO-BMFF header: a real image format Pillow can't decode without a plugin.
 HEIC_BYTES = b"\x00\x00\x00\x18ftypheic\x00\x00\x00\x00mif1heic" + b"\x00" * 64
 
@@ -64,24 +73,11 @@ HEIC_BYTES = b"\x00\x00\x00\x18ftypheic\x00\x00\x00\x00mif1heic" + b"\x00" * 64
 # --- images ------------------------------------------------------------------
 
 
-def _image(
-    size: tuple[int, int] = (40, 60),
-    color: tuple[int, ...] = RED_ORANGE,
-    *,
-    mode: str = "RGB",
-    fmt: str = "PNG",
-    **save: Any,
-) -> bytes:
-    buffer = io.BytesIO()
-    Image.new(mode, size, color).save(buffer, fmt, **save)
-    return buffer.getvalue()
-
-
 def _rotated_jpeg() -> bytes:
     """2400×1600 as stored, EXIF orientation 6: displayed upright as 1600×2400."""
     exif = Image.Exif()
     exif[0x0112] = 6
-    return _image((2400, 1600), fmt="JPEG", exif=exif)
+    return image_bytes((2400, 1600), fmt="JPEG", exif=exif)
 
 
 def _animated_gif() -> bytes:
@@ -172,8 +168,13 @@ def _cover_files(data_dir: Path) -> set[str]:
     return {f"covers/{p.name}" for p in (data_dir / "covers").iterdir() if p.is_file()}
 
 
+def _temp_files(data_dir: Path) -> list[Path]:
+    """Commit or cover temp files left in the data folder or ``covers/``."""
+    return [*data_dir.glob("*.tmp*"), *data_dir.glob("covers/*.tmp*")]
+
+
 def _only_book(data_dir: Path) -> dict[str, Any]:
-    (book,) = _stored_books(data_dir)
+    (book,) = stored_books(data_dir)
     return book
 
 
@@ -185,22 +186,6 @@ def _stored_cover(data_dir: Path) -> Image.Image | None:
     image = Image.open(data_dir / cover_file)
     image.load()
     return image
-
-
-def _seed_dune_with_cover(data_dir: Path) -> str:
-    """Dune with a stored cover (written as Story 1.13 would); returns ``coverFile``."""
-    cover_file = f"covers/{DUNE_ID}-0f0e0d0c-0b0a-4908-8706-050403020100.jpg"
-    builder = LibraryBuilder()
-    builder.book(
-        id=DUNE_ID,
-        **DUNE,
-        cover_file=cover_file,
-        spine_color_from_cover="#A85A4A",
-    )
-    builder.write(data_dir)
-    (data_dir / "covers").mkdir(exist_ok=True)
-    (data_dir / cover_file).write_bytes(_image(fmt="JPEG"))
-    return cover_file
 
 
 class RecordingFs(OsFileSystem):
@@ -244,8 +229,8 @@ def test_ac2_p0_a_non_image_with_an_image_extension_is_refused_on_cover(
 ) -> None:
     data_dir = tmp_path / "data"
     LibraryBuilder().write(data_dir)
-    before = _library_bytes(data_dir)
-    client = _client(data_dir)
+    before = library_bytes(data_dir)
+    client = api_client(data_dir)
 
     response = _add_with_cover(
         client, b"not an image at all\n", "cover.jpg", "image/jpeg"
@@ -260,11 +245,11 @@ def test_ac2_p0_a_non_image_with_an_image_extension_is_refused_on_cover(
             "fields": [{"field": "cover", "message": IMAGE_MESSAGE}],
         }
     }
-    assert _library_bytes(data_dir) == before
+    assert library_bytes(data_dir) == before
     assert _cover_files(data_dir) == set()
 
     # Truncated image data and an empty file are not images either.
-    for junk in (_image()[:40], b""):
+    for junk in (image_bytes()[:40], b""):
         response = _add_with_cover(client, junk)
         assert response.status_code == 422
         assert response.json()["error"]["fields"] == [
@@ -294,13 +279,13 @@ def test_ac2_p0_a_non_image_with_an_image_extension_is_refused_on_cover(
     # both where Pillow only warns (over 1×) and where it raises (over 2×).
     monkeypatch.setattr(PIL.Image, "MAX_IMAGE_PIXELS", 10_000)
     for size in ((120, 120), (200, 200)):
-        response = _add_with_cover(client, _image(size))
+        response = _add_with_cover(client, image_bytes(size))
         assert response.status_code == 422, size
         assert response.json()["error"]["fields"] == [
             {"field": "cover", "message": IMAGE_MESSAGE}
         ]
 
-    assert _library_bytes(data_dir) == before
+    assert library_bytes(data_dir) == before
     assert _cover_files(data_dir) == set()
 
 
@@ -312,7 +297,7 @@ def test_ac3_p0_a_valid_cover_is_normalized_downscaled_re_encoded_and_stored_und
 ) -> None:
     data_dir = tmp_path / "data"
     LibraryBuilder().write(data_dir)
-    client = _client(data_dir)
+    client = api_client(data_dir)
 
     # Sent as a .png, but it is a JPEG on its side (EXIF orientation 6).
     response = _add_with_cover(client, _rotated_jpeg(), "photo.png", "image/png")
@@ -327,13 +312,13 @@ def test_ac3_p0_a_valid_cover_is_normalized_downscaled_re_encoded_and_stored_und
     # <ext> from the output format (JPEG: no transparency), never the upload name.
     assert match["ext"] == "jpg" and stored.format == "JPEG" and stored.mode == "RGB"
     assert _cover_files(data_dir) == {book["coverFile"]}
-    check_invariants(Library.model_validate_json(_library_bytes(data_dir)))
+    assert_invariants(data_dir)
 
     # Replacing it writes a new name; the old one is gone and never reused,
     # even for the very same bytes.
     names = [book["coverFile"]]
     for _ in range(2):
-        response = _edit_with_cover(client, book["id"], _image(), form=VALID_FORM)
+        response = _edit_with_cover(client, book["id"], image_bytes(), form=VALID_FORM)
         assert response.status_code == 200
         names.append(_only_book(data_dir)["coverFile"])
     assert len(set(names)) == 3
@@ -347,11 +332,11 @@ def test_ac4_p0_a_cover_write_renames_the_new_file_then_commits_then_deletes_the
     tmp_path: Path,
 ) -> None:
     data_dir = tmp_path / "data"
-    old = _seed_dune_with_cover(data_dir)
+    old = seed_dune_with_cover(data_dir)
     fs = RecordingFs()
-    client = _client(data_dir, fs=fs)  # type: ignore[arg-type]
+    client = api_client(data_dir, fs=fs)  # type: ignore[arg-type]
 
-    response = _edit_with_cover(client, DUNE_ID, _image())
+    response = _edit_with_cover(client, DUNE_ID, image_bytes())
 
     def kind(event: tuple[str, Path]) -> str:
         op, path = event
@@ -381,13 +366,13 @@ def test_ac5_p0_a_failed_document_commit_keeps_the_old_cover_and_cleans_up_the_n
     tmp_path: Path,
 ) -> None:
     data_dir = tmp_path / "data"
-    old = _seed_dune_with_cover(data_dir)
-    before = _library_bytes(data_dir)
+    old = seed_dune_with_cover(data_dir)
+    before = library_bytes(data_dir)
     old_bytes = (data_dir / old).read_bytes()
     fs = DocumentFaultFs()
-    client = _client(data_dir, fs=fs)  # type: ignore[arg-type]
+    client = api_client(data_dir, fs=fs)  # type: ignore[arg-type]
 
-    response = _edit_with_cover(client, DUNE_ID, _image())
+    response = _edit_with_cover(client, DUNE_ID, image_bytes())
 
     written = [
         path
@@ -401,14 +386,8 @@ def test_ac5_p0_a_failed_document_commit_keeps_the_old_cover_and_cleans_up_the_n
     ]
     assert len(written) == 1 and removed == written
     assert response.status_code == 503
-    assert response.json() == {
-        "error": {
-            "kind": "couldnt_save",
-            "code": "couldnt_save",
-            "message": COULDNT_SAVE_MESSAGE,
-        }
-    }
-    assert _library_bytes(data_dir) == before
+    assert response.json() == COULDNT_SAVE_BODY
+    assert library_bytes(data_dir) == before
     assert _cover_files(data_dir) == {old}
     assert (data_dir / old).read_bytes() == old_bytes
 
@@ -420,10 +399,10 @@ def test_ac6_p1_a_failed_delete_after_the_commit_is_logged_still_200_and_swept_a
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     data_dir = tmp_path / "data"
-    old = _seed_dune_with_cover(data_dir)
-    client = _client(data_dir, fs=CoverRemoveFaultFs())  # type: ignore[arg-type]
+    old = seed_dune_with_cover(data_dir)
+    client = api_client(data_dir, fs=CoverRemoveFaultFs())  # type: ignore[arg-type]
 
-    response = _edit_with_cover(client, DUNE_ID, _image())
+    response = _edit_with_cover(client, DUNE_ID, image_bytes())
 
     err = capsys.readouterr().err
     assert re.search(rf"^bookvie: .*{re.escape(Path(old).name)}", err, re.MULTILINE), (
@@ -447,10 +426,10 @@ def test_ac7_p1_covers_are_served_immutable_swept_at_startup_and_removed_with_th
     tmp_path: Path,
 ) -> None:
     data_dir = tmp_path / "data"
-    cover = _seed_dune_with_cover(data_dir)
+    cover = seed_dune_with_cover(data_dir)
     stray = "covers/00000000-0000-4000-8000-000000000000-11111111-2222-4333-8444-555555555555.jpg"
-    (data_dir / stray).write_bytes(_image(fmt="JPEG"))
-    client = _client(data_dir)  # Store.open runs the startup sweep
+    (data_dir / stray).write_bytes(image_bytes(fmt="JPEG"))
+    client = api_client(data_dir)  # Store.open runs the startup sweep
 
     response = client.get(f"/media/{cover}")
 
@@ -483,7 +462,7 @@ def test_ac8_p1_spine_color_from_cover_is_the_dominant_non_neutral_hue_capped_at
 ) -> None:
     data_dir = tmp_path / "data"
     LibraryBuilder().write(data_dir)
-    client = _client(data_dir)
+    client = api_client(data_dir)
 
     response = _add_with_cover(client, _half_white())
 
@@ -502,17 +481,17 @@ def test_ac8_p1_spine_color_from_cover_is_the_dominant_non_neutral_hue_capped_at
         client, _grayscale(), title="Ficciones", authors="Jorge Luis Borges"
     )
     assert response.status_code == 200
-    ficciones = _stored_books(data_dir)[1]
+    ficciones = stored_books(data_dir)[1]
     assert ficciones["coverFile"] is not None
     assert ficciones["spineColorFromCover"] is None
     assert ficciones["spineColor"] == ficciones["spineColorCurated"] == CURATED[1]
 
     # A user color wins; the cover color is still computed and stored.
     response = _add_with_cover(
-        client, _image(), title="Solaris", authors="Stanisław Lem", spineColor="#123456"
+        client, image_bytes(), title="Solaris", authors="Stanisław Lem", spineColor="#123456"
     )
     assert response.status_code == 200
-    solaris = _stored_books(data_dir)[2]
+    solaris = stored_books(data_dir)[2]
     assert solaris["spineColor"] == "#123456"
     assert _close(_rgb(solaris["spineColorFromCover"]), expected)
 
@@ -532,43 +511,82 @@ def test_ac11_p0_cover_paths_of_add_book_and_edit_book_keep_the_standard_intent_
     for step in ("write", "fsync", "replace"):
         add_dir = tmp_path / f"add-{step}"
         LibraryBuilder().write(add_dir)
-        before = _library_bytes(add_dir)
-        response = _add_with_cover(_client(add_dir, fs=FaultyFs(step)), _image())
+        before = library_bytes(add_dir)
+        response = _add_with_cover(api_client(add_dir, fs=FaultyFs(step)), image_bytes())
         assert response.status_code == 503, step
-        assert response.json()["error"]["code"] == "couldnt_save", step
-        assert _library_bytes(add_dir) == before, step
+        assert response.json() == COULDNT_SAVE_BODY, step
+        assert library_bytes(add_dir) == before, step
         assert _cover_files(add_dir) == set(), step
-        assert not list(add_dir.glob("covers/*.tmp*")) and not list(
-            add_dir.glob("*.tmp*")
-        ), step
+        assert _temp_files(add_dir) == [], step
 
         edit_dir = tmp_path / f"edit-{step}"
-        old = _seed_dune_with_cover(edit_dir)
-        before = _library_bytes(edit_dir)
+        old = seed_dune_with_cover(edit_dir)
+        before = library_bytes(edit_dir)
         response = _edit_with_cover(
-            _client(edit_dir, fs=FaultyFs(step)), DUNE_ID, _image()
+            api_client(edit_dir, fs=FaultyFs(step)), DUNE_ID, image_bytes()
         )
         assert response.status_code == 503, step
-        assert _library_bytes(edit_dir) == before, step
+        assert response.json() == COULDNT_SAVE_BODY, step
+        assert library_bytes(edit_dir) == before, step
         assert _cover_files(edit_dir) == {old}, step
+        assert _temp_files(edit_dir) == [], step
 
     # After every successful cover intent check_invariants() holds.
     data_dir = tmp_path / "ok"
-    _seed_dune_with_cover(data_dir)
-    client = _client(data_dir)
-    assert _edit_with_cover(client, DUNE_ID, _image()).status_code == 200
+    seed_dune_with_cover(data_dir)
+    client = api_client(data_dir)
+    assert _edit_with_cover(client, DUNE_ID, image_bytes()).status_code == 200
     assert _edit_with_cover(client, DUNE_ID, None, removeCover=True).status_code == 200
-    check_invariants(Library.model_validate_json(_library_bytes(data_dir)))
+    assert_invariants(data_dir)
 
     # A Book that is gone: 409 book_not_found, nothing changed, no file left.
-    before = _library_bytes(data_dir)
+    before = library_bytes(data_dir)
     files = _cover_files(data_dir)
     gone = "00000000-0000-4000-8000-000000000000"
-    response = _edit_with_cover(client, gone, _image())
+    response = _edit_with_cover(client, gone, image_bytes())
     assert response.status_code == 409
     assert response.json()["error"]["code"] == "book_not_found"
-    assert _library_bytes(data_dir) == before
+    assert library_bytes(data_dir) == before
     assert _cover_files(data_dir) == files
+
+
+@pytest.mark.parametrize("step", ["write", "fsync", "replace"])
+def test_ac11_p0_a_failed_remove_cover_commit_keeps_the_cover(tmp_path: Path, step: str) -> None:
+    # TR8 on remove-cover (F-S4): nothing lands and the old file is not deleted.
+    old = seed_dune_with_cover(tmp_path)
+    old_bytes = (tmp_path / old).read_bytes()
+    before = library_bytes(tmp_path)
+    client = api_client(tmp_path, fs=FaultyFs(step))
+
+    response = _edit_with_cover(client, DUNE_ID, None, removeCover=True)
+
+    assert response.status_code == 503
+    assert response.json() == COULDNT_SAVE_BODY
+    assert library_bytes(tmp_path) == before
+    assert _cover_files(tmp_path) == {old}
+    assert (tmp_path / old).read_bytes() == old_bytes
+    assert _temp_files(tmp_path) == []
+
+
+@pytest.mark.parametrize("step", ["write", "fsync", "replace"])
+def test_ac11_p0_a_failed_delete_book_commit_keeps_the_book_and_its_cover(
+    tmp_path: Path, step: str
+) -> None:
+    # TR8 on delete-book of a Book with a cover (F-S4): the cover goes only
+    # after the commit that drops the Book.
+    old = seed_dune_with_cover(tmp_path)
+    old_bytes = (tmp_path / old).read_bytes()
+    before = library_bytes(tmp_path)
+    client = api_client(tmp_path, fs=FaultyFs(step))
+
+    response = _post(client, DELETE_BOOK, {"bookId": DUNE_ID}, None)
+
+    assert response.status_code == 503
+    assert response.json() == COULDNT_SAVE_BODY
+    assert library_bytes(tmp_path) == before
+    assert _cover_files(tmp_path) == {old}
+    assert (tmp_path / old).read_bytes() == old_bytes
+    assert _temp_files(tmp_path) == []
 
 
 # --- Green-phase follow-ups ------------------------------------------------------
@@ -583,18 +601,18 @@ def test_ac2_a_cover_of_exactly_20_mb_is_not_refused_for_size_and_webp_is_accept
 ) -> None:
     data_dir = tmp_path / "data"
     LibraryBuilder().write(data_dir)
-    client = _client(data_dir)
+    client = api_client(data_dir)
 
     # A PNG padded to exactly 20 MiB: Pillow ignores the bytes after IEND.
-    png = _image()
+    png = image_bytes()
     response = _add_with_cover(client, png + b"\x00" * (COVER_LIMIT - len(png)))
     assert response.status_code == 200, response.json()
 
     response = _add_with_cover(
-        client, _image(fmt="WEBP"), "cover.webp", "image/webp", title="Solaris"
+        client, image_bytes(fmt="WEBP"), "cover.webp", "image/webp", title="Solaris"
     )
     assert response.status_code == 200
-    stored = Image.open(data_dir / _stored_books(data_dir)[1]["coverFile"])
+    stored = Image.open(data_dir / stored_books(data_dir)[1]["coverFile"])
     assert stored.format == "JPEG"
 
 
@@ -603,13 +621,13 @@ def test_ac2_a_content_length_past_the_cap_is_413_before_the_body_is_read(
 ) -> None:
     data_dir = tmp_path / "data"
     LibraryBuilder().write(data_dir)
-    before = _library_bytes(data_dir)
+    before = library_bytes(data_dir)
 
-    response = _add_with_cover(_client(data_dir), b"\x00" * (COVER_LIMIT + 128 * 1024))
+    response = _add_with_cover(api_client(data_dir), b"\x00" * (COVER_LIMIT + 128 * 1024))
 
     assert response.status_code == 413
     assert response.json()["error"]["code"] == "cover_too_large"
-    assert _library_bytes(data_dir) == before
+    assert library_bytes(data_dir) == before
     assert _cover_files(data_dir) == set()
 
 
@@ -618,7 +636,7 @@ def test_ac2_a_cover_error_is_listed_with_other_field_errors_in_form_order(
 ) -> None:
     data_dir = tmp_path / "data"
     LibraryBuilder().write(data_dir)
-    client = _client(data_dir)
+    client = api_client(data_dir)
 
     response = _add_with_cover(client, b"junk", tags="ok", spineColor="red", title="")
     assert response.status_code == 422
@@ -627,8 +645,8 @@ def test_ac2_a_cover_error_is_listed_with_other_field_errors_in_form_order(
         "Not saved. 3 fields need attention: Title, Cover, Spine color."
     )
 
-    _seed_dune_with_cover(data_dir)
-    client = _client(data_dir)
+    seed_dune_with_cover(data_dir)
+    client = api_client(data_dir)
     response = _edit_with_cover(client, DUNE_ID, b"junk", spineColor="red")
     assert response.status_code == 422
     assert [f["field"] for f in _refusal_fields(response)] == ["cover", "spineColor"]
@@ -638,7 +656,7 @@ def test_ac2_a_cover_error_is_listed_with_other_field_errors_in_form_order(
 def test_ac2_avif_and_heif_are_refused_with_the_formats_message(tmp_path: Path) -> None:
     data_dir = tmp_path / "data"
     LibraryBuilder().write(data_dir)
-    client = _client(data_dir)
+    client = api_client(data_dir)
     for brand in (b"avif", b"mif1", b"heix"):
         data = b"\x00\x00\x00\x18ftyp" + brand + b"\x00" * 64
         response = _add_with_cover(client, data, "photo.avif", "image/avif")
@@ -649,7 +667,7 @@ def test_ac2_avif_and_heif_are_refused_with_the_formats_message(tmp_path: Path) 
 def _stored(data_dir: Path, response) -> Image.Image:
     assert response.status_code == 200, response.json()
     book_id = response.json()["ids"]["bookId"]
-    (book,) = [b for b in _stored_books(data_dir) if b["id"] == book_id]
+    (book,) = [b for b in stored_books(data_dir) if b["id"] == book_id]
     image = Image.open(data_dir / book["coverFile"])
     image.load()
     assert book["coverFile"].endswith(f".{'png' if image.format == 'PNG' else 'jpg'}")
@@ -659,7 +677,7 @@ def _stored(data_dir: Path, response) -> Image.Image:
 def test_ac3_color_modes_frames_and_sizes_are_normalized(tmp_path: Path) -> None:
     data_dir = tmp_path / "data"
     LibraryBuilder().write(data_dir)
-    client = _client(data_dir)
+    client = api_client(data_dir)
     titles = iter(f"Book {n}" for n in range(100))
 
     def add(data: bytes, filename: str = "cover.png") -> Image.Image:
@@ -674,11 +692,11 @@ def test_ac3_color_modes_frames_and_sizes_are_normalized(tmp_path: Path) -> None
     assert (stored.format, stored.mode) == ("PNG", "RGBA")
 
     # Fully opaque RGBA: JPEG.
-    stored = add(_image(mode="RGBA", color=(*RED_ORANGE, 255)))
+    stored = add(image_bytes(mode="RGBA", color=(*RED_ORANGE, 255)))
     assert (stored.format, stored.mode) == ("JPEG", "RGB")
 
     # CMYK JPEG: RGB.
-    stored = add(_image(mode="CMYK", color=(0, 180, 200, 40), fmt="JPEG"), "cmyk.jpg")
+    stored = add(image_bytes(mode="CMYK", color=(0, 180, 200, 40), fmt="JPEG"), "cmyk.jpg")
     assert (stored.format, stored.mode) == ("JPEG", "RGB")
 
     # An animated GIF keeps only its first frame (red-orange).
@@ -687,34 +705,34 @@ def test_ac3_color_modes_frames_and_sizes_are_normalized(tmp_path: Path) -> None
     assert getattr(stored, "n_frames", 1) == 1
 
     # Never upscaled; downscaled keeping the aspect ratio.
-    assert add(_image((40, 60))).size == (40, 60)
-    assert add(_image((3000, 1000))).size == (1200, 400)
+    assert add(image_bytes((40, 60))).size == (40, 60)
+    assert add(image_bytes((3000, 1000))).size == (1200, 400)
 
     # The upload's name never reaches the stored name.
     for filename in ("../../library.json", "noextension", "x.heic", "a/b.png"):
-        response = _add_with_cover(client, _image(), filename, title=next(titles))
+        response = _add_with_cover(client, image_bytes(), filename, title=next(titles))
         assert response.status_code == 200, filename
-    for book in _stored_books(data_dir):
+    for book in stored_books(data_dir):
         assert COVER_NAME.fullmatch(book["coverFile"]), book["coverFile"]
-    assert _cover_files(data_dir) == {b["coverFile"] for b in _stored_books(data_dir)}
+    assert _cover_files(data_dir) == {b["coverFile"] for b in stored_books(data_dir)}
     assert not (tmp_path / "library.json").exists()
 
 
 def test_ac4_a_refusal_inside_the_commit_removes_the_new_file(tmp_path: Path) -> None:
     data_dir = tmp_path / "data"
-    old = _seed_dune_with_cover(data_dir)
-    client = _client(data_dir)
-    before = _library_bytes(data_dir)
+    old = seed_dune_with_cover(data_dir)
+    client = api_client(data_dir)
+    before = library_bytes(data_dir)
 
     # add-book: a duplicate of Dune with a cover.
     response = _add_with_cover(
-        client, _image(), **{k: v for k, v in DUNE_FORM.items() if k != "isbn"}
+        client, image_bytes(), **{k: v for k, v in DUNE_FORM.items() if k != "isbn"}
     )
     assert response.json()["error"]["code"] == "duplicate_book"
     # edit-book: an invalid field, checked inside the commit.
-    response = _edit_with_cover(client, DUNE_ID, _image(), pages="0")
+    response = _edit_with_cover(client, DUNE_ID, image_bytes(), pages="0")
     assert response.status_code == 422
-    assert _library_bytes(data_dir) == before
+    assert library_bytes(data_dir) == before
     assert _cover_files(data_dir) == {old}
 
 
@@ -724,9 +742,9 @@ def test_ac4_pages_below_a_floor_with_a_cover_removes_the_new_file(tmp_path: Pat
     builder.book(id=DUNE_ID, **DUNE)
     builder.reading(DUNE_ID, current_page=300)
     builder.write(data_dir)
-    client = _client(data_dir)
+    client = api_client(data_dir)
 
-    response = _edit_with_cover(client, DUNE_ID, _image(), pages="100")
+    response = _edit_with_cover(client, DUNE_ID, image_bytes(), pages="100")
 
     assert response.json()["error"]["code"] == "pages_below_current_page"
     assert _cover_files(data_dir) == set()
@@ -738,9 +756,9 @@ def test_ac4_invalid_fields_on_add_book_are_refused_before_any_file_is_written(
     data_dir = tmp_path / "data"
     LibraryBuilder().write(data_dir)
     fs = RecordingFs()
-    client = _client(data_dir, fs=fs)  # type: ignore[arg-type]
+    client = api_client(data_dir, fs=fs)  # type: ignore[arg-type]
 
-    response = _add_with_cover(client, _image(), pages="many")
+    response = _add_with_cover(client, image_bytes(), pages="many")
 
     assert response.status_code == 422
     assert fs.events == []
@@ -748,8 +766,8 @@ def test_ac4_invalid_fields_on_add_book_are_refused_before_any_file_is_written(
 
 def test_ac7_head_is_served_and_media_needs_a_store(tmp_path: Path) -> None:
     data_dir = tmp_path / "data"
-    cover = _seed_dune_with_cover(data_dir)
-    client = _client(data_dir)
+    cover = seed_dune_with_cover(data_dir)
+    client = api_client(data_dir)
 
     response = client.head(f"/media/{cover}")
 
@@ -774,10 +792,10 @@ def test_ac7_a_hand_edited_cover_file_outside_covers_is_never_served_or_deleted(
     builder = LibraryBuilder()
     builder.book(id=DUNE_ID, **DUNE, cover_file="covers/../library.json")
     builder.write(data_dir)
-    client = _client(data_dir)
+    client = api_client(data_dir)
 
     assert client.get("/media/covers/..%2Flibrary.json").status_code == 404
-    response = _edit_with_cover(client, DUNE_ID, _image())
+    response = _edit_with_cover(client, DUNE_ID, image_bytes())
     assert response.status_code == 200
     assert (data_dir / "library.json").is_file()
 
@@ -786,8 +804,8 @@ def test_ac8_a_replaced_cover_recomputes_the_color_and_an_edit_without_one_leave
     tmp_path: Path,
 ) -> None:
     data_dir = tmp_path / "data"
-    _seed_dune_with_cover(data_dir)
-    client = _client(data_dir)
+    seed_dune_with_cover(data_dir)
+    client = api_client(data_dir)
 
     # An edit with no cover part leaves the cover, its color and spineColor alone.
     response = _edit_with_cover(client, DUNE_ID, None, title="Dune Messiah")
@@ -804,7 +822,7 @@ def test_ac8_a_replaced_cover_recomputes_the_color_and_an_edit_without_one_leave
     # A user color stays when the cover changes.
     form = {**DUNE_FORM, "title": "Dune Messiah", "spineColor": "#123456"}
     assert _edit_with_cover(client, DUNE_ID, None, form=form).status_code == 200
-    assert _edit_with_cover(client, DUNE_ID, _image(), form=form).status_code == 200
+    assert _edit_with_cover(client, DUNE_ID, image_bytes(), form=form).status_code == 200
     book = _only_book(data_dir)
     assert book["spineColor"] == "#123456"
     assert _close(_rgb(book["spineColorFromCover"]), _capped_hex(RED_ORANGE))
@@ -814,8 +832,8 @@ def test_ac10_remove_cover_clears_the_cover_deletes_the_file_and_falls_back(
     tmp_path: Path,
 ) -> None:
     data_dir = tmp_path / "data"
-    old = _seed_dune_with_cover(data_dir)
-    client = _client(data_dir)
+    old = seed_dune_with_cover(data_dir)
+    client = api_client(data_dir)
 
     response = _edit_with_cover(client, DUNE_ID, None, removeCover=True)
 
@@ -827,15 +845,15 @@ def test_ac10_remove_cover_clears_the_cover_deletes_the_file_and_falls_back(
     assert _cover_files(data_dir) == set()
 
     # Without a cover, removeCover is a no-op 200.
-    before = _library_bytes(data_dir)
+    before = library_bytes(data_dir)
     assert _edit_with_cover(client, DUNE_ID, None, removeCover=True).status_code == 200
-    assert _library_bytes(data_dir) == before
+    assert library_bytes(data_dir) == before
 
 
 def test_ac10_remove_cover_keeps_a_user_color(tmp_path: Path) -> None:
     data_dir = tmp_path / "data"
-    _seed_dune_with_cover(data_dir)
-    client = _client(data_dir)
+    seed_dune_with_cover(data_dir)
+    client = api_client(data_dir)
     form = {**DUNE_FORM, "spineColor": "#123456"}
 
     assert _edit_with_cover(client, DUNE_ID, None, form=form, removeCover=True).status_code == 200
@@ -848,20 +866,20 @@ def test_ac10_remove_cover_must_be_a_boolean_and_never_comes_with_a_cover(
     tmp_path: Path,
 ) -> None:
     data_dir = tmp_path / "data"
-    old = _seed_dune_with_cover(data_dir)
-    client = _client(data_dir)
-    before = _library_bytes(data_dir)
+    old = seed_dune_with_cover(data_dir)
+    client = api_client(data_dir)
+    before = library_bytes(data_dir)
 
     response = _edit_with_cover(client, DUNE_ID, None, removeCover="true")
     assert response.status_code == 422
     assert [f["field"] for f in _refusal_fields(response)] == ["intent"]
 
-    response = _edit_with_cover(client, DUNE_ID, _image(), removeCover=True)
+    response = _edit_with_cover(client, DUNE_ID, image_bytes(), removeCover=True)
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "invalid_fields"
     assert [f["field"] for f in _refusal_fields(response)] == ["intent"]
 
-    assert _library_bytes(data_dir) == before
+    assert library_bytes(data_dir) == before
     assert _cover_files(data_dir) == {old}
 
 
@@ -869,7 +887,7 @@ def test_the_startup_sweep_logs_a_cover_it_cannot_delete_and_starts_anyway(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     data_dir = tmp_path / "data"
-    cover = _seed_dune_with_cover(data_dir)
+    cover = seed_dune_with_cover(data_dir)
     stray = data_dir / "covers" / "stray.jpg.tmpabc"
     stray.write_bytes(b"x")
     (data_dir / "covers" / "subfolder").mkdir()

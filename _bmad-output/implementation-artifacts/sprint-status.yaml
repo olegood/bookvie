@@ -132,7 +132,7 @@ action_items:
       with one multipart-aware intentOf) and add missing TR8 cover-path fault tests
       (F-A5, F-A9, F-S4)"
     owner: "Amelia (Dev)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-11-03.md"
   - id: "epic-1-retro-item-6-add-finished-and-hascover-to-bookdetailv"
     epic: 1

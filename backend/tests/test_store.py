@@ -23,6 +23,7 @@ from bookvie.store import (
     serialize,
 )
 from tests.builder import LibraryBuilder
+from tests.helpers import FaultyFs
 
 EMPTY_V1 = (
     b'{\n  "schemaVersion": 1,\n  "mainBookId": null,\n  "upNextBookId": null,\n'
@@ -398,47 +399,6 @@ def test_unremovable_leftover_is_refused(tmp_path: Path) -> None:
 
 
 # --- commits ------------------------------------------------------------------
-
-
-class FaultyFs(OsFileSystem):
-    """Fails at one step of a commit; ``write`` fails after writing half."""
-
-    def __init__(self, fail_at: str) -> None:
-        self.fail_at = fail_at
-
-    def _maybe_fail(self, step: str) -> None:
-        if step == self.fail_at:
-            raise OSError(5, f"injected {step} fault")
-
-    def create_temp(self, directory: Path, prefix: str) -> tuple[int, Path]:
-        self._maybe_fail("create_temp")
-        return super().create_temp(directory, prefix)
-
-    def write(self, fd: int, data: bytes) -> None:
-        if self.fail_at == "write":
-            super().write(fd, data[: len(data) // 2])
-        self._maybe_fail("write")
-        super().write(fd, data)
-
-    def fsync(self, fd: int) -> None:
-        self._maybe_fail("fsync")
-        super().fsync(fd)
-
-    def close(self, fd: int) -> None:
-        super().close(fd)
-        self._maybe_fail("close")
-
-    def replace(self, src: Path, dst: Path) -> None:
-        self._maybe_fail("replace")
-        super().replace(src, dst)
-
-    def fsync_dir(self, directory: Path) -> None:
-        self._maybe_fail("fsync_dir")
-        super().fsync_dir(directory)
-
-    def remove(self, path: Path) -> None:
-        self._maybe_fail("remove")
-        super().remove(path)
 
 
 def _seeded_store(data_dir: Path, fs: OsFileSystem | None = None) -> Store:

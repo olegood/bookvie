@@ -5,6 +5,7 @@
 
 import type { Locator, Page } from '@playwright/test'
 import { expect, type Server, test } from './fixtures.ts'
+import { fillFields, newBookPanel, openNewBook } from './library.ts'
 
 const ADD_BOOK = '**/api/intents/add-book'
 const COULDNT_SAVE = "Couldn't save. Your data wasn't changed."
@@ -53,22 +54,6 @@ const DUNE = {
 const NEUROMANCER = { title: 'Neuromancer', authors: ['William Gibson'], pages: 271 }
 
 type CatalogBody = { books: { title: string }[]; tags: string[] }
-
-function newBookPanel(page: Page): Locator {
-  return page.getByRole('dialog', { name: 'New book', exact: true })
-}
-
-async function openNewBook(page: Page): Promise<Locator> {
-  await page.getByRole('button', { name: 'New book', exact: true }).click()
-  return newBookPanel(page)
-}
-
-async function fillFields(panel: Locator, fields: Record<string, string>): Promise<void> {
-  for (const [label, value] of Object.entries(fields)) {
-    await panel.getByLabel(label, { exact: true }).fill(value)
-  }
-  await panel.getByRole('combobox', { name: 'Type', exact: true }).selectOption('Paperback')
-}
 
 async function catalog(page: Page, server: Server): Promise<CatalogBody> {
   const response = await page.request.get(`${server.url}/api/views/catalog`)

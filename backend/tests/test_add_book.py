@@ -25,44 +25,30 @@ from typing import Any
 import pytest
 from fastapi.testclient import TestClient
 
-from bookvie.domain import Library, check_invariants
 from bookvie.domain.clock import FakeClock
 from bookvie.http.app import create_app
-from bookvie.intents import COULDNT_SAVE_MESSAGE
 from bookvie.store import Store
 from tests.builder import CURATED, LibraryBuilder
-from tests.test_store import FaultyFs
-
-BASE_URL = "http://127.0.0.1:8765"
-ADD_BOOK = "/api/intents/add-book"
-# The fake today. Year may be at most next year (2027); Finished on at most today.
-TODAY = date(2026, 10, 30)
-
-# Only the required fields, as the New book panel sends them (Edition omitted).
-VALID = {
-    "title": "The Dispossessed",
-    "pages": "387",
-    "authors": "Ursula K. Le Guin",
-    "language": "English",
-    "publisher": "Harper",
-    "type": "paperback",
-}
+from tests.helpers import (
+    ADD_BOOK,
+    BASE_URL,
+    COULDNT_SAVE_BODY,
+    TODAY,
+    VALID,
+    FaultyFs,
+    api_client,
+    assert_invariants,
+    field_messages,
+    library_bytes,
+    stored_book,
+    stored_books,
+)
 
 
 @pytest.fixture
 def data_dir(tmp_path: Path) -> Path:
     LibraryBuilder().write(tmp_path / "data")
     return tmp_path / "data"
-
-
-def _client(data_dir: Path, fs: FaultyFs | None = None) -> TestClient:
-    store = Store.open(data_dir)
-    if fs is not None:
-        store.fs = fs  # inject faults into intents, not startup
-    app = create_app(
-        data_dir / "no-static", data_dir=data_dir, store=store, clock=FakeClock(TODAY)
-    )
-    return TestClient(app, base_url=BASE_URL, raise_server_exceptions=False)
 
 
 def _add(client: TestClient, **fields: str):
@@ -72,28 +58,11 @@ def _add(client: TestClient, **fields: str):
     )
 
 
-def _library_bytes(data_dir: Path) -> bytes:
-    return (data_dir / "library.json").read_bytes()
-
-
-def _stored_books(data_dir: Path) -> list[dict[str, Any]]:
-    return json.loads(_library_bytes(data_dir))["books"]
-
-
-def _stored_book(data_dir: Path, book_id: str) -> dict[str, Any]:
-    (book,) = [b for b in _stored_books(data_dir) if b["id"] == book_id]
-    return book
-
-
-def _field_messages(response) -> dict[str, str]:
-    return {f["field"]: f["message"] for f in response.json()["error"]["fields"]}
-
-
 # --- saving -------------------------------------------------------------------
 
 
 def test_ac1_p0_valid_add_book_saves_the_book_and_returns_its_id(data_dir: Path) -> None:
-    client = _client(data_dir)
+    client = api_client(data_dir)
 
     response = _add(client, subtitle="An Ambiguous Utopia", isbn="978-0-06-051275-3")
 
@@ -102,7 +71,7 @@ def test_ac1_p0_valid_add_book_saves_the_book_and_returns_its_id(data_dir: Path)
     book_id = body["ids"]["bookId"]
     assert body == {"ok": True, "ids": {"bookId": book_id}}
     assert uuid.UUID(book_id).version == 4
-    book = _stored_book(data_dir, book_id)
+    book = stored_book(data_dir, book_id)
     created_at = datetime.fromisoformat(book["createdAt"])
     assert created_at.tzinfo is not None
     assert created_at.date() == TODAY
@@ -130,16 +99,16 @@ def test_ac1_p0_valid_add_book_saves_the_book_and_returns_its_id(data_dir: Path)
 
 
 def test_ac2_p0_curated_color_rotates_and_resolved_color_is_stored(data_dir: Path) -> None:
-    client = _client(data_dir)
+    client = api_client(data_dir)
 
     for n in range(9):
         _add(client, title=f"Book {n}")
 
-    curated = [b["spineColorCurated"] for b in _stored_books(data_dir)]
+    curated = [b["spineColorCurated"] for b in stored_books(data_dir)]
     assert curated == [*CURATED, CURATED[0]]  # Sage … Stone, then Sage again
-    assert [b["spineColor"] for b in _stored_books(data_dir)] == curated
+    assert [b["spineColor"] for b in stored_books(data_dir)] == curated
     _add(client, title="Coloured", spineColor="#1A2B3C")
-    book = _stored_books(data_dir)[-1]
+    book = stored_books(data_dir)[-1]
     assert book["spineColorUser"] == "#1A2B3C"
     assert book["spineColorCurated"] == CURATED[1]  # the 10th Book
     assert book["spineColor"] == "#1A2B3C"
@@ -149,8 +118,8 @@ def test_ac2_p0_curated_color_rotates_and_resolved_color_is_stored(data_dir: Pat
 
 
 def test_ac3_p0_every_failing_field_is_listed_and_nothing_is_saved(data_dir: Path) -> None:
-    client = _client(data_dir)
-    before = _library_bytes(data_dir)
+    client = api_client(data_dir)
+    before = library_bytes(data_dir)
 
     response = _add(
         client,
@@ -169,7 +138,7 @@ def test_ac3_p0_every_failing_field_is_listed_and_nothing_is_saved(data_dir: Pat
 
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "invalid_fields"
-    assert _field_messages(response) == {
+    assert field_messages(response) == {
         "title": "Title is required.",
         "pages": "Pages is required.",
         "authors": "Author(s) is required.",
@@ -182,7 +151,7 @@ def test_ac3_p0_every_failing_field_is_listed_and_nothing_is_saved(data_dir: Pat
         "finishedOn": "Finished on can't be in the future.",
         "spineColor": "Spine color must be #RRGGBB or empty.",
     }
-    assert _library_bytes(data_dir) == before
+    assert library_bytes(data_dir) == before
     # The edge of every rule is accepted, not refused.
     edge = _add(
         client,
@@ -200,49 +169,49 @@ def test_ac3_p0_every_failing_field_is_listed_and_nothing_is_saved(data_dir: Pat
 
 
 def test_ac4_p1_authors_are_split_on_semicolons_and_trimmed(data_dir: Path) -> None:
-    client = _client(data_dir)
+    client = api_client(data_dir)
 
     _add(client, authors="Ursula K. Le Guin; Brian Attebery")
 
-    assert [b["authors"] for b in _stored_books(data_dir)] == [
+    assert [b["authors"] for b in stored_books(data_dir)] == [
         ["Ursula K. Le Guin", "Brian Attebery"]
     ]
     _add(client, title="The Lathe of Heaven", authors=" ; Ursula K. Le Guin ;; ")
-    assert _stored_books(data_dir)[-1]["authors"] == ["Ursula K. Le Guin"]
+    assert stored_books(data_dir)[-1]["authors"] == ["Ursula K. Le Guin"]
     refused = _add(client, authors=" ; ;")
     assert refused.status_code == 422
-    assert _field_messages(refused) == {"authors": "Author(s) is required."}
+    assert field_messages(refused) == {"authors": "Author(s) is required."}
 
 
 def test_ac5_p1_tags_are_trimmed_and_merged_ignoring_case(data_dir: Path) -> None:
-    client = _client(data_dir)
+    client = api_client(data_dir)
 
     _add(client, tags="sci-fi, Classics, classics , ")
 
-    assert [b["tags"] for b in _stored_books(data_dir)] == [["sci-fi", "Classics"]]
+    assert [b["tags"] for b in stored_books(data_dir)] == [["sci-fi", "Classics"]]
     _add(client, title="Untagged", tags=" , ")
-    assert _stored_books(data_dir)[-1]["tags"] == []
+    assert stored_books(data_dir)[-1]["tags"] == []
 
 
 # --- back-fill ----------------------------------------------------------------
 
 
 def test_ac6_p0_finished_on_back_fills_one_finished_reading(data_dir: Path) -> None:
-    client = _client(data_dir)
+    client = api_client(data_dir)
 
     _add(client, finishedOn="2026-03-14")
 
-    readings = [r for b in _stored_books(data_dir) for r in b["readings"]]
+    readings = [r for b in stored_books(data_dir) for r in b["readings"]]
     assert len(readings) == 1
     (reading,) = readings
     assert reading["startDate"] is None
     assert reading["finishDate"] == "2026-03-14"
     assert reading["finishedPages"] == 387
     assert uuid.UUID(reading["id"]).version == 4
-    library = json.loads(_library_bytes(data_dir))
+    library = json.loads(library_bytes(data_dir))
     assert library["mainBookId"] is None  # a back-fill is not a Reading in progress
     _add(client, title="Unread", finishedOn="")
-    assert _stored_books(data_dir)[-1]["readings"] == []
+    assert stored_books(data_dir)[-1]["readings"] == []
 
 
 # --- the catalog view ---------------------------------------------------------
@@ -252,7 +221,7 @@ def test_ac7_p1_catalog_view_shows_saved_books_and_existing_tags(tmp_path: Path)
     builder = LibraryBuilder()
     builder.book(title="SPQR", authors=["Mary Beard"], tags=["history"])
     builder.write(tmp_path)
-    client = _client(tmp_path)
+    client = api_client(tmp_path)
     _add(
         client,
         authors="Ursula K. Le Guin; Brian Attebery",
@@ -265,7 +234,7 @@ def test_ac7_p1_catalog_view_shows_saved_books_and_existing_tags(tmp_path: Path)
     shown = [b for b in view["books"] if b["title"] == "The Dispossessed"]
     assert [b.get("pages") for b in shown] == [387]
     (book,) = shown
-    stored = _stored_books(tmp_path)[-1]
+    stored = stored_books(tmp_path)[-1]
     assert book["id"] == stored["id"]
     assert book["authors"] == ["Ursula K. Le Guin", "Brian Attebery"]
     assert book["finished"] is True
@@ -283,26 +252,20 @@ def test_ac8_p0_failed_commit_changes_nothing_and_success_keeps_invariants(
     for step in ("write", "fsync", "replace"):
         data_dir = tmp_path / step
         LibraryBuilder().write(data_dir)
-        before = _library_bytes(data_dir)
+        before = library_bytes(data_dir)
 
-        response = _add(_client(data_dir, fs=FaultyFs(step)))
+        response = _add(api_client(data_dir, fs=FaultyFs(step)))
 
         assert response.status_code == 503, step
-        assert response.json() == {
-            "error": {
-                "kind": "couldnt_save",
-                "code": "couldnt_save",
-                "message": COULDNT_SAVE_MESSAGE,
-            }
-        }
-        assert _library_bytes(data_dir) == before, step
+        assert response.json() == COULDNT_SAVE_BODY
+        assert library_bytes(data_dir) == before, step
     data_dir = tmp_path / "ok"
     LibraryBuilder().write(data_dir)
-    client = _client(data_dir)
+    client = api_client(data_dir)
     _add(client, finishedOn="2026-03-14")
     _add(client, title="The Left Hand of Darkness", tags="sci-fi")
-    check_invariants(Library.model_validate_json(_library_bytes(data_dir)))
-    assert len(_stored_books(data_dir)) == 2
+    assert_invariants(data_dir)
+    assert len(stored_books(data_dir)) == 2
 
 
 # --- the I/O matrix and the decided messages ---------------------------------
@@ -366,11 +329,11 @@ MALFORMED = "The intent must be a JSON object of the form's fields."
 def test_each_rule_refuses_with_its_message(
     data_dir: Path, fields: dict[str, str], expected: dict[str, str]
 ) -> None:
-    before = _library_bytes(data_dir)
-    response = _add(_client(data_dir), **fields)
+    before = library_bytes(data_dir)
+    response = _add(api_client(data_dir), **fields)
     assert response.status_code == 422
-    assert _field_messages(response) == expected
-    assert _library_bytes(data_dir) == before
+    assert field_messages(response) == expected
+    assert library_bytes(data_dir) == before
 
 
 @pytest.mark.parametrize(
@@ -399,9 +362,9 @@ def test_each_rule_refuses_with_its_message(
 def test_accepted_values_are_stored_normalized(
     data_dir: Path, fields: dict[str, str], stored: dict[str, Any]
 ) -> None:
-    response = _add(_client(data_dir), **fields)
+    response = _add(api_client(data_dir), **fields)
     assert response.status_code == 200, response.json()
-    book = _stored_book(data_dir, response.json()["ids"]["bookId"])
+    book = stored_book(data_dir, response.json()["ids"]["bookId"])
     assert {key: book[key] for key in stored} == stored
 
 
@@ -410,25 +373,25 @@ def test_accepted_values_are_stored_normalized(
 )
 def test_a_missing_required_key_is_required(data_dir: Path, key: str) -> None:
     intent = {k: v for k, v in VALID.items() if k != key}
-    response = _client(data_dir).post(
+    response = api_client(data_dir).post(
         ADD_BOOK, files={"intent": (None, json.dumps(intent), "application/json")}
     )
     assert response.status_code == 422
     labels = {"authors": "Author(s)"}
     label = labels.get(key, key.capitalize())
-    assert _field_messages(response) == {key: f"{label} is required."}
+    assert field_messages(response) == {key: f"{label} is required."}
 
 
 def test_year_0000_is_four_digits_and_accepted(data_dir: Path) -> None:
-    response = _add(_client(data_dir), year="0000")
+    response = _add(api_client(data_dir), year="0000")
     assert response.status_code == 200
-    assert _stored_book(data_dir, response.json()["ids"]["bookId"])["year"] == 0
+    assert stored_book(data_dir, response.json()["ids"]["bookId"])["year"] == 0
 
 
 def test_fields_are_listed_in_form_order_and_the_message_names_labels(
     data_dir: Path,
 ) -> None:
-    response = _client(data_dir).post(
+    response = api_client(data_dir).post(
         ADD_BOOK,
         files={
             "intent": (
@@ -472,7 +435,7 @@ def test_fields_are_listed_in_form_order_and_the_message_names_labels(
 
 
 def test_top_message_matches_the_experience_example(data_dir: Path) -> None:
-    response = _add(_client(data_dir), pages="", language=" ")
+    response = _add(api_client(data_dir), pages="", language=" ")
     assert response.json()["error"] == {
         "kind": "refusal",
         "code": "invalid_fields",
@@ -512,8 +475,8 @@ def test_top_message_matches_the_experience_example(data_dir: Path) -> None:
     ],
 )
 def test_malformed_intent_is_an_intent_field_error(data_dir: Path, files: dict) -> None:
-    before = _library_bytes(data_dir)
-    response = _client(data_dir).post(ADD_BOOK, files=files)
+    before = library_bytes(data_dir)
+    response = api_client(data_dir).post(ADD_BOOK, files=files)
     assert response.status_code == 422
     assert response.json() == {
         "error": {
@@ -523,22 +486,22 @@ def test_malformed_intent_is_an_intent_field_error(data_dir: Path, files: dict) 
             "fields": [{"field": "intent", "message": MALFORMED}],
         }
     }
-    assert _library_bytes(data_dir) == before
+    assert library_bytes(data_dir) == before
 
 
 def test_a_request_without_a_body_is_an_intent_field_error(data_dir: Path) -> None:
-    response = _client(data_dir).post(ADD_BOOK)
+    response = api_client(data_dir).post(ADD_BOOK)
     assert response.status_code == 422
-    assert _field_messages(response) == {"intent": MALFORMED}
+    assert field_messages(response) == {"intent": MALFORMED}
 
 
 def test_two_adds_get_distinct_ids(data_dir: Path) -> None:
-    client = _client(data_dir)
+    client = api_client(data_dir)
     first = _add(client, finishedOn="2026-03-14").json()["ids"]["bookId"]
     another = _add(client, title="Always Coming Home", finishedOn="2026-03-14")
     second = another.json()["ids"]["bookId"]
     assert first != second
-    books = _stored_books(data_dir)
+    books = stored_books(data_dir)
     assert [b["id"] for b in books] == [first, second]
     assert books[0]["readings"][0]["id"] != books[1]["readings"][0]["id"]
 
@@ -550,7 +513,7 @@ def test_dst_day_today_keeps_its_local_date(data_dir: Path, day: date) -> None:
     client = TestClient(app, base_url=BASE_URL)
     response = _add(client, finishedOn=day.isoformat())
     assert response.status_code == 200
-    book = _stored_book(data_dir, response.json()["ids"]["bookId"])
+    book = stored_book(data_dir, response.json()["ids"]["bookId"])
     assert datetime.fromisoformat(book["createdAt"]).date() == day
     assert book["readings"][0]["finishDate"] == day.isoformat()
     tomorrow = date.fromordinal(day.toordinal() + 1).isoformat()
@@ -562,8 +525,8 @@ def test_curated_rotation_counts_existing_books(tmp_path: Path) -> None:
     for _ in range(3):
         builder.book()
     builder.write(tmp_path)
-    response = _add(_client(tmp_path))
-    book = _stored_book(tmp_path, response.json()["ids"]["bookId"])
+    response = _add(api_client(tmp_path))
+    book = stored_book(tmp_path, response.json()["ids"]["bookId"])
     assert book["spineColorCurated"] == CURATED[3]
 
 
@@ -572,11 +535,11 @@ def test_a_broken_library_rule_on_add_is_500_and_commits_nothing(
 ) -> None:
     fixed = uuid.UUID(int=4, version=4)
     monkeypatch.setattr(uuid, "uuid4", lambda: fixed)
-    client = _client(data_dir)
+    client = api_client(data_dir)
     assert _add(client).status_code == 200
-    before = _library_bytes(data_dir)
+    before = library_bytes(data_dir)
     # The same id again breaks unique_book_ids (a new title, so no duplicate refusal).
     response = _add(client, title="The Word for World Is Forest")
     assert response.status_code == 500
     assert response.json()["error"]["code"] == "couldnt_save"
-    assert _library_bytes(data_dir) == before
+    assert library_bytes(data_dir) == before

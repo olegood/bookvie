@@ -10,18 +10,8 @@ it never derives read status or counts from Readings itself.
 
 from pathlib import Path
 
-from fastapi.testclient import TestClient
-
-from bookvie.http.app import create_app
-from bookvie.store import Store
 from tests.builder import LibraryBuilder
-
-BASE_URL = "http://127.0.0.1:8765"
-
-
-def _client(data_dir: Path) -> TestClient:
-    store = Store.open(data_dir)
-    return TestClient(create_app(data_dir / "no-static", store=store), base_url=BASE_URL)
+from tests.helpers import api_client
 
 
 def test_ac2_p0_catalog_view_supplies_spine_inputs_and_the_meter(
@@ -53,7 +43,7 @@ def test_ac2_p0_catalog_view_supplies_spine_inputs_and_the_meter(
     )
     library_builder.write(tmp_path)
 
-    body = _client(tmp_path).get("/api/views/catalog").json()
+    body = api_client(tmp_path, raise_server_exceptions=True).get("/api/views/catalog").json()
 
     # X counts Books with at least one finished Reading; Y counts all Books.
     assert body["meter"] == {"finished": 3, "total": 5}

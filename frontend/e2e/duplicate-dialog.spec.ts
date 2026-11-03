@@ -4,10 +4,11 @@
 // server's refusal and read every outcome by role and accessible name.
 
 import AxeBuilder from '@axe-core/playwright'
-import type { Locator, Page, Request } from '@playwright/test'
-import { expect, type Server, test } from './fixtures.ts'
+import type { Locator, Page } from '@playwright/test'
+import { expect, test } from './fixtures.ts'
+import { ADD_BOOK, intentOf, requestsTo } from './intents.ts'
+import { catalogTitles, fillFields, openNewBook } from './library.ts'
 
-const ADD_BOOK = '/api/intents/add-book'
 const COULDNT_SAVE = "Couldn't save. Your data wasn't changed."
 // DESIGN.md ink, light theme.
 const INK = 'rgb(43, 46, 42)'
@@ -28,46 +29,8 @@ const DUNE = {
 }
 const NEUROMANCER = { title: 'Neuromancer', authors: ['William Gibson'], pages: 271 }
 
-type CatalogBody = { books: { title: string }[] }
-
-function newBookPanel(page: Page): Locator {
-  return page.getByRole('dialog', { name: 'New book', exact: true })
-}
-
 function duplicateDialog(page: Page): Locator {
   return page.getByRole('alertdialog', { name: 'Possible duplicate', exact: true })
-}
-
-async function openNewBook(page: Page): Promise<Locator> {
-  await page.getByRole('button', { name: 'New book', exact: true }).click()
-  return newBookPanel(page)
-}
-
-async function fillFields(panel: Locator, fields: Record<string, string>): Promise<void> {
-  for (const [label, value] of Object.entries(fields)) {
-    await panel.getByLabel(label, { exact: true }).fill(value)
-  }
-  await panel.getByRole('combobox', { name: 'Type', exact: true }).selectOption('Paperback')
-}
-
-async function catalogTitles(page: Page, server: Server): Promise<string[]> {
-  const response = await page.request.get(`${server.url}/api/views/catalog`)
-  return ((await response.json()) as CatalogBody).books.map((book) => book.title).sort()
-}
-
-/** Every add-book POST the page sends, in order. */
-function addBookRequests(page: Page): Request[] {
-  const sent: Request[] = []
-  page.on('request', (request) => {
-    if (request.method() === 'POST' && new URL(request.url()).pathname === ADD_BOOK) sent.push(request)
-  })
-  return sent
-}
-
-/** The JSON `intent` part of a multipart add-book request. */
-function intentOf(request: Request): Record<string, unknown> {
-  const json = /\{[\s\S]*\}/.exec(request.postData() ?? '')?.[0] ?? '{}'
-  return JSON.parse(json) as Record<string, unknown>
 }
 
 test.describe('Story 1.9 Duplicate dialog (ATDD)', () => {
@@ -175,10 +138,7 @@ test.describe('Story 1.9 Duplicate dialog (ATDD)', () => {
     seededServer,
   }) => {
     const server = await seededServer({ books: [{ title: 'Dune', authors: ['Frank Herbert'] }, NEUROMANCER] })
-    const sent: Request[] = []
-    page.on('request', (request) => {
-      if (request.method() === 'POST' && new URL(request.url()).pathname === ADD_BOOK) sent.push(request)
-    })
+    const sent = requestsTo(page, ADD_BOOK)
     // In List view, which Bookcase replaced as the default in Story 1.10.
     await page.addInitScript(() => window.localStorage.setItem('bookvie.catalogView', 'list'))
     await page.goto(`${server.url}/`)
@@ -348,7 +308,7 @@ test.describe('Story 1.9 Duplicate dialog (automate)', () => {
       }
       await route.continue()
     })
-    const sent = addBookRequests(page)
+    const sent = requestsTo(page, ADD_BOOK)
     await page.goto(`${server.url}/`)
     const panel = await openNewBook(page)
     await fillFields(panel, DUNE)
@@ -378,7 +338,7 @@ test.describe('Story 1.9 Duplicate dialog (automate)', () => {
     const server = await seededServer({
       books: [{ title: 'Dune', authors: ['Frank Herbert'], isbn: DUNE_ISBN13 }, NEUROMANCER],
     })
-    const sent = addBookRequests(page)
+    const sent = requestsTo(page, ADD_BOOK)
     await page.goto(`${server.url}/`)
     const panel = await openNewBook(page)
     await fillFields(panel, { ...DUNE, ISBN: DUNE_ISBN10 })

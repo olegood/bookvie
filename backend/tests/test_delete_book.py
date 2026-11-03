@@ -22,14 +22,19 @@ from typing import Any
 import pytest
 from fastapi.testclient import TestClient
 
-from bookvie.domain import Library, check_invariants
 from bookvie.http.app import create_app
-from bookvie.intents import COULDNT_SAVE_MESSAGE
 from tests.builder import LibraryBuilder
-from tests.test_add_book import _client, _field_messages, _library_bytes, _stored_books
-from tests.test_store import FaultyFs
+from tests.helpers import (
+    COULDNT_SAVE_BODY,
+    DELETE_BOOK,
+    FaultyFs,
+    api_client,
+    assert_invariants,
+    field_messages,
+    library_bytes,
+    stored_books,
+)
 
-DELETE_BOOK = "/api/intents/delete-book"
 GONE_ID = "00000000-0000-4000-8000-000000000000"
 
 
@@ -42,20 +47,16 @@ def _delete(client: TestClient, book_id: str):
 
 
 def _library(data_dir: Path) -> dict[str, Any]:
-    return json.loads(_library_bytes(data_dir))
+    return json.loads(library_bytes(data_dir))
 
 
 def _book_ids(data_dir: Path) -> list[str]:
-    return [book["id"] for book in _stored_books(data_dir)]
+    return [book["id"] for book in stored_books(data_dir)]
 
 
 def _pointers(data_dir: Path) -> tuple[str | None, str | None, list[str]]:
     doc = _library(data_dir)
     return doc["mainBookId"], doc["upNextBookId"], doc["sideReadBookIds"]
-
-
-def _assert_invariants(data_dir: Path) -> None:
-    check_invariants(Library.model_validate_json(_library_bytes(data_dir)))
 
 
 # --- AC-3: the Book, its Readings and Card notes, and every pointer, in one commit ---
@@ -88,7 +89,7 @@ def test_ac3_p0_delete_book_removes_the_book_with_its_readings_and_notes_and_cle
     library_builder.reading(piranesi, current_page=12)
     library_builder.main(dune).up_next(neuromancer).side_read(accelerate).side_read(piranesi)
     library_builder.write(tmp_path)
-    client = _client(tmp_path)
+    client = api_client(tmp_path)
 
     response = _delete(client, dune)
 
@@ -97,25 +98,25 @@ def test_ac3_p0_delete_book_removes_the_book_with_its_readings_and_notes_and_cle
     assert response.status_code == 200
     assert response.json() == {"ok": True}
     # Its Readings and Card notes went with it: no trace of their ids remains.
-    text = _library_bytes(tmp_path).decode()
+    text = library_bytes(tmp_path).decode()
     for gone in [dune, dune_reading, dune_finished, *dune_notes]:
         assert gone not in text, gone
     # The vacated Main book stays empty; Up next is not promoted, Side reads stay.
     assert _pointers(tmp_path) == (None, neuromancer, [accelerate, piranesi])
     assert _book_ids(tmp_path) == [neuromancer, dispossessed, accelerate, piranesi]
-    _assert_invariants(tmp_path)
+    assert_invariants(tmp_path)
 
     # Deleting Up next empties it; the paused Book waiting for you stays waiting.
     assert _delete(client, neuromancer).status_code == 200
     assert _pointers(tmp_path) == (None, None, [accelerate, piranesi])
     assert dispossessed in _book_ids(tmp_path)
-    _assert_invariants(tmp_path)
+    assert_invariants(tmp_path)
 
     # Deleting a Side read drops only its entry; the others keep their order.
     assert _delete(client, accelerate).status_code == 200
     assert _pointers(tmp_path) == (None, None, [piranesi])
     assert _book_ids(tmp_path) == [dispossessed, piranesi]
-    _assert_invariants(tmp_path)
+    assert_invariants(tmp_path)
 
     # The last Books can go too: an empty library is valid.
     assert _delete(client, dispossessed).status_code == 200
@@ -136,20 +137,14 @@ def test_ac5_p0_delete_book_keeps_the_standard_intent_guarantees(tmp_path: Path)
         builder.card_note(dune, page_start=19)
         builder.main(dune)
         builder.write(data_dir)
-        before = _library_bytes(data_dir)
+        before = library_bytes(data_dir)
 
-        response = _delete(_client(data_dir, fs=FaultyFs(step)), dune)
+        response = _delete(api_client(data_dir, fs=FaultyFs(step)), dune)
 
         assert response.status_code == 503, step
-        assert response.json() == {
-            "error": {
-                "kind": "couldnt_save",
-                "code": "couldnt_save",
-                "message": COULDNT_SAVE_MESSAGE,
-            }
-        }, step
+        assert response.json() == COULDNT_SAVE_BODY, step
         # Neither the removal nor the cleared pointer landed: one commit or none.
-        assert _library_bytes(data_dir) == before, step
+        assert library_bytes(data_dir) == before, step
 
     # Success keeps the invariants.
     data_dir = tmp_path / "ok"
@@ -160,18 +155,18 @@ def test_ac5_p0_delete_book_keeps_the_standard_intent_guarantees(tmp_path: Path)
     builder.reading(neuromancer, current_page=80, paused_at="2026-10-01")
     builder.main(dune).up_next(neuromancer)
     builder.write(data_dir)
-    client = _client(data_dir)
+    client = api_client(data_dir)
     assert _delete(client, dune).status_code == 200
-    _assert_invariants(data_dir)
+    assert_invariants(data_dir)
 
     # The Book just deleted no longer exists: a second delete is refused, and
     # nothing changes. So is an id that never existed.
-    before = _library_bytes(data_dir)
+    before = library_bytes(data_dir)
     for book_id in (dune, GONE_ID):
         gone = _delete(client, book_id)
         assert gone.status_code == 409, book_id
         assert gone.json()["error"]["code"] == "book_not_found", book_id
-        assert _library_bytes(data_dir) == before, book_id
+        assert library_bytes(data_dir) == before, book_id
 
     # delete-book adds no error code; the one it uses is in the contract (AD-8).
     codes = create_app().openapi()["components"]["schemas"]["ErrorCode"]["enum"]
@@ -193,12 +188,12 @@ def test_deleting_a_book_that_is_up_next_and_a_side_read_clears_both(
     library_builder.up_next(dune).side_read(accelerate).side_read(dune).side_read(piranesi)
     library_builder.write(tmp_path)
 
-    response = _delete(_client(tmp_path), dune)
+    response = _delete(api_client(tmp_path), dune)
 
     assert response.status_code == 200
     assert _pointers(tmp_path) == (None, None, [accelerate, piranesi])
     assert _book_ids(tmp_path) == [accelerate, piranesi]
-    _assert_invariants(tmp_path)
+    assert_invariants(tmp_path)
 
 
 @pytest.mark.parametrize(
@@ -220,8 +215,8 @@ def test_a_malformed_delete_intent_is_an_intent_field_error(
 ) -> None:
     library_builder.book(title="Dune")
     library_builder.write(tmp_path)
-    before = _library_bytes(tmp_path)
-    client = _client(tmp_path)
+    before = library_bytes(tmp_path)
+    client = api_client(tmp_path)
     if intent is None:
         response = client.post(DELETE_BOOK)
     else:
@@ -229,7 +224,7 @@ def test_a_malformed_delete_intent_is_an_intent_field_error(
             DELETE_BOOK, files={"intent": (None, intent, "application/json")}
         )
     assert response.status_code == 422
-    assert _field_messages(response) == {
+    assert field_messages(response) == {
         "intent": "The intent must be a JSON object of the form's fields."
     }
-    assert _library_bytes(tmp_path) == before
+    assert library_bytes(tmp_path) == before

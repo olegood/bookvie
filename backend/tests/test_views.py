@@ -10,16 +10,14 @@ from bookvie.http.app import create_app
 from bookvie.store import Store
 from bookvie.views import book_detail, catalog, cover_path, home
 from tests.builder import LibraryBuilder
+from tests.helpers import (
+    BASE_URL,
+    api_client,
+)
 
-BASE_URL = "http://127.0.0.1:8765"
 HOME_EMPTY = {"meter": {"finished": 0, "total": 0}, "books": []}
 CATALOG_EMPTY = {**HOME_EMPTY, "tags": []}
 EMPTY = {"home": HOME_EMPTY, "catalog": CATALOG_EMPTY}
-
-
-def _client(data_dir: Path) -> TestClient:
-    store = Store.open(data_dir)
-    return TestClient(create_app(data_dir / "no-static", store=store), base_url=BASE_URL)
 
 
 def _seed(builder: LibraryBuilder) -> dict[str, str]:
@@ -43,7 +41,7 @@ def test_empty_library_functions() -> None:
 
 @pytest.mark.parametrize("view", ["home", "catalog"])
 def test_empty_library_over_http(tmp_path: Path, view: str) -> None:
-    response = _client(tmp_path).get(f"/api/views/{view}")
+    response = api_client(tmp_path, raise_server_exceptions=True).get(f"/api/views/{view}")
     assert response.status_code == 200
     assert response.json() == EMPTY[view]
 
@@ -53,7 +51,7 @@ def test_seeded_library(tmp_path: Path, library_builder: LibraryBuilder, view: s
     ids = _seed(library_builder)
     library_builder.write(tmp_path)
     before = (tmp_path / "library.json").read_bytes()
-    response = _client(tmp_path).get(f"/api/views/{view}")
+    response = api_client(tmp_path, raise_server_exceptions=True).get(f"/api/views/{view}")
     assert response.status_code == 200
     body = response.json()
     assert body["meter"] == {"finished": 1, "total": 3}
@@ -161,7 +159,7 @@ def test_book_view_role_names_main_up_next_and_waiting(
     plain = library_builder.book(title="Piranesi", pages=245)
     library_builder.main(dune).up_next(neuromancer).side_read(accelerate).side_read(paused_side)
     library_builder.write(tmp_path)
-    client = _client(tmp_path)
+    client = api_client(tmp_path, raise_server_exceptions=True)
 
     def role(book_id: str) -> tuple[str | None, int | None]:
         body = client.get("/api/views/book", params={"id": book_id}).json()
@@ -201,7 +199,7 @@ def test_book_view_carries_the_cover_file_and_its_color(
     )
     bare = library_builder.book(title="Emma")
     library_builder.write(tmp_path)
-    client = _client(tmp_path)
+    client = api_client(tmp_path, raise_server_exceptions=True)
 
     body = client.get("/api/views/book", params={"id": covered}).json()
     assert (body["coverFile"], body["spineColorFromCover"]) == ("covers/dune.jpg", "#A85A4A")
@@ -228,7 +226,7 @@ def test_shelf_books_carry_what_the_spine_popover_shows(
     )
     library_builder.book(title="Emma")
     library_builder.write(tmp_path)
-    books = _client(tmp_path).get(f"/api/views/{view}").json()["books"]
+    books = api_client(tmp_path, raise_server_exceptions=True).get(f"/api/views/{view}").json()["books"]
     fields = ("subtitle", "year", "spineColor", "spineColorUser", "spineColorFromCover", "hasCover")
     assert [tuple(book[key] for key in fields) for book in books] == [
         ("Book One", 1965, "#4B7C7B", "#4B7C7B", "#A85A4A", True),
@@ -243,7 +241,7 @@ def test_book_view_carries_the_resolved_spine_color(
     picked = library_builder.book(title="Emma", spine_color_user="#4B7C7B")
     curated = library_builder.book(title="Piranesi")
     library_builder.write(tmp_path)
-    client = _client(tmp_path)
+    client = api_client(tmp_path, raise_server_exceptions=True)
 
     def color(book_id: str) -> str:
         return client.get("/api/views/book", params={"id": book_id}).json()["spineColor"]

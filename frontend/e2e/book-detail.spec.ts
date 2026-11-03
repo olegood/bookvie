@@ -6,15 +6,15 @@
 // role and exact accessible name.
 
 import AxeBuilder from '@axe-core/playwright'
-import type { Locator, Page, Request } from '@playwright/test'
+import type { Locator, Page } from '@playwright/test'
 import { spine, viewToggle } from './bookcase.ts'
 import { expect, type Server, test } from './fixtures.ts'
+import { EDIT_BOOK, intentOf, requestsTo } from './intents.ts'
+import { DUNE_ID, catalogTitles, editPanel, openEdit, settled } from './library.ts'
 
-const EDIT_BOOK = '/api/intents/edit-book'
 // DESIGN.md surface, light theme.
 const SURFACE = 'rgb(255, 255, 255)'
 const DUNE_ISBN13 = '9780441172719'
-const DUNE_ID = '6f1c1d2e-9a4b-4c3d-8e5f-0a1b2c3d4e5f'
 const COULDNT_SAVE = "Couldn't save. Your data wasn't changed."
 const COULDNT_LOAD = "Couldn't load. Is bookvie still running?"
 // DESIGN.md ink, light theme.
@@ -22,12 +22,6 @@ const INK = 'rgb(43, 46, 42)'
 // DESIGN.md → Spine colors: the Clay swatch, as typed and as computed.
 const CLAY = { hex: '#9B6753', rgb: 'rgb(155, 103, 83)' }
 const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']
-
-type CatalogBody = { books: { title: string }[] }
-
-function editPanel(page: Page): Locator {
-  return page.getByRole('dialog', { name: 'Edit book', exact: true })
-}
 
 function duplicateDialog(page: Page): Locator {
   return page.getByRole('alertdialog', { name: 'Possible duplicate', exact: true })
@@ -41,36 +35,6 @@ function titleLink(page: Page, title: string): Locator {
 async function openBook(page: Page, server: Server, title: string): Promise<void> {
   await page.goto(`${server.url}/`)
   await titleLink(page, title).click()
-}
-
-async function openEdit(page: Page): Promise<Locator> {
-  await page.getByRole('button', { name: 'Edit', exact: true }).click()
-  return editPanel(page)
-}
-
-async function catalogTitles(page: Page, server: Server): Promise<string[]> {
-  const response = await page.request.get(`${server.url}/api/views/catalog`)
-  return ((await response.json()) as CatalogBody).books.map((book) => book.title).sort()
-}
-
-/** Waits until `element` and its subtree finish their open animations, so axe sees final colors. */
-async function settled(element: Locator): Promise<void> {
-  await element.evaluate((node) => Promise.all(node.getAnimations({ subtree: true }).map((a) => a.finished)))
-}
-
-/** Every edit-book POST the page sends, in order. */
-function editBookRequests(page: Page): Request[] {
-  const sent: Request[] = []
-  page.on('request', (request) => {
-    if (request.method() === 'POST' && new URL(request.url()).pathname === EDIT_BOOK) sent.push(request)
-  })
-  return sent
-}
-
-/** The JSON `intent` part of a multipart edit-book request. */
-function intentOf(request: Request): Record<string, unknown> {
-  const json = /\{[\s\S]*\}/.exec(request.postData() ?? '')?.[0] ?? '{}'
-  return JSON.parse(json) as Record<string, unknown>
 }
 
 test.describe('Story 1.11 Book detail and Edit book (ATDD)', () => {
@@ -248,7 +212,7 @@ test.describe('Story 1.11 Book detail and Edit book (ATDD)', () => {
     expect(await catalogTitles(page, server)).toEqual(['Dune', 'Dune Messiah'])
 
     // Save anyway: resent with confirmDuplicate, then a normal save.
-    const sent = editBookRequests(page)
+    const sent = requestsTo(page, EDIT_BOOK)
     await save.click()
     await dialog.getByRole('button', { name: 'Save anyway', exact: true }).click()
     await expect(page.getByRole('status')).toHaveText('Saved Dune.')

@@ -7,9 +7,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 from bookvie.http.app import create_app
+from tests.helpers import BASE_URL
 
-# The Host guard accepts only this server's own Host (see test_guard.py).
-BASE_URL = "http://127.0.0.1:8765"
 INDEX = "<!doctype html><title>bookvie</title><div id=root></div>"
 
 

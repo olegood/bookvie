@@ -5,10 +5,11 @@
 // browser shows by role and exact accessible name.
 
 import AxeBuilder from '@axe-core/playwright'
-import type { Locator, Page, Request } from '@playwright/test'
+import type { Locator, Page } from '@playwright/test'
 import { expect, type Server, test } from './fixtures.ts'
+import { DELETE_BOOK, requestsTo } from './intents.ts'
+import { DUNE_ID, catalogTitles, settled } from './library.ts'
 
-const DELETE_BOOK = '/api/intents/delete-book'
 const COULDNT_SAVE = "Couldn't save. Your data wasn't changed."
 const CONSEQUENCE = 'Its readings and card notes are deleted too.'
 const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']
@@ -16,7 +17,6 @@ const COULDNT_SAVE_BODY = JSON.stringify({
   error: { kind: 'couldnt_save', code: 'couldnt_save', message: COULDNT_SAVE },
 })
 
-const DUNE_ID = '6f1c1d2e-9a4b-4c3d-8e5f-0a1b2c3d4e5f'
 const NEUROMANCER_ID = '1b6e2c4a-3d5f-4e7a-9b8c-0d1e2f3a4b5c'
 const DISPOSSESSED_ID = '7c2d9e1f-4a6b-4c8d-a0e1-2f3a4b5c6d7e'
 const PIRANESI_ID = '9e4f0a2b-5c7d-4e9f-b1a2-3c4d5e6f7a8b'
@@ -36,29 +36,10 @@ async function openBook(page: Page, server: Server, bookId: string): Promise<voi
   await page.goto(`${server.url}/book/${bookId}`)
 }
 
-async function catalogTitles(page: Page, server: Server): Promise<string[]> {
-  const response = await page.request.get(`${server.url}/api/views/catalog`)
-  return ((await response.json()) as CatalogBody).books.map((book) => book.title).sort()
-}
-
 /** The catalog's Books as `[id, title]`, in catalog order. */
 async function catalogBooks(page: Page, server: Server): Promise<[string, string][]> {
   const response = await page.request.get(`${server.url}/api/views/catalog`)
   return ((await response.json()) as CatalogBody).books.map((book) => [book.id, book.title])
-}
-
-/** Waits until `element` and its subtree finish their open animations, so axe sees final colors. */
-async function settled(element: Locator): Promise<void> {
-  await element.evaluate((node) => Promise.all(node.getAnimations({ subtree: true }).map((a) => a.finished)))
-}
-
-/** Every delete-book POST the page sends, in order. */
-function deleteBookRequests(page: Page): Request[] {
-  const sent: Request[] = []
-  page.on('request', (request) => {
-    if (request.method() === 'POST' && new URL(request.url()).pathname === DELETE_BOOK) sent.push(request)
-  })
-  return sent
 }
 
 // Dune is the Main book at p.150, Neuromancer is Up next (paused at p.80), The
@@ -137,7 +118,7 @@ test.describe('Story 1.12 Delete a book (ATDD)', () => {
 
   test('[P1] AC-2 Cancel or Esc changes nothing and returns focus to Delete', async ({ page, seededServer }) => {
     const server = await seededServer(ROLES_LIBRARY)
-    const sent = deleteBookRequests(page)
+    const sent = requestsTo(page, DELETE_BOOK)
     await openBook(page, server, DUNE_ID)
     const dialog = confirmDialog(page)
 

@@ -6,11 +6,12 @@
 // read what the browser shows by role, exact accessible name and geometry.
 
 import AxeBuilder from '@axe-core/playwright'
-import type { Locator, Page, Request } from '@playwright/test'
-import { expect, type Server, test } from './fixtures.ts'
+import type { Locator, Page } from '@playwright/test'
+import { expect, test } from './fixtures.ts'
+import { SET_SPINE_COLOR, attachCover, intentOf, requestsTo } from './intents.ts'
+import { DUNE_ID, rgbOf } from './library.ts'
 import { finished, search, shelfOf, spine, spines } from './bookcase.ts'
 
-const SET_SPINE_COLOR = '/api/intents/set-spine-color'
 const COULDNT_SAVE = "Couldn't save. Your data wasn't changed."
 const COULDNT_SAVE_BODY = JSON.stringify({
   error: { kind: 'couldnt_save', code: 'couldnt_save', message: COULDNT_SAVE },
@@ -18,15 +19,8 @@ const COULDNT_SAVE_BODY = JSON.stringify({
 const SWATCH_NAMES = ['Sage', 'Slate', 'Clay', 'Ochre', 'Plum', 'Teal', 'Moss', 'Stone']
 const SAGE = '#749076'
 const TEAL = '#4B7C7B'
-const EDIT_BOOK = '/api/intents/edit-book'
 const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']
-// A 40×60 solid red-orange PNG (rgb 200, 60, 40): a colored cover (as cover.spec.ts).
-const COVER_PNG = Buffer.from(
-  'iVBORw0KGgoAAAANSUhEUgAAACgAAAA8CAIAAACb22+3AAAAO0lEQVR42u3NMQ0AMAgAMJgaROA/yJoHHp7WQHO64sKLI2KxWCwWi8VisVgsFovFYrFYLBaLxWKxeOMD/k0BpCMi0m0AAAAASUVORK5CYII=',
-  'base64',
-)
 
-const DUNE_ID = '6f1c1d2e-9a4b-4c3d-8e5f-0a1b2c3d4e5f'
 const NEUROMANCER_ID = '1b6e2c4a-3d5f-4e7a-9b8c-0d1e2f3a4b5c'
 const DUNE_SPINE = 'Dune by Frank Herbert, finished'
 const NEUROMANCER_SPINE = 'Neuromancer by William Gibson, not read yet'
@@ -49,6 +43,23 @@ const NEUROMANCER = {
   pages: 271,
   year: 1984,
 }
+// DUNE as the Edit book panel prefills it, to attach a cover with.
+const DUNE_EDIT_FORM = {
+  bookId: DUNE_ID,
+  title: 'Dune',
+  subtitle: 'Book One',
+  pages: '412',
+  authors: 'Frank Herbert',
+  edition: '1',
+  language: 'English',
+  publisher: 'Publisher',
+  type: 'paperback',
+  isbn: '',
+  year: '1965',
+  finishedOn: '2026-03-20',
+  tags: '',
+  spineColor: '',
+}
 
 /** The Spine popover: a non-modal `dialog` named by the Book's title. */
 function popover(page: Page, title: string): Locator {
@@ -62,28 +73,6 @@ function swatch(scope: Locator, name: string): Locator {
 /** Book detail's Change color block: the section under its "Change color" heading. */
 function changeColor(page: Page): Locator {
   return page.getByRole('main').getByRole('region', { name: /^Change color/ })
-}
-
-/** `#rrggbb` as the `rgb(r, g, b)` computed style reports. */
-function rgbOf(hex: string): string {
-  const [r, g, b] = [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16))
-  return `rgb(${r}, ${g}, ${b})`
-}
-
-/** Every POST to `path` the page sends, in order. */
-function requestsTo(page: Page, path: string): Request[] {
-  const sent: Request[] = []
-  page.on('request', (request) => {
-    if (request.method() === 'POST' && new URL(request.url()).pathname === path) sent.push(request)
-  })
-  return sent
-}
-
-/** The JSON `intent` part of a multipart intent request. */
-function intentOf(request: Request): Record<string, unknown> {
-  const body = (request.postDataBuffer() ?? Buffer.alloc(0)).toString('latin1')
-  const json = /name="intent"[^]*?\r\n\r\n(\{[^]*?\})\r\n--/.exec(body)?.[1] ?? '{}'
-  return JSON.parse(json) as Record<string, unknown>
 }
 
 test.describe('Story 1.14 Change a book’s color from the shelf (ATDD)', () => {
@@ -328,32 +317,6 @@ test.describe('Story 1.14 Change a book’s color from the shelf (ATDD)', () => 
   })
 })
 
-/** Setup: gives the seeded Dune a cover through edit-book, as the Edit book panel would. */
-async function attachCover(page: Page, server: Server): Promise<void> {
-  const response = await page.request.post(`${server.url}${EDIT_BOOK}`, {
-    multipart: {
-      intent: JSON.stringify({
-        bookId: DUNE_ID,
-        title: 'Dune',
-        subtitle: 'Book One',
-        pages: '412',
-        authors: 'Frank Herbert',
-        edition: '1',
-        language: 'English',
-        publisher: 'Publisher',
-        type: 'paperback',
-        isbn: '',
-        year: '1965',
-        finishedOn: '2026-03-20',
-        tags: '',
-        spineColor: '',
-      }),
-      cover: { name: 'dune.png', mimeType: 'image/png', buffer: COVER_PNG },
-    },
-  })
-  expect(response.status()).toBe(200)
-}
-
 /** The popover's pointer: its first child, a rotated square. */
 function pointerOf(card: Locator): Locator {
   return card.locator(':scope > span[aria-hidden="true"]').first()
@@ -442,7 +405,7 @@ test.describe('Story 1.14 Change a book’s color from the shelf (follow-ups)', 
     seededServer,
   }) => {
     const server = await seededServer({ books: [DUNE, NEUROMANCER] })
-    await attachCover(page, server)
+    await attachCover(page, server, DUNE_EDIT_FORM)
     const sent = requestsTo(page, SET_SPINE_COLOR)
     await page.goto(`${server.url}/`)
     const dune = spine(page, DUNE_SPINE)
@@ -612,7 +575,7 @@ test.describe('Story 1.14 Change a book’s color from the shelf (follow-ups)', 
     seededServer,
   }) => {
     const server = await seededServer({ books: [DUNE, NEUROMANCER] })
-    await attachCover(page, server)
+    await attachCover(page, server, DUNE_EDIT_FORM)
     const sent = requestsTo(page, SET_SPINE_COLOR)
     await page.goto(`${server.url}/book/${DUNE_ID}`)
     const block = changeColor(page)
@@ -730,7 +693,7 @@ test.describe('Story 1.14 Change a book’s color from the shelf (follow-ups)', 
 
   test('[P2] AC-1 axe finds nothing on the open popover, in both themes', async ({ page, seededServer }) => {
     const server = await seededServer({ books: [DUNE, NEUROMANCER] })
-    await attachCover(page, server)
+    await attachCover(page, server, DUNE_EDIT_FORM)
     const found: string[] = []
     for (const colorScheme of ['light', 'dark'] as const) {
       await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' })

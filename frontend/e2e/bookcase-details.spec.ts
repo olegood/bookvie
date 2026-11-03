@@ -8,6 +8,7 @@
 import AxeBuilder from '@axe-core/playwright'
 import type { Locator, Page } from '@playwright/test'
 import { expect, test } from './fixtures.ts'
+import { fillFields, openNewBook } from './library.ts'
 import {
   INK,
   ACCENT,
@@ -45,12 +46,8 @@ const TEXT_SPACING =
 
 /** Opens New book and fills a complete Book by label (Type: Paperback). */
 async function fillNewBook(page: Page, fields: Record<string, string>): Promise<Locator> {
-  await page.getByRole('button', { name: 'New book', exact: true }).click()
-  const panel = page.getByRole('dialog', { name: 'New book', exact: true })
-  for (const [label, value] of Object.entries(fields)) {
-    await panel.getByLabel(label, { exact: true }).fill(value)
-  }
-  await panel.getByRole('combobox', { name: 'Type', exact: true }).selectOption('Paperback')
+  const panel = await openNewBook(page)
+  await fillFields(panel, fields)
   return panel
 }
 

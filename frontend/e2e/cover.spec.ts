@@ -8,20 +8,22 @@
 import AxeBuilder from '@axe-core/playwright'
 import { readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
-import type { Locator, Page, Request } from '@playwright/test'
+import type { Locator, Page } from '@playwright/test'
 import { expect, type Server, test } from './fixtures.ts'
+import {
+  ADD_BOOK,
+  COVER_PNG,
+  DELETE_BOOK,
+  EDIT_BOOK,
+  attachCover,
+  bodyOf,
+  intentOf,
+  requestsTo,
+} from './intents.ts'
+import { DUNE_ID, newBookPanel, openEdit, rgbOf } from './library.ts'
 
-const ADD_BOOK = '/api/intents/add-book'
-const EDIT_BOOK = '/api/intents/edit-book'
-const DELETE_BOOK = '/api/intents/delete-book'
 const MIB = 1024 * 1024
-const DUNE_ID = '6f1c1d2e-9a4b-4c3d-8e5f-0a1b2c3d4e5f'
 
-// A 40×60 solid red-orange PNG (rgb 200, 60, 40): a colored cover.
-const COVER_PNG = Buffer.from(
-  'iVBORw0KGgoAAAANSUhEUgAAACgAAAA8CAIAAACb22+3AAAAO0lEQVR42u3NMQ0AMAgAMJgaROA/yJoHHp7WQHO64sKLI2KxWCwWi8VisVgsFovFYrFYLBaLxWKxeOMD/k0BpCMi0m0AAAAASUVORK5CYII=',
-  'base64',
-)
 // A 40×60 solid blue PNG (rgb 40, 90, 200): a second, different cover.
 const BLUE_PNG = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAACgAAAA8CAIAAACb22+3AAAAZUlEQVR4nO3NMQHDQADEsI/RFFMRF1bXHAFniEVA1+f7O0/gkfUUizCzu2INXrWKNXjVKtbgVatYg1etYg1etYo1eNUq1uBVq1iDV61iDV61ijV41SrW4FWrWINXrWINXnVeHv8BT9UBwsEIGK8AAAAASUVORK5CYII=',
@@ -61,14 +63,6 @@ const DUNE_FORM = {
   spineColor: '',
 }
 
-function newBookPanel(page: Page): Locator {
-  return page.getByRole('dialog', { name: 'New book', exact: true })
-}
-
-function editPanel(page: Page): Locator {
-  return page.getByRole('dialog', { name: 'Edit book', exact: true })
-}
-
 function coverInput(panel: Locator): Locator {
   return panel.getByLabel('Cover', { exact: true })
 }
@@ -79,24 +73,6 @@ function noCover(page: Page): Locator {
 
 function coverImage(page: Page, title: string): Locator {
   return page.getByRole('main').getByRole('img', { name: `Cover of ${title}`, exact: true })
-}
-
-async function openEdit(page: Page): Promise<Locator> {
-  await page.getByRole('main').getByRole('button', { name: 'Edit', exact: true }).click()
-  return editPanel(page)
-}
-
-/**
- * Setup: gives the seeded Dune a cover through edit-book, as the panel would.
- * The response is not read: the cover part is what this story builds.
- */
-async function attachCover(page: Page, server: Server): Promise<void> {
-  await page.request.post(`${server.url}${EDIT_BOOK}`, {
-    multipart: {
-      intent: JSON.stringify(DUNE_FORM),
-      cover: { name: 'dune.png', mimeType: 'image/png', buffer: COVER_PNG },
-    },
-  })
 }
 
 type StoredLibrary = { books: { id: string; coverFile: string | null }[] }
@@ -118,32 +94,6 @@ function referenced(server: Server): string[] {
   return library(server)
     .books.flatMap((book) => (book.coverFile ? [book.coverFile] : []))
     .sort()
-}
-
-/** `#rrggbb` as the `rgb(r, g, b)` computed style reports. */
-function rgbOf(hex: string): string {
-  const [r, g, b] = [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16))
-  return `rgb(${r}, ${g}, ${b})`
-}
-
-/** Every POST to `path` the page sends, in order. */
-function requestsTo(page: Page, path: string): Request[] {
-  const sent: Request[] = []
-  page.on('request', (request) => {
-    if (request.method() === 'POST' && new URL(request.url()).pathname === path) sent.push(request)
-  })
-  return sent
-}
-
-/** The multipart body as text, binary parts included byte for byte (latin1). */
-function bodyOf(request: Request): string {
-  return (request.postDataBuffer() ?? Buffer.alloc(0)).toString('latin1')
-}
-
-/** The JSON `intent` part of a multipart intent request. */
-function intentOf(request: Request): Record<string, unknown> {
-  const json = /name="intent"[^]*?\r\n\r\n(\{[^]*?\})\r\n--/.exec(bodyOf(request))?.[1] ?? '{}'
-  return JSON.parse(json) as Record<string, unknown>
 }
 
 test.describe('Story 1.13 Add a cover (ATDD)', () => {
@@ -211,7 +161,7 @@ test.describe('Story 1.13 Add a cover (ATDD)', () => {
     seededServer,
   }) => {
     const server = await seededServer({ books: [DUNE] })
-    await attachCover(page, server)
+    await attachCover(page, server, DUNE_FORM)
     await page.goto(`${server.url}/book/${DUNE_ID}`)
     const panel = await openEdit(page)
     const removeCover = panel.getByRole('button', { name: 'Remove cover', exact: true })
@@ -238,7 +188,7 @@ test.describe('Story 1.13 Add a cover (ATDD)', () => {
     seededServer,
   }) => {
     const server = await seededServer({ books: [DUNE] })
-    await attachCover(page, server)
+    await attachCover(page, server, DUNE_FORM)
     await page.goto(`${server.url}/book/${DUNE_ID}`)
     const panel = await openEdit(page)
     const sent = requestsTo(page, EDIT_BOOK)
@@ -330,7 +280,7 @@ test.describe('Story 1.13 Add a cover (ATDD)', () => {
     seededServer,
   }) => {
     const server = await seededServer({ books: [DUNE] })
-    await attachCover(page, server)
+    await attachCover(page, server, DUNE_FORM)
     await page.goto(`${server.url}/book/${DUNE_ID}`)
 
     await expect(coverImage(page, 'Dune')).toBeVisible()
@@ -380,7 +330,7 @@ test.describe('Story 1.13 Add a cover (ATDD)', () => {
     }
 
     for (const covered of [false, true]) {
-      if (covered) await attachCover(page, server)
+      if (covered) await attachCover(page, server, DUNE_FORM)
       for (const colorScheme of ['light', 'dark'] as const) {
         await page.emulateMedia({ colorScheme })
         await page.goto(`${server.url}/book/${DUNE_ID}`)
@@ -506,7 +456,7 @@ test.describe('Story 1.13 Add a cover (ATDD)', () => {
     const fromCover = (panel: Locator): Locator => panel.getByRole('button', { name: 'From cover', exact: true })
 
     // A colored cover: the dot is spineColorFromCover, as the view reports it.
-    await attachCover(page, server)
+    await attachCover(page, server, DUNE_FORM)
     const view = (await (await page.request.get(`${server.url}/api/views/book?id=${DUNE_ID}`)).json()) as {
       spineColorFromCover: string | null
     }
