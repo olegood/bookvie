@@ -174,7 +174,7 @@ action_items:
     action: "Keep spec frontmatter status in sync with sprint-status from one step;
       story reviews check the spine diff when an AD changes (PL-3, F-S2)"
     owner: "Oleg / bmad-build config"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-11-03.md"
   - id: "epic-1-retro-item-12-readme-npm-run-dev-needs-the-backend-run"
     epic: 1

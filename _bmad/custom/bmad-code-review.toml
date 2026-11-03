@@ -1,0 +1,30 @@
+# Team overrides for bmad-code-review. Committed; applies to every developer.
+# Merges over .claude/skills/bmad-code-review/customize.toml (lists append,
+# arrays of tables merge by `id`).
+
+[workflow]
+
+persistent_facts = [
+  """Resolve the spec/story pair as soon as one side is known (after step-01's Tier 1–3, before step-01 instruction 5 "Set the spec context"). If `spec_file` is set and `story_key` is empty: decide whether the spec is an epic story from its filename (`spec-{epic}-{story}-…`) or, failing that, its title, giving `epic_num` and `story_num`; if it is and `{sprint_status}` exists, find the `development_status` key matching `{epic_num}-{story_num}` by exact numeric equality on the first two segments (so `1-1` never collides with `1-10`) — exactly one match sets `story_key` to that full key; zero matches leave it empty; several leave it empty and warn. If `story_key` is set and `spec_file` is empty: look in `{implementation_artifacts}` for files named `spec-{story_key}.md` or `spec-{epic}-{story}-*.md` (epic and story = the first two segments of `story_key`, matched by exact numeric equality) and count distinct files; exactly one distinct file sets `spec_file` to it (so instruction 5 proceeds in `full` mode); none or several → ask the user for the spec path with instruction 5's existing question.""",
+  """Status writes in step 4 §6. A bmad-build spec has no Status section: its status is the frontmatter `status:` field — write `new_status` (`done` or `in-progress`) there, not to a Status section. When both `story_key` and `spec_file` are set and `{sprint_status}` has a `development_status[{story_key}]` entry, write `new_status` to the spec frontmatter and to that entry in the same pass, so they always show the same value. If the sprint-status file or the `{story_key}` entry is missing, write `new_status` to the spec frontmatter only and tell the user the sprint sync was skipped and why. With no `story_key`, write `new_status` to the spec frontmatter `status:` and skip the sprint sync.""",
+]
+
+[[workflow.review_layers]]
+id = "spine-check"
+name = "Spine Check"
+instruction = """
+Before launch, resolve the project root (the directory that holds `_bmad/`) to an absolute path and replace every `<project-root>` below with it, and make `{spec_file}` absolute, so the child gets absolute paths only — its working directory is not yours.
+
+Launch a context-free subagent with this prompt:
+
+Read `<project-root>/_bmad/custom/review-prompts/spine-check.md` completely and follow it as your review instructions.
+
+root: `<project-root>`
+
+diff: the unified diff at `{diff_file}`. Read that file — it is the content under review.
+
+spec_or_claims: {spec_file}
+
+Do not invoke any skill, and do not spawn subagents of your own — you are the reviewer. If the instruction file is unreadable, report that exact failure and stop. Return your findings as text in your final message; do not route them through any findings-reporting tool the host may offer.
+
+"""

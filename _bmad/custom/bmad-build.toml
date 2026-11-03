@@ -1,0 +1,30 @@
+# Team overrides for bmad-build. Committed; applies to every developer.
+# Merges over .claude/skills/bmad-build/customize.toml (lists append,
+# arrays of tables merge by `id`).
+
+[workflow]
+
+persistent_facts = [
+  """Spec status ownership (story work). When `story_key` is set, bmad-code-review is the only step that marks a story `done`. So every step of this run that would set the spec frontmatter `status` to `done` (step-05 "Mark Spec Done", step-oneshot "Finalize Spec") sets it to `in-review` instead; sprint-status is still synced to `review` exactly as the step says. When `story_key` is empty (non-story work such as retro items), set the spec `status` to `done` as the step says.""",
+  """Parked story specs (step-01). A story spec whose frontmatter `status` is `in-review` and whose `development_status` entry in sprint-status.yaml is `review` is parked for bmad-code-review. In step-01: do not list it as active work when scanning artifacts; if the user explicitly asks to resume it (by path, name, or a recent message), do not early-exit to step-04 — tell them it is waiting for bmad-code-review and stop; and for previous-story continuity, treat it as finished, exactly like a `done` spec (load it without asking). An `in-review` spec whose sprint entry is not `review`, or that has no story key, keeps the default step-01 behaviour.""",
+]
+
+[[workflow.review_layers]]
+id = "spine-check"
+name = "Spine Check"
+instruction = """
+Before launch, resolve the project root (the directory that holds `_bmad/`) to an absolute path and replace every `<project-root>` below with it, and make `{claims_file}` absolute, so the child gets absolute paths only — its working directory is not yours.
+
+Launch a context-free subagent with this prompt:
+
+Read `<project-root>/_bmad/custom/review-prompts/spine-check.md` completely and follow it as your review instructions.
+
+root: `<project-root>`
+
+diff: the unified diff at `{diff_file}`. Read that file — it is the content under review.
+
+spec_or_claims: {claims_file}
+
+Do not invoke any skill, and do not spawn subagents of your own — you are the reviewer. If the instruction file is unreadable, report that exact failure and stop. Return your findings as text in your final message; do not route them through any findings-reporting tool the host may offer.
+
+"""

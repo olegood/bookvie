@@ -148,3 +148,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-reconcile-architecture-spine-with-epic-1.md`
   summary: On a same-folder port conflict where health reports no usable `pid`, the launch skips the hand-over and its `finally: release_lock` deletes the lock, leaving the live server without one; decide whether to leave the lock in place instead.
   evidence: `cli.py:139-142` hands over only when `probe_pid` returns a live pid; `release_lock` removes a lock naming this launch. Reachable only if a bookvie without `pid` in health (pre-1.2) holds the port. Low, unverified by a test.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-sync-spec-status-and-spine-check.md`
+  summary: When bmad-code-review sends a story back to `in-progress`, its unresolved patch findings stay only in the review output; bmad-build's step-03 implements from the spec alone, so the rework has no defined path into the spec.
+  evidence: Blind Hunter round 2 on retro item 11; `bmad-code-review/steps/step-04-present.md:92` leaves patches "as action items" and bmad-build `step-03-implement.md` treats the spec as the sole source of truth.
