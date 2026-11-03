@@ -177,7 +177,7 @@ Activate one test at a time: delete its `@pytest.mark.skip(reason=RED)` line, or
 - [x] AC-7: after **Don't add**, editing the ISBN so it no longer matches and pressing **Add book** saves without a dialog (automate)
 - [x] AC-8: a `couldnt_save` on the resend (routed 503) keeps the panel open with every value, and the dialog is not reopened
 - [x] AC-8: **Add anyway** is guarded against a double press: while the resend is in flight, neither a press on Add book nor a `requestSubmit()` sends anything (automate)
-- [ ] AC-9: `book_not_found` doesn't apply to `add-book` (it names no existing Book), so there is no test for it. Story 1.11's `edit-book` takes the duplicate check together with that rule
+- ~~AC-9: `book_not_found` doesn't apply to `add-book` (it names no existing Book), so there is no test for it. Story 1.11's `edit-book` takes the duplicate check together with that rule~~ **Retired:** not applicable to `add-book`; Story 1.11's `edit-book` pins `book_not_found` at `backend/tests/test_edit_book.py:375` and its duplicate check at `backend/tests/test_edit_book.py:78`
 - [x] Unit (`src/**/*.test.ts`): `toIntentResult` with a `duplicates` list, including a malformed list counting as `couldnt_save`
 
 ---

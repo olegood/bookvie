@@ -155,60 +155,62 @@ None new. Seeded state goes through the existing `LibraryBuilder` (TC-1), called
 
 ## Implementation Checklist
 
+> Reconciled 2026-11-03 against 7b768a0 (Epic 1 retro action 1, F-S6): every line is ticked with evidence or retired with a reason.
+
 Activate one test at a time: change its `test.skip(` to `test(`, watch it fail, implement, and watch it pass. Run with `npm --prefix frontend run e2e -- e2e/new-book-panel.spec.ts -g "AC-1 "` after `npm run build` (the server serves the built SPA).
 
 ### Prerequisite: e2e time (deferred-work, Story 1.4 → 1.7)
-- [ ] Pin `TZ=Europe/Madrid` in `check:e2e`, and set `timezoneId` (and a fixed `page.clock` day matching `--fake-today`) in the Playwright fixture. The deferred-work item names this for Story 1.8. No red scaffold needs it, but Finished on's default and "not in the future" depend on it once green-phase tests cover them.
+- [x] Pin `TZ=Europe/Madrid` in `check:e2e`, and set `timezoneId` (and a fixed `page.clock` day matching `--fake-today`) in the Playwright fixture. The deferred-work item names this for Story 1.8. No red scaffold needs it, but Finished on's default and "not in the future" depend on it once green-phase tests cover them. → `package.json:18` (TZ pin), `frontend/playwright.config.ts:25` (`timezoneId`); missing: the `page.clock` + `--fake-today` fixture wiring, deferred until a test needs it (`_bmad-output/implementation-artifacts/deferred-work.md:20`)
 
 ### AC-1 panel
-- [ ] `components/SidePanel` (a native `<dialog>` with `showModal()`, a heading, × **Close**, a scrollable body with `scroll-padding-bottom` equal to the footer height, a sticky footer) and its CSS Module using `--color-scrim` for `::backdrop`
-- [ ] `CatalogPage`: **New book** (toolbar and empty state) opens `NewBookPanel`; focus on Title; `clearAnnouncements()` on open
-- [ ] Activate AC-1
+- [x] `components/SidePanel` (a native `<dialog>` with `showModal()`, a heading, × **Close**, a scrollable body with `scroll-padding-bottom` equal to the footer height, a sticky footer) and its CSS Module using `--color-scrim` for `::backdrop` → `frontend/src/components/SidePanel.tsx:42` (`showModal()`), `:59` (scroll-padding-bottom), `frontend/src/components/SidePanel.module.css:31` (`--color-scrim` backdrop)
+- [x] `CatalogPage`: **New book** (toolbar and empty state) opens `NewBookPanel`; focus on Title; `clearAnnouncements()` on open → `frontend/src/pages/CatalogPage.tsx:187` (one New book in the toolbar, also shown on the empty shelf), `frontend/src/pages/NewBookPanel.tsx:118` (`clearAnnouncements()` on open)
+- [x] Activate AC-1 → `frontend/e2e/new-book-panel.spec.ts:88`
 
 ### AC-2 fields
-- [ ] `NewBookPanel` with every contract field in form order, using `TextField` (with a "(required)" marker outside the label); the Type `<select>`; Finished on as `type=date`; Edition prefilled `1`
-- [ ] Activate AC-2
+- [x] `NewBookPanel` with every contract field in form order, using `TextField` (with a "(required)" marker outside the label); the Type `<select>`; Finished on as `type=date`; Edition prefilled `1` → `frontend/src/pages/NewBookPanel.tsx:218`, `frontend/src/components/TextField.tsx:26`
+- [x] Activate AC-2 → `frontend/e2e/new-book-panel.spec.ts:120`
 
 ### AC-3 Tags / AC-4 swatches
-- [ ] `TagsCombobox`: suggestions from `CatalogView.tags` that start with the last comma-separated segment; arrow keys move `aria-selected`; Enter picks the option (with `preventDefault`, so the form doesn't submit); free text untouched
-- [ ] Swatch row: eight `aria-pressed` buttons; pressing one sets Spine color; Spine color equal to a swatch's hex marks it pressed
-- [ ] Activate AC-3, then AC-4
+- [x] `TagsCombobox`: suggestions from `CatalogView.tags` that start with the last comma-separated segment; arrow keys move `aria-selected`; Enter picks the option (with `preventDefault`, so the form doesn't submit); free text untouched → `frontend/src/components/TagsCombobox.tsx:41`, `frontend/src/lib/catalog.ts:71`
+- [x] Swatch row: eight `aria-pressed` buttons; pressing one sets Spine color; Spine color equal to a swatch's hex marks it pressed → `frontend/src/components/SwatchRow.tsx:45`
+- [x] Activate AC-3, then AC-4 → `frontend/e2e/new-book-panel.spec.ts:171`, `frontend/e2e/new-book-panel.spec.ts:220`
 
 ### AC-5 / AC-12 add
-- [ ] `addBook(form)` in `api/`: `FormData` with an `intent` JSON part of the form's raw strings (camelCase keys, as in the 1.7 contract), through `sendIntent`
-- [ ] On **Add book**: `clearAnnouncements()`; set `aria-disabled` and ignore presses until the result; on `ok`, clear a hiding search, close the panel, wait for the refetched view to render, focus the new row's title, highlight it, then `announce('status', 'Added <Title>.')`
-- [ ] Activate AC-5, then AC-12
+- [x] `addBook(form)` in `api/`: `FormData` with an `intent` JSON part of the form's raw strings (camelCase keys, as in the 1.7 contract), through `sendIntent` → `frontend/src/api/books.ts:52`, `frontend/src/api/books.test.ts:22`
+- [x] On **Add book**: `clearAnnouncements()`; set `aria-disabled` and ignore presses until the result; on `ok`, clear a hiding search, close the panel, wait for the refetched view to render, focus the new row's title, highlight it, then `announce('status', 'Added <Title>.')` → `frontend/src/pages/NewBookPanel.tsx:142`, `frontend/src/pages/CatalogPage.tsx:167` and `:94`
+- [x] Activate AC-5, then AC-12 → `frontend/e2e/new-book-panel.spec.ts:239`, `frontend/e2e/new-book-panel.spec.ts:455`
 
 ### AC-6 / AC-7 refusals
-- [ ] `invalid_fields`: map `fields[].field` (camelCase key) to its input; set `aria-invalid` and `aria-describedby` on each; `announce('alert', error.message)`; focus the first invalid field in form order; keep every value
-- [ ] `couldnt_save`: keep the panel and values; show the line in ink inside the panel; `announce('alert', message)`
-- [ ] `TextField` invalid style: `2px solid var(--color-ink)`, messages in ink, no red token anywhere
-- [ ] Activate AC-6, then AC-7
+- [x] `invalid_fields`: map `fields[].field` (camelCase key) to its input; set `aria-invalid` and `aria-describedby` on each; `announce('alert', error.message)`; focus the first invalid field in form order; keep every value → `frontend/src/pages/NewBookPanel.tsx:164`, `frontend/src/components/TextField.tsx:33`
+- [x] `couldnt_save`: keep the panel and values; show the line in ink inside the panel; `announce('alert', message)` → `frontend/src/components/SidePanel.module.css:106`, `frontend/src/pages/NewBookPanel.tsx:172`
+- [x] `TextField` invalid style: `2px solid var(--color-ink)`, messages in ink, no red token anywhere → `frontend/src/components/TextField.module.css:48`, pinned by `frontend/e2e/new-book-panel.spec.ts:316`
+- [x] Activate AC-6, then AC-7 → `frontend/e2e/new-book-panel.spec.ts:286`, `frontend/e2e/new-book-panel.spec.ts:324`
 
 ### AC-8 closing
-- [ ] **Cancel**, **Close** and the dialog's `cancel` event (Esc) reset the form and close; focus returns to the opener
-- [ ] Activate AC-8
+- [x] **Cancel**, **Close** and the dialog's `cancel` event (Esc) reset the form and close; focus returns to the opener → `frontend/src/components/SidePanel.tsx:77` (cancel), `:49` (focus back to the opener); the form resets because the panel unmounts (`frontend/src/pages/CatalogPage.tsx:205`)
+- [x] Activate AC-8 → `frontend/e2e/new-book-panel.spec.ts:391`
 
 ### AC-9 / AC-10 / AC-11 List view and search
-- [ ] `CatalogList`: `<table>` Title (serif `book-title-sm`), Author, Pages, Status, Date added; sort with `new Intl.Collator(undefined)` on `firstAuthor`, then on title
-- [ ] `SearchTitles`: labelled `type=search`, first in `main`; filter with `toLocaleLowerCase().includes`; set `hidden` on non-matching rows; debounce about 500 ms, then `announce('status', 'N books match.')`; the no-match line; Esc clears a non-empty field
-- [ ] Activate AC-9, AC-10, then AC-11
+- [x] `CatalogList`: `<table>` Title (serif `book-title-sm`), Author, Pages, Status, Date added; sort with `new Intl.Collator(undefined)` on `firstAuthor`, then on title → `frontend/src/pages/CatalogList.tsx:30`, `frontend/src/lib/catalog.ts:14`
+- [x] `SearchTitles`: labelled `type=search`, first in `main`; filter with `toLocaleLowerCase().includes`; set `hidden` on non-matching rows; debounce about 500 ms, then `announce('status', 'N books match.')`; the no-match line; Esc clears a non-empty field → `frontend/src/pages/SearchTitles.tsx:18`, `frontend/src/pages/CatalogPage.tsx:150`, `frontend/src/pages/CatalogList.tsx:28`
+- [x] Activate AC-9, AC-10, then AC-11 → `frontend/e2e/catalog-list.spec.ts:18`, `:74`, `:130`
 
 ### Green-phase follow-ups (secondary branches, not separate red leaves)
-- [ ] AC-1: `inert` / focus trap. Tab from **Close** wraps inside the panel, and `main` is not reachable while the panel is open. Also axe in both themes with the panel open (as in 1.6's AC-13)
-- [ ] AC-1: the 150 ms fade, and no fade or slide under `prefers-reduced-motion: reduce`
-- [ ] AC-2: the dark theme's ink for messages and borders (`rgb(236, 234, 227)`)
-- [ ] AC-3: suggestions for the second tag ("sci-fi, cl" suggests `classics` and keeps `sci-fi, `); ArrowUp; Esc in Tags closes the listbox first and doesn't close the panel; matching that ignores case ("SC")
-- [ ] AC-4: typing a swatch's hex by hand marks that swatch pressed; clearing Spine color unpresses all
-- [ ] AC-5: Finished on filled → the new row's Status reads as finished (back-filled), and the library meter, once it exists, counts it
-- [ ] AC-5: the full CAT-E2E-002 agent flow over all optional fields (Subtitle, ISBN with spaces, Year, Tags, Spine color) read back from the catalog view; Story 1.10 reruns it in Bookcase view
-- [ ] AC-6: one test per validation-table row through the UI (Pages `0`, Edition `0`, Year `65`, ISBN `12345`, Finished on tomorrow, Spine color `red`), each with its exact described-by text; the 1-field singular "1 field needs attention: Pages."
-- [ ] AC-6: a second invalid press re-announces the same alert text (regions emptied, then set after the tick)
-- [ ] AC-7: a network failure (`route.abort`) gives the same couldn't-save outcome (`sendIntent` maps it); a retry after the route is lifted saves once
-- [ ] AC-8: Esc while the Tags listbox is open; closing from the empty state returns focus to the empty state's **New book**
-- [ ] AC-10: the 500 ms pause measured with `page.clock` (no announcement at 300 ms, one at about 600 ms); "1 book match." versus "1 books match." (settle the copy, see Notes); search plus a later add of a matching title
-- [ ] AC-9: ties on author break by title with the collator ("a" vs "B"); Date added and Pages formatting; Status strings
-- [ ] Unit (`src/**/*.test.ts`): the catalog sort comparator, the tags-segment matcher, and the search predicate
+- [x] AC-1: `inert` / focus trap. Tab from **Close** wraps inside the panel, and `main` is not reachable while the panel is open. Also axe in both themes with the panel open (as in 1.6's AC-13) → native `showModal()` makes the page inert (`frontend/src/components/SidePanel.tsx:42`); axe in both themes on the same panel in edit mode, `frontend/e2e/book-detail.spec.ts:526`; missing: no e2e test presses Tab from **Close** to show the wrap
+- [x] AC-1: the 150 ms fade, and no fade or slide under `prefers-reduced-motion: reduce` → `frontend/src/components/SidePanel.module.css:17`; reduced motion turns it off globally (`frontend/src/styles/base.css:38`, pinned by `frontend/e2e/app-shell.spec.ts:260`); no panel-specific e2e assertion
+- [x] AC-2: the dark theme's ink for messages and borders (`rgb(236, 234, 227)`) → `frontend/src/components/TextField.module.css:49` and `:57` use `--color-ink` (`#ECEAE3` in dark, `frontend/src/styles/tokens.css:192`); no dark-theme e2e assertion on the panel's fields
+- [x] AC-3: suggestions for the second tag ("sci-fi, cl" suggests `classics` and keeps `sci-fi, `); ArrowUp; Esc in Tags closes the listbox first and doesn't close the panel; matching that ignores case ("SC") → second tag `frontend/e2e/book-detail.spec.ts:471`; Esc closes the list first `frontend/e2e/new-book-panel.spec.ts:201`; case-insensitive match `frontend/src/lib/catalog.test.ts:110`; ArrowUp implemented at `frontend/src/components/TagsCombobox.tsx:52` but not tested
+- [x] AC-4: typing a swatch's hex by hand marks that swatch pressed; clearing Spine color unpresses all → `frontend/src/components/SwatchRow.tsx:45` (pressed state derived from the field's value); no e2e test types a hex by hand
+- [x] AC-5: Finished on filled → the new row's Status reads as finished (back-filled), and the library meter, once it exists, counts it → back-fill `backend/tests/test_add_book.py:199`; Finished status in the row `frontend/e2e/catalog-list.spec.ts:70`; meter counts it `frontend/e2e/book-detail.spec.ts:450` (edit mode); no single e2e adds through the panel with Finished on
+- ~~AC-5: the full CAT-E2E-002 agent flow over all optional fields (Subtitle, ISBN with spaces, Year, Tags, Spine color) read back from the catalog view; Story 1.10 reruns it in Bookcase view~~ **Retired:** not found in code at 7b768a0; searched `frontend/e2e/*.spec.ts` for an add that fills Subtitle, ISBN, Year and Spine color and reads them back. The UI adds fill required fields plus Tags (`frontend/e2e/new-book-panel.spec.ts:213`); the Bookcase-view rerun is `frontend/e2e/bookcase.spec.ts:390`. Deferred: `_bmad-output/implementation-artifacts/deferred-work.md:166`
+- ~~AC-6: one test per validation-table row through the UI (Pages `0`, Edition `0`, Year `65`, ISBN `12345`, Finished on tomorrow, Spine color `red`), each with its exact described-by text; the 1-field singular "1 field needs attention: Pages."~~ **Retired:** superseded: the server owns every message and the panel only renders `fields[].message` (`frontend/src/pages/NewBookPanel.tsx:164`), so each rule is pinned server-side at `backend/tests/test_add_book.py:329`; the UI path is pinned by `frontend/e2e/new-book-panel.spec.ts:303`, the singular summary by `frontend/e2e/book-detail.spec.ts:267`
+- [x] AC-6: a second invalid press re-announces the same alert text (regions emptied, then set after the tick) → unit `frontend/src/lib/announce.test.ts:47`; the panel clears then announces on each press (`frontend/src/pages/NewBookPanel.tsx:145`, `:173`); no e2e second press
+- [x] AC-7: a network failure (`route.abort`) gives the same couldn't-save outcome (`sendIntent` maps it); a retry after the route is lifted saves once → `sendIntent` maps a network failure to couldnt_save, `frontend/src/api/intents.test.ts:112`; missing: no e2e with `route.abort` and a retry after the route is lifted
+- [x] AC-8: Esc while the Tags listbox is open; closing from the empty state returns focus to the empty state's **New book** → Esc in Tags `frontend/e2e/new-book-panel.spec.ts:201`; the empty shelf uses the same toolbar New book (`frontend/src/pages/CatalogPage.tsx:187`) and focus returns to the opener (`frontend/src/components/SidePanel.tsx:49`); no e2e closes from the empty state
+- ~~AC-10: the 500 ms pause measured with `page.clock` (no announcement at 300 ms, one at about 600 ms); "1 book match." versus "1 books match." (settle the copy, see Notes); search plus a later add of a matching title~~ **Retired:** needs the browser fake clock, deferred to the first Epic 3 story that shows relative days (retro F-S5; `_bmad-output/implementation-artifacts/deferred-work.md:20`). The rest is settled: the copy is "1 book matches." (`frontend/src/lib/catalog.test.ts:58`), and a search is cleared before an add (`frontend/e2e/new-book-panel.spec.ts:247`)
+- [x] AC-9: ties on author break by title with the collator ("a" vs "B"); Date added and Pages formatting; Status strings → ties `frontend/src/lib/catalog.test.ts:31`; Date added, Pages and Status `frontend/e2e/catalog-list.spec.ts:70`
+- [x] Unit (`src/**/*.test.ts`): the catalog sort comparator, the tags-segment matcher, and the search predicate → `frontend/src/lib/catalog.test.ts:16` (sort), `:110` (tags segment), `:44` (search)
 
 ---
 

@@ -137,61 +137,62 @@ None. The fault injection goes through the store's real filesystem seam (`Faulty
 ---
 
 ## Implementation Checklist
+> Reconciled 2026-11-03 against 7b768a0 (Epic 1 retro action 1, F-S6): every line is ticked with evidence or retired with a reason.
 
 Activate one test at a time: delete its `@pytest.mark.skip(reason=RED)` line, watch it fail, implement, and watch it pass.
 
 ### Prerequisite: the Clock (deferred-work, Story 1.4)
-- [ ] `domain/clock.py`: a `Clock` protocol with `now()` and `today()`, `SystemClock`, and `FakeClock(today)`
-- [ ] `create_app(..., clock=SystemClock())` keeps the clock on `app.state`; `cli` passes `FakeClock` for `--fake-today` (only with `--no-browser`)
-- [ ] `TZ=Europe/Madrid` for `check:py`; a test that `domain/` reads time only through `Clock` (see the deferred item for the full list)
+- [x] `domain/clock.py`: a `Clock` protocol with `now()` and `today()`, `SystemClock`, and `FakeClock(today)` → `backend/bookvie/domain/clock.py:12` (`Clock`), `:22` (`SystemClock`), `:32` (`FakeClock`); `backend/tests/test_clock.py:29`
+- [x] `create_app(..., clock=SystemClock())` keeps the clock on `app.state`; `cli` passes `FakeClock` for `--fake-today` (only with `--no-browser`) → `backend/bookvie/http/app.py:141`; `backend/bookvie/cli.py:186` and the `--no-browser` guard at `:76`; `backend/tests/test_cli.py:111`, `:269`
+- [x] `TZ=Europe/Madrid` for `check:py`; a test that `domain/` reads time only through `Clock` (see the deferred item for the full list) → `package.json:16`; `backend/tests/test_clock.py:19` (Madrid), `:89` (domain reads time only through `Clock`)
 
 ### AC-1 save
-- [ ] `intents/add_book.py`: an `AddBookIntent` Pydantic model of optional strings (`extra="forbid"`, camelCase aliases)
-- [ ] `POST /api/intents/add-book` in `http/api.py`, reading the `intent` form part, parsing it as JSON and going through `commit()`
-- [ ] Build the `Book`: `uuid4`, `clock.now()`, `owned`, edition default 1, `coverFile: null`, empty lists
-- [ ] Change `OkResponse.ids` to `dict[str, str] | None`, and update `test_contract.py` (`ids=["x"]` → `{"probe": "x"}`) and the generated TS types (`check:api`)
-- [ ] Activate AC-1: `cd backend && uv run pytest tests/test_add_book.py -k ac1`
+- [x] `intents/add_book.py`: an `AddBookIntent` Pydantic model of optional strings (`extra="forbid"`, camelCase aliases) → `backend/bookvie/intents/add_book.py:37` (now a subclass of the shared `BookFormIntent`, `backend/bookvie/intents/book_form.py:26`; `extra="forbid"` and camelCase aliases in `backend/bookvie/intents/intent_model.py:41-42`)
+- [x] `POST /api/intents/add-book` in `http/api.py`, reading the `intent` form part, parsing it as JSON and going through `commit()` → `backend/bookvie/http/api.py:196-216`; JSON parsing in `backend/bookvie/intents/intent_model.py:61`; `commit()` at `backend/bookvie/intents/add_book.py:95`
+- [x] Build the `Book`: `uuid4`, `clock.now()`, `owned`, edition default 1, `coverFile: null`, empty lists → `backend/bookvie/intents/add_book.py:51-91`; edition default `DEFAULT_EDITION` in `backend/bookvie/domain/book_fields.py:51`; pinned by `backend/tests/test_add_book.py:64`
+- [x] Change `OkResponse.ids` to `dict[str, str] | None`, and update `test_contract.py` (`ids=["x"]` → `{"probe": "x"}`) and the generated TS types (`check:api`) → `backend/bookvie/intents/contract.py:72`; `backend/tests/test_contract.py:81`; `frontend/src/api/generated/schema.d.ts:340`
+- [x] Activate AC-1: `cd backend && uv run pytest tests/test_add_book.py -k ac1` → `backend/tests/test_add_book.py:64` (not skipped)
 
 ### AC-2 spine colors
-- [ ] The curated palette lives in `domain/` (in Sage … Stone order); add-book assigns `palette[len(books) % 8]`
-- [ ] `spineColorUser` is the trimmed entry or null; resolve `spineColor` once, at creation
-- [ ] Activate AC-2
+- [x] The curated palette lives in `domain/` (in Sage … Stone order); add-book assigns `palette[len(books) % 8]` → `backend/bookvie/domain/book_fields.py:38` (`CURATED_SPINE_COLORS`), `:305`; assigned at `backend/bookvie/intents/add_book.py:65`
+- [x] `spineColorUser` is the trimmed entry or null; resolve `spineColor` once, at creation → `backend/bookvie/intents/add_book.py:86-89`; trim/null in `backend/bookvie/domain/book_fields.py:277`
+- [x] Activate AC-2 → `backend/tests/test_add_book.py:101` (not skipped)
 
 ### AC-3 validation
-- [ ] Trim every text field first; collect **every** failure in form order, then raise `invalid_fields(...)` once
-- [ ] Rules and copy exactly as in EXPERIENCE.md → Agent Label Contract (required: "*Label* is required."; Pages, Edition, Year, ISBN, Finished on, Spine color)
-- [ ] Activate AC-3
+- [x] Trim every text field first; collect **every** failure in form order, then raise `invalid_fields(...)` once → trim at `backend/bookvie/domain/book_fields.py:223`, collect in `parse_book_fields`; one raise via `refuse_fields` (the `invalid_fields` refusal) in `backend/bookvie/intents/book_form.py:77`
+- [x] Rules and copy exactly as in EXPERIENCE.md → Agent Label Contract (required: "*Label* is required."; Pages, Edition, Year, ISBN, Finished on, Spine color) → messages in `backend/bookvie/domain/book_fields.py:60-67`, `required_message` at `:108`; pinned by `backend/tests/test_add_book.py:120`, `:281`
+- [x] Activate AC-3 → `backend/tests/test_add_book.py:120` (not skipped)
 
 ### AC-4 / AC-5 normalizing
-- [ ] Authors: split on `;`, trim, drop empties; none left → "Author(s) is required."
-- [ ] Tags: split on `,`, trim, drop empties, merge duplicates by `casefold()`, keep the first spelling
-- [ ] Activate AC-4, then AC-5
+- [x] Authors: split on `;`, trim, drop empties; none left → "Author(s) is required." → `backend/bookvie/domain/book_fields.py:134`, `:239-241`
+- [x] Tags: split on `,`, trim, drop empties, merge duplicates by `casefold()`, keep the first spelling → `backend/bookvie/domain/book_fields.py:139` (`merge_tags`, `casefold`), `:151`
+- [x] Activate AC-4, then AC-5 → `backend/tests/test_add_book.py:171`, `:186` (not skipped)
 
 ### AC-6 back-fill
-- [ ] Finished on → `Reading(start_date=None, finish_date=<date>, finished_pages=pages, …)`; empty → `readings: []`
-- [ ] Activate AC-6
+- [x] Finished on → `Reading(start_date=None, finish_date=<date>, finished_pages=pages, …)`; empty → `readings: []` → `backend/bookvie/intents/book_form.py:91` (`backfill_reading`); `backend/bookvie/intents/add_book.py:66-68`
+- [x] Activate AC-6 → `backend/tests/test_add_book.py:199` (not skipped)
 
 ### AC-7 catalog view
-- [ ] `ShelfBook.authors`, `pages`, `created_at`; `CatalogView.tags` (each distinct tag once)
-- [ ] Update `test_views.py`'s exact-dict expectations and the generated TS types
-- [ ] Activate AC-7
+- [x] `ShelfBook.authors`, `pages`, `created_at`; `CatalogView.tags` (each distinct tag once) → `backend/bookvie/views/models.py:31-34`, `:52`; tags merged in `backend/bookvie/views/shelf.py:65`
+- [x] Update `test_views.py`'s exact-dict expectations and the generated TS types → `backend/tests/test_views.py:65-68`; `frontend/src/api/generated/schema.d.ts:265-270`, `:359`
+- [x] Activate AC-7 → `backend/tests/test_add_book.py:220` (not skipped)
 
 ### AC-8 TR8
-- [ ] Nothing new beyond `commit()`, which already maps seam faults to 503
-- [ ] Activate AC-8 last; it passes once AC-1 does, and guards the multipart route from bypassing `commit()`
+- [x] Nothing new beyond `commit()`, which already maps seam faults to 503 → `backend/bookvie/intents/add_book.py:95` (plain `commit()`, nothing extra)
+- [x] Activate AC-8 last; it passes once AC-1 does, and guards the multipart route from bypassing `commit()` → `backend/tests/test_add_book.py:249` (not skipped)
 
 ### Green-phase follow-ups (secondary branches, not separate red leaves)
-- [ ] AC-3 table, one row per rule (CAT-API-002): Pages `"abc"`, `"12.5"`, `"-3"` → "Pages must be a whole number, 1 or more."; Edition the same; Year `"19650"`, `"2028"` (after next year) → "Year must be a year, like 1965."; ISBN with 11 digits, an `X` not in last place, or 13 digits ending in `X`; Spine color `#12345`, `#GGHHII` and `123456`; every required field missing (key absent) as well as empty
-- [ ] AC-3: the order of `fields` follows the form order (Title … Spine color), so the alert names fields in reading order
-- [ ] AC-3: an unknown key in `intent` (e.g. `ownership`) is refused as `invalid_fields`; a missing `intent` part, or one that isn't JSON, is 422 `invalid_fields` with field `intent`, not FastAPI's `{detail}`
-- [ ] AC-3: Finished on not a date (`2026-02-30`, `30/10/2026`). The validation table has no separate message for this; decide the copy (see Notes)
-- [ ] AC-3: Type `novel` (or `Paperback` capitalised) is refused with a `type` field error; the table has no copy for it (see Notes)
-- [ ] AC-2: rotation after a delete (Story 1.12) — decide whether the count or a stored counter drives it, then pin it
-- [ ] AC-6: Finished on with Clock `today` on the DST days (29 Mar, 25 Oct 2026) stays that local date
-- [ ] AC-7: `tags` when two Books spell a tag differently (`Classics` / `classics`): one entry or two? Pin when decided
-- [ ] AC-8: `close` and `create_temp` faults (already covered generically in `test_contract.py`); a `check_invariants()` failure on add-book is 500 and commits nothing
-- [ ] Deferred-work item from Story 1.4 review: uniqueness invariants (unique Book IDs, …) are "needed before Story 1.7 creates IDs". Add them with this story, and a test that two adds never share an id
-- [ ] Property test (Hypothesis): any accepted add-book leaves a library that `check_invariants()` accepts and that round-trips through `serialize`
+- [x] AC-3 table, one row per rule (CAT-API-002): Pages `"abc"`, `"12.5"`, `"-3"` → "Pages must be a whole number, 1 or more."; Edition the same; Year `"19650"`, `"2028"` (after next year) → "Year must be a year, like 1965."; ISBN with 11 digits, an `X` not in last place, or 13 digits ending in `X`; Spine color `#12345`, `#GGHHII` and `123456`; every required field missing (key absent) as well as empty → `backend/tests/test_add_book.py:281` (rule table), `:374` (missing required key)
+- [x] AC-3: the order of `fields` follows the form order (Title … Spine color), so the alert names fields in reading order → `backend/tests/test_add_book.py:391`
+- [x] AC-3: an unknown key in `intent` (e.g. `ownership`) is refused as `invalid_fields`; a missing `intent` part, or one that isn't JSON, is 422 `invalid_fields` with field `intent`, not FastAPI's `{detail}` → `backend/tests/test_add_book.py:450-477` (`missing`, `not-json`, `unknown-key`, ...), `:492` (no body)
+- [x] AC-3: Finished on not a date (`2026-02-30`, `30/10/2026`). The validation table has no separate message for this; decide the copy (see Notes) → decided "Finished on must be a date, like 2026-03-14." (`backend/bookvie/domain/book_fields.py:65`); pinned at `backend/tests/test_add_book.py:314`
+- [x] AC-3: Type `novel` (or `Paperback` capitalised) is refused with a `type` field error; the table has no copy for it (see Notes) → "Type must be Paperback, Hardcover or Ebook." (`backend/bookvie/domain/book_fields.py:62`); pinned at `backend/tests/test_add_book.py:311-312`
+- ~~AC-2: rotation after a delete (Story 1.12) — decide whether the count or a stored counter drives it, then pin it~~ **Retired:** the Book count drives it (`_bmad-output/implementation-artifacts/spec-1-7-accept-a-new-book-only-when-it-is-complete.md:26`, `backend/bookvie/intents/add_book.py:65`), pinned only on a library that already has Books (`backend/tests/test_add_book.py:523`). No test runs a delete before the add, and the retro defers changing this rule (F-R4, `_bmad-output/implementation-artifacts/epic-1-retro-2026-11-03.md:91-96`: rotate from the last Book's curated color, not the count). The delete-then-add test belongs with that fix: `_bmad-output/implementation-artifacts/deferred-work.md:160`.
+- [x] AC-6: Finished on with Clock `today` on the DST days (29 Mar, 25 Oct 2026) stays that local date → `backend/tests/test_add_book.py:510`
+- [x] AC-7: `tags` when two Books spell a tag differently (`Classics` / `classics`): one entry or two? Pin when decided → decided: one entry, first spelling in library order (`backend/bookvie/views/shelf.py:60-65`); pinned by `backend/tests/test_views.py:110` (`Fantasy`/`fantasy`)
+- [x] AC-8: `close` and `create_temp` faults (already covered generically in `test_contract.py`); a `check_invariants()` failure on add-book is 500 and commits nothing → `backend/tests/test_contract.py:249` (`create_temp`, `close`); `backend/tests/test_add_book.py:533` (invariant failure is 500, nothing committed)
+- [x] Deferred-work item from Story 1.4 review: uniqueness invariants (unique Book IDs, …) are "needed before Story 1.7 creates IDs". Add them with this story, and a test that two adds never share an id → `backend/bookvie/domain/invariants.py:32` (`unique_book_ids`, plus reading and card-note ids); `backend/tests/test_invariants.py:198`; `backend/tests/test_add_book.py:498`
+- ~~Property test (Hypothesis): any accepted add-book leaves a library that `check_invariants()` accepts and that round-trips through `serialize`~~ **Retired:** deferred in `_bmad-output/implementation-artifacts/deferred-work.md:60` (pick up with `bmad-testarch-automate`); no Hypothesis test in `backend/tests/test_add_book.py`
 
 ---
 

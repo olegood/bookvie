@@ -166,72 +166,74 @@ None. Per `e2e/README.md`, tests locate by role and accessible name only.
 
 ## Implementation Checklist
 
+> Reconciled 2026-11-03 against 7b768a0 (Epic 1 retro action 1, F-S6): every line is ticked with evidence or retired with a reason.
+
 Activate one test at a time: change `test.skip(` / `it.skip(` to `test(` / `it(`, watch it fail, implement, and watch it pass.
 
 ### AC-1 tokens
-- [ ] Add the elevation and scrim custom properties (light on `:root`, dark in both dark blocks)
-- [ ] Keep `tokens.css` in step with DESIGN.md frontmatter (the test parses the file)
-- [ ] Serif stack only on book-title roles
-- [ ] Activate, run `npm --prefix frontend run e2e -- e2e/app-shell.spec.ts -g "AC-1"`
+- [x] Add the elevation and scrim custom properties (light on `:root`, dark in both dark blocks) → `frontend/src/styles/tokens.css:159` (light), `:210` (`[data-theme="dark"]`), `:242` (prefers-color-scheme dark)
+- [x] Keep `tokens.css` in step with DESIGN.md frontmatter (the test parses the file) → `frontend/e2e/app-shell.spec.ts:97`
+- [x] Serif stack only on book-title roles → `frontend/e2e/app-shell.spec.ts:105` (serif families only in `--font-book-title-*`, `frontend/src/styles/tokens.css:71`)
+- [x] Activate, run `npm --prefix frontend run e2e -- e2e/app-shell.spec.ts -g "AC-1"` → `frontend/e2e/app-shell.spec.ts:90`
 
 ### AC-2 top nav
-- [ ] `AppShell` layout route: `header` > skip link, wordmark "bookvie" + accent square, `nav` with Catalog
-- [ ] `/` renders Catalog inside the shell; NavLink sets `aria-current="page"`; 2px accent underline
-- [ ] Skip link visible only on focus; moves focus to `main`
-- [ ] Activate AC-2
+- [x] `AppShell` layout route: `header` > skip link, wordmark "bookvie" + accent square, `nav` with Catalog → `frontend/src/main.tsx:29`, `frontend/src/components/AppShell.tsx:24`
+- [x] `/` renders Catalog inside the shell; NavLink sets `aria-current="page"`; 2px accent underline → `frontend/src/main.tsx:32`, `frontend/src/components/AppShell.module.css:78`; pinned by `frontend/e2e/app-shell.spec.ts:119`
+- [x] Skip link visible only on focus; moves focus to `main` → `frontend/src/components/AppShell.tsx:17`, `frontend/src/components/AppShell.module.css:23`; pinned by `frontend/e2e/app-shell.spec.ts:328` and `:126`
+- [x] Activate AC-2 → `frontend/e2e/app-shell.spec.ts:115`
 
 ### AC-3 theme toggle
-- [ ] `role="group"` `aria-label="Theme"`, three buttons with `aria-pressed`, glyphs `aria-hidden`
-- [ ] Set `data-theme` on `<html>` (Light/Dark), remove it for System; `localStorage` read and write in try/catch, default System
-- [ ] Activate AC-3
+- [x] `role="group"` `aria-label="Theme"`, three buttons with `aria-pressed`, glyphs `aria-hidden` → `frontend/src/components/ThemeToggle.tsx:36` (glyph `aria-hidden` at `:9`)
+- [x] Set `data-theme` on `<html>` (Light/Dark), remove it for System; `localStorage` read and write in try/catch, default System → `frontend/src/lib/theme.ts:15`, `:24`, `:32`
+- [x] Activate AC-3 → `frontend/e2e/app-shell.spec.ts:142`
 
 ### AC-4 landmarks and focus
-- [ ] Per-route `document.title` "<Page> — bookvie"; `h1` `tabindex="-1"` focused after client navigation
-- [ ] Activate AC-4
+- [x] Per-route `document.title` "<Page> — bookvie"; `h1` `tabindex="-1"` focused after client navigation → `frontend/src/lib/page.ts:14`, `frontend/src/components/PageHeading.tsx:8`
+- [x] Activate AC-4 → `frontend/e2e/app-shell.spec.ts:212`
 
 ### AC-5 live regions
-- [ ] One `role="status"` (polite) and one `role="alert"` in the shell
-- [ ] Shared `announce()` helper: empty both, then set text after ~100 ms
-- [ ] Activate AC-5
+- [x] One `role="status"` (polite) and one `role="alert"` in the shell → `frontend/src/components/AppShell.tsx:48`
+- [x] Shared `announce()` helper: empty both, then set text after ~100 ms → `frontend/src/lib/announce.ts:93` (`ANNOUNCE_DELAY_MS = 100` at `:12`)
+- [x] Activate AC-5 → `frontend/e2e/app-shell.spec.ts:232`
 
 ### AC-6 / AC-7 loading and couldn't load
-- [ ] Catalog uses `useCatalogView()`; `loading` renders nothing in `main`, `failed` renders the alert line and **Try again** (`retry`)
-- [ ] Activate AC-6, then AC-7
+- [x] Catalog uses `useCatalogView()`; `loading` renders nothing in `main`, `failed` renders the alert line and **Try again** (`retry`) → `frontend/src/pages/CatalogPage.tsx:51`, `:129`, `:131`
+- [x] Activate AC-6, then AC-7 → `frontend/e2e/catalog-empty.spec.ts:16`, `:37`
 
 ### AC-8 empty shelf
-- [ ] Empty state: planks on `shelf-wall`, the sentence in `body`/`ink-secondary`, **New book** `button-primary`; toolbar holds only **New book**; no meter
-- [ ] Activate AC-8
+- [x] Empty state: planks on `shelf-wall`, the sentence in `body`/`ink-secondary`, **New book** `button-primary`; toolbar holds only **New book**; no meter → `frontend/src/pages/CatalogPage.tsx:30`, `:184`; `frontend/src/pages/Bookcase.module.css:13`, `:31`
+- [x] Activate AC-8 → `frontend/e2e/catalog-empty.spec.ts:72`
 
 ### AC-9 primitives
-- [ ] `button-primary`, `button-secondary`, `link`, Text field, focus ring on `:focus-visible`, Failure message as shared CSS modules
-- [ ] Activate AC-9
+- [x] `button-primary`, `button-secondary`, `link`, Text field, focus ring on `:focus-visible`, Failure message as shared CSS modules → `frontend/src/components/Button.module.css:17`, `frontend/src/components/TextField.module.css:43`, `frontend/src/components/FailureMessage.module.css:1`; link and focus ring are global in `frontend/src/styles/base.css:6`, `:11`
+- [x] Activate AC-9 → `frontend/e2e/app-shell.spec.ts:239`
 
 ### AC-10 / AC-11 motion and width
-- [ ] Global `@media (prefers-reduced-motion: reduce)` rule zeroing transitions and animations (`!important`)
-- [ ] Base `@media (forced-colors: active)` rules from DESIGN.md
-- [ ] Activate AC-10 and AC-11
+- [x] Global `@media (prefers-reduced-motion: reduce)` rule zeroing transitions and animations (`!important`) → `frontend/src/styles/base.css:38`
+- [x] Base `@media (forced-colors: active)` rules from DESIGN.md → `frontend/src/styles/base.css:53`, `frontend/src/components/AppShell.module.css:99`, `frontend/src/components/ThemeToggle.module.css:46`
+- [x] Activate AC-10 and AC-11 → `frontend/e2e/app-shell.spec.ts:260`, `:196`, `:281`
 
 ### AC-12 date helper
-- [ ] `src/lib/relativeDay.ts`; switch the test to a static import
-- [ ] Recompute on `focus` and `visibilitychange`
-- [ ] Activate AC-12, run `npm --prefix frontend run check:api`
+- [x] `src/lib/relativeDay.ts`; switch the test to a static import → `frontend/src/lib/relativeDay.ts:13`, `frontend/src/lib/relativeDay.test.ts:6`
+- ~~Recompute on `focus` and `visibilitychange`~~ **Retired:** the hook exists (`frontend/src/lib/relativeDay.ts:22`, `useNow`) but no page uses it and no test pins it; Epic 1 shows no relative day. It moves with the `page.clock` follow-up below to the first Epic 3 story that shows "Last updated…" (retro F-S5, `_bmad-output/implementation-artifacts/deferred-work.md:20`).
+- [x] Activate AC-12, run `npm --prefix frontend run check:api` → `frontend/src/lib/relativeDay.test.ts:13`
 
 ### AC-13 axe
-- [ ] Activate AC-13 last, once the shell exists (it already passes on today's bare page, so it only guards once there is something to scan)
+- [x] Activate AC-13 last, once the shell exists (it already passes on today's bare page, so it only guards once there is something to scan) → `frontend/e2e/catalog-empty.spec.ts:111`
 
 ### AC-14 tone guard
-- [ ] Activate AC-14 once the empty-state copy exists; it passes against today's code apart from that copy
+- [x] Activate AC-14 once the empty-state copy exists; it passes against today's code apart from that copy → `frontend/scripts/copy.test.mjs:107` (empty-shelf copy required at `:112`)
 
 ### Green-phase follow-ups (secondary branches, not separate red leaves)
-- [ ] AC-3: `localStorage` that throws (`addInitScript` overriding `Storage.prototype.getItem`/`setItem`) still renders with System selected
-- [ ] AC-2: computed check of the 2px accent underline on the active item
-- [ ] AC-5: unit test of the announce helper with mocked timers (empties, sets after ~100 ms, repeats an identical message)
-- [ ] AC-7: background refetch failure keeps the last data and shows no message (load, route-abort, dispatch `focus`/`visibilitychange`, assert data stays and the alert is empty)
-- [ ] AC-9: Text field (label, "(required)" outside the label, focus halo, 2px ink invalid border) and `aria-disabled` with a reason; first consumer is Story 1.8's panel. Consider a static scan that bans the native `disabled` attribute in `src/`.
-- [ ] AC-10: forced-colors check once spines exist (Story 1.10); `document.getAnimations()` is empty after load
-- [ ] AC-12: e2e that a relative date recomputes after focus with `page.clock` (needs the deferred Clock / `--fake-today` work)
-- [ ] AC-14: on-load animation guard (`document.getAnimations().length === 0` right after load)
-- [ ] Deferred-work item from Story 1.5: pin that `useCatalogView` fetches `/api/views/catalog`. AC-6 already does this by waiting for that request.
+- [x] AC-3: `localStorage` that throws (`addInitScript` overriding `Storage.prototype.getItem`/`setItem`) still renders with System selected → `frontend/e2e/app-shell.spec.ts:168`
+- [x] AC-2: computed check of the 2px accent underline on the active item → `frontend/e2e/app-shell.spec.ts:134`
+- [x] AC-5: unit test of the announce helper with mocked timers (empties, sets after ~100 ms, repeats an identical message) → `frontend/src/lib/announce.test.ts:35`, `:47`
+- [x] AC-7: background refetch failure keeps the last data and shows no message (load, route-abort, dispatch `focus`/`visibilitychange`, assert data stays and the alert is empty) → `frontend/e2e/catalog-empty.spec.ts:56` (dispatches `focus` only, not `visibilitychange`)
+- [x] AC-9: Text field (label, "(required)" outside the label, focus halo, 2px ink invalid border) and `aria-disabled` with a reason; first consumer is Story 1.8's panel. Consider a static scan that bans the native `disabled` attribute in `src/`. → `frontend/e2e/new-book-panel.spec.ts:143` ("(required)"), `:316` (2px ink invalid border), `:476` (`aria-disabled`); missing: the focus halo (`frontend/src/components/TextField.module.css:45`) is not asserted, and no static `disabled` scan exists (the components omit `disabled` from their props types, `frontend/src/components/Button.tsx:4`)
+- [x] AC-10: forced-colors check once spines exist (Story 1.10); `document.getAnimations()` is empty after load → `frontend/e2e/bookcase.spec.ts:462` (in the test at `:434`); missing: no `getAnimations()`-after-load assertion (see the retired AC-14 line)
+- ~~AC-12: e2e that a relative date recomputes after focus with `page.clock` (needs the deferred Clock / `--fake-today` work)~~ **Retired:** the `page.clock` + `--fake-today` fixture wiring is still deferred (`_bmad-output/implementation-artifacts/deferred-work.md:20`, entry starting `:18`); retro F-S5 (`_bmad-output/implementation-artifacts/epic-1-retro-2026-11-03.md:163`) defers it to the first Epic 3 story that shows relative days
+- ~~AC-14: on-load animation guard (`document.getAnimations().length === 0` right after load)~~ **Retired:** not found in code at 7b768a0; searched `frontend/e2e`, `frontend/src` and `frontend/scripts` for `getAnimations` (only `finished`-waits in `frontend/e2e/library.ts:46` and `frontend/e2e/cover.spec.ts:343`). The only CSS animation is the user-triggered popover fade (`frontend/src/components/SpinePopover.module.css:18`), so nothing animates on load today. Deferred to Epic 3's finish fill: `_bmad-output/implementation-artifacts/deferred-work.md:163`
+- [x] Deferred-work item from Story 1.5: pin that `useCatalogView` fetches `/api/views/catalog`. AC-6 already does this by waiting for that request. → `frontend/e2e/catalog-empty.spec.ts:23`; recorded as partly resolved in `_bmad-output/implementation-artifacts/deferred-work.md:43`
 
 ---
 

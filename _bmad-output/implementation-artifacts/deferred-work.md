@@ -156,3 +156,13 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-readme-local-run-friction.md`
   summary: Serve the SPA's `index.html` with `Cache-Control: no-cache` so a reinstall shows the new bundle without a hard reload; then drop the hard-reload step from the README (retro PL-8).
   evidence: `backend/bookvie/http/app.py` `spa` returns `FileResponse(index)` with no `Cache-Control`, so browsers may reuse a cached `index.html` pointing at the old hashed bundle.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-epic-1-trace-and-gate.md`
+  summary: Rotate the curated spine color from the last Book's curated color, not `len(library.books)`, and add a test that deletes a Book before an add (retro F-R4).
+  evidence: `backend/bookvie/intents/add_book.py:65` passes the Book count, which shrinks on delete, so the next new Book can repeat a neighbour's color. `backend/tests/test_add_book.py:523` pins the count only on a library that already has Books. The retro deferred F-R4 but never recorded it here; the Story 1.7 checklist line is retired to this entry. Low, cosmetic.
+- source_spec: `_bmad-output/implementation-artifacts/spec-epic-1-trace-and-gate.md`
+  summary: Add an on-load animation guard (`document.getAnimations()` is empty right after load) once something animates, with Epic 3's finish fill.
+  evidence: Story 1.6 checklist (AC-14 and the AC-10 follow-up) planned it; no test exists at `06014dc`. Today the only animation is the popover fade, which runs on user action. Low.
+- source_spec: `_bmad-output/implementation-artifacts/spec-epic-1-trace-and-gate.md`
+  summary: Add one e2e that adds a Book through the New book panel with every optional field (Subtitle, ISBN with spaces, Year, Tags, Spine color, Finished on) and reads each value back.
+  evidence: Story 1.8 checklist AC-5. The UI add tests fill only the required fields plus Tags (`frontend/e2e/new-book-panel.spec.ts:213`); the optional fields are pinned at the API (`backend/tests/test_add_book.py:362`) and in edit mode. Low; CAT-E2E-002 itself is covered.

@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-29-2026 17:21
-last_updated: 11-03-2026 13:20
+last_updated: 11-03-2026 21:30
 project: bookvie
 project_key: NOKEY
 tracking_system: file-system
@@ -102,7 +102,7 @@ action_items:
     action: "Run an Epic 1 trace and gate against TR7 (P0 = 100%, P1 >= 95%); tick
       or retire stale ATDD checklist lines (F-S1, F-S6)"
     owner: "Murat (TEA)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-11-03.md"
   - id: "epic-1-retro-item-2-reconcile-architecture-spine-ad-18-id-un"
     epic: 1
