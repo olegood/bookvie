@@ -2,7 +2,7 @@
 title: 'Story 2.1: Export all data with one click'
 type: 'feature'
 created: '2026-11-03'
-status: 'in-review'
+status: 'done'
 route: 'dispatch'
 review_loop_iteration: 0
 baseline_commit: '90848bd26294d17ad3c0174ef3296985c7f77f0f'
@@ -101,6 +101,45 @@ context:
 - Given the 6 ATDD leaves un-skipped, when the suites run, then all pass, and `e2e-count` reports nothing skipped.
 - Given a library with covers, when it is exported, then `library.json` stays byte-identical and no file beside `local-state.json` changes in the data folder.
 - Given `/backup` in the light and dark themes, when Axe runs, then there are no AA violations.
+
+### Review Findings
+
+Code review of 2026-11-04: five layers on `90848bd..d4f25a8`, `_bmad-output/` excluded.
+
+- [x] [Review][Patch] No test pins the double-click guard: two clicks within 300 ms, before `busy` disables the button, are stopped only by `running.current`. Deleting that guard passes every test and ships two downloads and two lock-held builds. Add an E2E test that holds `**/api/export`, clicks twice, and asserts one request. [frontend/src/pages/BackupPage.tsx:78]
+- [x] [Review][Patch] The module docstring says every entry is "stored without compression", but `library.json` is written `ZIP_DEFLATED`; only covers are stored. Correct the docstring to match the spec ("Covers ... stored without compression"). [backend/bookvie/intents/export.py:6]
+- [x] [Review][Defer] Spine drift: AD-1 (export reads outside `store/`), AD-4 (`record_export` outside the lock), AD-14 (referenced covers only), AD-2/AD-15 (`local-state.json.tmp*`) [backend/bookvie/intents/export.py:51] — deferred: the fix edits ARCHITECTURE-SPINE. Already tracked in deferred-work.md (story 2.1 spine reconcile); the second review confirms it is still open.
+
+**Rejected**
+
+- `false`: The client's `COULDNT_EXPORT_MESSAGE` duplicates the server copy. It is used only when no envelope arrives (network error, server gone), where no server copy exists. That is the same client-fallback pattern as `COULDNT_LOAD`.
+- `false`: The E2E AC-6 test skips under root. CI is `ubuntu-latest` (user `runner`), so it runs there.
+- `low`: A cover mtime at or after 2108 overflows the zip header and gives a 500. That needs a far-future mtime, and the fix adds a guard.
+- `low`: Deeply nested `local-state.json` raises `RecursionError`. Only bookvie writes that file, and the fix adds a guard.
+- `low`: `send` raising mid-stream logs an `ExceptionGroup` traceback. The client still fails cleanly through the `Content-Length` mismatch (triage #4), so the only cost is log noise.
+- `false`: A 200 that isn't a zip gets saved. `/api/export` is a real route behind a same-origin guard, and the SPA fallback never answers it.
+- `low`: "Last export" is recorded when bytes leave the server, not when the user saves the file (kernel buffer, cancelled dialog). This is inherent to ASGI, and the spec chose server-side recording. The fix would be a spec change.
+- `false`: The refresh never ends when `lastExportAt` equals `before`. `clock.now()` has microseconds, so two real exports never produce the same string.
+- `low`: It polls instead of invalidating once. The deviation is recorded and justified; it was already rejected as triage #8.
+- `false`: `complete` can be unbound in `ExportResponse.__call__`. The task group exits only by reaching that assignment or by raising.
+- `false`: `ExportResponse` leaks its temp file. `seek`/`tell` on a fresh spool can't fail, and an unreferenced `SpooledTemporaryFile` is closed by GC.
+- `low`: The lock is held for the whole build. The spec requires the build to be under AD-4.
+- `false`: Busy is invisible in forced-colors. The button is natively `disabled`, which the UA paints `GrayText` in forced-colors, and opacity still applies.
+- `false`: A second export can race the first one's refresh loop. Both loops only refetch the same query, so the line lands on the latest value either way.
+- `low`: A malformed `local-state.json` is logged on every read. That file is rare, the next export overwrites it, and the fix adds log-once state.
+- `low`: A failed record is invisible in the UI. The spec says a recording failure is logged only, and the download succeeded.
+- `low`: One missing cover blocks every export. The spec matrix requires 503. The logged `OSError` already names the file.
+- `low`: The "Your data wasn't changed" wording is copy the spec pins.
+- `low`: HEAD returns 404. The spec matrix pins it.
+- `false`: `app.state.store` is `None`. `create_app` always sets it, and every view route assumes the same.
+- `false`: `strict_timestamps=False` is redundant. It causes no bad outcome.
+- `low`: `response.blob()` buffers the zip. Rejected before as #5 with the same evidence.
+- `low`: OpenAPI lists 409/422/500 for export. Rejected before as #6; it is the router-wide convention.
+- `low`: OpenAPI lists 503 "Couldn't save" for `/views/backup`. Rejected before as #6.
+- `low`: The E2E download name can cross midnight. Rejected before as #10.
+- `low`: The fast-export E2E depends on wall-clock time. Rejected before as #10.
+- `low`: There are no unit tests for `BackupPage` or `Button busy`. Rejected before as #11; E2E pins the behaviour.
+- `low`: `_ZIP_ERRORS` misses `struct.error`/`OverflowError`. They are reachable only through the 2108 mtime case above.
 
 ## Implementation Notes
 

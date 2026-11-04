@@ -2,9 +2,9 @@
 
 :func:`build_export` packages the data folder into one zip while holding the
 AD-4 lock, so the snapshot is consistent with every intent: exactly
-``library.json`` (the bytes on disk), the ``covers/`` directory entry and
-``covers/<name>`` for every cover the library references, stored without
-compression. It goes into a spooled temp file (in memory up to
+``library.json`` (the bytes on disk, deflated), the ``covers/`` directory
+entry and ``covers/<name>`` for every cover the library references (stored
+without compression: they are already compressed images). It goes into a spooled temp file (in memory up to
 :data:`SPOOL_MEMORY_LIMIT`, then on disk); the caller sends it after the lock
 is released. Any read failure is 503 ``couldnt_export`` before anything is
 sent.

@@ -144,6 +144,33 @@ test.describe('Story 2.1 Export all data with one click (ATDD)', () => {
     await expect(exportButton(page)).toBeFocused()
   })
 
+  test('[P2] AC-4 a double-click before the button goes busy starts one export, not two', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: [DUNE] })
+    // Hold the export so both clicks land while the first one is in flight.
+    let requests = 0
+    let release!: () => void
+    const released = new Promise<void>((resolve) => (release = resolve))
+    await page.route('**/api/export', async (route) => {
+      requests++
+      await released
+      await route.continue()
+    })
+    await page.goto(`${server.url}/backup`)
+
+    // Both clicks land well inside BUSY_DELAY_MS, while the button is still enabled.
+    await exportButton(page).dblclick()
+    await expect.poll(() => requests).toBe(1)
+
+    const download = page.waitForEvent('download')
+    release()
+    await download
+    await expect(page.getByText('Last export: today', { exact: true })).toBeVisible()
+    expect(requests).toBe(1)
+  })
+
   test('[P2] AC-2 the Restore card explains itself, and its button is unavailable until restore arrives', async ({
     page,
   }) => {
