@@ -190,3 +190,12 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-2-restore-my-library-from-an-export.md`
   summary: The Backup page reads the whole export into memory (`requestInit` → `arrayBuffer()`) before uploading; consider streaming the FormData for restore alongside Story 2.3's 1 GB limit.
   evidence: `frontend/src/api/intents.ts` encodes any file form to bytes for test visibility; an export with many covers can be hundreds of MB in the tab. Triage #38.
+
+## Deferred from: code review of spec-2-2-restore-my-library-from-an-export (2026-11-04)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-2-restore-my-library-from-an-export.md`
+  summary: Automate the browser half of Story 2.2 AC-10 ("Restored." is shown after a post-commit cleanup fault) and BKP-E2E-001's full browser round trip (export → restore into a fresh folder → same shelf).
+  evidence: `frontend/e2e/restore.spec.ts` has no fault-injection case, and AC-6 is checked only at the API level (`test_restore.py`). The spec's Implementation Notes list both as not automated. Fault injection needs a seam under the e2e server.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-2-restore-my-library-from-an-export.md`
+  summary: Add this to the Story 2.3 case-collision item above: on a case-insensitive filesystem, `Store.replace_all`'s `os.path.lexists` treats `covers/A.jpg` as already present when `covers/a.jpg` exists. `_sweep_covers` then deletes `a.jpg`, because its keep set compares names exactly. The restored Book is left with a dangling cover.
+  evidence: `backend/bookvie/store/store.py` `replace_all` and `_sweep_covers`. Only a crafted archive reaches it, because minted names are lowercase UUIDs. Refusing archive names that collide case-insensitively with each other or with existing `covers/` entries closes both.

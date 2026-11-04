@@ -194,6 +194,18 @@ def validate_document(doc: dict) -> Library:
     return library
 
 
+def migrate_document(doc: dict, version: int) -> dict:
+    """``doc`` (at ``version``) through the migration chain; the one step startup and restore share.
+
+    Any step failure raises :class:`LibraryRefused`. The chain is read
+    through :mod:`migrations` at call time.
+    """
+    try:
+        return migrations.migrate(doc)
+    except Exception as exc:  # noqa: BLE001 - any step failure refuses the file
+        raise LibraryRefused(f"could not be upgraded from schemaVersion {version}: {exc}") from None
+
+
 def load_library(raw: bytes) -> Library:
     """``raw`` parsed, migrated in memory when older, and validated (restore, AD-13).
 
@@ -202,12 +214,7 @@ def load_library(raw: bytes) -> Library:
     """
     doc, version = parse_document(raw)
     if version < migrations.CURRENT_VERSION:
-        try:
-            doc = migrations.migrate(doc)
-        except Exception as exc:  # noqa: BLE001 - any step failure refuses the file
-            raise LibraryRefused(
-                f"could not be upgraded from schemaVersion {version}: {exc}"
-            ) from None
+        doc = migrate_document(doc, version)
     return validate_document(doc)
 
 
@@ -348,11 +355,9 @@ class Store:
         except CouldntSave as exc:
             raise StartupError(backup, f"can't be written ({exc})") from None
         try:
-            doc = migrations.migrate(doc)
-        except Exception as exc:  # noqa: BLE001 - any step failure stops startup
-            raise StartupError(
-                self.path, f"could not be upgraded from schemaVersion {version}: {exc}"
-            ) from None
+            doc = migrate_document(doc, version)
+        except LibraryRefused as exc:
+            raise StartupError(self.path, exc.reason) from None
         return self._validate(doc)
 
     def _validate(self, doc: dict) -> Library:

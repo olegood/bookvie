@@ -2,7 +2,7 @@
 title: 'Story 2.2: Restore my library from an export'
 type: 'feature'
 created: '2026-11-04'
-status: 'in-review'
+status: 'done'
 route: 'dispatch'
 review_loop_iteration: 1
 baseline_commit: '8764e0ce9c5e156ebdcbbbcea78cf0b27977c83d'
@@ -92,6 +92,41 @@ context:
 - Given the 10 ATDD leaves un-skipped, when the suites run, then all pass and `e2e-count` reports nothing skipped.
 - Given a slow intent sent while a restore holds the lock, when both finish, then the intent applied to the restored library.
 - Given an archive with covers not yet in `covers/` and a fault at the commit, when restore runs, then `covers/` and `library.json` are byte-identical to before.
+
+### Review Findings
+
+Code review 2026-11-04 (diff `8764e0c..07426a1`; layers: blind, edge, verification-gap, acceptance, spine).
+
+- [x] [Review][Patch] A migration step that raises during restore isn't pinned to 422 `restore_invalid` (medium). Restore migrates through `load_library`, not startup's `Store._migrate`, so `test_migrations.py` never reaches it. If the `except Exception` were narrowed or dropped, it would become a bare 500, and no test would catch it. Add `test_a_failing_migration_step_is_422_restore_invalid`, using AC-5's monkeypatch (`CURRENT_VERSION = 2`, `STEPS = {1: boom}`) with `_assert_refused_and_unchanged`, and the `couldn't restore: library.json could not be upgraded from schemaVersion 1` log line. [backend/tests/test_restore.py:310]
+- [x] [Review][Patch] Startup and restore keep two copies of the migrate step and its "could not be upgraded from schemaVersion N" refusal. This goes against the Always rule "one parse-and-validate path" (AD-13). Extract one `migrate_document(doc, version) -> dict` that raises `LibraryRefused`. `load_library` calls it, and `Store._migrate` maps it to `StartupError(self.path, exc.reason)`, which keeps the exact message. [backend/bookvie/store/store.py:197]
+- [x] [Review][Patch] The `.staging/` half of AC-10 runs but isn't asserted. `FaultyFs("remove")` fails the post-commit staging cleanup, but the test checks neither the `bookvie: couldn't delete .staging/…` line nor that `.staging/` still holds files before `Store.open`. [backend/tests/test_restore.py:430]
+- [x] [Review][Patch] No test covers an archive that has `covers/<name>` entries but no `covers/` directory entry, which is common in zips re-made by other tools. `stage_archive` handles it (it makes `staging/covers` when `cover_infos` is non-empty), but nothing pins that. [backend/tests/test_restore.py:207]
+- [x] [Review][Defer] The browser half of AC-10 ("Restored." after a post-commit fault) and BKP-E2E-001's full browser round trip aren't automated [frontend/e2e/restore.spec.ts] — deferred: known gap (Implementation Notes). It needs server-side fault injection under the e2e server.
+- [x] [Review][Defer] On a case-insensitive filesystem, `replace_all`'s `lexists` says `covers/A.jpg` is kept while the sweep deletes `a.jpg` [backend/bookvie/store/store.py:456] — deferred: only a crafted archive reaches it. Added to the existing Story 2.3 case-collision entry in deferred-work.md.
+- [x] [Review][Defer] Spine drift: AD-9/AD-14 interim `restore_invalid` and limits, AD-12's stale "Until restore exists", no-overwrite vs byte-identical, restored covers exempt from re-encode — deferred: already in deferred-work.md ("Reconcile ARCHITECTURE-SPINE with Story 2.2").
+- [x] [Review][Defer] A `coverFile` not of the `covers/<plain-name>` form skips the presence check — deferred: already in deferred-work.md (Triage #16).
+- [x] [Review][Defer] Restore uploads read the whole zip into memory (`arrayBuffer()`) — deferred: already in deferred-work.md (Triage #38).
+
+**Rejected:**
+- false — Extra archive covers the new library doesn't reference aren't written. The outcome matches the spec's (the sweep would delete them), and the fix would edit the spec.
+- false — `InvariantViolation` → 500 branch "dead". It's a defensive mapping with no bad outcome.
+- false — Startup now refuses deeply nested JSON instead of crashing. This is intended (loop 1), and the exact messages are pinned.
+- false — Docstring "every refusal is `restore_invalid`". Request-shape refusals (`malformed`/`invalid_fields`) are the shared intent contract. The docstring is about archive refusals.
+- false — The AC-1 dark theme lacks a `button-primary` colour assert. The light assert already proves the variant, and the token is the shared design-system accent.
+- false — `restore.test.ts` asserts `reachedLastPage`. Every intent client test in `src/api/*.test.ts` deep-equals the full result; this follows that convention.
+- false — Spec stale (`review_loop_iteration`, test counts). The fix edits the spec under review.
+- low — OpenAPI for restore lists 409, "Invalid fields", `intent?`. These come from the router-wide `ERROR_RESPONSES` every intent route shares; `intent?` was accepted in #44.
+- low — Route docstring implementation notes reach OpenAPI. The export route does the same.
+- low — `OSError` opening the zip → 422 while mid-entry `OSError` → 500. Only a disk fault on the server's spooled temp file reaches either, and #12 already decided the read-fault mapping.
+- low — `_READ_ERRORS` includes `RuntimeError`/`ValueError`. The try blocks wrap only zipfile calls, and narrowing needs an encrypted-entry check.
+- low — `check_decodable` drops the decode reason. A diagnostic nicety that would change the return type.
+- low — No test for a missing `archive` part. The verification-gap layer ran it: an enveloped 422 `invalid_fields` from the shared handler.
+- low — Export and restore don't block each other on the Backup page. The server lock serializes them; only announcements can clash, and that needs both actions at once.
+- low — Leaving `/backup` mid-restore still navigates to `/`. A local restore takes well under a second (carried #24).
+- low — The user isn't told when a differing same-name cover was kept. Names are minted UUIDs, so it can't happen in normal use; it's logged.
+- low — `covers/<name>` is a directory or symlink, or `.staging` is a symlink or a regular file. These need manual tampering with the data folder; a regular-file `.staging` also makes startup refuse.
+- low — Non-`OSError` from `fs.remove` in non-quiet `empty_staging` escapes as 500. The real seam (`os.remove`) raises only `OSError`.
+- low — `check_decodable` skips `_normalize`. Restored bytes are served as-is, so a convert-only failure doesn't affect what the browser shows.
 
 ## Implementation Notes
 

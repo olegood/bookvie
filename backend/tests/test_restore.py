@@ -338,6 +338,31 @@ def test_ac5_p1_an_older_schema_version_is_migrated_through_the_chain_then_resto
     assert _covers(target) == {}
 
 
+def test_a_failing_migration_step_is_422_restore_invalid_and_changes_nothing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    builder = LibraryBuilder()
+    builder.book(id=DUNE_ID, **DUNE, tags=["sf"])
+    v1_library = builder.write(tmp_path / "v1").read_bytes()
+    archive = _zip({"library.json": v1_library, "covers/": None})
+    target = tmp_path / "target"
+    _seed_target(target)
+
+    def boom(doc: dict) -> dict:
+        raise RuntimeError("step 1 broke")
+
+    monkeypatch.setattr(migrations, "CURRENT_VERSION", 2)
+    monkeypatch.setattr(migrations, "STEPS", {1: _step_to_2})
+    client = api_client(target)  # the target is migrated to v2 by the working chain
+    monkeypatch.setattr(migrations, "STEPS", {1: boom})
+    capsys.readouterr()
+
+    _assert_refused_and_unchanged(client, target, archive)
+    assert (
+        "bookvie: couldn't restore: library.json could not be upgraded from schemaVersion 1: "
+        "step 1 broke"
+    ) in capsys.readouterr().err
+
 # --- AC-6: export → restore at the same schemaVersion is byte-identical (BKP-API-001)
 
 
@@ -427,6 +452,29 @@ def test_ac9_p1_an_archive_without_covers_restores_and_empties_covers(tmp_path: 
 # --- AC-10: a fault after the commit is still success, logged, and swept later --
 
 
+def test_an_archive_without_a_covers_directory_entry_still_restores_its_covers(
+    tmp_path: Path,
+) -> None:
+    # Zips re-made by other tools often hold covers/<name> with no covers/ entry.
+    doc, dune_cover = _source_doc(tmp_path)
+    archive = _zip(
+        {
+            "library.json": (json.dumps(doc, indent=2) + "\n").encode("utf-8"),
+            f"covers/{DUNE_COVER}": dune_cover,
+        }
+    )
+    assert "covers/" not in zipfile.ZipFile(io.BytesIO(archive)).namelist()
+    target = tmp_path / "target"
+    _seed_target(target)
+
+    response = _post_restore(api_client(target), archive)
+
+    assert response.status_code == 200
+    assert response.json() == OK
+    assert library_bytes(target) == library_bytes(tmp_path / "source")
+    assert _covers(target) == {DUNE_COVER: dune_cover}
+    assert _staging(target) == []
+
 def test_ac10_p1_a_failed_cleanup_after_the_commit_still_succeeds_and_startup_sweeps_it(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -446,7 +494,9 @@ def test_ac10_p1_a_failed_cleanup_after_the_commit_still_succeeds_and_startup_sw
     assert library_bytes(target) == library_bytes(source)
     err = capsys.readouterr().err
     assert f"bookvie: couldn't delete covers/{OLD_COVER}" in err
+    assert "bookvie: couldn't delete .staging/library.json" in err
     assert (target / "covers" / OLD_COVER).exists(), "left for the startup sweep"
+    assert "library.json" in _staging(target), "the .staging/ cleanup failed too"
     assert (target / LOCAL_STATE).read_bytes() == EARLIER_EXPORT
 
     # The next start removes what the failed cleanup left.
