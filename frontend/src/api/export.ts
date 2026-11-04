@@ -7,6 +7,9 @@ import type { QueryClient } from '@tanstack/react-query'
 import { fetchView, viewKey, type BackupView } from './views.ts'
 
 export const EXPORT_URL = '/api/export'
+// The server refuses an export without it (AD-16): a cross-site <img> or
+// no-cors GET can't set a custom header, so it can't record "Last export".
+export const EXPORT_HEADERS = { 'X-Bookvie-Export': '1' } as const
 
 // Used only when the server's own message didn't arrive (no envelope).
 export const COULDNT_EXPORT_MESSAGE = "Couldn't export. Your data wasn't changed."
@@ -46,7 +49,7 @@ export async function exportAll(): Promise<void> {
   let response: Response
   let blob: Blob
   try {
-    response = await fetch(EXPORT_URL)
+    response = await fetch(EXPORT_URL, { headers: EXPORT_HEADERS })
     if (!response.ok) throw new ExportError(await exportFailureMessage(response))
     blob = await response.blob()
   } catch (error) {

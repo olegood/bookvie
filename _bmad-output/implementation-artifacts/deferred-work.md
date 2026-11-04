@@ -132,6 +132,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-refuse-cross-site-simple-gets.md`
   summary: In story 2.1, decide how `GET /api/export` records "Last export" so that a cross-site GET from a browser that sends no `Sec-Fetch-Site` (Safari before 16.4, old Firefox) can't trigger it — e.g. record it with a separate POST after the download, or require the header on that route.
   evidence: The guard passes requests without `Sec-Fetch-Site`, so an `<img src=".../api/export">` from such a browser still reaches the route. Medium for story 2.1 only; no GET route has a side effect today.
+  resolved: `spec-require-sec-fetch-site-on-export.md`; `HostOriginGuard` requires exactly one `X-Bookvie-Export: 1` on `/api/export`, which the app's export fetch sends and no cross-site simple request can carry, so a request without it is 403 (AD-16). Requiring `Sec-Fetch-Site` itself was dropped: the same old browsers would leave it off the app's own export.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-consolidate-test-helpers-and-cover-fault-tests.md`
   summary: Add TR8 fault tests on remove-cover and delete-book of a Book with a cover for the create_temp, close and fsync_dir steps, and for a failed post-commit remove (200, logged, swept at startup), which only edit-book's cover replace has today.

@@ -50,6 +50,15 @@ describe('exportFailureMessage', () => {
 describe('exportAll', () => {
   afterEach(() => mock.restoreAll())
 
+  it('asks for the export with the X-Bookvie-Export header the server requires', async () => {
+    const fetch = mock.method(globalThis, 'fetch', async () => new Response('Forbidden\n', { status: 403 }))
+    await assert.rejects(exportAll(), ExportError)
+    assert.equal(fetch.mock.callCount(), 1)
+    const [url, init] = fetch.mock.calls[0].arguments as [string, RequestInit]
+    assert.equal(url, '/api/export')
+    assert.deepEqual(init.headers, { 'X-Bookvie-Export': '1' })
+  })
+
   it("throws the server's message on a non-OK answer", async () => {
     mock.method(globalThis, 'fetch', async () =>
       Response.json({ error: { kind: 'couldnt_export', code: 'couldnt_export', message: 'From the server.' } }, {

@@ -33,6 +33,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from fastapi.testclient import TestClient
 from starlette.types import ASGIApp, Message
 
 from tests.builder import LibraryBuilder
@@ -57,6 +58,17 @@ EARLIER_EXPORT = b'{"lastExportAt": "2026-10-01T09:30:00+02:00"}'
 COVER_NAME = f"{DUNE_ID}-0f0e0d0c-0b0a-4908-8706-050403020100.jpg"
 BIG_COVER_BYTES = 1024 * 1024
 """Large and incompressible, so the zip can't go out as one body message."""
+
+
+EXPORT_HEADERS = {"X-Bookvie-Export": "1"}
+"""What the app's own export ``fetch`` sends; the guard refuses an export without it (AD-16)."""
+
+
+def _client(data_dir: Path, fs: FaultyFs | None = None) -> TestClient:
+    """:func:`api_client` sending :data:`EXPORT_HEADERS` on every request."""
+    client = api_client(data_dir, fs)
+    client.headers.update(EXPORT_HEADERS)
+    return client
 
 
 def _seed_rich_library(data_dir: Path, *, cover: bytes | None = None) -> bytes:
@@ -198,7 +210,11 @@ def _run(
         "raw_path": EXPORT.encode(),
         "query_string": b"",
         "root_path": "",
-        "headers": [(b"host", b"127.0.0.1:8765"), (b"accept", b"*/*")],
+        "headers": [
+            (b"host", b"127.0.0.1:8765"),
+            (b"accept", b"*/*"),
+            *((k.lower().encode(), v.encode()) for k, v in EXPORT_HEADERS.items()),
+        ],
         "client": ("127.0.0.1", 50000),
         "server": ("127.0.0.1", 8765),
         "state": {},
@@ -215,7 +231,7 @@ def test_ac3_p0_export_is_one_zip_of_library_json_and_covers_built_under_the_loc
 ) -> None:
     data_dir = tmp_path / "rich"
     cover = _seed_rich_library(data_dir)
-    client = api_client(data_dir)
+    client = _client(data_dir)
     # Neither the export record nor restore scratch belongs in an export (AD-15, AD-14).
     (data_dir / LOCAL_STATE).write_bytes(EARLIER_EXPORT)
     (data_dir / ".staging" / "leftover.json").write_bytes(b"{}")
@@ -240,7 +256,7 @@ def test_ac3_p0_export_is_one_zip_of_library_json_and_covers_built_under_the_loc
     builder.book(title="Neuromancer", authors=["William Gibson"], pages=271)
     builder.write(bare_dir)
 
-    bare = api_client(bare_dir).get(EXPORT)
+    bare = _client(bare_dir).get(EXPORT)
 
     assert bare.status_code == 200
     bare_archive = zipfile.ZipFile(io.BytesIO(bare.content))
@@ -296,7 +312,7 @@ def test_ac5_p1_only_a_complete_download_records_last_export_in_local_state(
     # Neither does a HEAD request, with or without an earlier record.
     head_dir = tmp_path / "head"
     _seed_rich_library(head_dir)
-    head_client = api_client(head_dir)
+    head_client = _client(head_dir)
 
     head = head_client.head(EXPORT)
 
@@ -319,7 +335,7 @@ def test_ac6_p1_an_unreadable_cover_fails_the_export_with_503_couldnt_export(
 ) -> None:
     data_dir = tmp_path / "unreadable"
     _seed_rich_library(data_dir)
-    client = api_client(data_dir)
+    client = _client(data_dir)
     (data_dir / LOCAL_STATE).write_bytes(EARLIER_EXPORT)
     library_before = library_bytes(data_dir)
     cover = data_dir / "covers" / COVER_NAME
@@ -374,7 +390,7 @@ def test_export_is_named_for_today_and_streams_in_64k_chunks(tmp_path: Path) -> 
 def test_a_cover_older_than_1980_still_exports(tmp_path: Path) -> None:
     data_dir = tmp_path / "old"
     cover = _seed_rich_library(data_dir)
-    client = api_client(data_dir)
+    client = _client(data_dir)
     os.utime(data_dir / "covers" / COVER_NAME, (0, 0))
 
     response = client.get(EXPORT)
@@ -388,7 +404,7 @@ def test_a_cover_older_than_1980_still_exports(tmp_path: Path) -> None:
 def test_unreferenced_and_temp_files_are_not_exported(tmp_path: Path) -> None:
     data_dir = tmp_path / "strays"
     _seed_rich_library(data_dir)
-    client = api_client(data_dir)
+    client = _client(data_dir)
     # Written after startup, so the sweep hasn't removed them.
     (data_dir / "covers" / "stray.jpg").write_bytes(b"x")
     (data_dir / "covers" / f"{COVER_NAME}.tmpabc").write_bytes(b"x")
@@ -404,7 +420,7 @@ def test_a_missing_cover_fails_the_export_with_503(
 ) -> None:
     data_dir = tmp_path / "missing"
     _seed_rich_library(data_dir)
-    client = api_client(data_dir)
+    client = _client(data_dir)
     (data_dir / "covers" / COVER_NAME).unlink()
 
     response = client.get(EXPORT)
@@ -457,26 +473,51 @@ def test_export_changes_nothing_in_the_data_folder_but_local_state(tmp_path: Pat
     assert _last_export_at(data_dir) == LAST_EXPORT_NOW
 
 
-# --- Automate (story 2.1): the guard, a crash mid-build, an unreadable record ---
+# --- The export header guard, a crash mid-build, an unreadable record ----------
 
 
-@pytest.mark.parametrize("site", ["cross-site", "same-site"])
-def test_a_cross_site_export_is_refused_and_records_nothing(tmp_path: Path, site: str) -> None:
-    # /api/export is the only GET route with a side effect, so AD-16's
-    # Sec-Fetch-Site guard is what keeps a foreign page from recording it.
+@pytest.mark.parametrize(
+    "headers",
+    [
+        [],
+        [("X-Bookvie-Export", "0")],
+        [("X-Bookvie-Export", "")],
+        [("X-Bookvie-Export", "1"), ("X-Bookvie-Export", "1")],
+        [("X-Bookvie-Export", "1"), ("Sec-Fetch-Site", "cross-site")],
+        [("Sec-Fetch-Site", "same-origin")],
+    ],
+    ids=["missing", "zero", "empty", "twice", "cross-site", "fetch-site-only"],
+)
+def test_an_export_without_the_apps_export_header_is_refused_and_records_nothing(
+    tmp_path: Path, headers: list[tuple[str, str]]
+) -> None:
+    # /api/export is the only GET route with a side effect, so AD-16 requires
+    # X-Bookvie-Export there: a cross-site <img> or no-cors GET can't set it,
+    # even from a browser too old to send Sec-Fetch-Site.
     data_dir = tmp_path / "guarded"
     _seed_rich_library(data_dir)
     client = api_client(data_dir)
     (data_dir / LOCAL_STATE).write_bytes(EARLIER_EXPORT)
 
-    refused = client.get(EXPORT, headers={"Sec-Fetch-Site": site})
+    refused = client.get(EXPORT, headers=headers)
 
     assert refused.status_code == 403
     assert refused.headers["content-type"].startswith("text/plain")
     assert _local_state(data_dir) == EARLIER_EXPORT
 
-    # Control: the app's own fetch gets the zip and records it.
-    own = client.get(EXPORT, headers={"Sec-Fetch-Site": "same-origin"})
+
+@pytest.mark.parametrize("site", [None, "same-origin", "none"])
+def test_an_export_with_the_header_is_served_and_recorded_in_any_browser(
+    tmp_path: Path, site: str | None
+) -> None:
+    # None is a browser too old to send Sec-Fetch-Site (Safari < 16.4); "none"
+    # a typed URL or a script.
+    data_dir = tmp_path / "own"
+    _seed_rich_library(data_dir)
+    client = api_client(data_dir)
+    headers = dict(EXPORT_HEADERS) | ({"Sec-Fetch-Site": site} if site else {})
+
+    own = client.get(EXPORT, headers=headers)
 
     assert own.status_code == 200
     assert _last_export_at(data_dir) == LAST_EXPORT_NOW
@@ -490,7 +531,7 @@ def test_an_unexpected_build_error_releases_the_lock_and_closes_the_spool(
 
     data_dir = tmp_path / "crash"
     _seed_rich_library(data_dir)
-    client = api_client(data_dir)
+    client = _client(data_dir)
     store = client.app.state.store
     (data_dir / LOCAL_STATE).write_bytes(EARLIER_EXPORT)
     spools: list[Any] = []
@@ -526,7 +567,7 @@ def test_an_unreadable_local_state_reads_as_no_export_and_the_next_export_replac
 ) -> None:
     data_dir = tmp_path / "locked-state"
     _seed_rich_library(data_dir)
-    client = api_client(data_dir)
+    client = _client(data_dir)
     state = data_dir / LOCAL_STATE
     state.write_bytes(EARLIER_EXPORT)
     state.chmod(0o000)

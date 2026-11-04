@@ -14,6 +14,11 @@ on server paths (``/api``, ``/media``) the guard also refuses any
 ``Sec-Fetch-Site`` other than ``same-origin`` or ``none``. A request without
 the header (curl, the cataloging agent, tests, browsers too old to send it)
 still passes, so GET routes should still avoid side effects where they can.
+The one GET with a side effect, ``/api/export`` (it records "Last export"),
+also requires ``X-Bookvie-Export: 1``, which the app's own fetch sends. A
+cross-site ``<img>`` or no-cors GET can't set a custom header, and a
+cross-site fetch that sets one needs a CORS preflight, whose foreign Origin
+the guard refuses. This holds in browsers too old to send Sec-Fetch-Site.
 """
 
 import os
@@ -42,6 +47,12 @@ COVER_CACHE_CONTROL = "public, max-age=31536000, immutable"
 # Sec-Fetch-Site values a server path accepts; a missing header passes too.
 _ALLOWED_FETCH_SITES = frozenset({"same-origin", "none"})
 
+# The export records "Last export", so it requires a header no cross-site
+# simple request can carry. The client sends it in frontend/src/api/export.ts.
+EXPORT_PATH = "/api/export"
+EXPORT_HEADER = b"x-bookvie-export"
+EXPORT_HEADER_VALUE = "1"
+
 # Vite dev server origins, accepted only with `--dev`.
 DEV_ORIGINS = ("http://127.0.0.1:5173", "http://localhost:5173")
 
@@ -68,7 +79,8 @@ class HostOriginGuard:
     ``Sec-Fetch-Site``, so a simple GET from another page (an ``<img>``, a
     no-cors fetch, a link) cannot reach an ``/api`` or ``/media`` route.
     ``same-site`` is refused too: ports don't count toward a site, so any
-    other app on a loopback port is same-site.
+    other app on a loopback port is same-site. :data:`EXPORT_PATH` also
+    needs exactly one ``X-Bookvie-Export: 1``.
     """
 
     def __init__(
@@ -82,6 +94,7 @@ class HostOriginGuard:
         hosts: list[str] = []
         origins: list[str] = []
         fetch_sites: list[str] = []
+        export_marks: list[str] = []
         for name, value in scope.get("headers", []):
             if name == b"host":
                 hosts.append(value.decode("latin-1").lower())
@@ -89,11 +102,16 @@ class HostOriginGuard:
                 origins.append(value.decode("latin-1").lower())
             elif name == b"sec-fetch-site":
                 fetch_sites.append(value.decode("latin-1").strip().lower())
+            elif name == EXPORT_HEADER:
+                export_marks.append(value.decode("latin-1").strip())
         if len(hosts) != 1 or hosts[0] not in self.hosts:
             return False
         if not all(origin in self.origins for origin in origins):
             return False
-        if fetch_sites and _is_server_path(scope.get("path", "")):
+        path = scope.get("path", "")
+        if path == EXPORT_PATH and export_marks != [EXPORT_HEADER_VALUE]:
+            return False
+        if fetch_sites and _is_server_path(path):
             return len(fetch_sites) == 1 and fetch_sites[0] in _ALLOWED_FETCH_SITES
         return True
 

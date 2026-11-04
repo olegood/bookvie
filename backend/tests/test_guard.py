@@ -179,6 +179,31 @@ def test_own_fetch_site_reaches_server_path(
     assert hits == ["ran"]
 
 
+def test_export_needs_its_header_and_no_other_path_does(
+    static_dir: Path, tmp_path: Path
+) -> None:
+    # The one GET with a side effect requires X-Bookvie-Export (AD-16); every
+    # other path still takes a request without it (curl, the agent).
+    client = _client(static_dir, tmp_path)
+    hits = _hits(client)
+    response = client.get("/api/export")
+    assert response.status_code == 403
+    assert response.headers["content-type"].startswith("text/plain")
+    assert client.get("/api/health").status_code == 200
+    assert client.get("/api/probe-handler").status_code == 200
+    assert hits == ["ran"]
+
+
+def test_an_export_path_variant_never_reaches_the_export(
+    static_dir: Path, tmp_path: Path
+) -> None:
+    # The guard matches the routed path exactly; a variant 404s, so it needs no
+    # header. (`//api/export` can't be sent through TestClient; it 404s the same
+    # way, see test_guard_treats_odd_server_paths_as_server_paths.)
+    response = _client(static_dir, tmp_path).get("/API/export")
+    assert response.status_code == 404
+
+
 @pytest.mark.parametrize("path", SERVER_PATHS)
 @pytest.mark.parametrize(
     "site", ["cross-site", "same-site", "CROSS-SITE", "", "bogus", "same-origin, cross-site"]
