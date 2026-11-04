@@ -798,3 +798,121 @@ def test_restoring_the_same_export_again_skips_every_identical_cover(tmp_path: P
     outside_staging = [entry for entry in log if " .staging/" not in entry]
     assert outside_staging == ["replace library.json"], "only the document is committed again"
     assert _covers(target) == covers
+
+
+# --- Automation expansion (bmad-testarch-automate, 2026-11-04) -----------------
+#
+# The pre-commit fault branches the story's tests didn't reach: a write fault
+# on a later cover, an existing cover that can't be read, and a .staging/
+# leftover that can't be deleted. Each is 503 couldnt_save with library.json
+# and covers/ exactly as before (AD-12: only restore's own covers are removed).
+
+
+class _FailingCoverWrite(RecordingFs):
+    """Fails the rename that writes ``covers/<fail_name>``; logs the rest like RecordingFs."""
+
+    def __init__(self, data_dir: Path, log: list[str], fail_name: str) -> None:
+        super().__init__(data_dir, log)
+        self.fail_name = fail_name
+
+    def replace(self, src: Path, dst: Path) -> None:
+        if dst.parent.name == "covers" and dst.name == self.fail_name:
+            raise OSError(5, "injected cover write fault")
+        super().replace(src, dst)
+
+
+def test_a_fault_writing_a_later_cover_removes_the_covers_already_written(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    source = tmp_path / "source"
+    _seed_rich(source)
+    archive = _export(source)
+    # Covers are written in name order: Dune's first, then Piranesi's, which fails.
+    assert DUNE_COVER < PIRANESI_COVER
+    target = tmp_path / "target"
+    _seed_target(target)
+    log: list[str] = []
+    client = api_client(target, _FailingCoverWrite(target, log, PIRANESI_COVER))
+    library_before = library_bytes(target)
+    covers_before = _covers(target)
+
+    response = _post_restore(client, archive)
+
+    assert response.status_code == 503
+    assert response.json() == COULDNT_SAVE_BODY
+    assert "bookvie: couldn't save:" in capsys.readouterr().err
+    # The failed write's own temp file is removed too; _covers below proves none is left.
+    renames_and_deletes = [e for e in log if " .staging/" not in e and ".tmp" not in e]
+    assert renames_and_deletes == [f"replace covers/{DUNE_COVER}", f"remove covers/{DUNE_COVER}"]
+    assert library_bytes(target) == library_before
+    assert _covers(target) == covers_before
+    assert _staging(target) == []
+    titles = [book["title"] for book in client.get("/api/views/catalog").json()["books"]]
+    assert titles == ["The Left Hand of Darkness"]
+
+
+@pytest.mark.skipif(os.getuid() == 0, reason="root can read a chmod 000 file")
+def test_an_unreadable_same_named_cover_is_503_and_removes_the_covers_already_written(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    source = tmp_path / "source"
+    covers = _seed_rich(source)
+    archive = _export(source)
+    target = tmp_path / "target"
+    _seed_target(target)
+    client = api_client(target)
+    # Put after startup, whose sweep would delete it: a file named like the
+    # archive's second cover that can't be read for the same-bytes check.
+    unreadable = target / "covers" / PIRANESI_COVER
+    unreadable.write_bytes(covers[PIRANESI_COVER])
+    library_before = library_bytes(target)
+    unreadable.chmod(0)
+    try:
+        response = _post_restore(client, archive)
+    finally:
+        unreadable.chmod(0o644)
+
+    assert response.status_code == 503
+    assert response.json() == COULDNT_SAVE_BODY
+    assert f"bookvie: couldn't save: can't read covers/{PIRANESI_COVER}" in (
+        capsys.readouterr().err
+    )
+    assert library_bytes(target) == library_before
+    assert sorted(_covers(target)) == sorted([OLD_COVER, PIRANESI_COVER]), (
+        "Dune's cover, written first, was removed again"
+    )
+    assert _staging(target) == []
+
+
+def test_a_staging_leftover_that_cannot_be_deleted_is_503_and_changes_nothing(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    source = tmp_path / "source"
+    _seed_source(source)
+    archive = _export(source)
+    target = tmp_path / "target"
+    _seed_target(target)
+    # As AC-10 leaves it: a file in .staging/ the seam can't delete. Put after
+    # startup, whose sweep would remove it.
+    client = api_client(target, FaultyFs("remove"))
+    (target / ".staging").mkdir(exist_ok=True)
+    (target / ".staging" / "library.json").write_bytes(b"left by a failed cleanup")
+    library_before = library_bytes(target)
+    covers_before = _covers(target)
+
+    response = _post_restore(client, archive)
+
+    assert response.status_code == 503
+    assert response.json() == COULDNT_SAVE_BODY
+    err = capsys.readouterr().err
+    assert "bookvie: couldn't save: can't empty .staging/" in err
+    assert "bookvie: couldn't delete .staging/library.json" in err, "the finally cleanup logs"
+    assert library_bytes(target) == library_before
+    assert _covers(target) == covers_before
+    assert _staging(target) == ["library.json"], "left for the startup sweep"
+
+    # The next start sweeps it, and a restore then succeeds.
+    client = api_client(target)
+    assert _staging(target) == []
+    assert _post_restore(client, archive).status_code == 200
+    assert library_bytes(target) == library_bytes(source)
