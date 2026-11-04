@@ -26,7 +26,6 @@ import io
 import json
 import os
 import random
-import threading
 import zipfile
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -41,6 +40,7 @@ from tests.helpers import (
     DUNE,
     DUNE_ID,
     FaultyFs,
+    RecordingLock,
     api_client,
     image_bytes,
     library_bytes,
@@ -112,32 +112,6 @@ def _local_state(data_dir: Path) -> bytes | None:
 def _last_export_at(data_dir: Path) -> str | None:
     raw = _local_state(data_dir)
     return None if raw is None else json.loads(raw).get("lastExportAt")
-
-
-class RecordingLock:
-    """A ``threading.Lock`` that logs each acquire and release into ``log``."""
-
-    def __init__(self, log: list[str]) -> None:
-        self._lock = threading.Lock()
-        self._log = log
-
-    def acquire(self, blocking: bool = True, timeout: float = -1) -> bool:
-        got = self._lock.acquire(blocking, timeout)
-        if got:
-            self._log.append("lock acquired")
-        return got
-
-    def release(self) -> None:
-        self._log.append("lock released")
-        self._lock.release()
-
-    def locked(self) -> bool:
-        return self._lock.locked()
-
-    __enter__ = acquire
-
-    def __exit__(self, *exc: object) -> None:
-        self.release()
 
 
 @dataclass

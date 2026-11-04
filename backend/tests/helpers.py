@@ -10,10 +10,12 @@
   :func:`stored_book`, :func:`assert_invariants`.
 - Faults and covers: :class:`FaultyFs`, :func:`image_bytes` (by default a
   :data:`RED_ORANGE` PNG), :func:`seed_dune_with_cover`.
+- The lock's order of events: :class:`RecordingLock`.
 """
 
 import io
 import json
+import threading
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -131,6 +133,32 @@ class FaultyFs(OsFileSystem):
     def remove(self, path: Path) -> None:
         self._maybe_fail("remove")
         super().remove(path)
+
+
+class RecordingLock:
+    """A ``threading.Lock`` that logs each acquire and release into ``log``."""
+
+    def __init__(self, log: list[str]) -> None:
+        self._lock = threading.Lock()
+        self._log = log
+
+    def acquire(self, blocking: bool = True, timeout: float = -1) -> bool:
+        got = self._lock.acquire(blocking, timeout)
+        if got:
+            self._log.append("lock acquired")
+        return got
+
+    def release(self) -> None:
+        self._log.append("lock released")
+        self._lock.release()
+
+    def locked(self) -> bool:
+        return self._lock.locked()
+
+    __enter__ = acquire
+
+    def __exit__(self, *exc: object) -> None:
+        self.release()
 
 
 def api_client(

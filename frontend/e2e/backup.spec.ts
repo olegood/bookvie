@@ -9,12 +9,11 @@
 // folder, {"lastExportAt": "<ISO-8601>"}; a test that needs an earlier export
 // writes that file before its server starts (serverWithLastExport).
 
-import { chmodSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, readFileSync, rmSync } from 'node:fs'
 import path from 'node:path'
 import AxeBuilder from '@axe-core/playwright'
 import type { Page, TestInfo } from '@playwright/test'
-import { runDir } from './guard.ts'
-import { expect, freePort, type Server, seedLibrary, startServer, test } from './fixtures.ts'
+import { expect, type Server, startSeededServer, test } from './fixtures.ts'
 
 const EXPORT_ALL = 'Export all data'
 const EXPORTING = 'Exporting…'
@@ -37,24 +36,18 @@ function localNoonDaysAgo(days: number): string {
 }
 
 /**
- * Seeds a fresh data dir with `local-state.json` already holding
- * `lastExportAt`, then starts a server on it. The caller stops it. With
- * `cover`, Dune references `covers/dune-cover.jpg`, written with those bytes.
+ * Starts a server whose `local-state.json` already holds `lastExportAt`. The
+ * caller stops it. With `cover`, Dune references `covers/dune-cover.jpg`,
+ * written with those bytes.
  */
 async function serverWithLastExport(
   testInfo: TestInfo,
   lastExportAt: string,
   { cover }: { cover?: Buffer } = {},
 ): Promise<Server> {
-  const dataDir = path.join(runDir(process.env.BOOKVIE_E2E_RUN_ID!), `last-export-${testInfo.testId}`)
-  rmSync(dataDir, { recursive: true, force: true })
-  seedLibrary(dataDir, { books: [cover ? { ...DUNE, coverFile: COVER_FILE } : DUNE] })
-  if (cover) {
-    mkdirSync(path.join(dataDir, 'covers'), { recursive: true })
-    writeFileSync(path.join(dataDir, COVER_FILE), cover)
-  }
-  writeFileSync(path.join(dataDir, 'local-state.json'), JSON.stringify({ lastExportAt }))
-  return startServer(dataDir, { port: await freePort() })
+  const files: Record<string, string | Buffer> = { 'local-state.json': JSON.stringify({ lastExportAt }) }
+  if (cover) files[COVER_FILE] = cover
+  return startSeededServer(testInfo, 'last-export', { books: [cover ? { ...DUNE, coverFile: COVER_FILE } : DUNE] }, files)
 }
 
 /** Today's local date as the browser names the download. */

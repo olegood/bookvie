@@ -6,9 +6,9 @@
 // their worker's server. `seedLibrary` pre-seeds a data dir before a server
 // starts on it.
 
-import { test as base } from '@playwright/test'
+import { test as base, type TestInfo } from '@playwright/test'
 import { type ChildProcess, spawn, spawnSync } from 'node:child_process'
-import { mkdirSync, rmSync } from 'node:fs'
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import net from 'node:net'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -132,6 +132,31 @@ export function seedLibrary(
     throw new Error(`seeding ${dir} failed (code ${result.status})\n${result.stderr}`)
   }
   return path.join(dir, 'library.json')
+}
+
+/**
+ * Seeds `<run dir>/<name>-<test id>` with `partial`, writes each of `files`
+ * (paths relative to the data dir, e.g. `local-state.json` or a cover) before
+ * the server starts, then starts it. Unlike `seededServer`, the caller stops
+ * it and removes its data dir, in a `finally`.
+ */
+export async function startSeededServer(
+  testInfo: TestInfo,
+  name: string,
+  partial: Record<string, unknown>,
+  files: Record<string, string | Buffer> = {},
+): Promise<Server> {
+  const runId = process.env.BOOKVIE_E2E_RUN_ID
+  if (!runId) throw new Error('BOOKVIE_E2E_RUN_ID is not set; run through playwright.config.ts')
+  const dataDir = path.join(runDir(runId), `${name}-${testInfo.testId}`)
+  rmSync(dataDir, { recursive: true, force: true })
+  seedLibrary(dataDir, partial)
+  for (const [relative, data] of Object.entries(files)) {
+    const file = path.join(dataDir, relative)
+    mkdirSync(path.dirname(file), { recursive: true })
+    writeFileSync(file, data)
+  }
+  return startServer(dataDir, { port: await freePort() })
 }
 
 type TestFixtures = {
