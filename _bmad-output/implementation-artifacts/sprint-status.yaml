@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-29-2026 17:21
-last_updated: 11-04-2026 15:30
+last_updated: 11-04-2026 15:59
 project: bookvie
 project_key: NOKEY
 tracking_system: file-system
@@ -52,11 +52,11 @@ development_status:
   1-14-change-a-book-s-color-from-the-shelf: done
   epic-1-retrospective: done
 
-  epic-2: in-progress
+  epic-2: done
   2-1-export-all-data-with-one-click: done
   2-2-restore-my-library-from-an-export: done
   2-3-refuse-damaged-hostile-or-newer-files: done
-  epic-2-retrospective: optional
+  epic-2-retrospective: done
 
   epic-3: backlog
   3-1-see-my-main-book-on-home: backlog
@@ -183,3 +183,53 @@ action_items:
     owner: "Amelia (Dev)"
     status: done
     ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-11-03.md"
+  - id: "epic-2-retro-item-13-before-epic-3-apply-the-stacked-spine-re"
+    epic: 2
+    action: "Before Epic 3: apply the stacked spine reconciliation (AD-1 export reads,
+      AD-4 record_export, AD-14 rules, AD-12, AD-2/AD-15, AD-9) plus the Epic 1 seed/map
+      item and epic-2-context.md l.40-42, l.66 (F-S1)"
+    owner: "Winston (Architect), applied by Oleg"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-2-retro-2026-11-04.md"
+  - id: "epic-2-retro-item-14-harden-restore-names-refuse-covers-colli"
+    epic: 2
+    action: "Harden restore names: refuse covers colliding under NFC + casefold, and
+      map name-caused staging OSErrors to 422 restore_unsafe, with tests (F-R1, F-R2)"
+    owner: "Amelia (Dev)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-2-retro-2026-11-04.md"
+  - id: "epic-2-retro-item-15-settle-where-the-restore-confirm-dialog"
+    epic: 2
+    action: "Settle where the restore Confirm dialog shows Couldnt save; align EXPERIENCE.md:140
+      and epic-2-context.md:66 with the as-built behavior or change the code (F-S2)"
+    owner: "Sally (UX), decided by Oleg"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-2-retro-2026-11-04.md"
+  - id: "epic-2-retro-item-16-spine-drift-found-in-a-story-review-bloc"
+    epic: 2
+    action: "Spine drift found in a story review blocks story closure unless the spine
+      is edited or the deviation explicitly accepted (PL-1)"
+    owner: "Oleg / bmad-build config"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-2-retro-2026-11-04.md"
+  - id: "epic-2-retro-item-17-story-spec-creation-pulls-in-open-deferr"
+    epic: 2
+    action: "Story spec creation pulls in open deferred-work items naming that story;
+      README update is part of story done (PL-2, PL-7)"
+    owner: "Oleg / bmad-build config"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-2-retro-2026-11-04.md"
+  - id: "epic-2-retro-item-18-tick-or-retire-the-105-stale-epic-2-atdd"
+    epic: 2
+    action: "Tick or retire the 105 stale Epic 2 ATDD checklist lines and have automate/trace
+      tick lines as they go green (F-S3)"
+    owner: "Murat (TEA)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-2-retro-2026-11-04.md"
+  - id: "epic-2-retro-item-19-settle-ruff-add-config-and-run-ruff-chec"
+    epic: 2
+    action: "Settle ruff: add config and run ruff check in check:py, or record in
+      AGENTS.md that ruff is not used (PL-3)"
+    owner: "Amelia (Dev), decided by Oleg"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-2-retro-2026-11-04.md"
