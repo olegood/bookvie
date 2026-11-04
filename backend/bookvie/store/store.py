@@ -528,7 +528,7 @@ class Store:
         """The names of the entries in ``covers/`` (none when it isn't a folder).
 
         Restore reads it to refuse an archive cover whose name differs from
-        one already here only in case (AD-14). Raises :class:`OSError`.
+        one already here only in case or Unicode form (AD-14). Raises :class:`OSError`.
         """
         covers_dir = self.data_dir / COVERS_DIR
         if covers_dir.is_symlink() or not covers_dir.is_dir():

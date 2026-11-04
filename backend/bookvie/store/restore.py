@@ -12,26 +12,30 @@ it, in this order:
 3. Every archive-safety rule is checked on ``infolist()`` before any entry
    is unpacked, and a break raises :class:`ArchiveUnsafe`: an upload over
    :data:`MAX_UPLOAD_BYTES`, more than :data:`MAX_ENTRIES` entries, an
-   absolute name or a ``..`` part, a symlink, two names equal under
-   ``casefold()``, a cover whose name differs only in case from one already
-   in ``covers/``, or any entry other than ``library.json``, the ``covers/``
-   directory and ``covers/<name>`` (a plain name, as
+   absolute name or a ``..`` part, a symlink, two names equal under NFC
+   plus ``casefold()`` (:func:`_name_key`), a cover whose name differs only
+   that way from one already in ``covers/``, a cover name over
+   :data:`MAX_COVER_NAME_BYTES`, or any entry other than ``library.json``,
+   the ``covers/`` directory and ``covers/<name>`` (a plain name, as
    :func:`~bookvie.store.store.cover_name` rules).
 4. A missing ``library.json`` raises :class:`ArchiveRefused`.
 5. Entries are unpacked. The bytes actually written are counted, never the
    header sizes: the chunk that would take the total past
    :data:`MAX_EXTRACTED_BYTES` is not written, and an entry that inflates
    past its declared size is :class:`ArchiveUnsafe`; a damaged entry is
-   :class:`ArchiveRefused`.
+   :class:`ArchiveRefused`. A staged file that can't be created because of
+   its name (:data:`_NAME_ERRNOS`) is :class:`ArchiveUnsafe` too.
 
-The limits are read through this module at call time. A failure writing into
-``.staging/`` is :class:`~bookvie.store.store.CouldntSave`. The caller holds
+The limits are read through this module at call time. Any other failure
+writing into ``.staging/`` is :class:`~bookvie.store.store.CouldntSave`. The caller holds
 the store lock.
 """
 
 import copy
+import errno
 import os
 import stat
+import unicodedata
 import zipfile
 import zlib
 from dataclasses import dataclass, field
@@ -50,6 +54,16 @@ MAX_EXTRACTED_BYTES = 1024**3
 """The most bytes unpacking may write into ``.staging/`` (1 GiB, AD-14)."""
 DIRECTORY_BYTES_PER_ENTRY = 1024
 """The central-directory bytes allowed per entry; an export's records are under 100."""
+MAX_COVER_NAME_BYTES = 200
+"""The longest cover name restore takes, in UTF-8 bytes of the name inside ``covers/`` (AD-14).
+
+Under the common 255-byte file-name limit with room for the temp name
+``<name>.tmp`` plus 8 characters that restore writes it through; a minted
+name is 77 bytes.
+"""
+
+# What open() raises when the file name itself is the problem, not the disk.
+_NAME_ERRNOS = frozenset({errno.ENAMETOOLONG, errno.EILSEQ, errno.EINVAL})
 
 # What reading a damaged or unsupported entry raises (not the staging writes).
 _READ_ERRORS = (
@@ -113,6 +127,8 @@ def _copy_entry(
     try:
         out = open(target, "wb")  # noqa: SIM115 - closed below, errors are told apart
     except OSError as exc:
+        if exc.errno in _NAME_ERRNOS:
+            raise ArchiveUnsafe(f"holds {info.filename!r}, which can't be a file name") from exc
         raise CouldntSave(f"can't write {STAGING_DIR}/{info.filename}: {exc}") from exc
     unbounded = copy.copy(info)
     unbounded.file_size = budget.left + 1
@@ -192,6 +208,23 @@ def _unsafe_name(name: str) -> str | None:
     return None
 
 
+def _name_key(name: str) -> str:
+    """``name`` as restore compares names: NFC-normalized, then casefolded (AD-14).
+
+    Two names with the same key may share one file: case-insensitive
+    filesystems ignore case, and APFS ignores Unicode normalization too.
+    Full casefolding also matches pairs such as ``ß`` and ``ss`` that APFS
+    keeps apart; restore refuses those too, on the safe side.
+    """
+    return unicodedata.normalize("NFC", unicodedata.normalize("NFC", name).casefold())
+
+
+def _cover_name_too_long(cover: str) -> bool:
+    # zipfile decodes every name (UTF-8 or cp437) to a str without lone surrogates,
+    # so encoding it as UTF-8 can't fail.
+    return len(cover.encode("utf-8")) > MAX_COVER_NAME_BYTES
+
+
 def _is_symlink(info: zipfile.ZipInfo) -> bool:
     return stat.S_ISLNK(info.external_attr >> 16)
 
@@ -201,7 +234,11 @@ def _check_entries(
 ) -> tuple[zipfile.ZipInfo | None, dict[str, zipfile.ZipInfo]]:
     """The archive-safety pass (AD-14): ``library.json``'s entry and each cover's, by name.
 
-    Raises :class:`ArchiveUnsafe` before anything is unpacked.
+    Raises :class:`ArchiveUnsafe` before anything is unpacked. Names are
+    compared by :func:`_name_key`. Against ``covers/`` a cover is refused
+    when a different name there has its key and its own name isn't there; the same name is kept by
+    :meth:`~bookvie.store.store.Store.replace_all` (AD-12), whose exact-name
+    check is then enough, because no other cover can share its file.
     """
     if len(infos) > MAX_ENTRIES:
         raise ArchiveUnsafe(f"holds {len(infos)} entries, more than {MAX_ENTRIES}")
@@ -214,15 +251,19 @@ def _check_entries(
             raise ArchiveUnsafe(f"holds {name!r}, which {why}")
         if _is_symlink(info):
             raise ArchiveUnsafe(f"holds {name!r}, which is a symlink")
-        folded = name.casefold()
-        if folded in seen:
-            raise ArchiveUnsafe(f"holds {name!r} twice (as {seen[folded]!r})")
-        seen[folded] = name
+        key = _name_key(name)
+        if key in seen:
+            raise ArchiveUnsafe(f"holds {ascii(name)} twice (as {ascii(seen[key])})")
+        seen[key] = name
         if name == LIBRARY_NAME and not info.is_dir():
             library_info = info
         elif info.is_dir() and name.rstrip("/") == COVERS_DIR:
             continue
         elif not info.is_dir() and (cover := cover_name(name)) is not None:
+            if _cover_name_too_long(cover):
+                raise ArchiveUnsafe(
+                    f"holds {name!r}, whose name is over {MAX_COVER_NAME_BYTES} bytes"
+                )
             cover_infos[cover] = info
         else:
             raise ArchiveUnsafe(f"holds {name!r}, which isn't library.json or a cover")
@@ -231,13 +272,14 @@ def _check_entries(
             existing = store.cover_names()
         except OSError as exc:
             raise CouldntSave(f"can't list {COVERS_DIR}/: {exc}") from exc
-        folded_existing = {name.casefold(): name for name in existing}
+        exact = set(existing)
+        keyed_existing = {_name_key(name): name for name in existing}
         for cover in cover_infos:
-            other = folded_existing.get(cover.casefold())
-            if other is not None and other != cover:
+            other = keyed_existing.get(_name_key(cover))
+            if other is not None and cover not in exact:
                 raise ArchiveUnsafe(
-                    f"holds {COVERS_DIR}/{cover}, which differs only in case from "
-                    f"{COVERS_DIR}/{other}"
+                    f"holds {COVERS_DIR}/{ascii(cover)}, which could share one file "
+                    f"with {COVERS_DIR}/{ascii(other)} (case or Unicode form)"
                 )
     return library_info, cover_infos
 

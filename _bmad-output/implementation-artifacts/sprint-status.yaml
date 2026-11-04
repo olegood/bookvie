@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-29-2026 17:21
-last_updated: 11-04-2026 17:14
+last_updated: 11-04-2026 17:24
 project: bookvie
 project_key: NOKEY
 tracking_system: file-system
@@ -196,7 +196,7 @@ action_items:
     action: "Harden restore names: refuse covers colliding under NFC + casefold, and
       map name-caused staging OSErrors to 422 restore_unsafe, with tests (F-R1, F-R2)"
     owner: "Amelia (Dev)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-2-retro-2026-11-04.md"
   - id: "epic-2-retro-item-15-settle-where-the-restore-confirm-dialog"
     epic: 2

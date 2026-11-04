@@ -204,7 +204,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-2-restore-my-library-from-an-export.md`
   summary: Add this to the Story 2.3 case-collision item above: on a case-insensitive filesystem, `Store.replace_all`'s `os.path.lexists` treats `covers/A.jpg` as already present when `covers/a.jpg` exists. `_sweep_covers` then deletes `a.jpg`, because its keep set compares names exactly. The restored Book is left with a dangling cover.
   evidence: `backend/bookvie/store/store.py` `replace_all` and `_sweep_covers`. Only a crafted archive reaches it, because minted names are lowercase UUIDs. Refusing archive names that collide case-insensitively with each other or with existing `covers/` entries closes both.
-  resolved: Story 2.3, by the same existing-name casefold refusal, so `replace_all` never meets a case-only alias. Unicode-normalization aliases remain open (Epic 2 retro F-R1, action 2).
+  resolved: Story 2.3, by the same existing-name casefold refusal, so `replace_all` never meets a case-only alias. Unicode-normalization aliases were closed by Epic 2 retro action 2 (`spec-harden-restore-archive-names.md`): names compare under NFC + casefold.
 
 ## Deferred from: code review of spec-2-3-refuse-damaged-hostile-or-newer-files (2026-11-04)
 

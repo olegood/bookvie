@@ -21,10 +21,12 @@ The scaffolds pin these names (see the ATDD checklist):
 
 - The limits are module attributes of :mod:`bookvie.store.restore`, read at
   call time so a test can lower them: ``MAX_UPLOAD_BYTES`` and
-  ``MAX_EXTRACTED_BYTES`` (1 GiB each) and ``MAX_ENTRIES`` (5,000).
+  ``MAX_EXTRACTED_BYTES`` (1 GiB each), ``MAX_ENTRIES`` (5,000) and
+  ``MAX_COVER_NAME_BYTES`` (200, Epic 2 retro action 2).
 - ``restore_unsafe`` has the same message as ``restore_invalid``.
 """
 
+import errno
 import io
 import json
 import os
@@ -78,6 +80,9 @@ PIRANESI_COVER = f"{PIRANESI_ID}-11111111-2222-4333-8444-555555555555.png"
 OLD_BOOK_ID = "3a5b7c9d-0e1f-4a2b-8c3d-4e5f6a7b8c9d"
 OLD_COVER = f"{OLD_BOOK_ID}-66666666-7777-4888-9999-000000000000.jpg"
 """The cover of the library a refused restore must leave alone."""
+# One name in two Unicode forms: APFS stores both as one file (Epic 2 retro F-R1).
+ACCENTED_NFC = "\u00e9.jpg"
+ACCENTED_NFD = "e\u0301.jpg"
 
 
 # --- Seeds and archives -------------------------------------------------------
@@ -316,6 +321,11 @@ def test_ac3_p0_a_hostile_archive_is_422_restore_unsafe_before_anything_outside_
     # apart from the one hostile thing, so only the safety rule can refuse it.
     without_dune = {k: v for k, v in entries.items() if k != f"covers/{DUNE_COVER}"}
     dune_again = (zipfile.ZipInfo(f"covers/{DUNE_COVER}"), source.covers[DUNE_COVER])
+    long_name = f"covers/{'a' * 300}.jpg"
+    # 101 two-byte characters plus ".jpg": 105 characters, 206 bytes.
+    wide_name = f"covers/{'\u00e9' * 101}.jpg"
+    wide_cover = wide_name.removeprefix("covers/")
+    assert len(wide_cover) <= unpack.MAX_COVER_NAME_BYTES < len(wide_cover.encode())
     library_again = (zipfile.ZipInfo("library.json"), source.library)
     hostile: list[tuple[str, bytes, dict[str, int]]] = [
         (
@@ -344,6 +354,30 @@ def test_ac3_p0_a_hostile_archive_is_422_restore_unsafe_before_anything_outside_
         (
             "two covers whose names differ only in case",
             zip_archive({**entries, f"covers/{upper}": source.covers[DUNE_COVER]}),
+            {},
+        ),
+        (
+            "two covers whose names differ only in Unicode form (NFC and NFD)",
+            zip_archive(
+                {**entries, f"covers/{ACCENTED_NFC}": b"one", f"covers/{ACCENTED_NFD}": b"two"}
+            ),
+            {},
+        ),
+        (
+            "two covers whose names differ in case and Unicode form",
+            zip_archive(
+                {
+                    **entries,
+                    f"covers/{ACCENTED_NFC}": b"one",
+                    f"covers/{ACCENTED_NFD.upper()}": b"two",
+                }
+            ),
+            {},
+        ),
+        ("a cover name over the length cap", zip_archive({**entries, long_name: b"x"}), {}),
+        (
+            "a cover name over the cap in bytes but not in characters",
+            zip_archive({**entries, wide_name: b"x"}),
             {},
         ),
         ("more than 5,000 entries", zip_archive({**entries, **fillers}), {}),
@@ -499,8 +533,10 @@ def test_ac3_the_limits_themselves_are_allowed(
     }
     at_count = zip_archive({**entries, **fillers})
     assert len(zipfile.ZipFile(io.BytesIO(at_count)).infolist()) == 5_000
+    at_name_cap = f"covers/{'b' * (unpack.MAX_COVER_NAME_BYTES - 4)}.jpg"
     cases: list[tuple[str, bytes, dict[str, int]]] = [
         ("exactly 5,000 entries", at_count, {}),
+        ("a cover name exactly at the length cap", zip_archive({**entries, at_name_cap: b"x"}), {}),
         ("an upload exactly at the limit", source.export, {"MAX_UPLOAD_BYTES": len(source.export)}),
         (
             "an extraction exactly at the limit",
@@ -706,6 +742,112 @@ def test_ac3_a_cover_whose_name_differs_only_in_case_from_one_in_covers_is_unsaf
     assert response.status_code == 422
     assert _outside_staging(log) == []
     _Snapshot.assert_unchanged(before, target, "a case collision with covers/")
+
+
+def test_ac3_a_cover_whose_name_differs_only_in_unicode_form_from_one_in_covers_is_unsafe(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    source = _Source(tmp_path)
+    archive = zip_archive({**source.entries(), f"covers/{ACCENTED_NFC}": b"another cover"})
+    target = tmp_path / "target"
+    _seed_target(target)
+    client = api_client(target)
+    # After startup, which would sweep it: an unreferenced file in NFD form.
+    (target / "covers" / ACCENTED_NFD).write_bytes(b"a cover already here")
+    if ACCENTED_NFC not in os.listdir(target / "covers") and ACCENTED_NFD not in os.listdir(
+        target / "covers"
+    ):  # pragma: no cover - a filesystem that rewrites names in some third form
+        pytest.skip("the filesystem stores neither form")
+    log: list[str] = []
+    client.app.state.store.fs = RecordingFs(target, log)
+    before = _Snapshot(target)
+
+    response = post_restore(client, archive)
+
+    assert response.json() == RESTORE_UNSAFE_BODY
+    assert response.status_code == 422
+    assert _outside_staging(log) == []
+    _Snapshot.assert_unchanged(before, target, "a Unicode-form collision with covers/")
+    assert "could share one file with covers/'e\\u0301.jpg'" in capsys.readouterr().err
+
+
+def test_ac3_a_cover_name_the_filesystem_rejects_is_unsafe_not_couldnt_save(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # With the cap out of the way, the real open() fails with ENAMETOOLONG.
+    monkeypatch.setattr(unpack, "MAX_COVER_NAME_BYTES", 10_000)
+    source = _Source(tmp_path)
+    archive = zip_archive({**source.entries(), f"covers/{'a' * 300}.jpg": b"x"})
+    target = tmp_path / "target"
+    _seed_target(target)
+    client = api_client(target)
+    log: list[str] = []
+    client.app.state.store.fs = RecordingFs(target, log)
+    before = _Snapshot(target)
+
+    response = post_restore(client, archive)
+
+    assert response.json() == RESTORE_UNSAFE_BODY
+    assert response.status_code == 422
+    assert _outside_staging(log) == []
+    _Snapshot.assert_unchanged(before, target, "a name the filesystem rejects")
+    assert "which can't be a file name" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize(
+    ("code", "status"),
+    [
+        (errno.ENAMETOOLONG, 422),
+        (errno.EILSEQ, 422),
+        (errno.EINVAL, 422),
+        (errno.EACCES, 503),
+        (errno.ENOSPC, 503),
+        (errno.EIO, 503),
+    ],
+)
+def test_ac3_only_name_errors_opening_a_staged_cover_are_unsafe(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, code: int, status: int
+) -> None:
+    source = _Source(tmp_path)
+    target = tmp_path / "target"
+    _seed_target(target)
+    client = api_client(target)
+    before = _Snapshot(target)
+    real_open = open
+
+    def failing_open(path: object, *args: object, **kwargs: object) -> object:
+        if Path(str(path)).parent.name == "covers":
+            raise OSError(code, os.strerror(code), str(path))
+        return real_open(path, *args, **kwargs)  # type: ignore[call-overload]
+
+    monkeypatch.setattr(unpack, "open", failing_open, raising=False)
+
+    response = post_restore(client, source.export)
+
+    assert response.status_code == status
+    assert response.json() == (RESTORE_UNSAFE_BODY if status == 422 else COULDNT_SAVE_BODY)
+    _Snapshot.assert_unchanged(before, target, f"open() failing with {errno.errorcode[code]}")
+
+
+def test_ac3_a_cover_matching_one_of_two_same_key_names_in_covers_is_kept(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Two names with one key can both exist on Linux; an exact match of either is fine.
+    source = _Source(tmp_path)
+    for index, (listed, status) in enumerate(
+        [
+            ([OLD_COVER, DUNE_COVER, DUNE_COVER.upper()], 200),
+            ([OLD_COVER, DUNE_COVER.upper()], 422),
+        ]
+    ):
+        target = tmp_path / f"target-{index}"
+        _seed_target(target)
+        client = api_client(target)
+        monkeypatch.setattr(client.app.state.store, "cover_names", lambda names=listed: names)
+
+        response = post_restore(client, source.export)
+
+        assert response.status_code == status, listed
 
 
 def test_ac2_a_newer_export_missing_its_covers_is_still_restore_newer_version(
