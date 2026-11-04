@@ -37,9 +37,11 @@ Make the user's library survive a dead disk or a new laptop. One click exports a
   4. Apply in the cover order: copy the archive's covers in, commit the document atomically (temp file, fsync, rename), then delete covers the new document doesn't reference.
 - **Restore cleanup:** `.staging/` is emptied after every restore, whether it succeeded or was refused, and also at startup. Once the document commit succeeds, the restore counts as a success: a failure while deleting covers or emptying `.staging/` is only logged to stderr and left for the startup sweep.
 - **Restore safety limits:**
-  - No absolute paths, `..` components, symlinks or duplicate names.
-  - At most 5,000 entries.
-  - An upload of at most 1 GB, and at most 1 GB extracted. The extracted size is counted on bytes actually written, never on zip headers, and extraction stops as soon as a limit is passed.
+  - No absolute paths, `..` components, symlinks or duplicate names. Names are compared under `casefold()`, and a cover whose name differs only in case from one already in `covers/` is a duplicate too.
+  - At most 5,000 entries, directory entries included. A central directory over 1 KiB per allowed entry is refused before it is parsed.
+  - An upload of at most 1 GiB, and at most 1 GiB extracted. The extracted size is counted on bytes actually written, never on zip headers, and extraction stops before the chunk that would pass a limit. An entry that inflates past its declared size is `restore_unsafe` even under the limit.
+  - A request body over the upload limit plus 64 KiB of framing is 422 `restore_unsafe` before the route runs, so before the lock.
+  - Refusal precedence (the first rule broken decides): central directory too large (unsafe); not a zip (invalid); upload size, entry count and name rules (unsafe); no `library.json` (invalid); unpacking (size rules unsafe, damage invalid); newer `schemaVersion` (`restore_newer_version`, decided before model validation and the cover checks); anything else (invalid).
 - **Schema versions:**
   - An older `schemaVersion` goes through the same migration chain as startup, run in memory.
   - A newer `schemaVersion` is refused.

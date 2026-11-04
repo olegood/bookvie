@@ -7,7 +7,7 @@ paradigm: 'server-owned domain behind an intent (command) API with server-comput
 scope: 'bookvie MVP: whole system (CLI launcher, Python server, data folder, React client)'
 status: final
 created: '2026-10-29'
-updated: '2026-11-03'
+updated: '2026-11-04'
 binds: [FR-1, FR-2, FR-3, FR-4, FR-5, FR-6, FR-7, FR-8, FR-9, FR-10, FR-11, FR-14, FR-15, FR-16, FR-17, FR-18, FR-19, FR-20, FR-21, FR-22, FR-23, FR-24, A1, A2, A3, A4, A5, A6]
 sources:
   - _bmad-output/planning-artifacts/prds/prd-bookvie-2026-10-28/prd.md
@@ -49,14 +49,14 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
 ### AD-1: One local process owns the data folder [ADOPTED]
 
 - **Binds:** A1, all persistence, FR-2 (agent entry)
-- **Prevents:** browser-local storage (IndexedDB, localStorage, File System Access) splitting the agent's catalog from the user's; any code other than `store/` touching data files.
-- **Rule:** All data lives in one folder on disk, and only the server's `store/` module reads or writes it. No feature may persist domain data in the browser.
+- **Prevents:** browser-local storage (IndexedDB, localStorage, File System Access) splitting the agent's catalog from the user's; any code other than `store/` writing data files, or reading them outside the AD-4 lock.
+- **Rule:** All data lives in one folder on disk, and only the server touches it. Every write goes through `store/`, except `bookvie.lock`, which the launcher's `instance.py` creates, hands over and removes before and after the server runs (AD-5). The one read outside `store/` is export: `intents/export` packages `library.json` (the bytes on disk) and the referenced covers itself, while holding the AD-4 lock, because export *is* the data folder packaged (AD-14; decided in story 2.1, reconciled in Epic 2 retro item 1). No feature may persist domain data in the browser.
 
 ### AD-2: The text store is one JSON document, written atomically [ADOPTED]
 
 - **Binds:** A3, Data-safety NFR, FR-22, FR-23
 - **Prevents:** partial writes; a second store; two code paths serializing differently.
-- **Rule:** All textual data is a single `library.json` with the shape in AD-18. `store.serialize()` is the only function that produces its bytes: UTF-8, camelCase keys, nulls kept, keys in model order, 2-space indent, non-ASCII written as is (`ensure_ascii=False`), LF line endings, exactly one trailing newline. Every commit writes a temp file in the same folder, fsyncs it, renames it over the original, and then fsyncs the folder so the rename survives a power cut (skipped on filesystems that can't fsync a folder). The rename is the commit: a failed folder fsync after it is logged, not reported. If any step fails, the original is untouched and the intent reports `couldnt_save`. Before the first commit, every start fsyncs the data folder's parent (and the parent of any ancestor it creates) and the data folder itself, so the data folder, `covers/` and `.staging/` survive a power cut even after an interrupted earlier start. A failed flush refuses startup, except for a parent bookvie can't read, which is logged and skipped. At startup the server deletes leftover `library.json.tmp*` files from an interrupted commit, and exits non-zero with a message naming the path if the data folder isn't writable. If `library.json` is missing but `covers/` holds files, startup is refused before `library.json` or `covers/` changes (any entry in `covers/` counts, and an unreadable `covers/` is refused too): an empty library would let the AD-12 sweep delete every cover (decided in story 1.13). The message says to restore `library.json` or empty `covers/`.
+- **Rule:** All textual data is a single `library.json` with the shape in AD-18. `store.serialize()` is the only function that produces its bytes: UTF-8, camelCase keys, nulls kept, keys in model order, 2-space indent, non-ASCII written as is (`ensure_ascii=False`), LF line endings, exactly one trailing newline. Every commit writes a temp file in the same folder, fsyncs it, renames it over the original, and then fsyncs the folder so the rename survives a power cut (skipped on filesystems that can't fsync a folder). The rename is the commit: a failed folder fsync after it is logged, not reported. If any step fails, the original is untouched and the intent reports `couldnt_save`. Before the first commit, every start fsyncs the data folder's parent (and the parent of any ancestor it creates) and the data folder itself, so the data folder, `covers/` and `.staging/` survive a power cut even after an interrupted earlier start. A failed flush refuses startup, except for a parent bookvie can't read, which is logged and skipped. At startup the server deletes leftover `library.json.tmp*` and `local-state.json.tmp*` files from an interrupted write (AD-15), and exits non-zero with a message naming the path if the data folder isn't writable. If `library.json` is missing but `covers/` holds files, startup is refused before `library.json` or `covers/` changes (any entry in `covers/` counts, and an unreadable `covers/` is refused too): an empty library would let the AD-12 sweep delete every cover (decided in story 1.13). The message says to restore `library.json` or empty `covers/`.
 
 ### AD-3: Domain rules live only in the server; mutations arrive only as intents [ADOPTED]
 
@@ -69,7 +69,7 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
 
 - **Binds:** AD-2, AD-3, AD-14
 - **Prevents:** two concurrent requests both loading state and one silently discarding the other; an intent overwriting a restore; an export capturing a half-replaced cover.
-- **Rule:** One in-process lock covers *apply intent → write files → commit document → swap in-memory state*. `export` and `restore` hold the same lock. Views read the committed in-memory state.
+- **Rule:** One in-process lock covers *apply intent → write files → commit document → swap in-memory state*. `export` and `restore` hold the same lock: export while it builds the zip (not while it sends it), and restore for the whole operation, staging included. Views read the committed in-memory state. The one write outside the lock is `local-state.json` ("Last export", AD-15), written after the download has gone out. It never touches `library.json` or `covers/`, and it is atomic on its own (story 2.1).
 
 ### AD-5: One server instance per data folder [ADOPTED]
 
@@ -112,14 +112,14 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
 - **Rule:**
   - **Success:** HTTP 200 with `{ "ok": true, "ids"?: {<name>: <uuid>}, "reachedLastPage"?: true }`.
   - **Failure:** `{ "error": { "kind": "refusal" | "couldnt_save" | "couldnt_export", "code": "<snake_case>", "message": "<user copy>", "fields"?: [{ "field", "code", "message" }] } }`.
-    - HTTP 422 means field validation. `code` is `invalid_fields`, and `fields` lists every failing field. 422 also covers a rejected upload: a cover that isn't a supported image is a field error, and a refused restore archive uses the AD-14 codes.
+    - HTTP 422 means field validation or a refused upload. For field validation `code` is `invalid_fields`, and `fields` lists every failing field. For uploads: a cover that isn't a supported image is a field error, and a refused restore archive is a `refusal` with one of the AD-14 codes, `restore_invalid`, `restore_newer_version` or `restore_unsafe`, with no `fields`. `restore_unsafe` shows `restore_invalid`'s copy. A restore body over the upload limit plus 64 KiB of multipart framing is 422 `restore_unsafe`: refused before anything is read when `Content-Length` says so, otherwise as soon as the counted bytes pass the limit while the form is parsed. Either way it is before the restore takes the lock (story 2.3).
     - HTTP 413 `cover_too_large` means a cover upload over 20 MB (AD-12); `fields` carries "Cover must be 20 MB or smaller."
     - HTTP 409 means a state rule (e.g. `duplicate_book`, `pages_below_current_page`). An intent whose target is no longer in a state it can act on is refused, never applied to another Book: `book_not_found` (the Book was deleted), `not_main_book` (`update-page` or `pause` for a Book that isn't Main), `reading_already_finished`, `already_main` (`start-reading` for the Main book), `main_cannot_be_up_next`, `main_cannot_be_side_read`, `side_reads_full` ("You already have 3 side reads. Remove one first."). A 409 refusal about one field (e.g. `pages_below_current_page`) includes `fields`.
     - HTTP 404 `book_not_found` (kind `refusal`) comes from a view, not an intent: `GET /api/views/book` for an id no Book has (decided in story 1.11). The client shows its not-found page.
     - On an intent route, a body that can't be parsed (broken multipart, a part over 1 MB, too many fields) is 422 `invalid_fields` on `intent`, the same refusal as a malformed `intent` part (retro item 8).
   - Unknown `/api` paths aren't enveloped: a GET or HEAD 404s through the SPA route, and any other method gets Starlette's 405 `{detail}`. No real route answers `{detail}`.
     - An intent that would change nothing is a no-op success, not a refusal: `set-up-next` for the Book already Up next returns 200, changes nothing and commits nothing.
-    - HTTP 500 or 503 means `couldnt_save`. When `check_invariants()` fails after validation passed, that is a server bug: the intent commits nothing, logs the failed rule to stderr, and returns 500 `couldnt_save`.
+    - HTTP 500 or 503 means `couldnt_save`. A restore write fault (staging, cover copy-in or the document commit) is 503 `couldnt_save`. When `check_invariants()` fails after validation passed, that is a server bug: the intent commits nothing, logs the failed rule to stderr, and returns 500 `couldnt_save`.
     - HTTP 503 with kind and code `couldnt_export` means export failed to read the data; nothing was sent (AD-14).
   - A global `RequestValidationError` handler maps framework validation errors into this shape. The server owns all message copy (PRD §5 Tone), and the client renders it as is. Error codes are an enum in the contract.
 
@@ -151,7 +151,8 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
   - **After the commit:** once the document commit succeeds, the intent has succeeded. A failure while deleting unreferenced files or emptying `.staging/` is logged to stderr and left for the startup sweep; the response is still 200, never `couldnt_save`.
   - **Remove cover:** `edit-book` with `removeCover: true` (offered only when a cover exists) clears `coverFile` and `spineColorFromCover`, re-resolves `spineColor` (AD-11), and deletes the file after the commit, per the order above.
   - Covers are served at `/media/covers/<file>` with immutable caching.
-  - **No staging for covers:** each new cover is written as `covers/<name>.tmp*`, fsynced and renamed into place. `.staging/` is reserved for restore scratch (AD-14). Until restore exists it is only created, flushed and emptied at startup (retro F-R5).
+  - **No staging for covers:** each new cover is written as `covers/<name>.tmp*`, fsynced and renamed into place. `.staging/` is restore's scratch only (AD-14).
+  - **Restored covers:** restore stores an archive's covers byte for byte, through the same temp + rename. The upload and output rules above (downscale, re-encode, minted name) don't apply; each referenced cover only has to be present and decodable. A name already in `covers/` is never overwritten: its file is kept, and when the archive's copy differs that is only logged (story 2.2).
   - At startup the server removes cover files that no Book references, including `covers/*.tmp*` leftovers. When `library.json` is missing but `covers/` holds files, startup is refused instead (AD-2).
 
 ### AD-13: Versioned document; one migration chain [ADOPTED]
@@ -171,19 +172,20 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
 - **Binds:** FR-22, FR-23, A6
 - **Prevents:** an export format that drifts from storage; a restore that fails halfway; malicious or damaged archives.
 - **Rule:**
-  - **Export:** `GET /api/export` returns one `.zip` holding `library.json` and `covers/` (always present as a directory entry, even when empty), and nothing else. Under the AD-4 lock the zip is built into a spooled temp file (in memory up to ~10 MB, then on disk); the lock is released, then the file is sent. A read failure happens before any header is sent and returns 503 `couldnt_export`. "Last export" (AD-15) is recorded only after the last byte has been sent with no client disconnect; a HEAD request or an aborted download records nothing. The server can't know whether the browser kept the file, so "Last export" means "last complete download".
-  - **Restore route:** `POST /api/intents/restore`, multipart (AD-3). Refusals are 422: `restore_invalid` (not a zip, damaged, schema or invariant failure, missing or undecodable cover), `restore_newer_version`, and `restore_unsafe` (path, symlink, duplicate, entry or size limits; same user copy as `restore_invalid`). A failed commit is 503 `couldnt_save`.
-  - **Restore validation:** restore empties `.staging/`, then unpacks into it. It accepts only the entries `library.json` and `covers/<name>`: no absolute paths, no `..`, no symlinks, no duplicate names. A missing `covers/` counts as empty.
-  - **Restore limits:** the upload is at most 1 GB, the archive holds at most 5,000 entries, and at most 1 GB is extracted. The extracted size is counted on the bytes actually written, never on sizes declared in the zip headers, and extraction stops as soon as a limit is passed. These limits fit about 2,000 Books with downscaled covers (about 300 KB each) plus `library.json` up to its 10 MB performance ceiling. Then it validates the whole archive: schema, migrations, AD-18 invariants, and every referenced cover present and decodable.
+  - **Export:** `GET /api/export` returns one `.zip` holding `library.json` (the bytes on disk) and `covers/` (always present as a directory entry, even when empty) with every cover the library references, and nothing else. Unreferenced files in `covers/` are left out: the startup sweep would delete them anyway (story 2.1). The request guard requires `X-Bookvie-Export: 1` on this route (AD-16). Under the AD-4 lock the zip is built into a spooled temp file (in memory up to ~10 MB, then on disk); the lock is released, then the file is sent. A read failure happens before any header is sent and returns 503 `couldnt_export`. "Last export" (AD-15) is recorded only after the last byte has been sent with no client disconnect; a HEAD request or an aborted download records nothing. The server can't know whether the browser kept the file, so "Last export" means "last complete download".
+  - **Restore route:** `POST /api/intents/restore`, multipart (AD-3), with the file in the `archive` part. Refusals are 422: `restore_invalid` (not a zip, damaged, no `library.json`, schema or invariant failure, missing or undecodable cover), `restore_newer_version`, and `restore_unsafe` (a path, symlink, duplicate, entry or size rule; same user copy as `restore_invalid`). A write fault before the commit is 503 `couldnt_save` (AD-9).
+  - **Restore validation:** restore empties `.staging/`, then unpacks into it. It accepts only the entries `library.json`, the `covers/` directory and `covers/<name>` with a plain name: no absolute paths, no `..`, no symlinks. Two names that are equal under `casefold()` are duplicates, and so is a cover whose name differs only in case from one already in `covers/`: on a case-insensitive filesystem they would share one file (story 2.3). A missing `covers/` counts as empty.
+  - **Restore limits:** the upload is at most 1 GiB, the archive holds at most 5,000 entries (directory entries included), and at most 1 GiB is extracted. A central directory over 1 KiB per allowed entry is refused before it is parsed. The extracted size is counted on the bytes actually written, never on sizes declared in the zip headers, and extraction stops before the chunk that would pass the limit. An entry that inflates past its declared size is `restore_unsafe` even under the limit (story 2.3). These limits fit about 2,000 Books with downscaled covers (about 300 KB each) plus `library.json` up to its 10 MB performance ceiling. Then it validates the whole archive: schema, migrations, AD-18 invariants, and every referenced cover present and decodable.
+  - **Refusal precedence:** the first rule broken decides the code. In order: a central directory over its limit (`restore_unsafe`); not a zip (`restore_invalid`); the upload size, entry count and name rules (`restore_unsafe`); no `library.json` (`restore_invalid`); unpacking, where passing a size rule is `restore_unsafe` and a damaged entry `restore_invalid`; a newer `schemaVersion` (`restore_newer_version`, decided before model validation and the cover checks); anything else (`restore_invalid`). A body far over the upload limit is already refused by the body cap (AD-9).
   - **Restore apply:** following the AD-12 order, restore adds the archive's covers, commits the document via AD-2, then deletes covers the new document doesn't reference.
   - **Failure and cleanup:** a failure before the commit leaves current data untouched. `.staging/` is emptied after every restore, refused or not, and at startup.
-  - **Round trip:** export → restore at the same `schemaVersion` reproduces byte-identical `library.json` and covers.
+  - **Round trip:** export → restore at the same `schemaVersion` reproduces byte-identical `library.json` and covers. The one exception is AD-12's no-overwrite rule: a cover name already in `covers/` with different bytes keeps its file. Minted names are never reused, so only a hand-made archive reaches it.
 
 ### AD-15: State that is not exported [ADOPTED]
 
 - **Binds:** A6, FR-22 "Last export"
 - **Prevents:** "Last export" disagreeing between browsers; UI preferences polluting the export.
-- **Rule:** The last-export timestamp is stored in `local-state.json` in the data folder. It's outside the export, and restore never touches it. UI preferences (theme, catalog view, sort) live in browser `localStorage`, per browser, wrapped in try/catch with defaults.
+- **Rule:** The last-export timestamp is stored in `local-state.json` in the data folder, as `{"lastExportAt": "<ISO-8601 with offset>"}`. It's outside the export, and restore never touches it (an archive entry with that name is `restore_unsafe`). It is written like a commit (temp `local-state.json.tmp*`, fsync, rename, folder fsync) but outside the AD-4 lock (AD-4); a write failure is only logged, because the download already succeeded. A missing file reads as no export yet; an unreadable or malformed one is logged and read the same way, and the next export overwrites it (story 2.1). UI preferences (theme, catalog view, sort) live in browser `localStorage`, per browser, wrapped in try/catch with defaults.
 
 ### AD-16: Stable loopback address, local trust
 
@@ -304,9 +306,9 @@ flowchart TB
 ~/bookvie-data/
   library.json            # the whole textual store (AD-2, AD-18)
   library.v<N>.bak.json   # pre-migration copies (AD-13)
-  covers/                 # <book-id>-<uuid>.<ext>, ≤1200px long edge (AD-12)
-  .staging/               # restore scratch, emptied at startup (AD-14)
-  local-state.json        # last export timestamp, not exported (AD-15)
+  covers/                 # <book-id>-<uuid>.<ext>, ≤1200px long edge; restored covers keep their bytes (AD-12)
+  .staging/               # restore scratch, emptied before and after every restore and at startup (AD-14)
+  local-state.json        # last export timestamp, not exported; .tmp* leftovers swept at startup (AD-15)
   bookvie.lock            # pid + port (AD-5)
 ```
 
@@ -326,12 +328,13 @@ bookvie/
   backend/
     pyproject.toml          # hatchling; console script bookvie = bookvie.cli:main; wheel artifacts bookvie/http/static/**
     bookvie/
-      cli.py                # flags, lock check, start server, open browser, signals
+      cli.py                # flags, start server, open browser, signals
+      instance.py           # bookvie.lock, loopback socket, health probe (AD-5)
       http/                 # FastAPI app, routes, Host/Origin guard, error handler, static/
-      intents/              # one module per intent, incl. export, restore
-      views/                # one module per view
-      domain/               # entities, check_invariants, reading_status, ISBN/duplicate, pace, Clock
-      store/                # serialize, load/commit, covers, lock, migrations/
+      intents/              # one module per intent (add_book, edit_book, delete_book, set_spine_color, restore), export; shared: book_form, intent_model, commit, cover (decode, downscale), contract (error enum)
+      views/                # read models: shelf (home, catalog, book detail), backup; models (view shapes)
+      domain/               # model (entities), invariants (check_invariants), book_fields, duplicates (ISBN), cover_color, clock; reading_status and pace planned
+      store/                # store.py (serialize, load/commit, covers, AD-4 lock, staging); fs.py (filesystem seam); restore.py (unpack); local_state.py; migrations/
     tests/
   frontend/
     src/
@@ -344,20 +347,22 @@ bookvie/
 
 ## Capability → Architecture Map
 
+Rows for features not built yet name their planned modules (for example `intents/update_page`, `views/stats`).
+
 | Capability / Area | Lives in | Governed by |
 | --- | --- | --- |
-| FR-1 Book fields, FR-3 Duplicate | `intents/add_book`, `edit_book`, `delete_book`; `domain/` | AD-3, AD-9, AD-10, AD-11, AD-12, AD-18 |
+| FR-1 Book fields, FR-3 Duplicate | `intents/add_book`, `edit_book`, `delete_book`, `set_spine_color`; `domain/` | AD-3, AD-9, AD-10, AD-11, AD-12, AD-18 |
 | FR-2 Agent-friendly form | `frontend` New book panel | AD-9, AD-16, AD-17 |
-| FR-4, FR-20, FR-24 Catalog, filter/sort, bookcase | `views/catalog`, `views/home`; client presentation | AD-6, AD-11 |
+| FR-4, FR-20, FR-24 Catalog, filter/sort, bookcase | `views/shelf`, `views/models`; client presentation | AD-6, AD-11 |
 | FR-5 to FR-9 Main book, pause, Up next, Side reads, Purpose | `intents/start_reading`, `pause`, `set_up_next`, `mark_side_read`, `edit_purpose` | AD-3, AD-4, AD-18, AD-19 |
-| FR-10, FR-11 Page update, re-entry | `intents/update_page`; `views/home` | AD-6, AD-7, AD-19, AD-20 |
+| FR-10, FR-11 Page update, re-entry | `intents/update_page`; `views/shelf` (home) | AD-6, AD-7, AD-19, AD-20 |
 | FR-14 Finish | `intents/finish_reading` | AD-7, AD-11, AD-19, AD-20 |
 | FR-15 Quick pace calculator | `views/` (pages left, Measured pace); client arithmetic | AD-6, AD-20 |
 | FR-16 Stats | `views/stats` | AD-6, AD-11, AD-20 |
 | FR-17 to FR-19 Card notes | `intents/*_card_note`; `views/card_notes` | AD-3, AD-6, AD-18 |
-| FR-21 Cover | `store/covers`; `intents/edit_book` (Remove cover); `/media/covers` | AD-11, AD-12 |
-| FR-22, FR-23 Export / restore | `GET /api/export` (`intents/export`), `POST /api/intents/restore`; `store/` | AD-4, AD-13, AD-14, AD-15 |
-| A1 shared storage | `store/`, `cli.py` | AD-1, AD-5, AD-16 |
+| FR-21 Cover | `intents/cover` (decode, downscale); `store/store.py` (write, sweep); `intents/edit_book` (Remove cover); `/media/covers` | AD-11, AD-12 |
+| FR-22, FR-23 Export / restore | `GET /api/export` (`intents/export`), `POST /api/intents/restore` (`intents/restore`); `store/restore` (unpack), `store/store.py` (`replace_all`), `store/local_state`; `views/backup` | AD-4, AD-13, AD-14, AD-15 |
+| A1 shared storage | `store/`, `cli.py`, `instance.py` | AD-1, AD-5, AD-16 |
 
 ## Deferred
 

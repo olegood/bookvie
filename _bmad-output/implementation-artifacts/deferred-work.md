@@ -146,6 +146,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-reconcile-architecture-spine-with-epic-1.md`
   summary: Bring the spine's Structural Seed and Capability → Architecture Map in line with the as-built modules (the lock is in `instance.py`, not `store/`; views are `views/shelf.py` + `views/models.py`, not `views/catalog`/`views/home`; covers are `intents/cover.py` + `store.py`).
   evidence: Retro item 2 named only the AD drift; the review of this spec found the seed and map lag too. Low; they mislead navigation, not rules.
+  resolved: `spec-reconcile-architecture-spine-with-epic-2.md` (Epic 2 retro item 1, 2026-11-04); the Structural Seed names `instance.py`, the as-built `views/` and `store/` modules, and the Capability Map rows for FR-4, FR-21, FR-22/23 and A1 match the code.
 - source_spec: `_bmad-output/implementation-artifacts/spec-reconcile-architecture-spine-with-epic-1.md`
   summary: On a same-folder port conflict where health reports no usable `pid`, the launch skips the hand-over and its `finally: release_lock` deletes the lock, leaving the live server without one; decide whether to leave the lock in place instead.
   evidence: `cli.py:139-142` hands over only when `probe_pid` returns a live pid; `release_lock` removes a lock naming this launch. Reachable only if a bookvie without `pid` in health (pre-1.2) holds the port. Low, unverified by a test.
@@ -171,22 +172,26 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-1-export-all-data-with-one-click.md`
   summary: Reconcile ARCHITECTURE-SPINE with Story 2.1's export. Four places differ. AD-1: `intents/export.py` reads `library.json` and covers itself instead of through `store/`; either route the reads through a store helper or amend AD-1. AD-4: `Store.record_export` writes `local-state.json` outside the lock. AD-14: only referenced covers are exported. AD-2/AD-15: the `local-state.json.tmp*` atomic write and its startup sweep are not described.
   evidence: The spine-check review of Story 2.1 found the code and spine disagree on each of these. AD-1 matters before Story 2.2, whose restore also touches the data folder from `intents/`.
+  resolved: `spec-reconcile-architecture-spine-with-epic-2.md` (Epic 2 retro item 1, 2026-11-04); AD-1 amended (export's packaging read, under the lock), AD-4 and AD-15 describe the `local-state.json` write outside the lock, AD-14 exports referenced covers only, AD-2 sweeps `local-state.json.tmp*`.
 
 ## Deferred from: code review of spec-2-1-export-all-data-with-one-click (2026-11-04)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-1-export-all-data-with-one-click.md`
   summary: Spine drift for AD-1, AD-4, AD-14 and AD-2/AD-15 was re-confirmed by a second review. It is the same item as the "Reconcile ARCHITECTURE-SPINE with Story 2.1's export" entry above, not a new one.
   evidence: The spine-check layer of the 2026-11-04 review reports the same four places.
+  resolved: `spec-reconcile-architecture-spine-with-epic-2.md` (Epic 2 retro item 1, 2026-11-04); same resolution as the 2.1 entry above.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-2-restore-my-library-from-an-export.md`
   summary: Story 2.3 should refuse archive cover names that collide case-insensitively (`covers/A.jpg` and `covers/a.jpg`) together with duplicate names.
   evidence: On macOS both map to one staged file, so one Book could get the other's bytes; only a crafted archive reaches it (minted names are lowercase UUIDs). Triage #15/#52.
+  resolved: Story 2.3, `store/restore.py` `_check_entries` refuses names equal under `casefold()` and covers that differ only in case from one in `covers/` (`restore_unsafe`); AD-14 records it (spec-reconcile-architecture-spine-with-epic-2.md).
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-2-restore-my-library-from-an-export.md`
   summary: A `coverFile` that isn't `covers/<plain-name>` passes model validation (startup and restore) and is a dangling reference.
   evidence: `Book.cover_file` is any string; `cover_name` returns None so the presence check skips it. Pre-existing at startup; restore now lets such a file in too. Triage #16.
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-2-restore-my-library-from-an-export.md`
   summary: Reconcile ARCHITECTURE-SPINE with Story 2.2: interim `restore_invalid` catch-all and limits pending 2.3 (AD-9/AD-14), AD-12's outdated "Until restore exists" sentence, the no-overwrite rule winning over byte-identical restore for a differing same-name cover, and restored covers exempt from AD-12's re-encode output rules.
   evidence: Spine-check findings in both review passes; each is a deliberate spec decision with no spine edit. Triage #21, #22, #31–#33.
+  resolved: `spec-reconcile-architecture-spine-with-epic-2.md` (Epic 2 retro item 1, 2026-11-04); AD-9 names the three restore codes, AD-12 drops "Until restore exists" and adds the restored-covers rule (stored unchanged, never overwritten), AD-14's round trip records the no-overwrite exception.
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-2-restore-my-library-from-an-export.md`
   summary: The Backup page reads the whole export into memory (`requestInit` → `arrayBuffer()`) before uploading; consider streaming the FormData for restore alongside Story 2.3's 1 GB limit.
   evidence: `frontend/src/api/intents.ts` encodes any file form to bytes for test visibility; an export with many covers can be hundreds of MB in the tab. Triage #38.
@@ -199,12 +204,14 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-2-restore-my-library-from-an-export.md`
   summary: Add this to the Story 2.3 case-collision item above: on a case-insensitive filesystem, `Store.replace_all`'s `os.path.lexists` treats `covers/A.jpg` as already present when `covers/a.jpg` exists. `_sweep_covers` then deletes `a.jpg`, because its keep set compares names exactly. The restored Book is left with a dangling cover.
   evidence: `backend/bookvie/store/store.py` `replace_all` and `_sweep_covers`. Only a crafted archive reaches it, because minted names are lowercase UUIDs. Refusing archive names that collide case-insensitively with each other or with existing `covers/` entries closes both.
+  resolved: Story 2.3, by the same existing-name casefold refusal, so `replace_all` never meets a case-only alias. Unicode-normalization aliases remain open (Epic 2 retro F-R1, action 2).
 
 ## Deferred from: code review of spec-2-3-refuse-damaged-hostile-or-newer-files (2026-11-04)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-3-refuse-damaged-hostile-or-newer-files.md`
   summary: Reconcile ARCHITECTURE-SPINE AD-14 with Story 2.3: duplicate names compare under casefold and against existing `covers/` names, an entry that inflates past its declared size is `restore_unsafe` even under the cap, and the limits are 1 GiB.
   evidence: Spine-check findings #4–#6; each is a deliberate spec rule with no spine edit. Fold into the existing "Reconcile ARCHITECTURE-SPINE with Story 2.2" item.
+  resolved: `spec-reconcile-architecture-spine-with-epic-2.md` (Epic 2 retro item 1, 2026-11-04); AD-14 and `epic-2-context.md` state the casefold and existing-name duplicate rules, the declared-size rule and the 1 GiB limits.
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-3-refuse-damaged-hostile-or-newer-files.md`
   summary: Unverified (would be medium): the 422 `restore_unsafe` body cap answers before the upload is read, which a real browser may surface as a failed fetch ("Couldn't save") instead of the refusal line.
   evidence: Only `TestClient`/ASGI tests cover the cap. Settle with an E2E that lowers the cap (or uploads past it) against the real uvicorn server and checks the ink line. The 413 cover cap uses the same pattern.
@@ -217,3 +224,10 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-3-refuse-damaged-hostile-or-newer-files.md`
   summary: Add to the AD-14 reconcile item above: the spine and `epic-2-context.md` (l.40–42) also lack the refusal precedence (not a zip → invalid; unsafe; missing library.json; unpacking; newer version; rest) and the restore body cap (422 `restore_unsafe` at upload limit + 64 KiB framing slack, before the lock).
   evidence: Pass-2 spine-check and acceptance-auditor findings; both are frozen spec rules with no spine/context edit.
+  resolved: `spec-reconcile-architecture-spine-with-epic-2.md` (Epic 2 retro item 1, 2026-11-04); AD-14 adds the refusal precedence, AD-9 the restore body cap, and `epic-2-context.md` both.
+
+## Deferred from: review of spec-reconcile-architecture-spine-with-epic-2 (2026-11-04)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-reconcile-architecture-spine-with-epic-2.md`
+  summary: `epics.md` Story 2.3 AC-3 still says "an upload over 1 GB, or more than 1 GB extracted" and "an entry other than `library.json` or `covers/<name>`", where the spine now says 1 GiB and allows the `covers/` directory entry.
+  evidence: Blind Hunter finding on this spec. `epics.md` is the planning record of the requirement and was left out of the Epic 1 reconcile too; edit it only if planning docs are meant to track as-built detail.
