@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-29-2026 17:21
-last_updated: 11-04-2026 15:59
+last_updated: 11-04-2026 17:14
 project: bookvie
 project_key: NOKEY
 tracking_system: file-system
@@ -189,7 +189,7 @@ action_items:
       AD-4 record_export, AD-14 rules, AD-12, AD-2/AD-15, AD-9) plus the Epic 1 seed/map
       item and epic-2-context.md l.40-42, l.66 (F-S1)"
     owner: "Winston (Architect), applied by Oleg"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-2-retro-2026-11-04.md"
   - id: "epic-2-retro-item-14-harden-restore-names-refuse-covers-colli"
     epic: 2
