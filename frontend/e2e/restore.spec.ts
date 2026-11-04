@@ -19,18 +19,24 @@ import { readFileSync, rmSync } from 'node:fs'
 import path from 'node:path'
 import AxeBuilder from '@axe-core/playwright'
 import type { Page } from '@playwright/test'
-import { expect, type Server, startSeededServer, test } from './fixtures.ts'
+import { expect, startSeededServer, test } from './fixtures.ts'
 import { requestsTo } from './intents.ts'
 import { DUNE_ID, catalogTitles } from './library.ts'
+import {
+  ANY_FILE,
+  REPLACE_ALL,
+  RESTORE_INTENT,
+  RESTORE_INVALID,
+  confirmDialog,
+  exportOf,
+  pickFile,
+  restoreButton,
+} from './restore.ts'
 
-const RESTORE = 'Restore from file…'
 const RESTORING = 'Restoring…'
-const REPLACE_ALL = 'Replace all data'
 const CONFIRM_HEADING = 'Replace all data with this file?'
 const CONFIRM_LINE = 'Your current books, readings and card notes will be replaced.'
 const RESTORED = 'Restored.'
-const RESTORE_INTENT = '/api/intents/restore'
-const RESTORE_INVALID = "This file isn't a bookvie export, or it's damaged. Nothing was changed."
 const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']
 
 const NEUROMANCER_ID = '1b6e2c4a-3d5f-4e7a-9b8c-0d1e2f3a4b5c'
@@ -44,36 +50,6 @@ const SOURCE_LIBRARY = {
   books: [{ ...DUNE, readings: [{ currentPage: 150 }] }, NEUROMANCER],
 }
 const EARLIER_EXPORT = JSON.stringify({ lastExportAt: '2026-10-01T09:30:00+02:00' })
-
-type FilePayload = { name: string; mimeType: string; buffer: Buffer }
-
-// For the dialog alone: never sent, so its bytes don't matter.
-const ANY_FILE: FilePayload = {
-  name: 'bookvie-export-2026-10-30.zip',
-  mimeType: 'application/zip',
-  buffer: Buffer.from('PK\x03\x04 a file the dialog never sends'),
-}
-
-function restoreButton(page: Page, name = RESTORE) {
-  return page.getByRole('main').getByRole('button', { name, exact: true })
-}
-
-function confirmDialog(page: Page) {
-  return page.getByRole('alertdialog')
-}
-
-/** Presses Restore from file… and picks `file` in the chooser it opens. */
-async function pickFile(page: Page, file: FilePayload): Promise<void> {
-  const chooser = page.waitForEvent('filechooser')
-  await restoreButton(page).click()
-  await (await chooser).setFiles(file)
-}
-
-/** A real export of `server` (Story 2.1), as the browser would have saved it. */
-async function exportOf(page: Page, server: Server): Promise<FilePayload> {
-  const response = await page.request.get(`${server.url}/api/export`, { headers: { 'X-Bookvie-Export': '1' } })
-  return { name: 'bookvie-export-2026-10-30.zip', mimeType: 'application/zip', buffer: await response.body() }
-}
 
 /** Every localStorage entry, sorted: theme, Catalog view and (later) sort. */
 async function preferences(page: Page): Promise<[string, string][]> {

@@ -47,13 +47,17 @@ from tests.helpers import (
     DUNE_ID,
     VALID,
     FaultyFs,
+    RecordingFs,
     RecordingLock,
     api_client,
+    covers_in,
     image_bytes,
     library_bytes,
+    post_restore,
+    staging_in,
+    zip_archive,
 )
 
-RESTORE = "/api/intents/restore"
 EXPORT = "/api/export"
 EXPORT_HEADERS = {"X-Bookvie-Export": "1"}
 OK = {"ok": True}
@@ -203,57 +207,6 @@ def _export(data_dir: Path) -> bytes:
     return client.get(EXPORT, headers=EXPORT_HEADERS).content
 
 
-def _zip(entries: dict[str, bytes | None]) -> bytes:
-    """A hand-made archive: ``None`` is a directory entry."""
-    buffer = io.BytesIO()
-    with zipfile.ZipFile(buffer, "w") as archive:
-        for name, data in entries.items():
-            if data is None:
-                archive.mkdir(name.rstrip("/"))
-            else:
-                archive.writestr(name, data)
-    return buffer.getvalue()
-
-
-def _post_restore(client: TestClient, archive: bytes) -> httpx.Response:
-    """One restore intent, as the Backup page sends it: ``intent`` ``{}`` plus ``archive``."""
-    return client.post(
-        RESTORE,
-        files={
-            "intent": (None, "{}", "application/json"),
-            "archive": ("bookvie-export-2026-10-30.zip", archive, "application/zip"),
-        },
-    )
-
-
-def _covers(data_dir: Path) -> dict[str, bytes]:
-    return {p.name: p.read_bytes() for p in sorted((data_dir / "covers").iterdir())}
-
-
-def _staging(data_dir: Path) -> list[str]:
-    return sorted(p.name for p in (data_dir / ".staging").iterdir())
-
-
-class RecordingFs(OsFileSystem):
-    """Logs each rename and delete outside ``.staging/`` as ``"<op> <relative path>"``."""
-
-    def __init__(self, data_dir: Path, log: list[str]) -> None:
-        self.data_dir = data_dir
-        self.log = log
-
-    def _note(self, op: str, path: Path) -> None:
-        relative = Path(os.path.relpath(path, self.data_dir)).as_posix()
-        self.log.append(f"{op} {relative}")
-
-    def replace(self, src: Path, dst: Path) -> None:
-        super().replace(src, dst)
-        self._note("replace", dst)
-
-    def remove(self, path: Path) -> None:
-        super().remove(path)
-        self._note("remove", path)
-
-
 # --- AC-3: a valid export is validated, then applied in AD-12 order under the lock
 
 
@@ -272,12 +225,12 @@ def test_ac3_p0_a_valid_export_replaces_the_library_in_ad12_order_under_one_lock
     client.app.state.write_lock = lock
     client.app.state.store.fs = RecordingFs(target, log)
 
-    response = _post_restore(client, archive)
+    response = post_restore(client, archive)
 
     assert response.status_code == 200
     assert response.json() == OK
     assert library_bytes(target) == library_bytes(source)
-    assert _covers(target) == {DUNE_COVER: dune_cover}
+    assert covers_in(target) == {DUNE_COVER: dune_cover}
     # The in-memory state was swapped too: views read the restored library.
     catalog = client.get("/api/views/catalog").json()
     assert sorted(book["title"] for book in catalog["books"]) == ["Dune", "Neuromancer"]
@@ -314,7 +267,7 @@ def test_ac5_p1_an_older_schema_version_is_migrated_through_the_chain_then_resto
     builder = LibraryBuilder()
     builder.book(id=DUNE_ID, **DUNE, tags=["sf"])
     v1_library = builder.write(tmp_path / "v1").read_bytes()
-    archive = _zip({"library.json": v1_library, "covers/": None})
+    archive = zip_archive({"library.json": v1_library, "covers/": None})
     steps: list[int] = []
 
     def counted_step(doc: dict) -> dict:
@@ -328,14 +281,14 @@ def test_ac5_p1_an_older_schema_version_is_migrated_through_the_chain_then_resto
     client = api_client(target)  # the target itself is migrated to v2 at startup
     steps.clear()
 
-    response = _post_restore(client, archive)
+    response = post_restore(client, archive)
 
     assert response.status_code == 200
     restored = json.loads(library_bytes(target))
     assert restored["schemaVersion"] == 2
     assert [(b["title"], b["tags"]) for b in restored["books"]] == [("Dune", ["sf", "migrated"])]
     assert steps == [1], "the archive went through the same chain, once"
-    assert _covers(target) == {}
+    assert covers_in(target) == {}
 
 
 def test_a_failing_migration_step_is_422_restore_invalid_and_changes_nothing(
@@ -344,7 +297,7 @@ def test_a_failing_migration_step_is_422_restore_invalid_and_changes_nothing(
     builder = LibraryBuilder()
     builder.book(id=DUNE_ID, **DUNE, tags=["sf"])
     v1_library = builder.write(tmp_path / "v1").read_bytes()
-    archive = _zip({"library.json": v1_library, "covers/": None})
+    archive = zip_archive({"library.json": v1_library, "covers/": None})
     target = tmp_path / "target"
     _seed_target(target)
 
@@ -376,17 +329,17 @@ def test_ac6_p0_export_then_restore_reproduces_library_json_and_every_cover_byte
     fresh.mkdir()
     client = api_client(fresh)  # a new laptop: an empty library
 
-    _post_restore(client, archive)
+    post_restore(client, archive)
 
     assert library_bytes(fresh) == library_bytes(source)
-    assert _covers(fresh) == covers
-    assert _covers(fresh) == _covers(source)
+    assert covers_in(fresh) == covers
+    assert covers_in(fresh) == covers_in(source)
 
     # Restoring the same export again onto the restored library changes nothing.
-    _post_restore(client, archive)
+    post_restore(client, archive)
 
     assert library_bytes(fresh) == library_bytes(source)
-    assert _covers(fresh) == covers
+    assert covers_in(fresh) == covers
 
 
 # --- AC-8: .staging/ is emptied after every restore, and at startup ------------
@@ -407,17 +360,17 @@ def test_ac8_p1_staging_is_emptied_after_a_restore_whether_it_succeeded_or_was_r
     (staging / "covers").mkdir()
     (staging / "covers" / "half.jpg").write_bytes(b"half")
 
-    _post_restore(client, archive)
+    post_restore(client, archive)
 
-    assert _staging(target) == []
+    assert staging_in(target) == []
 
     # A refused restore empties it too.
     (staging / "leftover.zip").write_bytes(b"again")
     library_before = library_bytes(target)
 
-    _post_restore(client, b"this is not a zip")
+    post_restore(client, b"this is not a zip")
 
-    assert _staging(target) == []
+    assert staging_in(target) == []
     assert library_bytes(target) == library_before
 
     # And startup sweeps whatever an interrupted restore left (already green).
@@ -425,7 +378,7 @@ def test_ac8_p1_staging_is_emptied_after_a_restore_whether_it_succeeded_or_was_r
     (staging / "covers" / "half.jpg").write_bytes(b"half")
     Store.open(target)
 
-    assert _staging(target) == []
+    assert staging_in(target) == []
 
 
 # --- AC-9: an export without covers/ restores, with covers/ treated as empty ---
@@ -435,18 +388,18 @@ def test_ac9_p1_an_archive_without_covers_restores_and_empties_covers(tmp_path: 
     builder = LibraryBuilder()
     builder.book(id=NEUROMANCER_ID, title="Neuromancer", authors=["William Gibson"], pages=271)
     no_covers_library = builder.write(tmp_path / "bare").read_bytes()
-    archive = _zip({"library.json": no_covers_library})  # no covers/ entry at all
+    archive = zip_archive({"library.json": no_covers_library})  # no covers/ entry at all
     target = tmp_path / "target"
     _seed_target(target)
     client = api_client(target)
 
-    response = _post_restore(client, archive)
+    response = post_restore(client, archive)
 
     assert response.status_code == 200
     assert response.json() == OK
     assert library_bytes(target) == no_covers_library
     assert (target / "covers").is_dir()
-    assert _covers(target) == {}, "the replaced library's cover is no longer referenced"
+    assert covers_in(target) == {}, "the replaced library's cover is no longer referenced"
 
 
 # --- AC-10: a fault after the commit is still success, logged, and swept later --
@@ -457,7 +410,7 @@ def test_an_archive_without_a_covers_directory_entry_still_restores_its_covers(
 ) -> None:
     # Zips re-made by other tools often hold covers/<name> with no covers/ entry.
     doc, dune_cover = _source_doc(tmp_path)
-    archive = _zip(
+    archive = zip_archive(
         {
             "library.json": (json.dumps(doc, indent=2) + "\n").encode("utf-8"),
             f"covers/{DUNE_COVER}": dune_cover,
@@ -467,13 +420,13 @@ def test_an_archive_without_a_covers_directory_entry_still_restores_its_covers(
     target = tmp_path / "target"
     _seed_target(target)
 
-    response = _post_restore(api_client(target), archive)
+    response = post_restore(api_client(target), archive)
 
     assert response.status_code == 200
     assert response.json() == OK
     assert library_bytes(target) == library_bytes(tmp_path / "source")
-    assert _covers(target) == {DUNE_COVER: dune_cover}
-    assert _staging(target) == []
+    assert covers_in(target) == {DUNE_COVER: dune_cover}
+    assert staging_in(target) == []
 
 def test_ac10_p1_a_failed_cleanup_after_the_commit_still_succeeds_and_startup_sweeps_it(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
@@ -487,7 +440,7 @@ def test_ac10_p1_a_failed_cleanup_after_the_commit_still_succeeds_and_startup_sw
     # Every delete through the seam fails: the old cover, and .staging/ cleanup.
     client = api_client(target, FaultyFs("remove"))
 
-    response = _post_restore(client, archive)
+    response = post_restore(client, archive)
 
     assert response.status_code == 200
     assert response.json() == OK
@@ -496,14 +449,14 @@ def test_ac10_p1_a_failed_cleanup_after_the_commit_still_succeeds_and_startup_sw
     assert f"bookvie: couldn't delete covers/{OLD_COVER}" in err
     assert "bookvie: couldn't delete .staging/library.json" in err
     assert (target / "covers" / OLD_COVER).exists(), "left for the startup sweep"
-    assert "library.json" in _staging(target), "the .staging/ cleanup failed too"
+    assert "library.json" in staging_in(target), "the .staging/ cleanup failed too"
     assert (target / LOCAL_STATE).read_bytes() == EARLIER_EXPORT
 
     # The next start removes what the failed cleanup left.
     Store.open(target)
 
-    assert _covers(target) == {DUNE_COVER: dune_cover}
-    assert _staging(target) == []
+    assert covers_in(target) == {DUNE_COVER: dune_cover}
+    assert staging_in(target) == []
     assert library_bytes(target) == library_bytes(source)
 
 
@@ -523,15 +476,15 @@ def test_a_garbage_upload_is_422_restore_invalid_and_changes_nothing(tmp_path: P
     _seed_target(target)
     client = api_client(target)
     library_before = library_bytes(target)
-    covers_before = _covers(target)
+    covers_before = covers_in(target)
 
-    response = _post_restore(client, b"this is not a zip")
+    response = post_restore(client, b"this is not a zip")
 
     assert response.status_code == 422
     assert response.json() == RESTORE_INVALID_BODY
     assert library_bytes(target) == library_before
-    assert _covers(target) == covers_before
-    assert _staging(target) == []
+    assert covers_in(target) == covers_before
+    assert staging_in(target) == []
 
 
 def _source_with(library: dict, covers: dict[str, bytes]) -> bytes:
@@ -541,7 +494,7 @@ def _source_with(library: dict, covers: dict[str, bytes]) -> bytes:
         "covers/": None,
     }
     entries.update({f"covers/{name}": data for name, data in covers.items()})
-    return _zip(entries)
+    return zip_archive(entries)
 
 
 def _source_doc(tmp_path: Path) -> tuple[dict, bytes]:
@@ -552,15 +505,15 @@ def _source_doc(tmp_path: Path) -> tuple[dict, bytes]:
 
 def _assert_refused_and_unchanged(client: TestClient, target: Path, archive: bytes) -> None:
     library_before = library_bytes(target)
-    covers_before = _covers(target)
+    covers_before = covers_in(target)
 
-    response = _post_restore(client, archive)
+    response = post_restore(client, archive)
 
     assert response.status_code == 422
     assert response.json() == RESTORE_INVALID_BODY
     assert library_bytes(target) == library_before
-    assert _covers(target) == covers_before
-    assert _staging(target) == []
+    assert covers_in(target) == covers_before
+    assert staging_in(target) == []
 
 
 def test_a_referenced_cover_missing_from_the_archive_is_422_restore_invalid(
@@ -612,7 +565,7 @@ def test_a_zip_without_library_json_is_422_restore_invalid(
     _, dune_cover = _source_doc(tmp_path)
     target = tmp_path / "target"
     _seed_target(target)
-    archive = _zip({"covers/": None, f"covers/{DUNE_COVER}": dune_cover})
+    archive = zip_archive({"covers/": None, f"covers/{DUNE_COVER}": dune_cover})
 
     _assert_refused_and_unchanged(api_client(target), target, archive)
     assert "the file has no library.json" in capsys.readouterr().err
@@ -631,7 +584,7 @@ def test_a_zip_with_an_extra_entry_is_422_restore_invalid(
         "notes.txt": b"not part of an export",
     }
 
-    _assert_refused_and_unchanged(api_client(target), target, _zip(entries))
+    _assert_refused_and_unchanged(api_client(target), target, zip_archive(entries))
     reason = "the file holds 'notes.txt', which isn't library.json or a cover"
     assert reason in capsys.readouterr().err
 
@@ -684,16 +637,16 @@ def test_a_failed_commit_removes_the_new_covers_and_leaves_covers_byte_identical
     _seed_target(target)
     client = api_client(target, _FailingCommit())
     library_before = library_bytes(target)
-    covers_before = _covers(target)
+    covers_before = covers_in(target)
 
-    response = _post_restore(client, archive)
+    response = post_restore(client, archive)
 
     assert response.status_code == 503
     assert response.json() == COULDNT_SAVE_BODY
     assert "bookvie: couldn't save: can't write library.json" in capsys.readouterr().err
     assert library_bytes(target) == library_before
-    assert _covers(target) == covers_before, "only restore's own covers were removed"
-    assert _staging(target) == []
+    assert covers_in(target) == covers_before, "only restore's own covers were removed"
+    assert staging_in(target) == []
     titles = [book["title"] for book in client.get("/api/views/catalog").json()["books"]]
     assert titles == ["The Left Hand of Darkness"]
 
@@ -716,12 +669,12 @@ def test_a_same_named_cover_with_other_bytes_is_kept_and_logged(
     client = api_client(target)
     client.app.state.store.fs = RecordingFs(target, log)
 
-    response = _post_restore(client, archive)
+    response = post_restore(client, archive)
 
     assert response.status_code == 200
     assert response.json() == OK
     assert library_bytes(target) == library_bytes(source)
-    assert _covers(target) == {DUNE_COVER: kept}
+    assert covers_in(target) == {DUNE_COVER: kept}
     assert f"bookvie: kept covers/{DUNE_COVER}; the export's copy differs" in (
         capsys.readouterr().err
     )
@@ -763,7 +716,7 @@ def test_an_intent_sent_during_a_slow_restore_waits_then_applies_to_the_restored
         thread.start()
         return thread
 
-    restoring = send("restore", lambda: _post_restore(client, archive))
+    restoring = send("restore", lambda: post_restore(client, archive))
     assert fs.holding.wait(10), "the restore reached its commit"
     adding = send("add", lambda: client.post(ADD_BOOK, files={"intent": (None, json.dumps(VALID))}))
     adding.join(0.3)
@@ -788,16 +741,16 @@ def test_restoring_the_same_export_again_skips_every_identical_cover(tmp_path: P
     target = tmp_path / "target"
     target.mkdir()
     client = api_client(target)
-    assert _post_restore(client, archive).status_code == 200
+    assert post_restore(client, archive).status_code == 200
     log: list[str] = []
     client.app.state.store.fs = RecordingFs(target, log)
 
-    response = _post_restore(client, archive)
+    response = post_restore(client, archive)
 
     assert response.status_code == 200
     outside_staging = [entry for entry in log if " .staging/" not in entry]
     assert outside_staging == ["replace library.json"], "only the document is committed again"
-    assert _covers(target) == covers
+    assert covers_in(target) == covers
 
 
 # --- Automation expansion (bmad-testarch-automate, 2026-11-04) -----------------
@@ -834,9 +787,9 @@ def test_a_fault_writing_a_later_cover_removes_the_covers_already_written(
     log: list[str] = []
     client = api_client(target, _FailingCoverWrite(target, log, PIRANESI_COVER))
     library_before = library_bytes(target)
-    covers_before = _covers(target)
+    covers_before = covers_in(target)
 
-    response = _post_restore(client, archive)
+    response = post_restore(client, archive)
 
     assert response.status_code == 503
     assert response.json() == COULDNT_SAVE_BODY
@@ -845,8 +798,8 @@ def test_a_fault_writing_a_later_cover_removes_the_covers_already_written(
     renames_and_deletes = [e for e in log if " .staging/" not in e and ".tmp" not in e]
     assert renames_and_deletes == [f"replace covers/{DUNE_COVER}", f"remove covers/{DUNE_COVER}"]
     assert library_bytes(target) == library_before
-    assert _covers(target) == covers_before
-    assert _staging(target) == []
+    assert covers_in(target) == covers_before
+    assert staging_in(target) == []
     titles = [book["title"] for book in client.get("/api/views/catalog").json()["books"]]
     assert titles == ["The Left Hand of Darkness"]
 
@@ -868,7 +821,7 @@ def test_an_unreadable_same_named_cover_is_503_and_removes_the_covers_already_wr
     library_before = library_bytes(target)
     unreadable.chmod(0)
     try:
-        response = _post_restore(client, archive)
+        response = post_restore(client, archive)
     finally:
         unreadable.chmod(0o644)
 
@@ -878,10 +831,10 @@ def test_an_unreadable_same_named_cover_is_503_and_removes_the_covers_already_wr
         capsys.readouterr().err
     )
     assert library_bytes(target) == library_before
-    assert sorted(_covers(target)) == sorted([OLD_COVER, PIRANESI_COVER]), (
+    assert sorted(covers_in(target)) == sorted([OLD_COVER, PIRANESI_COVER]), (
         "Dune's cover, written first, was removed again"
     )
-    assert _staging(target) == []
+    assert staging_in(target) == []
 
 
 def test_a_staging_leftover_that_cannot_be_deleted_is_503_and_changes_nothing(
@@ -898,9 +851,9 @@ def test_a_staging_leftover_that_cannot_be_deleted_is_503_and_changes_nothing(
     (target / ".staging").mkdir(exist_ok=True)
     (target / ".staging" / "library.json").write_bytes(b"left by a failed cleanup")
     library_before = library_bytes(target)
-    covers_before = _covers(target)
+    covers_before = covers_in(target)
 
-    response = _post_restore(client, archive)
+    response = post_restore(client, archive)
 
     assert response.status_code == 503
     assert response.json() == COULDNT_SAVE_BODY
@@ -908,11 +861,11 @@ def test_a_staging_leftover_that_cannot_be_deleted_is_503_and_changes_nothing(
     assert "bookvie: couldn't save: can't empty .staging/" in err
     assert "bookvie: couldn't delete .staging/library.json" in err, "the finally cleanup logs"
     assert library_bytes(target) == library_before
-    assert _covers(target) == covers_before
-    assert _staging(target) == ["library.json"], "left for the startup sweep"
+    assert covers_in(target) == covers_before
+    assert staging_in(target) == ["library.json"], "left for the startup sweep"
 
     # The next start sweeps it, and a restore then succeeds.
     client = api_client(target)
-    assert _staging(target) == []
-    assert _post_restore(client, archive).status_code == 200
+    assert staging_in(target) == []
+    assert post_restore(client, archive).status_code == 200
     assert library_bytes(target) == library_bytes(source)

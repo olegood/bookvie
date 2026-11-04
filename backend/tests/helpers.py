@@ -11,11 +11,15 @@
 - Faults and covers: :class:`FaultyFs`, :func:`image_bytes` (by default a
   :data:`RED_ORANGE` PNG), :func:`seed_dune_with_cover`.
 - The lock's order of events: :class:`RecordingLock`.
+- Restore: :data:`RESTORE`, :func:`post_restore`, :func:`zip_archive`,
+  :func:`covers_in`, :func:`staging_in` and :class:`RecordingFs`.
 """
 
 import io
 import json
+import os
 import threading
+import zipfile
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -231,3 +235,61 @@ def seed_dune_with_cover(data_dir: Path) -> str:
     (data_dir / "covers").mkdir(exist_ok=True)
     (data_dir / cover_file).write_bytes(image_bytes(fmt="JPEG"))
     return cover_file
+
+
+# --- Restore (Stories 2.2 and 2.3) --------------------------------------------
+
+RESTORE = "/api/intents/restore"
+
+
+def zip_archive(entries: dict[str, bytes | None]) -> bytes:
+    """A hand-made archive, entries in order: ``None`` is a directory entry."""
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        for name, data in entries.items():
+            if data is None:
+                archive.mkdir(name.rstrip("/"))
+            else:
+                archive.writestr(name, data)
+    return buffer.getvalue()
+
+
+def post_restore(client: TestClient, archive: bytes) -> httpx.Response:
+    """One restore intent, as the Backup page sends it: ``intent`` ``{}`` plus ``archive``."""
+    return client.post(
+        RESTORE,
+        files={
+            "intent": (None, "{}", "application/json"),
+            "archive": ("bookvie-export-2026-10-30.zip", archive, "application/zip"),
+        },
+    )
+
+
+def covers_in(data_dir: Path) -> dict[str, bytes]:
+    """Every file in ``covers/``, by name."""
+    return {p.name: p.read_bytes() for p in sorted((data_dir / "covers").iterdir())}
+
+
+def staging_in(data_dir: Path) -> list[str]:
+    """The names directly inside ``.staging/``."""
+    return sorted(p.name for p in (data_dir / ".staging").iterdir())
+
+
+class RecordingFs(OsFileSystem):
+    """Logs each rename and delete as ``"<op> <path relative to data_dir>"``."""
+
+    def __init__(self, data_dir: Path, log: list[str]) -> None:
+        self.data_dir = data_dir
+        self.log = log
+
+    def _note(self, op: str, path: Path) -> None:
+        relative = Path(os.path.relpath(path, self.data_dir)).as_posix()
+        self.log.append(f"{op} {relative}")
+
+    def replace(self, src: Path, dst: Path) -> None:
+        super().replace(src, dst)
+        self._note("replace", dst)
+
+    def remove(self, path: Path) -> None:
+        super().remove(path)
+        self._note("remove", path)
