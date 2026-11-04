@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-29-2026 17:21
-last_updated: 11-04-2026 13:38
+last_updated: 11-04-2026 14:25
 project: bookvie
 project_key: NOKEY
 tracking_system: file-system
@@ -55,7 +55,7 @@ development_status:
   epic-2: in-progress
   2-1-export-all-data-with-one-click: done
   2-2-restore-my-library-from-an-export: done
-  2-3-refuse-damaged-hostile-or-newer-files: backlog
+  2-3-refuse-damaged-hostile-or-newer-files: review
   epic-2-retrospective: optional
 
   epic-3: backlog

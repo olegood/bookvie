@@ -199,3 +199,12 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-2-restore-my-library-from-an-export.md`
   summary: Add this to the Story 2.3 case-collision item above: on a case-insensitive filesystem, `Store.replace_all`'s `os.path.lexists` treats `covers/A.jpg` as already present when `covers/a.jpg` exists. `_sweep_covers` then deletes `a.jpg`, because its keep set compares names exactly. The restored Book is left with a dangling cover.
   evidence: `backend/bookvie/store/store.py` `replace_all` and `_sweep_covers`. Only a crafted archive reaches it, because minted names are lowercase UUIDs. Refusing archive names that collide case-insensitively with each other or with existing `covers/` entries closes both.
+
+## Deferred from: code review of spec-2-3-refuse-damaged-hostile-or-newer-files (2026-11-04)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-3-refuse-damaged-hostile-or-newer-files.md`
+  summary: Reconcile ARCHITECTURE-SPINE AD-14 with Story 2.3: duplicate names compare under casefold and against existing `covers/` names, an entry that inflates past its declared size is `restore_unsafe` even under the cap, and the limits are 1 GiB.
+  evidence: Spine-check findings #4–#6; each is a deliberate spec rule with no spine edit. Fold into the existing "Reconcile ARCHITECTURE-SPINE with Story 2.2" item.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-3-refuse-damaged-hostile-or-newer-files.md`
+  summary: Unverified (would be medium): the 422 `restore_unsafe` body cap answers before the upload is read, which a real browser may surface as a failed fetch ("Couldn't save") instead of the refusal line.
+  evidence: Only `TestClient`/ASGI tests cover the cap. Settle with an E2E that lowers the cap (or uploads past it) against the real uvicorn server and checks the ink line. The 413 cover cap uses the same pattern.

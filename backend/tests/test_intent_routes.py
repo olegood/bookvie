@@ -203,7 +203,7 @@ def test_foreign_caller_is_403_on_cover(
 @pytest.mark.parametrize("caller", FOREIGN.values(), ids=FOREIGN.keys())
 def test_guard_runs_before_the_cover_cap(data_dir: Path, route: str, caller: dict) -> None:
     # A foreign caller with an oversized body is refused by the guard (403),
-    # not answered by CoverSizeCap (413).
+    # not answered by BodySizeCap (413).
     client = api_client(data_dir)
     body = b"x" * (BODY_LIMIT + 1)
     path = f"/api/intents/{route}"

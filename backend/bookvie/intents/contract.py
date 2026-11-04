@@ -20,6 +20,9 @@ from bookvie.domain.book_fields import COVER_TOO_LARGE_MESSAGE, LABELS
 COULDNT_SAVE_MESSAGE = "Couldn't save. Your data wasn't changed."
 COULDNT_EXPORT_MESSAGE = "Couldn't export. Your data wasn't changed."
 RESTORE_INVALID_MESSAGE = "This file isn't a bookvie export, or it's damaged. Nothing was changed."
+RESTORE_NEWER_VERSION_MESSAGE = (
+    "This export is from a newer version of bookvie. Nothing was changed."
+)
 
 
 class _Wire(BaseModel):
@@ -42,6 +45,8 @@ class ErrorCode(StrEnum):
     COVER_TOO_LARGE = "cover_too_large"
     COULDNT_EXPORT = "couldnt_export"
     RESTORE_INVALID = "restore_invalid"
+    RESTORE_NEWER_VERSION = "restore_newer_version"
+    RESTORE_UNSAFE = "restore_unsafe"
 
 
 class FieldError(_Wire):
@@ -252,6 +257,33 @@ def restore_invalid() -> IntentError:
         ErrorBody(
             kind=ErrorKind.REFUSAL,
             code=ErrorCode.RESTORE_INVALID,
+            message=RESTORE_INVALID_MESSAGE,
+        ),
+    )
+
+
+def restore_newer_version() -> IntentError:
+    """422 ``restore_newer_version``: the export is from a newer bookvie; nothing was changed."""
+    return IntentError(
+        422,
+        ErrorBody(
+            kind=ErrorKind.REFUSAL,
+            code=ErrorCode.RESTORE_NEWER_VERSION,
+            message=RESTORE_NEWER_VERSION_MESSAGE,
+        ),
+    )
+
+
+def restore_unsafe() -> IntentError:
+    """422 ``restore_unsafe``: the file breaks a path or size rule (AD-14); nothing was changed.
+
+    The user sees ``restore_invalid``'s copy (AD-9).
+    """
+    return IntentError(
+        422,
+        ErrorBody(
+            kind=ErrorKind.REFUSAL,
+            code=ErrorCode.RESTORE_UNSAFE,
             message=RESTORE_INVALID_MESSAGE,
         ),
     )

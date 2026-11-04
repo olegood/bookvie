@@ -15,8 +15,9 @@ from fastapi.testclient import TestClient
 from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
 
+import bookvie.store.restore as unpack
 from bookvie.domain import Library
-from bookvie.http.api import BODY_LIMIT, CoverSizeCap
+from bookvie.http.api import BODY_LIMIT, BodyCap, BodySizeCap
 from bookvie.http.app import create_app
 from bookvie.intents import (
     ErrorBody,
@@ -26,6 +27,7 @@ from bookvie.intents import (
     IntentError,
     OkResponse,
     commit,
+    cover_too_large,
     invalid_fields,
 )
 from bookvie.store import Store
@@ -34,6 +36,7 @@ from tests.helpers import (
     BASE_URL,
     COULDNT_SAVE_BODY,
     FaultyFs,
+    RecordingLock,
     library_bytes,
 )
 
@@ -297,12 +300,22 @@ def test_openapi_error_enums(openapi: dict) -> None:
         "cover_too_large",
         "couldnt_export",
         "restore_invalid",
+        "restore_newer_version",
+        "restore_unsafe",
     ]
     kinds = ["refusal", "couldnt_save", "couldnt_export"]
     assert schemas["ErrorCode"]["enum"] == codes
     assert schemas["ErrorKind"]["enum"] == kinds
     assert [code.value for code in ErrorCode] == codes
     assert [kind.value for kind in ErrorKind] == kinds
+
+
+def test_every_restore_refusal_code_is_in_the_ad9_enum(openapi: dict) -> None:
+    restore_codes = {"restore_invalid", "restore_newer_version", "restore_unsafe", "couldnt_save"}
+    error_body = openapi["components"]["schemas"]["ErrorBody"]
+    ref = error_body["properties"]["code"]["$ref"].rsplit("/", 1)[-1]
+    assert restore_codes <= set(openapi["components"]["schemas"][ref]["enum"])
+    assert restore_codes <= {code.value for code in ErrorCode}
 
 
 def test_openapi_documents_the_envelope_not_fastapi_errors(openapi: dict) -> None:
@@ -469,6 +482,30 @@ def test_a_content_length_past_the_cover_limit_is_413_before_any_read(
     assert pulled == 0
 
 
+def test_a_streamed_restore_body_past_the_upload_cap_is_422_restore_unsafe_without_the_lock(
+    data_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(unpack, "MAX_UPLOAD_BYTES", 100 * 1024)
+    app = _app(data_dir)
+    log: list[str] = []
+    lock = RecordingLock(log)
+    app.state.store.lock = lock
+    app.state.write_lock = lock
+    before = library_bytes(data_dir)
+    chunk = 16 * 1024
+    # No Content-Length: the body is counted as it arrives.
+    scope = _streamed_cover_scope(path="/api/intents/restore")
+
+    sent, pulled = _run_asgi(app, scope, _endless_cover(chunk))
+
+    status, body = _response(sent)
+    assert (status, body["error"]["code"]) == (422, "restore_unsafe")
+    limit = 100 * 1024 + 64 * 1024
+    assert pulled == 1 + limit // chunk + 1
+    assert log == []
+    assert library_bytes(data_dir) == before
+
+
 def test_the_cover_cap_leaves_other_routes_and_small_bodies_alone() -> None:
     async def echo(scope, receive, send) -> None:
         body = b""
@@ -480,7 +517,9 @@ def test_the_cover_cap_leaves_other_routes_and_small_bodies_alone() -> None:
         await send({"type": "http.response.start", "status": 200, "headers": []})
         await send({"type": "http.response.body", "body": str(len(body)).encode()})
 
-    capped = CoverSizeCap(echo, limit=10)
+    capped = BodySizeCap(
+        echo, caps={"/api/intents/add-book": BodyCap(limit=lambda: 10, refusal=cover_too_large)}
+    )
     small = _run_asgi(capped, _streamed_cover_scope(), [b"12345", b"12345"])[0]
     assert small[0]["status"] == 200 and small[1]["body"] == b"10"
     other = {**_streamed_cover_scope(), "path": "/api/intents/delete-book"}
@@ -495,4 +534,4 @@ def test_an_error_that_is_not_the_cap_still_propagates() -> None:
         raise RuntimeError("route exploded")
 
     with pytest.raises(RuntimeError, match="route exploded"):
-        _run_asgi(CoverSizeCap(broken), _streamed_cover_scope(), [])
+        _run_asgi(BodySizeCap(broken), _streamed_cover_scope(), [])

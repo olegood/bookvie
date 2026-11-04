@@ -34,7 +34,7 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 from bookvie import views
 from bookvie.intents import Clock, SystemClock
 
-from .api import CoverSizeCap, install_api
+from .api import BodySizeCap, install_api
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 
@@ -159,7 +159,7 @@ def create_app(
     app.state.clock = clock if clock is not None else SystemClock()
     app.state.write_lock = store.lock if store is not None else threading.Lock()
     # Added first, so it runs inside the guard.
-    app.add_middleware(CoverSizeCap)
+    app.add_middleware(BodySizeCap)
     app.add_middleware(
         HostOriginGuard, port=port, extra_origins=DEV_ORIGINS if dev else ()
     )

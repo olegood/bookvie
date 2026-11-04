@@ -27,6 +27,7 @@ The scaffolds pin these names (see the ATDD checklist):
 
 import io
 import json
+import os
 import stat
 import struct
 import zipfile
@@ -43,6 +44,7 @@ from tests.helpers import (
     DUNE,
     DUNE_ID,
     RecordingFs,
+    RecordingLock,
     api_client,
     covers_in,
     image_bytes,
@@ -51,8 +53,6 @@ from tests.helpers import (
     staging_in,
     zip_archive,
 )
-
-RED = "ATDD red phase (story 2.3): restore refusals are not split out yet"
 
 EXPORT = "/api/export"
 EXPORT_HEADERS = {"X-Bookvie-Export": "1"}
@@ -215,7 +215,6 @@ def _referenced_covers_exist(data_dir: Path) -> bool:
 # --- AC-1: a damaged or invalid file is 422 restore_invalid --------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_ac1_p0_a_damaged_or_invalid_file_is_422_restore_invalid_and_changes_nothing(
     tmp_path: Path,
 ) -> None:
@@ -276,7 +275,6 @@ def test_ac1_p0_a_damaged_or_invalid_file_is_422_restore_invalid_and_changes_not
 # --- AC-2: a newer schemaVersion is 422 restore_newer_version ------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_ac2_p0_a_newer_schema_version_is_422_restore_newer_version_and_changes_nothing(
     tmp_path: Path,
 ) -> None:
@@ -302,7 +300,6 @@ def test_ac2_p0_a_newer_schema_version_is_422_restore_newer_version_and_changes_
 # --- AC-3: a hostile archive is 422 restore_unsafe, nothing written outside .staging/
 
 
-@pytest.mark.skip(reason=RED)
 def test_ac3_p0_a_hostile_archive_is_422_restore_unsafe_before_anything_outside_staging_changes(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -384,10 +381,9 @@ def test_ac3_p0_a_hostile_archive_is_422_restore_unsafe_before_anything_outside_
         GIB,
     )
 
-    # Headers that understate a size: the cap is counted on bytes written, so
-    # 2 MiB declared as 1,000 bytes is never inflated past what it declares.
-    # Python's zipfile then fails the entry's CRC, so the code may be either
-    # refusal; the user sees the same line, and nothing changes.
+    # Headers that understate a size: the cap is counted on bytes written, not
+    # on the header, so 2 MiB declared as 1,000 bytes is inflated only up to
+    # the cap and refused as unsafe, not as damage; nothing changes.
     files = {name: data for name, data in source.entries().items() if data is not None}
     filler = "covers/filler.jpg"
     bomb = _understated({**files, filler: bytes(2 * 1024 * 1024)}, filler, declared=1_000)
@@ -396,8 +392,9 @@ def test_ac3_p0_a_hostile_archive_is_422_restore_unsafe_before_anything_outside_
     with monkeypatch.context() as patch:
         patch.setattr(unpack, "MAX_EXTRACTED_BYTES", source.extracted + 64 * 1024)
         response = post_restore(client, bomb)
+    assert response.json()["error"]["code"] == "restore_unsafe"
     assert response.status_code == 422
-    assert response.json()["error"]["message"] == INVALID_MESSAGE
+    assert response.json() == RESTORE_UNSAFE_BODY
     assert _outside_staging(log) == []
     _Snapshot.assert_unchanged(before, target, "headers that understate a size")
 
@@ -460,7 +457,6 @@ class _StepFault(OsFileSystem):
         super().replace(src, dst)
 
 
-@pytest.mark.skip(reason=RED)
 def test_ac4_p0_a_fault_copying_covers_in_or_at_the_commit_is_503_with_the_old_library_intact(
     tmp_path: Path,
 ) -> None:
@@ -486,3 +482,267 @@ def test_ac4_p0_a_fault_copying_covers_in_or_at_the_commit_is_503_with_the_old_l
         assert _referenced_covers_exist(target), f"{case}: a referenced cover is gone"
         titles = [book["title"] for book in client.get("/api/views/catalog").json()["books"]]
         assert titles == ["The Left Hand of Darkness"], case
+
+
+# --- Green-phase follow-ups (secondary branches of AC-2 and AC-3) --------------
+
+
+def test_ac3_the_limits_themselves_are_allowed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source = _Source(tmp_path)
+    entries = source.entries()
+    fillers = {
+        f"covers/{OLD_BOOK_ID}-00000000-0000-4000-8000-{n:012d}.jpg": b"x"
+        for n in range(5_000 - len(entries))
+    }
+    at_count = zip_archive({**entries, **fillers})
+    assert len(zipfile.ZipFile(io.BytesIO(at_count)).infolist()) == 5_000
+    cases: list[tuple[str, bytes, dict[str, int]]] = [
+        ("exactly 5,000 entries", at_count, {}),
+        ("an upload exactly at the limit", source.export, {"MAX_UPLOAD_BYTES": len(source.export)}),
+        (
+            "an extraction exactly at the limit",
+            source.export,
+            {"MAX_EXTRACTED_BYTES": source.extracted},
+        ),
+    ]
+
+    for index, (case, archive, limits) in enumerate(cases):
+        target = tmp_path / f"target-{index}"
+        _seed_target(target)
+        client = api_client(target)
+        with monkeypatch.context() as patch:
+            for name, value in limits.items():
+                patch.setattr(unpack, name, value)
+
+            response = post_restore(client, archive)
+
+        assert response.status_code == 200, case
+        assert library_bytes(target) == source.library, case
+        assert staging_in(target) == [], case
+
+
+def test_ac3_an_unsafe_archive_is_unsafe_even_when_library_json_is_broken_or_newer(
+    tmp_path: Path,
+) -> None:
+    source = _Source(tmp_path)
+    newer = (
+        json.dumps({**source.doc, "schemaVersion": migrations.CURRENT_VERSION + 1}) + "\n"
+    ).encode()
+    cases = {
+        "a .. entry and a library.json that isn't JSON": zip_archive(
+            {**source.entries(b"{not json"), "../evil.jpg": b"x"}
+        ),
+        "a .. entry and a newer library.json": zip_archive(
+            {**source.entries(newer), "../evil.jpg": b"x"}
+        ),
+        "a symlink and a newer library.json": _with_raw_entries(
+            zip_archive(source.entries(newer)), [_symlink("covers/link.jpg", "../library.json")]
+        ),
+        "an extra entry and no library.json": zip_archive(
+            {"covers/": None, "notes.txt": b"not part of an export"}
+        ),
+    }
+    target = tmp_path / "target"
+    _seed_target(target)
+    client = api_client(target)
+
+    for case, archive in cases.items():
+        before = _Snapshot(target)
+
+        response = post_restore(client, archive)
+
+        assert response.json() == RESTORE_UNSAFE_BODY, case
+        assert response.status_code == 422, case
+        _Snapshot.assert_unchanged(before, target, case)
+
+
+def test_ac3_extraction_stops_before_staging_passes_the_cap(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source = _Source(tmp_path)
+    files = {name: data for name, data in source.entries().items() if data is not None}
+    filler = "covers/filler.jpg"
+    bomb = _understated({**files, filler: bytes(2 * 1024 * 1024)}, filler, declared=1_000)
+    cap = source.extracted + 64 * 1024
+    written: list[int] = []
+    real_open = open
+
+    class _Counting:
+        def __init__(self, file) -> None:
+            self.file = file
+
+        def write(self, data: bytes) -> int:
+            written.append(len(data))
+            return self.file.write(data)
+
+        def __enter__(self) -> _Counting:
+            return self
+
+        def __exit__(self, *exc: object) -> None:
+            self.file.close()
+
+    def counting_open(path, mode="r", *args, **kwargs):
+        return _Counting(real_open(path, mode, *args, **kwargs))
+
+    target = tmp_path / "target"
+    _seed_target(target)
+    client = api_client(target)
+    monkeypatch.setattr(unpack, "MAX_EXTRACTED_BYTES", cap)
+    monkeypatch.setattr(unpack, "open", counting_open, raising=False)
+
+    response = post_restore(client, bomb)
+
+    assert response.json() == RESTORE_UNSAFE_BODY
+    assert 0 < sum(written) <= cap
+
+
+def test_ac3_an_archive_over_the_entry_count_stages_nothing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source = _Source(tmp_path)
+    copied: list[str] = []
+    real_copy = unpack._copy_entry
+
+    def recording_copy(archive, info, target, budget) -> None:
+        copied.append(info.filename)
+        real_copy(archive, info, target, budget)
+
+    target = tmp_path / "target"
+    _seed_target(target)
+    client = api_client(target)
+    monkeypatch.setattr(unpack, "_copy_entry", recording_copy)
+    monkeypatch.setattr(unpack, "MAX_ENTRIES", len(source.entries()) - 1)
+
+    response = post_restore(client, source.export)
+
+    assert response.json() == RESTORE_UNSAFE_BODY
+    assert copied == []
+
+
+def test_ac3_a_body_over_the_streaming_cap_is_refused_without_the_lock(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    target = tmp_path / "target"
+    _seed_target(target)
+    client = api_client(target)
+    log: list[str] = []
+    lock = RecordingLock(log)
+    client.app.state.store.lock = lock
+    client.app.state.write_lock = lock
+    before = _Snapshot(target)
+    monkeypatch.setattr(unpack, "MAX_UPLOAD_BYTES", 1_000)
+
+    # Past the upload limit plus the 64 KiB framing slack.
+    response = post_restore(client, b"x" * (1_000 + 64 * 1024 + 1))
+
+    assert response.status_code == 422
+    assert response.json() == RESTORE_UNSAFE_BODY
+    assert log == []
+    _Snapshot.assert_unchanged(before, target, "a body over the streaming cap")
+
+
+def test_ac3_a_cover_whose_name_differs_only_in_case_from_one_in_covers_is_unsafe(
+    tmp_path: Path,
+) -> None:
+    source = _Source(tmp_path)
+    upper = OLD_COVER.upper()
+    archive = zip_archive({**source.entries(), f"covers/{upper}": b"another cover"})
+    target = tmp_path / "target"
+    _seed_target(target)
+    client = api_client(target)
+    log: list[str] = []
+    client.app.state.store.fs = RecordingFs(target, log)
+    before = _Snapshot(target)
+
+    response = post_restore(client, archive)
+
+    assert response.json() == RESTORE_UNSAFE_BODY
+    assert response.status_code == 422
+    assert _outside_staging(log) == []
+    _Snapshot.assert_unchanged(before, target, "a case collision with covers/")
+
+
+def test_ac2_a_newer_export_missing_its_covers_is_still_restore_newer_version(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    source = _Source(tmp_path)
+    current = migrations.CURRENT_VERSION
+    newer = {**source.doc, "schemaVersion": current + 1}
+    doc = (json.dumps(newer, indent=2) + "\n").encode()
+    archive = zip_archive({"library.json": doc, "covers/": None})
+    target = tmp_path / "target"
+    _seed_target(target)
+    client = api_client(target)
+    before = _Snapshot(target)
+
+    response = post_restore(client, archive)
+
+    assert response.json() == RESTORE_NEWER_VERSION_BODY
+    assert response.status_code == 422
+    _Snapshot.assert_unchanged(before, target, "a newer export without its covers")
+    expected = f"couldn't restore: library.json is schemaVersion {current + 1}, newer than {current}"
+    assert expected in capsys.readouterr().err
+
+
+def test_ac3_an_entry_that_inflates_past_its_declared_size_is_unsafe_under_the_cap(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    source = _Source(tmp_path)
+    files = {name: data for name, data in source.entries().items() if data is not None}
+    filler = "covers/filler.jpg"
+    # Far under the 1 GiB cap: only the declared size is broken.
+    bomb = _understated({**files, filler: bytes(200 * 1024)}, filler, declared=1_000)
+    target = tmp_path / "target"
+    _seed_target(target)
+    client = api_client(target)
+    before = _Snapshot(target)
+
+    response = post_restore(client, bomb)
+
+    assert response.json() == RESTORE_UNSAFE_BODY
+    _Snapshot.assert_unchanged(before, target, "an entry larger than declared")
+    assert "which unpacks to more than its declared 1000 bytes" in capsys.readouterr().err
+
+
+@pytest.mark.skipif(os.geteuid() == 0, reason="root ignores folder permissions")
+def test_ac4_a_fault_unpacking_into_staging_is_503_with_nothing_changed(tmp_path: Path) -> None:
+    source = _Source(tmp_path)
+    target = tmp_path / "target"
+    _seed_target(target)
+    client = api_client(target)
+    before = _Snapshot(target)
+    staging = target / ".staging"
+    staging.mkdir(exist_ok=True)
+    staging.chmod(0o500)
+    try:
+        response = post_restore(client, source.export)
+    finally:
+        staging.chmod(0o700)
+
+    assert response.status_code == 503
+    assert response.json() == COULDNT_SAVE_BODY
+    _Snapshot.assert_unchanged(before, target, "a read-only .staging/")
+
+
+@pytest.mark.skipif(os.geteuid() == 0, reason="root ignores folder permissions")
+def test_ac4_a_fault_listing_covers_is_503_with_nothing_changed(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    source = _Source(tmp_path)
+    target = tmp_path / "target"
+    _seed_target(target)
+    client = api_client(target)
+    before = _Snapshot(target)
+    covers = target / "covers"
+    covers.chmod(0o300)  # writable and enterable, but can't be listed
+    try:
+        response = post_restore(client, source.export)
+    finally:
+        covers.chmod(0o700)
+
+    assert response.status_code == 503
+    assert response.json() == COULDNT_SAVE_BODY
+    _Snapshot.assert_unchanged(before, target, "covers/ that can't be listed")
+    assert "can't list covers/" in capsys.readouterr().err

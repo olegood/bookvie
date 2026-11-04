@@ -3,13 +3,14 @@
 from . import migrations
 from .fs import FileSystem, OsFileSystem
 from .local_state import LOCAL_STATE_NAME, read_last_export
-from .restore import ArchiveRefused, StagedArchive, stage_archive
+from .restore import ArchiveRefused, ArchiveUnsafe, StagedArchive, stage_archive
 from .store import (
     COVERS_DIR,
     LIBRARY_NAME,
     STAGING_DIR,
     TEMP_PREFIX,
     CouldntSave,
+    LibraryNewer,
     LibraryRefused,
     StartupError,
     Store,
@@ -27,8 +28,10 @@ __all__ = [
     "STAGING_DIR",
     "TEMP_PREFIX",
     "ArchiveRefused",
+    "ArchiveUnsafe",
     "CouldntSave",
     "FileSystem",
+    "LibraryNewer",
     "LibraryRefused",
     "OsFileSystem",
     "StagedArchive",

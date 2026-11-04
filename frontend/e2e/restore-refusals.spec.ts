@@ -8,6 +8,7 @@
 // focus goes back to Restore from file…. The server owns the copy (AD-9).
 
 import { readFileSync } from 'node:fs'
+import AxeBuilder from '@axe-core/playwright'
 import path from 'node:path'
 import type { Page } from '@playwright/test'
 import { expect, type Server, test } from './fixtures.ts'
@@ -26,8 +27,10 @@ import {
 
 const NEWER_VERSION = 'This export is from a newer version of bookvie. Nothing was changed.'
 const COULDNT_SAVE = "Couldn't save. Your data wasn't changed."
-// --color-ink in the light theme (tokens.css): the failure line is ink, never red.
+// --color-ink in each theme (tokens.css): the failure line is ink, never red.
 const INK = rgbOf('#2B2E2A')
+const INK_DARK = rgbOf('#ECEAE3')
+const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']
 
 // The library a refused restore must leave alone.
 const LEFT_HAND = { title: 'The Left Hand of Darkness', authors: ['Ursula K. Le Guin'], pages: 304 }
@@ -38,19 +41,19 @@ function libraryOf(server: Server): Record<string, unknown> & { schemaVersion: n
 }
 
 /** The refusal shows as the one ink failure line under Restore, and focus is back on its button. */
-async function expectRefusalLine(page: Page, message: string): Promise<void> {
+async function expectRefusalLine(page: Page, message: string, ink = INK): Promise<void> {
   const line = restoreCard(page).getByText(message, { exact: true })
   await expect(line).toBeVisible()
   await expect(restoreButton(page)).toBeFocused()
   // The explanation line and this one: one failure line, the previous one gone.
   await expect(restoreCard(page).getByRole('paragraph')).toHaveCount(2)
-  await expect(line).toHaveCSS('color', INK)
+  await expect(line).toHaveCSS('color', ink)
   await expect(restoreCard(page).locator('svg, img')).toHaveCount(0)
   await expect(page.getByRole('alert')).toHaveText(message)
 }
 
 test.describe('Story 2.3 Refuse damaged, hostile or newer files (ATDD)', () => {
-  test.skip('[P1] AC-5 every refusal is one ink line under Restore, and focus returns to Restore from file…', async ({
+  test('[P1] AC-5 every refusal is one ink line under Restore, and focus returns to Restore from file…', async ({
     page,
     seededServer,
   }) => {
@@ -86,6 +89,29 @@ test.describe('Story 2.3 Refuse damaged, hostile or newer files (ATDD)', () => {
     )
     await restoreFrom(page, archive)
     await expectRefusalLine(page, COULDNT_SAVE)
+
+    expect(await catalogTitles(page, server)).toEqual(['The Left Hand of Darkness'])
+  })
+
+  test('[P2] AC-5 the refusal line is ink in the dark theme too, and axe finds nothing with it shown in both themes', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: [LEFT_HAND] })
+    const library = libraryOf(server)
+    const unsafe = storedZip([['library.json', JSON.stringify(library)], ['covers/', ''], ['../evil.jpg', 'x']])
+
+    for (const [colorScheme, ink] of [
+      ['light', INK],
+      ['dark', INK_DARK],
+    ] as const) {
+      await page.emulateMedia({ colorScheme })
+      await page.goto(`${server.url}/backup`)
+      await restoreFrom(page, zipFile(unsafe))
+      await expectRefusalLine(page, RESTORE_INVALID, ink)
+      const { violations } = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze()
+      expect(violations.map(({ id, nodes }) => `${colorScheme}: ${id} (${nodes.length})`)).toEqual([])
+    }
 
     expect(await catalogTitles(page, server)).toEqual(['The Left Hand of Darkness'])
   })

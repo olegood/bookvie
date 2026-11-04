@@ -17,7 +17,7 @@ catch-all 422 ``restore_invalid``; a fault at the commit removes only the
 covers restore wrote; a cover name already in ``covers/`` is never
 overwritten (AD-12); and an intent sent during a restore waits for it. The
 full refusal set (``restore_newer_version``, ``restore_unsafe``, faults at
-every step) is Story 2.3.
+every step) is in ``test_restore_refusals.py``.
 
 The tests pin these names (decided with Oleg, 2026-11-04):
 
@@ -460,7 +460,7 @@ def test_ac10_p1_a_failed_cleanup_after_the_commit_still_succeeds_and_startup_sw
     assert library_bytes(target) == library_bytes(source)
 
 
-# --- The catch-all refusal (Story 2.3 splits it) -------------------------------
+# --- restore_invalid (the full refusal set: test_restore_refusals.py) ----------
 
 RESTORE_INVALID_BODY = {
     "error": {
@@ -539,16 +539,6 @@ def test_an_undecodable_cover_is_422_restore_invalid(
     assert f"covers/{DUNE_COVER} isn't a usable image" in capsys.readouterr().err
 
 
-def test_a_newer_schema_version_is_422_restore_invalid_until_story_2_3(tmp_path: Path) -> None:
-    doc, dune_cover = _source_doc(tmp_path)
-    doc["schemaVersion"] = migrations.CURRENT_VERSION + 1
-    target = tmp_path / "target"
-    _seed_target(target)
-
-    archive = _source_with(doc, {DUNE_COVER: dune_cover})
-    _assert_refused_and_unchanged(api_client(target), target, archive)
-
-
 def test_a_library_that_breaks_an_invariant_is_422_restore_invalid(tmp_path: Path) -> None:
     doc, dune_cover = _source_doc(tmp_path)
     doc["upNextBookId"] = doc["mainBookId"]  # Main book and Up next at once
@@ -569,24 +559,6 @@ def test_a_zip_without_library_json_is_422_restore_invalid(
 
     _assert_refused_and_unchanged(api_client(target), target, archive)
     assert "the file has no library.json" in capsys.readouterr().err
-
-
-def test_a_zip_with_an_extra_entry_is_422_restore_invalid(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    doc, dune_cover = _source_doc(tmp_path)
-    target = tmp_path / "target"
-    _seed_target(target)
-    entries = {
-        "library.json": (json.dumps(doc, indent=2) + "\n").encode("utf-8"),
-        "covers/": None,
-        f"covers/{DUNE_COVER}": dune_cover,
-        "notes.txt": b"not part of an export",
-    }
-
-    _assert_refused_and_unchanged(api_client(target), target, zip_archive(entries))
-    reason = "the file holds 'notes.txt', which isn't library.json or a cover"
-    assert reason in capsys.readouterr().err
 
 
 def test_a_library_json_that_fails_its_crc_is_422_restore_invalid(

@@ -9,6 +9,7 @@ from .contract import (
     COULDNT_SAVE_MESSAGE,
     COVER_LIMIT,
     RESTORE_INVALID_MESSAGE,
+    RESTORE_NEWER_VERSION_MESSAGE,
     DuplicateMatch,
     ErrorBody,
     ErrorCode,
@@ -25,13 +26,15 @@ from .contract import (
     invalid_fields,
     pages_refusal,
     restore_invalid,
+    restore_newer_version,
+    restore_unsafe,
 )
 from .cover import PreparedCover, RefusedCover, UploadedCover, prepare_cover
 from .delete_book import DeleteBookIntent, delete_book, parse_delete_book_intent
 from .edit_book import EditBookIntent, edit_book, parse_edit_book_intent
 from .export import EXPORT_CHUNK, build_export, export_filename, record_export
 from .intent_model import malformed as malformed_intent
-from .restore import RestoreIntent, parse_restore_intent, restore
+from .restore import RestoreIntent, max_upload_bytes, parse_restore_intent, restore
 from .set_spine_color import (
     SetSpineColorIntent,
     parse_set_spine_color_intent,
@@ -44,6 +47,7 @@ __all__ = [
     "COVER_LIMIT",
     "EXPORT_CHUNK",
     "RESTORE_INVALID_MESSAGE",
+    "RESTORE_NEWER_VERSION_MESSAGE",
     "AddBookIntent",
     "Clock",
     "DeleteBookIntent",
@@ -76,6 +80,7 @@ __all__ = [
     "export_filename",
     "invalid_fields",
     "malformed_intent",
+    "max_upload_bytes",
     "pages_refusal",
     "parse_add_book_intent",
     "parse_delete_book_intent",
@@ -86,5 +91,7 @@ __all__ = [
     "record_export",
     "restore",
     "restore_invalid",
+    "restore_newer_version",
+    "restore_unsafe",
     "set_spine_color",
 ]

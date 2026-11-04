@@ -10,17 +10,20 @@ Unknown ``/api`` paths are not enveloped: a GET or HEAD 404s through the SPA
 route, and any other method gets Starlette's 405 ``{detail}``.
 
 ``add-book`` and ``edit-book`` take an optional ``cover`` file part (AD-3).
-:class:`CoverSizeCap` refuses a body past the cover limit with 413
+:class:`BodySizeCap` refuses a body past the cover limit with 413
 ``cover_too_large`` while it streams; the route refuses a ``cover`` part over
 exactly 20 MB the same way, then has Pillow decode it before the intent takes
-the store lock.
+the store lock. It also caps ``restore``'s body at the upload limit plus
+framing slack with 422 ``restore_unsafe`` (AD-14), before the route runs or
+the lock is taken; the exact limit is checked on the spooled file.
 
 ``http`` may not import ``store`` or ``domain``: the store on
 ``app.state.store`` is duck-typed and only its ``library`` is read.
 """
 
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
+from dataclasses import dataclass
 from typing import IO, Annotated, Any
 
 import anyio
@@ -56,6 +59,7 @@ from bookvie.intents import (
     export_filename,
     invalid_fields,
     malformed_intent,
+    max_upload_bytes,
     parse_add_book_intent,
     parse_delete_book_intent,
     parse_edit_book_intent,
@@ -64,6 +68,7 @@ from bookvie.intents import (
     prepare_cover,
     record_export,
     restore,
+    restore_unsafe,
     set_spine_color,
 )
 
@@ -91,45 +96,63 @@ router = APIRouter(prefix="/api", responses=ERROR_RESPONSES)
 
 ADD_BOOK_PATH = "/api/intents/add-book"
 EDIT_BOOK_PATH = "/api/intents/edit-book"
-# The cover plus room for the intent part and the multipart framing.
-BODY_LIMIT = COVER_LIMIT + 64 * 1024
+RESTORE_PATH = "/api/intents/restore"
+# Room for the intent part and the multipart framing around the file part.
+FRAMING_SLACK = 64 * 1024
+# The cover plus the framing.
+BODY_LIMIT = COVER_LIMIT + FRAMING_SLACK
 
 
 class _BodyTooLarge(Exception):
     """Raised from ``receive`` once a capped body passes its limit."""
 
 
-class CoverSizeCap:
-    """Pure-ASGI cap on the bodies of the routes that take a cover (R-14).
+@dataclass(frozen=True)
+class BodyCap:
+    """One route's body cap: ``limit()`` is read per request, ``refusal()`` answers past it."""
 
-    A ``Content-Length`` over ``limit`` is refused before anything is read.
-    Otherwise the bytes are counted as they arrive, and past ``limit`` the
-    body stops being read: whatever the route answers is replaced by 413
-    ``cover_too_large``.
+    limit: Callable[[], int]
+    refusal: Callable[[], IntentError]
+
+
+COVER_CAP = BodyCap(limit=lambda: BODY_LIMIT, refusal=cover_too_large)
+# The exact upload limit is checked on the spooled file; this stops a body
+# far past it from being spooled at all.
+RESTORE_CAP = BodyCap(limit=lambda: max_upload_bytes() + FRAMING_SLACK, refusal=restore_unsafe)
+BODY_CAPS: Mapping[str, BodyCap] = {
+    ADD_BOOK_PATH: COVER_CAP,
+    EDIT_BOOK_PATH: COVER_CAP,
+    RESTORE_PATH: RESTORE_CAP,
+}
+
+
+class BodySizeCap:
+    """Pure-ASGI cap on the request bodies of the routes in ``caps`` (R-14, AD-14).
+
+    A ``Content-Length`` over the route's limit is refused before anything is
+    read. Otherwise the bytes are counted as they arrive, and past the limit
+    the body stops being read: whatever the route answers is replaced by the
+    cap's refusal.
     """
 
-    def __init__(
-        self,
-        app: ASGIApp,
-        *,
-        paths: tuple[str, ...] = (ADD_BOOK_PATH, EDIT_BOOK_PATH),
-        limit: int = BODY_LIMIT,
-    ) -> None:
+    def __init__(self, app: ASGIApp, *, caps: Mapping[str, BodyCap] = BODY_CAPS) -> None:
         self.app = app
-        self.paths = paths
-        self.limit = limit
+        self.caps = caps
 
-    async def _refuse(self, scope: Scope, receive: Receive, send: Send) -> None:
-        response = JSONResponse(cover_too_large().response_body(), status_code=413)
+    async def _refuse(self, cap: BodyCap, scope: Scope, receive: Receive, send: Send) -> None:
+        error = cap.refusal()
+        response = JSONResponse(error.response_body(), status_code=error.status)
         await response(scope, receive, send)
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-        if scope["type"] != "http" or scope["path"] not in self.paths:
+        cap = self.caps.get(scope["path"]) if scope["type"] == "http" else None
+        if cap is None:
             await self.app(scope, receive, send)
             return
+        limit = cap.limit()
         for name, value in scope.get("headers", []):
-            if name == b"content-length" and value.isdigit() and int(value) > self.limit:
-                await self._refuse(scope, receive, send)
+            if name == b"content-length" and value.isdigit() and int(value) > limit:
+                await self._refuse(cap, scope, receive, send)
                 return
         received = 0
         exceeded = False
@@ -142,7 +165,7 @@ class CoverSizeCap:
             message = await receive()
             if message["type"] == "http.request":
                 received += len(message.get("body", b""))
-                if received > self.limit:
+                if received > limit:
                     exceeded = True
                     raise _BodyTooLarge()
             return message
@@ -160,7 +183,7 @@ class CoverSizeCap:
             if not exceeded:
                 raise
         if exceeded and not started:
-            await self._refuse(scope, receive, send)
+            await self._refuse(cap, scope, receive, send)
 
 
 def _uploaded_cover(cover: UploadFile | None) -> UploadedCover | None:
@@ -420,11 +443,15 @@ def restore_intent(
         Form(media_type="multipart/form-data", description="JSON object {}."),
     ] = None,
 ) -> OkResponse:
-    """Replace all data with an export (FR-23); 422 ``restore_invalid`` changes nothing.
+    """Replace all data with an export (FR-23); a 422 refusal changes nothing.
+
+    ``restore_invalid`` for a file that isn't a usable export,
+    ``restore_newer_version`` for one from a newer bookvie, ``restore_unsafe``
+    for one that breaks a path or size rule (AD-14).
 
     Plain ``def``: the archive is unpacked and applied under the store lock in
-    the threadpool. Starlette spools the upload to disk past 1 MB; the cover
-    cap doesn't apply here.
+    the threadpool. Starlette spools the upload to disk past 1 MB; the body is
+    capped at the upload limit plus framing before the route runs.
     """
     parse_restore_intent(intent)
     restore(request.app.state.store, archive.file)

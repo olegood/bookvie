@@ -148,12 +148,26 @@ class LibraryRefused(Exception):
         self.reason = reason
 
 
+class LibraryNewer(LibraryRefused):
+    """A ``library.json`` from a newer bookvie: ``version`` is above ``current``.
+
+    Its ``reason`` is the same as any refusal's, so startup reads unchanged;
+    restore tells it apart (``restore_newer_version``).
+    """
+
+    def __init__(self, reason: str, version: int, current: int) -> None:
+        super().__init__(reason)
+        self.version = version
+        self.current = current
+
+
 def parse_document(raw: bytes) -> tuple[dict, int]:
     """``raw`` as a JSON object with a supported whole-number ``schemaVersion``.
 
     The one parse startup and restore share (AD-13); raises
-    :class:`LibraryRefused`. ``CURRENT_VERSION`` is read through the module
-    at call time.
+    :class:`LibraryRefused`, or :class:`LibraryNewer` for a version above the
+    current one (before any model validation). ``CURRENT_VERSION`` is read
+    through the module at call time.
     """
     try:
         text = raw.decode("utf-8")
@@ -172,9 +186,11 @@ def parse_document(raw: bytes) -> tuple[dict, int]:
         raise LibraryRefused(f"has a schemaVersion that is not a whole number: {version!r}")
     current = migrations.CURRENT_VERSION
     if version > current:
-        raise LibraryRefused(
+        raise LibraryNewer(
             f"has schemaVersion {version}, which is newer than this bookvie supports "
-            f"({current}); update bookvie"
+            f"({current}); update bookvie",
+            version,
+            current,
         )
     if version < 1:
         raise LibraryRefused(f"has an unknown schemaVersion {version}")
@@ -507,6 +523,17 @@ class Store:
             raise
         self._commit_and_swap(library, undo)
         self._sweep_covers(library)
+
+    def cover_names(self) -> list[str]:
+        """The names of the entries in ``covers/`` (none when it isn't a folder).
+
+        Restore reads it to refuse an archive cover whose name differs from
+        one already here only in case (AD-14). Raises :class:`OSError`.
+        """
+        covers_dir = self.data_dir / COVERS_DIR
+        if covers_dir.is_symlink() or not covers_dir.is_dir():
+            return []
+        return sorted(entry.name for entry in covers_dir.iterdir())
 
     def empty_staging(self, *, quiet: bool = False) -> None:
         """Delete everything in ``.staging/``; files go through the seam.

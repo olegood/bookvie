@@ -204,11 +204,15 @@ export interface paths {
         put?: never;
         /**
          * Restore Intent
-         * @description Replace all data with an export (FR-23); 422 ``restore_invalid`` changes nothing.
+         * @description Replace all data with an export (FR-23); a 422 refusal changes nothing.
+         *
+         *     ``restore_invalid`` for a file that isn't a usable export,
+         *     ``restore_newer_version`` for one from a newer bookvie, ``restore_unsafe``
+         *     for one that breaks a path or size rule (AD-14).
          *
          *     Plain ``def``: the archive is unpacked and applied under the store lock in
-         *     the threadpool. Starlette spools the upload to disk past 1 MB; the cover
-         *     cap doesn't apply here.
+         *     the threadpool. Starlette spools the upload to disk past 1 MB; the body is
+         *     capped at the upload limit plus framing before the route runs.
          */
         post: operations["restore_intent_api_intents_restore_post"];
         delete?: never;
@@ -381,7 +385,7 @@ export interface components {
          * ErrorCode
          * @enum {string}
          */
-        ErrorCode: "invalid_fields" | "couldnt_save" | "duplicate_book" | "book_not_found" | "pages_below_current_page" | "pages_below_card_note" | "cover_too_large" | "couldnt_export" | "restore_invalid";
+        ErrorCode: "invalid_fields" | "couldnt_save" | "duplicate_book" | "book_not_found" | "pages_below_current_page" | "pages_below_card_note" | "cover_too_large" | "couldnt_export" | "restore_invalid" | "restore_newer_version" | "restore_unsafe";
         /**
          * ErrorKind
          * @enum {string}
