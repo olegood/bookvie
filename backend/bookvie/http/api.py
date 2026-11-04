@@ -59,9 +59,11 @@ from bookvie.intents import (
     parse_add_book_intent,
     parse_delete_book_intent,
     parse_edit_book_intent,
+    parse_restore_intent,
     parse_set_spine_color_intent,
     prepare_cover,
     record_export,
+    restore,
     set_spine_color,
 )
 
@@ -403,6 +405,29 @@ def set_spine_color_intent(
     """Set or clear a Book's own spine color and re-resolve its spine color (FR-24)."""
     parsed = parse_set_spine_color_intent(intent)
     set_spine_color(request.app.state.store, parsed)
+    return OkResponse(ok=True)
+
+
+@router.post("/intents/restore", response_model=OkResponse, response_model_exclude_none=True)
+def restore_intent(
+    request: Request,
+    archive: Annotated[
+        UploadFile,
+        File(description="An export zip from GET /api/export: library.json and covers/."),
+    ],
+    intent: Annotated[
+        str | None,
+        Form(media_type="multipart/form-data", description="JSON object {}."),
+    ] = None,
+) -> OkResponse:
+    """Replace all data with an export (FR-23); 422 ``restore_invalid`` changes nothing.
+
+    Plain ``def``: the archive is unpacked and applied under the store lock in
+    the threadpool. Starlette spools the upload to disk past 1 MB; the cover
+    cap doesn't apply here.
+    """
+    parse_restore_intent(intent)
+    restore(request.app.state.store, archive.file)
     return OkResponse(ok=True)
 
 

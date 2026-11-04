@@ -361,6 +361,59 @@ def test_invalid_file_is_refused(tmp_path: Path, raw: bytes, reason: str) -> Non
     _refused(tmp_path, raw, reason)
 
 
+def _newer() -> bytes:
+    doc = _valid_doc()
+    doc["schemaVersion"] = 2
+    return json.dumps(doc).encode()
+
+
+def _broken_rule() -> bytes:
+    doc = _valid_doc()
+    doc["books"][0]["id"] = "5f5559ad-3454-4919-9822-e8d24a063e42"
+    doc["mainBookId"] = doc["books"][0]["id"]
+    return json.dumps(doc).encode()
+
+
+@pytest.mark.parametrize(
+    ("raw", "reason"),
+    [
+        (lambda: b"\xff", "is not UTF-8 text"),
+        (lambda: b"[]", "is not a JSON object"),
+        (lambda: b'{"books": []}', "has no schemaVersion"),
+        (lambda: b'{"schemaVersion": "1"}', "has a schemaVersion that is not a whole number: '1'"),
+        (lambda: b'{"schemaVersion": 0}', "has an unknown schemaVersion 0"),
+        (
+            _newer,
+            "has schemaVersion 2, which is newer than this bookvie supports (1); update bookvie",
+        ),
+        (
+            _broken_rule,
+            (
+                "breaks a library rule: Main book 5f5559ad-3454-4919-9822-e8d24a063e42 "
+                "has no unfinished Reading"
+            ),
+        ),
+    ],
+)
+def test_startup_refusals_keep_their_exact_messages(tmp_path: Path, raw, reason: str) -> None:
+    """Startup and restore share one parse-and-validate path; startup's copy is unchanged."""
+    path = tmp_path / "library.json"
+    path.write_bytes(raw())
+    with pytest.raises(StartupError) as exc:
+        Store.open(tmp_path)
+    assert exc.value.reason == reason
+    assert str(exc.value) == f"{path}: {reason}"
+
+
+def test_a_document_nested_too_deeply_to_parse_is_not_valid_json(tmp_path: Path) -> None:
+    """``json.loads`` raises ``RecursionError`` here; startup refuses it like bad JSON."""
+    depth = 1_000_000
+    (tmp_path / "library.json").write_bytes(b"[" * depth + b"]" * depth)
+    with pytest.raises(StartupError) as exc:
+        Store.open(tmp_path)
+    assert exc.value.reason.startswith("is not valid JSON (")
+
+
 def test_unknown_key_is_refused(tmp_path: Path) -> None:
     doc = _valid_doc()
     doc["books"][0]["shelf"] = "top"

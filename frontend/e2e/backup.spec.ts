@@ -164,18 +164,16 @@ test.describe('Story 2.1 Export all data with one click (ATDD)', () => {
     expect(requests).toBe(1)
   })
 
-  test('[P2] AC-2 the Restore card explains itself, and its button is unavailable until restore arrives', async ({
-    page,
-  }) => {
+  test('[P2] AC-2 the Restore card explains itself', async ({ page }) => {
     await page.goto('/backup')
 
     await expect(page.getByText(RESTORE_EXPLANATION, { exact: true })).toBeVisible()
     const restore = page.getByRole('button', { name: RESTORE, exact: true })
-    await expect(restore).toHaveAttribute('aria-disabled', 'true')
-    await expect(restore).toHaveAccessibleDescription('Restore arrives in the next update.')
-    await expect(restore).toHaveJSProperty('disabled', false)
-    // Export is the only natively disabled control, and only while busy.
-    await expect(page.locator(':disabled')).toHaveCount(0)
+    await expect(restore).toBeVisible()
+    // Restore has arrived (Story 2.2): no longer unavailable or explained away.
+    await expect(restore).toBeEnabled()
+    await expect(restore).not.toHaveAttribute('aria-disabled', 'true')
+    await expect(restore).not.toHaveAccessibleDescription('Restore arrives in the next update.')
   })
 
   test('[P2] AC-2 the Export and Restore buttons and the Last export line use their tokens', async ({ page }) => {

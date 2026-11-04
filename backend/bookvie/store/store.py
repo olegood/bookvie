@@ -5,6 +5,9 @@ code that makes its bytes. :meth:`Store.open` prepares the data folder at
 startup (load or migrate, then sweep, then create or commit), and :meth:`Store.apply` is the only
 way to change the library: under the AD-4 lock it runs a change on a copy,
 checks the AD-18 invariants, commits atomically and swaps the in-memory state.
+:meth:`Store.replace_all` is restore's whole-library version of the same
+commit (the caller holds the lock), and :func:`load_library` the parse,
+migrate and validate path startup shares.
 """
 
 import json
@@ -134,6 +137,80 @@ def _validation_reason(exc: ValidationError) -> str:
     return f"is not a valid library: {where}: {first['msg']}{tail}"
 
 
+class LibraryRefused(Exception):
+    """A ``library.json`` document that can't be served; ``reason`` says why.
+
+    Startup turns it into a :class:`StartupError`; restore into a refusal.
+    """
+
+    def __init__(self, reason: str) -> None:
+        super().__init__(reason)
+        self.reason = reason
+
+
+def parse_document(raw: bytes) -> tuple[dict, int]:
+    """``raw`` as a JSON object with a supported whole-number ``schemaVersion``.
+
+    The one parse startup and restore share (AD-13); raises
+    :class:`LibraryRefused`. ``CURRENT_VERSION`` is read through the module
+    at call time.
+    """
+    try:
+        text = raw.decode("utf-8")
+    except UnicodeDecodeError:
+        raise LibraryRefused("is not UTF-8 text") from None
+    try:
+        doc = json.loads(text)
+    except (ValueError, RecursionError) as exc:
+        raise LibraryRefused(f"is not valid JSON ({exc})") from None
+    if not isinstance(doc, dict):
+        raise LibraryRefused("is not a JSON object")
+    if "schemaVersion" not in doc:
+        raise LibraryRefused("has no schemaVersion")
+    version = doc["schemaVersion"]
+    if isinstance(version, bool) or not isinstance(version, int):
+        raise LibraryRefused(f"has a schemaVersion that is not a whole number: {version!r}")
+    current = migrations.CURRENT_VERSION
+    if version > current:
+        raise LibraryRefused(
+            f"has schemaVersion {version}, which is newer than this bookvie supports "
+            f"({current}); update bookvie"
+        )
+    if version < 1:
+        raise LibraryRefused(f"has an unknown schemaVersion {version}")
+    return doc, version
+
+
+def validate_document(doc: dict) -> Library:
+    """``doc`` as a :class:`Library` that passes the model and the AD-18 invariants."""
+    try:
+        library = Library.model_validate_json(json.dumps(doc, ensure_ascii=False))
+    except ValidationError as exc:
+        raise LibraryRefused(_validation_reason(exc)) from None
+    try:
+        check_invariants(library)
+    except InvariantViolation as exc:
+        raise LibraryRefused(f"breaks a library rule: {exc.message}") from None
+    return library
+
+
+def load_library(raw: bytes) -> Library:
+    """``raw`` parsed, migrated in memory when older, and validated (restore, AD-13).
+
+    No backup is written: for a restore the archive is the backup. Raises
+    :class:`LibraryRefused`.
+    """
+    doc, version = parse_document(raw)
+    if version < migrations.CURRENT_VERSION:
+        try:
+            doc = migrations.migrate(doc)
+        except Exception as exc:  # noqa: BLE001 - any step failure refuses the file
+            raise LibraryRefused(
+                f"could not be upgraded from schemaVersion {version}: {exc}"
+            ) from None
+    return validate_document(doc)
+
+
 class Store:
     """The committed library and the only way to change it."""
 
@@ -258,29 +335,9 @@ class Store:
         except OSError as exc:
             raise StartupError(path, f"can't be read ({exc.strerror})") from None
         try:
-            text = raw.decode("utf-8")
-        except UnicodeDecodeError:
-            raise StartupError(path, "is not UTF-8 text") from None
-        try:
-            doc = json.loads(text)
-        except ValueError as exc:
-            raise StartupError(path, f"is not valid JSON ({exc})") from None
-        if not isinstance(doc, dict):
-            raise StartupError(path, "is not a JSON object")
-        if "schemaVersion" not in doc:
-            raise StartupError(path, "has no schemaVersion")
-        version = doc["schemaVersion"]
-        if isinstance(version, bool) or not isinstance(version, int):
-            raise StartupError(path, f"has a schemaVersion that is not a whole number: {version!r}")
-        current = migrations.CURRENT_VERSION
-        if version > current:
-            raise StartupError(
-                path,
-                f"has schemaVersion {version}, which is newer than this bookvie supports "
-                f"({current}); update bookvie",
-            )
-        if version < 1:
-            raise StartupError(path, f"has an unknown schemaVersion {version}")
+            doc, version = parse_document(raw)
+        except LibraryRefused as exc:
+            raise StartupError(path, exc.reason) from None
         return raw, doc, version
 
     def _migrate(self, raw: bytes, doc: dict, version: int) -> Library:
@@ -300,14 +357,9 @@ class Store:
 
     def _validate(self, doc: dict) -> Library:
         try:
-            library = Library.model_validate_json(json.dumps(doc, ensure_ascii=False))
-        except ValidationError as exc:
-            raise StartupError(self.path, _validation_reason(exc)) from None
-        try:
-            check_invariants(library)
-        except InvariantViolation as exc:
-            raise StartupError(self.path, f"breaks a library rule: {exc.message}") from None
-        return library
+            return validate_document(doc)
+        except LibraryRefused as exc:
+            raise StartupError(self.path, exc.reason) from None
 
     def _commit_at_startup(self, library: Library) -> None:
         try:
@@ -346,33 +398,146 @@ class Store:
         :attr:`library` unchanged.
         """
         with self.lock:
-            written: list[Path] = []
+            return self._apply_locked(change, new_files)
+
+    def _apply_locked(
+        self,
+        change: Callable[[Library], Library | None],
+        new_files: Mapping[str, bytes] | None,
+    ) -> Library:
+        written: list[Path] = []
+
+        def undo() -> None:
+            self._remove_covers(written)
+
+        try:
+            for relative, data in (new_files or {}).items():
+                target = self.data_dir / relative
+                self._write_atomic(target, data, prefix=f"{target.name}.tmp")
+                written.append(target)
+            draft = self._library.model_copy(deep=True)
+            result = change(draft)
+            new = draft if result is None else result
+            # Assignment isn't validated; re-check so the next start can load it.
+            new = Library.model_validate(new.model_dump(warnings=False))
+        except BaseException:
+            undo()
+            raise
+        old = self._commit_and_swap(new, undo)
+        unreferenced = referenced_covers(old) - referenced_covers(new)
+        self._remove_covers(self.data_dir / COVERS_DIR / name for name in sorted(unreferenced))
+        return new
+
+    def _commit_and_swap(self, new: Library, undo: Callable[[], None]) -> Library:
+        """The locked core :meth:`apply` and :meth:`replace_all` share; returns the old library.
+
+        Checks ``schemaVersion`` and the AD-18 invariants, commits ``new``
+        atomically (AD-2) and swaps the in-memory state. When anything fails,
+        ``undo`` puts the files written before it back, and the exception
+        propagates with the file and :attr:`library` unchanged. The caller
+        holds :attr:`lock`.
+        """
+        try:
+            if new.schema_version != migrations.CURRENT_VERSION:
+                raise InvariantViolation(
+                    "schema_version",
+                    f"schemaVersion must stay {migrations.CURRENT_VERSION}, "
+                    f"not {new.schema_version}",
+                )
+            check_invariants(new)
+            self._commit(new)
+        except BaseException:
+            undo()
+            raise
+        old = self._library
+        self._library = new
+        return old
+
+    def replace_all(self, library: Library, covers: Mapping[str, Path]) -> None:
+        """Replace the whole library with ``library`` and its ``covers`` (restore, AD-12).
+
+        The caller holds :attr:`lock` (it is not reentrant). ``covers`` maps
+        each name in ``covers/`` to the staged file holding its bytes, which
+        are stored unchanged. In AD-12 order: each cover not yet in
+        ``covers/`` is written through :meth:`_write_atomic`, then ``library``
+        is committed and swapped in, then every file in ``covers/`` that
+        ``library`` doesn't reference is deleted.
+
+        A cover name is never overwritten (AD-12): a name already in
+        ``covers/`` keeps its file, and when the export's copy differs that
+        is only logged. When anything before the swap fails, only the covers
+        written here are removed, so ``covers/`` and ``library.json`` are as
+        before; :class:`CouldntSave` (or the invariant failure) propagates. A
+        failed deletion after the commit is only logged, and the next startup
+        sweeps the file.
+        """
+        covers_dir = self.data_dir / COVERS_DIR
+        written: list[Path] = []
+
+        def undo() -> None:
+            self._remove_covers(written)
+
+        try:
             try:
-                for relative, data in (new_files or {}).items():
-                    target = self.data_dir / relative
-                    self._write_atomic(target, data, prefix=f"{target.name}.tmp")
-                    written.append(target)
-                draft = self._library.model_copy(deep=True)
-                result = change(draft)
-                new = draft if result is None else result
-                # Assignment isn't validated; re-check so the next start can load it.
-                new = Library.model_validate(new.model_dump(warnings=False))
-                if new.schema_version != migrations.CURRENT_VERSION:
-                    raise InvariantViolation(
-                        "schema_version",
-                        f"schemaVersion must stay {migrations.CURRENT_VERSION}, "
-                        f"not {new.schema_version}",
-                    )
-                check_invariants(new)
-                self._commit(new)
-            except BaseException:
-                self._remove_covers(written)
+                covers_dir.mkdir(exist_ok=True)
+            except OSError as exc:
+                raise CouldntSave(f"can't create {COVERS_DIR}/: {exc}") from exc
+            for name, source in sorted(covers.items()):
+                target = covers_dir / name
+                try:
+                    data = source.read_bytes()
+                    if os.path.lexists(target):
+                        same = target.is_file() and not target.is_symlink() and (
+                            target.read_bytes() == data
+                        )
+                        if not same:
+                            _log(f"kept {COVERS_DIR}/{name}; the export's copy differs")
+                        continue
+                except OSError as exc:
+                    raise CouldntSave(f"can't read {COVERS_DIR}/{name}: {exc}") from exc
+                self._write_atomic(target, data, prefix=f"{name}.tmp")
+                written.append(target)
+        except BaseException:
+            undo()
+            raise
+        self._commit_and_swap(library, undo)
+        self._sweep_covers(library)
+
+    def empty_staging(self, *, quiet: bool = False) -> None:
+        """Delete everything in ``.staging/``; files go through the seam.
+
+        Raises the first :class:`OSError`, or with ``quiet`` logs each
+        failure as ``couldn't delete .staging/<path>`` and goes on (the
+        startup sweep removes what is left).
+        """
+        staging = self.data_dir / STAGING_DIR
+        try:
+            if staging.is_symlink() or not staging.is_dir():
+                return
+            entries = sorted(staging.iterdir())
+        except OSError as exc:
+            if not quiet:
                 raise
-            old = self._library
-            self._library = new
-            unreferenced = referenced_covers(old) - referenced_covers(new)
-            self._remove_covers(self.data_dir / COVERS_DIR / name for name in sorted(unreferenced))
-            return new
+            _log(f"couldn't empty {STAGING_DIR}/: {exc}")
+            return
+        for entry in entries:
+            self._remove_tree(entry, quiet)
+
+    def _remove_tree(self, path: Path, quiet: bool) -> None:
+        try:
+            if path.is_dir() and not path.is_symlink():
+                for entry in sorted(path.iterdir()):
+                    self._remove_tree(entry, quiet)
+                path.rmdir()
+            else:
+                self.fs.remove(path)
+        except FileNotFoundError:
+            pass
+        except Exception as exc:
+            if not quiet:
+                raise
+            relative = Path(os.path.relpath(path, self.data_dir)).as_posix()
+            _log(f"couldn't delete {relative}: {exc}")
 
     def record_export(self, now: datetime) -> None:
         """Write ``local-state.json`` saying the last complete export was at ``now`` (AD-15).

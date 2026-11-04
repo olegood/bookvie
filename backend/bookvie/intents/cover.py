@@ -108,7 +108,8 @@ class _TooManyPixels(Exception):
     """The image is larger than ``Image.MAX_IMAGE_PIXELS``: a possible decompression bomb."""
 
 
-def _decode(data: bytes) -> tuple[Image.Image, str]:
+def _load(data: bytes) -> Image.Image:
+    """The first frame of ``data``, upright; raises when it isn't a usable image."""
     Image.init()  # registers every decoder in DECODERS (only the first call does work)
     # Pillow raises above 2x MAX_IMAGE_PIXELS but only warns between 1x and 2x;
     # those are refused here, before decoding. (No process-global warnings
@@ -119,10 +120,28 @@ def _decode(data: bytes) -> tuple[Image.Image, str]:
         if limit is not None and width * height > limit:
             raise _TooManyPixels(f"{width}x{height}")
         opened.load()  # the first frame only
-        upright = ImageOps.exif_transpose(opened)
-    image, ext = _normalize(upright)
+        return ImageOps.exif_transpose(opened)
+
+
+def _decode(data: bytes) -> tuple[Image.Image, str]:
+    image, ext = _normalize(_load(data))
     image.thumbnail((LONG_EDGE, LONG_EDGE), Image.Resampling.LANCZOS)
     return image, ext
+
+
+def check_decodable(data: bytes) -> bool:
+    """Whether ``data`` decodes as a cover upload would (restore, AD-14).
+
+    The same decoders and pixel limit as :func:`prepare_cover`, and HEIC,
+    HEIF and AVIF refused; nothing is re-encoded.
+    """
+    if _is_heif(data):
+        return False
+    try:
+        _load(data)
+    except Exception:  # noqa: BLE001 - any decoding failure means "not an image"
+        return False
+    return True
 
 
 def prepare_cover(data: bytes) -> UploadedCover:

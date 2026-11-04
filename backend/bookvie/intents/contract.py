@@ -19,6 +19,7 @@ from bookvie.domain.book_fields import COVER_TOO_LARGE_MESSAGE, LABELS
 
 COULDNT_SAVE_MESSAGE = "Couldn't save. Your data wasn't changed."
 COULDNT_EXPORT_MESSAGE = "Couldn't export. Your data wasn't changed."
+RESTORE_INVALID_MESSAGE = "This file isn't a bookvie export, or it's damaged. Nothing was changed."
 
 
 class _Wire(BaseModel):
@@ -40,6 +41,7 @@ class ErrorCode(StrEnum):
     PAGES_BELOW_CARD_NOTE = "pages_below_card_note"
     COVER_TOO_LARGE = "cover_too_large"
     COULDNT_EXPORT = "couldnt_export"
+    RESTORE_INVALID = "restore_invalid"
 
 
 class FieldError(_Wire):
@@ -239,5 +241,17 @@ def couldnt_export() -> IntentError:
             kind=ErrorKind.COULDNT_EXPORT,
             code=ErrorCode.COULDNT_EXPORT,
             message=COULDNT_EXPORT_MESSAGE,
+        ),
+    )
+
+
+def restore_invalid() -> IntentError:
+    """422 ``restore_invalid``: the file isn't a usable export; nothing was changed."""
+    return IntentError(
+        422,
+        ErrorBody(
+            kind=ErrorKind.REFUSAL,
+            code=ErrorCode.RESTORE_INVALID,
+            message=RESTORE_INVALID_MESSAGE,
         ),
     )

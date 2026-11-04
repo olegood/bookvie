@@ -8,15 +8,19 @@ body cap runs.
 """
 
 import asyncio
+import io
 import json
+import zipfile
 from pathlib import Path
 
 import pytest
 from fastapi import HTTPException
 from starlette.requests import Request
 
+from bookvie.domain.model import Library
 from bookvie.http.api import BODY_LIMIT, _http_error
 from bookvie.intents.intent_model import MALFORMED_INTENT_MESSAGE
+from bookvie.store import serialize
 from tests.helpers import (
     DUNE_ID,
     VALID,
@@ -31,6 +35,7 @@ INTENT_ROUTES = {
     "edit-book": {**VALID_FORM, "bookId": DUNE_ID},
     "delete-book": {"bookId": DUNE_ID},
     "set-spine-color": {"bookId": DUNE_ID, "spineColor": "#749076"},
+    "restore": {},
 }
 """Each intent route with an intent it would accept for the seeded Dune."""
 
@@ -73,8 +78,21 @@ FOREIGN = {
 }
 
 
-def _intent_files(intent: dict) -> dict:
-    return {"intent": (None, json.dumps(intent), "application/json")}
+def _empty_export() -> bytes:
+    """The smallest valid export: an empty library and an empty ``covers/``."""
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        archive.writestr("library.json", serialize(Library.empty()))
+        archive.mkdir("covers")
+    return buffer.getvalue()
+
+
+def _intent_files(route: str) -> dict:
+    """The intent part for ``route``, plus a valid ``archive`` part for restore."""
+    files = {"intent": (None, json.dumps(INTENT_ROUTES[route]), "application/json")}
+    if route == "restore":
+        files["archive"] = ("bookvie-export.zip", _empty_export(), "application/zip")
+    return files
 
 
 @pytest.fixture
@@ -110,7 +128,8 @@ def test_unparseable_body_is_malformed_intent(
 @pytest.mark.parametrize("route", INTENT_ROUTES)
 def test_missing_intent_part_is_malformed_intent(data_dir: Path, route: str) -> None:
     before = library_bytes(data_dir)
-    response = api_client(data_dir).post(f"/api/intents/{route}", files={"other": (None, "{}")})
+    files = {"other": (None, "{}")} | {k: v for k, v in _intent_files(route).items() if k != "intent"}
+    response = api_client(data_dir).post(f"/api/intents/{route}", files=files)
     assert response.status_code == 422
     assert response.json() == MALFORMED_INTENT
     assert library_bytes(data_dir) == before
@@ -154,7 +173,7 @@ def test_a_400_off_the_intent_routes_keeps_fastapi_shape(path: str) -> None:
 @pytest.mark.parametrize("headers", FOREIGN.values(), ids=FOREIGN.keys())
 def test_foreign_caller_is_403_on_intent_route(data_dir: Path, route: str, headers: dict) -> None:
     client = api_client(data_dir)
-    files = _intent_files(INTENT_ROUTES[route])
+    files = _intent_files(route)
     before = library_bytes(data_dir)
     response = client.post(f"/api/intents/{route}", files=files, headers=headers)
     assert response.status_code == 403

@@ -32,6 +32,7 @@ export {
   refreshLastExport,
 } from './export.ts'
 export { sendIntent } from './intents.ts'
+export { restore } from './restore.ts'
 export { createQueryClient } from './queryClient.ts'
 export {
   useBackupView,

@@ -177,3 +177,16 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-1-export-all-data-with-one-click.md`
   summary: Spine drift for AD-1, AD-4, AD-14 and AD-2/AD-15 was re-confirmed by a second review. It is the same item as the "Reconcile ARCHITECTURE-SPINE with Story 2.1's export" entry above, not a new one.
   evidence: The spine-check layer of the 2026-11-04 review reports the same four places.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-2-restore-my-library-from-an-export.md`
+  summary: Story 2.3 should refuse archive cover names that collide case-insensitively (`covers/A.jpg` and `covers/a.jpg`) together with duplicate names.
+  evidence: On macOS both map to one staged file, so one Book could get the other's bytes; only a crafted archive reaches it (minted names are lowercase UUIDs). Triage #15/#52.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-2-restore-my-library-from-an-export.md`
+  summary: A `coverFile` that isn't `covers/<plain-name>` passes model validation (startup and restore) and is a dangling reference.
+  evidence: `Book.cover_file` is any string; `cover_name` returns None so the presence check skips it. Pre-existing at startup; restore now lets such a file in too. Triage #16.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-2-restore-my-library-from-an-export.md`
+  summary: Reconcile ARCHITECTURE-SPINE with Story 2.2: interim `restore_invalid` catch-all and limits pending 2.3 (AD-9/AD-14), AD-12's outdated "Until restore exists" sentence, the no-overwrite rule winning over byte-identical restore for a differing same-name cover, and restored covers exempt from AD-12's re-encode output rules.
+  evidence: Spine-check findings in both review passes; each is a deliberate spec decision with no spine edit. Triage #21, #22, #31–#33.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-2-restore-my-library-from-an-export.md`
+  summary: The Backup page reads the whole export into memory (`requestInit` → `arrayBuffer()`) before uploading; consider streaming the FormData for restore alongside Story 2.3's 1 GB limit.
+  evidence: `frontend/src/api/intents.ts` encodes any file form to bytes for test visibility; an export with many covers can be hundreds of MB in the tab. Triage #38.

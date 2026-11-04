@@ -296,6 +296,7 @@ def test_openapi_error_enums(openapi: dict) -> None:
         "pages_below_card_note",
         "cover_too_large",
         "couldnt_export",
+        "restore_invalid",
     ]
     kinds = ["refusal", "couldnt_save", "couldnt_export"]
     assert schemas["ErrorCode"]["enum"] == codes
@@ -319,6 +320,7 @@ def test_openapi_documents_the_envelope_not_fastapi_errors(openapi: dict) -> Non
     operations.append(("post", "/api/intents/edit-book"))
     operations.append(("post", "/api/intents/delete-book"))
     operations.append(("post", "/api/intents/set-spine-color"))
+    operations.append(("post", "/api/intents/restore"))
     operations.append(("get", "/api/views/backup"))
     operations.append(("get", "/api/export"))
     for method, path in operations:
@@ -342,6 +344,7 @@ def test_openapi_documents_the_envelope_not_fastapi_errors(openapi: dict) -> Non
         ("get", "/api/export"),
         ("post", "/api/intents/delete-book"),
         ("post", "/api/intents/set-spine-color"),
+        ("post", "/api/intents/restore"),
     ]
     for method, path in coverless:
         assert "413" not in openapi["paths"][path][method]["responses"]

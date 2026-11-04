@@ -193,6 +193,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/intents/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Restore Intent
+         * @description Replace all data with an export (FR-23); 422 ``restore_invalid`` changes nothing.
+         *
+         *     Plain ``def``: the archive is unpacked and applied under the store lock in
+         *     the threadpool. Starlette spools the upload to disk past 1 MB; the cover
+         *     cap doesn't apply here.
+         */
+        post: operations["restore_intent_api_intents_restore_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -238,6 +262,19 @@ export interface components {
              * @description The cover image: JPEG, PNG or WebP, 20 MB or smaller. Optional.
              */
             cover?: string | null;
+        };
+        /** Body_restore_intent_api_intents_restore_post */
+        Body_restore_intent_api_intents_restore_post: {
+            /**
+             * Archive
+             * @description An export zip from GET /api/export: library.json and covers/.
+             */
+            archive: string;
+            /**
+             * Intent
+             * @description JSON object {}.
+             */
+            intent?: string | null;
         };
         /** Body_set_spine_color_intent_api_intents_set_spine_color_post */
         Body_set_spine_color_intent_api_intents_set_spine_color_post: {
@@ -344,7 +381,7 @@ export interface components {
          * ErrorCode
          * @enum {string}
          */
-        ErrorCode: "invalid_fields" | "couldnt_save" | "duplicate_book" | "book_not_found" | "pages_below_current_page" | "pages_below_card_note" | "cover_too_large" | "couldnt_export";
+        ErrorCode: "invalid_fields" | "couldnt_save" | "duplicate_book" | "book_not_found" | "pages_below_current_page" | "pages_below_card_note" | "cover_too_large" | "couldnt_export" | "restore_invalid";
         /**
          * ErrorKind
          * @enum {string}
@@ -955,6 +992,66 @@ export interface operations {
         requestBody?: {
             content: {
                 "multipart/form-data": components["schemas"]["Body_set_spine_color_intent_api_intents_set_spine_color_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkResponse"];
+                };
+            };
+            /** @description Refused by a library rule */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Invalid fields */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Couldn't save */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Couldn't save */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    restore_intent_api_intents_restore_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_restore_intent_api_intents_restore_post"];
             };
         };
         responses: {
