@@ -5,7 +5,7 @@
 
 A personal, local-first web app for organizing my home library and tracking my reading. It replaces a paper reading diary as the single source of truth for reading progress. The diary can stay on the nightstand for quick notes; I catch up in the app on my next visit by entering the page I reached.
 
-> **Status:** Epic 1 is complete (14 of 41 stories done): its retrospective is done, 11 of its 12 action items are closed, and its trace and quality gate passed. Epic 2, Keep the library safe, is next. You can install and run bookvie, add books through the New book panel (with duplicate warnings), see the Catalog as a bookcase of spines or as a list, search it, open a Book to see its details, edit it, give it a cover whose color can tint its spine, press a spine to see the Book in a popover and change its color there or on Book detail, and delete it after a confirmation. See [Sprint status](_bmad-output/implementation-artifacts/sprint-status.yaml) for details.
+> **Status:** Epic 2, Keep the library safe, is in progress (15 of 41 stories done). Epic 1 is complete: its retrospective is done, 11 of its 12 action items are closed, and its trace and quality gate passed. You can install and run bookvie, add books through the New book panel (with duplicate warnings), see the Catalog as a bookcase of spines or as a list, search it, open a Book to see its details, edit it, give it a cover whose color can tint its spine, press a spine to see the Book in a popover and change its color there or on Book detail, and delete it after a confirmation. On the Backup page, **Export all data** downloads the whole library as one `bookvie-export-<date>.zip`, and "Last export" shows when that last happened. Restore from that file comes next, in Story 2.2. See [Sprint status](_bmad-output/implementation-artifacts/sprint-status.yaml) for details.
 
 ## Why
 
@@ -106,10 +106,11 @@ After `install:local`, restart a running `bookvie`: stop it with Ctrl+C, then ru
   library.v<N>.bak.json   # a copy of the original, made before a schema upgrade
   covers/                 # cover images (re-encoded on upload; files no Book uses are removed)
   .staging/               # scratch space, emptied at every start
+  local-state.json        # this machine's own state ("Last export"), never exported
   bookvie.lock            # PID and port of the running server
 ```
 
-`library.json` is created on first start as an empty version 1 library. Every save writes a temp file in the same folder, fsyncs it and renames it over the original, so a crash never leaves a half-written file; leftover `library.json.tmp*` files are removed at the next start. bookvie refuses to start, with a one-line `bookvie: …` message naming the path and leaving `library.json` unchanged, when the folder isn't writable or `library.json` is invalid or from a newer bookvie. An older `library.json` is backed up to `library.v<N>.bak.json`, then upgraded in memory and saved once.
+`library.json` is created on first start as an empty version 1 library. Every save writes a temp file in the same folder, fsyncs it and renames it over the original, so a crash never leaves a half-written file; leftover `library.json.tmp*` and `local-state.json.tmp*` files are removed at the next start. An export zip holds `library.json` and `covers/` with only the covers the library uses; restoring one (Story 2.2) will replace both. `local-state.json` is written only after an export has downloaded completely; if it is missing or unreadable, the Backup page says "No export yet". bookvie refuses to start, with a one-line `bookvie: …` message naming the path and leaving `library.json` unchanged, when the folder isn't writable or `library.json` is invalid or from a newer bookvie. An older `library.json` is backed up to `library.v<N>.bak.json`, then upgraded in memory and saved once.
 
 **Development:** `npm run dev` serves only the SPA (Vite on `:5173`) and proxies `/api` and `/media` to `127.0.0.1:8765`, so keep `bookvie --dev --no-browser` running in another terminal while you use it. Stop a normal `bookvie` first: while one is running, the `--dev` launch only reopens it (same folder) or refuses port 8765 (another folder), and the proxy target is fixed, so `--port` doesn't help. Add `--data-dir <scratch folder>` to keep test saves out of your real library. Without the backend, every API call fails: the page shows "Couldn't load. Is bookvie still running?" and Vite logs a proxy error with `ECONNREFUSED`. Without `--dev`, pages load but every save fails: the server refuses requests that carry the `:5173` `Origin` with 403. Open `http://127.0.0.1:5173`.
 
@@ -162,7 +163,10 @@ Catalog entry happens through my own AI skills rather than an in-app importer or
 - [Story 1.14 ATDD checklist](_bmad-output/test-artifacts/atdd-checklist-1-14-change-a-book-s-color-from-the-shelf.md): the acceptance tests (AC-1 to AC-6) written red before changing a book's color from the shelf was built
 - [Epic 1 retrospective](_bmad-output/implementation-artifacts/epic-1-retro-2026-11-03.md): what Epic 1 delivered against its gate, the findings, and the action items that came out of it
 - [Epic 1 traceability matrix](_bmad-output/test-artifacts/traceability/epic-1-traceability-matrix.md): every Epic 1 acceptance criterion traced to its tests, with the quality gate decision against TR7 (PASS)
-- [Test automation summary](_bmad-output/test-artifacts/automation-summary.md): the latest test automation pass (currently story 1.13): what was covered and the tests it added
+- [Epic 2 context](_bmad-output/implementation-artifacts/epic-2-context.md): the planning facts Epic 2's stories build on
+- [Story 2.1 spec](_bmad-output/implementation-artifacts/spec-2-1-export-all-data-with-one-click.md): intent, I/O matrix, review findings and verification for `GET /api/export`, `local-state.json`, the `backup` view and the Backup page
+- [Story 2.1 ATDD checklist](_bmad-output/test-artifacts/atdd-checklist-2-1-export-all-data-with-one-click.md): the acceptance tests (AC-1 to AC-6) written red before export was built
+- [Test automation summary](_bmad-output/test-artifacts/automation-summary.md): the latest test automation pass (currently story 2.1): what was covered and the tests it added
 - [CI](docs/ci.md): the GitHub Actions jobs, quality gates, burn-in and artifacts
 - [Deferred work](_bmad-output/implementation-artifacts/deferred-work.md): review findings deferred to later stories, each marked with the story that resolved it once done
 - [Brainstorm intent](_bmad-output/brainstorming/brainstorm-personal-library-tracker-2026-10-27/brainstorm-intent.md): the brainstorm's problem statement, pillars and decisions
