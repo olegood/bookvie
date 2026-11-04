@@ -2,7 +2,7 @@
 title: 'Story 2.3: Refuse damaged, hostile or newer files'
 type: 'feature'
 created: '2026-11-04'
-status: 'in-review'
+status: 'done'
 route: 'dispatch'
 review_loop_iteration: 0
 baseline_commit: 'b3a13d9cc116110c3a4a805b7fb3785d890452ab'
@@ -75,6 +75,31 @@ context:
 - Given the 5 ATDD leaves un-skipped, when the suites run, then all pass, and `e2e-count` reports nothing skipped.
 - Given any startup refusal, when the server starts, then its message is unchanged (existing pinned test stays green).
 - Given an archive refused as `restore_unsafe`, when it is posted, then the `FileSystem` seam logs no rename or delete outside `.staging/`.
+
+### Review Findings
+
+Review pass 2 (2026-11-04): five layers (blind, edge, verification-gap, acceptance, spine) on `b3a13d9..9bb69cd`.
+
+- [x] [Review][Patch] (from Decision, Oleg chose: add a central-directory size cap — refuse `restore_unsafe` before `ZipFile()` when the EOCD central-directory size exceeds `MAX_ENTRIES × 1 KiB`) The 5,000-entry cap runs only after `zipfile.ZipFile(upload)` has parsed the whole central directory — `ZipFile()` builds one `ZipInfo` per central-directory record before `_check_entries` sees `len(infos)`. Probe: 200,000 empty entries in a 17 MB zip peak at 117 MB (≈583 B/entry), so a 1 GiB upload of tiny entries (≈12–23 M records) needs ≈7–13 GB of memory and long parsing under the store lock. The EOCD entry count can't be trusted (`zipfile` loops on the central-directory *size*), so a pre-check needs a new bound, e.g. refuse when the EOCD central-directory size exceeds `MAX_ENTRIES × <per-entry allowance>`, read before `ZipFile()` is built. (blind+edge)
+- [x] [Review][Patch] `intents/restore.py` docstring says `restore_unsafe` is "checked first", but "not a zip → `restore_invalid`" precedes it [backend/bookvie/intents/restore.py:13]
+- [x] [Review][Patch] README restore paragraph omits two user-visible refusals: a cover that differs only in case from one already in `covers/`, and an entry that unpacks past its declared size [README.md:115]
+- [x] [Review][Patch] `api.py` module docstring: "It also caps `restore`'s body…" reads as "the route"; name `BodySizeCap` [backend/bookvie/http/api.py:16]
+- [x] [Review][Patch] Tests hard-code the 64 KiB framing slack instead of importing `FRAMING_SLACK` [backend/tests/test_contract.py:503, backend/tests/test_restore_refusals.py:638]
+- [x] [Review][Defer] A `library.json` up to the 1 GiB extraction budget is read whole (`read_bytes`) and JSON-parsed in memory [backend/bookvie/store/restore.py:251] — deferred: within the spec-approved limit; a separate, smaller `library.json` cap would need a spec/AD-14 decision.
+- [x] [Review][Defer] AD-14 (spine and `epic-2-context.md` l.40–42) still says "duplicate names", "1 GB", damaged → invalid, and gives neither the refusal precedence nor the restore body cap (422 at upload + 64 KiB slack) [_bmad-output/implementation-artifacts/epic-2-context.md:40] — deferred: extends the existing "Reconcile ARCHITECTURE-SPINE AD-14 with Story 2.3" item; spine/context edits are out of story scope.
+
+**Rejected (pass 2):**
+- NFC/NFD collisions (edge) — low: the frozen Never excludes them.
+- `covers/` and `covers//` both accepted (blind) — false: directory entries are never written, so nothing collides.
+- Existing-name casefold map can drop one of two case-variant names / casefold ≠ APFS folding (blind) — low: minted names are lowercase UUIDs; only hand-edited folders reach it, and the result is an over-refusal.
+- `_unsafe_name` backslash/drive branches untested (blind) — low: any such name also fails the shape check, which is `ArchiveUnsafe` too, so no outcome changes.
+- A newer export with a damaged cover gets `restore_invalid` (blind) — low: the frozen precedence puts unpacking before the version check; the fix edits the spec.
+- `test_ac3_a_body_over_the_streaming_cap…` exercises the Content-Length branch (blind) — false: it pins the restore cap and "no lock"; the streamed branch is pinned in `test_contract.py`.
+- `intents/restore.py` imports `bookvie.store.restore` directly (blind) — low: the module attribute must be read at call time for monkeypatching; layering allows `intents → store`.
+- Spec `review_loop_iteration: 0` stale (blind) — rejected: the fix edits the spec.
+- `epic-2-context.md` gains an unrelated "Export request guard" bullet (blind, acceptance) — low: it is accurate (AD-16, spine-checked) and harmless.
+- `test_restore.py` docstring still says "catch-all" `restore_invalid` (acceptance) — false: `restore_invalid` is still the catch-all for the cases listed there.
+- Damaged vs inflated entry decided by entry order (acceptance) — low: the spec doesn't rank them and the user copy is identical.
 
 ## Design Notes
 

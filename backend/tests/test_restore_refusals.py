@@ -36,6 +36,7 @@ from pathlib import Path
 import pytest
 
 import bookvie.store.restore as unpack
+from bookvie.http.api import FRAMING_SLACK
 from bookvie.store import OsFileSystem, migrations
 from bookvie.store.store import TEMP_PREFIX
 from tests.builder import LibraryBuilder
@@ -621,6 +622,49 @@ def test_ac3_an_archive_over_the_entry_count_stages_nothing(
     assert copied == []
 
 
+def test_ac3_a_central_directory_too_big_for_the_entry_count_is_refused_before_it_is_parsed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """``zipfile`` builds every record before ``infolist()``; the end record's size is checked first."""
+    source = _Source(tmp_path)
+    checked: list[int] = []
+    real_check = unpack._check_entries
+
+    def recording_check(store, infos):
+        checked.append(len(infos))
+        return real_check(store, infos)
+
+    target = tmp_path / "target"
+    _seed_target(target)
+    client = api_client(target)
+    before = _Snapshot(target)
+    monkeypatch.setattr(unpack, "_check_entries", recording_check)
+    # The entry count itself is allowed; only the directory is too big for it.
+    monkeypatch.setattr(unpack, "MAX_ENTRIES", len(source.entries()))
+    monkeypatch.setattr(unpack, "DIRECTORY_BYTES_PER_ENTRY", 1)
+
+    response = post_restore(client, source.export)
+
+    assert response.status_code == 422
+    assert response.json() == RESTORE_UNSAFE_BODY
+    assert checked == []
+    _Snapshot.assert_unchanged(before, target, "a central directory past its cap")
+
+
+def test_ac3_a_garbage_upload_is_still_restore_invalid_with_the_directory_check(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    target = tmp_path / "target"
+    _seed_target(target)
+    client = api_client(target)
+    monkeypatch.setattr(unpack, "DIRECTORY_BYTES_PER_ENTRY", 0)
+
+    response = post_restore(client, b"not a zip at all" * 100)
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "restore_invalid"
+
+
 def test_ac3_a_body_over_the_streaming_cap_is_refused_without_the_lock(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -634,8 +678,8 @@ def test_ac3_a_body_over_the_streaming_cap_is_refused_without_the_lock(
     before = _Snapshot(target)
     monkeypatch.setattr(unpack, "MAX_UPLOAD_BYTES", 1_000)
 
-    # Past the upload limit plus the 64 KiB framing slack.
-    response = post_restore(client, b"x" * (1_000 + 64 * 1024 + 1))
+    # Past the upload limit plus the framing slack.
+    response = post_restore(client, b"x" * (1_000 + FRAMING_SLACK + 1))
 
     assert response.status_code == 422
     assert response.json() == RESTORE_UNSAFE_BODY

@@ -9,8 +9,9 @@ unchanged). Only then is it applied, in AD-12 order, by
 :meth:`Store.replace_all`. ``.staging/`` is emptied again whatever happened;
 a failure there is only logged.
 
-Refusals are 422: ``restore_unsafe`` for a break of an archive-safety rule
-or limit (AD-14), checked first; ``restore_newer_version`` for a
+Refusals are 422: ``restore_invalid`` for a file that isn't a zip;
+``restore_unsafe`` for a break of an archive-safety rule or limit (AD-14),
+checked before anything is unpacked; ``restore_newer_version`` for a
 ``schemaVersion`` above the current one, decided before model validation and
 the cover checks; ``restore_invalid`` for anything else. A write fault before
 the commit is 503 ``couldnt_save``. No pre-migration backup is

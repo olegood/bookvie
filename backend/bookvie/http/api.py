@@ -13,7 +13,7 @@ route, and any other method gets Starlette's 405 ``{detail}``.
 :class:`BodySizeCap` refuses a body past the cover limit with 413
 ``cover_too_large`` while it streams; the route refuses a ``cover`` part over
 exactly 20 MB the same way, then has Pillow decode it before the intent takes
-the store lock. It also caps ``restore``'s body at the upload limit plus
+the store lock. :class:`BodySizeCap` also caps ``restore``'s body at the upload limit plus
 framing slack with 422 ``restore_unsafe`` (AD-14), before the route runs or
 the lock is taken; the exact limit is checked on the spooled file.
 

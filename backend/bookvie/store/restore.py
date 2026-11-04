@@ -3,8 +3,13 @@
 :func:`stage_archive` empties ``.staging/`` and unpacks the export zip into
 it, in this order:
 
-1. A file that isn't a zip raises :class:`ArchiveRefused`.
-2. Every archive-safety rule is checked on ``infolist()`` before any entry
+1. A central directory over :data:`MAX_ENTRIES` times
+   :data:`DIRECTORY_BYTES_PER_ENTRY` raises :class:`ArchiveUnsafe`, read
+   from the end record before ``zipfile`` parses it (it builds one
+   ``ZipInfo`` per record, so the entry count alone would be checked too
+   late). A file with no end record is left to step 2.
+2. A file that isn't a zip raises :class:`ArchiveRefused`.
+3. Every archive-safety rule is checked on ``infolist()`` before any entry
    is unpacked, and a break raises :class:`ArchiveUnsafe`: an upload over
    :data:`MAX_UPLOAD_BYTES`, more than :data:`MAX_ENTRIES` entries, an
    absolute name or a ``..`` part, a symlink, two names equal under
@@ -12,8 +17,8 @@ it, in this order:
    in ``covers/``, or any entry other than ``library.json``, the ``covers/``
    directory and ``covers/<name>`` (a plain name, as
    :func:`~bookvie.store.store.cover_name` rules).
-3. A missing ``library.json`` raises :class:`ArchiveRefused`.
-4. Entries are unpacked. The bytes actually written are counted, never the
+4. A missing ``library.json`` raises :class:`ArchiveRefused`.
+5. Entries are unpacked. The bytes actually written are counted, never the
    header sizes: the chunk that would take the total past
    :data:`MAX_EXTRACTED_BYTES` is not written, and an entry that inflates
    past its declared size is :class:`ArchiveUnsafe`; a damaged entry is
@@ -43,6 +48,8 @@ MAX_ENTRIES = 5_000
 """The most entries an archive may hold, directory entries included (AD-14)."""
 MAX_EXTRACTED_BYTES = 1024**3
 """The most bytes unpacking may write into ``.staging/`` (1 GiB, AD-14)."""
+DIRECTORY_BYTES_PER_ENTRY = 1024
+"""The central-directory bytes allowed per entry; an export's records are under 100."""
 
 # What reading a damaged or unsupported entry raises (not the staging writes).
 _READ_ERRORS = (
@@ -156,6 +163,26 @@ def _upload_size(upload: BinaryIO) -> int:
     return size
 
 
+def _check_directory_size(upload: BinaryIO) -> None:
+    """Refuse a central directory too big for :data:`MAX_ENTRIES` entries, before it is parsed.
+
+    Its size comes from the end record (ZIP64 included) through ``zipfile``'s
+    own reader. The record's entry count isn't used: ``zipfile`` reads
+    records until it has consumed the size, whatever the count says.
+    """
+    try:
+        end = zipfile._EndRecData(upload)  # the reader ZipFile itself uses
+        upload.seek(0)
+    except OSError as exc:
+        raise CouldntSave(f"can't read the upload: {exc}") from exc
+    if end is None:
+        return
+    size = end[zipfile._ECD_SIZE]
+    limit = MAX_ENTRIES * DIRECTORY_BYTES_PER_ENTRY
+    if size > limit:
+        raise ArchiveUnsafe(f"has a {size}-byte central directory, more than {limit}")
+
+
 def _unsafe_name(name: str) -> str | None:
     """Why ``name`` can't be unpacked, or ``None`` when its path is plain."""
     if name.startswith(("/", "\\")) or (len(name) > 1 and name[1] == ":"):
@@ -223,6 +250,7 @@ def stage_archive(store: Store, upload: BinaryIO) -> StagedArchive:
         raise CouldntSave(f"can't empty {STAGING_DIR}/: {exc}") from exc
     staging = store.data_dir / STAGING_DIR
     size = _upload_size(upload)
+    _check_directory_size(upload)
     try:
         archive = zipfile.ZipFile(upload)
     except (*_READ_ERRORS, OSError) as exc:

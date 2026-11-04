@@ -17,7 +17,7 @@ from pydantic.alias_generators import to_camel
 
 import bookvie.store.restore as unpack
 from bookvie.domain import Library
-from bookvie.http.api import BODY_LIMIT, BodyCap, BodySizeCap
+from bookvie.http.api import BODY_LIMIT, FRAMING_SLACK, BodyCap, BodySizeCap
 from bookvie.http.app import create_app
 from bookvie.intents import (
     ErrorBody,
@@ -500,7 +500,7 @@ def test_a_streamed_restore_body_past_the_upload_cap_is_422_restore_unsafe_witho
 
     status, body = _response(sent)
     assert (status, body["error"]["code"]) == (422, "restore_unsafe")
-    limit = 100 * 1024 + 64 * 1024
+    limit = 100 * 1024 + FRAMING_SLACK
     assert pulled == 1 + limit // chunk + 1
     assert log == []
     assert library_bytes(data_dir) == before

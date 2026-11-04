@@ -208,3 +208,12 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-3-refuse-damaged-hostile-or-newer-files.md`
   summary: Unverified (would be medium): the 422 `restore_unsafe` body cap answers before the upload is read, which a real browser may surface as a failed fetch ("Couldn't save") instead of the refusal line.
   evidence: Only `TestClient`/ASGI tests cover the cap. Settle with an E2E that lowers the cap (or uploads past it) against the real uvicorn server and checks the ink line. The 413 cover cap uses the same pattern.
+
+## Deferred from: code review of spec-2-3-refuse-damaged-hostile-or-newer-files (2026-11-04, pass 2)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-3-refuse-damaged-hostile-or-newer-files.md`
+  summary: A `library.json` up to the 1 GiB extraction budget is read whole (`read_bytes`) and JSON-parsed in memory, which can use several GB.
+  evidence: `backend/bookvie/store/restore.py` `stage_archive` (`library_path.read_bytes()`) then `load_library`. Within the spec-approved limit; a smaller `library.json` cap needs an AD-14 decision.
+- source_spec: `_bmad-output/implementation-artifacts/spec-2-3-refuse-damaged-hostile-or-newer-files.md`
+  summary: Add to the AD-14 reconcile item above: the spine and `epic-2-context.md` (l.40–42) also lack the refusal precedence (not a zip → invalid; unsafe; missing library.json; unpacking; newer version; rest) and the restore body cap (422 `restore_unsafe` at upload limit + 64 KiB framing slack, before the lock).
+  evidence: Pass-2 spine-check and acceptance-auditor findings; both are frozen spec rules with no spine/context edit.
