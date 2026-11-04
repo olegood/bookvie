@@ -455,3 +455,92 @@ def test_export_changes_nothing_in_the_data_folder_but_local_state(tmp_path: Pat
 
     assert snapshot() == before
     assert _last_export_at(data_dir) == LAST_EXPORT_NOW
+
+
+# --- Automate (story 2.1): the guard, a crash mid-build, an unreadable record ---
+
+
+@pytest.mark.parametrize("site", ["cross-site", "same-site"])
+def test_a_cross_site_export_is_refused_and_records_nothing(tmp_path: Path, site: str) -> None:
+    # /api/export is the only GET route with a side effect, so AD-16's
+    # Sec-Fetch-Site guard is what keeps a foreign page from recording it.
+    data_dir = tmp_path / "guarded"
+    _seed_rich_library(data_dir)
+    client = api_client(data_dir)
+    (data_dir / LOCAL_STATE).write_bytes(EARLIER_EXPORT)
+
+    refused = client.get(EXPORT, headers={"Sec-Fetch-Site": site})
+
+    assert refused.status_code == 403
+    assert refused.headers["content-type"].startswith("text/plain")
+    assert _local_state(data_dir) == EARLIER_EXPORT
+
+    # Control: the app's own fetch gets the zip and records it.
+    own = client.get(EXPORT, headers={"Sec-Fetch-Site": "same-origin"})
+
+    assert own.status_code == 200
+    assert _last_export_at(data_dir) == LAST_EXPORT_NOW
+
+
+def test_an_unexpected_build_error_releases_the_lock_and_closes_the_spool(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # A held lock would freeze every later intent; a leaked spool holds memory or a temp file.
+    import bookvie.intents.export as export_module
+
+    data_dir = tmp_path / "crash"
+    _seed_rich_library(data_dir)
+    client = api_client(data_dir)
+    store = client.app.state.store
+    (data_dir / LOCAL_STATE).write_bytes(EARLIER_EXPORT)
+    spools: list[Any] = []
+    real_spool = export_module.SpooledTemporaryFile
+
+    def tracked_spool(*args: Any, **kwargs: Any) -> Any:
+        spool = real_spool(*args, **kwargs)
+        spools.append(spool)
+        return spool
+
+    def boom(_library: object) -> set[str]:
+        raise RuntimeError("not an OSError")
+
+    monkeypatch.setattr(export_module, "SpooledTemporaryFile", tracked_spool)
+    monkeypatch.setattr(export_module, "referenced_covers", boom)
+
+    crashed = client.get(EXPORT)
+
+    assert crashed.status_code == 500
+    assert len(spools) == 1 and spools[0].closed
+    assert store.lock.acquire(blocking=False), "the store lock was left held"
+    store.lock.release()
+    assert _local_state(data_dir) == EARLIER_EXPORT
+
+    monkeypatch.undo()
+    assert client.get(EXPORT).status_code == 200
+    assert _last_export_at(data_dir) == LAST_EXPORT_NOW
+
+
+@pytest.mark.skipif(os.geteuid() == 0, reason="root can read a chmod 000 file")
+def test_an_unreadable_local_state_reads_as_no_export_and_the_next_export_replaces_it(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    data_dir = tmp_path / "locked-state"
+    _seed_rich_library(data_dir)
+    client = api_client(data_dir)
+    state = data_dir / LOCAL_STATE
+    state.write_bytes(EARLIER_EXPORT)
+    state.chmod(0o000)
+    try:
+        view = client.get("/api/views/backup")
+
+        assert view.status_code == 200
+        assert view.json() == {"lastExportAt": None}
+        assert "bookvie: couldn't read local-state.json" in capsys.readouterr().err
+
+        # The atomic rename replaces the file whatever its mode.
+        assert _run(client.app).statuses == [200]
+    finally:
+        state.chmod(0o644)
+
+    assert _last_export_at(data_dir) == LAST_EXPORT_NOW
+    assert client.get("/api/views/backup").json() == {"lastExportAt": LAST_EXPORT_NOW}
