@@ -1,0 +1,24 @@
+{
+  "schema_version": "0.1.0",
+  "evaluated_at": "2026-11-04T14:46:44.000000Z",
+  "repo": "bookvie",
+  "target": {
+    "type": "epic",
+    "id": "2",
+    "label": "Epic 2: Keep the library safe"
+  },
+  "collection_status": "COLLECTED",
+  "gate_basis": "priority_thresholds",
+  "gate_status": "PASS",
+  "rationale": "P0 coverage is 100%, P1 coverage is 100% (TR7 target: 95%; workflow default 90%), and overall coverage is 100% (minimum: 80%).",
+  "p0_status": "MET",
+  "p1_status": "MET",
+  "overall_status": "MET",
+  "critical_open": 0,
+  "links": {
+    "trace_report_path": "_bmad-output/test-artifacts/traceability/epic-2-traceability-matrix.md",
+    "trace_report_url": "",
+    "artifact_url": "",
+    "journey_evidence_url": ""
+  }
+}

@@ -1,0 +1,170 @@
+{
+  "schema_version": "0.3.0",
+  "snapshot_at": "2026-11-04T14:46:44.000000Z",
+  "repo": "bookvie",
+  "collection_mode": "contract_static",
+  "collection_status": "COLLECTED",
+  "inventory_basis": "acceptance_criteria",
+  "gate_basis": "priority_thresholds",
+  "source_sha": "6454384693f0aa36422f0cd4224c6a89bbfa98a2",
+  "target": {
+    "type": "epic",
+    "id": "2",
+    "label": "Epic 2: Keep the library safe"
+  },
+  "decision_mode": "deterministic",
+  "evaluator": "Oleg",
+  "confidence": "high",
+  "oracle": {
+    "resolution_mode": "formal_requirements",
+    "confidence": "high",
+    "sources": [
+      "_bmad-output/test-artifacts/test-design-qa.md (BKP-*, FND-API-006 export clause, XUI-E2E-001 restore surface)",
+      "_bmad-output/planning-artifacts/epics.md (TR7 :154, TR9 :156, Epic 2 gate :961, stories 2.1-2.3)",
+      "_bmad-output/test-artifacts/atdd-checklist-2-1 ... 2-3 (story ACs)"
+    ],
+    "external_pointer_status": "not_used",
+    "synthetic": false
+  },
+  "coverage": {
+    "inventory": {
+      "covered": 11,
+      "total": 11,
+      "pct": 100
+    },
+    "priority_breakdown": {
+      "P0": {
+        "total": 4,
+        "covered": 4,
+        "pct": 100
+      },
+      "P1": {
+        "total": 6,
+        "covered": 6,
+        "pct": 100
+      },
+      "P2": {
+        "total": 0,
+        "covered": 0,
+        "pct": 100
+      },
+      "P3": {
+        "total": 1,
+        "covered": 1,
+        "pct": 100
+      }
+    },
+    "by_level": {
+      "e2e": {
+        "tests": 22,
+        "criteria_covered": 4
+      },
+      "api": {
+        "tests": 61,
+        "criteria_covered": 7
+      },
+      "component": {
+        "tests": 0,
+        "criteria_covered": 0
+      },
+      "unit": {
+        "tests": 11,
+        "criteria_covered": 1
+      },
+      "live": {
+        "tests": 0,
+        "criteria_covered": 0
+      },
+      "other": {
+        "tests": 0,
+        "criteria_covered": 0
+      }
+    }
+  },
+  "tests": {
+    "files": 13,
+    "cases": 94,
+    "skipped_cases": 0,
+    "fixme_cases": 0,
+    "pending_cases": 0
+  },
+  "risk_summary": {
+    "critical_open": 0,
+    "high_open": 0,
+    "medium_open": 0,
+    "low_open": 2
+  },
+  "heuristics": {
+    "endpoint_gaps": 0,
+    "auth_negative_path_status": "present",
+    "error_path_status": "present",
+    "ui_journey_status": "not_applicable",
+    "ui_state_status": "not_applicable"
+  },
+  "live_evidence": {
+    "present": false,
+    "results_file": "_bmad-output/test-artifacts/live-verification-results.json",
+    "freshness": "not_present",
+    "recorded_source_sha": "",
+    "current_source_sha": "6454384693f0aa36422f0cd4224c6a89bbfa98a2",
+    "producer": "",
+    "counted": 0,
+    "stale": 0,
+    "unverifiable": 0,
+    "failed": 0,
+    "contradicted": 0,
+    "blocked": 0,
+    "skipped": 0,
+    "unmatched": 0,
+    "invalid": 0,
+    "requirements_live_only": 0
+  },
+  "blockers": [],
+  "rejected_evidence": [],
+  "recommendations": [
+    {
+      "priority": "LOW",
+      "action": "F-T1: reconcile the 105 unticked Epic 2 ATDD checklist lines and decide how to stop F-S6 recurring",
+      "requirements": []
+    },
+    {
+      "priority": "LOW",
+      "action": "E2E against real uvicorn for the restore upload-cap refusal line",
+      "requirements": [
+        "BKP-E2E-002",
+        "BKP-API-004"
+      ]
+    },
+    {
+      "priority": "LOW",
+      "action": "Run /bmad-testarch-test-review on the Epic 2 suites",
+      "requirements": []
+    },
+    {
+      "priority": "LOW",
+      "action": "Optional direct test: an intent racing a slow export build",
+      "requirements": [
+        "FND-API-006"
+      ]
+    }
+  ],
+  "links": {
+    "trace_report_path": "_bmad-output/test-artifacts/traceability/epic-2-traceability-matrix.md",
+    "trace_report_url": "",
+    "artifact_url": "",
+    "journey_evidence_url": ""
+  },
+  "gate_status": "PASS",
+  "gate_criteria": {
+    "p0_coverage_required": "100%",
+    "p0_coverage_actual": "100%",
+    "p0_status": "MET",
+    "p1_coverage_target": "95%",
+    "p1_coverage_minimum": "80%",
+    "p1_coverage_actual": "100%",
+    "p1_status": "MET",
+    "overall_coverage_minimum": "80%",
+    "overall_coverage_actual": "100%",
+    "overall_status": "MET"
+  }
+}
