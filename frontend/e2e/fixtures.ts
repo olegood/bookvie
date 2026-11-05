@@ -57,16 +57,23 @@ async function health(port: number): Promise<{ app?: string; dataDir?: string } 
 /**
  * Starts `bookvie` on `dataDir`, which must pass the guard against `root`.
  * Resolves once `/api/health` answers for this folder; rejects with the
- * server's stderr when it exits first.
+ * server's stderr when it exits first. `fakeToday` (`YYYY-MM-DD`) starts it
+ * with `--fake-today`; the test sets the browser clock to the same date (AD-20).
  */
 export async function startServer(
   dataDir: string,
-  { port, dev = false, root = e2eRoot() }: { port: number; dev?: boolean; root?: string },
+  {
+    port,
+    dev = false,
+    root = e2eRoot(),
+    fakeToday,
+  }: { port: number; dev?: boolean; root?: string; fakeToday?: string },
 ): Promise<Server> {
   const dir = safeDataDir(dataDir, root) // before any spawn
   mkdirSync(dir, { recursive: true })
   const args = ['run', '--project', BACKEND, 'bookvie', '--no-browser']
   if (dev) args.push('--dev')
+  if (fakeToday !== undefined) args.push('--fake-today', fakeToday)
   args.push('--port', String(port), '--data-dir', dir)
   const child = spawn('uv', args, { stdio: ['ignore', 'pipe', 'pipe'] })
   let stdout = ''
@@ -137,14 +144,16 @@ export function seedLibrary(
 /**
  * Seeds `<run dir>/<name>-<test id>` with `partial`, writes each of `files`
  * (paths relative to the data dir, e.g. `local-state.json` or a cover) before
- * the server starts, then starts it. Unlike `seededServer`, the caller stops
- * it and removes its data dir, in a `finally`.
+ * the server starts, then starts it, with `--fake-today` when `fakeToday` is
+ * given. Unlike `seededServer`, the caller stops it and removes its data dir,
+ * in a `finally`.
  */
 export async function startSeededServer(
   testInfo: TestInfo,
   name: string,
   partial: Record<string, unknown>,
   files: Record<string, string | Buffer> = {},
+  { fakeToday }: { fakeToday?: string } = {},
 ): Promise<Server> {
   const runId = process.env.BOOKVIE_E2E_RUN_ID
   if (!runId) throw new Error('BOOKVIE_E2E_RUN_ID is not set; run through playwright.config.ts')
@@ -156,7 +165,7 @@ export async function startSeededServer(
     mkdirSync(path.dirname(file), { recursive: true })
     writeFileSync(file, data)
   }
-  return startServer(dataDir, { port: await freePort() })
+  return startServer(dataDir, { port: await freePort(), fakeToday })
 }
 
 type TestFixtures = {
