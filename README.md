@@ -177,7 +177,7 @@ Catalog entry happens through my own AI skills rather than an in-app importer or
 - [Restore name hardening spec](_bmad-output/implementation-artifacts/spec-harden-restore-archive-names.md): Epic 2 retro action 2, the NFC + casefold name comparison and the cover-name length cap
 - [Story 3.1 spec](_bmad-output/implementation-artifacts/spec-3-1-see-my-main-book-on-home.md): intent, I/O matrix and verification for Home at `/`, the Main book card and its server-computed gauge, Book detail's Current reading block and the spine names
 - [Story 3.2 spec](_bmad-output/implementation-artifacts/spec-3-2-start-reading-a-book.md): intent, I/O matrix and verification for `start-reading` and `edit-purpose`, the Start dialog, its openers and Edit Purpose
-- [Test automation summary](_bmad-output/test-artifacts/automation-summary.md): the latest test automation pass (currently story 2.3): what was covered and the tests it added
+- [Test automation summary](_bmad-output/test-artifacts/automation-summary.md): the latest test automation pass (currently story 3.2): what was covered and the tests it added
 - [CI](docs/ci.md): the GitHub Actions jobs, quality gates, burn-in and artifacts
 - [Deferred work](_bmad-output/implementation-artifacts/deferred-work.md): review findings deferred to later stories, each marked with the story that resolved it once done
 - [Brainstorm intent](_bmad-output/brainstorming/brainstorm-personal-library-tracker-2026-10-27/brainstorm-intent.md): the brainstorm's problem statement, pillars and decisions
