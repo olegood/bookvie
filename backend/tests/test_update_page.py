@@ -37,6 +37,7 @@ from fastapi.testclient import TestClient
 from bookvie.domain.clock import FakeClock
 from bookvie.http.app import create_app
 from bookvie.intents.intent_model import MALFORMED_INTENT_MESSAGE
+from bookvie.intents.update_page import page_message
 from tests.builder import LibraryBuilder
 from tests.helpers import (
     COULDNT_SAVE_BODY,
@@ -267,3 +268,39 @@ def test_ac8_p0_book_not_found_comes_before_not_main_book(tmp_path: Path) -> Non
     response = _send(api_client(tmp_path), GONE_ID, -5)
     assert response.status_code == 409
     assert response.json()["error"]["code"] == "book_not_found"
+
+
+# --- The page rule the page field shares (frontend/src/lib/pageField.cases.json) --
+
+PAGE_CASES = (
+    Path(__file__).resolve().parents[2] / "frontend/src/lib/pageField.cases.json"
+)
+
+
+@pytest.mark.skipif(not PAGE_CASES.is_file(), reason="needs the frontend checkout")
+def test_ac3_p1_update_page_agrees_with_the_page_fields_shared_cases(
+    tmp_path: Path,
+) -> None:
+    # The page field pre-checks the page and holds its own copy (AD-3/AD-9
+    # deferral); this table keeps the two from drifting apart.
+    cases = json.loads(PAGE_CASES.read_text(encoding="utf-8"))
+    assert {int(pages): message for pages, message in cases["messages"].items()} == {
+        pages: page_message(pages) for pages in map(int, cases["messages"])
+    }
+    assert cases["pages"] == 330, "the seed below is the 330-page Left Hand of Darkness"
+    left_hand, _dune = _left_hand_main_and_dune_paused(tmp_path)
+    client = api_client(tmp_path)
+
+    for page in cases["refused"]:
+        before = library_bytes(tmp_path)
+        response = _send(client, left_hand, page)
+        assert response.status_code == 422, page
+        assert response.json()["error"]["fields"] == [
+            {"field": "page", "message": cases["messages"]["330"]}
+        ], page
+        assert library_bytes(tmp_path) == before, page
+
+    for page in cases["accepted"]:
+        response = _send(client, left_hand, page)
+        assert response.status_code == 200, page
+        assert stored_book(tmp_path, left_hand)["readings"][0]["currentPage"] == page

@@ -1,0 +1,11 @@
+{
+  "about": "The page rule both sides must agree on: the page field's pre-check (src/lib/pageField.test.ts) and update-page on the server (backend/tests/test_update_page.py). Change a case here and both suites must still pass.",
+  "pages": 330,
+  "accepted": [0, 1, 100, 212, 329, 330],
+  "refused": [-1, 331, 1000, 212.5],
+  "messages": {
+    "1": "Page must be between 0 and 1.",
+    "330": "Page must be between 0 and 330.",
+    "1200": "Page must be between 0 and 1200."
+  }
+}

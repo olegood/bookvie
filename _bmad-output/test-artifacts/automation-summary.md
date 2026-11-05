@@ -2,15 +2,17 @@
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03c-aggregate', 'step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
 lastSaved: '2026-11-05'
-storyId: '3.2'
+storyId: '3.3'
 inputDocuments:
-  - _bmad-output/implementation-artifacts/spec-3-2-start-reading-a-book.md (incl. I/O matrix, Review Findings and Triage Log)
-  - _bmad-output/test-artifacts/atdd-checklist-3-2-start-reading-a-book.md
-  - _bmad-output/test-artifacts/test-design-qa.md, test-design-progress-system.md (RDG-API-001, RDG-UNIT-002)
+  - _bmad-output/implementation-artifacts/spec-3-3-catch-up-with-one-page-update.md (incl. I/O matrix, Review Findings and Triage Log)
+  - _bmad-output/test-artifacts/atdd-checklist-3-3-catch-up-with-one-page-update.md
+  - _bmad-output/test-artifacts/test-design-qa.md, test-design-progress-system.md (PRG-API-001/002, PRG-E2E-001, PRG-UNIT-001, R-17)
+  - _bmad-output/implementation-artifacts/deferred-work.md (3.3 AD-3/AD-9 drift)
   - _bmad/tea/config.yaml
-  - backend/bookvie/intents/start_reading.py, edit_purpose.py, delete_book.py, domain/purpose.py, domain/invariants.py, views/shelf.py
-  - backend/tests/test_start_reading.py, test_purpose.py, test_store.py (Hypothesis precedent), builder.py, helpers.py
-  - frontend/src/lib/startReading.ts (+ node test), frontend/e2e/start-reading.spec.ts
+  - backend/bookvie/intents/update_page.py
+  - backend/tests/test_update_page.py, test_reading_state_machine.py, test_home_view.py, test_progress.py, test_stack_pins.py (cross-checkout skip precedent)
+  - frontend/src/lib/pageField.ts (+ node test), frontend/src/api/books.test.ts, frontend/src/components/MainBookCard.tsx
+  - frontend/e2e/update-page.spec.ts
   - knowledge/test-levels-framework.md
   - knowledge/test-priorities-matrix.md
   - knowledge/data-factories.md
@@ -22,65 +24,69 @@ inputDocuments:
   - knowledge/playwright-cli.md
 ---
 
-# Automation Summary: Story 3.2, Start reading a book
+# Automation Summary: Story 3.3, Catch up with one page update
 
-The Story 3.1 summary that used to live in this file is in git history (`fc028f5`).
+The Story 3.2 summary that used to live in this file is in git history (`57ae69c`).
 
-**Execution mode:** BMad-Integrated. Inputs: the story spec (with its I/O matrix, review findings and triage log), the ATDD checklist, and the system test design.
+**Execution mode:** BMad-Integrated. Inputs: the story spec (with its I/O matrix, review findings and triage log), the ATDD checklist, the system test design, and `deferred-work.md`.
 **Detected stack:** fullstack (`backend/pyproject.toml` + `frontend/playwright.config.ts`).
 **Playwright Utils mandate:** off (`tea_use_playwright_utils: false`).
 **Pact.js Utils mandate:** not applicable (the repo has no contract testing).
-**Subagent execution:** SEQUENTIAL. There was one backend target, so I wrote it inline.
-**Total tests added:** 1 Hypothesis state machine (60 examples × up to 25 steps per run) and 1 seed sanity test. Results are under Validation.
+**Subagent execution:** SEQUENTIAL. There was one small cross-layer target, so I wrote it inline.
+**Total tests added:** 1 pytest test and 2 node tests, all backed by one shared case table. Results are under Validation.
 **Browser exploration:** skipped. There is no new E2E target.
 
 ## Coverage Plan by Test Level and Priority
 
-Scope: **selective**. Story 3.2 left very little uncovered:
+Scope: **selective**. Story 3.3 shipped with almost complete coverage:
 
-- Backend: `test_start_reading.py` has the 3 ATDD leaves, plus RDG-API-001's full state matrix (never started, finished, paused, each with and without a Main book), `already_main` with history, 422s on malformed intents, and `edit-purpose`'s own rules. `domain/purpose.py` is 100%, and `intents/start_reading.py` and `edit_purpose.py` are covered.
-- Node: `detailPrimary` and `popoverStart` cover every role.
-- E2E: 23 tests in `start-reading.spec.ts`. They cover the 8 ATDD leaves, every green-phase follow-up in the checklist, and the review patches.
+- Backend: `test_update_page.py` covers PRG-API-002 (last page saves and the Reading stays unfinished), PRG-API-001 (bounds, a lower page, 0, `lastProgressUpdate`), every I/O matrix row, the 8-value wrong-type matrix, malformed parts, and the refusal order. `test_reading_state_machine.py` gained an `update` rule (RDG-UNIT-002). Percent flooring (PRG-UNIT-001) is pinned in `test_progress.py` and `test_home_view.py`.
+- Node: `parsePage`, the copy, and `updatePage`'s form and refusal pass-through.
+- E2E: 13 tests in `update-page.spec.ts`. They cover the ATDD leaves, PRG-E2E-001's ≤ 2 interactions and < 30 s, every review follow-up, and axe in both themes.
 
-The one gap is a P0 item the test design and the checklist both tie to this story:
+The one gap is a risk the review left open:
 
 | # | Gap | Evidence | Level | Priority |
 |---|---|---|---|---|
-| G1 | **RDG-UNIT-002**: random intent sequences must keep the invariants, at most one unfinished Reading per Book, and "Waiting = paused − Up next". | The test design calls it R-01's "highest-yield test" (P0). The checklist says it "needs `start-reading` to exist. It should land with 3.2 or 3.3, before the epic gate." Every existing test covers a single intent from a single seeded state. None chains them, so nothing checks a pause → resume → re-read → delete-the-Main → start-again sequence. | Unit (property-based) | P0 |
+| G1 | **The client page pre-check and the server rule can drift apart.** `parsePage`/`pageRangeMessage` copy the server's range rule and copy. | Deferred as SC1/SC2 in pass 1 and re-raised in pass 2 (`deferred-work.md`): "if the page rule or copy changes on the server, `parsePage`/`pageRangeMessage` drift silently." Each side is tested only against its own literals, so a one-sided change keeps both suites green. | Unit (node) + API (pytest), one shared table | P1 |
 
 **Not selected:**
-- Up next and Side-read starts (`main_not_up_next` 500s). The review deferred them to Story 4.1. Nothing in 3.2 can set those pointers, so the machine asserts that they stay empty instead of driving them.
-- More E2E. The checklist's follow-ups and the review's patches are all pinned already. Another browser test would duplicate them (duplicate-coverage guard).
-- The add-book property test from `deferred-work.md` (Story 1.7). It is outside 3.2's scope, but it can join this machine as an `add` rule later.
+- PRG-E2E-001's "~N days left". The card doesn't show it yet (pace comes later in Epic 3), so there is nothing to assert.
+- PRG-E2E-003 (Finish dialog on the last page). That is Story 3.6, and 3.3 forbids the dialog. AC-4's e2e already asserts that no dialog appears.
+- The R-17 timing smoke on a 500-Book fixture (P3, report only). It belongs to the Epic 3 gate, not to one intent.
+- A `PageField` component test. The review rejected it (BH10a) because each branch is traced to an e2e leaf.
 
 ## Tests Added
 
-1. **`backend/tests/test_reading_state_machine.py::test_reading_plan_holds_under_random_intent_sequences`** (P0, G1). This is a Hypothesis `RuleBasedStateMachine` seeded with Dune (never started), Emma (finished), Neuromancer (paused at p.50, with a Purpose) and Fahrenheit 451 (Main at p.120). Its rules are `start` (`start-reading`), `edit` (`edit-purpose`), `delete` (`delete-book`) and `days_pass`. The intents name either a seeded Book or one that never existed. Purposes are `None`, blank, padded, or random text.
-   - **Refusals:** the code must match a simple model (`book_not_found`, `already_main` or `reading_already_finished`), and `library.json` must be byte-for-byte unchanged.
-   - **`start`:** the previous Main book's current Reading gains `pausedAt` = today and nothing else changes. A paused Reading resumes in place, with `lastProgressUpdate` = now and the normalized Purpose. Otherwise exactly one new Reading is appended with the contract's fields, and the earlier Readings stay identical. `mainBookId` is the Book, and every other Book is untouched.
-   - **`edit`:** only that Reading's `purpose` changes. **`delete`:** only that Book goes, and a vacated Main book stays `null`.
-   - **Invariants after every step:** `check_invariants()` holds, there is at most one unfinished Reading per Book, and the file on disk reads back as `store.library`. In the catalog, only `mainBookId` is `main`. `waiting` (with `waitingPage`) is exactly the Books with a paused Reading, and the rest have no role. Home's `mainBook` is the Main book at its current page, or `null`.
-2. **`…::test_the_seed_covers_every_starting_state`.** This pins that the seed starts the machine from all four RDG-API-001 rows, so a later builder change can't silently shrink it.
+1. **`frontend/src/lib/pageField.cases.json`** (new). The shared table: `pages` 330, `accepted` [0, 1, 100, 212, 329, 330], `refused` [-1, 331, 1000, 212.5], and the range message for 1, 330 and 1200 pages.
+2. **`frontend/src/lib/pageField.test.ts` → "the page field agrees with update-page"** (P1, G1). This has 2 tests. `parsePage(String(v), 330)` accepts every `accepted` value as itself and refuses every `refused` one, and `pageRangeMessage(n)` equals the table's copy.
+3. **`backend/tests/test_update_page.py::test_ac3_p1_update_page_agrees_with_the_page_fields_shared_cases`** (P1, G1). `page_message(n)` equals the table's copy. Over HTTP, each `refused` value is a 422 on `page` with the 330 message and leaves the bytes unchanged, and each `accepted` value is saved. It skips with a reason when the frontend isn't checked out, as `test_stack_pins.py` does.
+
+Changing the rule or the copy on one side now fails that side's test until the table and the other side match.
 
 ## Validation
 
-- `npm run check:py` is green. pytest went from 931 to 933 passed. Coverage gates: domain 100%, intents+store 97.53%.
-- `check:api`, e2e and smoke were not re-run because no frontend or contract file changed.
-- Burn-in: the new file passed 5 runs in a row, each with fresh random sequences, in about 5–8s per run.
-- Mutation check. Each mutation was run against the new test and then reverted; `git diff backend/bookvie` is empty.
-  - `_pause_main` sets `pausedAt` to `None`: fails (the old Main book's snapshot comparison).
-  - Resume resets `currentPage` to 0: fails.
-- `ruff check` and `ruff format` are clean on the new file.
-- Quality: no sleeps and no shared state. Each example gets its own temporary data directory, cleaned up in `teardown`. Time comes only through `FakeClock`. The file is ~300 lines.
-- Checklist: the framework is ready, coverage is mapped (G1 → RDG-UNIT-002 and RDG-API-001's rows), artifacts are only in `_bmad-output/test-artifacts/`, and no browser CLI sessions were opened.
+- `npm run check:py` is green. pytest went from 961 to 962 passed. Coverage gates: domain 100%, intents+store 97.60%.
+- `npm run check:api` is green: api-contract, `tsc -b`, oxlint, and 177 node tests (175 before).
+- E2E and smoke were not re-run because no app or e2e file changed.
+- Mutation check. Each mutation was run against the new tests and then reverted; `git status` shows only the three test files.
+  - Client `page <= pages` → `<` (refuses the last page): the node test fails.
+  - Client copy reworded: the node test fails.
+  - Server copy reworded: the pytest fails.
+  - Server refuses 0 (`0 < value`): the pytest fails.
+- Burn-in: not needed. The tests are deterministic, with a fixed table and no clock, network, or randomness.
+- `ruff check` is clean. My new lines are ruff-formatted. `ruff format --check` still flags two pre-existing spots in the same file (the malformed-part parametrize and its `body` comprehension). Those are untouched and not part of `npm run check`.
+- Quality: no sleeps and no shared state, since each test gets its own `tmp_path`. Assertions are explicit, and each value carries its own failure label.
+- Checklist: the framework is ready, coverage is mapped (G1 → the AD-3/AD-9 deferral, AC-3), the artifact is in `_bmad-output/test-artifacts/`, and no browser CLI sessions were opened.
 
 ## Assumptions and Risks
 
-- The machine calls the intent functions directly, not over HTTP. The routes, the multipart parsing and the envelopes are pinned per intent in `test_start_reading.py` and `test_intent_routes.py`.
-- `views_agree_with_the_pointers` asserts that `upNextBookId` and `sideReadBookIds` stay empty. Once Epic 4's intents join the machine, swap that assertion for the "Waiting = paused − Up next" rule with a real Up next.
-- The budget is 60 examples × 25 steps (about 5s). If CI time gets tight, lower the budget through a Hypothesis profile, not by dropping rules.
+- The table pins the rule's behaviour on shared values, not the code. Inputs only one side sees (typed text like `" 0 "`, `"1e2"`, `"+5"` on the client; `"212"`, `true`, `null` on the server) stay in each side's own tests.
+- `frontend/src/lib/` now holds a JSON file that the app never imports. It is outside `tsconfig.app.json`'s type check (read with `fs` from a test), and Vite won't bundle it.
+- This does not settle the spine question in `deferred-work.md` (exception vs. send-and-render). It only makes drift loud while that is open. If the client pre-check is dropped, delete the node half and keep the server half.
 
 ## Next Steps
 
-- Add rules to `ReadingPlan` as Stories 3.3+ land (`update-progress`, `finish`, `pause`, then Epic 4's Up next and Side reads). That way RDG-UNIT-002 grows with R-01 rather than being written at the gate.
-- Run `bmad-testarch-trace` at the end of Epic 3.
+- Add the next rules to `ReadingPlan` as Stories 3.4+ land (`finish`, `pause`, then Epic 4's Up next and Side reads).
+- When the card gains "~N days left", extend PRG-E2E-001's AC-6 leaf to assert it after the refetch.
+- Run `bmad-testarch-trace` at the end of Epic 3, with the R-17 timing smoke on the gate list.
