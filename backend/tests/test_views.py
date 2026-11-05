@@ -415,6 +415,37 @@ def test_shelf_books_carry_role_percent_and_waiting_page(
     assert fields(plain) == (None, None, None, None, False)
 
 
+def test_a_finished_book_re_read_as_main_reads_the_re_read_in_every_view(
+    library_builder: LibraryBuilder,
+) -> None:
+    # The spine's "finished, re-reading, 12%" (I/O matrix): finished from the old
+    # Reading, the percentage from the current one, the same number on the shelf,
+    # Home's card and Book detail (AD-6: one rule for the three views).
+    emma = library_builder.book(title="Emma", pages=400)
+    library_builder.reading(emma, finish_date="2025-06-01", finished_pages=400, current_page=400)
+    library_builder.reading(emma, current_page=48, start_date="2026-10-03")
+    library = library_builder.main(emma).build()
+
+    (shelf,) = catalog(library).books
+    assert (shelf.role, shelf.finished, shelf.current_page, shelf.percent, shelf.waiting_page) == (
+        "main",
+        True,
+        48,
+        12,
+        None,
+    )
+    card = home(library).main_book
+    assert card is not None and (card.current_page, card.percent) == (48, 12)
+    detail = book_detail(library, emma)
+    assert detail is not None and detail.current_reading is not None
+    assert (detail.role, detail.current_reading.status, detail.current_reading.percent) == (
+        "main",
+        "main",
+        12,
+    )
+    assert detail.latest_finish_date is not None
+
+
 def test_book_view_current_reading_main_paused_and_none(
     tmp_path: Path, library_builder: LibraryBuilder
 ) -> None:

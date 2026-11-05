@@ -422,6 +422,39 @@ test.describe('Story 3.1 See my Main book on Home (automate)', () => {
     await expect(newBookPanel(page)).toHaveCount(0)
   })
 
+  test('[P2] AC-9 Book detail has no Current reading block without an unfinished Reading; a bare paused one shows no start date or Purpose', async ({
+    page,
+    seededServer,
+  }) => {
+    const unread = { id: '0c4e8a2b-1d3f-4a5b-8c6d-7e8f9a0b1c2d', title: 'Neuromancer', authors: ['William Gibson'], pages: 271 }
+    const finished = {
+      id: '9d2b7c4e-3a1f-4e6b-a5c8-2f1e0d9c8b7a',
+      title: 'Piranesi',
+      authors: ['Susanna Clarke'],
+      pages: 245,
+      readings: [{ currentPage: 245, finishDate: '2026-09-01', finishedPages: 245 }],
+    }
+    // Paused at 40 of 412 with no start date and no Purpose: 9.7…% floors to 9.
+    const paused = { ...DUNE, readings: [{ currentPage: 40, startDate: null, pausedAt: '2026-10-20' }] }
+    const server = await seededServer({ books: [unread, finished, paused] })
+    const main = page.getByRole('main')
+    const currentReading = main.getByRole('region', { name: 'Current reading', exact: true })
+
+    for (const book of [unread, finished]) {
+      await page.goto(`${server.url}/book/${book.id}`)
+      await expect(page.getByRole('heading', { level: 1, name: book.title, exact: true })).toBeVisible()
+      await expect(main.getByRole('region', { name: 'Readings', exact: true })).toBeVisible()
+      await expect(currentReading).toHaveCount(0)
+      await expect(main.getByRole('progressbar')).toHaveCount(0)
+    }
+
+    await page.goto(`${server.url}/book/${DUNE_ID}`)
+    await expect(currentReading.getByText('Waiting for you, page 40', { exact: true })).toBeVisible()
+    await expect(currentReading.getByRole('progressbar')).toHaveAttribute('aria-valuetext', '9%, page 40 of 412')
+    await expect(currentReading).not.toContainText('started')
+    await expect(currentReading).not.toContainText('Purpose')
+  })
+
   test('[P1] the date header moves to the next day when the tab regains focus or visibility after midnight', async ({
     page,
     seededServer,

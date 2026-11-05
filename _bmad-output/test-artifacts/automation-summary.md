@@ -1,16 +1,16 @@
 ---
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03c-aggregate', 'step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
-lastSaved: '2026-11-04'
-storyId: '2.3'
+lastSaved: '2026-11-05'
+storyId: '3.1'
 inputDocuments:
-  - _bmad-output/implementation-artifacts/spec-2-3-refuse-damaged-hostile-or-newer-files.md (incl. Review Findings and Triage Log)
-  - _bmad-output/implementation-artifacts/deferred-work.md (story 2.3 entries)
-  - _bmad-output/test-artifacts/atdd-checklist-2-3-refuse-damaged-hostile-or-newer-files.md
+  - _bmad-output/implementation-artifacts/spec-3-1-see-my-main-book-on-home.md (incl. I/O matrix, Review Findings and Triage Log)
+  - _bmad-output/test-artifacts/atdd-checklist-3-1-see-my-main-book-on-home.md
   - _bmad/tea/config.yaml
-  - backend/bookvie/store/restore.py, intents/restore.py, store/store.py (cover_names, LibraryNewer), http/api.py (BodySizeCap)
-  - backend/tests/test_restore_refusals.py, test_restore.py, helpers.py (existing coverage)
-  - frontend/e2e/restore-refusals.spec.ts, frontend/e2e/fixtures.ts
+  - backend/bookvie/domain/progress.py, views/shelf.py, views/models.py, store/local_state.py
+  - backend/tests/test_progress.py, test_home_view.py, test_views.py, test_store.py, test_export.py (existing coverage)
+  - frontend/src/pages/HomePage.tsx, BookDetailPage.tsx, lib/gauge.ts, lib/today.ts, lib/catalog.ts, lib/bookDetail.ts, lib/relativeDay.ts (+ their node tests)
+  - frontend/e2e/home.spec.ts, restore.spec.ts, delete-book.spec.ts, error-screens.spec.ts, fixtures.ts
   - knowledge/test-levels-framework.md
   - knowledge/test-priorities-matrix.md
   - knowledge/data-factories.md
@@ -22,62 +22,70 @@ inputDocuments:
   - knowledge/playwright-cli.md
 ---
 
-# Automation Summary: Story 2.3, Refuse damaged, hostile or newer files
+# Automation Summary: Story 3.1, See my Main book on Home
 
-The Story 2.2 summary that used to live in this file is in git history (`92fe581`).
+The Story 2.3 summary that used to live in this file is in git history (`6454384`).
 
-**Execution mode:** BMad-Integrated (the story spec with its review findings and triage log, the deferred-work log, and the ATDD checklist).
+**Execution mode:** BMad-Integrated. Inputs: the story spec (with its I/O matrix, review findings and triage log) and the ATDD checklist.
 **Detected stack:** fullstack (`backend/pyproject.toml` + `frontend/playwright.config.ts`).
 **Playwright Utils mandate:** off (`tea_use_playwright_utils: false`).
 **Pact.js Utils mandate:** not applicable (the repo has no contract testing).
-**Subagent execution:** SEQUENTIAL. There were two small API targets, and neither needed a browser.
-**Total tests added:** 2 API tests covering 5 cases. Backend 863 → 865, all green, coverage gate OK. E2E unchanged.
-**Browser exploration:** skipped. No E2E target was selected.
+**Subagent execution:** SEQUENTIAL. There were only two small targets, so I wrote both inline.
+**Total tests added:** 1 API/view test and 1 E2E test. Results are under Validation.
+**Browser exploration:** skipped. The one E2E target reuses locators the existing `home.spec.ts` AC-9 test already pins, read from `BookDetailPage.tsx`.
 
 ## Coverage Plan by Test Level and Priority
 
-Scope: **selective**. Story 2.3 already covers the 5 ATDD leaves (the full BKP-API-003/004/005 matrices) and the checklist's follow-ups. Both review passes added more: the central-directory cap, the `covers/` listing fault, and the read-only `.staging/`. I found the gaps with a branch-coverage run (`--cov-branch`) over `store/restore.py`, `intents/restore.py`, `store/store.py` and `http/api.py`:
+Scope: **selective**. Story 3.1 already covers almost everything:
+
+- Backend: 885 tests. A branch-coverage run (`--cov-branch`) shows `domain/progress.py`, `views/shelf.py` and `views/models.py` at 100% line and branch.
+- Node unit tests cover `gauge`, `today`, `spineName` (all four I/O-matrix states), `currentReadingStatus` and `lastExportLine`.
+- E2E: 17 tests in `home.spec.ts`. They cover the 9 ATDD leaves plus the follow-ups: the gauge edges, the half tick, no cover, Last export placement, a failed load, the hand-off, and the date recompute.
+
+So the gaps are about how parts combine, not about missing lines:
 
 | # | Gap | Evidence | Level | Priority |
 |---|---|---|---|---|
-| G1 | An entry that passes every safety rule but can't be unpacked: a damaged deflate stream, an encrypted entry, or an unsupported compression method | `store/restore.py` 125–126 and 131–132 uncovered. AC-1's damaged cases all fail earlier (at `ZipFile()` or on the CRC). These two branches are new in 2.3: the byte budget opens each entry through a copied `ZipInfo`. If they regressed, damage would become `restore_unsafe` (it shares the copy, so the user wouldn't notice, but the precedence would be wrong) or an uncaught 500. A password-protected zip of an export is a realistic user mistake. | API | P1 |
-| G2 | A disk fault while unpacking into `.staging/`: can't open the target, or the disk fills mid-entry | `store/restore.py` 115–116 and 142–143 uncovered. The existing read-only `.staging/` test fails earlier, at the `covers/` mkdir. The spec's Never keeps these writes off the `FileSystem` seam. Unpacking up to 1 GiB makes ENOSPC the likeliest real fault, and it must be 503 `couldnt_save` with the partly staged files emptied, not a 500. | API | P1 |
+| G1 | A finished Book re-read as Main. Shelf, Home card and Book detail must all show the *current* Reading's percentage. | This is the I/O matrix's "finished, re-reading, 12%" spine row. `spineName` is unit-tested for it. On the server side, `test_shelf_books_carry_role_percent_and_waiting_page` has no Main book that is also finished. AD-6 promises one number across the three views, and no test checks them against each other. A regression that read the finished Reading would show 100% on the spine and the card. | API (view) | P2 |
+| G2 | Book detail with no unfinished Reading (not read yet, or finished) shows no Current reading region. A bare paused Reading (no start date, no Purpose) shows no "· started" and no Purpose line. | The server half is pinned: `currentReading` is `None` for these Books (`test_book_view_current_reading_main_paused_and_none`). But the e2e suite only renders the block for the Main and paused-with-Purpose cases (AC-9), so the client's `current !== null` and `purpose !== null` branches have no browser test. | E2E | P2 |
 
 **Not selected:**
-- `store/restore.py` 91–92 and 280–281: reading a staged file back fails. That is a fault on a file this request just wrote. It maps through the same `CouldntSave` → 503 path G2 pins.
-- `store/restore.py` 161–162 and 176–177: `seek` on the spooled upload fails. Starlette owns that file, and a fault there can't happen without mocking its internals.
-- `intents/restore.py` 112–114, `InvariantViolation` → 500. Defensive; 2.2 triage already rejected it as dead.
-- `store.py` 535, `cover_names()` when `covers/` is missing or a symlink. Startup refuses or creates `covers/`, so only hand-tampering mid-run reaches it, and the result (no collision check) is harmless.
-- `http/api.py` 164 and 166→171 (a second `receive` after the cap, and a non-body message). These lines predate 2.3: `CoverSizeCap`'s streaming path, carried into `BodySizeCap` unchanged.
-- **E2E: the body cap in a real browser** (deferred-work.md, 2.3 review pass 1). Testing it needs a body over 1 GiB + 64 KiB from Chromium, which the Backup page reads into memory first. Or it needs a way to lower the cap in the e2e server, and `bookvie` has no such seam (no env or flag reads the limits). Adding one is a production change, outside this workflow. It stays deferred.
+- Home with a malformed `local-state.json`. The review triage rated it low. `home_for` is one line over `read_last_export`, whose malformed cases are already pinned in `test_store.py` (and through Backup in `test_export.py`). A Home-level copy would duplicate them (duplicate-coverage guard).
+- No Current reading block for an Up-next Book with a paused Reading. The server half is pinned (`current(neuromancer) is None`). The review deferred the client behavior to Epic 4, and an e2e test now would pin a decision that is still open.
+- A Main-book spine with `percent === null` falling back to the read status. The `main_has_unfinished_reading` invariant rules this state out (triage EC3).
+- E2E spine names for the two re-read states. `spineName` is unit-tested on server-shaped data, and G1 pins the server half. A browser test would only repeat the composition.
 
-## Tests Added (`backend/tests/test_restore_unpack_faults.py`, new)
+## Tests Added
 
-A new file, because `test_restore_refusals.py` is 792 lines and these tests would take it past the 1,000-line limit (TEA rule H5). It imports that file's seeds (`_Source`, `_seed_target`), its `_Snapshot` and its body constants, so "nothing changed" means the same thing in both files.
-
-1. **`test_ac1_an_entry_that_cannot_be_unpacked_is_restore_invalid_not_unsafe`** (P1, G1). Three cases, each with Piranesi's cover (the last entry unpacked) damaged by `_deflated_with`: `0xFF` over the start of its deflate stream (`zlib.error`, raised mid-read); the encryption flag (`RuntimeError`, raised at `open`); compression method 99 (`NotImplementedError`, raised at `open`). Each gives 422 `restore_invalid` and the log line `couldn't restore: the file covers/<name> is damaged` or `… can't be read`. `library.json`, `covers/` and both folder listings are unchanged, and `.staging/` is empty even though `library.json` and Dune's cover were already staged.
-2. **`test_ac4_a_disk_fault_while_unpacking_into_staging_is_503_with_nothing_changed`** (P1, G2). `open` in `bookvie.store.restore` is patched, as `test_ac3_extraction_stops_before_staging_passes_the_cap` already does. In one case opening `.staging/library.json` fails (`EACCES`). In the other, writing Piranesi's cover fails with `ENOSPC` after two entries are staged. Both give 503 `couldnt_save`, the log line `couldn't save: can't write .staging/<entry>`, nothing changed and an empty `.staging/`. After both faults, the same archive restores with 200, so nothing was left half-done.
+1. **`backend/tests/test_views.py::test_a_finished_book_re_read_as_main_reads_the_re_read_in_every_view`** (P2, G1). Emma (400 pages) has a finished Reading at 400 and a Main re-read at page 48. The catalog `ShelfBook` is `("main", finished=True, 48, 12%, waitingPage None)`. Home's `mainBook` is 48 / 12%. Book detail's `currentReading` is `main` at 12%, and `latestFinishDate` is still set.
+2. **`frontend/e2e/home.spec.ts` › `[P2] AC-9 Book detail has no Current reading block without an unfinished Reading; a bare paused one shows no start date or Purpose`** (G2). The seed has Neuromancer (no Readings), Piranesi (finished) and Dune, paused at 40 of 412 with `startDate: null` and no Purpose.
+   - Neuromancer and Piranesi show their `h1` and the Readings region, and no Current reading region or progressbar.
+   - Dune's region reads exactly "Waiting for you, page 40", with gauge valuetext "9%, page 40 of 412" (9.7…% floored). It contains no "started" and no "Purpose".
 
 ## Validation
 
-- `npm run check:py`: 865 passed. The gate shows domain 100% and intents+store 97.44%. `store/restore.py` goes from 16 uncovered lines to 8 (93% → 95%).
-- Mutation check, each one run against the new file and then reverted (`git diff backend/bookvie/` is empty):
-  - a damaged read raises `ArchiveUnsafe` instead: test 1 fails;
-  - an `open` error raises `ArchiveUnsafe` instead: test 1 fails;
-  - the `open` error isn't caught: test 1 fails;
-  - the `write` `OSError` isn't wrapped as `CouldntSave`: test 2 fails;
-  - the target `open` `OSError` isn't wrapped: test 2 fails.
-- `ruff check` is clean on the new file. `ruff format` isn't used: it rewraps the existing files.
-- Quality: no hard waits, and each test uses its own `tmp_path`. Cases loop with the case name in every assertion, as in the AC-1 and AC-4 leaves. Patches are scoped with `monkeypatch.context()`. The file is 164 lines.
-- No browser was opened, so no CLI sessions were left behind.
+- `npm run check` is green:
+  - pytest: 885 → 886 passed. Coverage gates: domain 100%, intents+store 97.47%.
+  - node: 162 pass, 0 fail.
+  - e2e: 203 → 204 passed.
+  - smoke: ok.
+- Mutation check. Each mutation was run against the new tests and then reverted; `git diff backend/bookvie frontend/src` is empty.
+  - The shelf `percent` reads the first Reading instead of the current one: G1 fails.
+  - `current_reading` returns the first Reading: G1 fails. G2 still passes, correctly: `reading_status` still marks the finished Reading *finished*, so no block appears.
+  - `_role_reading` gives a waiting role to any Book with a Reading: G2 fails (`toHaveCount(0)` on the region).
+  - The Purpose line renders without a Purpose: G2 fails (`not.toContainText('Purpose')`).
+- `ruff check` is clean on `test_views.py`. tsc and oxlint run in `check:api` and are clean.
+- Quality: no hard waits and no conditionals. Data is seeded per test through `seededServer`. G2 uses web-first assertions only.
+- Size: `home.spec.ts` is ~476 lines and `test_views.py` 484, both well under the 1,000-line limit.
+- Checklist: the framework is ready, coverage is mapped (G1, G2 → I/O matrix rows), artifacts are only in `_bmad-output/test-artifacts/`, and no browser CLI sessions were opened.
 
 ## Assumptions and Risks
 
-- G1 pins today's precedence for an encrypted or unsupported-method entry: `restore_invalid`, decided at unpack time. That matches the spec's "damage → invalid". If a future story calls an encrypted archive hostile, the second and third cases are the place to change.
-- The new file imports private helpers from `test_restore_refusals.py`. If that file is split or renamed, move `_Source`, `_seed_target` and `_Snapshot` into `tests/helpers.py`.
-- The real-browser body-cap check stays deferred (deferred-work.md, 2026-11-04).
+- G2 pins "no block" for a finished Book with no unfinished Reading. If Epic 3/4 adds a block for finished Books (for example "Read again"), this test is the place to change.
+- The G1 test calls the view functions directly, not over HTTP. The HTTP shape of the same fields is already pinned by `test_home_view_main_book_card_fields` and `test_book_view_current_reading_main_paused_and_none`.
+- The Up-next Current reading decision is still open (deferred-work.md, Story 3.1 review). Neither new test pins it.
 
 ## Next Steps
 
-- Commit: `git add backend/tests/test_restore_unpack_faults.py _bmad-output/test-artifacts/automation-summary.md && git commit -m "test: expand automation coverage for refusing damaged, hostile or newer files (story 2.3)"`
-- `bmad-testarch-trace` for Epic 2: 2.3 was the last story, and the epic gate is "every refusal and fault test green (BKP-API-003..005)".
+- `bmad-testarch-test-review` on `home.spec.ts` (now 18 tests, ~476 lines), or move on to Story 3.2.
+- `bmad-testarch-trace` at the end of Epic 3.
