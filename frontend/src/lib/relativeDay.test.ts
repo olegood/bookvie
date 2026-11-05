@@ -3,7 +3,7 @@
 
 import assert from 'node:assert/strict'
 import { afterEach, describe, it } from 'node:test'
-import { relativeDay } from './relativeDay.ts'
+import { lastExportLine, relativeDay } from './relativeDay.ts'
 
 // Local wall-clock times, so the cases hold in any TZ (check:e2e pins Europe/Madrid).
 const at = (year: number, month: number, day: number, hour = 12, minute = 0) =>
@@ -56,4 +56,11 @@ describe('relativeDay across time zones', () => {
       }
     })
   }
+})
+
+describe('lastExportLine', () => {
+  it('says No export yet before the first, else Last export with the relative day', () => {
+    assert.equal(lastExportLine(null, at(2026, 10, 28)), 'No export yet')
+    assert.equal(lastExportLine(at(2026, 10, 16, 9, 30).toISOString(), at(2026, 10, 28, 10)), 'Last export: 12 days ago')
+  })
 })

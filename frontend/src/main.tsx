@@ -10,6 +10,7 @@ import BackupPage from './pages/BackupPage.tsx'
 import BookDetailPage from './pages/BookDetailPage.tsx'
 import CatalogPage from './pages/CatalogPage.tsx'
 import { BareErrorPage, RouteErrorPage } from './pages/ErrorPage.tsx'
+import HomePage from './pages/HomePage.tsx'
 import NotFoundPage from './pages/NotFoundPage.tsx'
 import './styles/tokens.css'
 import './styles/base.css'
@@ -30,7 +31,8 @@ const router = createBrowserRouter([
         element: <AppShell />,
         errorElement: <RouteErrorPage />,
         children: [
-          { path: '/', element: <CatalogPage /> },
+          { path: '/', element: <HomePage /> },
+          { path: '/catalog', element: <CatalogPage /> },
           { path: '/book/:bookId', element: <BookDetailPage /> },
           { path: '/backup', element: <BackupPage /> },
           { path: '*', element: <NotFoundPage /> },

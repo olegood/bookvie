@@ -3,16 +3,19 @@
 :func:`cover_path` is the lookup behind ``/media/covers/<name>``.
 """
 
+from datetime import datetime
 from pathlib import Path
 
-from bookvie.domain import Book, Library
+from bookvie.domain import Book, Library, Reading, current_reading, percent
 from bookvie.domain.book_fields import merge_tags
-from bookvie.store import COVERS_DIR, Store, referenced_covers
+from bookvie.store import COVERS_DIR, Store, read_last_export, referenced_covers
 
 from .models import (
     BookDetailView,
     BookReading,
     CatalogView,
+    CurrentReading,
+    HomeMainBook,
     HomeView,
     LibraryMeter,
     Role,
@@ -28,7 +31,9 @@ def _has_cover(book: Book) -> bool:
     return book.cover_file is not None
 
 
-def _shelf_book(book: Book) -> ShelfBook:
+def _shelf_book(library: Library, book: Book) -> ShelfBook:
+    role, waiting_page = _role(library, book)
+    reading = current_reading(book)
     return ShelfBook(
         id=book.id,
         title=book.title,
@@ -44,6 +49,10 @@ def _shelf_book(book: Book) -> ShelfBook:
         spine_color_from_cover=book.spine_color_from_cover,
         has_cover=_has_cover(book),
         finished=_finished(book),
+        role=role,
+        current_page=reading.current_page if reading else None,
+        percent=percent(reading.current_page, book.pages) if reading else None,
+        waiting_page=waiting_page,
     )
 
 
@@ -61,29 +70,85 @@ def catalog(library: Library) -> CatalogView:
     """
     return CatalogView(
         meter=_meter(library),
-        books=[_shelf_book(b) for b in library.books],
+        books=[_shelf_book(library, b) for b in library.books],
         tags=merge_tags(tag for b in library.books for tag in b.tags),
     )
 
 
-def home(library: Library) -> HomeView:
-    """Placeholder slice: the Catalog's books and meter until Stories 3.1/3.5."""
+def _main_book(library: Library) -> HomeMainBook | None:
+    """The Main book for Home's card; ``None`` when there is none.
+
+    The Main book always has an unfinished Reading (an invariant); without
+    one it reads as page 0.
+    """
+    if library.main_book_id is None:
+        return None
+    book = library.book(library.main_book_id)
+    if book is None:
+        return None
+    reading = current_reading(book)
+    page = reading.current_page if reading else 0
+    return HomeMainBook(
+        id=book.id,
+        title=book.title,
+        authors=list(book.authors),
+        edition=book.edition,
+        cover_file=book.cover_file,
+        has_cover=_has_cover(book),
+        pages=book.pages,
+        current_page=page,
+        percent=percent(page, book.pages),
+    )
+
+
+def home(library: Library, last_export_at: datetime | None = None) -> HomeView:
+    """The Main book, "Last export", and (until Story 3.5's slice) the Catalog's books and meter."""
     view = catalog(library)
-    return HomeView(meter=view.meter, books=view.books)
+    return HomeView(
+        meter=view.meter,
+        books=view.books,
+        main_book=_main_book(library),
+        last_export_at=last_export_at,
+    )
+
+
+def home_for(store: Store) -> HomeView:
+    """:func:`home` of the committed library, with "Last export" from ``local-state.json``."""
+    return home(store.library, read_last_export(store.data_dir))
+
+
+def _role_reading(library: Library, book: Book) -> tuple[Role, Reading | None]:
+    """The Book's role and, for ``main`` and ``waiting``, the Reading it is about."""
+    if library.main_book_id == book.id:
+        return "main", current_reading(book)
+    if library.up_next_book_id == book.id:
+        return "upNext", None
+    # Unfinished and not Main is paused (AD-19); ``pausedAt`` is only a stored date.
+    reading = current_reading(book)
+    if reading is not None:
+        return "waiting", reading
+    return None, None
 
 
 def _role(library: Library, book: Book) -> tuple[Role, int | None]:
     """The Book's role and, for ``waiting``, the paused Reading's page."""
-    if library.main_book_id == book.id:
-        return "main", None
-    if library.up_next_book_id == book.id:
-        return "upNext", None
-    paused = next(
-        (r for r in book.readings if not r.finished and r.paused_at is not None), None
+    role, reading = _role_reading(library, book)
+    if role == "waiting" and reading is not None:
+        return role, reading.current_page
+    return role, None
+
+
+def _current_reading(library: Library, book: Book) -> CurrentReading | None:
+    role, reading = _role_reading(library, book)
+    if reading is None or role not in ("main", "waiting"):
+        return None
+    return CurrentReading(
+        status="main" if role == "main" else "waiting",
+        start_date=reading.start_date,
+        current_page=reading.current_page,
+        percent=percent(reading.current_page, book.pages),
+        purpose=reading.purpose,
     )
-    if paused is not None:
-        return "waiting", paused.current_page
-    return None, None
 
 
 def book_detail(library: Library, book_id: str) -> BookDetailView | None:
@@ -119,6 +184,7 @@ def book_detail(library: Library, book_id: str) -> BookDetailView | None:
         ],
         role=role,
         waiting_page=waiting_page,
+        current_reading=_current_reading(library, book),
     )
 
 

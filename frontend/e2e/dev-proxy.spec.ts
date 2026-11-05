@@ -39,7 +39,7 @@ test('GET /api/health through the Vite proxy answers 200', async ({ server, page
   expect(await direct.json()).toMatchObject({ app: 'bookvie', dataDir: server.dataDir })
 
   // From the dev page itself, as the browser sends it during `npm run dev`.
-  await page.goto(`${origin}/`)
+  await page.goto(`${origin}/catalog`)
   await expect(page.getByRole('heading', { level: 1, name: 'Catalog' })).toBeVisible()
   const status = await page.evaluate(async () => (await fetch('/api/health')).status)
   expect(status).toBe(200)

@@ -6,17 +6,21 @@ from .models import (
     BookDetailView,
     BookReading,
     CatalogView,
+    CurrentReading,
+    HomeMainBook,
     HomeView,
     LibraryMeter,
     ShelfBook,
 )
-from .shelf import book_detail, catalog, cover_path, home
+from .shelf import book_detail, catalog, cover_path, home, home_for
 
 __all__ = [
     "BackupView",
     "BookDetailView",
     "BookReading",
     "CatalogView",
+    "CurrentReading",
+    "HomeMainBook",
     "HomeView",
     "LibraryMeter",
     "ShelfBook",
@@ -25,4 +29,5 @@ __all__ = [
     "catalog",
     "cover_path",
     "home",
+    "home_for",
 ]

@@ -89,7 +89,7 @@ const catalogHeading = (page: Page) => page.getByRole('heading', { level: 1, nam
 test.describe('Story 1.6 app shell (ATDD)', () => {
   test('[P1] AC-1 every DESIGN.md token is a CSS custom property, and UI text is sans', async ({ page }) => {
     await page.emulateMedia({ colorScheme: 'light' })
-    await page.goto('/')
+    await page.goto('/catalog')
     await expect(catalogHeading(page)).toBeVisible()
 
     expect(squash(await customProperties(page, Object.keys(ELEVATION.light)))).toEqual(ELEVATION.light)
@@ -112,12 +112,14 @@ test.describe('Story 1.6 app shell (ATDD)', () => {
     await expect(catalogHeading(page)).toHaveCSS('font-family', /^system-ui/)
   })
 
-  test('[P0] AC-2 the top nav shows Skip to content, the wordmark and only Catalog, marked current', async ({ page }) => {
-    await page.goto('/')
+  test('[P0] AC-2 the top nav shows Skip to content, the wordmark and Home · Catalog · Backup, Catalog marked current', async ({ page }) => {
+    await page.goto('/catalog')
 
     const nav = page.getByRole('banner').getByRole('navigation')
+    // Story 3.1 put Home first; Stats and Card notes arrive later.
+    await expect(nav.getByRole('link')).toHaveText(['Home', 'Catalog', 'Backup'])
     await expect(nav.getByRole('link', { name: 'Catalog', exact: true })).toHaveAttribute('aria-current', 'page')
-    for (const later of ['Home', 'Stats', 'Card notes']) {
+    for (const later of ['Stats', 'Card notes']) {
       await expect(nav.getByRole('link', { name: later, exact: true })).toHaveCount(0)
     }
     await expect(page.getByRole('banner')).toContainText('bookvie')
@@ -133,7 +135,7 @@ test.describe('Story 1.6 app shell (ATDD)', () => {
 
   test('[P1] AC-2 the active nav item has a 2px accent bottom border', async ({ page }) => {
     await page.emulateMedia({ colorScheme: 'light' })
-    await page.goto('/')
+    await page.goto('/catalog')
     const catalog = page.getByRole('banner').getByRole('navigation').getByRole('link', { name: 'Catalog', exact: true })
     await expect(catalog).toHaveCSS('border-bottom', '2px solid rgb(85, 112, 89)')
     await expect(catalog).toHaveCSS('font-weight', '600')
@@ -141,7 +143,7 @@ test.describe('Story 1.6 app shell (ATDD)', () => {
 
   test('[P0] AC-3 the theme toggle switches instantly, follows the OS on System and is remembered', async ({ page }) => {
     await page.emulateMedia({ colorScheme: 'light' })
-    await page.goto('/')
+    await page.goto('/catalog')
     const theme = page.getByRole('group', { name: 'Theme' })
     const body = page.locator('body')
 
@@ -174,7 +176,7 @@ test.describe('Story 1.6 app shell (ATDD)', () => {
       Storage.prototype.setItem = refuse
     })
     await page.emulateMedia({ colorScheme: 'light' })
-    await page.goto('/')
+    await page.goto('/catalog')
     const theme = page.getByRole('group', { name: 'Theme' })
 
     await expect(theme.getByRole('button', { name: 'System', exact: true })).toHaveAttribute('aria-pressed', 'true')
@@ -184,7 +186,7 @@ test.describe('Story 1.6 app shell (ATDD)', () => {
   })
 
   test('[P1] AC-3 a junk stored theme falls back to System', async ({ page }) => {
-    await page.goto('/')
+    await page.goto('/catalog')
     await page.evaluate(() => localStorage.setItem('bookvie.theme', 'sepia'))
     await page.reload()
     const theme = page.getByRole('group', { name: 'Theme' })
@@ -195,7 +197,7 @@ test.describe('Story 1.6 app shell (ATDD)', () => {
 
   test('[P1] AC-10 forced colors keep the pressed theme option and the current nav item marked', async ({ page }) => {
     await page.emulateMedia({ forcedColors: 'active' })
-    await page.goto('/')
+    await page.goto('/catalog')
     const theme = page.getByRole('group', { name: 'Theme' })
     const borderColor = (locator: ReturnType<Page['locator']>) =>
       locator.evaluate((el) => getComputedStyle(el).borderBottomColor)
@@ -210,11 +212,16 @@ test.describe('Story 1.6 app shell (ATDD)', () => {
   })
 
   test('[P1] AC-4 each route has header, nav and main, one h1, its title, and focus on the h1 after navigating', async ({ page }) => {
-    await page.goto('/')
-    await expect(page).toHaveTitle('Catalog — bookvie')
-    await expect(page.getByRole('banner').getByRole('navigation')).toBeVisible()
-    await expect(page.getByRole('main')).toBeVisible()
-    await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1)
+    for (const [path, title] of [
+      ['/', 'Home — bookvie'],
+      ['/catalog', 'Catalog — bookvie'],
+    ] as const) {
+      await page.goto(path)
+      await expect(page).toHaveTitle(title)
+      await expect(page.getByRole('banner').getByRole('navigation')).toBeVisible()
+      await expect(page.getByRole('main')).toBeVisible()
+      await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1)
+    }
 
     await page.goto('/no/such/page')
     await expect(page).toHaveTitle('Page not found — bookvie')
@@ -230,7 +237,7 @@ test.describe('Story 1.6 app shell (ATDD)', () => {
   })
 
   test('[P1] AC-5 every page holds one status and one alert region', async ({ page }) => {
-    await page.goto('/')
+    await page.goto('/catalog')
     await expect(catalogHeading(page)).toBeVisible()
     await expect(page.getByRole('status')).toHaveCount(1)
     await expect(page.getByRole('alert')).toHaveCount(1)
@@ -238,7 +245,7 @@ test.describe('Story 1.6 app shell (ATDD)', () => {
 
   test('[P2] AC-9 button-primary, link and the focus ring match DESIGN.md', async ({ page }) => {
     await page.emulateMedia({ colorScheme: 'light' })
-    await page.goto('/')
+    await page.goto('/catalog')
     const newBook = page.getByRole('button', { name: 'New book' }).first()
 
     await expect(newBook).toHaveCSS('background-color', 'rgb(85, 112, 89)')
@@ -259,7 +266,7 @@ test.describe('Story 1.6 app shell (ATDD)', () => {
 
   test('[P1] AC-10 reduced motion turns every transition and animation off', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' })
-    await page.goto('/')
+    await page.goto('/catalog')
     await expect(catalogHeading(page)).toBeVisible()
 
     // A probe that asks for motion inline; the reduced-motion rules must win.
@@ -280,7 +287,7 @@ test.describe('Story 1.6 app shell (ATDD)', () => {
 
   test('[P2] AC-11 below 1024px the page scrolls horizontally instead of reflowing', async ({ page }) => {
     await page.setViewportSize({ width: 800, height: 700 })
-    await page.goto('/')
+    await page.goto('/catalog')
     await expect(catalogHeading(page)).toBeVisible()
 
     const width = await page.evaluate(() => document.documentElement.scrollWidth)
@@ -294,7 +301,7 @@ test.describe('Story 1.6 app shell (ATDD)', () => {
 test.describe('Story 1.6 app shell (automate)', () => {
   test('[P1] AC-3 Light holds when the OS prefers dark', async ({ page }) => {
     await page.emulateMedia({ colorScheme: 'dark' })
-    await page.goto('/')
+    await page.goto('/catalog')
     const body = page.locator('body')
     await expect(body).toHaveCSS('background-color', 'rgb(25, 27, 24)')
 
@@ -318,7 +325,7 @@ test.describe('Story 1.6 app shell (automate)', () => {
         }
       }).observe(document, { subtree: true, childList: true, attributes: true, attributeFilter: ['data-theme'] })
     })
-    await page.goto('/')
+    await page.goto('/catalog')
     await expect(catalogHeading(page)).toBeVisible()
 
     const order = await page.evaluate(() => (window as Window & { bookvieOrder?: string[] }).bookvieOrder)
@@ -326,7 +333,7 @@ test.describe('Story 1.6 app shell (automate)', () => {
   })
 
   test('[P2] AC-2 Skip to content stays off-screen until it takes focus', async ({ page }) => {
-    await page.goto('/')
+    await page.goto('/catalog')
     await expect(catalogHeading(page)).toBeVisible()
     const skip = page.getByRole('link', { name: 'Skip to content' })
 
@@ -339,7 +346,7 @@ test.describe('Story 1.6 app shell (automate)', () => {
   })
 
   test('[P2] AC-5 the live regions sit outside main, and status is polite', async ({ page }) => {
-    await page.goto('/')
+    await page.goto('/catalog')
     await expect(catalogHeading(page)).toBeVisible()
 
     // A later modal makes the page `inert`; regions inside `main` would fall silent.

@@ -53,7 +53,7 @@ test.describe('Story 1.9 Duplicate dialog (ATDD)', () => {
         NEUROMANCER,
       ],
     })
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     const panel = await openNewBook(page)
     await fillFields(panel, { ...DUNE, ISBN: DUNE_ISBN10 })
 
@@ -106,7 +106,7 @@ test.describe('Story 1.9 Duplicate dialog (ATDD)', () => {
     seededServer,
   }) => {
     const server = await seededServer({ books: [{ title: 'Dune', authors: ['Frank Herbert'] }, NEUROMANCER] })
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     const panel = await openNewBook(page)
     const typed = { ...DUNE, Subtitle: 'Book One', ISBN: DUNE_ISBN10, Tags: 'sci-fi' }
     await fillFields(panel, typed)
@@ -141,7 +141,7 @@ test.describe('Story 1.9 Duplicate dialog (ATDD)', () => {
     const sent = requestsTo(page, ADD_BOOK)
     // In List view, which Bookcase replaced as the default in Story 1.10.
     await page.addInitScript(() => window.localStorage.setItem('bookvie.catalogView', 'list'))
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     const panel = await openNewBook(page)
     await fillFields(panel, DUNE)
     await panel.getByRole('button', { name: 'Add book', exact: true }).click()
@@ -167,7 +167,7 @@ test.describe('Story 1.9 Duplicate dialog (ATDD)', () => {
     seededServer,
   }) => {
     const server = await seededServer({ books: [{ title: 'Dune', authors: ['Frank Herbert'] }, NEUROMANCER] })
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     const panel = await openNewBook(page)
     await fillFields(panel, DUNE)
     await panel.getByRole('button', { name: 'Add book', exact: true }).click()
@@ -193,7 +193,7 @@ test.describe('Story 1.9 Duplicate dialog (ATDD)', () => {
 
   test('[P1] AC-7 a duplicate refusal clears the field errors of an earlier refusal', async ({ page, seededServer }) => {
     const server = await seededServer({ books: [{ title: 'Dune', authors: ['Frank Herbert'] }, NEUROMANCER] })
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     const panel = await openNewBook(page)
     const { Pages, ...withoutPages } = DUNE
     await fillFields(panel, withoutPages)
@@ -245,7 +245,7 @@ test.describe('Story 1.9 Duplicate dialog (ATDD)', () => {
   for (const { name, books, typed, description } of descriptions) {
     test(`[P2] AC-6 description: ${name}`, async ({ page, seededServer }) => {
       const server = await seededServer({ books: [...books, NEUROMANCER] })
-      await page.goto(`${server.url}/`)
+      await page.goto(`${server.url}/catalog`)
       const panel = await openNewBook(page)
       await fillFields(panel, typed)
       await panel.getByRole('button', { name: 'Add book', exact: true }).click()
@@ -269,7 +269,7 @@ test.describe('Story 1.9 Duplicate dialog (ATDD)', () => {
             body: JSON.stringify({ error: { kind: 'couldnt_save', code: 'couldnt_save', message: COULDNT_SAVE } }),
           }),
     )
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     const panel = await openNewBook(page)
     await fillFields(panel, DUNE)
     await panel.getByRole('button', { name: 'Add book', exact: true }).click()
@@ -309,7 +309,7 @@ test.describe('Story 1.9 Duplicate dialog (automate)', () => {
       await route.continue()
     })
     const sent = requestsTo(page, ADD_BOOK)
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     const panel = await openNewBook(page)
     await fillFields(panel, DUNE)
     await panel.getByRole('button', { name: 'Add book', exact: true }).click()
@@ -339,7 +339,7 @@ test.describe('Story 1.9 Duplicate dialog (automate)', () => {
       books: [{ title: 'Dune', authors: ['Frank Herbert'], isbn: DUNE_ISBN13 }, NEUROMANCER],
     })
     const sent = requestsTo(page, ADD_BOOK)
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     const panel = await openNewBook(page)
     await fillFields(panel, { ...DUNE, ISBN: DUNE_ISBN10 })
     const addBook = panel.getByRole('button', { name: 'Add book', exact: true })
@@ -368,7 +368,7 @@ test.describe('Story 1.9 Duplicate dialog (automate)', () => {
     seededServer,
   }) => {
     const server = await seededServer({ books: [{ title: 'Dune', authors: ['Frank Herbert'] }, NEUROMANCER] })
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     const panel = await openNewBook(page)
     await fillFields(panel, DUNE)
     await panel.getByRole('button', { name: 'Add book', exact: true }).click()
@@ -398,7 +398,7 @@ test.describe('Story 1.9 Duplicate dialog (automate)', () => {
       ['dark', INK_DARK],
     ] as const) {
       await page.emulateMedia({ colorScheme })
-      await page.goto(`${server.url}/`)
+      await page.goto(`${server.url}/catalog`)
       const panel = await openNewBook(page)
       await fillFields(panel, DUNE)
       await panel.getByRole('button', { name: 'Add book', exact: true }).click()

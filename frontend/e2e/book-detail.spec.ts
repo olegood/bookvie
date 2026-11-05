@@ -33,7 +33,7 @@ function titleLink(page: Page, title: string): Locator {
 
 /** Catalog in List view, then the Book's title link: its Book detail. */
 async function openBook(page: Page, server: Server, title: string): Promise<void> {
-  await page.goto(`${server.url}/`)
+  await page.goto(`${server.url}/catalog`)
   await titleLink(page, title).click()
 }
 
@@ -67,7 +67,7 @@ test.describe('Story 1.11 Book detail and Edit book (ATDD)', () => {
         { title: 'Neuromancer', authors: ['William Gibson'], pages: 271, edition: 3 },
       ],
     })
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
 
     // The title in the List view is a link now.
     await expect(titleLink(page, 'Dune')).toBeVisible()
@@ -313,7 +313,7 @@ test.describe('Story 1.11 Book detail and Edit book (ATDD)', () => {
     ])
 
     // Never read: "Not read yet."
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     await titleLink(page, 'Neuromancer').click()
     await expect(page.getByRole('region', { name: 'Readings', exact: true })).toHaveText(/Not read yet\./)
   })
@@ -442,7 +442,7 @@ test.describe('Story 1.11 Book detail and Edit book (ATDD)', () => {
     await panel.getByRole('button', { name: 'Cancel', exact: true }).click()
 
     // The Bookcase view: the spine reads as finished, in Clay, and the meter counts it.
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     await viewToggle(page).getByRole('button', { name: 'Bookcase', exact: true }).click()
     const dune = spine(page, 'Dune by Frank Herbert, finished')
     await expect(dune).toBeVisible()

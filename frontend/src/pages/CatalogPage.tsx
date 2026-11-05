@@ -18,7 +18,7 @@ import NewBookPanel from './NewBookPanel.tsx'
 import SearchTitles from './SearchTitles.tsx'
 import styles from './CatalogPage.module.css'
 
-const EMPTY_SHELF = 'Your shelf is empty. Add your first book.'
+export const EMPTY_SHELF = 'Your shelf is empty. Add your first book.'
 const EMPTY_PLANKS = 3
 // The count is announced once typing pauses.
 const SEARCH_PAUSE_MS = 500
@@ -27,7 +27,28 @@ const HIGHLIGHT_MS = 2000
 
 const NO_BOOKS: readonly ShelfBook[] = []
 
-function EmptyShelf() {
+/** Router state that opens the New book panel on arrival (Home's empty state sends it). */
+export type NewBookState = { newBook: true }
+
+function wantsNewBook(state: unknown): boolean {
+  return typeof state === 'object' && state !== null && (state as Partial<NewBookState>).newBook === true
+}
+
+/**
+ * Drops `newBook` from this history entry without a navigation (which would
+ * move focus to the `h1`), so Back, Forward or a reload don't reopen the panel.
+ * React Router keeps its state under `usr`.
+ */
+function clearNewBookState(): void {
+  const entry: unknown = window.history.state
+  if (typeof entry !== 'object' || entry === null) return
+  const { usr, ...rest } = entry as { usr?: unknown }
+  if (!wantsNewBook(usr)) return
+  window.history.replaceState({ ...rest, usr: null }, '')
+}
+
+/** The bare planks and "Your shelf is empty. Add your first book." (Catalog and Home). */
+export function EmptyShelf() {
   return (
     <section className={shelf.card} aria-label="Bookcase">
       <div className={shelf.emptyRows}>
@@ -53,7 +74,9 @@ export default function CatalogPage() {
   const books = view.status === 'ready' ? view.data.books : NO_BOOKS
   const sorted = useMemo(() => sortBooks(books), [books])
 
-  const [panelOpen, setPanelOpen] = useState(false)
+  const location = useLocation()
+  // Read once: arriving from Home's empty state opens the panel.
+  const [panelOpen, setPanelOpen] = useState(() => wantsNewBook(location.state))
   const [query, setQuery] = useState('')
   const [catalogView, setCatalogView] = useState<CatalogViewChoice>(readCatalogView)
   const [added, setAdded] = useState<{ id: string; title: string } | null>(null)
@@ -62,7 +85,6 @@ export default function CatalogPage() {
   const focusTargets = useRef(new Map<string, HTMLElement>())
   const searchRef = useRef<HTMLInputElement | null>(null)
   const newBookRef = useRef<HTMLButtonElement | null>(null)
-  const location = useLocation()
   const deleted = deletedTitle(location.state)
   // The location key whose delete hand-off this mount has handled; across
   // remounts and reloads, sessionStorage remembers (deleteHandled).
@@ -88,6 +110,8 @@ export default function CatalogPage() {
   }, [failed])
 
   useEffect(() => cancelCount, [])
+
+  useEffect(clearNewBookState, [])
 
   // After an add: the refetched view has rendered, so scroll the new spine
   // or row into view, focus it, ring it, and only then announce.

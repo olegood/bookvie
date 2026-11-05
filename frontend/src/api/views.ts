@@ -7,6 +7,8 @@ import type { components } from './generated/schema.d.ts'
 
 type Schemas = components['schemas']
 export type HomeView = Schemas['HomeView']
+export type HomeMainBook = Schemas['HomeMainBook']
+export type CurrentReading = Schemas['CurrentReading']
 export type CatalogView = Schemas['CatalogView']
 export type ShelfBook = Schemas['ShelfBook']
 export type LibraryMeter = Schemas['LibraryMeter']

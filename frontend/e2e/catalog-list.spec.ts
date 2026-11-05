@@ -30,7 +30,7 @@ test.describe('Story 1.8 List view and Search titles (ATDD)', () => {
         { title: 'A Wizard of Earthsea', authors: ['Ursula K. Le Guin'], pages: 183 },
       ],
     })
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     const table = page.getByRole('table')
 
     await expect(table.getByRole('columnheader')).toHaveText(['Title', 'Author', 'Pages', 'Status', 'Date added'])
@@ -63,7 +63,7 @@ test.describe('Story 1.8 List view and Search titles (ATDD)', () => {
         { title: 'Nana', authors: ['Émile Zola'], pages: 464, createdAt: '2026-03-14T23:30:00+00:00' },
       ],
     })
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
 
     const cells = (title: string) =>
       bookRows(page).filter({ has: page.getByText(title, { exact: true }) }).getByRole('cell')
@@ -84,7 +84,7 @@ test.describe('Story 1.8 List view and Search titles (ATDD)', () => {
         { title: 'Neuromancer' },
       ],
     })
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     const search = page.getByRole('searchbox', { name: 'Search titles', exact: true })
     await expect(bookRows(page)).toHaveCount(5)
     const status = page.getByRole('status')
@@ -132,7 +132,7 @@ test.describe('Story 1.8 List view and Search titles (ATDD)', () => {
     seededServer,
   }) => {
     const server = await seededServer({ books: [{ title: 'Dune Messiah' }, { title: 'Dune' }] })
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
 
     await page.getByRole('searchbox', { name: 'Search titles', exact: true }).fill('Dune')
     await expect(bookRows(page).filter({ has: page.getByText('Dune', { exact: true }) })).toHaveCount(1)

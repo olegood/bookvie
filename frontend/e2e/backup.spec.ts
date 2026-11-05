@@ -63,10 +63,10 @@ function exportButton(page: Page, name = EXPORT_ALL) {
 
 test.describe('Story 2.1 Export all data with one click (ATDD)', () => {
   test('[P1] AC-1 the top nav ends with Backup, which opens the Backup page with its h1', async ({ page }) => {
-    await page.goto('/')
+    await page.goto('/catalog')
     const nav = page.getByRole('banner').getByRole('navigation')
 
-    await expect(nav.getByRole('link')).toHaveText(['Catalog', 'Backup'])
+    await expect(nav.getByRole('link')).toHaveText(['Home', 'Catalog', 'Backup'])
 
     const backup = nav.getByRole('link', { name: 'Backup', exact: true })
     await backup.click()

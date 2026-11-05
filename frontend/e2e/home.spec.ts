@@ -22,6 +22,8 @@ const DATE_HEADER = 'Wednesday, 28 October'
 // Any "Weekday, D Month" line, for the tests that run on the real clock.
 const DATE_HEADER_PATTERN = /^(Mon|Tues|Wednes|Thurs|Fri|Satur|Sun)day, \d{1,2} [A-Z][a-z]+$/
 const EMPTY_SHELF = 'Your shelf is empty. Add your first book.'
+const HOME_VIEW = '**/api/views/home'
+const COULDNT_LOAD = "Couldn't load. Is bookvie still running?"
 // --color-ink-tertiary in the light theme (tokens.css): muted, never a warning.
 const INK_TERTIARY = rgbOf('#666961')
 const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']
@@ -65,13 +67,20 @@ async function serverAtFakeToday(
   return startSeededServer(test.info(), name, partial, files, { fakeToday: FAKE_TODAY })
 }
 
+/** The gauge's fill spans `fraction` of its track (the server's percent), within 1px. */
+async function expectFill(gauge: Locator, fraction: number): Promise<void> {
+  const track = (await gauge.boundingBox())!
+  const fill = (await gauge.locator('span').boundingBox())!
+  expect(Math.abs(fill.width - track.width * fraction)).toBeLessThanOrEqual(1)
+}
+
 async function stopAndRemove(server: Server): Promise<void> {
   expect(await server.stop()).toBe('')
   rmSync(server.dataDir, { recursive: true, force: true })
 }
 
 test.describe('Story 3.1 See my Main book on Home (ATDD)', () => {
-  test.skip('[P0] AC-1 Home is the first nav item and / opens Home, the launch page', async ({ page, seededServer }) => {
+  test('[P0] AC-1 Home is the first nav item and / opens Home, the launch page', async ({ page, seededServer }) => {
     const server = await seededServer({ books: [DUNE] })
     await page.goto(`${server.url}/`)
 
@@ -94,7 +103,7 @@ test.describe('Story 3.1 See my Main book on Home (ATDD)', () => {
     await expect(page.getByRole('heading', { level: 1, name: 'Home', exact: true })).toBeFocused()
   })
 
-  test.skip('[P0] AC-2 an empty library opens Home to the date header and the empty shelf, whose New book opens the panel in Catalog', async ({
+  test('[P0] AC-2 an empty library opens Home to the date header and the empty shelf, whose New book opens the panel in Catalog', async ({
     page,
   }) => {
     await page.emulateMedia({ colorScheme: 'light' })
@@ -119,7 +128,7 @@ test.describe('Story 3.1 See my Main book on Home (ATDD)', () => {
     }
   })
 
-  test.skip('[P1] AC-3 with no Main book, Last export (or No export yet) sits muted at the right end of the header line', async ({
+  test('[P1] AC-3 with no Main book, Last export (or No export yet) sits muted at the right end of the header line', async ({
     page,
   }) => {
     await page.emulateMedia({ colorScheme: 'light' })
@@ -154,7 +163,7 @@ test.describe('Story 3.1 See my Main book on Home (ATDD)', () => {
     }
   })
 
-  test.skip('[P1] AC-4 axe finds no WCAG 2.2 AA violations on Home, empty and with a Main book, in both themes', async ({
+  test('[P1] AC-4 axe finds no WCAG 2.2 AA violations on Home, empty and with a Main book, in both themes', async ({
     page,
     seededServer,
   }) => {
@@ -174,7 +183,7 @@ test.describe('Story 3.1 See my Main book on Home (ATDD)', () => {
     }
   })
 
-  test.skip('[P0] AC-5 the Main book card shows the cover, MAIN BOOK, the serif title linking to Book detail, the author and the edition', async ({
+  test('[P0] AC-5 the Main book card shows the cover, MAIN BOOK, the serif title linking to Book detail, the author and the edition', async ({
     page,
   }) => {
     await page.emulateMedia({ colorScheme: 'light' })
@@ -213,7 +222,7 @@ test.describe('Story 3.1 See my Main book on Home (ATDD)', () => {
     }
   })
 
-  test.skip('[P1] AC-7 a Main book at page 0 shows a 0% gauge, p.0 of 330 and the ticks 0 · 165 · 330', async ({
+  test('[P1] AC-7 a Main book at page 0 shows a 0% gauge, p.0 of 330 and the ticks 0 · 165 · 330', async ({
     page,
     seededServer,
   }) => {
@@ -236,7 +245,7 @@ test.describe('Story 3.1 See my Main book on Home (ATDD)', () => {
     await expect(card).not.toContainText(/edition/i)
   })
 
-  test.skip('[P1] AC-8 with Books but no Main book, the card frame says No Main book. and links to the Catalog', async ({
+  test('[P1] AC-8 with Books but no Main book, the card frame says No Main book. and links to the Catalog', async ({
     page,
     seededServer,
   }) => {
@@ -255,7 +264,7 @@ test.describe('Story 3.1 See my Main book on Home (ATDD)', () => {
     await expect(page.getByRole('heading', { level: 1, name: 'Catalog', exact: true })).toBeFocused()
   })
 
-  test.skip('[P1] AC-9 Book detail shows the Current reading block, and the spines name Main book, 64% and waiting for you, page 120', async ({
+  test('[P1] AC-9 Book detail shows the Current reading block, and the spines name Main book, 64% and waiting for you, page 120', async ({
     page,
     seededServer,
   }) => {
@@ -288,5 +297,147 @@ test.describe('Story 3.1 See my Main book on Home (ATDD)', () => {
     await page.goto(`${server.url}/catalog`)
     await expect(spine(page, 'The Left Hand of Darkness by Ursula K. Le Guin, Main book, 64%')).toBeVisible()
     await expect(spine(page, 'Dune by Frank Herbert, waiting for you, page 120')).toBeVisible()
+  })
+})
+
+// Green-phase follow-ups (ATDD checklist): the gauge at other pages, the half
+// tick, the no-cover placeholder on the card, and Last export's place.
+test.describe('Story 3.1 See my Main book on Home (automate)', () => {
+  test('[P1] AC-6 the gauge at 212 of 330 reads the server 64%, p.212 of 330 and the ticks 0 · 165 · 330', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer(mainAt(212))
+    await page.goto(`${server.url}/`)
+    const card = mainBookCard(page)
+    const gauge = card.getByRole('progressbar')
+
+    await expect(gauge).toHaveAttribute('aria-valuetext', '64%, page 212 of 330')
+    await expect(gauge).toHaveAttribute('aria-valuenow', '212')
+    await expect(card.getByText('64%', { exact: true })).toBeVisible()
+    await expect(card.getByText('p.212 of 330', { exact: true })).toBeVisible()
+    for (const tick of ['0', '165', '330']) {
+      await expect(card.getByText(tick, { exact: true })).toBeVisible()
+    }
+    // Edition 1 (the default) shows no edition text; AC-5 pins "Edition 2".
+    await expect(card).not.toContainText('Edition')
+    await expectFill(gauge, 0.64)
+  })
+
+  test('[P1] AC-6 329 of 330 reads 99% and 330 of 330 reads 100%: no client rounding', async ({
+    page,
+    seededServer,
+  }) => {
+    for (const [page_, copy, fill] of [
+      [329, '99%, page 329 of 330', 0.99],
+      [330, '100%, page 330 of 330', 1],
+    ] as const) {
+      const server = await seededServer(mainAt(page_))
+      await page.goto(`${server.url}/`)
+      const gauge = mainBookCard(page).getByRole('progressbar')
+      await expect(gauge).toHaveAttribute('aria-valuetext', copy)
+      await expectFill(gauge, fill)
+    }
+  })
+
+  test('[P2] AC-6 the half tick is dropped under 4 pages and rounded otherwise', async ({ page, seededServer }) => {
+    for (const [pages, ticks] of [
+      [3, ['0', '3']],
+      [4, ['0', '2', '4']],
+      [331, ['0', '166', '331']],
+    ] as const) {
+      const server = await seededServer(mainAt(1, { book: { pages } }))
+      await page.goto(`${server.url}/`)
+      const gauge = mainBookCard(page).getByRole('progressbar')
+      await expect(gauge).toHaveAttribute('aria-valuemax', String(pages))
+      await expect(gauge.locator('xpath=following-sibling::*[1]').locator('span')).toHaveText([...ticks])
+    }
+  })
+
+  test('[P2] AC-5 a Main book without a cover shows the no-cover placeholder, not focusable', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer(mainAt(212))
+    await page.goto(`${server.url}/`)
+    const placeholder = mainBookCard(page).getByRole('img', { name: 'No cover', exact: true })
+
+    await expect(placeholder).toBeVisible()
+    expect(await placeholder.boundingBox()).toMatchObject({ width: 200, height: 300 })
+    await expect(placeholder).not.toHaveAttribute('tabindex')
+  })
+
+  test('[P2] AC-3 with a Main book, Last export is not on the header line', async ({ page, seededServer }) => {
+    const server = await seededServer(mainAt(212))
+    await page.goto(`${server.url}/`)
+    const date = page.getByRole('main').getByText(DATE_HEADER_PATTERN)
+    await expect(date).toBeVisible()
+    // The header line only: Story 3.4's re-entry line carries Last export elsewhere in main.
+    await expect(date.locator('..')).not.toContainText(/Last export|No export yet/)
+  })
+
+  test('[P1] a failed first load of Home shows Couldn\'t load with Try again, which refetches', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer(mainAt(212))
+    let down = true
+    await page.route(HOME_VIEW, (route) => (down ? route.abort('connectionrefused') : route.continue()))
+
+    await page.goto(`${server.url}/`)
+    await expect(page.getByRole('alert')).toHaveText(COULDNT_LOAD)
+    await expect(page.getByRole('main').getByText(COULDNT_LOAD)).toBeVisible()
+    await expect(page.getByRole('main').getByRole('heading', { level: 1, name: 'Home', exact: true })).toBeAttached()
+
+    down = false
+    // Keyboard path: the button unmounts while loading, so focus is parked on main.
+    await page.getByRole('button', { name: 'Try again' }).focus()
+    await page.keyboard.press('Enter')
+    await expect(mainBookCard(page).getByRole('progressbar')).toBeVisible()
+    await expect(page.getByText(COULDNT_LOAD)).toHaveCount(0)
+    await expect(page.getByRole('main')).toBeFocused()
+  })
+
+  test('[P1] AC-2 the New book hand-off from Home opens the panel once: not after a reload, Back or Forward', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: [] })
+    await page.goto(`${server.url}/`)
+    await page.getByRole('main').getByRole('button', { name: 'New book', exact: true }).click()
+    await expect(page).toHaveURL(`${server.url}/catalog`)
+    await expect(newBookPanel(page)).toBeVisible()
+
+    await newBookPanel(page).getByRole('button', { name: 'Cancel', exact: true }).click()
+    await expect(newBookPanel(page)).toHaveCount(0)
+    await page.reload()
+    await expect(page.getByRole('heading', { level: 1, name: 'Catalog', exact: true })).toBeAttached()
+    await expect(newBookPanel(page)).toHaveCount(0)
+
+    await page.goBack()
+    await expect(page).toHaveURL(`${server.url}/`)
+    await page.goForward()
+    await expect(page).toHaveURL(`${server.url}/catalog`)
+    await expect(page.getByRole('heading', { level: 1, name: 'Catalog', exact: true })).toBeAttached()
+    await expect(newBookPanel(page)).toHaveCount(0)
+  })
+
+  test('[P1] the date header moves to the next day when the tab regains focus or visibility after midnight', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: [] })
+    await page.clock.setFixedTime(new Date('2026-10-28T23:59:00+01:00'))
+    await page.goto(`${server.url}/`)
+    const main = page.getByRole('main')
+    await expect(main.getByText(DATE_HEADER, { exact: true })).toBeVisible()
+
+    await page.clock.setFixedTime(new Date('2026-10-29T00:01:00+01:00'))
+    await page.evaluate(() => window.dispatchEvent(new Event('focus')))
+    await expect(main.getByText('Thursday, 29 October', { exact: true })).toBeVisible()
+
+    await page.clock.setFixedTime(new Date('2026-10-30T00:01:00+01:00'))
+    await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')))
+    await expect(main.getByText('Friday, 30 October', { exact: true })).toBeVisible()
   })
 })

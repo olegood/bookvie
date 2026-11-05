@@ -124,10 +124,12 @@ test.describe('Story 2.2 Restore my library from an export (ATDD)', () => {
       await pickFile(page, archive)
       await confirmDialog(page).getByRole('button', { name: REPLACE_ALL, exact: true }).click()
       await expect(page.getByRole('status')).toHaveText(RESTORED)
+      // Restore lands on Home, the launch page, with its h1 focused.
       await expect(page).toHaveURL(`${target.url}/`)
-      await expect(page.getByRole('heading', { level: 1 })).toBeFocused()
+      await expect(page.getByRole('heading', { level: 1, name: 'Home', exact: true })).toBeFocused()
       expect(await catalogTitles(page, target)).toEqual(['Dune', 'Neuromancer'])
-      await expect(page.getByRole('main')).toContainText('Neuromancer')
+      // The restored Main book is on Home's card.
+      await expect(page.getByRole('main').getByRole('region', { name: 'Main book', exact: true })).toContainText('Dune')
       await expect(page.getByRole('main')).not.toContainText(LEFT_HAND.title)
       await expect(page.getByRole('alert')).toHaveText('')
 

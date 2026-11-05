@@ -743,6 +743,7 @@ def test_book_view_returns_the_book_and_its_latest_finish(
         "latestFinishDate": "2024-02-10",
         "role": None,
         "waitingPage": None,
+        "currentReading": None,
     }
     assert sorted(readings, key=lambda r: r["id"]) == sorted(
         [

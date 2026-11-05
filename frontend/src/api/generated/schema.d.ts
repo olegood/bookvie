@@ -340,6 +340,7 @@ export interface components {
             role: ("main" | "upNext" | "waiting") | null;
             /** Waitingpage */
             waitingPage: number | null;
+            currentReading: components["schemas"]["CurrentReading"] | null;
         };
         /** BookReading */
         BookReading: {
@@ -357,6 +358,25 @@ export interface components {
             books: components["schemas"]["ShelfBook"][];
             /** Tags */
             tags: string[];
+        };
+        /**
+         * CurrentReading
+         * @description The Main book's or a paused Book's unfinished Reading (Book detail's Current reading).
+         */
+        CurrentReading: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "main" | "waiting";
+            /** Startdate */
+            startDate: string | null;
+            /** Currentpage */
+            currentPage: number;
+            /** Percent */
+            percent: number;
+            /** Purpose */
+            purpose: string | null;
         };
         /**
          * DuplicateMatch
@@ -402,11 +422,38 @@ export interface components {
             /** Message */
             message: string;
         };
+        /**
+         * HomeMainBook
+         * @description The Main book as Home's Main book card shows it.
+         */
+        HomeMainBook: {
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
+            /** Authors */
+            authors: string[];
+            /** Edition */
+            edition: number;
+            /** Coverfile */
+            coverFile: string | null;
+            /** Hascover */
+            hasCover: boolean;
+            /** Pages */
+            pages: number;
+            /** Currentpage */
+            currentPage: number;
+            /** Percent */
+            percent: number;
+        };
         /** HomeView */
         HomeView: {
             meter: components["schemas"]["LibraryMeter"];
             /** Books */
             books: components["schemas"]["ShelfBook"][];
+            mainBook: components["schemas"]["HomeMainBook"] | null;
+            /** Lastexportat */
+            lastExportAt: string | null;
         };
         /**
          * LibraryMeter
@@ -465,6 +512,14 @@ export interface components {
             hasCover: boolean;
             /** Finished */
             finished: boolean;
+            /** Role */
+            role: ("main" | "upNext" | "waiting") | null;
+            /** Currentpage */
+            currentPage: number | null;
+            /** Percent */
+            percent: number | null;
+            /** Waitingpage */
+            waitingPage: number | null;
         };
     };
     responses: never;

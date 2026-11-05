@@ -1,0 +1,69 @@
+/* DESIGN.md → Gauge: figure and page line, a 14px track, ticks below. */
+.gauge {
+  margin-top: 28px;
+}
+
+.head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.figure {
+  margin: 0;
+  font-family: var(--font-gauge-figure-family);
+  font-size: var(--font-gauge-figure-size);
+  font-weight: var(--font-gauge-figure-weight);
+  line-height: var(--font-gauge-figure-line-height);
+  letter-spacing: var(--font-gauge-figure-letter-spacing);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-ink);
+}
+
+.unit {
+  font-size: 20px;
+  color: var(--color-ink-tertiary);
+}
+
+.page {
+  margin: 0;
+  font-family: var(--font-body-family);
+  font-size: var(--font-body-size);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-ink-secondary);
+}
+
+.track {
+  height: 14px;
+  overflow: hidden;
+  border-radius: 7px;
+  background: var(--color-accent-soft);
+}
+
+.fill {
+  display: block;
+  height: 100%;
+  border-radius: 7px;
+  background: var(--color-accent);
+}
+
+.ticks {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+  font-family: var(--font-meta-family);
+  font-size: var(--font-meta-size);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-ink-tertiary);
+}
+
+@media (forced-colors: active) {
+  .track {
+    border: 1px solid CanvasText;
+  }
+
+  .fill {
+    background: Highlight;
+  }
+}

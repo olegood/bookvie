@@ -41,7 +41,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-5-speak-one-api-contract.md`
   summary: Cover `useHomeView`/`useCatalogView` with a test that each hook queries `['view', <its noun>]` and fetches `/api/views/<its noun>`.
   evidence: No test calls either hook, and `HomeView`/`CatalogView` are structurally identical, so swapping them passes `tsc` and every test. No page uses them yet; Story 1.6 (first consumer) should pin it with its page or e2e test.
-  resolved: partly, Story 1.6 (catalog-empty.spec.ts AC-6 pins GET /api/views/catalog); query keys and useHomeView remain for Story 3.1.
+  resolved: Story 1.6 (catalog-empty.spec.ts AC-6 pins GET /api/views/catalog) and Story 3.1 (`api/views.test.ts` "the home view" pins `['view', 'home']` and `GET /api/views/home`; HomePage is useHomeView's first consumer, and `HomeView` now differs from `CatalogView` by `mainBook` and `lastExportAt`).
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-6-open-bookvie-to-an-empty-shelf.md`
   summary: Give the router a generic error element so a render crash isn't shown as "Page not found".
   evidence: The layout route's `errorElement` in `frontend/src/main.tsx` renders `NotFoundPage` for any thrown error, including an exception inside `CatalogPage`; the pre-1.6 router did the same on `/`. Distinguish `isRouteErrorResponse` 404s from other errors.
@@ -231,3 +231,12 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-reconcile-architecture-spine-with-epic-2.md`
   summary: `epics.md` Story 2.3 AC-3 still says "an upload over 1 GB, or more than 1 GB extracted" and "an entry other than `library.json` or `covers/<name>`", where the spine now says 1 GiB and allows the `covers/` directory entry.
   evidence: Blind Hunter finding on this spec. `epics.md` is the planning record of the requirement and was left out of the Epic 1 reconcile too; edit it only if planning docs are meant to track as-built detail.
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-1-see-my-main-book-on-home.md`
+  summary: Add `domain/progress` (percent, current_reading) to the architecture spine's Structural Seed `domain/` listing.
+  evidence: Story 3.1 added `backend/bookvie/domain/progress.py`; the seed still lists "model, invariants, book_fields, duplicates, cover_color, clock; reading_status and pace planned" (spine check SC2).
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-1-see-my-main-book-on-home.md`
+  summary: Name gauge tick placement (0 · Math.round(pages/2) · total, half dropped under 4 pages) in AD-6's list of client presentation arithmetic.
+  evidence: `frontend/src/lib/gauge.ts` gaugeTicks computes it on the client as the 3.1 I/O matrix specifies; AD-6's list does not mention it (spine check SC3).
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-1-see-my-main-book-on-home.md`
+  summary: Record in AD-4/AD-15 and the FR-22 map row that the home view also reads `local-state.json` ("Last export") from disk.
+  evidence: `views.home_for` calls `read_last_export(store.data_dir)` (story 3.1); the spine names only `views/backup` (spine check SC4).

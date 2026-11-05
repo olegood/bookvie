@@ -11,7 +11,7 @@ const TITLE = 'Something went wrong'
 function Body() {
   return (
     <p className={styles.body}>
-      Reload the page to try again. <a href="/">Back to the catalog</a>
+      Reload the page to try again. <a href="/catalog">Back to the catalog</a>
     </p>
   )
 }

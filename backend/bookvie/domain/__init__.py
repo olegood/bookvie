@@ -4,6 +4,7 @@ from .clock import Clock, FakeClock, SystemClock
 from .cover_color import spine_color_from_pixels
 from .invariants import InvariantViolation, check_invariants
 from .model import Book, CardNote, Library, Reading
+from .progress import current_reading, percent
 
 __all__ = [
     "Book",
@@ -15,5 +16,7 @@ __all__ = [
     "Reading",
     "SystemClock",
     "check_invariants",
+    "current_reading",
+    "percent",
     "spine_color_from_pixels",
 ]

@@ -10,13 +10,9 @@ server as ``floor(page * 100 / pages)``, so it reads 100 only at the last page.
 
 from pathlib import Path
 
-import pytest
-
 from bookvie.views import home
 from tests.builder import LibraryBuilder
 from tests.helpers import api_client
-
-RED = "ATDD red phase: Story 3.1 not implemented yet"
 
 
 def _main_at(page: int, pages: int) -> LibraryBuilder:
@@ -29,7 +25,6 @@ def _main_at(page: int, pages: int) -> LibraryBuilder:
     return builder
 
 
-@pytest.mark.skip(reason=RED)
 def test_ac6_p0_the_home_view_supplies_the_main_book_percentage_floored_on_the_server(
     tmp_path: Path,
 ) -> None:

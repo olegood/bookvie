@@ -16,7 +16,7 @@ import PageHeading from '../components/PageHeading.tsx'
 import { announce, clearAnnouncements } from '../lib/announce.ts'
 import { COULDNT_LOAD } from '../lib/copy.ts'
 import { usePageTitle } from '../lib/page.ts'
-import { relativeDay, useNow } from '../lib/relativeDay.ts'
+import { lastExportLine, useNow } from '../lib/relativeDay.ts'
 import styles from './BackupPage.module.css'
 
 // DESIGN.md → Busy button: only an export or restore slower than this shows "Exporting…" / "Restoring…".
@@ -31,12 +31,6 @@ const CONFIRM_HEADING = 'Replace all data with this file?'
 const CONFIRM_LINES = ['Your current books, readings and card notes will be replaced.'] as const
 const REPLACE_ALL = 'Replace all data'
 const RESTORED = 'Restored.'
-const NO_EXPORT_YET = 'No export yet'
-
-function lastExportLine(lastExportAt: string | null, now: Date): string {
-  if (lastExportAt === null) return NO_EXPORT_YET
-  return `Last export: ${relativeDay(new Date(lastExportAt), now)}`
-}
 
 export default function BackupPage() {
   usePageTitle('Backup')
@@ -157,7 +151,7 @@ export default function BackupPage() {
     restoring.current = false
     setRestoreBusy(false)
     if (result.kind === 'ok') {
-      // The launch page's h1 takes focus as it mounts; announce after that.
+      // Home, the launch page: its h1 takes focus as it mounts; announce after that.
       await navigate('/')
       announce('status', RESTORED)
       return

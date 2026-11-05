@@ -22,7 +22,7 @@ test.describe('Story 1.6 Catalog states (ATDD)', () => {
     })
     const viewRequested = page.waitForRequest(CATALOG_VIEW)
 
-    await page.goto('/')
+    await page.goto('/catalog')
     await viewRequested
     await expect(page.getByRole('banner').getByRole('navigation')).toBeVisible()
     await expect(page.getByRole('main')).toBeEmpty()
@@ -38,7 +38,7 @@ test.describe('Story 1.6 Catalog states (ATDD)', () => {
     let down = true
     await page.route(CATALOG_VIEW, (route) => (down ? route.abort('connectionrefused') : route.continue()))
 
-    await page.goto('/')
+    await page.goto('/catalog')
     await expect(page.getByRole('alert')).toHaveText(COULDNT_LOAD)
     await expect(page.getByRole('main').getByText(COULDNT_LOAD)).toBeVisible()
     await expect(page.getByRole('banner').getByRole('navigation')).toBeVisible()
@@ -54,7 +54,7 @@ test.describe('Story 1.6 Catalog states (ATDD)', () => {
   })
 
   test('[P1] AC-7 a failed background refetch keeps the last data and shows no message', async ({ page }) => {
-    await page.goto('/')
+    await page.goto('/catalog')
     const newBook = page.getByRole('button', { name: 'New book' }).first()
     await expect(newBook).toBeVisible()
 
@@ -75,7 +75,7 @@ test.describe('Story 1.6 Catalog states (ATDD)', () => {
     seedLibrary(dataDir, { books: [] })
     const server = await startServer(dataDir, { port: await freePort() })
     try {
-      await page.goto(`${server.url}/`)
+      await page.goto(`${server.url}/catalog`)
       const main = page.getByRole('main')
 
       await expect(main.getByText(EMPTY_SHELF)).toBeVisible()
@@ -97,7 +97,7 @@ test.describe('Story 1.6 Catalog states (ATDD)', () => {
     seedLibrary(dataDir, { books: [{ title: 'Dune' }] })
     const server = await startServer(dataDir, { port: await freePort() })
     try {
-      await page.goto(`${server.url}/`)
+      await page.goto(`${server.url}/catalog`)
 
       await expect(page.getByRole('heading', { level: 1, name: 'Catalog' })).toBeVisible()
       await expect(page.getByRole('main').getByRole('button', { name: 'New book' })).toBeVisible()
@@ -111,7 +111,7 @@ test.describe('Story 1.6 Catalog states (ATDD)', () => {
   test('[P2] AC-13 axe finds no WCAG 2.2 AA violations on Catalog in either theme', async ({ page }) => {
     for (const colorScheme of ['light', 'dark'] as const) {
       await page.emulateMedia({ colorScheme })
-      await page.goto('/')
+      await page.goto('/catalog')
       await expect(page.getByRole('heading', { level: 1, name: 'Catalog' })).toBeVisible()
 
       const { violations } = await new AxeBuilder({ page })
@@ -125,7 +125,7 @@ test.describe('Story 1.6 Catalog states (ATDD)', () => {
 test.describe('Story 1.6 Catalog states (automate)', () => {
   test('[P2] AC-7 a Try again that fails again shows and announces Couldn\'t load again', async ({ page }) => {
     await page.route(CATALOG_VIEW, (route) => route.abort('connectionrefused'))
-    await page.goto('/')
+    await page.goto('/catalog')
     const alert = page.getByRole('alert')
     await expect(alert).toHaveText(COULDNT_LOAD)
 
@@ -150,7 +150,7 @@ test.describe('Story 1.6 Catalog states (automate)', () => {
   test('[P2] AC-9 Try again is a button-secondary', async ({ page }) => {
     await page.emulateMedia({ colorScheme: 'light' })
     await page.route(CATALOG_VIEW, (route) => route.abort('connectionrefused'))
-    await page.goto('/')
+    await page.goto('/catalog')
     const tryAgain = page.getByRole('button', { name: 'Try again' })
 
     // DESIGN.md button-secondary: surface-inset, ink, 1px input-border, rounded md.

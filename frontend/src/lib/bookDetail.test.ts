@@ -3,6 +3,7 @@ import { afterEach, describe, it } from 'node:test'
 import { BOOK_FIELD_KEYS } from '../api/index.ts'
 import {
   coverSrc,
+  currentReadingStatus,
   deleteHandled,
   deletedTitle,
   markDeleteHandled,
@@ -229,5 +230,19 @@ describe('delete hand-off bookkeeping', () => {
     delete scope.sessionStorage
     assert.equal(deleteHandled('a'), false)
     assert.doesNotThrow(() => markDeleteHandled('a'))
+  })
+})
+
+describe('currentReadingStatus', () => {
+  it('names the Main book or the waiting page, then the start date when there is one', () => {
+    assert.equal(
+      currentReadingStatus({ status: 'main', currentPage: 212, startDate: '2026-09-02' }),
+      'Main book · started 2 Sep 2026',
+    )
+    assert.equal(
+      currentReadingStatus({ status: 'waiting', currentPage: 120, startDate: '2026-09-02' }),
+      'Waiting for you, page 120 · started 2 Sep 2026',
+    )
+    assert.equal(currentReadingStatus({ status: 'waiting', currentPage: 120, startDate: null }), 'Waiting for you, page 120')
   })
 })

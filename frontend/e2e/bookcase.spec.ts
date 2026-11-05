@@ -50,7 +50,7 @@ test.describe('Story 1.10 Bookcase view (ATDD)', () => {
         { title: 'Neuromancer', authors: ['William Gibson'] },
       ],
     })
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     const toggle = viewToggle(page)
     const bookcaseButton = toggle.getByRole('button', { name: 'Bookcase', exact: true })
     const listButton = toggle.getByRole('button', { name: 'List', exact: true })
@@ -98,7 +98,7 @@ test.describe('Story 1.10 Bookcase view (ATDD)', () => {
         { title: TUFTE, authors: ['Edward R. Tufte'], readings: finished() },
       ],
     })
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     const dune = spine(page, 'Dune by Frank Herbert, finished')
     const leftHand = spine(page, 'The Left Hand of Darkness by Ursula K. Le Guin, not read yet')
     const tufte = spine(page, `${TUFTE} by Edward R. Tufte, finished`)
@@ -149,7 +149,7 @@ test.describe('Story 1.10 Bookcase view (ATDD)', () => {
         { title: TUFTE, authors: ['Edward R. Tufte'], readings: finished() },
       ],
     })
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
 
     await expect(spine(page, 'Dune by Frank Herbert, finished')).toBeVisible()
     await expect(spine(page, 'The Science of Discworld by Terry Pratchett and 2 others, not read yet')).toBeVisible()
@@ -175,7 +175,7 @@ test.describe('Story 1.10 Bookcase view (ATDD)', () => {
         { title: 'A Wizard of Earthsea', authors: ['Ursula K. Le Guin'], readings: finished() },
       ],
     })
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     const main = page.getByRole('main')
 
     await expect(page.getByRole('list', { name: 'Bookcase, 5 books', exact: true })).toBeVisible()
@@ -222,7 +222,7 @@ test.describe('Story 1.10 Bookcase view (ATDD)', () => {
     seededServer,
   }) => {
     const server = await seededServer({ books: shelfOf(500) })
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
 
     await expect(page.getByRole('list', { name: 'Bookcase, 500 books', exact: true }).getByRole('button')).toHaveCount(500)
     // No lazy rows: the last title is text in the page for find-in-page…
@@ -239,7 +239,7 @@ test.describe('Story 1.10 Bookcase view (ATDD)', () => {
   }) => {
     // Two rows at 1280px (about 36 spines a row).
     const server = await seededServer({ books: shelfOf(50) })
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     const all = spines(page)
 
     await tabIntoBookcase(page)
@@ -310,7 +310,7 @@ test.describe('Story 1.10 Bookcase view (ATDD)', () => {
         authors: [author],
       })),
     })
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     const name = (title: string) => `${title} by ${author}, not read yet`
 
     // Cosmos holds the Tab stop, then "moon" hides it.
@@ -360,7 +360,7 @@ test.describe('Story 1.10 Bookcase view (ATDD)', () => {
   }) => {
     // About nine rows: the new Book sorts last, below the fold.
     const server = await seededServer({ books: shelfOf(300) })
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     await page.getByRole('button', { name: 'New book', exact: true }).click()
     const panel = page.getByRole('dialog', { name: 'New book', exact: true })
     for (const [label, value] of Object.entries(SWING_TIME)) {
@@ -397,7 +397,7 @@ test.describe('Story 1.10 Bookcase view (ATDD)', () => {
         { title: 'Neuromancer', authors: ['William Gibson'] },
       ],
     })
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     await page.getByRole('button', { name: 'New book', exact: true }).click()
     const panel = page.getByRole('dialog', { name: 'New book', exact: true })
     for (const [label, value] of Object.entries({
@@ -448,7 +448,7 @@ test.describe('Story 1.10 Bookcase view (ATDD)', () => {
 
     for (const colorScheme of ['light', 'dark'] as const) {
       await page.emulateMedia({ colorScheme, forcedColors: 'none' })
-      await page.goto(`${server.url}/`)
+      await page.goto(`${server.url}/catalog`)
       const [readFill, unreadFill] = await fills()
       expect(readFill, colorScheme).not.toBe(unreadFill)
       const { violations } = await new AxeBuilder({ page })
@@ -460,7 +460,7 @@ test.describe('Story 1.10 Bookcase view (ATDD)', () => {
     // Forced colors: the read fill stays solid, the unread spine keeps an
     // outline that differs from its fill.
     await page.emulateMedia({ colorScheme: 'light', forcedColors: 'active' })
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     const [readFill, unreadFill] = await fills()
     expect(readFill).not.toBe(unreadFill)
     const outline = await unread.evaluate((element) => {
@@ -480,7 +480,7 @@ test.describe('Story 1.10 Bookcase view (ATDD)', () => {
         { title: 'The Left Hand of Darkness', authors: ['Ursula K. Le Guin'] },
       ],
     })
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     const toggle = viewToggle(page)
     await toggle.getByRole('button', { name: 'List', exact: true }).click()
     await search(page).fill('Dune')
@@ -496,7 +496,7 @@ test.describe('Story 1.10 Bookcase view (ATDD)', () => {
   test('[P1] AC-1 a junk stored view opens Bookcase', async ({ page, seededServer }) => {
     const server = await seededServer({ books: [{ title: 'Dune', authors: ['Frank Herbert'] }] })
     await page.addInitScript(() => window.localStorage.setItem('bookvie.catalogView', 'shelves'))
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
 
     await expect(viewToggle(page).getByRole('button', { name: 'Bookcase', exact: true })).toHaveAttribute(
       'aria-pressed',
@@ -517,7 +517,7 @@ test.describe('Story 1.10 Bookcase view (ATDD)', () => {
       Storage.prototype.getItem = fail
       Storage.prototype.setItem = fail
     })
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     const listButton = viewToggle(page).getByRole('button', { name: 'List', exact: true })
 
     await expect(viewToggle(page).getByRole('button', { name: 'Bookcase', exact: true })).toHaveAttribute(
@@ -540,7 +540,7 @@ test.describe('Story 1.10 Bookcase view (ATDD)', () => {
     const server = await seededServer({
       books: ['Cosmos', 'Arcadia', 'Blue Moon'].map((title) => ({ title, authors: [author] })),
     })
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
 
     await search(page).fill('moon')
     await expect(spines(page)).toHaveCount(1)

@@ -45,6 +45,8 @@ export {
   type BookReading,
   type BookViewState,
   type CatalogView,
+  type CurrentReading,
+  type HomeMainBook,
   type HomeView,
   type LibraryMeter,
   type ShelfBook,

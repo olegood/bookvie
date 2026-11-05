@@ -11,6 +11,7 @@ import {
   sortBooks,
   spineName,
   tagSuggestions,
+  type NamedSpine,
 } from './catalog.ts'
 
 describe('sortBooks', () => {
@@ -67,7 +68,15 @@ describe('copy', () => {
 })
 
 describe('spineName', () => {
-  const book = { title: 'Dune', firstAuthor: 'Frank Herbert', authorCount: 1, finished: true }
+  const book: NamedSpine = {
+    title: 'Dune',
+    firstAuthor: 'Frank Herbert',
+    authorCount: 1,
+    finished: true,
+    role: null,
+    percent: null,
+    waitingPage: null,
+  }
 
   it('names the title, first author and status', () => {
     assert.equal(spineName(book), 'Dune by Frank Herbert, finished')
@@ -87,6 +96,25 @@ describe('spineName', () => {
 
   it('leaves out "by" when there is no author', () => {
     assert.equal(spineName({ ...book, firstAuthor: '', authorCount: 0, finished: false }), 'Dune, not read yet')
+  })
+
+  it('names the Main book with its percentage, or as a re-read once finished', () => {
+    const main = { ...book, finished: false, role: 'main', percent: 64 } as const
+    assert.equal(spineName(main), 'Dune by Frank Herbert, Main book, 64%')
+    assert.equal(spineName({ ...main, finished: true, percent: 12 }), 'Dune by Frank Herbert, finished, re-reading, 12%')
+  })
+
+  it('names a paused Book waiting for you at its page, finished or not', () => {
+    const waiting = { ...book, finished: false, role: 'waiting', percent: 29, waitingPage: 120 } as const
+    assert.equal(spineName(waiting), 'Dune by Frank Herbert, waiting for you, page 120')
+    assert.equal(
+      spineName({ ...waiting, finished: true, waitingPage: 40 }),
+      'Dune by Frank Herbert, finished, waiting for you, page 40',
+    )
+  })
+
+  it('keeps Up next to the read status (no Up-next names this story)', () => {
+    assert.equal(spineName({ ...book, finished: false, role: 'upNext', percent: 29 }), 'Dune by Frank Herbert, not read yet')
   })
 })
 

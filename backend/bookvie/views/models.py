@@ -6,7 +6,6 @@ from typing import Literal
 from pydantic import AwareDatetime, BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
 
-
 Role = Literal["main", "upNext", "waiting"] | None
 """A Book's place in the reading plan, as the Confirm dialog names it (``BookDetailView.role``)."""
 
@@ -39,11 +38,39 @@ class ShelfBook(_View):
     has_cover: bool
     """Whether the Book has a cover (the Spine popover's "From cover" swatch)."""
     finished: bool
+    role: Role
+    """The Book's place in the reading plan, as ``BookDetailView.role`` defines it."""
+    current_page: int | None
+    """The current (unfinished) Reading's page; ``None`` without one."""
+    percent: int | None
+    """``floor(currentPage × 100 ÷ pages)`` of the current Reading; ``None`` without one (AD-6)."""
+    waiting_page: int | None
+    """The paused Reading's current page; set only when ``role`` is ``waiting``."""
+
+
+class HomeMainBook(_View):
+    """The Main book as Home's Main book card shows it."""
+
+    id: str
+    title: str
+    authors: list[str]
+    edition: int
+    cover_file: str | None
+    """``covers/<name>``, served at ``/media/<coverFile>``; ``None`` without a cover."""
+    has_cover: bool
+    pages: int
+    current_page: int
+    percent: int
+    """``floor(currentPage × 100 ÷ pages)``, computed only here (AD-6)."""
 
 
 class HomeView(_View):
     meter: LibraryMeter
     books: list[ShelfBook]
+    main_book: HomeMainBook | None
+    """The Main book and its current Reading; ``None`` when there is no Main book."""
+    last_export_at: AwareDatetime | None
+    """When the last complete export finished (``local-state.json``); ``None`` before the first."""
 
 
 class CatalogView(_View):
@@ -57,6 +84,17 @@ class BookReading(_View):
     id: str
     start_date: date | None
     finish_date: date | None
+
+
+class CurrentReading(_View):
+    """The Main book's or a paused Book's unfinished Reading (Book detail's Current reading)."""
+
+    status: Literal["main", "waiting"]
+    start_date: date | None
+    current_page: int
+    percent: int
+    """``floor(currentPage × 100 ÷ pages)`` (AD-6)."""
+    purpose: str | None
 
 
 class BookDetailView(_View):
@@ -94,11 +132,14 @@ class BookDetailView(_View):
     """The Book's place in the reading plan, as the Confirm dialog names it.
 
     ``main`` (Main book), else ``upNext`` (Up next wins over a paused Reading),
-    else ``waiting`` (an unfinished paused Reading, a Side read's included),
-    else ``None``. Being a Side read alone gives no role.
+    else ``waiting`` (the current, unfinished Reading of a Book that isn't
+    Main is paused, AD-19; a Side read's included), else ``None`` (no
+    unfinished Reading).
     """
     waiting_page: int | None
     """The paused Reading's current page; set only when ``role`` is ``waiting``."""
+    current_reading: CurrentReading | None
+    """Set when ``role`` is ``main`` or ``waiting``: the Reading the role is about."""
 
 
 class BackupView(_View):

@@ -1,0 +1,93 @@
+/* DESIGN.md → Main book card: a surface card, cover 200px | info, 36px apart. */
+.card {
+  min-width: 0;
+  border: var(--hairline) solid var(--color-line);
+  border-radius: var(--radius-xl);
+  background: var(--color-surface);
+}
+
+.main {
+  display: grid;
+  grid-template-columns: var(--space-cover-main-width) 1fr;
+  gap: var(--space-8);
+  align-items: start;
+  padding: 28px 32px;
+}
+
+.info {
+  min-width: 0;
+}
+
+.eyebrow {
+  margin: 0;
+  font-family: var(--font-section-label-family);
+  font-size: var(--font-section-label-size);
+  font-weight: var(--font-section-label-weight);
+  letter-spacing: var(--font-section-label-letter-spacing);
+  text-transform: uppercase;
+  color: var(--color-accent);
+}
+
+.titleHeading {
+  margin: var(--space-2) 0 6px;
+  font: inherit;
+}
+
+/* book-title-lg, clamped to 3 lines. */
+.title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+  font-family: var(--font-book-title-lg-family);
+  font-size: var(--font-book-title-lg-size);
+  font-weight: var(--font-book-title-lg-weight);
+  line-height: var(--font-book-title-lg-line-height);
+  letter-spacing: var(--font-book-title-lg-letter-spacing);
+  color: var(--color-ink);
+  text-decoration-line: none;
+  overflow-wrap: anywhere;
+}
+
+.title:hover,
+.title:focus-visible {
+  text-decoration-line: underline;
+}
+
+.authors {
+  margin: 0;
+  font-family: var(--font-author-family);
+  font-size: var(--font-author-size);
+  font-weight: var(--font-author-weight);
+  line-height: var(--font-author-line-height);
+  color: var(--color-ink-secondary);
+}
+
+.edition {
+  margin: var(--space-1) 0 0;
+  font-family: var(--font-body-sm-family);
+  font-size: var(--font-body-sm-size);
+  line-height: var(--font-body-sm-line-height);
+  color: var(--color-ink-secondary);
+}
+
+.empty {
+  padding: 28px 32px;
+}
+
+.emptyHeading {
+  margin: 0;
+  font-family: var(--font-panel-heading-family);
+  font-size: var(--font-panel-heading-size);
+  font-weight: var(--font-panel-heading-weight);
+  line-height: var(--font-panel-heading-line-height);
+  color: var(--color-ink);
+}
+
+.emptyBody {
+  margin: var(--space-3) 0 0;
+  font-family: var(--font-body-family);
+  font-size: var(--font-body-size);
+  line-height: var(--font-body-line-height);
+}

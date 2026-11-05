@@ -18,6 +18,14 @@ export function relativeDay(then: Date, now: Date): string {
   return `${days} days ago`
 }
 
+const NO_EXPORT_YET = 'No export yet'
+
+/** "Last export: 12 days ago", or "No export yet" before the first export (Backup and Home). */
+export function lastExportLine(lastExportAt: string | null, now: Date): string {
+  if (lastExportAt === null) return NO_EXPORT_YET
+  return `Last export: ${relativeDay(new Date(lastExportAt), now)}`
+}
+
 /** The current time, refreshed when the window regains focus or becomes visible. */
 export function useNow(): Date {
   const [now, setNow] = useState(() => new Date())

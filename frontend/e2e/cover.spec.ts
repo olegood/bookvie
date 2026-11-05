@@ -106,7 +106,7 @@ test.describe('Story 1.13 Add a cover (ATDD)', () => {
     seededServer,
   }) => {
     const server = await seededServer({ books: [] })
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     await page.getByRole('main').getByRole('button', { name: 'New book', exact: true }).click()
     const panel = newBookPanel(page)
 
@@ -244,7 +244,7 @@ test.describe('Story 1.13 Add a cover (ATDD)', () => {
     seededServer,
   }) => {
     const server = await seededServer({ books: [] })
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     await page.getByRole('main').getByRole('button', { name: 'New book', exact: true }).click()
     const panel = newBookPanel(page)
     for (const [label, value] of Object.entries({
@@ -354,7 +354,7 @@ test.describe('Story 1.13 Add a cover (ATDD)', () => {
     // header alone is refused (the body is never read); just past 20 MiB the
     // body is parsed and the cover part is refused for its size.
     const server = await seededServer({ books: [] })
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     await page.getByRole('main').getByRole('button', { name: 'New book', exact: true }).click()
     const panel = newBookPanel(page)
     for (const [label, value] of Object.entries({
@@ -392,7 +392,7 @@ test.describe('Story 1.13 Add a cover (ATDD)', () => {
     const inSync = (): void => expect(onDisk(server)).toEqual(referenced(server))
 
     // Add: a new Book with a cover.
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     await page.getByRole('main').getByRole('button', { name: 'New book', exact: true }).click()
     const newPanel = newBookPanel(page)
     for (const [label, value] of Object.entries({

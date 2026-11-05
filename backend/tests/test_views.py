@@ -15,8 +15,9 @@ from tests.helpers import (
     api_client,
 )
 
-HOME_EMPTY = {"meter": {"finished": 0, "total": 0}, "books": []}
-CATALOG_EMPTY = {**HOME_EMPTY, "tags": []}
+SHELF_EMPTY = {"meter": {"finished": 0, "total": 0}, "books": []}
+HOME_EMPTY = {**SHELF_EMPTY, "mainBook": None, "lastExportAt": None}
+CATALOG_EMPTY = {**SHELF_EMPTY, "tags": []}
 EMPTY = {"home": HOME_EMPTY, "catalog": CATALOG_EMPTY}
 
 
@@ -71,6 +72,10 @@ def test_seeded_library(tmp_path: Path, library_builder: LibraryBuilder, view: s
             "spineColorFromCover": None,
             "hasCover": False,
             "finished": False,
+            "role": None,
+            "currentPage": None,
+            "percent": None,
+            "waitingPage": None,
         },
         {
             "id": ids["omens"],
@@ -87,6 +92,10 @@ def test_seeded_library(tmp_path: Path, library_builder: LibraryBuilder, view: s
             "spineColorFromCover": None,
             "hasCover": False,
             "finished": True,
+            "role": None,
+            "currentPage": None,
+            "percent": None,
+            "waitingPage": None,
         },
         {
             "id": ids["emma"],
@@ -103,6 +112,11 @@ def test_seeded_library(tmp_path: Path, library_builder: LibraryBuilder, view: s
             "spineColorFromCover": None,
             "hasCover": False,
             "finished": False,
+            # An unfinished Reading of a Book that isn't Main is paused (AD-19).
+            "role": "waiting",
+            "currentPage": 10,
+            "percent": 3,
+            "waitingPage": 10,
         },
     ]
     if view == "catalog":
@@ -110,6 +124,7 @@ def test_seeded_library(tmp_path: Path, library_builder: LibraryBuilder, view: s
         assert body["tags"] == ["Fantasy", "humor", "Classics"]
     else:
         assert "tags" not in body
+        assert (body["mainBook"], body["lastExportAt"]) == (None, None)
     # Side-effect-free: the file is untouched.
     assert (tmp_path / "library.json").read_bytes() == before
 
@@ -169,8 +184,9 @@ def test_book_view_role_names_main_up_next_and_waiting(
     # Up next wins over its paused Reading.
     assert role(neuromancer) == ("upNext", None)
     assert role(dispossessed) == ("waiting", 120)
-    # Being a Side read alone gives no role line; neither does a finished paused Reading.
-    assert role(accelerate) == (None, None)
+    # Unfinished and not Main is paused (AD-19), whether or not pausedAt is set,
+    # a Side read's included; a finished paused Reading gives no role line.
+    assert role(accelerate) == ("waiting", 40)
     assert role(paused_side) == ("waiting", 210)
     assert role(finished) == (None, None)
     assert role(plain) == (None, None)
@@ -318,3 +334,120 @@ def test_backup_view_reads_malformed_local_state_as_no_export(
     assert response.status_code == 200
     assert response.json() == {"lastExportAt": None}
     assert "bookvie: local-state.json" in capsys.readouterr().err
+
+
+# --- Story 3.1: the Main book, Last export, roles and the current Reading -----
+
+
+def test_home_view_carries_last_export_from_local_state(tmp_path: Path) -> None:
+    (tmp_path / "local-state.json").write_text('{"lastExportAt": "2026-10-16T09:30:00+02:00"}')
+    body = api_client(tmp_path, raise_server_exceptions=True).get("/api/views/home").json()
+    assert body["lastExportAt"] == "2026-10-16T09:30:00+02:00"
+    assert body["mainBook"] is None
+
+
+def test_home_view_main_book_card_fields(tmp_path: Path, library_builder: LibraryBuilder) -> None:
+    other = library_builder.book(title="Dune")
+    left_hand = library_builder.book(
+        title="The Left Hand of Darkness",
+        authors=["Ursula K. Le Guin"],
+        pages=330,
+        edition=2,
+        cover_file="covers/left-hand.png",
+    )
+    library_builder.reading(left_hand, start_date=None, finish_date="2025-01-01", current_page=330)
+    library_builder.reading(left_hand, current_page=212)
+    library_builder.main(left_hand)
+    library_builder.write(tmp_path)
+    body = api_client(tmp_path, raise_server_exceptions=True).get("/api/views/home").json()
+    assert body["mainBook"] == {
+        "id": left_hand,
+        "title": "The Left Hand of Darkness",
+        "authors": ["Ursula K. Le Guin"],
+        "edition": 2,
+        "coverFile": "covers/left-hand.png",
+        "hasCover": True,
+        "pages": 330,
+        "currentPage": 212,
+        "percent": 64,
+    }
+    assert [book["id"] for book in body["books"]] == [other, left_hand]
+
+
+def test_home_main_book_without_an_unfinished_reading_reads_page_zero(
+    library_builder: LibraryBuilder,
+) -> None:
+    # Invariants forbid it; the view still answers rather than failing.
+    dune = library_builder.book(title="Dune", pages=412)
+    library_builder.main(dune)
+    main_book = home(library_builder.build()).main_book
+    assert main_book is not None
+    assert (main_book.current_page, main_book.percent) == (0, 0)
+    # A Main book id naming no Book gives no card.
+    assert home(library_builder.main("gone").build()).main_book is None
+
+
+def test_shelf_books_carry_role_percent_and_waiting_page(
+    library_builder: LibraryBuilder,
+) -> None:
+    left_hand = library_builder.book(title="The Left Hand of Darkness", pages=330)
+    library_builder.reading(left_hand, current_page=212)
+    dune = library_builder.book(title="Dune", pages=412)
+    library_builder.reading(dune, current_page=120, paused_at="2026-10-20")
+    neuromancer = library_builder.book(title="Neuromancer", pages=271)
+    library_builder.reading(neuromancer, current_page=80, paused_at="2026-10-01")
+    # A finished Book re-read as a paused Reading.
+    emma = library_builder.book(title="Emma", pages=400)
+    library_builder.reading(emma, finish_date="2025-06-01", finished_pages=400, current_page=400)
+    library_builder.reading(emma, current_page=40, paused_at="2026-10-02")
+    plain = library_builder.book(title="Piranesi", pages=245)
+    library = library_builder.main(left_hand).up_next(neuromancer).build()
+
+    def fields(book_id: str) -> tuple[object, ...]:
+        book = next(b for b in catalog(library).books if b.id == book_id)
+        return (book.role, book.current_page, book.percent, book.waiting_page, book.finished)
+
+    assert fields(left_hand) == ("main", 212, 64, None, False)
+    assert fields(dune) == ("waiting", 120, 29, 120, False)
+    # Up next keeps its precedence over the paused Reading (no new strings this story).
+    assert fields(neuromancer) == ("upNext", 80, 29, None, False)
+    assert fields(emma) == ("waiting", 40, 10, 40, True)
+    assert fields(plain) == (None, None, None, None, False)
+
+
+def test_book_view_current_reading_main_paused_and_none(
+    tmp_path: Path, library_builder: LibraryBuilder
+) -> None:
+    left_hand = library_builder.book(title="The Left Hand of Darkness", pages=330)
+    library_builder.reading(
+        left_hand, current_page=212, start_date="2026-10-01", purpose="To see a world built"
+    )
+    dune = library_builder.book(title="Dune", pages=412)
+    library_builder.reading(dune, current_page=120, start_date=None, paused_at="2026-10-20")
+    neuromancer = library_builder.book(title="Neuromancer", pages=271)
+    library_builder.reading(neuromancer, current_page=80, paused_at="2026-10-01")
+    finished = library_builder.book(title="Emma", pages=300)
+    library_builder.reading(finished, finish_date="2026-09-01", finished_pages=300, current_page=300)
+    library_builder.main(left_hand).up_next(neuromancer)
+    library_builder.write(tmp_path)
+    client = api_client(tmp_path, raise_server_exceptions=True)
+
+    def current(book_id: str) -> object:
+        return client.get("/api/views/book", params={"id": book_id}).json()["currentReading"]
+
+    assert current(left_hand) == {
+        "status": "main",
+        "startDate": "2026-10-01",
+        "currentPage": 212,
+        "percent": 64,
+        "purpose": "To see a world built",
+    }
+    assert current(dune) == {
+        "status": "waiting",
+        "startDate": None,
+        "currentPage": 120,
+        "percent": 29,
+        "purpose": None,
+    }
+    assert current(neuromancer) is None
+    assert current(finished) is None

@@ -36,52 +36,6 @@
   gap: var(--space-5);
 }
 
-/* DESIGN.md → Book detail: cover 200×300 with the cover shadow. */
-.cover {
-  display: block;
-  width: var(--space-cover-main-width);
-  height: var(--space-cover-main-height);
-  object-fit: cover;
-  border-radius: var(--radius-cover);
-  box-shadow: var(--shadow-cover);
-}
-
-/* DESIGN.md → No-cover placeholder: surface-inset fill, 1.5px dashed outline, two title bars. */
-.noCover {
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  width: var(--space-cover-main-width);
-  height: var(--space-cover-main-height);
-  border: 1.5px dashed var(--color-spine-unread-outline);
-  border-radius: var(--radius-cover);
-  background: var(--color-surface-inset);
-}
-
-.titleBar {
-  width: 96px;
-  height: 6px;
-  border-radius: var(--radius-full);
-  background: var(--color-spine-unread-outline);
-}
-
-.titleBarShort {
-  width: 60px;
-}
-
-@media (forced-colors: active) {
-  .noCover {
-    border-color: CanvasText;
-  }
-
-  .titleBar {
-    background: CanvasText;
-  }
-}
-
 .actions {
   display: grid;
   align-content: start;
@@ -210,4 +164,28 @@
   font-size: var(--font-body-sm-size);
   line-height: var(--font-body-sm-line-height);
   color: var(--color-ink-secondary);
+}
+
+/* Current reading: the status line above the gauge, the Purpose below it. */
+.status {
+  margin: 0;
+  font-family: var(--font-body-sm-family);
+  font-size: var(--font-body-sm-size);
+  line-height: var(--font-body-sm-line-height);
+  color: var(--color-ink-secondary);
+}
+
+.purpose {
+  display: flex;
+  gap: var(--space-3);
+  margin: var(--space-4) 0 0;
+  font-family: var(--font-body-sm-family);
+  font-size: var(--font-body-sm-size);
+  line-height: var(--font-body-sm-line-height);
+  color: var(--color-ink);
+}
+
+.purposeLabel {
+  flex: none;
+  color: var(--color-ink-tertiary);
 }

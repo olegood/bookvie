@@ -23,21 +23,40 @@ export function matchesTitle(title: string, query: string): boolean {
   return text === '' || title.toLocaleLowerCase().includes(text)
 }
 
-/** The fields of a catalog Book its spine name reads. */
+/** The fields of a catalog Book its spine name reads (all from the server). */
 export interface NamedSpine extends ListedBook {
   authorCount: number
   finished: boolean
+  role: 'main' | 'upNext' | 'waiting' | null
+  percent: number | null
+  waitingPage: number | null
+}
+
+/** The status part of a spine's name, from EXPERIENCE.md's Book states table. */
+function spineStatus(book: NamedSpine): string {
+  const read = book.finished ? 'finished' : 'not read yet'
+  if (book.role === 'main' && book.percent !== null) {
+    return book.finished ? `finished, re-reading, ${book.percent}%` : `Main book, ${book.percent}%`
+  }
+  if (book.role === 'waiting' && book.waitingPage !== null) {
+    const waiting = `waiting for you, page ${book.waitingPage}`
+    return book.finished ? `finished, ${waiting}` : waiting
+  }
+  return read
 }
 
 /**
- * A spine's accessible name (UX-DR25): "Title by First author, finished",
+ * A spine's accessible name (UX-DR25): "Title by First author, <status>",
  * "… and 1 other, …" or "… and N others, …", always with the full title.
+ * The status is "finished" or "not read yet", or for the Main book "Main
+ * book, 64%" ("finished, re-reading, 12%" on a re-read), and for a paused
+ * Book "waiting for you, page 120" ("finished, waiting for you, page 40").
  */
 export function spineName(book: NamedSpine): string {
   const others = book.authorCount - 1
   const more = others === 1 ? ' and 1 other' : others > 1 ? ` and ${others} others` : ''
   const by = book.firstAuthor === '' ? '' : ` by ${book.firstAuthor}${more}`
-  return `${book.title}${by}, ${book.finished ? 'finished' : 'not read yet'}`
+  return `${book.title}${by}, ${spineStatus(book)}`
 }
 
 /** The bookcase list's name; it counts every Book, even during a search. */

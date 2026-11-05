@@ -177,7 +177,7 @@ test.describe('Story 1.12 Delete a book (ATDD)', () => {
   }) => {
     const server = await seededServer(ROLES_LIBRARY)
     // Catalog first, so there is a history entry behind Book detail.
-    await page.goto(server.url)
+    await page.goto(`${server.url}/catalog`)
     await openBook(page, server, DUNE_ID)
     await expect(page.getByRole('heading', { level: 1, name: 'Dune', exact: true })).toBeVisible()
     // Record any moment the not-found page renders between the commit and Catalog.
@@ -201,7 +201,7 @@ test.describe('Story 1.12 Delete a book (ATDD)', () => {
     await deleteButton(page).click()
     await confirmDialog(page).getByRole('button', { name: 'Delete book', exact: true }).click()
 
-    await expect(page).toHaveURL(`${server.url}/`)
+    await expect(page).toHaveURL(`${server.url}/catalog`)
     await expect(page.getByRole('heading', { level: 1, name: 'Catalog', exact: true })).toBeVisible()
     await expect(page.getByLabel('Search titles', { exact: true })).toBeFocused()
     await expect(page.getByRole('status')).toHaveText('Deleted Dune.')
@@ -211,7 +211,7 @@ test.describe('Story 1.12 Delete a book (ATDD)', () => {
 
     // The Book detail entry was replaced: Back skips it.
     await page.goBack()
-    await expect(page).toHaveURL(`${server.url}/`)
+    await expect(page).toHaveURL(`${server.url}/catalog`)
     await expect(page.getByRole('heading', { level: 1, name: 'Catalog', exact: true })).toBeVisible()
   })
 
@@ -267,7 +267,7 @@ test.describe('Story 1.12 Delete a book (ATDD)', () => {
     await deleteButton(page).click()
     await confirmDialog(page).getByRole('button', { name: 'Delete book', exact: true }).click()
 
-    await expect(page).toHaveURL(`${server.url}/`)
+    await expect(page).toHaveURL(`${server.url}/catalog`)
     await expect(page.getByText('Your shelf is empty. Add your first book.')).toBeVisible()
     await expect(page.getByRole('main').getByRole('button', { name: 'New book', exact: true })).toBeFocused()
     await expect(page.getByRole('status')).toHaveText('Deleted Piranesi.')
@@ -321,7 +321,7 @@ test.describe('Story 1.12 Delete a book (ATDD)', () => {
 
     // A second press that succeeds goes to Catalog.
     await confirm.click()
-    await expect(page).toHaveURL(`${server.url}/`)
+    await expect(page).toHaveURL(`${server.url}/catalog`)
     await expect(page.getByLabel('Search titles', { exact: true })).toBeFocused()
     expect(await catalogTitles(page, server)).toEqual(['Dune', 'Neuromancer', 'The Dispossessed'])
   })
@@ -381,7 +381,7 @@ test.describe('Story 1.12 Delete a book (ATDD)', () => {
     })
     // List view: Add anyway focuses the new Book's title link.
     await page.addInitScript(() => window.localStorage.setItem('bookvie.catalogView', 'list'))
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     await page.getByRole('button', { name: 'New book', exact: true }).click()
     const panel = page.getByRole('dialog', { name: 'New book', exact: true })
     const fields = {
@@ -413,7 +413,7 @@ test.describe('Story 1.12 Delete a book (ATDD)', () => {
     await deleteButton(page).click()
     await confirmDialog(page).getByRole('button', { name: 'Delete book', exact: true }).click()
 
-    await expect(page).toHaveURL(`${server.url}/`)
+    await expect(page).toHaveURL(`${server.url}/catalog`)
     await expect(page.getByRole('status')).toHaveText('Deleted Dune.')
     // The original, by id, is the Dune that stays.
     expect((await catalogBooks(page, server)).sort()).toEqual(
@@ -432,7 +432,8 @@ test.describe('Story 1.12 Delete a book (ATDD)', () => {
       ...ROLES_LIBRARY,
       sideReadBookIds: [PIRANESI_ID],
       books: ROLES_LIBRARY.books.map((book) =>
-        book.id === PIRANESI_ID ? { ...book, readings: [{ currentPage: 40 }] } : book,
+        // No unfinished Reading: one would be paused, so waiting for you (AD-19).
+        book.id === PIRANESI_ID ? { ...book, readings: [] } : book,
       ),
     })
     await openBook(page, server, PIRANESI_ID)

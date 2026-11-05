@@ -91,7 +91,7 @@ test.describe('Story 1.8 New book panel (ATDD)', () => {
   }) => {
     const server = await seededServer({ books: [] })
     await page.setViewportSize({ width: 1280, height: 640 })
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     // The empty state's New book opens the same panel.
     await page.getByRole('button', { name: 'New book', exact: true }).first().click()
     const panel = newBookPanel(page)
@@ -122,7 +122,7 @@ test.describe('Story 1.8 New book panel (ATDD)', () => {
     seededServer,
   }) => {
     const server = await seededServer({ books: [NEUROMANCER] })
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     const panel = await openNewBook(page)
 
     // "Title" never matches "Subtitle".
@@ -178,7 +178,7 @@ test.describe('Story 1.8 New book panel (ATDD)', () => {
         { title: 'Neuromancer', tags: ['sci-fi', 'cyberpunk'] },
       ],
     })
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     const panel = await openNewBook(page)
     const tags = panel.getByRole('combobox', { name: 'Tags', exact: true })
 
@@ -222,7 +222,7 @@ test.describe('Story 1.8 New book panel (ATDD)', () => {
     seededServer,
   }) => {
     const server = await seededServer({ books: [NEUROMANCER] })
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     const panel = await openNewBook(page)
     const clay = panel.getByRole('button', { name: 'Clay', exact: true })
 
@@ -243,7 +243,7 @@ test.describe('Story 1.8 New book panel (ATDD)', () => {
     const server = await seededServer({ books: [NEUROMANCER] })
     // In List view, which Bookcase replaced as the default in Story 1.10.
     await page.addInitScript(() => window.localStorage.setItem('bookvie.catalogView', 'list'))
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     // A search that would hide the new Book is cleared first.
     const search = page.getByRole('searchbox', { name: 'Search titles', exact: true })
     await search.fill('Neuro')
@@ -288,7 +288,7 @@ test.describe('Story 1.8 New book panel (ATDD)', () => {
     seededServer,
   }) => {
     const server = await seededServer({ books: [NEUROMANCER] })
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     const panel = await openNewBook(page)
     await fillFields(panel, { Title: 'Dune', 'Author(s)': 'Frank Herbert', Publisher: 'Chilton Books' })
 
@@ -333,7 +333,7 @@ test.describe('Story 1.8 New book panel (ATDD)', () => {
         body: JSON.stringify({ error: { kind: 'couldnt_save', code: 'couldnt_save', message: COULDNT_SAVE } }),
       }),
     )
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     const panel = await openNewBook(page)
     await fillFields(panel, { ...DUNE, Subtitle: 'Book One', Tags: 'sci-fi' })
 
@@ -374,7 +374,7 @@ test.describe('Story 1.8 New book panel (ATDD)', () => {
         }),
       }),
     )
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     const panel = await openNewBook(page)
     await fillFields(panel, DUNE)
 
@@ -398,7 +398,7 @@ test.describe('Story 1.8 New book panel (ATDD)', () => {
       prompts.push(dialog.message())
       void dialog.dismiss()
     })
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     const newBook = page.getByRole('button', { name: 'New book', exact: true })
     const closers: [string, (panel: Locator) => Promise<void>][] = [
       ['Cancel', (panel) => panel.getByRole('button', { name: 'Cancel', exact: true }).click()],
@@ -429,7 +429,7 @@ test.describe('Story 1.8 New book panel (ATDD)', () => {
     seededServer,
   }) => {
     const server = await seededServer({ books: [NEUROMANCER] })
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     const panel = await openNewBook(page)
 
     // showModal() makes everything outside the dialog inert, so the regions
@@ -465,7 +465,7 @@ test.describe('Story 1.8 New book panel (ATDD)', () => {
       await held
       await route.continue()
     })
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     const panel = await openNewBook(page)
     await fillFields(panel, DUNE)
     const addBook = panel.getByRole('button', { name: 'Add book', exact: true })

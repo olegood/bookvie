@@ -4,11 +4,13 @@ import { useBookView, useCatalogView, useDeleteBook, type BookDetailView } from 
 import Button from '../components/Button.tsx'
 import ChangeColor from '../components/ChangeColor.tsx'
 import ConfirmDialog from '../components/ConfirmDialog.tsx'
+import Cover from '../components/Cover.tsx'
 import FailureMessage from '../components/FailureMessage.tsx'
+import Gauge from '../components/Gauge.tsx'
 import PageHeading from '../components/PageHeading.tsx'
 import { announce, clearAnnouncements } from '../lib/announce.ts'
 import {
-  coverSrc,
+  currentReadingStatus,
   metadata,
   panelCover,
   readingLines,
@@ -60,6 +62,8 @@ function BookDetail({ book, onDelete }: { book: BookDetailView; onDelete: Delete
   const readings = readingLines(book.readings)
   const readingsId = useId()
   const colorId = useId()
+  const currentId = useId()
+  const current = book.currentReading
   const [confirming, setConfirming] = useState(false)
   const [busy, setBusy] = useState(false)
   const [showAlert, setShowAlert] = useState(false)
@@ -111,21 +115,7 @@ function BookDetail({ book, onDelete }: { book: BookDetailView; onDelete: Delete
     <div className={styles.page}>
       <div className={styles.card}>
         <div className={styles.side}>
-          {book.coverFile !== null ? (
-            <img
-              className={styles.cover}
-              src={coverSrc(book.coverFile)}
-              alt={`Cover of ${book.title}`}
-              width={200}
-              height={300}
-            />
-          ) : (
-            // DESIGN.md → No-cover placeholder: not interactive; the title is beside it.
-            <div className={styles.noCover} role="img" aria-label="No cover">
-              <span className={styles.titleBar} />
-              <span className={`${styles.titleBar} ${styles.titleBarShort}`} />
-            </div>
-          )}
+          <Cover coverFile={book.coverFile} title={book.title} />
           <div className={styles.actions}>
             <Button onClick={() => setEditing(true)}>Edit</Button>
             <Button ref={deleteButton} onClick={openConfirm}>
@@ -153,6 +143,21 @@ function BookDetail({ book, onDelete }: { book: BookDetailView; onDelete: Delete
                 </li>
               ))}
             </ul>
+          )}
+          {current !== null && (
+            <section className={styles.block} aria-labelledby={currentId}>
+              <h2 id={currentId} className={styles.blockLabel}>
+                Current reading
+              </h2>
+              <p className={styles.status}>{currentReadingStatus(current)}</p>
+              <Gauge title={book.title} page={current.currentPage} pages={book.pages} percent={current.percent} />
+              {current.purpose !== null && (
+                <p className={styles.purpose}>
+                  <span className={styles.purposeLabel}>Purpose</span>
+                  <span>{current.purpose}</span>
+                </p>
+              )}
+            </section>
           )}
           <section className={styles.block} aria-labelledby={readingsId}>
             <h2 id={readingsId} className={styles.blockLabel}>
@@ -206,6 +211,9 @@ function BookDetail({ book, onDelete }: { book: BookDetailView; onDelete: Delete
  * here: child effects run first, so a title set here would overwrite the
  * not-found page's.
  *
+ * The Current reading block (the Main book or a paused Book) shows the
+ * status, the gauge and the Purpose; the server supplies every number.
+ *
  * Delete: once `delete-book` is sent, the refetched view may already say the
  * Book is gone before the request resolves. Until the outcome is known the
  * page renders nothing rather than the not-found page; on success it
@@ -224,7 +232,7 @@ export default function BookDetailPage() {
     const result = await sendDelete(id)
     if (result.kind === 'ok') {
       const state: DeletedState = { deleted: { title } }
-      void navigate('/', { replace: true, state })
+      void navigate('/catalog', { replace: true, state })
       return { ok: true }
     }
     setDeleting(false)

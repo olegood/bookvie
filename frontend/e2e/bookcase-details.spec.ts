@@ -74,7 +74,7 @@ test.describe('Story 1.10 Bookcase view details (automate)', () => {
     seededServer,
   }) => {
     const server = await seededServer({ books: [{ title: 'Dune', authors: ['Frank Herbert'] }] })
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     const toggle = viewToggle(page)
 
     await search(page).focus()
@@ -99,7 +99,7 @@ test.describe('Story 1.10 Bookcase view details (automate)', () => {
         { title: TUFTE, authors: ['Edward R. Tufte'], readings: finished() },
       ],
     })
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     const names = [
       'Dune by Frank Herbert, finished',
       'The Left Hand of Darkness by Ursula K. Le Guin, finished',
@@ -131,7 +131,7 @@ test.describe('Story 1.10 Bookcase view details (automate)', () => {
         { title: 'Neuromancer', authors: ['William Gibson'], spineColorUser: '#FFFFFF', readings: finished() },
       ],
     })
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
 
     await expect(spine(page, 'Dune by Frank Herbert, finished')).toHaveCSS('background-color', 'rgb(17, 17, 17)')
     await expect(spine(page, 'Neuromancer by William Gibson, finished')).toHaveCSS(
@@ -155,7 +155,7 @@ test.describe('Story 1.10 Bookcase view details (automate)', () => {
       }, 'The Left Hand of Darkness')
     const formula = (length: number) => Math.min(200, Math.ceil((120 + 0.3 * length) / 8) * 8)
 
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     await expect(leftHand).toBeVisible()
     const plain = await measure()
 
@@ -179,7 +179,7 @@ test.describe('Story 1.10 Bookcase view details (automate)', () => {
     seededServer,
   }) => {
     const server = await seededServer({ books: shelfOf(120) })
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     const topRow = async () => (await shelfRows(page))[0].length
 
     await page.setViewportSize({ width: 1280, height: 800 })
@@ -207,7 +207,7 @@ test.describe('Story 1.10 Bookcase view details (automate)', () => {
     seededServer,
   }) => {
     const server = await seededServer({ books: shelfOf(3) })
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     const url = page.url()
 
     await tabIntoBookcase(page)
@@ -239,7 +239,7 @@ test.describe('Story 1.10 Bookcase view details (automate)', () => {
         authors: [author],
       })),
     })
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
 
     await tabIntoBookcase(page)
     await press(page, 'ArrowRight', 2)
@@ -263,7 +263,7 @@ test.describe('Story 1.10 Bookcase view details (automate)', () => {
         authors: [author],
       })),
     })
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     const name = (title: string) => `${title} by ${author}, not read yet`
 
     await tabIntoBookcase(page)
@@ -295,7 +295,7 @@ test.describe('Story 1.10 Bookcase view details (automate)', () => {
       }
     })
     const server = await seededServer({ books: shelfOf(300) })
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     // Every seeded title matches; Swing Time would be hidden.
     await search(page).fill('Book')
 
@@ -323,7 +323,7 @@ test.describe('Story 1.10 Bookcase view details (automate)', () => {
         { title: 'Neuromancer', authors: ['William Gibson'] },
       ],
     })
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     const dune = 'Dune by Frank Herbert, not read yet'
     const old = await spine(page, dune).elementHandle()
 
@@ -360,7 +360,7 @@ test.describe('Story 1.10 Bookcase view details (automate)', () => {
       ],
     })
     await page.emulateMedia({ colorScheme: 'dark' })
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
 
     const read = await look(spine(page, 'Dune by Frank Herbert, finished'), 'Dune')
     expect(read.edgeColors).toEqual([SPINE_EDGE_DARK, SPINE_EDGE_DARK, SPINE_EDGE_DARK])
@@ -383,7 +383,7 @@ test.describe('Story 1.10 Bookcase view details (automate)', () => {
     seededServer,
   }) => {
     const server = await seededServer({ books: [{ title: 'Dune', authors: ['Frank Herbert'] }] })
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     const dune = spine(page, 'Dune by Frank Herbert, not read yet')
 
     await tabIntoBookcase(page)
@@ -401,7 +401,7 @@ test.describe('Story 1.10 Bookcase view details (automate)', () => {
     })
     for (const colorScheme of ['light', 'dark'] as const) {
       await page.emulateMedia({ colorScheme })
-      await page.goto(`${server.url}/`)
+      await page.goto(`${server.url}/catalog`)
       await expect(spines(page)).toHaveCount(500)
       const { violations } = await new AxeBuilder({ page })
         .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])

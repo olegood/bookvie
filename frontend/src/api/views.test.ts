@@ -10,6 +10,7 @@ import {
   viewKey,
   type BookDetailView,
   type CatalogView,
+  type HomeView,
 } from './views.ts'
 
 const empty: CatalogView = { meter: { finished: 0, total: 0 }, books: [], tags: [] }
@@ -18,6 +19,27 @@ describe('viewKey', () => {
   it("keys every view under 'view'", () => {
     assert.deepEqual(viewKey('home'), ['view', 'home'])
     assert.deepEqual(viewKey('catalog'), ['view', 'catalog'])
+  })
+})
+
+describe('the home view', () => {
+  afterEach(() => mock.restoreAll())
+
+  const home: HomeView = {
+    meter: { finished: 0, total: 0 },
+    books: [],
+    mainBook: null,
+    lastExportAt: null,
+  }
+
+  it("is keyed ['view', 'home'], so every intent refetches it", () => {
+    assert.deepEqual(viewKey('home'), ['view', 'home'])
+  })
+
+  it('GETs /api/views/home', async () => {
+    const fetch = mock.method(globalThis, 'fetch', async (..._args: [string]) => Response.json(home))
+    assert.deepEqual(await fetchView('home'), home)
+    assert.equal(fetch.mock.calls[0].arguments[0], '/api/views/home')
   })
 })
 
@@ -120,6 +142,7 @@ const dune: BookDetailView = {
   readings: [],
   role: null,
   waitingPage: null,
+  currentReading: null,
 }
 
 describe('the book view', () => {

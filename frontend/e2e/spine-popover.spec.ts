@@ -87,7 +87,7 @@ test.describe('Story 1.14 Change a book’s color from the shelf (ATDD)', () => 
     // Eighty Books by "Author" sort before Dune and Neuromancer, so the shelf
     // wraps: Book 001 starts the top row, Dune stands on a lower one.
     const server = await seededServer({ books: [DUNE, NEUROMANCER, ...shelfOf(80)] })
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     const dune = spine(page, DUNE_SPINE)
 
     await dune.click()
@@ -146,7 +146,7 @@ test.describe('Story 1.14 Change a book’s color from the shelf (ATDD)', () => 
     seededServer,
   }) => {
     const server = await seededServer({ books: [DUNE, NEUROMANCER] })
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     const dune = spine(page, DUNE_SPINE)
     const card = popover(page, 'Dune')
     const openBook = card.getByRole('link', { name: 'Open book →', exact: true })
@@ -201,7 +201,7 @@ test.describe('Story 1.14 Change a book’s color from the shelf (ATDD)', () => 
     seededServer,
   }) => {
     const server = await seededServer({ books: [DUNE, NEUROMANCER] })
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     await spine(page, DUNE_SPINE).click()
     const card = popover(page, 'Dune')
 
@@ -243,7 +243,7 @@ test.describe('Story 1.14 Change a book’s color from the shelf (ATDD)', () => 
   }) => {
     const server = await seededServer({ books: [DUNE, NEUROMANCER] })
     const sent = requestsTo(page, SET_SPINE_COLOR)
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     const dune = spine(page, DUNE_SPINE)
     await dune.click()
     const card = popover(page, 'Dune')
@@ -283,7 +283,7 @@ test.describe('Story 1.14 Change a book’s color from the shelf (ATDD)', () => 
       changeColor(page).getByRole('heading', { name: /^Change color\s*· shown once read$/ }),
     ).toBeVisible()
     await expect(changeColor(page).getByText('Color: Slate', { exact: true })).toBeVisible()
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     await spine(page, NEUROMANCER_SPINE).click()
     await expect(popover(page, 'Neuromancer').getByText(/^Change color\s*· shown once read$/)).toBeVisible()
   })
@@ -296,7 +296,7 @@ test.describe('Story 1.14 Change a book’s color from the shelf (ATDD)', () => 
     await page.route(`**${SET_SPINE_COLOR}`, async (route) => {
       await route.fulfill({ status: 503, contentType: 'application/json', body: COULDNT_SAVE_BODY })
     })
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     const dune = spine(page, DUNE_SPINE)
     await dune.click()
     const card = popover(page, 'Dune')
@@ -338,7 +338,7 @@ test.describe('Story 1.14 Change a book’s color from the shelf (follow-ups)', 
   }) => {
     await page.setViewportSize({ width: 1024, height: 900 })
     const server = await seededServer({ books: [DUNE, NEUROMANCER, ...shelfOf(60)] })
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
 
     // The first spine (top row, left edge), the last spine of the second row
     // (right edge), Dune (above) and the very last spine.
@@ -389,7 +389,7 @@ test.describe('Story 1.14 Change a book’s color from the shelf (follow-ups)', 
     const server = await seededServer({
       books: [{ title: 'Good Omens', authors: ['Terry Pratchett', 'Neil Gaiman'], pages: 1 }],
     })
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     await spine(page, 'Good Omens by Terry Pratchett and 1 other, not read yet').click()
     const card = popover(page, 'Good Omens')
     await expect(card.getByText('Terry Pratchett; Neil Gaiman', { exact: true })).toBeVisible()
@@ -407,7 +407,7 @@ test.describe('Story 1.14 Change a book’s color from the shelf (follow-ups)', 
     const server = await seededServer({ books: [DUNE, NEUROMANCER] })
     await attachCover(page, server, DUNE_EDIT_FORM)
     const sent = requestsTo(page, SET_SPINE_COLOR)
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     const dune = spine(page, DUNE_SPINE)
     await dune.click()
     const card = popover(page, 'Dune')
@@ -444,7 +444,7 @@ test.describe('Story 1.14 Change a book’s color from the shelf (follow-ups)', 
   }) => {
     const server = await seededServer({ books: [DUNE, NEUROMANCER] })
     const sent = requestsTo(page, SET_SPINE_COLOR)
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     await spine(page, DUNE_SPINE).click()
     const card = popover(page, 'Dune')
 
@@ -469,7 +469,7 @@ test.describe('Story 1.14 Change a book’s color from the shelf (follow-ups)', 
     seededServer,
   }) => {
     const server = await seededServer({ books: [DUNE, NEUROMANCER] })
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     const dune = spine(page, DUNE_SPINE)
     await dune.click()
     await expect(popover(page, 'Dune')).toBeVisible()
@@ -527,7 +527,7 @@ test.describe('Story 1.14 Change a book’s color from the shelf (follow-ups)', 
       if (fail) await route.fulfill({ status: 500, contentType: 'application/json', body: COULDNT_SAVE_BODY })
       else await route.continue()
     })
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     const dune = spine(page, DUNE_SPINE)
     await dune.click()
     const card = popover(page, 'Dune')
@@ -615,7 +615,7 @@ test.describe('Story 1.14 Change a book’s color from the shelf (follow-ups)', 
       await held
       await route.continue()
     })
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     await spine(page, DUNE_SPINE).click()
     const card = popover(page, 'Dune')
 
@@ -632,7 +632,7 @@ test.describe('Story 1.14 Change a book’s color from the shelf (follow-ups)', 
   test('[P2] AC-1 the popover follows its spine when the page scrolls', async ({ page, seededServer }) => {
     await page.setViewportSize({ width: 1024, height: 700 })
     const server = await seededServer({ books: [DUNE, NEUROMANCER, ...shelfOf(80)] })
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     const dune = spine(page, DUNE_SPINE)
     await dune.scrollIntoViewIfNeeded()
     await dune.click()
@@ -662,7 +662,7 @@ test.describe('Story 1.14 Change a book’s color from the shelf (follow-ups)', 
   test('[P2] AC-1 the popover follows its spine when the window is resized', async ({ page, seededServer }) => {
     await page.setViewportSize({ width: 1024, height: 900 })
     const server = await seededServer({ books: [DUNE, NEUROMANCER, ...shelfOf(40)] })
-    await page.goto(`${server.url}/`)
+    await page.goto(`${server.url}/catalog`)
     const dune = spine(page, DUNE_SPINE)
     await dune.click()
     const card = popover(page, 'Dune')
@@ -698,7 +698,7 @@ test.describe('Story 1.14 Change a book’s color from the shelf (follow-ups)', 
     for (const colorScheme of ['light', 'dark'] as const) {
       await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' })
       for (const name of [DUNE_SPINE, NEUROMANCER_SPINE]) {
-        await page.goto(`${server.url}/`)
+        await page.goto(`${server.url}/catalog`)
         await spine(page, name).click()
         await expect(page.getByRole('dialog')).toBeVisible()
         const { violations } = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze()

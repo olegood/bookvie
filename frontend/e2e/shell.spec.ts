@@ -2,9 +2,13 @@
 
 import { test, expect } from './fixtures.ts'
 
-test('/ shows the Catalog heading', async ({ page }) => {
+test('/ shows Home, the launch page, and /catalog the Catalog heading', async ({ page }) => {
   const response = await page.goto('/')
   expect(response?.status()).toBe(200)
+  await expect(page.getByRole('heading', { level: 1, name: 'Home', exact: true })).toBeAttached()
+
+  const catalog = await page.goto('/catalog')
+  expect(catalog?.status()).toBe(200)
   await expect(page.getByRole('heading', { level: 1, name: 'Catalog' })).toBeVisible()
 })
 

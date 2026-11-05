@@ -2,7 +2,13 @@
 // panel: the metadata grid, the panel's prefill and the Readings lines. The server computes the
 // domain values (including the latest finish date); these only format.
 
-import { BOOK_FIELD_KEYS, type BookDetailView, type BookFields, type BookReading } from '../api/index.ts'
+import {
+  BOOK_FIELD_KEYS,
+  type BookDetailView,
+  type BookFields,
+  type BookReading,
+  type CurrentReading,
+} from '../api/index.ts'
 
 /** The fields of the `book` view the panel prefill reads. */
 export type EditableBook = Pick<
@@ -183,4 +189,14 @@ export function markDeleteHandled(key: string): void {
   } catch {
     // Storage unavailable: the per-mount ref still guards this mount.
   }
+}
+
+/**
+ * The Current reading block's status line: "Main book · started 2 Sep 2026"
+ * or "Waiting for you, page 120 · started 2 Sep 2026"; no "· started" part
+ * without a start date.
+ */
+export function currentReadingStatus(reading: Pick<CurrentReading, 'status' | 'currentPage' | 'startDate'>): string {
+  const status = reading.status === 'main' ? 'Main book' : `Waiting for you, page ${reading.currentPage}`
+  return reading.startDate === null ? status : `${status} · started ${shortDate(reading.startDate)}`
 }

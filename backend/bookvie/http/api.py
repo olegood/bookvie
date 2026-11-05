@@ -318,7 +318,7 @@ def backup_view(request: Request) -> views.BackupView:
 
 @router.get("/views/home", response_model=views.HomeView)
 def home_view(request: Request) -> views.HomeView:
-    return views.home(request.app.state.store.library)
+    return views.home_for(request.app.state.store)
 
 
 @router.get("/views/catalog", response_model=views.CatalogView)

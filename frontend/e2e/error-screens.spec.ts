@@ -11,7 +11,7 @@ test('a page that throws shows the error screen inside the shell', async ({ page
   // `books` must be an array, so CatalogPage throws while rendering.
   await page.route(CATALOG_VIEW, (route) => route.fulfill({ json: { books: null, tags: [] } }))
 
-  await page.goto('/')
+  await page.goto('/catalog')
   await expect(page.getByRole('main').getByRole('heading', { level: 1, name: WENT_WRONG })).toBeVisible()
   await expect(page).toHaveTitle(`${WENT_WRONG} — bookvie`)
   await expect(page.getByRole('banner').getByRole('navigation')).toBeVisible()
@@ -38,5 +38,5 @@ test('a shell that throws shows the error screen without the shell', async ({ pa
   await expect(page.getByRole('banner')).toHaveCount(0)
   await expect(page.getByText('Reload the page to try again.')).toBeVisible()
   await expect(page.getByText('Page not found')).toHaveCount(0)
-  await expect(page.getByRole('link', { name: 'Back to the catalog' })).toHaveAttribute('href', '/')
+  await expect(page.getByRole('link', { name: 'Back to the catalog' })).toHaveAttribute('href', '/catalog')
 })
