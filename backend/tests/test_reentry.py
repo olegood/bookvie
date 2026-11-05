@@ -263,3 +263,30 @@ def test_ac1_p1_the_main_book_s_earlier_finished_reading_counts_toward_pace() ->
     assert main_book is not None
     # 330 pages left: 9.04… at the combined pace, so 10 (8.25, so 9, without it).
     assert main_book.days_left == 10
+
+
+def test_ac2_p1_days_left_is_exact_when_pages_left_divide_evenly_by_pace() -> None:
+    from bookvie.domain.pace import days_left, measured_pace
+
+    # A whole quotient is that many days, not one more: ceil, not floor + 1.
+    assert days_left(180, Fraction(20)) == 9
+    assert days_left(900, Fraction(900, 31)) == 31
+
+    # 260 pages at 52 pages over 3 days is exactly 15 days, but float division
+    # gives 15.000000000000002 and so 16; the arithmetic must stay exact.
+    pace = Fraction(52, 3)
+    assert 260 / float(pace) > 15  # the trap is real
+    assert days_left(260, pace) == 15
+
+    # The same through the home view: 52 pages over 3 days, 260 of 330 left.
+    builder = LibraryBuilder()
+    left_hand = builder.book(title="The Left Hand of Darkness", pages=330)
+    builder.reading(left_hand, start_date="2026-10-11", current_page=70)
+    builder.main(left_hand)
+    kindred = builder.book(title="Kindred", pages=52)
+    _finished(builder, kindred, "2026-09-01", "2026-09-03", 52)
+    library = builder.build()
+    assert measured_pace(library) == pace
+    main_book = home(library).main_book
+    assert main_book is not None
+    assert main_book.days_left == 15
