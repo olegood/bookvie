@@ -288,3 +288,10 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-5-see-my-reading-on-home-s-shelf.md`
   summary: ARCHITECTURE-SPINE AD-6 says the server picks "which Books form the Home bookcase slice and in what row priority"; Story 3.5 sends a Book-id `slicePriority` and the client chooses, fills and orders rows.
   evidence: Spine-check finding SC1 in Story 3.5's review; the spine is reconciled per epic.
+
+## Deferred from: code review of spec-3-5-see-my-reading-on-home-s-shelf (2026-11-05)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-5-see-my-reading-on-home-s-shelf.md`
+  summary: No test pins the negative refocus case on Home's slice: focus a spine, drop focus to `body` (blank click), resize so the rows repack, and assert no slice spine takes focus. The `onBlur` `isConnected` branch in `Bookcase.tsx` is unguarded by tests.
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-5-see-my-reading-on-home-s-shelf.md`
+  summary: Spine-check re-raised the AD-6 wording drift (client chooses slice rows from an id priority); it stays as recorded above.

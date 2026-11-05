@@ -169,6 +169,25 @@ function hasMainMarker({ pixels, stripTop }: Column): boolean {
   return pixels.slice(0, Math.ceil(stripTop)).some((pixel) => near(pixel, MAIN_MARKER, 6))
 }
 
+/** The Main spine fill's computed style: the absolutely placed descendant topped by the 2px line. */
+async function fillStyle(spine: Locator) {
+  return spine.evaluate((element) => {
+    for (const node of Array.from(element.querySelectorAll('*'))) {
+      const style = getComputedStyle(node)
+      if (style.position === 'absolute' && style.borderTopWidth === '2px') {
+        return {
+          transitionProperty: style.transitionProperty,
+          transitionDuration: style.transitionDuration,
+          transitionTimingFunction: style.transitionTimingFunction,
+          background: style.backgroundColor,
+          line: style.borderTopColor,
+        }
+      }
+    }
+    throw new Error('the spine has no fill')
+  })
+}
+
 /** 180 Books, "Book 001" … "Book 180", one author: bookcase order is title order. */
 function bigShelf() {
   return shelfOf(180).map((book, n) => ({ ...book, id: bookId(n + 1), pages: 300 }))
@@ -496,5 +515,79 @@ test.describe('Story 3.5 See my reading on Home’s shelf (ATDD)', () => {
     await page.keyboard.press('Escape')
     await expect(page.getByRole('dialog')).toHaveCount(0)
     await expect(dune).toBeFocused()
+  })
+
+  test('[P2] AC-2 an open slice popover follows its spine when a resize repacks the rows', async ({
+    page,
+    seededServer,
+  }) => {
+    const books = bigShelf()
+    Object.assign(books[169], { readings: [{ startDate: '2026-10-01', currentPage: 30 }] })
+    const server = await seededServer({ mainBookId: bookId(170), books })
+    await page.setViewportSize({ width: 1280, height: 900 })
+    await page.goto(server.url)
+    const k = await rowCapacity(page)
+    await sliceSpine(page, 'Book 170').click()
+    const dialog = page.getByRole('dialog')
+    await expect(dialog).toBeVisible()
+
+    await page.setViewportSize({ width: 900, height: 900 })
+    await expect.poll(() => rowCapacity(page)).toBeLessThan(k)
+    await expect(dialog).toBeVisible()
+
+    // The criterion: the popover already sits where a fresh placement puts it.
+    const placed = await dialog.boundingBox()
+    await page.evaluate(() => window.dispatchEvent(new Event('scroll')))
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => resolve(null))))
+    expect(await dialog.boundingBox()).toEqual(placed)
+  })
+
+  test('[P2] AC-6 the Main spine fill moves its height over 600ms ease-out, and not at all under reduced motion', async ({
+    page,
+    seededServer,
+  }) => {
+    await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'no-preference' })
+    const server = await seededServer(
+      mainAt(212, { book: { spineColorUser: MAIN_COLOR.hex }, others: [{ title: 'Dune', authors: ['Frank Herbert'] }] }),
+    )
+    await page.goto(server.url)
+    const spine = sliceSpine(page, LEFT_HAND.title)
+
+    expect(await fillStyle(spine)).toMatchObject({
+      transitionProperty: 'height',
+      transitionDuration: '0.6s',
+      transitionTimingFunction: 'ease-out',
+    })
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    expect((await fillStyle(spine)).transitionDuration).toBe('0s')
+  })
+
+  test('[P2] AC-3 under forced colors the Main spine fill, its line and the marker stay distinct from the body', async ({
+    page,
+    seededServer,
+  }) => {
+    await page.emulateMedia({ colorScheme: 'light', forcedColors: 'active' })
+    const server = await seededServer(
+      mainAt(212, { book: { spineColorUser: MAIN_COLOR.hex }, others: [{ title: 'Dune', authors: ['Frank Herbert'] }] }),
+    )
+    await page.goto(server.url)
+    const spine = sliceSpine(page, LEFT_HAND.title)
+    const body = await spine.evaluate((element) => getComputedStyle(element).backgroundColor)
+
+    const fill = await fillStyle(spine)
+    expect(fill.background).not.toBe(body)
+    expect(fill.line).not.toBe(body)
+    expect(fill.line).not.toBe(fill.background)
+
+    // The marker: a dot in a ring whose color differs from the body.
+    const ring = await spine.evaluate((element) => {
+      for (const node of Array.from(element.querySelectorAll('*'))) {
+        const style = getComputedStyle(node)
+        if (style.position === 'absolute' && style.boxShadow !== 'none') return style.boxShadow
+      }
+      return null
+    })
+    expect(ring).not.toBeNull()
+    expect(ring!.startsWith(body)).toBe(false)
   })
 })

@@ -2,7 +2,7 @@
 title: "Story 3.5: See my reading on Home's shelf"
 type: 'feature'
 created: '2026-11-05'
-status: 'in-review'
+status: 'done'
 route: 'dispatch'
 review_loop_iteration: 0
 baseline_commit: 'ed628305b968b2b38e0d05f828015d54647bae5a'
@@ -88,6 +88,34 @@ E2E (`frontend/e2e`): `home-slice.spec.ts` (5 leaves), `bookcase.ts` helpers. Ca
 **Acceptance Criteria:**
 - Given the ATDD leaves, when they are activated, then `pytest tests/test_home_slice.py` and `e2e/home-slice.spec.ts` pass.
 - Given the whole suite, when `npm run check` runs, then it passes, including the coverage gates, `check:api` and axe on Home and Catalog.
+
+### Review Findings
+
+Code review 2026-11-05. Layers: Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor, Spine Check.
+
+- [x] [Review][Patch] Open popover keeps a stale position after a resize repack: the repack remounts the anchored spine (`li key={row[0]}`), but `anchor` only changes with `openId`, so `SpinePopover`'s placement effect never re-runs against the new spine. Make `anchor` also depend on `rows` [frontend/src/pages/Bookcase.tsx:193]
+- [x] [Review][Patch] AC-6 "instantly under reduced motion" is never observed: `spineColumn` screenshots with `animations: 'disabled'`, which fast-forwards the transition. Assert the fill's `transition-duration` is `0s` under `reducedMotion: 'reduce'` and `0.6s` without it [frontend/e2e/home-slice.spec.ts:344]
+- [x] [Review][Patch] Forced-colors rules for the Main spine (fill, line, marker) are not exercised: no test emulates `forcedColors: 'active'` with a Main book. Add a leaf comparing the fill's `background-color` and `border-top-color` with the spine body's [frontend/src/pages/Bookcase.module.css]
+- [x] [Review][Patch] Tie test docstring says `"émile"`, but the data is `"ÉMILE"`, whose title key is `"emile"` [backend/tests/test_home_slice.py:117]
+- [x] [Review][Defer] Dropping focus to `body` and then resizing must not refocus a slice spine: only the positive refocus path is pinned [frontend/src/pages/Bookcase.tsx:349] — deferred: narrow interaction edge; the negative case can join the next slice-focus work
+- [x] [Review][Defer] AD-6 wording drift (the client chooses rows from an id priority) [_bmad-output/planning-artifacts/ARCHITECTURE-SPINE.md] — deferred: already recorded in deferred-work.md (SC1); the spine is reconciled per epic
+
+Patches applied and verified: each new e2e leaf fails on its mutation (stale bundle without the `anchor` fix: popover x 384 vs 61; the `.fill` transition or its forced-colors rule removed) and passes with the code; `npm run check` green (985 pytest, 262 e2e, coverage gates, `check:api`, smoke). Note: `base.css` already zeroes transitions under reduced motion, so `.fill`'s own reduced-motion block is redundant; the new leaf pins the behaviour either way.
+
+**Rejected:**
+- EC/BH/AA: Main row not chosen yields 4 rows — false: `books` and `slicePriority` come from the same home view, and `_slice_priority` always lists `main_book_id` first, so its row is always chosen.
+- EC/BH: `cssLength` 0 → NaN/Infinity capacity — false: both tokens are px in `tokens.css` (28px, 4px).
+- EC/BH: unfinished Main with `percent: null` — false: invariant `main_has_unfinished_reading` guarantees a Reading, so `percent` is set.
+- EC: popover closes when a resize drops its spine out of the 3 rows, and focus falls to body — low: needs a resize with the popover open on a fill row; the fix adds a guard.
+- BH: `title_key` doesn't fold Ø/Ł/Æ — rejected: the fix edits the spine's "Title ordering" convention.
+- BH: the e2e `expectedSlice` duplicates `sliceRows` — false: the spec asks for an independent mirror as the test oracle.
+- BH: no component tests for slice mode — low: no named harm; e2e covers it, and the repo has no `.test.tsx` convention.
+- BH: legend swatch line is 1.5px, not 2px — false: it matches the mockup's `.lg.main` gradient exactly.
+- BH: rows keyed by `row[0]` remount spines (root-cause redesign) — low: the symptoms are handled (focus) or patched (popover); a redesign isn't a direct fix.
+- BH: spec frontmatter status, deferred-work formatting, README story count — low: the status is set by this review, the README count is already deferred, the formatting is cosmetic.
+- AA: marker "centered 8px from the top" vs `top: 8px` — rejected: the CSS matches the mockup; the fix edits the spec wording.
+- AA: 2px line clipped at 100% — false: the Matrix says "fill to strip bottom"; already accepted in pass 1 (BH6+EC7).
+- AA: forced-colors strip merges with the Main body — low: the constraint names only the fill, line and marker, which stay distinct; changing the strip is a design choice.
 
 ## Implementation Notes
 

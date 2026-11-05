@@ -190,7 +190,10 @@ export default function Bookcase(props: Props) {
   if (openId !== null && !visible.has(openId)) setOpenId(null)
   const openBook = openId === null ? undefined : books.find((book) => book.id === openId)
 
-  const anchor = useCallback(() => (openId === null ? null : (buttons.current.get(openId) ?? null)), [openId])
+  // A slice repack remounts the spines: `rows` renews `anchor`, so an open
+  // popover places itself again against the new spine.
+  // oxlint-disable-next-line react-hooks/exhaustive-deps
+  const anchor = useCallback(() => (openId === null ? null : (buttons.current.get(openId) ?? null)), [openId, rows])
 
   // Closing returns focus to the spine, unless the user put it somewhere else.
   const closePopover = useCallback(

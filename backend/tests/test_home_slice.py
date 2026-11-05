@@ -114,7 +114,7 @@ def test_ac1_p1_the_home_view_supplies_main_then_up_next_then_most_recent_finish
 
 
 def test_slice_priority_ties_on_the_title_key_ignore_diacritics_and_case() -> None:
-    """Same finish day: "émile" sorts with "Emma" by its base letters, not after "Z"."""
+    """Same finish day: "ÉMILE" (key "emile") sorts with "Emma" by its base letters, not after "Z"."""
     builder = LibraryBuilder()
     zola = builder.book(title="Zola", id="a-zola", pages=300)
     _finish(builder, zola, "2026-09-15")
