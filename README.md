@@ -75,7 +75,7 @@ The build is split into 7 epics and 41 stories, each story with Given/When/Then 
 
 1. **Catalog the home library** (14 stories). Scaffold and install, one safe instance, one `check` command, the safe single-file store, one checked API contract, the app shell, the agent-friendly New book panel, duplicate warnings, the bookcase, Book detail, covers and spine colors. The test harness is built here too. Until Epic 3 added Home, bookvie opened on the Catalog.
 2. **Keep the library safe** (3). One-click export, restore, and refusing damaged, hostile or newer files.
-3. **Read a book with visible progress** (7). Story 3.1 made Home the launch page at `/` (the date header, the Main book card and its gauge, the empty states) and moved the Catalog to `/catalog`. The Main book on Home, the Start dialog with Purpose, one-step catch-up, "~N days left", the shelf slice, finishing, and the one-time spine fill.
+3. **Read a book with visible progress** (7). Story 3.1 made Home the launch page at `/` (the date header, the Main book card and its gauge, the empty states) and moved the Catalog to `/catalog`. Still to come: the Start dialog with Purpose, one-step catch-up, "~N days left", the shelf slice, finishing, and the one-time spine fill.
 4. **Switch books without losing your place** (7). Up next, Waiting for you, pause, marking any book finished, state markers on the shelf, and Side reads.
 5. **Keep what a book gave you** (4). Card notes: add, edit, search, and go through a book's notes as a pile.
 6. **Know how long and how much** (4). The quick pace calculator for one book or the whole library, and Stats with monthly bars.

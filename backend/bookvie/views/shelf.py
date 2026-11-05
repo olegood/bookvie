@@ -6,7 +6,7 @@
 from datetime import datetime
 from pathlib import Path
 
-from bookvie.domain import Book, Library, Reading, current_reading, percent
+from bookvie.domain import Book, Library, Reading, current_reading, percent, reading_status
 from bookvie.domain.book_fields import merge_tags
 from bookvie.store import COVERS_DIR, Store, read_last_export, referenced_covers
 
@@ -123,24 +123,26 @@ def _role_reading(library: Library, book: Book) -> tuple[Role, Reading | None]:
         return "main", current_reading(book)
     if library.up_next_book_id == book.id:
         return "upNext", None
-    # Unfinished and not Main is paused (AD-19); ``pausedAt`` is only a stored date.
     reading = current_reading(book)
-    if reading is not None:
+    if reading is not None and reading_status(library, book, reading) == "paused":
         return "waiting", reading
     return None, None
+
+
+def _waiting_page(role: Role, reading: Reading | None) -> int | None:
+    """For ``waiting``, the paused Reading's page."""
+    return reading.current_page if role == "waiting" and reading is not None else None
 
 
 def _role(library: Library, book: Book) -> tuple[Role, int | None]:
     """The Book's role and, for ``waiting``, the paused Reading's page."""
     role, reading = _role_reading(library, book)
-    if role == "waiting" and reading is not None:
-        return role, reading.current_page
-    return role, None
+    return role, _waiting_page(role, reading)
 
 
-def _current_reading(library: Library, book: Book) -> CurrentReading | None:
-    role, reading = _role_reading(library, book)
-    if reading is None or role not in ("main", "waiting"):
+def _current_reading(book: Book, role: Role, reading: Reading | None) -> CurrentReading | None:
+    """Book detail's Current reading block; only ``main`` and ``waiting`` carry a Reading."""
+    if reading is None:
         return None
     return CurrentReading(
         status="main" if role == "main" else "waiting",
@@ -157,7 +159,7 @@ def book_detail(library: Library, book_id: str) -> BookDetailView | None:
     if book is None:
         return None
     latest = book.latest_finished()
-    role, waiting_page = _role(library, book)
+    role, reading = _role_reading(library, book)
     return BookDetailView(
         id=book.id,
         title=book.title,
@@ -183,8 +185,8 @@ def book_detail(library: Library, book_id: str) -> BookDetailView | None:
             for r in book.readings
         ],
         role=role,
-        waiting_page=waiting_page,
-        current_reading=_current_reading(library, book),
+        waiting_page=_waiting_page(role, reading),
+        current_reading=_current_reading(book, role, reading),
     )
 
 

@@ -41,7 +41,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-5-speak-one-api-contract.md`
   summary: Cover `useHomeView`/`useCatalogView` with a test that each hook queries `['view', <its noun>]` and fetches `/api/views/<its noun>`.
   evidence: No test calls either hook, and `HomeView`/`CatalogView` are structurally identical, so swapping them passes `tsc` and every test. No page uses them yet; Story 1.6 (first consumer) should pin it with its page or e2e test.
-  resolved: Story 1.6 (catalog-empty.spec.ts AC-6 pins GET /api/views/catalog) and Story 3.1 (`api/views.test.ts` "the home view" pins `['view', 'home']` and `GET /api/views/home`; HomePage is useHomeView's first consumer, and `HomeView` now differs from `CatalogView` by `mainBook` and `lastExportAt`).
+  resolved: Story 1.6 (catalog-empty.spec.ts AC-6 pins GET /api/views/catalog) and Story 3.1 (`e2e/home.spec.ts` intercepts `**/api/views/home` and asserts Home-only fields through `useHomeView`, HomePage being its first consumer, and `HomeView` now differs from `CatalogView` by `mainBook` and `lastExportAt`).
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-6-open-bookvie-to-an-empty-shelf.md`
   summary: Give the router a generic error element so a render crash isn't shown as "Page not found".
   evidence: The layout route's `errorElement` in `frontend/src/main.tsx` renders `NotFoundPage` for any thrown error, including an exception inside `CatalogPage`; the pre-1.6 router did the same on `/`. Distinguish `isRouteErrorResponse` 404s from other errors.
@@ -240,3 +240,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-1-see-my-main-book-on-home.md`
   summary: Record in AD-4/AD-15 and the FR-22 map row that the home view also reads `local-state.json` ("Last export") from disk.
   evidence: `views.home_for` calls `read_last_export(store.data_dir)` (story 3.1); the spine names only `views/backup` (spine check SC4).
+
+## Deferred from: code review of spec-3-1-see-my-main-book-on-home (2026-11-05)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-1-see-my-main-book-on-home.md`
+  summary: Decide Book detail's Current reading block for an Up-next Book with a paused Reading (today it gets none, while ShelfBook still carries its percent and currentPage).
+  evidence: `views/shelf.py` `_role_reading` returns ("upNext", None) before it looks at the Reading. AD-19 still counts that Reading as paused, and FR-7 shows a paused Up next only in Up next with Resume. Up next can't be set until Story 4.1.

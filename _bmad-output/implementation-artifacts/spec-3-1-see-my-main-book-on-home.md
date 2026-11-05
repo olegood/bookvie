@@ -2,7 +2,7 @@
 title: 'Story 3.1: See my Main book on Home'
 type: 'feature'
 created: '2026-11-05'
-status: 'in-review'
+status: 'done'
 route: 'dispatch'
 review_loop_iteration: 0
 baseline_commit: 'dbd1ab83882f9bd9455170da745db87189f86d53'
@@ -96,6 +96,33 @@ E2E (`frontend/e2e`): `${server.url}/` for Catalog in app-shell, backup, book-de
 - Given the ATDD leaves, when activated, then `pytest tests/test_home_view.py` and `e2e/home.spec.ts` pass.
 - Given the whole suite, when `npm run check` runs, then it passes with the coverage gates (domain ≥90%).
 - Given a paused, Up-next Book, when rendered, then `_role`'s current precedence is unchanged (no new Up-next strings this story).
+
+### Review Findings
+
+Code review 2026-11-05 (bmad-code-review; layers: Blind Hunter, Edge Case Hunter [failed: returned empty], Verification Gap, Acceptance Auditor, Spine Check).
+
+- [x] [Review][Patch] Move the Reading status rule into `domain.reading_status()` (AD-19: the only status function) and have `_role_reading` call it — resolved from decision: add it now [backend/bookvie/views/shelf.py:120]
+- [x] [Review][Patch] README Epic 3 bullet leaves the remaining-stories list as a sentence fragment and repeats "The Main book on Home" [README.md:78]
+- [x] [Review][Patch] `_current_reading` has a dead `role not in ("main", "waiting")` guard and recomputes `_role_reading`, which `book_detail` already ran via `_role` [backend/bookvie/views/shelf.py:141]
+- [x] [Review][Patch] The deferred-work resolution line cites `api/views.test.ts` as pinning the home view, but that test only calls the generic `viewKey`/`fetchView`; cite `home.spec.ts` intercepting `**/api/views/home` [_bmad-output/implementation-artifacts/deferred-work.md:44]
+- [x] [Review][Defer] An Up-next Book with a paused Reading gets no Current reading block on Book detail, but `ShelfBook` still carries its `percent`/`currentPage` [backend/bookvie/views/shelf.py:124] — deferred: Up next is not settable until Story 4.1, and this story's Never forbids new Up-next copy. AD-19 still counts the Reading as paused, so Epic 4 has to decide the block's status line.
+- [x] [Review][Defer] `domain/progress` is missing from the spine's Structural Seed (SC2) [ARCHITECTURE-SPINE.md] — deferred: already logged in deferred-work.md
+- [x] [Review][Defer] AD-6's client-arithmetic list does not name gauge tick placement (SC3) [frontend/src/lib/gauge.ts] — deferred: already logged in deferred-work.md
+- [x] [Review][Defer] AD-4/AD-15/FR-22 map name only `views/backup` as reading `local-state.json` (SC4) [backend/bookvie/views/shelf.py:115] — deferred: already logged in deferred-work.md
+
+**Rejected:**
+- `_role` now counts a Side read's unfinished Reading as `waiting` without `pausedAt` (BH, AA) — false: this matches AD-19 (paused = unfinished and not Main), FR-7 and Story 4.7 ("a Side read that is also … Waiting for you"). An unfinished non-Main Reading without `pausedAt` can't be reached through intents.
+- Up-next `ShelfBook.percent` contradicts detail (BH) — false: the percent is the current Reading's, as its docstring says, and no consumer shows it for Up next.
+- `_main_book` hides a broken store with page 0 / no card (BH, AA) — false: the `main_has_unfinished_reading` and pointer invariants rule out both states on every commit.
+- Home with a malformed `local-state.json` is untested, and stderr is noisy (BH) — low: `read_last_export` is shared and tested through Backup, and a malformed file is rare.
+- `wantsNewBook`/`clearNewBookState` lack unit tests, and `usr: null` drops other state (BH) — false: `usr` only ever holds `NewBookState` on this entry, and the e2e suite covers reload/Back/Forward.
+- Home imports `EmptyShelf` from `CatalogPage`; the "Bookcase" label could clash in 3.5 (BH) — low: no harm today, and the fix is a module move.
+- The error page should link to Home (BH) — false: the link and its "Back to the catalog" copy agree.
+- Spec Triage Log verdict column and bookkeeping (BH) — rejected: the fix edits the spec under review.
+- Gauge test gaps and hard-coded px (BH) — low: cosmetic. Fill width is now asserted, and layout/axe pass in both placements.
+- `HomePage` renders `null` while loading, so focus can't land on `h1` (BH) — false: `PageHeading` focuses on mount after a navigation, late data included.
+- Client divides for tick placement (AA) — false: the frozen I/O matrix prescribes `Math.round(pages/2)`, and the spine drift is SC3.
+- `ErrorPage.tsx` missing from the Code Map (AA) — rejected: the fix edits the spec under review.
 
 ## Implementation Notes
 
