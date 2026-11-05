@@ -9,15 +9,22 @@
 // browser clock to the same day in Europe/Madrid (TC-2, AD-20).
 
 import AxeBuilder from '@axe-core/playwright'
-import { rmSync } from 'node:fs'
 import type { Locator, Page } from '@playwright/test'
-import { expect, type Server, startSeededServer, test } from './fixtures.ts'
+import { expect, startSeededServer, test } from './fixtures.ts'
+import {
+  DUNE,
+  DUNE_ID,
+  LEFT_HAND,
+  LEFT_HAND_ID,
+  mainAt,
+  mainBookCard,
+  serverAtFakeToday,
+  stopAndRemove,
+} from './home.ts'
 import { COVER_PNG } from './intents.ts'
 import { newBookPanel, rgbOf } from './library.ts'
 import { spine } from './bookcase.ts'
 
-const FAKE_TODAY = '2026-10-28' // a Wednesday
-const FAKE_NOW = new Date('2026-10-28T10:00:00+01:00') // CET: DST ended on 25 October
 const DATE_HEADER = 'Wednesday, 28 October'
 // Any "Weekday, D Month" line, for the tests that run on the real clock.
 const DATE_HEADER_PATTERN = /^(Mon|Tues|Wednes|Thurs|Fri|Satur|Sun)day, \d{1,2} [A-Z][a-z]+$/
@@ -28,43 +35,10 @@ const COULDNT_LOAD = "Couldn't load. Is bookvie still running?"
 const INK_TERTIARY = rgbOf('#666961')
 const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']
 
-const LEFT_HAND_ID = '3b8f2c1a-5d4e-4f6a-9b7c-1e2d3c4b5a69'
-const DUNE_ID = '6f1c1d2e-9a4b-4c3d-8e5f-0a1b2c3d4e5f'
 const LEFT_HAND_COVER = 'covers/left-hand.png'
-const LEFT_HAND = {
-  id: LEFT_HAND_ID,
-  title: 'The Left Hand of Darkness',
-  authors: ['Ursula K. Le Guin'],
-  pages: 330,
-}
-const DUNE = { id: DUNE_ID, title: 'Dune', authors: ['Frank Herbert'], pages: 412 }
-
-/** A library whose Main book is The Left Hand of Darkness at `page`, plus `others`. */
-function mainAt(page: number, { others = [] as object[], book = {}, reading = {} } = {}) {
-  return {
-    mainBookId: LEFT_HAND_ID,
-    books: [{ ...LEFT_HAND, ...book, readings: [{ currentPage: page, ...reading }] }, ...others],
-  }
-}
 
 function nav(page: Page): Locator {
   return page.getByRole('banner').getByRole('navigation')
-}
-
-/** The Main book card, with or without a Main book. */
-function mainBookCard(page: Page): Locator {
-  return page.getByRole('main').getByRole('region', { name: 'Main book', exact: true })
-}
-
-/** Starts a seeded server with `--fake-today` and fixes the browser clock to the same day. */
-async function serverAtFakeToday(
-  page: Page,
-  name: string,
-  partial: Record<string, unknown>,
-  files: Record<string, string | Buffer> = {},
-): Promise<Server> {
-  await page.clock.setFixedTime(FAKE_NOW)
-  return startSeededServer(test.info(), name, partial, files, { fakeToday: FAKE_TODAY })
 }
 
 /** The gauge's fill spans `fraction` of its track (the server's percent), within 1px. */
@@ -72,11 +46,6 @@ async function expectFill(gauge: Locator, fraction: number): Promise<void> {
   const track = (await gauge.boundingBox())!
   const fill = (await gauge.locator('span').boundingBox())!
   expect(Math.abs(fill.width - track.width * fraction)).toBeLessThanOrEqual(1)
-}
-
-async function stopAndRemove(server: Server): Promise<void> {
-  expect(await server.stop()).toBe('')
-  rmSync(server.dataDir, { recursive: true, force: true })
 }
 
 test.describe('Story 3.1 See my Main book on Home (ATDD)', () => {
