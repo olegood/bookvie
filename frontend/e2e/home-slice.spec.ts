@@ -179,7 +179,7 @@ test.describe('Story 3.5 See my reading on Home’s shelf (ATDD)', () => {
     await page.emulateMedia({ colorScheme: 'light' })
   })
 
-  test.skip('[P1] AC-2 the slice shows the Main book’s row first, then the other chosen rows in bookcase order, follows resizes, and keys move through the rows as displayed', async ({
+  test('[P1] AC-2 the slice shows the Main book’s row first, then the other chosen rows in bookcase order, follows resizes, and keys move through the rows as displayed', async ({
     page,
     seededServer,
   }) => {
@@ -252,7 +252,7 @@ test.describe('Story 3.5 See my reading on Home’s shelf (ATDD)', () => {
     )
   })
 
-  test.skip('[P1] AC-3 a never-finished Main book at 64% is outlined, filled in its color from the plank to 64% of the area below the strip, topped by a 2px spine-edge line, with the Main-book marker', async ({
+  test('[P1] AC-3 a never-finished Main book at 64% is outlined, filled in its color from the plank to 64% of the area below the strip, topped by a 2px spine-edge line, with the Main-book marker', async ({
     page,
     seededServer,
   }) => {
@@ -276,7 +276,7 @@ test.describe('Story 3.5 See my reading on Home’s shelf (ATDD)', () => {
     await expect(spine).toHaveAccessibleName('The Left Hand of Darkness by Ursula K. Le Guin, Main book, 64%')
   })
 
-  test.skip('[P2] AC-4 a re-read Main book keeps its full-color spine with the Main-book marker, named "finished, re-reading, 12%"', async ({
+  test('[P2] AC-4 a re-read Main book keeps its full-color spine with the Main-book marker, named "finished, re-reading, 12%"', async ({
     page,
     seededServer,
   }) => {
@@ -306,7 +306,7 @@ test.describe('Story 3.5 See my reading on Home’s shelf (ATDD)', () => {
     expect(hasMainMarker(column)).toBe(true)
   })
 
-  test.skip('[P2] AC-5 the slice header shows BOOKCASE, the meter and See all in Catalog; the legend names the Main fill on Home and Catalog', async ({
+  test('[P2] AC-5 the slice header shows BOOKCASE, the meter and See all in Catalog; the legend names the Main fill on Home and Catalog', async ({
     page,
     seededServer,
   }) => {
@@ -341,7 +341,7 @@ test.describe('Story 3.5 See my reading on Home’s shelf (ATDD)', () => {
     await expect(page.getByRole('main').getByText(LEGEND_MAIN, { exact: true })).toBeVisible()
   })
 
-  test.skip('[P1] AC-6 after a page update the Main spine fill moves to the new percentage with the gauge, instantly under reduced motion', async ({
+  test('[P1] AC-6 after a page update the Main spine fill moves to the new percentage with the gauge, instantly under reduced motion', async ({
     page,
     seededServer,
   }) => {
@@ -364,5 +364,137 @@ test.describe('Story 3.5 See my reading on Home’s shelf (ATDD)', () => {
     await expect(sliceSpine(page, LEFT_HAND.title)).toHaveAccessibleName(
       'The Left Hand of Darkness by Ursula K. Le Guin, Main book, 64%',
     )
+  })
+
+  test('[P2] AC-2 a library smaller than 3 rows shows every row, named "Bookcase slice, 1 row"', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({
+      books: [
+        { title: 'Kindred', authors: ['Octavia E. Butler'] },
+        { title: 'Dune', authors: ['Frank Herbert'] },
+        { title: 'Emma', authors: ['Jane Austen'] },
+      ],
+    })
+    await page.goto(server.url)
+
+    await expect(slice(page)).toHaveAccessibleName('Bookcase slice, 1 row')
+    expect(await sliceRows(page)).toEqual([['Dune', 'Emma', 'Kindred']]) // by first author, as Catalog sorts
+    await expect(slice(page).getByRole('listitem')).toHaveCount(1)
+    await expect(homeBookcase(page).getByText(LEGEND_MAIN, { exact: true })).toBeVisible()
+  })
+
+  test('[P2] AC-2 without a Main book the chosen rows are all in bookcase order', async ({ page, seededServer }) => {
+    // Up next: Book 170; newest finish: Book 090; then Book 010.
+    const books = bigShelf()
+    const at = (n: number) => books[n - 1]
+    Object.assign(at(90), {
+      readings: [{ startDate: '2026-10-01', finishDate: '2026-10-20', finishedPages: 300, currentPage: 300 }],
+    })
+    Object.assign(at(10), {
+      readings: [{ startDate: null, finishDate: '2026-03-20', finishedPages: 300, currentPage: 300 }],
+    })
+    const server = await seededServer({ upNextBookId: bookId(170), books })
+    await page.setViewportSize({ width: 1280, height: 900 })
+    await page.goto(server.url)
+
+    await expect(slice(page)).toHaveAccessibleName('Bookcase slice, 3 rows')
+    const k = await rowCapacity(page)
+    const expected = expectedSlice(
+      books.map((book) => book.title),
+      k,
+      ['Book 170', 'Book 090', 'Book 010'],
+      false,
+    )
+    expect(expected.at(-1)).toContain('Book 170') // Up next's row is last: bookcase order
+    expect(await sliceRows(page)).toEqual(expected)
+  })
+
+  test('[P2] AC-3 at 0% only the 2px fill line shows, at the plank', async ({ page, seededServer }) => {
+    const server = await seededServer(
+      mainAt(0, { book: { spineColorUser: MAIN_COLOR.hex }, others: [{ title: 'Dune', authors: ['Frank Herbert'] }] }),
+    )
+    await page.goto(server.url)
+    const spine = sliceSpine(page, LEFT_HAND.title)
+    await expect(spine).toHaveAccessibleName('The Left Hand of Darkness by Ursula K. Le Guin, Main book, 0%')
+
+    const column = await spineColumn(page, spine)
+    const fill = measureFill(column, MAIN_COLOR.rgb)
+    expect(fill.fillPx).toBe(0)
+    expect(fill.linePx).toBeGreaterThanOrEqual(2)
+    expect(fill.linePx).toBeLessThanOrEqual(3)
+    expect(near(fill.above, UNREAD_FILL)).toBe(true)
+    expect(hasMainMarker(column)).toBe(true)
+  })
+
+  test('[P2] AC-3 at the last page the fill reaches the strip’s lower end and the marker stays', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer(
+      mainAt(330, { book: { spineColorUser: MAIN_COLOR.hex }, others: [{ title: 'Dune', authors: ['Frank Herbert'] }] }),
+    )
+    await page.goto(server.url)
+    const spine = sliceSpine(page, LEFT_HAND.title)
+    await expect(spine).toHaveAccessibleName('The Left Hand of Darkness by Ursula K. Le Guin, Main book, 100%')
+
+    const column = await spineColumn(page, spine)
+    const fill = measureFill(column, MAIN_COLOR.rgb)
+    expect(fill.fillPx).toBeGreaterThanOrEqual(fill.areaPx - 1)
+    expect(hasMainMarker(column)).toBe(true)
+  })
+
+  test('[P1] AC-2 a focused slice spine keeps focus when a resize repacks the rows', async ({ page, seededServer }) => {
+    const books = bigShelf()
+    Object.assign(books[169], { readings: [{ startDate: '2026-10-01', currentPage: 30 }] })
+    const server = await seededServer({ mainBookId: bookId(170), books })
+    await page.setViewportSize({ width: 1280, height: 900 })
+    await page.goto(server.url)
+    await expect(slice(page)).toHaveAccessibleName('Bookcase slice, 3 rows')
+    const k = await rowCapacity(page)
+
+    // Book 170 is the Main book: its row is always displayed.
+    await sliceSpine(page, 'Book 170').focus()
+    await page.setViewportSize({ width: 900, height: 900 })
+    await expect.poll(() => rowCapacity(page)).toBeLessThan(k)
+    // Wait for the repack itself, not only the new width.
+    const titles = books.map((book) => book.title)
+    const narrow = expectedSlice(titles, await rowCapacity(page), ['Book 170'], true)
+    await expect.poll(() => sliceRows(page)).toEqual(narrow)
+    await expect(sliceSpine(page, 'Book 170')).toBeFocused()
+  })
+
+  test('[P1] AC-3 the Main spine on Catalog is filled to 64% with the line and the marker', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer(
+      mainAt(212, { book: { spineColorUser: MAIN_COLOR.hex }, others: [{ title: 'Dune', authors: ['Frank Herbert'] }] }),
+    )
+    await page.goto(`${server.url}/catalog`)
+    const spine = page
+      .getByRole('main')
+      .getByRole('list', { name: /^Bookcase, \d+ books?$/ })
+      .getByRole('button', { name: new RegExp(`^${LEFT_HAND.title} by `) })
+
+    const column = await spineColumn(page, spine)
+    const fill = measureFill(column, MAIN_COLOR.rgb)
+    expect(Math.abs(fill.fillPx - 0.64 * fill.areaPx)).toBeLessThanOrEqual(2)
+    expect(fill.linePx).toBeGreaterThanOrEqual(2)
+    expect(fill.linePx).toBeLessThanOrEqual(3)
+    expect(hasMainMarker(column)).toBe(true)
+  })
+
+  test('[P2] AC-2 a slice spine opens its popover, and Escape returns focus to it', async ({ page, seededServer }) => {
+    const server = await seededServer(mainAt(212, { others: [{ title: 'Dune', authors: ['Frank Herbert'] }] }))
+    await page.goto(server.url)
+    const dune = sliceSpine(page, 'Dune')
+
+    await dune.click()
+    await expect(page.getByRole('dialog')).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    await expect(dune).toBeFocused()
   })
 })

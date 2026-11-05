@@ -8,6 +8,7 @@ import {
   matchesTitle,
   noMatchCopy,
   pickTag,
+  sliceName,
   sortBooks,
   spineName,
   tagSuggestions,
@@ -122,6 +123,14 @@ describe('bookcaseName', () => {
   it('counts one book in the singular', () => {
     assert.equal(bookcaseName(1), 'Bookcase, 1 book')
     assert.equal(bookcaseName(500), 'Bookcase, 500 books')
+  })
+})
+
+describe('sliceName', () => {
+  it('counts the rows shown, one in the singular', () => {
+    assert.equal(sliceName(1), 'Bookcase slice, 1 row')
+    assert.equal(sliceName(2), 'Bookcase slice, 2 rows')
+    assert.equal(sliceName(3), 'Bookcase slice, 3 rows')
   })
 })
 

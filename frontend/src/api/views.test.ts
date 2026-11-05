@@ -30,6 +30,7 @@ describe('the home view', () => {
     books: [],
     mainBook: null,
     lastExportAt: null,
+    slicePriority: [],
   }
 
   it("is keyed ['view', 'home'], so every intent refetches it", () => {

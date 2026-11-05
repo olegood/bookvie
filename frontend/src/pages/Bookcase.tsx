@@ -10,17 +10,24 @@ import {
   type KeyboardEvent,
   type RefObject,
 } from 'react'
+import { Link } from 'react-router'
 import type { LibraryMeter, ShelfBook } from '../api/index.ts'
 import SpinePopover from '../components/SpinePopover.tsx'
 import StartDialog from '../components/StartDialog.tsx'
-import { bookcaseName, matchesTitle, noMatchCopy, spineName } from '../lib/catalog.ts'
+import { bookcaseName, matchesTitle, noMatchCopy, sliceName, spineName } from '../lib/catalog.ts'
+import { rowCapacity, sliceRows } from '../lib/slice.ts'
 import { nearestVisible, spineHeight } from '../lib/spine.ts'
 import styles from './Bookcase.module.css'
 
-type Props = {
-  /** Already in display order. */
+type Shared = {
+  /** Already in display order (the bookcase order). */
   books: readonly ShelfBook[]
   meter: LibraryMeter
+}
+
+/** Catalog's full bookcase: every Book, hidden by Search titles. */
+type CatalogProps = Shared & {
+  slice?: undefined
   query: string
   /** The Book whose spine carries the highlight ring, if any. */
   highlightId: string | null
@@ -29,6 +36,13 @@ type Props = {
   /** Search titles, which takes focus when a focused spine is hidden and none remain. */
   searchRef: RefObject<HTMLInputElement | null>
 }
+
+/** Home's slice: up to 3 rows of the full bookcase, chosen by the server's priority (AD-6). */
+type SliceProps = Shared & {
+  slice: { priority: readonly string[] }
+}
+
+type Props = CatalogProps | SliceProps
 
 type Measured = Record<string, { title: string; height: number }>
 
@@ -90,12 +104,33 @@ function MeterBar({ meter }: { meter: LibraryMeter }) {
   )
 }
 
+/** A px length from a custom property on `element` (0 when unset). */
+function cssLength(element: Element, property: string): number {
+  return parseFloat(getComputedStyle(element).getPropertyValue(property)) || 0
+}
+
 /**
  * The Bookcase view (DESIGN.md → Bookcase, Spine): every Book as a spine on
- * birch planks, read in its exact color, unread outlined. One Tab stop with
- * roving tabindex; Search titles hides spines and the shelf closes up.
+ * birch planks, read in its exact color, unread outlined, the Main book
+ * outlined and filled to its percentage with the Main-book marker. One Tab
+ * stop with roving tabindex.
+ *
+ * On Catalog, Search titles hides spines and the shelf closes up. With
+ * `slice` (Home), the bookcase is packed into rows at the list's measured
+ * width and up to 3 are shown (`sliceRows`), one `li` per row; it recomputes
+ * on resize, never filters and never scrolls, and the keys follow the rows as
+ * displayed.
  */
-export default function Bookcase({ books, meter, query, highlightId, focusTargets, searchRef }: Props) {
+export default function Bookcase(props: Props) {
+  const { books, meter } = props
+  const sliceMode = props.slice !== undefined
+  const query = props.slice === undefined ? props.query : ''
+  const highlightId = props.slice === undefined ? props.highlightId : null
+  const priority = props.slice?.priority
+  const ownTargets = useRef(new Map<string, HTMLElement>())
+  const noSearch = useRef<HTMLInputElement | null>(null)
+  const focusTargets = props.slice === undefined ? props.focusTargets : ownTargets
+  const searchRef = props.slice === undefined ? props.searchRef : noSearch
   const headingId = useId()
   const buttons = useRef(new Map<string, HTMLButtonElement>())
   const labels = useRef(new Map<string, HTMLElement>())
@@ -111,11 +146,35 @@ export default function Bookcase({ books, meter, query, highlightId, focusTarget
   const shelfRef = useRef<HTMLUListElement>(null)
   const shelf = useCallback(() => shelfRef.current, [])
 
-  const ids = useMemo(() => books.map((book) => book.id), [books])
-  const visibleIds = useMemo(
-    () => books.filter((book) => matchesTitle(book.title, query)).map((book) => book.id),
-    [books, query],
+  // Slice mode: spines per row, measured from the list before paint.
+  const [capacity, setCapacity] = useState<number | null>(null)
+  const allIds = useMemo(() => books.map((book) => book.id), [books])
+  const mainId = useMemo(() => books.find((book) => book.role === 'main')?.id ?? null, [books])
+  const rows = useMemo(
+    () => (priority === undefined || capacity === null ? [] : sliceRows(allIds, capacity, priority, mainId)),
+    [allIds, capacity, priority, mainId],
   )
+  // The order the keys and the Tab stop follow: the bookcase, or the slice as displayed.
+  const ids = useMemo(() => (sliceMode ? rows.flat() : allIds), [sliceMode, rows, allIds])
+  const byId = useMemo(() => new Map(books.map((book) => [book.id, book])), [books])
+  const visibleIds = useMemo(
+    () => (sliceMode ? ids : books.filter((book) => matchesTitle(book.title, query)).map((book) => book.id)),
+    [sliceMode, ids, books, query],
+  )
+
+  useLayoutEffect(() => {
+    const list = shelfRef.current
+    if (!sliceMode || list === null) return
+    const measure = () => {
+      const style = getComputedStyle(list)
+      const width = list.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight)
+      setCapacity(rowCapacity(width, cssLength(list, '--space-spine-width'), cssLength(list, '--space-spine-gap')))
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(list)
+    return () => observer.disconnect()
+  }, [sliceMode])
   const visible = useMemo(() => new Set(visibleIds), [visibleIds])
 
   // The Tab stop: the last focused spine, else the nearest visible one in
@@ -214,6 +273,17 @@ export default function Bookcase({ books, meter, query, highlightId, focusTarget
     target?.focus()
   }, [stop, visible, searchRef])
 
+  // Slice mode: repacking the rows on a resize remounts the spines, and a
+  // focused one drops focus to the body. Whether a slice spine had focus is
+  // tracked so the Tab-stop spine (else the first) can take it back.
+  const sliceFocused = useRef(false)
+  useLayoutEffect(() => {
+    if (!sliceMode || !sliceFocused.current) return
+    const focused = document.activeElement
+    if (focused !== null && focused !== document.body) return
+    ;(buttons.current.get(stop ?? '') ?? (ids[0] === undefined ? undefined : buttons.current.get(ids[0])))?.focus()
+  }, [sliceMode, rows, stop, ids])
+
   // Heights from each label's one-line length: read every visible label
   // first, then set the state once. Hidden labels measure 0, so they wait
   // until a search shows them.
@@ -249,6 +319,83 @@ export default function Bookcase({ books, meter, query, highlightId, focusTarget
     buttons.current.get(visibleIds[next])?.focus()
   }
 
+  const spineButton = (book: ShelfBook) => {
+    const main = book.role === 'main'
+    const filling = main && !book.finished
+    const classes = [styles.spine, book.finished ? styles.read : filling ? styles.main : styles.unread]
+    if (main) classes.push(styles.marked)
+    if (book.id === highlightId) classes.push(styles.highlight)
+    if (book.id === openId) classes.push(styles.open)
+    const style: CSSProperties & Record<'--spine-color' | '--percent', string | undefined> = {
+      height: measured[book.id]?.height ?? spineHeight(0),
+      '--spine-color': book.finished || filling ? book.spineColor : undefined,
+      '--percent': filling ? `${book.percent ?? 0}%` : undefined,
+    }
+    return (
+      <button
+        key={book.id}
+        type="button"
+        className={classes.join(' ')}
+        style={style}
+        tabIndex={book.id === stop ? 0 : -1}
+        aria-label={spineName(book)}
+        aria-haspopup="dialog"
+        aria-expanded={book.id === openId ? 'true' : 'false'}
+        onFocus={() => {
+          sliceFocused.current = true
+          setStopId(book.id)
+        }}
+        onBlur={(event) => {
+          // Focus left for another element, or the user dropped it (the spine is
+          // still in the page): not a remount, so it isn't taken back.
+          const next = event.relatedTarget
+          if (next instanceof Element ? !shelfRef.current?.contains(next) : event.currentTarget.isConnected) {
+            sliceFocused.current = false
+          }
+        }}
+        onClick={(event) => {
+          const pressed = closedByPress.current
+          closedByPress.current = null
+          if (pressed?.id === book.id && event.timeStamp - pressed.at < 1000) return
+          setOpenId((open) => (open === book.id ? null : book.id))
+        }}
+        ref={(button) => {
+          const targets = focusTargets.current
+          const spines = buttons.current
+          if (button) {
+            targets.set(book.id, button)
+            spines.set(book.id, button)
+          }
+          return () => {
+            if (targets.get(book.id) === button) targets.delete(book.id)
+            if (spines.get(book.id) === button) spines.delete(book.id)
+          }
+        }}
+      >
+        {main && <span aria-hidden="true" className={styles.marker} />}
+        <span className={styles.strip}>
+          <span
+            className={styles.label}
+            ref={(label) => {
+              const all = labels.current
+              if (label) all.set(book.id, label)
+              return () => {
+                if (all.get(book.id) === label) all.delete(book.id)
+              }
+            }}
+          >
+            {book.title}
+          </span>
+        </span>
+        {filling && (
+          <span aria-hidden="true" className={styles.body}>
+            <span className={styles.fill} />
+          </span>
+        )}
+      </button>
+    )
+  }
+
   return (
     <section className={styles.card} aria-labelledby={headingId}>
       <div className={styles.header}>
@@ -256,73 +403,43 @@ export default function Bookcase({ books, meter, query, highlightId, focusTarget
           Bookcase
         </h2>
         <MeterBar meter={meter} />
+        {sliceMode && (
+          <Link to="/catalog" className={styles.seeAll}>
+            See all in Catalog
+          </Link>
+        )}
       </div>
-      {visibleIds.length === 0 && <p className={styles.noMatch}>{noMatchCopy(query)}</p>}
-      <ul
-        ref={shelfRef}
-        role="list"
-        aria-label={bookcaseName(books.length)}
-        className={styles.shelf}
-        hidden={visibleIds.length === 0}
-        onKeyDown={keyDown}
-      >
-        {books.map((book) => {
-          const classes = [styles.spine, book.finished ? styles.read : styles.unread]
-          if (book.id === highlightId) classes.push(styles.highlight)
-          if (book.id === openId) classes.push(styles.open)
-          const style: CSSProperties & Record<'--spine-color', string | undefined> = {
-            height: measured[book.id]?.height ?? spineHeight(0),
-            '--spine-color': book.finished ? book.spineColor : undefined,
-          }
-          return (
-            <li key={book.id} className={styles.slot} hidden={!visible.has(book.id)}>
-              <button
-                type="button"
-                className={classes.join(' ')}
-                style={style}
-                tabIndex={book.id === stop ? 0 : -1}
-                aria-label={spineName(book)}
-                aria-haspopup="dialog"
-                aria-expanded={book.id === openId ? 'true' : 'false'}
-                onFocus={() => setStopId(book.id)}
-                onClick={(event) => {
-                  const pressed = closedByPress.current
-                  closedByPress.current = null
-                  if (pressed?.id === book.id && event.timeStamp - pressed.at < 1000) return
-                  setOpenId((open) => (open === book.id ? null : book.id))
-                }}
-                ref={(button) => {
-                  const targets = focusTargets.current
-                  const spines = buttons.current
-                  if (button) {
-                    targets.set(book.id, button)
-                    spines.set(book.id, button)
-                  }
-                  return () => {
-                    if (targets.get(book.id) === button) targets.delete(book.id)
-                    if (spines.get(book.id) === button) spines.delete(book.id)
-                  }
-                }}
-              >
-                <span className={styles.strip}>
-                  <span
-                    className={styles.label}
-                    ref={(label) => {
-                      const all = labels.current
-                      if (label) all.set(book.id, label)
-                      return () => {
-                        if (all.get(book.id) === label) all.delete(book.id)
-                      }
-                    }}
-                  >
-                    {book.title}
-                  </span>
-                </span>
-              </button>
+      {!sliceMode && visibleIds.length === 0 && <p className={styles.noMatch}>{noMatchCopy(query)}</p>}
+      {sliceMode ? (
+        <ul
+          ref={shelfRef}
+          role="list"
+          aria-label={sliceName(rows.length)}
+          className={`${styles.shelf} ${styles.sliceShelf}`}
+          onKeyDown={keyDown}
+        >
+          {rows.map((row) => (
+            <li key={row[0]} className={styles.sliceRow}>
+              {row.map((id) => spineButton(byId.get(id)!))}
             </li>
-          )
-        })}
-      </ul>
+          ))}
+        </ul>
+      ) : (
+        <ul
+          ref={shelfRef}
+          role="list"
+          aria-label={bookcaseName(books.length)}
+          className={styles.shelf}
+          hidden={visibleIds.length === 0}
+          onKeyDown={keyDown}
+        >
+          {books.map((book) => (
+            <li key={book.id} className={styles.slot} hidden={!visible.has(book.id)}>
+              {spineButton(book)}
+            </li>
+          ))}
+        </ul>
+      )}
       {openBook && (
         <div ref={popoverRef}>
           <SpinePopover
@@ -344,6 +461,10 @@ export default function Bookcase({ books, meter, query, highlightId, focusTarget
         <span className={styles.legendItem}>
           <span aria-hidden="true" className={styles.swatchUnread} />
           not read yet
+        </span>
+        <span className={styles.legendItem}>
+          <span aria-hidden="true" className={styles.swatchMain} />
+          Main book, filled to its %
         </span>
       </div>
     </section>

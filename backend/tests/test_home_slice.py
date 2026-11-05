@@ -25,13 +25,9 @@ The test pins this name:
 
 from pathlib import Path
 
-import pytest
-
 from bookvie.views import home
 from tests.builder import LibraryBuilder
 from tests.helpers import api_client
-
-RED = "ATDD red phase: Story 3.5 slice priority is not implemented yet"
 
 
 def _finish(
@@ -43,7 +39,6 @@ def _finish(
     )
 
 
-@pytest.mark.skip(reason=RED)
 def test_ac1_p1_the_home_view_supplies_main_then_up_next_then_most_recent_finishes(
     tmp_path: Path,
 ) -> None:
@@ -116,3 +111,41 @@ def test_ac1_p1_the_home_view_supplies_main_then_up_next_then_most_recent_finish
     only_main.main(solo)
     assert home(only_main.build()).slice_priority == [solo]
     assert home(LibraryBuilder().build()).slice_priority == []
+
+
+def test_slice_priority_ties_on_the_title_key_ignore_diacritics_and_case() -> None:
+    """Same finish day: "émile" sorts with "Emma" by its base letters, not after "Z"."""
+    builder = LibraryBuilder()
+    zola = builder.book(title="Zola", id="a-zola", pages=300)
+    _finish(builder, zola, "2026-09-15")
+    emma = builder.book(title="Emma", id="b-emma", pages=300)
+    _finish(builder, emma, "2026-09-15")
+    emile = builder.book(title="ÉMILE", id="c-emile", pages=300)
+    _finish(builder, emile, "2026-09-15")
+    assert home(builder.build()).slice_priority == [emile, emma, zola]
+
+
+def test_slice_priority_ties_on_the_title_key_then_by_book_id() -> None:
+    """Same finish day and the same title key ("Émile" == "emile"): by Book id."""
+    builder = LibraryBuilder()
+    later_id = builder.book(title="Émile", id="book-b", pages=300)
+    _finish(builder, later_id, "2026-09-15")
+    earlier_id = builder.book(title="emile", id="book-a", pages=300)
+    _finish(builder, earlier_id, "2026-09-15")
+    assert home(builder.build()).slice_priority == ["book-a", "book-b"]
+
+
+def test_slice_priority_lists_up_next_once_when_it_is_also_the_main_book() -> None:
+    builder = LibraryBuilder()
+    solo = builder.book(title="Solo", pages=200)
+    builder.reading(solo, start_date="2026-10-01", current_page=10)
+    builder.main(solo).up_next(solo)
+    assert home(builder.build()).slice_priority == [solo]
+
+
+def test_slice_priority_skips_a_role_naming_a_missing_book() -> None:
+    builder = LibraryBuilder()
+    dune = builder.book(title="Dune", pages=300)
+    _finish(builder, dune, "2026-10-20")
+    builder.main("gone").up_next("also-gone")
+    assert home(builder.build()).slice_priority == [dune]

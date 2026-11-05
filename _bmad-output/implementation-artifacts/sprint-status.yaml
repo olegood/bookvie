@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-29-2026 17:21
-last_updated: 11-05-2026 18:32
+last_updated: 11-05-2026 19:54
 project: bookvie
 project_key: NOKEY
 tracking_system: file-system
@@ -63,7 +63,7 @@ development_status:
   3-2-start-reading-a-book: done
   3-3-catch-up-with-one-page-update: done
   3-4-see-where-i-left-off-and-how-long-is-left: done
-  3-5-see-my-reading-on-home-s-shelf: backlog
+  3-5-see-my-reading-on-home-s-shelf: review
   3-6-finish-my-main-book: backlog
   3-7-see-the-finish-on-the-shelf: backlog
   epic-3-retrospective: optional

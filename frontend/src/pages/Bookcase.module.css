@@ -91,6 +91,13 @@
   background: var(--color-accent);
 }
 
+/* Home's slice: "See all in Catalog" after the meter. */
+.seeAll {
+  font-family: var(--font-body-sm-family);
+  font-size: var(--font-body-sm-size);
+  line-height: var(--font-body-sm-line-height);
+}
+
 /*
  * The shelf: spines wrap into rows by viewport width. Each item is one row
  * high (204px) and rows are 36px apart, so a 240px repeating gradient draws a
@@ -122,6 +129,22 @@
 .slot {
   display: flex;
   align-items: flex-end;
+  height: var(--space-shelf-row-height);
+}
+
+/*
+ * Home's slice: one 204px line per row (an `li`), so rows sit 36px apart on
+ * the shelf's planks and a short row never shares a line with the next.
+ */
+.sliceShelf {
+  flex-direction: column;
+  flex-wrap: nowrap;
+}
+
+.sliceRow {
+  display: flex;
+  align-items: flex-end;
+  column-gap: var(--space-spine-gap);
   height: var(--space-shelf-row-height);
 }
 
@@ -159,6 +182,63 @@
   background: var(--color-spine-unread-fill);
 }
 
+/*
+ * Main book, never finished: the unread body and outline with a painted
+ * strip; below it, the body fills in the book's color from the plank to its
+ * percentage, topped by a 2px spine-edge line (0%: only the line).
+ */
+.main {
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  border: 1.5px solid var(--color-spine-unread-outline);
+  border-bottom: 0;
+  background: var(--color-spine-unread-fill);
+}
+
+.body {
+  position: relative;
+  flex: 1;
+  align-self: stretch;
+  overflow: hidden;
+}
+
+.fill {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  box-sizing: content-box;
+  height: var(--percent);
+  border-top: 2px solid var(--color-spine-edge);
+  background: var(--spine-color);
+  transition: height 600ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fill {
+    transition: none;
+  }
+}
+
+/* The Main-book marker: the strip moves down so the dot sits above it. */
+.marked {
+  position: relative;
+  padding-top: var(--space-spine-label-strip-top-marked);
+}
+
+.marker {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  width: 7px;
+  height: 7px;
+  margin-left: -3.5px;
+  border-radius: var(--radius-full);
+  background: var(--color-spine-unread-text);
+  box-shadow: 0 0 0 1.5px var(--color-marker-ring);
+}
+
 /* The label strip: 16px wide, label + 4px at each end, at most 96px. */
 .strip {
   box-sizing: border-box;
@@ -171,7 +251,8 @@
   border-radius: var(--radius-plank);
 }
 
-.read .strip {
+.read .strip,
+.main .strip {
   background: var(--color-spine-label-strip);
 }
 
@@ -241,7 +322,8 @@
 }
 
 .swatchRead,
-.swatchUnread {
+.swatchUnread,
+.swatchMain {
   box-sizing: border-box;
   display: inline-block;
   width: 11px;
@@ -259,6 +341,18 @@
   border: 1.5px solid var(--color-spine-unread-outline);
   border-bottom: 0;
   background: var(--color-spine-unread-fill);
+}
+
+.swatchMain {
+  border: 1.5px solid var(--color-spine-unread-outline);
+  border-bottom: 0;
+  background: linear-gradient(
+    0deg,
+    var(--color-spine-slate) 55%,
+    var(--color-spine-edge) 55%,
+    var(--color-spine-edge) calc(55% + 1.5px),
+    var(--color-spine-unread-fill) calc(55% + 1.5px)
+  );
 }
 
 @media (forced-colors: active) {
@@ -282,7 +376,8 @@
     border: var(--hairline) solid CanvasText;
   }
 
-  .slot {
+  .slot,
+  .sliceRow {
     forced-color-adjust: auto;
   }
 
@@ -306,9 +401,38 @@
   }
 
   .unread,
+  .main,
   .swatchUnread {
     border-color: CanvasText;
     background: Canvas;
+  }
+
+  .main .strip {
+    background: Canvas;
+  }
+
+  .main .label {
+    color: CanvasText;
+  }
+
+  /* The fill in CanvasText, its line in Highlight: distinct from the Canvas body. */
+  .fill {
+    forced-color-adjust: none;
+    border-top-color: Highlight;
+    background: CanvasText;
+  }
+
+  .swatchMain {
+    forced-color-adjust: none;
+    border-color: CanvasText;
+    background: linear-gradient(0deg, CanvasText 55%, Highlight 55%, Highlight calc(55% + 1.5px), Canvas calc(55% + 1.5px));
+  }
+
+  /* A Canvas dot in a CanvasText ring reads on the Canvas body and on a read fill. */
+  .marker {
+    forced-color-adjust: none;
+    background: Canvas;
+    box-shadow: 0 0 0 1.5px CanvasText;
   }
 
   .spine:focus-visible,

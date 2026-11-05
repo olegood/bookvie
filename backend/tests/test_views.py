@@ -16,7 +16,7 @@ from tests.helpers import (
 )
 
 SHELF_EMPTY = {"meter": {"finished": 0, "total": 0}, "books": []}
-HOME_EMPTY = {**SHELF_EMPTY, "mainBook": None, "lastExportAt": None}
+HOME_EMPTY = {**SHELF_EMPTY, "mainBook": None, "lastExportAt": None, "slicePriority": []}
 CATALOG_EMPTY = {**SHELF_EMPTY, "tags": []}
 EMPTY = {"home": HOME_EMPTY, "catalog": CATALOG_EMPTY}
 

@@ -3,7 +3,7 @@
 :func:`cover_path` is the lookup behind ``/media/covers/<name>``.
 """
 
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 
 from bookvie.domain import (
@@ -15,6 +15,7 @@ from bookvie.domain import (
     measured_pace,
     percent,
     reading_status,
+    title_key,
 )
 from bookvie.domain.book_fields import merge_tags
 from bookvie.store import COVERS_DIR, Store, read_last_export, referenced_covers
@@ -112,14 +113,41 @@ def _main_book(library: Library) -> HomeMainBook | None:
     )
 
 
+def _slice_priority(library: Library) -> list[str]:
+    """Book ids in slice priority order: Main, Up next, then finishes newest first (AD-6).
+
+    Finishes tie by :func:`title_key`, then Book id. Each id appears once, at
+    its first place; a role naming a missing Book is skipped.
+    """
+    priority: list[str] = []
+    for role_id in (library.main_book_id, library.up_next_book_id):
+        if role_id is not None and role_id not in priority and library.book(role_id):
+            priority.append(role_id)
+    finishes: list[tuple[date, Book]] = []
+    for book in library.books:
+        latest = book.latest_finished()
+        if book.id not in priority and latest is not None and latest.finish_date is not None:
+            finishes.append((latest.finish_date, book))
+    # Newest first, then title key and id ascending: sort ascending by the
+    # tie-breakers, then stably by date descending.
+    finishes.sort(key=lambda item: (title_key(item[1].title), item[1].id))
+    finishes.sort(key=lambda item: item[0], reverse=True)
+    return priority + [book.id for _, book in finishes]
+
+
 def home(library: Library, last_export_at: datetime | None = None) -> HomeView:
-    """The Main book, "Last export", and (until Story 3.5's slice) the Catalog's books and meter."""
+    """The Main book, "Last export", the Catalog's books and meter, and the slice priority.
+
+    The client packs ``books`` into the bookcase slice's rows; ``slice_priority``
+    chooses them.
+    """
     view = catalog(library)
     return HomeView(
         meter=view.meter,
         books=view.books,
         main_book=_main_book(library),
         last_export_at=last_export_at,
+        slice_priority=_slice_priority(library),
     )
 
 

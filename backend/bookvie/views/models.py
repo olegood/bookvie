@@ -76,6 +76,15 @@ class HomeView(_View):
     """The Main book and its current Reading; ``None`` when there is no Main book."""
     last_export_at: AwareDatetime | None
     """When the last complete export finished (``local-state.json``); ``None`` before the first."""
+    slice_priority: list[str]
+    """Book ids for Home's bookcase slice, each at most once, in priority order (AD-6).
+
+    The Main book, then Up next (when it isn't the Main book), then every other
+    Book with a finished Reading by its latest ``finishDate``, newest first;
+    ties by the title key, then Book id. Back-filled finishes count. A Book with
+    no role and no finish is not listed. The client packs ``books`` into rows
+    and chooses rows in this order; it never sorts finishes.
+    """
 
 
 class CatalogView(_View):

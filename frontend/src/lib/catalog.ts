@@ -64,6 +64,11 @@ export function bookcaseName(total: number): string {
   return total === 1 ? 'Bookcase, 1 book' : `Bookcase, ${total} books`
 }
 
+/** Home's bookcase slice list's name, with the rows it shows. */
+export function sliceName(rows: number): string {
+  return rows === 1 ? 'Bookcase slice, 1 row' : `Bookcase slice, ${rows} rows`
+}
+
 /** The count announced after typing pauses. */
 export function matchCountCopy(count: number): string {
   return count === 1 ? '1 book matches.' : `${count} books match.`

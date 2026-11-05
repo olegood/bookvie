@@ -1,16 +1,18 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useLocation, useNavigate } from 'react-router'
-import { useHomeView } from '../api/index.ts'
+import { useHomeView, type HomeView } from '../api/index.ts'
 import Button from '../components/Button.tsx'
 import FailureMessage from '../components/FailureMessage.tsx'
 import MainBookCard from '../components/MainBookCard.tsx'
 import PageHeading from '../components/PageHeading.tsx'
 import type { StartedState } from '../components/StartDialog.tsx'
 import { announce, clearAnnouncements } from '../lib/announce.ts'
+import { sortBooks } from '../lib/catalog.ts'
 import { COULDNT_LOAD } from '../lib/copy.ts'
 import { usePageTitle } from '../lib/page.ts'
 import { lastExportLine, useNow } from '../lib/relativeDay.ts'
 import { formatToday } from '../lib/today.ts'
+import Bookcase from './Bookcase.tsx'
 import { EmptyShelf, type NewBookState } from './CatalogPage.tsx'
 import styles from './HomePage.module.css'
 
@@ -31,12 +33,24 @@ function clearStartedState(): void {
   window.history.replaceState({ ...rest, usr: null }, '')
 }
 
+/** The bookcase slice below the grid, in Catalog's order (Author). */
+function HomeSlice({ view }: { view: HomeView }) {
+  const sorted = useMemo(() => sortBooks(view.books), [view.books])
+  const slice = useMemo(() => ({ priority: view.slicePriority }), [view.slicePriority])
+  return (
+    <div className={styles.slice}>
+      <Bookcase books={sorted} meter={view.meter} slice={slice} />
+    </div>
+  )
+}
+
 /**
  * Home, the launch page at `/` (EXPERIENCE.md → Home): a visually hidden
  * `h1` "Home", the date header (the browser's local date, recomputed on
  * focus and visibility), then either the empty shelf (no Books) or a grid of
- * the Main book card beside the 320px side column (empty until Epic 4), with
- * room for the bookcase slice below (Story 3.5). "Last export" sits at the
+ * the Main book card beside the 320px side column (empty until Epic 4) with
+ * the bookcase slice below: the full bookcase in Catalog's order, up to 3
+ * rows chosen by the view's `slicePriority`. "Last export" sits at the
  * right end of the header line only while there is no Main book; with one it
  * sits in the card's re-entry line, which reads the same `now`.
  *
@@ -112,10 +126,13 @@ export default function HomePage() {
           </Button>
         </div>
       ) : (
-        <div className={styles.grid}>
-          <MainBookCard book={mainBook} lastExportAt={lastExportAt} now={now} titleRef={titleLink} />
-          <div className={styles.side} />
-        </div>
+        <>
+          <div className={styles.grid}>
+            <MainBookCard book={mainBook} lastExportAt={lastExportAt} now={now} titleRef={titleLink} />
+            <div className={styles.side} />
+          </div>
+          <HomeSlice view={view.data} />
+        </>
       )}
     </div>
   )

@@ -284,3 +284,7 @@
   summary: Spine-check re-raised the Structural Seed / AD-20 / AD-6 / AD-19 drift for pace, `daysLeft` and nullable `lastProgressUpdate`; it stays as recorded above (SC1–SC4). Blind-hunter re-raised the stale "19 of 41 stories done" count; it stays as recorded above.
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-4-see-where-i-left-off-and-how-long-is-left.md`
   summary: README's "Test automation summary (currently story 3.2)" pointer (README.md:182) is stale; `automation-summary.md` is at story 3.3. Pre-existing.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-5-see-my-reading-on-home-s-shelf.md`
+  summary: ARCHITECTURE-SPINE AD-6 says the server picks "which Books form the Home bookcase slice and in what row priority"; Story 3.5 sends a Book-id `slicePriority` and the client chooses, fills and orders rows.
+  evidence: Spine-check finding SC1 in Story 3.5's review; the spine is reconciled per epic.

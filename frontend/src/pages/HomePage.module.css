@@ -1,4 +1,4 @@
-/* DESIGN.md → Layout & Spacing → Home: the date header, the grid, room for the slice. */
+/* DESIGN.md → Layout & Spacing → Home: the date header, the grid, the bookcase slice. */
 .page {
   display: flex;
   flex-direction: column;
@@ -41,6 +41,11 @@
 
 .side {
   min-width: 0;
+}
+
+/* Full width below the grid. */
+.slice {
+  margin-top: var(--space-6);
 }
 
 .emptyShelf {

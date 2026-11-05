@@ -542,6 +542,8 @@ export interface components {
             mainBook: components["schemas"]["HomeMainBook"] | null;
             /** Lastexportat */
             lastExportAt: string | null;
+            /** Slicepriority */
+            slicePriority: string[];
         };
         /**
          * LibraryMeter
