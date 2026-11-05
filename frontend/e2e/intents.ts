@@ -11,6 +11,7 @@ export const DELETE_BOOK = '/api/intents/delete-book'
 export const SET_SPINE_COLOR = '/api/intents/set-spine-color'
 export const START_READING = '/api/intents/start-reading'
 export const EDIT_PURPOSE = '/api/intents/edit-purpose'
+export const UPDATE_PAGE = '/api/intents/update-page'
 
 // A 40×60 solid red-orange PNG (rgb 200, 60, 40): a colored cover.
 export const COVER_PNG = Buffer.from(

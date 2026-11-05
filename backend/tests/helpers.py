@@ -44,6 +44,7 @@ DELETE_BOOK = "/api/intents/delete-book"
 SET_SPINE_COLOR = "/api/intents/set-spine-color"
 START_READING = "/api/intents/start-reading"
 EDIT_PURPOSE = "/api/intents/edit-purpose"
+UPDATE_PAGE = "/api/intents/update-page"
 
 # The fake today. Year may be at most next year (2027); Finished on at most today.
 TODAY = date(2026, 10, 30)
