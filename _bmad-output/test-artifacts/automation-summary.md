@@ -2,17 +2,15 @@
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03c-aggregate', 'step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
 lastSaved: '2026-11-05'
-storyId: '3.4'
+storyId: '3.5'
 inputDocuments:
-  - _bmad-output/implementation-artifacts/spec-3-4-see-where-i-left-off-and-how-long-is-left.md (incl. I/O matrix and Review Triage Log)
-  - _bmad-output/test-artifacts/atdd-checklist-3-4-see-where-i-left-off-and-how-long-is-left.md
-  - _bmad-output/test-artifacts/test-design-qa.md, test-design-progress-system.md (PAC-UNIT-001, PRG-UNIT-001, PRG-E2E-001/002, R-07, R-10)
-  - _bmad-output/implementation-artifacts/deferred-work.md (3.4 spine drift)
+  - _bmad-output/implementation-artifacts/spec-3-5-see-my-reading-on-home-s-shelf.md (incl. I/O matrix, Review Findings and Review Triage Log)
+  - _bmad-output/test-artifacts/atdd-checklist-3-5-see-my-reading-on-home-s-shelf.md
   - _bmad/tea/config.yaml
-  - backend/bookvie/domain/pace.py, backend/bookvie/views/shelf.py
-  - backend/tests/test_reentry.py, test_views.py
-  - frontend/src/components/ReentryLine.tsx (+ .module.css)
-  - frontend/e2e/reentry.spec.ts, home.ts, update-page.spec.ts
+  - backend/bookvie/views/shelf.py (_slice_priority), backend/bookvie/domain/ordering.py, backend/bookvie/domain/model.py (Book.latest_finished)
+  - backend/tests/test_home_slice.py, test_ordering.py, test_edit_book.py
+  - frontend/src/lib/slice.ts, slice.test.ts
+  - frontend/e2e/home-slice.spec.ts
   - knowledge/test-levels-framework.md
   - knowledge/test-priorities-matrix.md
   - knowledge/data-factories.md
@@ -24,11 +22,11 @@ inputDocuments:
   - knowledge/playwright-cli.md
 ---
 
-# Automation Summary: Story 3.4, See where I left off and how long is left
+# Automation Summary: Story 3.5, See my reading on Home's shelf
 
-The Story 3.3 summary that used to live in this file is in git history (`c123939`).
+The Story 3.4 summary that used to live in this file is in git history (`4741207`).
 
-**Execution mode:** BMad-Integrated. Inputs: the story spec (I/O matrix, review triage log), the ATDD checklist, the system test design, and `deferred-work.md`.
+**Execution mode:** BMad-Integrated. Inputs: the story spec (I/O matrix, review findings, triage log) and the ATDD checklist.
 **Detected stack:** fullstack (`backend/pyproject.toml` + `frontend/playwright.config.ts`).
 **Playwright Utils mandate:** off (`tea_use_playwright_utils: false`).
 **Pact.js Utils mandate:** not applicable (the repo has no contract testing).
@@ -38,56 +36,69 @@ The Story 3.3 summary that used to live in this file is in git history (`c123939
 
 ## Coverage Plan by Test Level and Priority
 
-Scope: **selective**. Story 3.4 shipped with near-complete coverage:
+Scope: **selective**. Story 3.5 shipped with broad coverage:
 
-- Backend: `test_reentry.py` covers PAC-UNIT-001 (Σ pages ÷ Σ inclusive days, re-reads, stored `finishedPages`, back-filled and unfinished out, same day, DST, 0 pages, start-after-finish, missing `finishedPages`, the Main book's earlier Reading) and PRG-UNIT-001 (ceil, min 1, `null` without pace, at pace 0 and with no pages left, through `home()` and over HTTP). `test_views.py` pins the whole `mainBook`, including `daysLeft: null`. Branch coverage of `domain/pace.py` and `views/shelf.py` is 100%.
-- E2E: `reentry.spec.ts` has 8 tests: the 4 ATDD leaves (AC-3 to AC-6) and every green-phase follow-up (a year ago, no `lastProgressUpdate`, deleting the Main book, Last export past midnight). `update-page.spec.ts` P0 AC-2 asserts "~9 days left" → "~6 days left" after the refetch (PRG-E2E-001). Home's axe test scans the line in both themes.
+- Backend: `test_home_slice.py` covers AC-1 over HTTP (Main re-read, Up next finished, a back-filled finish, a date tie by title, the unfinished Book left out, no Main, no roles, only Main, empty), plus title-key and id ties, Main == Up next, and roles that name missing Books. `test_ordering.py` pins `title_key`. Branch coverage of `views/shelf.py` is 100%.
+- Client logic: `slice.test.ts` covers every client row in the I/O matrix for `rowCapacity` and `sliceRows`.
+- E2E: `home-slice.spec.ts` has 15 tests: the 5 ATDD leaves, the follow-ups (1 row, no Main, 0%, last page) and the review patches (refocus after a repack, Catalog fill, popover and Escape, popover follows a repack, 600ms vs reduced motion, forced colors).
 
-Branch coverage is not the same as pinned behaviour, so I ran mutation probes on `days_left` against `test_reentry.py`, `test_views.py` and `test_home_view.py`:
+Branch coverage is not the same as pinned behaviour, so I ran mutation probes.
+
+**`sliceRows` / `rowCapacity` against `slice.test.ts`:**
+
+| Mutant | node --test |
+|---|---|
+| break at 4 rows instead of 3 | killed |
+| no bookcase-order sort of the rest | killed |
+| a row chosen twice | killed |
+| display order = choice order | killed |
+| `floor` → `round` in capacity | killed |
+| gap dropped from capacity | killed |
+| `k` not floored | survives; unreachable, since `rowCapacity` always returns an integer |
+
+**`_slice_priority` finish choice, full pytest suite (985 tests):**
 
 | Mutant | pytest |
 |---|---|
-| `ceil(x)` → `round(x)` | killed |
-| `ceil(x)` → `floor(x) + 1` | **survives** (32 passed) |
-| exact `Fraction` division → `pages_left / float(pace)` | **survives** (32 passed) |
+| `Book.latest_finished` → earliest finish (model level) | killed by `test_edit_book.py` |
+| `Book.latest_finished` → last stored finish (model level) | killed by `test_edit_book.py` |
+| in `_slice_priority`, `latest_finished()` → first stored finish | **survives** (985 passed) |
+| in `_slice_priority`, `latest_finished()` → last stored finish | **survives** |
 
 | # | Gap | Evidence | Level | Priority |
 |---|---|---|---|---|
-| G1 | **Days left is never tested where pages left ÷ pace is a whole number, or where float division would round wrong.** | Every pytest case has a fractional quotient (6.16, 0.99, 1.03, 11.36, 9.04), so `floor + 1` agrees with `ceil` on all of them. `pace.py`'s docstring promises "the ceiling never meets a float rounding error", but no test would notice a float. Only `update-page.spec.ts` (180 ÷ 20 = 9) sees an exact quotient, and the ATDD level split puts every number in pytest. At 52 pages over 3 days, 260 pages left is exactly 15 days, but `260 / (52/3)` in floats is 15.000000000000002 → 16. That is a real "~16 days left" for a reader who logged 52 pages over 3 days. | Unit (pytest), plus one `home()` case | P1 (R-10, PRG-UNIT-001) |
+| G1 | **No test checks that the slice uses a Book's latest finish when readings aren't stored in date order.** | AC-1's re-read Emma (09-20, then 10-10) lands between Dune (10-20) and Austerlitz (09-15) whichever of its finishes is used, so the "its latest finish counts" comment pins nothing. Stored order isn't date order: a back-filled read from years ago is added after the reads it predates. If the slice took the last stored finish, a Book you finished last week would drop to the bottom of the priority, and its row could fall out of Home's 3 rows. `Book.latest_finished` is pinned in `test_edit_book.py`, but nothing pins that the slice calls it. | Unit (pytest, `home()`) | P2 (AC-1, PRG-API-003) |
 
 **Not selected:**
-- More e2e. Every ATDD follow-up is already a test, and the numbers belong in pytest (AD-6).
-- A component test for `ReentryLine`. The node runner has no DOM, and each branch (each fact omitted, "1 day" vs "N days") is an e2e assertion already.
+- The deferred negative focus case (focus dropped to `body`, then a resize must not refocus a slice spine). The code review deferred it to the next slice-focus work. It's a narrow interaction edge, and adding it here would pre-empt that decision.
+- A popover whose spine leaves the 3 rows during a resize. The review rated it low.
+- Component tests for slice mode. The node runner has no DOM, and the repo has no `.test.tsx` convention. E2E covers measuring, naming, keys and paint.
+- More e2e. Every ATDD follow-up and review patch is already a test.
 - Browser exploration. There is no new E2E target.
-- The R-17 timing smoke and the AD-19/AD-20 spine drift. They belong to the Epic 3 gate and the spine reconciliation (`deferred-work.md`).
 
 ## Tests Added
 
-1. **`backend/tests/test_reentry.py::test_ac2_p1_days_left_is_exact_when_pages_left_divide_evenly_by_pace`** (P1, G1, PRG-UNIT-001, R-10). It checks three things:
-   - Whole quotients give exactly that many days: `days_left(180, 20) == 9` and `days_left(900, 900/31) == 31`.
-   - The float trap: it first asserts that `260 / float(52/3)` really is above 15, then that `days_left(260, Fraction(52, 3)) == 15`.
-   - The same number through `home()`: Kindred, 52 pages over 2026-09-01 to 09-03, and the Main book at p.70 of 330 → `measured_pace == 52/3` and `daysLeft == 15`.
+1. **`backend/tests/test_home_slice.py::test_slice_priority_places_a_book_by_its_latest_finish_date_not_its_stored_order`** (P2, G1, AC-1). The Lathe of Heaven has three finishes, stored as 2026-09-01, 2026-10-25, then a back-filled 2019-03-01. Kindred finished on 2026-10-01. The test asserts `slice_priority == [lathe, kindred]`. Using the first or the last stored finish would put Lathe after Kindred.
+
+## Files Created/Updated
+
+- `backend/tests/test_home_slice.py`: 1 test added.
+- `_bmad-output/test-artifacts/automation-summary.md`: this summary.
 
 ## Validation
 
-- `npm run check:py` passes: pytest went from 970 to 971 passed. Coverage gates: domain 100%, intents+store 97.60%.
-- `ruff check` and `ruff format --check` are clean on `test_reentry.py`.
-- Mutation check. I ran each mutant against `test_reentry.py`, `test_views.py` and `test_home_view.py`, then reverted it; `git status` shows only the test file and this summary.
-  - `ceil` → `floor + 1`: survived before, now fails the new test.
-  - exact division → `float` division: survived before, now fails the new test.
+- `npm run check:py` passes: pytest went from 985 to 986 passed. Coverage gates: domain 100%, intents+store 97.60%.
+- `ruff check` and `ruff format` are clean on `test_home_slice.py`.
+- Mutation check. I ran both `_slice_priority` mutants against the new test, then reverted them. Each one now fails the new test. All frontend mutants were reverted too, and `git status` shows only the test file and this summary.
 - `check:api`, e2e and smoke were not re-run because no app, frontend or e2e file changed.
-- Burn-in is not needed. The test is deterministic: fixed values, no clock, no network, no randomness.
-- Quality: no sleeps and no shared state. The test builds in memory with `LibraryBuilder`, and its assertions are explicit.
-- Checklist: the framework is ready, the gap maps to G1 → PRG-UNIT-001 (AC-2), the artifact is in `_bmad-output/test-artifacts/`, and no browser CLI sessions were opened.
+- Burn-in is not needed. The test is deterministic: fixed dates, built in memory with `LibraryBuilder`, no clock, no network.
+- No CLI browser sessions were opened, and the probes left no temp files in the repo.
 
 ## Assumptions and Risks
 
-- The test asserts that the float trap is real (`260 / float(pace) > 15`). If a later Python changed float division, that line would fail loudly instead of the test quietly losing its point.
-- The future Quick pace calculator (FR-15) will compute days left on the client. R-10 asks for a parity test between client and server rounding then. The `52/3, 260 → 15` case belongs in that shared table, because JavaScript numbers are floats and will hit this exact trap.
-- The spine drift for pace, `daysLeft` and nullable `lastProgressUpdate` (SC1 to SC4) is still open in `deferred-work.md`. This run doesn't touch it.
+- `Book.readings` stays in insertion order, not date order. That's why G1 matters, and it's how back-fills are stored today.
+- The AD-6 wording drift (the client chooses rows from an id priority) is still in `deferred-work.md`, for the spine reconciliation at the end of the epic.
 
-## Next Steps
+## Next Recommended Workflow
 
-- When the Quick pace calculator lands, put the client and server days-left cases in one shared table, like 3.3's `pageField.cases.json`, and include the float-trap case.
-- Story 3.5 (spine fill) and 3.6 (Finish dialog): re-run this workflow after each one.
-- Run `bmad-testarch-trace` at the end of Epic 3. PAC-UNIT-001, PRG-UNIT-001 and PRG-E2E-002 can be ticked from 3.4. The R-17 timing smoke is still on the gate list.
+`bmad-testarch-trace` at the Epic 3 gate, or `bmad-testarch-test-review` on `home-slice.spec.ts` (15 tests, the largest spec this epic added).

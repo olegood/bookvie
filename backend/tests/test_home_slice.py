@@ -149,3 +149,24 @@ def test_slice_priority_skips_a_role_naming_a_missing_book() -> None:
     _finish(builder, dune, "2026-10-20")
     builder.main("gone").up_next("also-gone")
     assert home(builder.build()).slice_priority == [dune]
+
+
+def test_slice_priority_places_a_book_by_its_latest_finish_date_not_its_stored_order() -> (
+    None
+):
+    """A Book's place is its greatest ``finishDate``, wherever that Reading is stored.
+
+    Readings aren't stored in date order: a back-filled read from years ago is
+    appended after the reads it predates. AC-1's re-read Emma has its latest
+    finish last and its earliest first, and both land between the same
+    neighbours, so a slice that took the first or the last stored finish
+    would still pass AC-1. Here, either would put Lathe after Kindred.
+    """
+    builder = LibraryBuilder()
+    lathe = builder.book(title="The Lathe of Heaven", pages=300)
+    _finish(builder, lathe, "2026-09-01", start="2026-08-01")  # first stored
+    _finish(builder, lathe, "2026-10-25", start="2026-10-01")  # latest: its place
+    _finish(builder, lathe, "2019-03-01", start=None)  # back-filled later, stored last
+    kindred = builder.book(title="Kindred", pages=300)
+    _finish(builder, kindred, "2026-10-01")
+    assert home(builder.build()).slice_priority == [lathe, kindred]
