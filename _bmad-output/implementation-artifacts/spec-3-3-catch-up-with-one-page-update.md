@@ -2,7 +2,7 @@
 title: 'Story 3.3: Catch up with one page update'
 type: 'feature'
 created: '2026-11-05'
-status: 'in-review'
+status: 'done'
 route: 'dispatch'
 review_loop_iteration: 0
 baseline_commit: 'c2532f7597aae89507233ad87207e39724768cdd'
@@ -84,6 +84,31 @@ E2E (`frontend/e2e`): `update-page.spec.ts` (5 leaves), `home.ts` (`mainAt`, `ma
 **Acceptance Criteria:**
 - Given the ATDD leaves, when activated, then `pytest tests/test_update_page.py` and `e2e/update-page.spec.ts` pass.
 - Given the whole suite, when `npm run check` runs, then it passes, including coverage gates and `check:api`.
+
+### Review Findings
+
+Code review 2026-11-05 (pass 2: blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor, spine-check; no layer failed). 0 decision-needed, 0 patch, 1 defer (3 raw findings), 19 rejected.
+
+- [x] [Review][Defer] Spine AD-3/AD-9 vs the client page pre-check and its copy [frontend/src/lib/pageField.ts:6] — deferred: already recorded in deferred-work.md (Spine Check pass 1, SC1/SC2); re-raised by spine-check and acceptance-auditor in pass 2. Medium: if the page rule or copy changes on the server, `parsePage`/`pageRangeMessage` drift silently. The frozen intent mandates the pre-check, so the fix is a spine exception or a spec renegotiation.
+
+**Rejected:**
+- false — Bare `assert` in `update_page.py:77` stripped under `-O` gives a non-500 (blind-hunter): `commit.py` maps any unexpected exception, `AttributeError` included, to 500 `couldnt_save`, so the outcome is the same.
+- false — Stale-tab e2e tests (AC-5, AC-8) race `refetchOnWindowFocus` (blind-hunter): TanStack Query v5's focusManager listens only to `visibilitychange`, and opening or using a second Playwright page doesn't hide the first in headless Chromium, so tab A doesn't refetch before **Update**.
+- false — Refusal focus "moves" rather than "stays" (acceptance-auditor, blind-hunter): it matches the Decision's intent (the field has focus after the refusal), and AC-5 asserts it. Changing the wording would also be a spec edit.
+- low — Field keeps `007`/`0200` when the saved page equals the stored one (acceptance-auditor, blind-hunter): it's only cosmetic and only happens if you type leading zeros; normalising needs a guarded branch because the view reset owns the value (pass-1 EC1).
+- low — `failed` not cleared by the view reset, so "Couldn't save" lingers beside a page changed by another tab (edge-case-hunter, blind-hunter): needs a couldn't-save and then a second tab's update. Fixing it isn't a one-liner, because the reset render can run after `setFailed(true)` on the `not_main_book` path and would wipe that line.
+- low — `savedPage` not cleared when the refetched view shows a different page (edge-case-hunter): needs a concurrent change from another tab between commit and refetch, and the next `save()` resets it anyway; the fix adds a branch.
+- low — No confirmation when an ok result arrives after unmount (edge-case-hunter): an ok means this book was still Main at commit time, so unmounting needs another tab to change it between commit and refetch; the fix adds a branch.
+- low — Page integer longer than 4300 digits is a 422 on `intent`, not on `page` (edge-case-hunter): the client never sends one, because `parsePage` refuses it first; the fix adds parsing branches.
+- low — `1e2`, `+5` and `212.0` get the range message (blind-hunter): an unusual way to type a page, and handling it means a policy choice plus extra input handling.
+- low — "Announces twice" check could flicker (blind-hunter): the region empties synchronously on click, and the request, fsync and refetch take several round trips, so the gap is wider than Playwright's first poll.
+- low — Axe test uses `hold`+`release` as a plain 503 route and doesn't scan the stale-tab or `status` states (blind-hunter): the stale-tab line renders in the same slot and the same DOM as the scanned couldn't-save line; this is only about test clarity.
+- low — Malformed-part test uses a magic `"x"` and checks only `fields` (blind-hunter): the full `MALFORMED_INTENT` envelope for `update-page` is already asserted by the parametrized `test_intent_routes.py`.
+- low — No component-level `PageField` test (blind-hunter): verification-gap traced each branch to an e2e leaf that would fail on regression.
+- reject (spec edit) — AC-1 red leaf rewritten, with a weaker first-load focus check (acceptance-auditor): `PageHeading` doesn't focus on first load (existing behaviour), so the scaffold line couldn't pass. The leaf still pins "field never focused" and "h1 focused after navigation", and the deviation is noted in Implementation Notes; the remaining fix is a Spec Change Log entry.
+- reject (spec edit) — Code Map and ticked Task 1 name `domain/book_fields.py`, `useUpdatePage(bookId, page)` and a keyed `PageField` (acceptance-auditor, blind-hunter): the code follows the documented alternatives; the fix is a spec edit.
+- verification-gap: no gaps (every changed behaviour has a test that would fail on regression).
+- spine-check: AD-4/6/7/8/9/13/18/19/20 agree with the code; only the AD-3/AD-9 item above.
 
 ## Implementation Notes
 
