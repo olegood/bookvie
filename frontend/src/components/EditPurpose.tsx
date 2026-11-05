@@ -105,7 +105,8 @@ export default function EditPurpose({ bookId, purpose }: Props) {
     void save()
   }
 
-  const keyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+  // On the form, so Esc cancels from the field, Save or Cancel.
+  const keyDown = (event: KeyboardEvent<HTMLFormElement>) => {
     if (event.key !== 'Escape') return
     event.preventDefault()
     event.stopPropagation()
@@ -115,7 +116,7 @@ export default function EditPurpose({ bookId, purpose }: Props) {
   if (editing) {
     const reason = busy ? SAVING : undefined
     return (
-      <form className={styles.form} onSubmit={submit}>
+      <form className={styles.form} onSubmit={submit} onKeyDown={keyDown}>
         <div className={styles.row}>
           <label htmlFor={fieldId} className={styles.label}>
             Purpose
@@ -127,7 +128,6 @@ export default function EditPurpose({ bookId, purpose }: Props) {
             value={value}
             autoComplete="off"
             onChange={(event) => setValue(event.target.value)}
-            onKeyDown={keyDown}
           />
           <Button type="submit" variant="primary" disabledReason={reason}>
             Save
@@ -146,7 +146,7 @@ export default function EditPurpose({ bookId, purpose }: Props) {
       {purpose !== null && (
         <p className={styles.purpose}>
           <span className={styles.label}>Purpose</span>
-          <span>{purpose}</span>
+          <span className={styles.value}>{purpose}</span>
         </p>
       )}
       <button ref={editButton} type="button" className={`linkButton ${styles.edit}`} onClick={open}>

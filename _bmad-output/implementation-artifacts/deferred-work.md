@@ -253,3 +253,8 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-2-start-reading-a-book.md`
   summary: ARCHITECTURE-SPINE.md drift from story 3.2: the Structural Seed's `intents/` and `domain/` lines miss `start_reading`, `edit_purpose` and `domain/purpose`; the IDs convention says server-minted UUIDs come back in success `ids`, but `start-reading` mints a Reading id and returns `{ok: true}`.
   evidence: Spine Check pass 1 (SC2, SC3). No consumer needs a Reading id; reconcile the spine wording at the next spine reconciliation.
+
+## Deferred from: code review of spec-3-2-start-reading-a-book (2026-11-05)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-2-start-reading-a-book.md`
+  summary: README's "Test automation summary (currently story 2.3)" pointer (README.md:180) is stale; `automation-summary.md` is at story 3.1. Pre-existing. Pass 2 also re-raised the Up next/Side-read start and spine-drift items above; they stay as recorded.

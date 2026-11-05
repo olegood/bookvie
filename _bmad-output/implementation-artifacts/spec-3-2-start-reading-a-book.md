@@ -2,7 +2,7 @@
 title: 'Story 3.2: Start reading a book'
 type: 'feature'
 created: '2026-11-05'
-status: 'in-review'
+status: 'done'
 route: 'dispatch'
 review_loop_iteration: 0
 baseline_commit: 'ff1334f601853297acb32e20b4cef52e5b84e897'
@@ -94,6 +94,38 @@ E2E (`frontend/e2e`): `start-reading.spec.ts` (8 leaves), `home.ts`, `intents.ts
 **Acceptance Criteria:**
 - Given the ATDD leaves, when activated, then `pytest tests/test_start_reading.py` and `e2e/start-reading.spec.ts` pass.
 - Given the whole suite, when `npm run check` runs, then it passes, including coverage gates and `check:api`.
+
+### Review Findings
+
+Code review pass 2 (2026-11-05). Layers: Blind Hunter (BH), Edge Case Hunter (EC), Verification Gap (VG), Acceptance Auditor (AA), Spine Check (SC). Diff `ff1334f..2f9649f`, without `_bmad-output/`.
+
+- [x] [Review][Patch] README status still says "17 of 41 stories done" though 3.1 is `done` (18 of 41) [README.md:8]
+- [x] [Review][Patch] A long unbroken Purpose (a URL, say) overflows Book detail's Current reading block: the value `<span>` has no `overflow-wrap`/`min-width: 0` [frontend/src/components/EditPurpose.module.css:15]
+- [x] [Review][Patch] Esc cancels Edit Purpose only while focus is in the field; on Save or Cancel it does nothing (move the handler to the form) [frontend/src/components/EditPurpose.tsx:130]
+- [x] [Review][Patch] Module docstring still says "Three ATDD tests" after the green-phase tests were added [backend/tests/test_start_reading.py:3]
+- [x] [Review][Patch] No e2e pins the Bookcase fallback: a popover-opened Start dialog whose Book is deleted elsewhere should close (`gone` → `onCancel`) and focus the shelf or `main`, not `body` [frontend/src/pages/Bookcase.tsx] — the new leaf failed: the `book` view went missing first, focus returned to the still-rendered spine, then the catalog refetch removed it and focus fell to `body`; fixed with a second fallback effect on the shelf's `ids`
+- [x] [Review][Defer] Up next / Side-read start: 500 on `main_not_up_next`/`main_not_side_read`; Book detail's "Start reading" (from `role`) vs the dialog's Resume (from `currentReading`) and the server's resume; `upNextBookId`-untouched docstring reads as safe [backend/bookvie/intents/start_reading.py, frontend/src/lib/startReading.ts, frontend/src/components/StartDialog.tsx:37] — deferred: already recorded from pass 1 (SC1, BH1/BH2); unreachable until Story 4.1
+- [x] [Review][Defer] ARCHITECTURE-SPINE.md drift: Structural Seed misses `start_reading`/`edit_purpose`/`domain/purpose` (and still says `reading_status` planned); IDs convention vs `start-reading` returning no `ids` [docs ARCHITECTURE-SPINE.md] — deferred: already recorded from pass 1 (SC2, SC3); spine-doc edit
+- [x] [Review][Defer] README's "Test automation summary (currently story 2.3)" pointer is stale; the summary is at story 3.1 [README.md:180] — deferred: pre-existing, not caused by this change
+
+Rejected:
+- EC: home view failing mid-flight unmounts the dialog — low, unlikely on localhost; same as pass 1 EC4/BH5b, fix adds guards.
+- EC: `started` state stays in history when Home arrives failed or without a Main — low, unlikely; fix adds a branch.
+- EC+BH: focus-trap selector `button, input` misses textarea/select/links and disabled controls — false: no modal holds those, and `Button` uses `aria-disabled`, not `disabled` (pass 1 BH6).
+- EC+BH: Purpose has no length cap / control characters — false: EXPERIENCE.md says no length limit; the field is one-line and HTML collapses whitespace (pass 1 EC7/BH8).
+- BH: a failed home view closes the Start dialog silently — low, unlikely; pass 1 BH13, fix adds a loading/failed state.
+- BH: "This reading is already finished." is wrong for a never-started Book — fix edits the spec's frozen Decision; unreachable from the UI.
+- BH: resumed Reading keeps a stale `pausedAt` — fix edits the spec (Always: "keeps id/page/`startDate`/`pausedAt`"); AD-19 status comes from `mainBookId`.
+- BH: Purpose field editable in flight — false: after couldn't-save the field shows what the user typed, which is what the spec keeps and a retry sends.
+- BH: `clearStartedState` uses `history.replaceState` and React Router's `usr` — low, no named harm; mirrors `clearNewBookState`.
+- BH: `OpenStartDialog.confirm` lacks a mounted guard — low, unlikely (pass 1 EC4/BH5b); a deleted Book returns `book_not_found`, never ok.
+- BH: no test that `upNextBookId` stays untouched — low: Up next is unreachable in 3.2 (see the deferral).
+- BH: no `edit-purpose` test on the active Main — false: AC-11 leaf stores `"Why Arrakis"` on Dune's active Reading.
+- BH: `_pause_main` early return untested — false: `main_has_unfinished_reading` makes it unreachable.
+- BH: no test that `edit-purpose` on `book_not_found` leaves bytes unchanged — false: `test_start_reading.py:214-220` loops both paths and compares `library_bytes`.
+- BH: no long-Purpose wrapping test — folded into the overflow patch.
+- AA: popover Resume styled via `variant="primary"`, not a literal `button-primary` class — false: that is how the project's `Button` spells `button-primary`.
+- AA: dialog mode from `currentReading` vs Code Map's "mode from `role`" — grouped into the Up next deferral (Implementation Notes record the rule).
 
 ## Implementation Notes
 

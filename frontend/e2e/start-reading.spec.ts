@@ -28,7 +28,7 @@ import {
   storedBook,
   storedLibrary,
 } from './home.ts'
-import { EDIT_PURPOSE, START_READING, requestsTo } from './intents.ts'
+import { DELETE_BOOK, EDIT_PURPOSE, START_READING, requestsTo } from './intents.ts'
 import { spine } from './bookcase.ts'
 
 const COULDNT_SAVE = "Couldn't save. Your data wasn't changed."
@@ -643,6 +643,66 @@ test.describe('Story 3.2 Start reading a book (automate)', () => {
     await expect(edit).toBeVisible()
     const after = storedBook(server, DUNE_ID).readings[0]
     expect(after).toEqual({ ...before, purpose: null })
+  })
+
+  test('[P1] AC-9 Esc cancels Edit Purpose with focus on Save, not only in the field', async ({ page, seededServer }) => {
+    const server = await seededServer({ books: [DUNE_PAUSED] })
+    const before = libraryBytes(server)
+    const edits = requestsTo(page, EDIT_PURPOSE)
+    await page.goto(`${server.url}/book/${DUNE_ID}`)
+    const block = currentReading(page)
+    const edit = block.getByRole('button', { name: 'Edit Purpose', exact: true })
+    const field = block.getByRole('textbox', { name: 'Purpose', exact: true })
+
+    await edit.click()
+    await field.fill('Something else')
+    await page.keyboard.press('Tab')
+    await expect(block.getByRole('button', { name: 'Save', exact: true })).toBeFocused()
+    await page.keyboard.press('Escape')
+    await expect(field).toHaveCount(0)
+    await expect(edit).toBeFocused()
+    await expect(block).toContainText(DUNE_PURPOSE)
+    expect(edits).toHaveLength(0)
+    expect(libraryBytes(server)).toBe(before)
+  })
+
+  test('[P2] a long unbroken Purpose wraps inside the Current reading block', async ({ page, seededServer }) => {
+    const long = `https://example.com/${'arrakis'.repeat(40)}`
+    const server = await seededServer({
+      books: [{ ...DUNE_PAUSED, readings: [{ ...DUNE_PAUSED.readings[0], purpose: long }] }],
+    })
+    await page.goto(`${server.url}/book/${DUNE_ID}`)
+    const block = currentReading(page)
+    const value = block.getByText(long, { exact: true })
+    await expect(value).toBeVisible()
+    const [blockBox, valueBox] = await Promise.all([block.boundingBox(), value.boundingBox()])
+    expect(blockBox).not.toBeNull()
+    expect(valueBox).not.toBeNull()
+    expect(valueBox!.x + valueBox!.width).toBeLessThanOrEqual(blockBox!.x + blockBox!.width + 0.5)
+  })
+
+  test('[P1] AC-7 a Start dialog from the spine popover closes when its Book was deleted elsewhere, and focus falls back to main', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: [DUNE, LEFT_HAND] })
+    await page.goto(`${server.url}/catalog`)
+    await spine(page, 'Dune by Frank Herbert, not read yet').click()
+    await page.getByRole('dialog', { name: 'Dune', exact: true }).getByRole('button', { name: 'Start reading' }).click()
+    const dialog = startDialog(page, 'Start Dune?')
+    await expect(purposeField(dialog)).toBeFocused()
+    // Another tab deletes Dune.
+    const other = await page.request.post(`${server.url}${DELETE_BOOK}`, {
+      multipart: { intent: JSON.stringify({ bookId: DUNE_ID }) },
+    })
+    expect(other.status()).toBe(200)
+
+    // The refusal refetches the views: the Book is gone, so the dialog closes itself.
+    await dialog.getByRole('button', { name: 'Start reading', exact: true }).click()
+    await expect(dialog).toHaveCount(0)
+    await expect(spine(page, 'Dune by Frank Herbert, not read yet')).toHaveCount(0)
+    // Its spine is gone too: focus lands on `main`, not `body`.
+    await expect(page.getByRole('main')).toBeFocused()
   })
 
   test('[P1] axe finds no WCAG 2.2 AA violations on the open Start dialog, in both themes', async ({

@@ -1,7 +1,11 @@
 """Story 3.2 Start reading a book: ``start-reading`` and ``edit-purpose`` (ATDD).
 
-Three ATDD tests, for the criteria whose promise lives on the server
-(numbered in the order of epics.md, Story 3.2):
+The ATDD tests, for the criteria whose promise lives on the server
+(numbered in the order of epics.md, Story 3.2), then the green-phase tests:
+RDG-API-001's state matrix, resume under a Main book, malformed intents and
+``edit-purpose``'s own rules.
+
+ATDD:
 
 - AC-3: starting a finished Book creates a new Reading (a re-read) and leaves
   the earlier Readings as they were.

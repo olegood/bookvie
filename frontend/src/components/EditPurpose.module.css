@@ -19,6 +19,12 @@
   margin: 0;
 }
 
+/* A long unbroken Purpose (a URL) wraps inside the block. */
+.value {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .label {
   flex: none;
   color: var(--color-ink-tertiary);

@@ -158,16 +158,26 @@ export default function Bookcase({ books, meter, query, highlightId, focusTarget
     setStartingId(null)
   }, [startingId])
 
-  useEffect(() => {
-    if (refocusId === null) return
-    // The spine is gone (deleted or hidden by a refetch): the shelf if it takes focus, else `main`.
+  // The spine is gone (deleted or hidden by a refetch): the shelf if it takes focus, else `main`.
+  const fallbackTarget = useCallback(() => {
     const shelfList = shelfRef.current
-    const target =
-      buttons.current.get(refocusId.id) ??
+    return (
       (shelfList !== null && !shelfList.hidden && shelfList.hasAttribute('tabindex') ? shelfList : null) ??
       document.getElementById('main')
-    target?.focus()
-  }, [refocusId])
+    )
+  }, [])
+
+  useEffect(() => {
+    if (refocusId === null) return
+    ;(buttons.current.get(refocusId.id) ?? fallbackTarget())?.focus()
+  }, [refocusId, fallbackTarget])
+
+  // The Book was deleted elsewhere: its `book` view went missing first, so
+  // focus went back to the spine, and the catalog refetch then removed it.
+  useEffect(() => {
+    if (refocusId === null || buttons.current.has(refocusId.id)) return
+    if (document.activeElement === null || document.activeElement === document.body) fallbackTarget()?.focus()
+  }, [ids, refocusId, fallbackTarget])
 
   // An outside click closes the popover. A click on the open spine is left to
   // its own toggle. Focus stays on a control the click landed on (Search
