@@ -1,0 +1,68 @@
+/* DESIGN.md → Start dialog: the Confirm dialog's frame, with the Purpose
+   field between the lines and the buttons. */
+.dialog {
+  box-sizing: border-box;
+  width: var(--dialog-width);
+  max-width: calc(100vw - 2 * var(--space-6));
+  margin: auto;
+  padding: var(--space-6);
+  border: var(--hairline) solid var(--color-line);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  box-shadow: var(--shadow-overlay);
+}
+
+.dialog::backdrop {
+  background: var(--color-scrim);
+}
+
+.heading {
+  margin: 0 0 var(--space-3);
+  font-family: var(--font-panel-heading-family);
+  font-size: var(--font-panel-heading-size);
+  font-weight: var(--font-panel-heading-weight);
+  line-height: var(--font-panel-heading-line-height);
+  overflow-wrap: anywhere;
+}
+
+/* *X* and *Y*: the book-title face. */
+.bookTitle {
+  font-family: var(--font-book-title-md-family);
+  font-style: normal;
+}
+
+.tradeOff {
+  margin: 0 0 var(--space-4);
+  font-family: var(--font-body-family);
+  font-size: var(--font-body-size);
+  font-weight: var(--font-body-weight);
+  line-height: var(--font-body-line-height);
+}
+
+.field {
+  margin: 0 0 var(--space-6);
+}
+
+/* The live regions' host sits here, above the buttons, while the dialog is
+   open. A couldn't-save or refusal shows as one calm line in ink. */
+.regions[data-show-alert="true"] [role="alert"] {
+  position: static;
+  width: auto;
+  height: auto;
+  margin: 0 0 var(--space-3);
+  overflow: visible;
+  clip-path: none;
+  white-space: normal;
+  font-family: var(--font-body-sm-family);
+  font-size: var(--font-body-sm-size);
+  font-weight: var(--font-body-sm-weight);
+  line-height: var(--font-body-sm-line-height);
+  color: var(--color-ink);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}

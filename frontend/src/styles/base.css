@@ -55,3 +55,24 @@ textarea {
     outline-color: Highlight;
   }
 }
+
+/* A button that looks like a link (DESIGN.md → Spine popover "Start
+   reading", Book detail "Edit Purpose"): it acts in place (opens a dialog
+   or a field) rather than navigating, so it is a `button`. */
+.linkButton {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-accent);
+  text-align: start;
+  text-decoration-line: underline;
+  text-decoration-thickness: var(--link-underline-thickness);
+  text-underline-offset: var(--link-underline-offset);
+  cursor: pointer;
+}
+
+@media (forced-colors: active) {
+  .linkButton {
+    color: LinkText;
+  }
+}

@@ -126,3 +126,34 @@ export function useSetSpineColor(): (bookId: string, spineColor: string | null) 
   const client = useQueryClient()
   return (bookId, spineColor) => setSpineColor(client, bookId, spineColor)
 }
+
+// `start-reading` and `edit-purpose` share one intent part, `{ bookId, purpose }`:
+// the Purpose as typed (the server trims it, and stores `null` when nothing is left).
+
+export function purposeForm(bookId: string, purpose: string | null): FormData {
+  const form = new FormData()
+  form.set('intent', JSON.stringify({ bookId, purpose }))
+  return form
+}
+
+/** Sends `start-reading` (start, resume or re-read as the Main book); resolves after the views have refetched. */
+export function startReading(client: QueryClient, bookId: string, purpose: string | null): Promise<IntentResult> {
+  return sendIntent(client, 'start-reading', purposeForm(bookId, purpose))
+}
+
+/** `startReading` bound to the app's QueryClient. */
+export function useStartReading(): (bookId: string, purpose: string | null) => Promise<IntentResult> {
+  const client = useQueryClient()
+  return (bookId, purpose) => startReading(client, bookId, purpose)
+}
+
+/** Sends `edit-purpose` for the Book's current Reading; resolves after the views have refetched. */
+export function editPurpose(client: QueryClient, bookId: string, purpose: string | null): Promise<IntentResult> {
+  return sendIntent(client, 'edit-purpose', purposeForm(bookId, purpose))
+}
+
+/** `editPurpose` bound to the app's QueryClient. */
+export function useEditPurpose(): (bookId: string, purpose: string | null) => Promise<IntentResult> {
+  const client = useQueryClient()
+  return (bookId, purpose) => editPurpose(client, bookId, purpose)
+}

@@ -12,6 +12,7 @@ import {
 } from 'react'
 import type { LibraryMeter, ShelfBook } from '../api/index.ts'
 import SpinePopover from '../components/SpinePopover.tsx'
+import StartDialog from '../components/StartDialog.tsx'
 import { bookcaseName, matchesTitle, noMatchCopy, spineName } from '../lib/catalog.ts'
 import { nearestVisible, spineHeight } from '../lib/spine.ts'
 import styles from './Bookcase.module.css'
@@ -103,6 +104,8 @@ export default function Bookcase({ books, meter, query, highlightId, focusTarget
   // The Book whose Spine popover is open: at most one.
   const [openId, setOpenId] = useState<string | null>(null)
   const popoverRef = useRef<HTMLDivElement>(null)
+  // The Book whose Start dialog is open (from its popover's start action).
+  const [startingId, setStartingId] = useState<string | null>(null)
   // A press on the open spine closes its popover; the click that follows must not reopen it.
   const closedByPress = useRef<{ id: string; at: number } | null>(null)
   const shelfRef = useRef<HTMLUListElement>(null)
@@ -139,6 +142,32 @@ export default function Bookcase({ books, meter, query, highlightId, focusTarget
     },
     [anchor],
   )
+
+  // The popover closes (focus back on its spine), then the Start dialog opens.
+  const openStart = useCallback(() => {
+    if (openId === null) return
+    closePopover(true)
+    setStartingId(openId)
+  }, [openId, closePopover])
+
+  // Cancel or Esc: the popover has closed, so focus returns to the spine,
+  // once the modal dialog (which makes the shelf inert) has unmounted.
+  const [refocusId, setRefocusId] = useState<{ id: string } | null>(null)
+  const cancelStart = useCallback(() => {
+    if (startingId !== null) setRefocusId({ id: startingId })
+    setStartingId(null)
+  }, [startingId])
+
+  useEffect(() => {
+    if (refocusId === null) return
+    // The spine is gone (deleted or hidden by a refetch): the shelf if it takes focus, else `main`.
+    const shelfList = shelfRef.current
+    const target =
+      buttons.current.get(refocusId.id) ??
+      (shelfList !== null && !shelfList.hidden && shelfList.hasAttribute('tabindex') ? shelfList : null) ??
+      document.getElementById('main')
+    target?.focus()
+  }, [refocusId])
 
   // An outside click closes the popover. A click on the open spine is left to
   // its own toggle. Focus stays on a control the click landed on (Search
@@ -286,9 +315,17 @@ export default function Bookcase({ books, meter, query, highlightId, focusTarget
       </ul>
       {openBook && (
         <div ref={popoverRef}>
-          <SpinePopover key={openBook.id} book={openBook} anchor={anchor} shelf={shelf} onClose={closePopover} />
+          <SpinePopover
+            key={openBook.id}
+            book={openBook}
+            anchor={anchor}
+            shelf={shelf}
+            onClose={closePopover}
+            onStart={openStart}
+          />
         </div>
       )}
+      {startingId !== null && <StartDialog bookId={startingId} onCancel={cancelStart} />}
       <div className={styles.legend}>
         <span className={styles.legendItem}>
           <span aria-hidden="true" className={styles.swatchRead} />

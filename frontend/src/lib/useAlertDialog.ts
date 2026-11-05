@@ -1,9 +1,11 @@
-// The lifecycle every `alertdialog` shares (the Duplicate dialog, the Confirm
-// dialog): a native `<dialog>` opened with `showModal()` for as long as it is
-// mounted, so the page or panel behind is inert; the shell's live regions
-// adopted into the dialog's region slot while it is open, and emptied on
-// open; the default focus; Tab and Shift+Tab cycling between its buttons;
-// Esc and any native close routed to `onDismiss`.
+// The lifecycle every modal dialog shares (the Duplicate dialog, the Confirm
+// dialog, the Start dialog): a native `<dialog>` opened with `showModal()`
+// for as long as it is mounted, so the page or panel behind is inert; the
+// shell's live regions adopted into the dialog's region slot while it is
+// open, and emptied on open; the default focus; Tab and Shift+Tab cycling
+// between its buttons and fields; Esc and any native close routed to
+// `onDismiss`. An `alertdialog` by default; the Start dialog, which holds a
+// field, is a plain `dialog`.
 
 import { useLayoutEffect, useRef, type KeyboardEvent, type RefObject, type SyntheticEvent } from 'react'
 import { adoptRegions, clearAnnouncements, releaseRegions } from './announce.ts'
@@ -13,6 +15,8 @@ type Options = {
   onDismiss: () => void
   /** The element that takes focus on open; by default the dialog's first button. */
   initialFocus?: RefObject<HTMLElement | null>
+  /** `alertdialog` (the default) or, for a dialog that holds a form field, `dialog`. */
+  role?: 'alertdialog' | 'dialog'
 }
 
 type AlertDialog = {
@@ -20,19 +24,19 @@ type AlertDialog = {
   regionSlot: RefObject<HTMLDivElement | null>
   /** Spread onto the `<dialog>`. */
   dialogProps: {
-    role: 'alertdialog'
+    role: 'alertdialog' | 'dialog'
     onKeyDown: (event: KeyboardEvent<HTMLDialogElement>) => void
     onCancel: (event: SyntheticEvent<HTMLDialogElement>) => void
     onClose: (event: SyntheticEvent<HTMLDialogElement>) => void
   }
 }
 
-// Tab and Shift+Tab cycle between the dialog's buttons.
+// Tab and Shift+Tab cycle between the dialog's buttons and fields.
 function keepFocusInside(event: KeyboardEvent<HTMLDialogElement>): void {
   if (event.key !== 'Tab') return
-  const buttons = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('button'))
-  const first = buttons[0]
-  const last = buttons.at(-1)
+  const controls = Array.from(event.currentTarget.querySelectorAll<HTMLElement>('button, input'))
+  const first = controls[0]
+  const last = controls.at(-1)
   if (!first || !last) return
   const active = document.activeElement
   if (event.shiftKey && active === first) {
@@ -44,7 +48,7 @@ function keepFocusInside(event: KeyboardEvent<HTMLDialogElement>): void {
   }
 }
 
-export function useAlertDialog({ onDismiss, initialFocus }: Options): AlertDialog {
+export function useAlertDialog({ onDismiss, initialFocus, role = 'alertdialog' }: Options): AlertDialog {
   const dialog = useRef<HTMLDialogElement>(null)
   const regionSlot = useRef<HTMLDivElement>(null)
   // Read at open only: the default focus never moves while the dialog is up.
@@ -69,7 +73,7 @@ export function useAlertDialog({ onDismiss, initialFocus }: Options): AlertDialo
     dialog,
     regionSlot,
     dialogProps: {
-      role: 'alertdialog',
+      role,
       onKeyDown: keepFocusInside,
       onCancel: (event) => {
         // Esc goes to the owner; whatever is behind (a panel) stays open.

@@ -10,6 +10,7 @@
 // same day in Europe/Madrid (TC-2, AD-20). None of these leaves reads
 // `upNextBookId`: Story 4.1 decides where the paused Book goes (FR-7).
 
+import AxeBuilder from '@axe-core/playwright'
 import type { Locator, Page } from '@playwright/test'
 import { expect, test } from './fixtures.ts'
 import {
@@ -31,6 +32,8 @@ import { EDIT_PURPOSE, START_READING, requestsTo } from './intents.ts'
 import { spine } from './bookcase.ts'
 
 const COULDNT_SAVE = "Couldn't save. Your data wasn't changed."
+const ALREADY_MAIN = 'This book is already your Main book.'
+const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']
 
 const FAHRENHEIT_ID = '9d4e7a10-2b3c-4d5e-8f60-718293a4b5c6'
 const FAHRENHEIT_READING_ID = 'c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f'
@@ -79,7 +82,7 @@ function isModal(dialog: Locator): Promise<boolean> {
 }
 
 test.describe('Story 3.2 Start reading a book (ATDD)', () => {
-  test.skip('[P0] AC-1 Start reading on Book detail opens the modal Start dialog with the Purpose field focused, even with no Main book', async ({
+  test('[P0] AC-1 Start reading on Book detail opens the modal Start dialog with the Purpose field focused, even with no Main book', async ({
     page,
     seededServer,
   }) => {
@@ -109,7 +112,7 @@ test.describe('Story 3.2 Start reading a book (ATDD)', () => {
     await expect(dialog).not.toContainText('This pauses')
   })
 
-  test.skip('[P0] AC-2 confirming Start reading makes the Book Main with a new Reading and goes to Home, focus on its title link', async ({
+  test('[P0] AC-2 confirming Start reading makes the Book Main with a new Reading and goes to Home, focus on its title link', async ({
     page,
   }) => {
     const server = await serverAtFakeToday(page, 'start-new', { books: [DUNE, LEFT_HAND] })
@@ -146,7 +149,7 @@ test.describe('Story 3.2 Start reading a book (ATDD)', () => {
     }
   })
 
-  test.skip('[P1] AC-5 Resume on a paused Book opens Resume X? with its Purpose, and confirming resumes the same Reading at its page as Main', async ({
+  test('[P1] AC-5 Resume on a paused Book opens Resume X? with its Purpose, and confirming resumes the same Reading at its page as Main', async ({
     page,
   }) => {
     const server = await serverAtFakeToday(page, 'resume', { books: [DUNE_PAUSED] })
@@ -186,7 +189,7 @@ test.describe('Story 3.2 Start reading a book (ATDD)', () => {
     }
   })
 
-  test.skip('[P1] AC-6 with a Main book, the dialog says This pauses Y at p.120 (64%). and one start-reading pauses Y and starts X', async ({
+  test('[P1] AC-6 with a Main book, the dialog says This pauses Y at p.120 (64%). and one start-reading pauses Y and starts X', async ({
     page,
   }) => {
     const server = await serverAtFakeToday(page, 'start-pauses-main', {
@@ -227,7 +230,7 @@ test.describe('Story 3.2 Start reading a book (ATDD)', () => {
     }
   })
 
-  test.skip('[P1] AC-7 Cancel or Esc closes the Start dialog, changes nothing and returns focus to the opener', async ({
+  test('[P1] AC-7 Cancel or Esc closes the Start dialog, changes nothing and returns focus to the opener', async ({
     page,
     seededServer,
   }) => {
@@ -260,7 +263,7 @@ test.describe('Story 3.2 Start reading a book (ATDD)', () => {
     await expect(mainBookCard(page).getByRole('link', { name: LEFT_HAND.title, exact: true })).toBeVisible()
   })
 
-  test.skip('[P1] AC-8 the spine popover offers Start reading (or Resume for a paused Book), which opens the Start dialog; a finished Book gets none', async ({
+  test('[P1] AC-8 the spine popover offers Start reading (or Resume for a paused Book), which opens the Start dialog; a finished Book gets none', async ({
     page,
     seededServer,
   }) => {
@@ -304,7 +307,7 @@ test.describe('Story 3.2 Start reading a book (ATDD)', () => {
     await expect(popover('Neuromancer').getByText(/^(Start reading|Resume)$/)).toHaveCount(0)
   })
 
-  test.skip('[P1] AC-9 Edit Purpose turns the Purpose line into a field where Enter saves and Esc cancels', async ({
+  test('[P1] AC-9 Edit Purpose turns the Purpose line into a field where Enter saves and Esc cancels', async ({
     page,
     seededServer,
   }) => {
@@ -340,7 +343,7 @@ test.describe('Story 3.2 Start reading a book (ATDD)', () => {
     expect(libraryBytes(server)).toBe(saved)
   })
 
-  test.skip("[P1] AC-10 a couldn't-save keeps the Edit Purpose field open with the typed Purpose and the alert line directly below it", async ({
+  test("[P1] AC-10 a couldn't-save keeps the Edit Purpose field open with the typed Purpose and the alert line directly below it", async ({
     page,
     seededServer,
   }) => {
@@ -373,5 +376,291 @@ test.describe('Story 3.2 Start reading a book (ATDD)', () => {
     expect(alertBox.y).toBeGreaterThanOrEqual(fieldBox.y + fieldBox.height - 1)
     expect(alertBox.y - (fieldBox.y + fieldBox.height)).toBeLessThanOrEqual(32)
     expect(libraryBytes(server)).toBe(before)
+  })
+})
+
+/** A 503 `couldnt_save` for `path`, held until `release()` so the in-flight state can be read. */
+async function holdCouldntSave(page: Page, path: string): Promise<() => void> {
+  let release!: () => void
+  const held = new Promise<void>((resolve) => (release = resolve))
+  await page.route(`**${path}`, async (route) => {
+    await held
+    await route.fulfill({
+      status: 503,
+      contentType: 'application/json',
+      body: JSON.stringify({ error: { kind: 'couldnt_save', code: 'couldnt_save', message: COULDNT_SAVE } }),
+    })
+  })
+  return release
+}
+
+function purposeField(dialog: Locator): Locator {
+  return dialog.getByRole('textbox', { name: 'Purpose (optional)', exact: true })
+}
+
+test.describe('Story 3.2 Start reading a book (automate)', () => {
+  test("[P1] AC-11 a couldn't-save keeps the Start dialog open with the Purpose; the confirm button is aria-disabled in flight", async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: [DUNE] })
+    const release = await holdCouldntSave(page, START_READING)
+    const before = libraryBytes(server)
+    await page.goto(`${server.url}/book/${DUNE_ID}`)
+    await detailButton(page, 'Start reading').click()
+    const dialog = startDialog(page, 'Start Dune?')
+    await purposeField(dialog).fill('For the ecology')
+    const confirm = dialog.getByRole('button', { name: 'Start reading', exact: true })
+    const sent = page.waitForRequest((request) => new URL(request.url()).pathname === START_READING)
+
+    await confirm.click()
+    await sent
+    await expect(confirm).toHaveAttribute('aria-disabled', 'true')
+    // Esc in flight is ignored.
+    await page.keyboard.press('Escape')
+    await expect(dialog).toBeVisible()
+    release()
+
+    await expect(page.getByRole('alert')).toHaveText(COULDNT_SAVE)
+    await expect(dialog).toBeVisible()
+    await expect(purposeField(dialog)).toHaveValue('For the ecology')
+    await expect(confirm).not.toHaveAttribute('aria-disabled', 'true')
+    // The line sits inside the dialog, above its buttons.
+    const line = dialog.getByText(COULDNT_SAVE, { exact: true })
+    await expect(line).toHaveCSS('position', 'static')
+    const lineBox = (await line.boundingBox())!
+    const confirmBox = (await confirm.boundingBox())!
+    expect(lineBox.y + lineBox.height).toBeLessThanOrEqual(confirmBox.y + 1)
+    expect(libraryBytes(server)).toBe(before)
+  })
+
+  test('[P1] AC-2 a blank Purpose is stored as null', async ({ page, seededServer }) => {
+    const server = await seededServer({ books: [DUNE] })
+    await page.goto(`${server.url}/book/${DUNE_ID}`)
+    await detailButton(page, 'Start reading').click()
+    const dialog = startDialog(page, 'Start Dune?')
+    await purposeField(dialog).fill('    ')
+    // Enter in the field confirms.
+    await purposeField(dialog).press('Enter')
+    await expect(mainBookCard(page).getByRole('link', { name: 'Dune', exact: true })).toBeFocused()
+    const [reading] = storedBook(server, DUNE_ID).readings
+    expect(reading.purpose).toBeNull()
+  })
+
+  test('[P1] AC-1 a finished Book shows Start reading, and its re-read keeps the earlier Reading in the Readings block', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: [{ ...NEUROMANCER, id: DUNE_ID }] })
+    const [earlier] = storedBook(server, DUNE_ID).readings
+    await page.goto(`${server.url}/book/${DUNE_ID}`)
+    await expect(detailButton(page, 'Resume')).toHaveCount(0)
+    await detailButton(page, 'Start reading').click()
+    const dialog = startDialog(page, 'Start Neuromancer?')
+    await expect(purposeField(dialog)).toHaveValue('')
+    await dialog.getByRole('button', { name: 'Start reading', exact: true }).click()
+    await expect(mainBookCard(page).getByRole('link', { name: 'Neuromancer', exact: true })).toBeFocused()
+
+    const { readings } = storedBook(server, DUNE_ID)
+    expect(readings).toHaveLength(2)
+    expect(readings[0]).toEqual(earlier)
+    await mainBookCard(page).getByRole('link', { name: 'Neuromancer', exact: true }).click()
+    const listed = page.getByRole('region', { name: 'Readings', exact: true }).getByRole('listitem')
+    await expect(listed).toHaveCount(2)
+    await expect(listed.nth(1)).toContainText('Finished')
+  })
+
+  test('[P1] AC-1 the Main book has neither Start reading nor Resume on Book detail', async ({ page, seededServer }) => {
+    const server = await seededServer(mainAt(212))
+    await page.goto(`${server.url}/book/${LEFT_HAND_ID}`)
+    await expect(page.getByRole('heading', { level: 1, name: LEFT_HAND.title, exact: true })).toBeVisible()
+    await expect(page.getByRole('main').getByRole('button', { name: 'Edit', exact: true })).toBeVisible()
+    await expect(page.getByRole('main').getByRole('button', { name: /^(Start reading|Resume)$/ })).toHaveCount(0)
+  })
+
+  test('[P1] AC-6 Y is in serif; no trade-off line without a Main book; afterwards Y reads waiting for you, page 120', async ({
+    page,
+    seededServer,
+  }) => {
+    const resumeAlone = await seededServer({ books: [DUNE_PAUSED] })
+    await page.goto(`${resumeAlone.url}/book/${DUNE_ID}`)
+    await detailButton(page, 'Resume').click()
+    await expect(startDialog(page, 'Resume Dune?')).toBeVisible()
+    await expect(startDialog(page, 'Resume Dune?')).not.toContainText('This pauses')
+
+    const server = await seededServer({
+      mainBookId: FAHRENHEIT_ID,
+      books: [{ ...FAHRENHEIT, readings: [{ id: FAHRENHEIT_READING_ID, currentPage: 120 }] }, DUNE],
+    })
+    await page.goto(`${server.url}/book/${DUNE_ID}`)
+    await detailButton(page, 'Start reading').click()
+    const dialog = startDialog(page, 'Start Dune?')
+    const y = dialog.getByText('Fahrenheit 451', { exact: true })
+    expect(await y.evaluate((element) => getComputedStyle(element).fontFamily)).toMatch(/^ui-serif/)
+    await dialog.getByRole('button', { name: 'Start reading', exact: true }).click()
+    await expect(mainBookCard(page).getByRole('link', { name: 'Dune', exact: true })).toBeFocused()
+
+    await page.goto(`${server.url}/catalog`)
+    await expect(spine(page, 'Fahrenheit 451 by Ray Bradbury, waiting for you, page 120')).toBeVisible()
+    await page.goto(`${server.url}/book/${FAHRENHEIT_ID}`)
+    await expect(currentReading(page).getByText(/^Waiting for you, page 120\b/)).toBeVisible()
+    await expect(detailButton(page, 'Resume')).toBeVisible()
+  })
+
+  test('[P1] AC-4 a stale tab that still offers Start reading gets already_main in the dialog, which stays open', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: [DUNE] })
+    await page.goto(`${server.url}/book/${DUNE_ID}`)
+    const opener = detailButton(page, 'Start reading')
+    await expect(opener).toBeVisible()
+    // Another tab makes Dune Main.
+    const other = await page.request.post(`${server.url}${START_READING}`, {
+      multipart: { intent: JSON.stringify({ bookId: DUNE_ID, purpose: null }) },
+    })
+    expect(other.status()).toBe(200)
+    const before = libraryBytes(server)
+
+    await opener.click()
+    const dialog = startDialog(page, 'Start Dune?')
+    await dialog.getByRole('button', { name: 'Start reading', exact: true }).click()
+
+    await expect(page.getByRole('alert')).toHaveText(ALREADY_MAIN)
+    await expect(dialog).toBeVisible()
+    expect(libraryBytes(server)).toBe(before)
+    // The views refetched: Book detail no longer offers a start.
+    await dialog.getByRole('button', { name: 'Cancel', exact: true }).click()
+    await expect(dialog).toHaveCount(0)
+    await expect(page.getByRole('main').getByRole('button', { name: /^(Start reading|Resume)$/ })).toHaveCount(0)
+    // The opener is gone, so focus falls back to `main`.
+    await expect(page.getByRole('main')).toBeFocused()
+  })
+
+  test('[P1] AC-1 Tab and Shift+Tab cycle inside the Start dialog: Purpose, Start reading, Cancel', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: [DUNE] })
+    await page.goto(`${server.url}/book/${DUNE_ID}`)
+    await detailButton(page, 'Start reading').click()
+    const dialog = startDialog(page, 'Start Dune?')
+    const purpose = purposeField(dialog)
+    const confirm = dialog.getByRole('button', { name: 'Start reading', exact: true })
+    const cancel = dialog.getByRole('button', { name: 'Cancel', exact: true })
+    await expect(purpose).toBeFocused()
+
+    for (const [key, focused] of [
+      ['Tab', confirm],
+      ['Tab', cancel],
+      ['Tab', purpose],
+      ['Shift+Tab', cancel],
+      ['Shift+Tab', confirm],
+      ['Shift+Tab', purpose],
+    ] as const) {
+      await page.keyboard.press(key)
+      await expect(focused).toBeFocused()
+    }
+  })
+
+  test('[P1] AC-2 the started hand-off focuses the title link once: not after a reload, Back or Forward', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: [DUNE] })
+    await page.goto(`${server.url}/book/${DUNE_ID}`)
+    await detailButton(page, 'Start reading').click()
+    await startDialog(page, 'Start Dune?').getByRole('button', { name: 'Start reading', exact: true }).click()
+    const title = mainBookCard(page).getByRole('link', { name: 'Dune', exact: true })
+    const home = page.getByRole('heading', { level: 1, name: 'Home', exact: true })
+    await expect(title).toBeFocused()
+
+    await page.reload()
+    await expect(home).toBeAttached()
+    await expect(title).toBeVisible()
+    await expect(title).not.toBeFocused()
+
+    await page.goBack()
+    await expect(page).toHaveURL(`${server.url}/book/${DUNE_ID}`)
+    await page.goForward()
+    await expect(page).toHaveURL(`${server.url}/`)
+    await expect(home).toBeFocused()
+    await expect(title).not.toBeFocused()
+  })
+
+  test('[P1] AC-7 Cancel or Esc on a Start dialog opened from the spine popover returns focus to the spine', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: [DUNE] })
+    const starts = requestsTo(page, START_READING)
+    await page.goto(`${server.url}/catalog`)
+    const dune = spine(page, 'Dune by Frank Herbert, not read yet')
+    const dialog = startDialog(page, 'Start Dune?')
+
+    await dune.click()
+    await page.getByRole('dialog', { name: 'Dune', exact: true }).getByRole('button', { name: 'Start reading' }).click()
+    await expect(purposeField(dialog)).toBeFocused()
+    await dialog.getByRole('button', { name: 'Cancel', exact: true }).click()
+    await expect(dialog).toHaveCount(0)
+    await expect(dune).toBeFocused()
+
+    // Keyboard: Enter opens the popover with Start reading focused, Enter opens the dialog, Esc closes it.
+    await page.keyboard.press('Enter')
+    await expect(page.getByRole('dialog', { name: 'Dune', exact: true }).getByRole('button', { name: 'Start reading' })).toBeFocused()
+    await page.keyboard.press('Enter')
+    await expect(purposeField(dialog)).toBeFocused()
+    await page.keyboard.press('Escape')
+    await expect(dialog).toHaveCount(0)
+    await expect(dune).toBeFocused()
+    expect(starts).toHaveLength(0)
+  })
+
+  test('[P1] AC-9 Edit Purpose on a paused Book: saving empty clears the line, and focus returns to Edit Purpose after Save and Cancel', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: [DUNE_PAUSED] })
+    const before = storedBook(server, DUNE_ID).readings[0]
+    await page.goto(`${server.url}/book/${DUNE_ID}`)
+    const block = currentReading(page)
+    const edit = block.getByRole('button', { name: 'Edit Purpose', exact: true })
+    const field = block.getByRole('textbox', { name: 'Purpose', exact: true })
+
+    await edit.click()
+    await expect(field).toBeFocused()
+    await block.getByRole('button', { name: 'Cancel', exact: true }).click()
+    await expect(field).toHaveCount(0)
+    await expect(edit).toBeFocused()
+
+    await edit.click()
+    await field.fill('   ')
+    await block.getByRole('button', { name: 'Save', exact: true }).click()
+    await expect(field).toHaveCount(0)
+    await expect(edit).toBeFocused()
+    await expect(block).not.toContainText(DUNE_PURPOSE)
+    // Still offered without a Purpose; only the Purpose changed, not the progress stamp.
+    await expect(edit).toBeVisible()
+    const after = storedBook(server, DUNE_ID).readings[0]
+    expect(after).toEqual({ ...before, purpose: null })
+  })
+
+  test('[P1] axe finds no WCAG 2.2 AA violations on the open Start dialog, in both themes', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({
+      mainBookId: FAHRENHEIT_ID,
+      books: [{ ...FAHRENHEIT, readings: [{ currentPage: 120 }] }, DUNE],
+    })
+    for (const colorScheme of ['light', 'dark'] as const) {
+      await page.emulateMedia({ colorScheme })
+      await page.goto(`${server.url}/book/${DUNE_ID}`)
+      await detailButton(page, 'Start reading').click()
+      const dialog = startDialog(page, 'Start Dune?')
+      await expect(dialog).toContainText('This pauses Fahrenheit 451 at p.120 (64%).')
+      const { violations } = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze()
+      expect(violations.map(({ id, nodes }) => `${colorScheme}: ${id} (${nodes.length})`)).toEqual([])
+    }
   })
 })

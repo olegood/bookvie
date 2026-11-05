@@ -56,6 +56,7 @@ from bookvie.intents import (
     cover_too_large,
     delete_book,
     edit_book,
+    edit_purpose,
     export_filename,
     invalid_fields,
     malformed_intent,
@@ -63,13 +64,16 @@ from bookvie.intents import (
     parse_add_book_intent,
     parse_delete_book_intent,
     parse_edit_book_intent,
+    parse_edit_purpose_intent,
     parse_restore_intent,
     parse_set_spine_color_intent,
+    parse_start_reading_intent,
     prepare_cover,
     record_export,
     restore,
     restore_unsafe,
     set_spine_color,
+    start_reading,
 )
 
 # Every /api route documents the envelope for these statuses. Declaring 422
@@ -428,6 +432,46 @@ def set_spine_color_intent(
     """Set or clear a Book's own spine color and re-resolve its spine color (FR-24)."""
     parsed = parse_set_spine_color_intent(intent)
     set_spine_color(request.app.state.store, parsed)
+    return OkResponse(ok=True)
+
+
+@router.post("/intents/start-reading", response_model=OkResponse, response_model_exclude_none=True)
+def start_reading_intent(
+    request: Request,
+    intent: Annotated[
+        str | None,
+        Form(
+            media_type="multipart/form-data",
+            description=(
+                'JSON object {"bookId": ..., "purpose": "..." | null}: the Start '
+                "dialog's Purpose, trimmed, null when empty."
+            ),
+        ),
+    ] = None,
+) -> OkResponse:
+    """Start, resume or re-read a Book as the Main book, pausing the previous one (FR-5)."""
+    parsed = parse_start_reading_intent(intent)
+    start_reading(request.app.state.store, request.app.state.clock, parsed)
+    return OkResponse(ok=True)
+
+
+@router.post("/intents/edit-purpose", response_model=OkResponse, response_model_exclude_none=True)
+def edit_purpose_intent(
+    request: Request,
+    intent: Annotated[
+        str | None,
+        Form(
+            media_type="multipart/form-data",
+            description=(
+                'JSON object {"bookId": ..., "purpose": "..." | null}: the new Purpose '
+                "of the Book's current Reading, trimmed, null when empty."
+            ),
+        ),
+    ] = None,
+) -> OkResponse:
+    """Change the Purpose of a Book's current Reading, active or paused (FR-9)."""
+    parsed = parse_edit_purpose_intent(intent)
+    edit_purpose(request.app.state.store, parsed)
     return OkResponse(ok=True)
 
 

@@ -1,4 +1,4 @@
-import { useId } from 'react'
+import { useId, type Ref } from 'react'
 import { Link } from 'react-router'
 import type { HomeMainBook } from '../api/index.ts'
 import Cover from './Cover.tsx'
@@ -14,9 +14,16 @@ const CHOOSE_A_BOOK = 'Choose a book in the Catalog'
  * the "MAIN BOOK" eyebrow, the serif title (3-line clamp) linking to Book
  * detail, the author, "Edition N" only when it isn't 1, then the gauge.
  * Without a Main book the same frame and name hold "No Main book." and a
- * link to the Catalog.
+ * link to the Catalog. `titleRef` is the title link, which Home focuses after
+ * a confirmed start.
  */
-export default function MainBookCard({ book }: { book: HomeMainBook | null }) {
+export default function MainBookCard({
+  book,
+  titleRef,
+}: {
+  book: HomeMainBook | null
+  titleRef?: Ref<HTMLAnchorElement>
+}) {
   const eyebrowId = useId()
   if (book === null) {
     return (
@@ -36,7 +43,7 @@ export default function MainBookCard({ book }: { book: HomeMainBook | null }) {
           Main book
         </p>
         <h2 className={styles.titleHeading}>
-          <Link to={`/book/${book.id}`} className={styles.title}>
+          <Link ref={titleRef} to={`/book/${book.id}`} className={styles.title}>
             {book.title}
           </Link>
         </h2>

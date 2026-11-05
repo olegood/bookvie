@@ -1,13 +1,15 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { useBookView, useCatalogView, useDeleteBook, type BookDetailView } from '../api/index.ts'
 import Button from '../components/Button.tsx'
 import ChangeColor from '../components/ChangeColor.tsx'
 import ConfirmDialog from '../components/ConfirmDialog.tsx'
 import Cover from '../components/Cover.tsx'
+import EditPurpose from '../components/EditPurpose.tsx'
 import FailureMessage from '../components/FailureMessage.tsx'
 import Gauge from '../components/Gauge.tsx'
 import PageHeading from '../components/PageHeading.tsx'
+import StartDialog from '../components/StartDialog.tsx'
 import { announce, clearAnnouncements } from '../lib/announce.ts'
 import {
   currentReadingStatus,
@@ -20,6 +22,7 @@ import {
 } from '../lib/bookDetail.ts'
 import { COULDNT_LOAD } from '../lib/copy.ts'
 import { usePageTitle } from '../lib/page.ts'
+import { detailPrimary } from '../lib/startReading.ts'
 import NewBookPanel from './NewBookPanel.tsx'
 import NotFoundPage from './NotFoundPage.tsx'
 import styles from './BookDetailPage.module.css'
@@ -77,6 +80,24 @@ function BookDetail({ book, onDelete }: { book: BookDetailView; onDelete: Delete
     if (refocus > 0) deleteButton.current?.focus()
   }, [refocus])
 
+  const primary = detailPrimary(book)
+  const [starting, setStarting] = useState(false)
+  const startButton = useRef<HTMLButtonElement>(null)
+  // Set when the Start dialog is cancelled, so focus returns to its opener once it has unmounted.
+  const [startRefocus, setStartRefocus] = useState(0)
+
+  useEffect(() => {
+    if (startRefocus === 0) return
+    // The opener is gone when a refetch made the Book Main meanwhile: park focus on `main`.
+    const target = startButton.current ?? document.getElementById('main')
+    target?.focus()
+  }, [startRefocus])
+
+  const cancelStart = useCallback(() => {
+    setStarting(false)
+    setStartRefocus((count) => count + 1)
+  }, [])
+
   const openConfirm = () => {
     setShowAlert(false)
     setConfirming(true)
@@ -117,6 +138,11 @@ function BookDetail({ book, onDelete }: { book: BookDetailView; onDelete: Delete
         <div className={styles.side}>
           <Cover coverFile={book.coverFile} title={book.title} />
           <div className={styles.actions}>
+            {primary !== null && (
+              <Button ref={startButton} variant="primary" onClick={() => setStarting(true)}>
+                {primary}
+              </Button>
+            )}
             <Button onClick={() => setEditing(true)}>Edit</Button>
             <Button ref={deleteButton} onClick={openConfirm}>
               Delete
@@ -151,12 +177,7 @@ function BookDetail({ book, onDelete }: { book: BookDetailView; onDelete: Delete
               </h2>
               <p className={styles.status}>{currentReadingStatus(current)}</p>
               <Gauge title={book.title} page={current.currentPage} pages={book.pages} percent={current.percent} />
-              {current.purpose !== null && (
-                <p className={styles.purpose}>
-                  <span className={styles.purposeLabel}>Purpose</span>
-                  <span>{current.purpose}</span>
-                </p>
-              )}
+              <EditPurpose key={book.id} bookId={book.id} purpose={current.purpose} />
             </section>
           )}
           <section className={styles.block} aria-labelledby={readingsId}>
@@ -186,6 +207,7 @@ function BookDetail({ book, onDelete }: { book: BookDetailView; onDelete: Delete
           onSaved={onSaved}
         />
       )}
+      {starting && <StartDialog bookId={book.id} onCancel={cancelStart} />}
       {confirming && (
         <ConfirmDialog
           heading={`Delete ${book.title}?`}
@@ -206,13 +228,16 @@ function BookDetail({ book, onDelete }: { book: BookDetailView; onDelete: Delete
  * Book detail (EXPERIENCE.md → Book detail) at `/book/:bookId`: one surface
  * card; on the left the cover (an `img` "Cover of *Title*") or the no-cover
  * placeholder (`role="img"` "No cover"), 200×300, then the action stack
- * (**Edit**, then **Delete**); the Book on the right. An unknown id shows
+ * (the state-aware primary — **Start reading** or **Resume**, none for the
+ * Main book — then **Edit**, then **Delete**); the Book on the right. An unknown id shows
  * the not-found page. The title is set by the child that renders, never
  * here: child effects run first, so a title set here would overwrite the
  * not-found page's.
  *
  * The Current reading block (the Main book or a paused Book) shows the
- * status, the gauge and the Purpose; the server supplies every number.
+ * status, the gauge and the Purpose with **Edit Purpose**; the server
+ * supplies every number. The primary opens the Start dialog; Cancel returns
+ * focus to it.
  *
  * Delete: once `delete-book` is sent, the refetched view may already say the
  * Book is gone before the request resolves. Until the outcome is known the

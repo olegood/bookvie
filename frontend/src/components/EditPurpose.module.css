@@ -1,0 +1,76 @@
+/* Book detail → Current reading: the Purpose line and its Edit Purpose
+   link-styled button; editing, one row of label, field, Save and Cancel. */
+.line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-4);
+  margin: var(--space-4) 0 0;
+  font-family: var(--font-body-sm-family);
+  font-size: var(--font-body-sm-size);
+  line-height: var(--font-body-sm-line-height);
+  color: var(--color-ink);
+}
+
+.purpose {
+  display: flex;
+  gap: var(--space-3);
+  min-width: 0;
+  margin: 0;
+}
+
+.label {
+  flex: none;
+  color: var(--color-ink-tertiary);
+}
+
+.edit {
+  font-size: var(--font-body-sm-size);
+  line-height: var(--font-body-sm-line-height);
+}
+
+.form {
+  margin: var(--space-4) 0 0;
+  font-family: var(--font-body-sm-family);
+  font-size: var(--font-body-sm-size);
+  line-height: var(--font-body-sm-line-height);
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+
+.input {
+  box-sizing: border-box;
+  flex: 1 1 16rem;
+  min-width: 0;
+  height: var(--button-height);
+  padding: 0 var(--space-3);
+  border: var(--text-field-border) solid var(--color-input-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-family: var(--font-body-family);
+  font-size: var(--font-body-size);
+}
+
+.input:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 var(--text-field-halo) var(--color-focus-halo);
+}
+
+/* The live regions' host sits here, directly below the field, after a
+   couldn't-save: one calm line in ink. */
+.regions[data-show-alert="true"] [role="alert"] {
+  position: static;
+  width: auto;
+  height: auto;
+  margin: var(--space-2) 0 0;
+  overflow: visible;
+  clip-path: none;
+  white-space: normal;
+  color: var(--color-ink);
+}

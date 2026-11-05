@@ -35,9 +35,15 @@ INTENT_ROUTES = {
     "edit-book": {**VALID_FORM, "bookId": DUNE_ID},
     "delete-book": {"bookId": DUNE_ID},
     "set-spine-color": {"bookId": DUNE_ID, "spineColor": "#749076"},
+    "start-reading": {"bookId": DUNE_ID, "purpose": None},
+    "edit-purpose": {"bookId": DUNE_ID, "purpose": None},
     "restore": {},
 }
-"""Each intent route with an intent it would accept for the seeded Dune."""
+"""Each intent route with an intent it would accept for the seeded Dune.
+
+``edit-purpose`` needs a current Reading, so its tests start Dune first
+(:func:`_ready`).
+"""
 
 MALFORMED_INTENT = {
     "error": {
@@ -93,6 +99,15 @@ def _intent_files(route: str) -> dict:
     if route == "restore":
         files["archive"] = ("bookvie-export.zip", _empty_export(), "application/zip")
     return files
+
+
+def _ready(client, route: str) -> None:
+    """Put the seeded library in the state ``route``'s intent needs."""
+    if route == "edit-purpose":
+        response = client.post(
+            "/api/intents/start-reading", files=_intent_files("start-reading")
+        )
+        assert response.status_code == 200
 
 
 @pytest.fixture
@@ -173,6 +188,7 @@ def test_a_400_off_the_intent_routes_keeps_fastapi_shape(path: str) -> None:
 @pytest.mark.parametrize("headers", FOREIGN.values(), ids=FOREIGN.keys())
 def test_foreign_caller_is_403_on_intent_route(data_dir: Path, route: str, headers: dict) -> None:
     client = api_client(data_dir)
+    _ready(client, route)
     files = _intent_files(route)
     before = library_bytes(data_dir)
     response = client.post(f"/api/intents/{route}", files=files, headers=headers)

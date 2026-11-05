@@ -210,8 +210,9 @@ test.describe('Story 1.14 Change a book’s color from the shelf (ATDD)', () => 
     for (const line of ['Dune', 'Book One', 'Frank Herbert', 'finished', 'Color: Sage']) {
       await expect(card.getByText(line, { exact: true })).toBeVisible()
     }
-    // No primary action until Stories 3.2 and 4.4: the only buttons are ×
-    // and the eight swatches (no cover, so no "From cover").
+    // A finished Book with no Reading in progress has no start action (Story
+    // 3.2; its re-read starts from Book detail): the only buttons are × and
+    // the eight swatches (no cover, so no "From cover").
     await expect(card.getByRole('button')).toHaveCount(1 + SWATCH_NAMES.length)
     await expect(card.getByRole('button', { name: 'Close', exact: true })).toBeVisible()
     for (const name of SWATCH_NAMES) {
@@ -493,11 +494,12 @@ test.describe('Story 1.14 Change a book’s color from the shelf (follow-ups)', 
     await expect(page.getByRole('dialog')).toHaveCount(0)
     await expect(dune).toBeFocused()
 
-    // Opening another spine's popover moves focus into it.
+    // Opening another spine's popover moves focus into it: to its first
+    // control, "Start reading" for a Book never started (Story 3.2).
     await dune.click()
     await spine(page, NEUROMANCER_SPINE).click()
     await expect(
-      popover(page, 'Neuromancer').getByRole('link', { name: 'Open book →', exact: true }),
+      popover(page, 'Neuromancer').getByRole('button', { name: 'Start reading', exact: true }),
     ).toBeFocused()
 
     // A search that hides the open spine closes its popover.

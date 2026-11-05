@@ -421,7 +421,9 @@ test.describe('Story 3.1 See my Main book on Home (automate)', () => {
     await expect(currentReading.getByText('Waiting for you, page 40', { exact: true })).toBeVisible()
     await expect(currentReading.getByRole('progressbar')).toHaveAttribute('aria-valuetext', '9%, page 40 of 412')
     await expect(currentReading).not.toContainText('started')
-    await expect(currentReading).not.toContainText('Purpose')
+    // No Purpose line; only Story 3.2's Edit Purpose, which shows without one.
+    await expect(currentReading.getByText('Purpose', { exact: true })).toHaveCount(0)
+    await expect(currentReading.getByRole('button', { name: 'Edit Purpose', exact: true })).toBeVisible()
   })
 
   test('[P1] the date header moves to the next day when the tab regains focus or visibility after midnight', async ({

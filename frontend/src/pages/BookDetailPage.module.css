@@ -166,26 +166,11 @@
   color: var(--color-ink-secondary);
 }
 
-/* Current reading: the status line above the gauge, the Purpose below it. */
+/* Current reading: the status line above the gauge, the Purpose (EditPurpose) below it. */
 .status {
   margin: 0;
   font-family: var(--font-body-sm-family);
   font-size: var(--font-body-sm-size);
   line-height: var(--font-body-sm-line-height);
   color: var(--color-ink-secondary);
-}
-
-.purpose {
-  display: flex;
-  gap: var(--space-3);
-  margin: var(--space-4) 0 0;
-  font-family: var(--font-body-sm-family);
-  font-size: var(--font-body-sm-size);
-  line-height: var(--font-body-sm-line-height);
-  color: var(--color-ink);
-}
-
-.purposeLabel {
-  flex: none;
-  color: var(--color-ink-tertiary);
 }

@@ -47,6 +47,8 @@ class ErrorCode(StrEnum):
     RESTORE_INVALID = "restore_invalid"
     RESTORE_NEWER_VERSION = "restore_newer_version"
     RESTORE_UNSAFE = "restore_unsafe"
+    ALREADY_MAIN = "already_main"
+    READING_ALREADY_FINISHED = "reading_already_finished"
 
 
 class FieldError(_Wire):
@@ -185,6 +187,36 @@ def book_not_found(status: int = 409) -> IntentError:
             kind=ErrorKind.REFUSAL,
             code=ErrorCode.BOOK_NOT_FOUND,
             message=BOOK_NOT_FOUND_MESSAGE,
+        ),
+    )
+
+
+ALREADY_MAIN_MESSAGE = "This book is already your Main book."
+
+
+def already_main() -> IntentError:
+    """409 ``already_main``: ``start-reading`` for the Main book (AD-9)."""
+    return IntentError(
+        409,
+        ErrorBody(
+            kind=ErrorKind.REFUSAL,
+            code=ErrorCode.ALREADY_MAIN,
+            message=ALREADY_MAIN_MESSAGE,
+        ),
+    )
+
+
+READING_ALREADY_FINISHED_MESSAGE = "This reading is already finished."
+
+
+def reading_already_finished() -> IntentError:
+    """409 ``reading_already_finished``: the Book has no unfinished Reading to change (AD-9)."""
+    return IntentError(
+        409,
+        ErrorBody(
+            kind=ErrorKind.REFUSAL,
+            code=ErrorCode.READING_ALREADY_FINISHED,
+            message=READING_ALREADY_FINISHED_MESSAGE,
         ),
     )
 

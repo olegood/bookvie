@@ -18,6 +18,7 @@ from .contract import (
     FieldError,
     IntentError,
     OkResponse,
+    already_main,
     book_not_found,
     couldnt_export,
     couldnt_save,
@@ -25,6 +26,7 @@ from .contract import (
     duplicate_book,
     invalid_fields,
     pages_refusal,
+    reading_already_finished,
     restore_invalid,
     restore_newer_version,
     restore_unsafe,
@@ -32,6 +34,7 @@ from .contract import (
 from .cover import PreparedCover, RefusedCover, UploadedCover, prepare_cover
 from .delete_book import DeleteBookIntent, delete_book, parse_delete_book_intent
 from .edit_book import EditBookIntent, edit_book, parse_edit_book_intent
+from .edit_purpose import EditPurposeIntent, edit_purpose, parse_edit_purpose_intent
 from .export import EXPORT_CHUNK, build_export, export_filename, record_export
 from .intent_model import malformed as malformed_intent
 from .restore import RestoreIntent, max_upload_bytes, parse_restore_intent, restore
@@ -40,6 +43,7 @@ from .set_spine_color import (
     parse_set_spine_color_intent,
     set_spine_color,
 )
+from .start_reading import StartReadingIntent, parse_start_reading_intent, start_reading
 
 __all__ = [
     "COULDNT_EXPORT_MESSAGE",
@@ -53,6 +57,7 @@ __all__ = [
     "DeleteBookIntent",
     "DuplicateMatch",
     "EditBookIntent",
+    "EditPurposeIntent",
     "ErrorBody",
     "ErrorCode",
     "ErrorKind",
@@ -65,9 +70,11 @@ __all__ = [
     "RefusedCover",
     "RestoreIntent",
     "SetSpineColorIntent",
+    "StartReadingIntent",
     "SystemClock",
     "UploadedCover",
     "add_book",
+    "already_main",
     "book_not_found",
     "build_export",
     "commit",
@@ -77,6 +84,7 @@ __all__ = [
     "delete_book",
     "duplicate_book",
     "edit_book",
+    "edit_purpose",
     "export_filename",
     "invalid_fields",
     "malformed_intent",
@@ -85,13 +93,17 @@ __all__ = [
     "parse_add_book_intent",
     "parse_delete_book_intent",
     "parse_edit_book_intent",
+    "parse_edit_purpose_intent",
     "parse_restore_intent",
     "parse_set_spine_color_intent",
+    "parse_start_reading_intent",
     "prepare_cover",
+    "reading_already_finished",
     "record_export",
     "restore",
     "restore_invalid",
     "restore_newer_version",
     "restore_unsafe",
     "set_spine_color",
+    "start_reading",
 ]

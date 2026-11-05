@@ -11,6 +11,8 @@ import {
 import { Link } from 'react-router'
 import type { ShelfBook } from '../api/index.ts'
 import { placePopover, type Placement } from '../lib/spineColor.ts'
+import { popoverStart } from '../lib/startReading.ts'
+import Button from './Button.tsx'
 import ChangeColor from './ChangeColor.tsx'
 import styles from './SpinePopover.module.css'
 
@@ -22,6 +24,8 @@ type Props = {
   shelf: () => HTMLElement | null
   /** Closes it; `refocus` returns focus to the spine. */
   onClose: (refocus: boolean) => void
+  /** "Start reading" or **Resume**: the Bookcase closes it and opens the Start dialog. */
+  onStart: () => void
 }
 
 function pagesLine(pages: number, year: number | null): string {
@@ -33,14 +37,18 @@ function pagesLine(pages: number, year: number | null): string {
  * The Spine popover (DESIGN.md / EXPERIENCE.md → Spine popover): a non-modal
  * `dialog` named by the title, fixed beside its spine with a pointer. The
  * Book's details on the left; "Open book →" and Change color on the right;
- * × at the top right, last in tab order. Focus starts on "Open book →" (no
- * primary action until Stories 3.2 and 4.4). Esc, × and focus leaving it
- * close it; the Bookcase closes it on an outside click.
+ * × at the top right, last in tab order. Before "Open book →", the start
+ * action: **Resume** (`button-primary`) or a link-styled "Start reading"
+ * button. Focus starts on the first actionable control: the start action,
+ * else "Open book →". Esc, × and focus leaving it close it; the Bookcase
+ * closes it on an outside click.
  */
-export default function SpinePopover({ book, anchor, shelf, onClose }: Props) {
+export default function SpinePopover({ book, anchor, shelf, onClose, onStart }: Props) {
   const titleId = useId()
   const card = useRef<HTMLDivElement>(null)
   const link = useRef<HTMLAnchorElement>(null)
+  const start = useRef<HTMLButtonElement>(null)
+  const action = popoverStart(book)
   const [place, setPlace] = useState<Placement | null>(null)
 
   // Placed before paint, again on scroll, resize and any change of its own size.
@@ -82,7 +90,7 @@ export default function SpinePopover({ book, anchor, shelf, onClose }: Props) {
   // Focus moves in once it is placed (a hidden element can't take focus).
   const placed = place !== null
   useEffect(() => {
-    if (placed) link.current?.focus()
+    if (placed) (start.current ?? link.current)?.focus()
   }, [placed])
 
   const keyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -155,6 +163,16 @@ export default function SpinePopover({ book, anchor, shelf, onClose }: Props) {
         </p>
       </div>
       <div className={styles.actions}>
+        {action === 'Resume' && (
+          <Button ref={start} variant="primary" className={styles.resume} onClick={onStart}>
+            Resume
+          </Button>
+        )}
+        {action === 'Start reading' && (
+          <button ref={start} type="button" className={`linkButton ${styles.start}`} onClick={onStart}>
+            Start reading
+          </button>
+        )}
         <Link ref={link} to={`/book/${book.id}`} className={styles.open}>
           Open book →
         </Link>

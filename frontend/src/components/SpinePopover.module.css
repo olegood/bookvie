@@ -142,6 +142,17 @@
   line-height: var(--font-body-sm-line-height);
 }
 
+.resume {
+  justify-self: start;
+}
+
+.start {
+  justify-self: start;
+  font-family: var(--font-body-sm-family);
+  font-size: var(--font-body-sm-size);
+  line-height: var(--font-body-sm-line-height);
+}
+
 .close {
   position: absolute;
   top: var(--space-2);

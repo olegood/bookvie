@@ -246,3 +246,10 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-1-see-my-main-book-on-home.md`
   summary: Decide Book detail's Current reading block for an Up-next Book with a paused Reading (today it gets none, while ShelfBook still carries its percent and currentPage).
   evidence: `views/shelf.py` `_role_reading` returns ("upNext", None) before it looks at the Reading. AD-19 still counts that Reading as paused, and FR-7 shows a paused Up next only in Up next with Resume. Up next can't be set until Story 4.1.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-2-start-reading-a-book.md`
+  summary: `start-reading` for an Up next or Side-read Book fails `main_not_up_next`/`main_not_side_read` with 500, and for an Up next Book with a paused Reading the dialog says "Start" (views give no `currentReading` for `upNext`) while the server resumes and overwrites the Purpose with the empty field.
+  evidence: Unreachable in Epic 3 (no intent sets Up next or Side read; seeds only). Story 4.1 must clear `upNextBookId` (and side reads) in the same commit, make `book_detail` expose the Up next Book's paused Reading, and derive the opener label and dialog mode from one source (`lib/startReading.ts` vs `StartDialog`).
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-2-start-reading-a-book.md`
+  summary: ARCHITECTURE-SPINE.md drift from story 3.2: the Structural Seed's `intents/` and `domain/` lines miss `start_reading`, `edit_purpose` and `domain/purpose`; the IDs convention says server-minted UUIDs come back in success `ids`, but `start-reading` mints a Reading id and returns `{ok: true}`.
+  evidence: Spine Check pass 1 (SC2, SC3). No consumer needs a Reading id; reconcile the spine wording at the next spine reconciliation.

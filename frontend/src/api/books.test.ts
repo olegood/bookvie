@@ -9,7 +9,10 @@ import {
   deleteBookForm,
   editBook,
   editBookForm,
+  editPurpose,
+  purposeForm,
   setSpineColor,
+  startReading,
   setSpineColorForm,
   type BookFields,
 } from './books.ts'
@@ -214,6 +217,49 @@ describe('setSpineColor', () => {
       kind: 'couldnt_save',
       message: "Couldn't save. Your data wasn't changed.",
     })
+    client.clear()
+  })
+})
+
+describe('startReading and editPurpose', () => {
+  afterEach(() => mock.restoreAll())
+
+  for (const [send, verb] of [
+    [startReading, 'start-reading'],
+    [editPurpose, 'edit-purpose'],
+  ] as const) {
+    it(`posts { bookId, purpose } as typed to ${verb}`, async () => {
+      const fetch = mock.method(globalThis, 'fetch', async (..._args: [string, RequestInit]) =>
+        Response.json({ ok: true }),
+      )
+      const client = new QueryClient()
+      const result = await send(client, 'b1', '  Why Arrakis ')
+
+      assert.deepEqual(result, { kind: 'ok', ids: {}, reachedLastPage: false })
+      const [url, init] = fetch.mock.calls[0].arguments
+      assert.equal(url, `/api/intents/${verb}`)
+      assert.equal(init!.method, 'POST')
+      const body = init!.body as FormData
+      assert.deepEqual(JSON.parse(body.get('intent') as string), { bookId: 'b1', purpose: '  Why Arrakis ' })
+      client.clear()
+    })
+  }
+
+  it('sends no Purpose as an explicit null', () => {
+    assert.equal(purposeForm('b2', null).get('intent'), '{"bookId":"b2","purpose":null}')
+  })
+
+  it('passes already_main through as a refusal', async () => {
+    mock.method(globalThis, 'fetch', async () =>
+      Response.json(
+        { error: { kind: 'refusal', code: 'already_main', message: 'This book is already your Main book.' } },
+        { status: 409 },
+      ),
+    )
+    const client = new QueryClient()
+    const result = await startReading(client, 'b1', null)
+    assert.equal(result.kind, 'refusal')
+    assert.equal(result.kind === 'refusal' && result.code, 'already_main')
     client.clear()
   })
 })

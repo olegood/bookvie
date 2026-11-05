@@ -1,6 +1,6 @@
 """Story 3.2 Start reading a book: ``start-reading`` and ``edit-purpose`` (ATDD).
 
-Three red-phase tests, for the criteria whose promise lives on the server
+Three ATDD tests, for the criteria whose promise lives on the server
 (numbered in the order of epics.md, Story 3.2):
 
 - AC-3: starting a finished Book creates a new Reading (a re-read) and leaves
@@ -49,7 +49,6 @@ from tests.helpers import (
     stored_book,
 )
 
-RED = "ATDD red phase: Story 3.2 not implemented yet"
 GONE_ID = "00000000-0000-4000-8000-000000000000"
 NOW = FakeClock(TODAY).now()
 """What ``api_client``'s clock says "now" is: local noon on :data:`TODAY`."""
@@ -85,7 +84,6 @@ def _fahrenheit_main_and_dune(data_dir: Path) -> tuple[str, str]:
 # --- AC-3: a re-read -------------------------------------------------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_ac3_p0_starting_a_finished_book_creates_a_new_reading_and_keeps_the_earlier_ones(
     tmp_path: Path,
 ) -> None:
@@ -136,7 +134,6 @@ def test_ac3_p0_starting_a_finished_book_creates_a_new_reading_and_keeps_the_ear
 # --- AC-4: already Main ----------------------------------------------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_ac4_p1_start_reading_for_the_main_book_is_refused_with_already_main(
     tmp_path: Path,
 ) -> None:
@@ -161,7 +158,6 @@ def test_ac4_p1_start_reading_for_the_main_book_is_refused_with_already_main(
 # --- AC-11: the standard intent guarantees (TR8) ---------------------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_ac11_p0_start_reading_and_edit_purpose_keep_the_standard_intent_guarantees(
     tmp_path: Path,
 ) -> None:
@@ -228,3 +224,143 @@ def test_ac11_p0_start_reading_and_edit_purpose_keep_the_standard_intent_guarant
     paths = create_app().openapi()["paths"]
     assert START_READING in paths
     assert EDIT_PURPOSE in paths
+
+
+# --- Green phase: RDG-API-001's state matrix, resume under a Main book ----------
+
+FINISHED = {
+    "start_date": "2026-03-01",
+    "current_page": 412,
+    "finish_date": "2026-04-10",
+    "finished_pages": 412,
+}
+
+
+def _seed(data_dir: Path, state: str, with_main: bool) -> tuple[str, str | None]:
+    """Dune in ``state`` (never, finished, paused, main), plus Fahrenheit 451 as Main."""
+    builder = LibraryBuilder()
+    dune = builder.book(title="Dune", authors=["Frank Herbert"], pages=412)
+    if state in ("finished", "paused", "main"):
+        builder.reading(dune, **FINISHED)
+    if state in ("paused", "main"):
+        builder.reading(
+            dune,
+            start_date="2026-10-01",
+            current_page=120,
+            purpose="Old purpose",
+            last_progress_update="2026-10-20T09:00:00+02:00",
+            paused_at="2026-10-20",
+        )
+    fahrenheit = None
+    if with_main and state != "main":
+        fahrenheit = builder.book(title="Fahrenheit 451", authors=["Ray Bradbury"], pages=187)
+        builder.reading(fahrenheit, current_page=120)
+        builder.main(fahrenheit)
+    if state == "main":
+        builder.main(dune)
+    builder.write(data_dir)
+    return dune, fahrenheit
+
+
+@pytest.mark.parametrize("with_main", [False, True], ids=["no-main", "with-main"])
+@pytest.mark.parametrize("state", ["never", "finished", "paused"])
+def test_start_reading_across_the_state_matrix(
+    tmp_path: Path, state: str, with_main: bool
+) -> None:
+    dune, fahrenheit = _seed(tmp_path, state, with_main)
+    before = stored_book(tmp_path, dune)["readings"]
+    fahrenheit_before = stored_book(tmp_path, fahrenheit)["readings"] if fahrenheit else None
+
+    response = _send(api_client(tmp_path), START_READING, dune, "  New purpose ")
+
+    assert response.status_code == 200
+    assert response.json() == {"ok": True}
+    library = _stored(tmp_path)
+    assert library["mainBookId"] == dune
+    readings = stored_book(tmp_path, dune)["readings"]
+    if state == "paused":
+        # The same Reading resumes: id, page, startDate and pausedAt kept.
+        assert len(readings) == len(before)
+        assert readings[0] == before[0]
+        resumed, old = readings[-1], before[-1]
+        assert resumed == {
+            **old,
+            "lastProgressUpdate": NOW.isoformat(),
+            "purpose": "New purpose",
+        }
+    else:
+        # A new Reading is appended; earlier ones are byte-for-byte the same.
+        assert len(readings) == len(before) + 1
+        assert readings[:-1] == before
+        assert readings[-1]["startDate"] == TODAY.isoformat()
+        assert readings[-1]["currentPage"] == 0
+        assert readings[-1]["purpose"] == "New purpose"
+        assert readings[-1]["lastProgressUpdate"] == NOW.isoformat()
+    unfinished = [r for r in readings if r["finishDate"] is None]
+    assert len(unfinished) == 1
+    if fahrenheit is not None:
+        (paused,) = stored_book(tmp_path, fahrenheit)["readings"]
+        assert paused == {**fahrenheit_before[0], "pausedAt": TODAY.isoformat()}
+    assert_invariants(tmp_path)
+
+
+def test_start_reading_for_the_main_book_with_history_is_already_main(tmp_path: Path) -> None:
+    dune, _ = _seed(tmp_path, "main", with_main=False)
+    before = library_bytes(tmp_path)
+    response = _send(api_client(tmp_path), START_READING, dune, None)
+    assert response.status_code == 409
+    assert response.json()["error"] == {
+        "kind": "refusal",
+        "code": "already_main",
+        "message": "This book is already your Main book.",
+    }
+    assert library_bytes(tmp_path) == before
+
+
+def test_start_reading_and_edit_purpose_with_a_malformed_intent_are_422(tmp_path: Path) -> None:
+    dune, _ = _seed(tmp_path, "never", with_main=False)
+    before = library_bytes(tmp_path)
+    client = api_client(tmp_path)
+    for path in (START_READING, EDIT_PURPOSE):
+        for intent in ({"bookId": dune}, {"bookId": dune, "purpose": 3}, {"purpose": None}):
+            response = client.post(
+                path, files={"intent": (None, json.dumps(intent), "application/json")}
+            )
+            assert response.status_code == 422, (path, intent)
+            assert response.json()["error"]["fields"][0]["field"] == "intent"
+    assert library_bytes(tmp_path) == before
+
+
+def test_edit_purpose_keeps_last_progress_update_and_everything_else(tmp_path: Path) -> None:
+    dune, _ = _seed(tmp_path, "paused", with_main=True)
+    before = stored_book(tmp_path, dune)
+    library_before = _stored(tmp_path)
+
+    response = _send(api_client(tmp_path), EDIT_PURPOSE, dune, " Why Arrakis ")
+
+    assert response.status_code == 200
+    after = stored_book(tmp_path, dune)
+    assert after["readings"][0] == before["readings"][0]
+    assert after["readings"][1] == {**before["readings"][1], "purpose": "Why Arrakis"}
+    library = _stored(tmp_path)
+    assert library["mainBookId"] == library_before["mainBookId"]
+    assert_invariants(tmp_path)
+
+
+def test_edit_purpose_without_a_current_reading_is_reading_already_finished(
+    tmp_path: Path,
+) -> None:
+    for state in ("never", "finished"):
+        data_dir = tmp_path / state
+        dune, _ = _seed(data_dir, state, with_main=False)
+        before = library_bytes(data_dir)
+        response = _send(api_client(data_dir), EDIT_PURPOSE, dune, "Anything")
+        assert response.status_code == 409, state
+        assert response.json()["error"] == {
+            "kind": "refusal",
+            "code": "reading_already_finished",
+            "message": "This reading is already finished.",
+        }, state
+        assert library_bytes(data_dir) == before, state
+    schema = create_app().openapi()
+    assert "reading_already_finished" in schema["components"]["schemas"]["ErrorCode"]["enum"]
