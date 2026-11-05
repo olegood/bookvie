@@ -24,6 +24,7 @@ import {
   libraryBytes,
   mainAt,
   mainBookCard,
+  reentryFacts,
   serverAtFakeToday,
   stopAndRemove,
   storedBook,
@@ -44,6 +45,23 @@ const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']
 /** The Left Hand of Darkness as the Main book at p.150, last updated three days before the fake today. */
 const MAIN_AT_150 = mainAt(150, {
   reading: { startDate: '2026-10-01', purpose: 'To see how Le Guin builds a world', lastProgressUpdate: EARLIER },
+})
+
+/**
+ * The same, plus Emma finished in 20 days: Measured pace 20 pages a day, so
+ * 180 pages left is ~9 days and 118 is ~6 (Story 3.4's re-entry line).
+ */
+const PACED_MAIN_AT_150 = mainAt(150, {
+  reading: { startDate: '2026-10-01', lastProgressUpdate: EARLIER },
+  others: [
+    {
+      id: '2a7e4b1c-8d3f-4e5a-9b6c-7d8e9f0a1b2c',
+      title: 'Emma',
+      authors: ['Jane Austen'],
+      pages: 400,
+      readings: [{ startDate: '2026-09-01', finishDate: '2026-09-20', finishedPages: 400, currentPage: 400 }],
+    },
+  ],
 })
 
 /** The page field: a number input labelled "Page" in the Main book card. */
@@ -97,10 +115,11 @@ test.describe('Story 3.3 Catch up with one page update (ATDD)', () => {
   test('[P0] AC-2 Enter saves the page: update-page stores it with lastProgressUpdate = now, and the gauge and status line follow the refetched view', async ({
     page,
   }) => {
-    const server = await serverAtFakeToday(page, 'update-page', MAIN_AT_150)
+    const server = await serverAtFakeToday(page, 'update-page', PACED_MAIN_AT_150)
     try {
       const sent = requestsTo(page, UPDATE_PAGE)
       await page.goto(server.url)
+      await expect(reentryFacts(page)).toHaveText(['Last updated 3 days ago', '~9 days left', 'No export yet'])
       await pageField(page).fill('212')
       await pageField(page).press('Enter')
 
@@ -116,6 +135,8 @@ test.describe('Story 3.3 Catch up with one page update (ATDD)', () => {
       expect(reading.currentPage).toBe(212)
       expect(Date.parse(reading.lastProgressUpdate as string)).toBe(SERVER_NOW.getTime())
       expect(reading.finishDate).toBeNull()
+      // Story 3.4: the re-entry line follows the refetched view (PRG-E2E-001).
+      await expect(reentryFacts(page)).toHaveText(['Last updated today', '~6 days left', 'No export yet'])
     } finally {
       await stopAndRemove(server)
     }

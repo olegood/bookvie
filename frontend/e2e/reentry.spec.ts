@@ -14,13 +14,16 @@
 // only finished Reading with a start date, so Measured pace is 20 pages a day.
 // The Left Hand of Darkness at p.151 of 330 has 179 pages left: 8.95, so ~9.
 
-import type { Locator, Page } from '@playwright/test'
+import type { Page } from '@playwright/test'
 import { expect, test } from './fixtures.ts'
 import {
   FAKE_TODAY,
   LEFT_HAND,
+  LEFT_HAND_ID,
   mainAt,
   mainBookCard,
+  reentryFacts,
+  reentryFactsByExport,
   serverAtFakeToday,
   stopAndRemove,
 } from './home.ts'
@@ -48,20 +51,28 @@ const INK_SECONDARY = { light: rgbOf('#5F635C'), dark: rgbOf('#B3B7AD') }
 const INK_TERTIARY = { light: rgbOf('#666961'), dark: rgbOf('#9A9E94') }
 
 /** The Left Hand of Darkness as the Main book at `page`, last updated at `lastProgressUpdate`, plus Emma. */
-function pacedMainAt(page: number, lastProgressUpdate = THREE_DAYS_AGO, others: object[] = [EMMA]) {
+function pacedMainAt(page: number, lastProgressUpdate: string | null = THREE_DAYS_AGO, others: object[] = [EMMA]) {
   return mainAt(page, { others, reading: { startDate: '2026-10-11', lastProgressUpdate } })
 }
 
-/**
- * The re-entry line's facts, in order: the children of the element holding
- * "Last updated …". The dots between them are drawn by CSS, not text.
- */
-function reentryFacts(page: Page): Locator {
-  return mainBookCard(page).getByText(/^Last updated /).locator('xpath=..').locator(':scope > *')
+/** The ::before dot of each fact: its width and background. */
+async function dots(page: Page, count: number): Promise<{ content: string; width: string; background: string }[]> {
+  const result = []
+  for (let i = 0; i < count; i++) {
+    result.push(
+      await reentryFactsByExport(page)
+        .nth(i)
+        .evaluate((element) => {
+          const before = getComputedStyle(element, '::before')
+          return { content: before.content, width: before.width, background: before.backgroundColor }
+        }),
+    )
+  }
+  return result
 }
 
 test.describe('Story 3.4 See where I left off and how long is left (ATDD)', () => {
-  test.skip('[P1] AC-3 the re-entry line shows Last updated, ~N days left and Last export as muted facts separated by dots, never a warning', async ({
+  test('[P1] AC-3 the re-entry line shows Last updated, ~N days left and Last export as muted facts separated by dots, never a warning', async ({
     page,
   }) => {
     await page.emulateMedia({ colorScheme: 'light' })
@@ -110,7 +121,7 @@ test.describe('Story 3.4 See where I left off and how long is left (ATDD)', () =
     }
   })
 
-  test.skip('[P2] AC-4 with a Main book, Last export sits in the re-entry line; with none, it returns to the Home header line', async ({
+  test('[P2] AC-4 with a Main book, Last export sits in the re-entry line; with none, it returns to the Home header line', async ({
     page,
   }) => {
     const withMain = await serverAtFakeToday(page, 'reentry-export-main', pacedMainAt(151), EXPORTED_12_DAYS_AGO)
@@ -135,7 +146,7 @@ test.describe('Story 3.4 See where I left off and how long is left (ATDD)', () =
     }
   })
 
-  test.skip('[P1] AC-5 a Main book at its last page shows a 100% gauge and hides ~N days left', async ({ page }) => {
+  test('[P1] AC-5 a Main book at its last page shows a 100% gauge and hides ~N days left', async ({ page }) => {
     const server = await serverAtFakeToday(page, 'reentry-last-page', pacedMainAt(330), EXPORTED_12_DAYS_AGO)
     try {
       await page.goto(server.url)
@@ -149,7 +160,7 @@ test.describe('Story 3.4 See where I left off and how long is left (ATDD)', () =
     }
   })
 
-  test.skip('[P1] AC-6 a tab left open past midnight recomputes Last updated and the Home date when it regains focus or visibility', async ({
+  test('[P1] AC-6 a tab left open past midnight recomputes Last updated and the Home date when it regains focus or visibility', async ({
     page,
     seededServer,
   }) => {
@@ -170,5 +181,76 @@ test.describe('Story 3.4 See where I left off and how long is left (ATDD)', () =
     await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')))
     await expect(mainBookCard(page).getByText('Last updated 2 days ago', { exact: true })).toBeVisible()
     await expect(main.getByText('Friday, 30 October', { exact: true })).toBeVisible()
+  })
+
+  // --- Green-phase follow-ups ---------------------------------------------------
+
+  test('[P2] AC-3 a last update over a year ago reads "Last updated over a year ago"', async ({ page }) => {
+    const server = await serverAtFakeToday(page, 'reentry-a-year', pacedMainAt(151, '2025-10-01T09:00:00+02:00'))
+    try {
+      await page.goto(server.url)
+
+      await expect(reentryFacts(page)).toHaveText(['Last updated over a year ago', '~9 days left', 'No export yet'])
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+
+  test('[P2] AC-3 without a lastProgressUpdate the "Last updated" fact is omitted and the first remaining fact has no dot', async ({
+    page,
+  }) => {
+    await page.emulateMedia({ colorScheme: 'light' })
+    const server = await serverAtFakeToday(page, 'reentry-no-update', pacedMainAt(151, null), EXPORTED_12_DAYS_AGO)
+    try {
+      await page.goto(server.url)
+
+      await expect(reentryFactsByExport(page)).toHaveText(['~9 days left', 'Last export: 12 days ago'])
+      await expect(mainBookCard(page)).not.toContainText('Last updated')
+      const [first, second] = await dots(page, 2)
+      // The first fact has no generated ::before box at all, not just a smaller one.
+      expect(['none', 'normal']).toContain(first.content)
+      expect(second).toEqual({ content: '""', width: '6px', background: INK_TERTIARY.light })
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+
+  test('[P2] AC-4 deleting the Main book moves "Last export" back to the Home header line', async ({ page }) => {
+    const server = await serverAtFakeToday(page, 'reentry-delete-main', pacedMainAt(151), EXPORTED_12_DAYS_AGO)
+    try {
+      await page.goto(server.url)
+      const main = page.getByRole('main')
+      await expect(mainBookCard(page).getByText('Last export: 12 days ago', { exact: true })).toBeVisible()
+
+      await page.goto(`${server.url}/book/${LEFT_HAND_ID}`)
+      await main.getByRole('button', { name: 'Delete', exact: true }).click()
+      await page.getByRole('alertdialog').getByRole('button', { name: 'Delete book', exact: true }).click()
+      await expect(page.getByRole('alertdialog')).toBeHidden()
+      await page.getByRole('navigation').getByRole('link', { name: 'Home', exact: true }).click()
+
+      await expect(main.getByText(DATE_HEADER, { exact: true }).locator('..')).toContainText('Last export: 12 days ago')
+      await expect(mainBookCard(page)).toContainText('No Main book.')
+      await expect(mainBookCard(page)).not.toContainText(/Last export|Last updated/)
+      await expect(main.getByText(/^Last export/)).toHaveCount(1)
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+
+  test('[P2] AC-6 past midnight, "Last export" in the line recomputes from the same now', async ({ page }) => {
+    const server = await serverAtFakeToday(page, 'reentry-export-midnight', pacedMainAt(151), EXPORTED_12_DAYS_AGO)
+    try {
+      await page.clock.setFixedTime(new Date(`${FAKE_TODAY}T23:59:00+01:00`))
+      await page.goto(server.url)
+      await expect(reentryFacts(page)).toHaveText(['Last updated 3 days ago', '~9 days left', 'Last export: 12 days ago'])
+
+      await page.clock.setFixedTime(new Date('2026-10-29T00:01:00+01:00'))
+      await page.evaluate(() => window.dispatchEvent(new Event('focus')))
+
+      await expect(reentryFacts(page)).toHaveText(['Last updated 4 days ago', '~9 days left', 'Last export: 13 days ago'])
+      await expect(page.getByRole('main').getByText('Thursday, 29 October', { exact: true })).toBeVisible()
+    } finally {
+      await stopAndRemove(server)
+    }
   })
 })

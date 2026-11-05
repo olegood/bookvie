@@ -529,6 +529,10 @@ export interface components {
             currentPage: number;
             /** Percent */
             percent: number;
+            /** Daysleft */
+            daysLeft: number | null;
+            /** Lastprogressupdate */
+            lastProgressUpdate: string | null;
         };
         /** HomeView */
         HomeView: {

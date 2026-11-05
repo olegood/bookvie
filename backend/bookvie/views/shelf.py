@@ -6,7 +6,16 @@
 from datetime import datetime
 from pathlib import Path
 
-from bookvie.domain import Book, Library, Reading, current_reading, percent, reading_status
+from bookvie.domain import (
+    Book,
+    Library,
+    Reading,
+    current_reading,
+    days_left,
+    measured_pace,
+    percent,
+    reading_status,
+)
 from bookvie.domain.book_fields import merge_tags
 from bookvie.store import COVERS_DIR, Store, read_last_export, referenced_covers
 
@@ -79,7 +88,7 @@ def _main_book(library: Library) -> HomeMainBook | None:
     """The Main book for Home's card; ``None`` when there is none.
 
     The Main book always has an unfinished Reading (an invariant); without
-    one it reads as page 0.
+    one it reads as page 0. Days left uses the library's Measured pace.
     """
     if library.main_book_id is None:
         return None
@@ -98,6 +107,8 @@ def _main_book(library: Library) -> HomeMainBook | None:
         pages=book.pages,
         current_page=page,
         percent=percent(page, book.pages),
+        days_left=days_left(book.pages - page, measured_pace(library)),
+        last_progress_update=reading.last_progress_update if reading else None,
     )
 
 

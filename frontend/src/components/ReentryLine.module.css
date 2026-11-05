@@ -1,0 +1,28 @@
+/* DESIGN.md → Re-entry line: body-sm in ink-secondary, facts separated by
+   6px round ink-tertiary dots drawn in CSS (key-home.html p.reentry). Never a
+   warning: no other color, icon or emphasis (NFR6). */
+.line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 0;
+  margin: var(--space-4) 0 0;
+  font-family: var(--font-body-sm-family);
+  font-size: var(--font-body-sm-size);
+  font-weight: var(--font-body-sm-weight);
+  line-height: var(--font-body-sm-line-height);
+  color: var(--color-ink-secondary);
+}
+
+.line > span {
+  display: inline-flex;
+  align-items: center;
+}
+
+.line > span + span::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  margin: 0 10px;
+  border-radius: 50%;
+  background: var(--color-ink-tertiary);
+}

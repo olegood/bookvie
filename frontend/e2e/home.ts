@@ -35,6 +35,25 @@ export function mainBookCard(page: Page): Locator {
   return page.getByRole('main').getByRole('region', { name: 'Main book', exact: true })
 }
 
+/**
+ * The re-entry line's facts, in order (Story 3.4): the children of the element
+ * holding "Last updated …". The dots between them are drawn by CSS, not text.
+ */
+export function reentryFacts(page: Page): Locator {
+  return mainBookCard(page).getByText(/^Last updated /).locator('xpath=..').locator(':scope > *')
+}
+
+/**
+ * The same facts, reached through the "Last export" fact, which is always in
+ * the line: for a Reading without `lastProgressUpdate`.
+ */
+export function reentryFactsByExport(page: Page): Locator {
+  return mainBookCard(page)
+    .getByText(/^(Last export: .+|No export yet)$/)
+    .locator('xpath=..')
+    .locator(':scope > *')
+}
+
 /** Starts a seeded server with `--fake-today` and fixes the browser clock to the same day. */
 export async function serverAtFakeToday(
   page: Page,

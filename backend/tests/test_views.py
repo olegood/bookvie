@@ -356,7 +356,9 @@ def test_home_view_main_book_card_fields(tmp_path: Path, library_builder: Librar
         cover_file="covers/left-hand.png",
     )
     library_builder.reading(left_hand, start_date=None, finish_date="2025-01-01", current_page=330)
-    library_builder.reading(left_hand, current_page=212)
+    library_builder.reading(
+        left_hand, current_page=212, last_progress_update="2026-10-25T21:00:00+01:00"
+    )
     library_builder.main(left_hand)
     library_builder.write(tmp_path)
     body = api_client(tmp_path, raise_server_exceptions=True).get("/api/views/home").json()
@@ -370,6 +372,8 @@ def test_home_view_main_book_card_fields(tmp_path: Path, library_builder: Librar
         "pages": 330,
         "currentPage": 212,
         "percent": 64,
+        "daysLeft": None,  # the only finished Reading is back-filled: no Measured pace
+        "lastProgressUpdate": "2026-10-25T21:00:00+01:00",
     }
     assert [book["id"] for book in body["books"]] == [other, left_hand]
 

@@ -267,3 +267,13 @@
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-3-catch-up-with-one-page-update.md`
   summary: Pass 2 (spine-check, acceptance-auditor) re-raised the AD-3/AD-9 spine drift for the client page pre-check and its copy; it stays as recorded above (SC1/SC2). No new deferrals.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-4-see-where-i-left-off-and-how-long-is-left.md`
+  summary: Reconcile ARCHITECTURE-SPINE with Story 3.4 — Structural Seed should list `domain/pace.py` (and `progress`), AD-20 should state that pace skips a Reading finished before it started and counts a missing `finishedPages` as 0, and AD-6 should state when the server's days left is null (no pace, pace 0, no pages left).
+  evidence: Spine-check review of 3.4 (SC1–SC3); the code defines these rules but the spine doesn't, so a later Quick pace calculator could diverge from the server's days left.
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-4-see-where-i-left-off-and-how-long-is-left.md`
+  summary: AD-19 lists `lastProgressUpdate` as a plain timestamp, but the stored model and (since 3.4) the home view allow `null`, and the re-entry line omits "Last updated" for it.
+  evidence: Spine-check review of 3.4 (SC4); `domain/model.py:40` is `AwareDatetime | None`, which predates this story.
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-4-see-where-i-left-off-and-how-long-is-left.md`
+  summary: README status line still says "19 of 41 stories done" though stories 3.1–3.3 are done (20).
+  evidence: Blind-hunter review of 3.4 (BH2); epics 1 and 2 have 14 + 3 stories and sprint-status shows 3.1–3.3 done; the count wasn't changed when 3.3 was marked done.

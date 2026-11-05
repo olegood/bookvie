@@ -37,7 +37,8 @@ function clearStartedState(): void {
  * focus and visibility), then either the empty shelf (no Books) or a grid of
  * the Main book card beside the 320px side column (empty until Epic 4), with
  * room for the bookcase slice below (Story 3.5). "Last export" sits at the
- * right end of the header line only while there is no Main book.
+ * right end of the header line only while there is no Main book; with one it
+ * sits in the card's re-entry line, which reads the same `now`.
  *
  * Arriving from a confirmed Start dialog (router state `{started: true}`),
  * focus goes to the Main book card's title link, winning over the `h1`.
@@ -112,7 +113,7 @@ export default function HomePage() {
         </div>
       ) : (
         <div className={styles.grid}>
-          <MainBookCard book={mainBook} titleRef={titleLink} />
+          <MainBookCard book={mainBook} lastExportAt={lastExportAt} now={now} titleRef={titleLink} />
           <div className={styles.side} />
         </div>
       )}

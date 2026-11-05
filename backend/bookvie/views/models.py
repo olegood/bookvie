@@ -62,6 +62,11 @@ class HomeMainBook(_View):
     current_page: int
     percent: int
     """``floor(currentPage × 100 ÷ pages)``, computed only here (AD-6)."""
+    days_left: int | None
+    """``ceil(pages left ÷ Measured pace)``, at least 1; ``None`` without Measured pace,
+    at pace 0, or with no pages left (AD-6)."""
+    last_progress_update: AwareDatetime | None
+    """The current Reading's ``lastProgressUpdate``, as stored ("Last updated …")."""
 
 
 class HomeView(_View):

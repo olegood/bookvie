@@ -35,13 +35,9 @@ collects before the module exists.
 from fractions import Fraction
 from pathlib import Path
 
-import pytest
-
 from bookvie.views import home
 from tests.builder import LibraryBuilder
 from tests.helpers import api_client
-
-RED = "ATDD red phase: Story 3.4 not implemented yet"
 
 EARLIER = "2026-10-25T21:00:00+01:00"
 """The Main book's seeded ``lastProgressUpdate``."""
@@ -96,7 +92,6 @@ def _paced_library(main_page: int = 151) -> LibraryBuilder:
 # --- AC-1: Measured pace -----------------------------------------------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_ac1_p1_measured_pace_is_pages_over_inclusive_days_without_back_fills() -> None:
     from bookvie.domain.pace import measured_pace
 
@@ -140,7 +135,6 @@ def test_ac1_p1_measured_pace_is_pages_over_inclusive_days_without_back_fills() 
 # --- AC-2: days left in the home view ----------------------------------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_ac2_p1_the_home_view_supplies_days_left_rounded_up_and_null_when_it_cant_be_said(
     tmp_path: Path,
 ) -> None:
@@ -191,3 +185,77 @@ def test_ac2_p1_the_home_view_supplies_days_left_rounded_up_and_null_when_it_can
     pamphlet = zero.book(title="A pamphlet", pages=12)
     _finished(zero, pamphlet, "2026-09-01", "2026-09-02", 0)
     assert view_days_left(zero) is None
+
+
+# --- Follow-ups: the defaults the spec settles -------------------------------------
+
+
+def test_ac1_p1_measured_pace_skips_a_reading_finished_before_it_started() -> None:
+    from bookvie.domain.pace import measured_pace
+
+    # Impossible through the app (finish validation); hand-edited data must not
+    # make the day sum 0 or negative.
+    builder = LibraryBuilder()
+    emma = builder.book(title="Emma", pages=400)
+    _finished(builder, emma, "2026-09-20", "2026-09-01", 400)
+    assert measured_pace(builder.build()) is None
+
+    kindred = builder.book(title="Kindred", pages=100)
+    _finished(builder, kindred, "2026-09-25", "2026-09-26", 100)
+    assert measured_pace(builder.build()) == Fraction(50)
+
+
+def test_ac1_p1_measured_pace_counts_a_missing_finished_pages_as_zero() -> None:
+    from bookvie.domain.pace import measured_pace
+
+    builder = LibraryBuilder()
+    emma = builder.book(title="Emma", pages=400)
+    builder.reading(
+        emma,
+        start_date="2026-09-01",
+        finish_date="2026-09-04",
+        finished_pages=None,
+        current_page=400,
+    )
+    kindred = builder.book(title="Kindred", pages=100)
+    _finished(builder, kindred, "2026-09-25", "2026-09-25", 100)
+    # 100 pages over 4 + 1 days.
+    assert measured_pace(builder.build()) == Fraction(20)
+
+
+def test_ac2_p1_the_home_view_says_no_last_progress_update_as_null(
+    tmp_path: Path,
+) -> None:
+    builder = LibraryBuilder()
+    left_hand = builder.book(title="The Left Hand of Darkness", pages=330)
+    builder.reading(
+        left_hand, start_date="2026-10-11", current_page=151, last_progress_update=None
+    )
+    builder.main(left_hand)
+    builder.write(tmp_path)
+
+    main_book = api_client(tmp_path).get("/api/views/home").json()["mainBook"]
+
+    assert main_book["lastProgressUpdate"] is None
+    assert main_book["daysLeft"] is None
+
+
+def test_ac1_p1_the_main_book_s_earlier_finished_reading_counts_toward_pace() -> None:
+    from bookvie.domain.pace import measured_pace
+
+    # The Main book read once before (330 pages over 10 days), now read again from p.0.
+    builder = LibraryBuilder()
+    left_hand = builder.book(title="The Left Hand of Darkness", pages=330)
+    _finished(builder, left_hand, "2026-09-01", "2026-09-10", 330)
+    builder.reading(left_hand, start_date="2026-10-11", current_page=0)
+    builder.main(left_hand)
+    emma = builder.book(title="Emma", pages=400)
+    _finished(builder, emma, "2026-10-01", "2026-10-10", 400)
+    library = builder.build()
+
+    # (330 + 400) pages over (10 + 10) days; without the Main book it would be 40.
+    assert measured_pace(library) == Fraction(730, 20)
+    main_book = home(library).main_book
+    assert main_book is not None
+    # 330 pages left: 9.04… at the combined pace, so 10 (8.25, so 9, without it).
+    assert main_book.days_left == 10
