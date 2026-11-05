@@ -2,7 +2,7 @@
 title: 'Story 3.4: See where I left off and how long is left'
 type: 'feature'
 created: '2026-11-05'
-status: 'in-review'
+status: 'done'
 route: 'dispatch'
 review_loop_iteration: 0
 baseline_commit: '96de85b6a57e62998e141761027c6614e3e7155c'
@@ -82,6 +82,33 @@ E2E (`frontend/e2e`): `home.ts` seeds (`mainAt`, `serverAtFakeToday`); `update-p
 **Acceptance Criteria:**
 - Given the ATDD leaves, when activated, then `pytest tests/test_reentry.py` and `e2e/reentry.spec.ts` pass.
 - Given the whole suite, when `npm run check` runs, then it passes, including coverage gates and `check:api`.
+
+### Review Findings
+
+Code review 2026-11-05 (layers: blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor, spine-check).
+
+- [x] [Review][Patch] README status line's "(or the empty states)" now reads as attached to the re-entry line, not the card [README.md:8]
+- [x] [Review][Patch] README's Story 3.4 spec link breaks the sibling pattern ("intent, I/O matrix and verification for …") [README.md:181]
+- [x] [Review][Patch] `dots()` docstring says "width and background" but it also returns `content`, which the no-dot check relies on [frontend/e2e/reentry.spec.ts:58]
+- [x] [Review][Patch] The null-`lastProgressUpdate` API test has no Measured pace, so `daysLeft is None` holds trivially; seed a paced library and assert `daysLeft` is still given [backend/tests/test_reentry.py:226]
+- [x] [Review][Defer] Spine drift: Structural Seed, AD-20, AD-6, AD-19 don't reflect pace rules, nullable `daysLeft`/`lastProgressUpdate` [_bmad-output/planning-artifacts/architecture/architecture-bookvie-2026-10-29/ARCHITECTURE-SPINE.md] — deferred: re-raised by spine-check; already recorded in deferred-work.md (SC1–SC4), reconciled per epic
+- [x] [Review][Defer] README "19 of 41 stories done" is stale (20) [README.md:8] — deferred: pre-existing since 3.3; already recorded in deferred-work.md
+- [x] [Review][Defer] README "Test automation summary (currently story 3.2)" is stale; `automation-summary.md` is at story 3.3 [README.md:182] — deferred: pre-existing, not caused by 3.4
+
+**Rejected:**
+- BH: missing `finishedPages` lowers pace instead of being skipped — low; the Code Map explicitly says treat it as 0, so the fix edits the spec.
+- BH: no direct unit tests for `days_left` edge branches — false; `ceil` of a positive ratio is already ≥ 1, and negative `pages_left`/pace are unreachable (invariant; EC1 in pass 1).
+- BH: "~1 day left" singular untested — false; `reentry.spec.ts:111` asserts `~1 day left`.
+- BH: P0 update-page seed dropped the Purpose — false; no assertion in that test reads the Purpose, and `test_update_page.py` seeds and covers it.
+- BH: duplicated Emma fixture across specs — low; no named harm, the two seeds pin different numbers on purpose.
+- BH: screen readers get no separator between facts — low; re-raise of pass-1 BH4, the ariaSnapshot reads separate words.
+- BH: no "over a year" boundary test — low; `relativeDay` is reused unchanged and owned by its own tests.
+- BH: same-day pace test not visible — false; `test_reentry.py:102` asserts same-day = 1 day.
+- BH: README describes 3.4 as finished while in review — false; the README line describes the story as merged, as 3.1–3.3 did.
+- EC: Main book without an unfinished Reading gets full-book days left — low; the state breaks an invariant and is not reachable; the fix adds a guard.
+- VG: AC-3's no-dot check still only checks width; the Implementation Note overstates the BH6 fix — low; the leaf is frozen ("activated, not rewritten"), the follow-up test pins `content`, and the note fix edits the spec.
+- AA: `days_left` returns `None` for a negative pace too — low; unreachable, the safe reading.
+- AA: `measured_pace` runs at the last page — low; efficiency only, single-user library.
 
 ## Implementation Notes
 

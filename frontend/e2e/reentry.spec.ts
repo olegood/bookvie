@@ -55,7 +55,7 @@ function pacedMainAt(page: number, lastProgressUpdate: string | null = THREE_DAY
   return mainAt(page, { others, reading: { startDate: '2026-10-11', lastProgressUpdate } })
 }
 
-/** The ::before dot of each fact: its width and background. */
+/** The ::before dot of each fact: its content (none: no dot), width and background. */
 async function dots(page: Page, count: number): Promise<{ content: string; width: string; background: string }[]> {
   const result = []
   for (let i = 0; i < count; i++) {

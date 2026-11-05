@@ -232,12 +232,16 @@ def test_ac2_p1_the_home_view_says_no_last_progress_update_as_null(
         left_hand, start_date="2026-10-11", current_page=151, last_progress_update=None
     )
     builder.main(left_hand)
+    # Emma, 400 pages over 20 days: Measured pace 20 a day, so days left still shows.
+    emma = builder.book(title="Emma", pages=400)
+    _finished(builder, emma, "2026-09-01", "2026-09-20", 400)
     builder.write(tmp_path)
 
     main_book = api_client(tmp_path).get("/api/views/home").json()["mainBook"]
 
     assert main_book["lastProgressUpdate"] is None
-    assert main_book["daysLeft"] is None
+    # 179 pages left at 20 a day: 8.95, so 9. A null update hides only "Last updated".
+    assert main_book["daysLeft"] == 9
 
 
 def test_ac1_p1_the_main_book_s_earlier_finished_reading_counts_toward_pace() -> None:

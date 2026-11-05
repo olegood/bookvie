@@ -277,3 +277,10 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-4-see-where-i-left-off-and-how-long-is-left.md`
   summary: README status line still says "19 of 41 stories done" though stories 3.1–3.3 are done (20).
   evidence: Blind-hunter review of 3.4 (BH2); epics 1 and 2 have 14 + 3 stories and sprint-status shows 3.1–3.3 done; the count wasn't changed when 3.3 was marked done.
+
+## Deferred from: code review of spec-3-4-see-where-i-left-off-and-how-long-is-left (2026-11-05)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-4-see-where-i-left-off-and-how-long-is-left.md`
+  summary: Spine-check re-raised the Structural Seed / AD-20 / AD-6 / AD-19 drift for pace, `daysLeft` and nullable `lastProgressUpdate`; it stays as recorded above (SC1–SC4). Blind-hunter re-raised the stale "19 of 41 stories done" count; it stays as recorded above.
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-4-see-where-i-left-off-and-how-long-is-left.md`
+  summary: README's "Test automation summary (currently story 3.2)" pointer (README.md:182) is stale; `automation-summary.md` is at story 3.3. Pre-existing.
