@@ -1,22 +1,24 @@
 """RDG-UNIT-002 (R-01): random intent sequences keep the reading plan sound.
 
-A Hypothesis state machine drives ``start-reading``, ``edit-purpose`` and
-``delete-book`` (with days passing in between) over a small library that
+A Hypothesis state machine drives ``start-reading``, ``edit-purpose``,
+``update-page`` and ``delete-book`` (with days passing in between) over a small library that
 starts with a Book in each state: never started, finished, paused, and Main.
 After every step:
 
 - a refusal is the one a simple model predicts (``book_not_found``,
-  ``already_main``, ``reading_already_finished``) and leaves ``library.json``
+  ``already_main``, ``reading_already_finished``, ``not_main_book``,
+  ``invalid_fields`` for a page out of range) and leaves ``library.json``
   byte-for-byte unchanged;
 - an accepted intent changed exactly what its contract says and nothing else
-  (the paused Main book, the resumed or appended Reading, the one Purpose);
+  (the paused Main book, the resumed or appended Reading, the one Purpose,
+  the Main book's page and ``lastProgressUpdate``);
 - ``check_invariants()`` holds, each Book has at most one unfinished Reading,
   and the file on disk reads back as the committed library;
 - the views agree: only ``mainBookId`` is ``main``, ``waiting`` is exactly the
   paused Books (Up next is Epic 4, so none here), and Home's Main book is the
   Main book's current Reading.
 
-Story 3.3+ intents (progress, finish, pause, Up next, Side reads) join the
+Story 3.4+ intents (finish, pause, Up next, Side reads) join the
 machine as they land.
 """
 
@@ -35,6 +37,7 @@ from bookvie.intents import IntentError
 from bookvie.intents.delete_book import delete_book, parse_delete_book_intent
 from bookvie.intents.edit_purpose import edit_purpose, parse_edit_purpose_intent
 from bookvie.intents.start_reading import parse_start_reading_intent, start_reading
+from bookvie.intents.update_page import parse_update_page_intent, update_page
 from bookvie.store import Store
 from bookvie.views import catalog, home
 from tests.builder import LibraryBuilder
@@ -47,6 +50,8 @@ _purposes = (
     | st.sampled_from(["", "   ", "  x  ", "Why Arrakis"])
     | st.text(max_size=8)
 )
+_pages = st.integers(min_value=-2, max_value=415)
+"""A page sent by the page field: in range for some Books, out of range for others."""
 _slots = st.integers(min_value=0, max_value=4)
 """Which Book an intent names: the four seeded Books, or 4 for one that never existed."""
 
@@ -222,6 +227,42 @@ class ReadingPlan(RuleBasedStateMachine):
         }
         assert after == {**before, book_id: expected_book}
         assert self.store.library.main_book_id == library.main_book_id
+
+    @rule(slot=_slots, page=_pages)
+    def update(self, slot: int, page: int) -> None:
+        book_id = self._book_id(slot)
+        library = self.store.library
+        before = _books(library)
+        if book_id not in before:
+            expected = "book_not_found"
+        elif book_id != library.main_book_id:
+            expected = "not_main_book"
+        elif not 0 <= page <= before[book_id]["pages"]:
+            expected = "invalid_fields"
+        else:
+            expected = None
+        clock = FakeClock(self.today)
+        intent = parse_update_page_intent(json.dumps({"bookId": book_id, "page": page}))
+        reached: list[bool] = []
+        if not self._send(lambda: reached.append(update_page(self.store, clock, intent)), expected):
+            return
+
+        after = _books(self.store.library)
+        current = _current(before[book_id])
+        assert current is not None
+        expected_book = {
+            **before[book_id],
+            "readings": [
+                {**r, "currentPage": page, "lastProgressUpdate": clock.now().isoformat()}
+                if r["id"] == current["id"]
+                else r
+                for r in before[book_id]["readings"]
+            ],
+        }
+        # The last page never finishes the Reading; only the page and the stamp move.
+        assert after == {**before, book_id: expected_book}
+        assert self.store.library.main_book_id == book_id
+        assert reached == [page == before[book_id]["pages"]]
 
     @rule(slot=_slots)
     def delete(self, slot: int) -> None:

@@ -258,3 +258,7 @@
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-2-start-reading-a-book.md`
   summary: README's "Test automation summary (currently story 2.3)" pointer (README.md:180) is stale; `automation-summary.md` is at story 3.1. Pre-existing. Pass 2 also re-raised the Up next/Side-read start and spine-drift items above; they stay as recorded.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-3-catch-up-with-one-page-update.md`
+  summary: ARCHITECTURE-SPINE.md AD-3/AD-9 say domain rules and refusal copy live only on the server, but story 3.3's page field pre-validates the page range and holds its own "Page must be between 0 and N." copy (`frontend/src/lib/pageField.ts`), as the story requires.
+  evidence: Spine Check pass 1 (SC1, SC2); the frozen intent mandates the client pre-check, so either the spine gains an exception for client pre-checks that mirror a server refusal or the client sends and renders the 422.

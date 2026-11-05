@@ -25,6 +25,7 @@ from .contract import (
     cover_too_large,
     duplicate_book,
     invalid_fields,
+    not_main_book,
     pages_refusal,
     reading_already_finished,
     restore_invalid,
@@ -44,6 +45,7 @@ from .set_spine_color import (
     set_spine_color,
 )
 from .start_reading import StartReadingIntent, parse_start_reading_intent, start_reading
+from .update_page import UpdatePageIntent, parse_update_page_intent, update_page
 
 __all__ = [
     "COULDNT_EXPORT_MESSAGE",
@@ -72,6 +74,7 @@ __all__ = [
     "SetSpineColorIntent",
     "StartReadingIntent",
     "SystemClock",
+    "UpdatePageIntent",
     "UploadedCover",
     "add_book",
     "already_main",
@@ -89,6 +92,7 @@ __all__ = [
     "invalid_fields",
     "malformed_intent",
     "max_upload_bytes",
+    "not_main_book",
     "pages_refusal",
     "parse_add_book_intent",
     "parse_delete_book_intent",
@@ -97,6 +101,7 @@ __all__ = [
     "parse_restore_intent",
     "parse_set_spine_color_intent",
     "parse_start_reading_intent",
+    "parse_update_page_intent",
     "prepare_cover",
     "reading_already_finished",
     "record_export",
@@ -106,4 +111,5 @@ __all__ = [
     "restore_unsafe",
     "set_spine_color",
     "start_reading",
+    "update_page",
 ]

@@ -157,3 +157,25 @@ export function useEditPurpose(): (bookId: string, purpose: string | null) => Pr
   const client = useQueryClient()
   return (bookId, purpose) => editPurpose(client, bookId, purpose)
 }
+
+// `update-page`'s intent part is `{ bookId, page }`, the page a JSON integer.
+
+export function updatePageForm(bookId: string, page: number): FormData {
+  const form = new FormData()
+  form.set('intent', JSON.stringify({ bookId, page }))
+  return form
+}
+
+/**
+ * Sends `update-page` (the Main book's absolute page); resolves after the
+ * views have refetched. `reachedLastPage` is set at the Book's last page.
+ */
+export function updatePage(client: QueryClient, bookId: string, page: number): Promise<IntentResult> {
+  return sendIntent(client, 'update-page', updatePageForm(bookId, page))
+}
+
+/** `updatePage` bound to the app's QueryClient. */
+export function useUpdatePage(): (bookId: string, page: number) => Promise<IntentResult> {
+  const client = useQueryClient()
+  return (bookId, page) => updatePage(client, bookId, page)
+}

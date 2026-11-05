@@ -8,6 +8,8 @@ The ATDD tests, for the criteria whose promise lives on the server
 - AC-5: ``update-page`` for a Book that isn't Main (a stale tab) is refused
   with 409 ``not_main_book``, and nothing changes (AD-9).
 - AC-8: the standard intent ACs (TR8) for ``update-page``.
+- AC-3, the server half: anything but a JSON integer from 0 to the page
+  count is 422 on ``page``; a malformed part is 422 on ``intent``.
 
 The page field, its validation, the status line, the catch-up speed and the
 couldn't-save are read in the browser (``frontend/e2e/update-page.spec.ts``).
@@ -34,6 +36,7 @@ from fastapi.testclient import TestClient
 
 from bookvie.domain.clock import FakeClock
 from bookvie.http.app import create_app
+from bookvie.intents.intent_model import MALFORMED_INTENT_MESSAGE
 from tests.builder import LibraryBuilder
 from tests.helpers import (
     COULDNT_SAVE_BODY,
@@ -46,7 +49,6 @@ from tests.helpers import (
     stored_book,
 )
 
-RED = "ATDD red phase: Story 3.3 not implemented yet"
 GONE_ID = "00000000-0000-4000-8000-000000000000"
 NOW = FakeClock(TODAY).now()
 """What ``api_client``'s clock says "now" is: local noon on :data:`TODAY`."""
@@ -95,7 +97,6 @@ def _left_hand_main_and_dune_paused(data_dir: Path, page: int = 150) -> tuple[st
 # --- AC-4: the last page saves, never finishes -----------------------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_ac4_p0_update_page_at_the_last_page_saves_it_keeps_the_reading_unfinished_and_says_so(
     tmp_path: Path,
 ) -> None:
@@ -127,7 +128,6 @@ def test_ac4_p0_update_page_at_the_last_page_saves_it_keeps_the_reading_unfinish
 # --- AC-5: a stale tab -----------------------------------------------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_ac5_p1_update_page_for_a_book_that_isnt_main_is_refused_with_not_main_book(
     tmp_path: Path,
 ) -> None:
@@ -154,7 +154,6 @@ def test_ac5_p1_update_page_for_a_book_that_isnt_main_is_refused_with_not_main_b
 # --- AC-8: the standard intent guarantees (TR8) ----------------------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_ac8_p0_update_page_keeps_the_standard_intent_guarantees(
     tmp_path: Path,
 ) -> None:
@@ -200,3 +199,71 @@ def test_ac8_p0_update_page_keeps_the_standard_intent_guarantees(
 
     # The intent is in the contract (AD-8).
     assert UPDATE_PAGE in create_app().openapi()["paths"]
+
+
+# --- AC-3, the server half: integers from 0 to the page count only -------------
+
+PAGE_REFUSAL = {
+    "error": {
+        "kind": "refusal",
+        "code": "invalid_fields",
+        "message": "Not saved. 1 field needs attention: Page.",
+        "fields": [{"field": "page", "message": "Page must be between 0 and 330."}],
+    }
+}
+
+
+@pytest.mark.parametrize("page", [331, -1, 212.5, "212", True, None, [212], {"n": 212}])
+def test_ac3_p1_update_page_refuses_a_page_that_isnt_a_whole_number_in_range(
+    tmp_path: Path, page: Any
+) -> None:
+    left_hand, _dune = _left_hand_main_and_dune_paused(tmp_path)
+    before = library_bytes(tmp_path)
+
+    response = _send(api_client(tmp_path), left_hand, page)
+
+    assert response.status_code == 422
+    assert response.json() == PAGE_REFUSAL
+    assert library_bytes(tmp_path) == before
+
+
+@pytest.mark.parametrize(
+    "intent",
+    [{"bookId": "x"}, {"page": 1}, {"bookId": "x", "page": 1, "extra": 1}, {"bookId": None, "page": 1}],
+    ids=["missing-page", "missing-book-id", "extra-key", "null-book-id"],
+)
+def test_ac3_p1_a_malformed_update_page_part_is_refused_on_intent(
+    tmp_path: Path, intent: dict
+) -> None:
+    left_hand, _dune = _left_hand_main_and_dune_paused(tmp_path)
+    before = library_bytes(tmp_path)
+    body = {k: (left_hand if k == "bookId" and v == "x" else v) for k, v in intent.items()}
+
+    response = api_client(tmp_path).post(
+        UPDATE_PAGE, files={"intent": (None, json.dumps(body), "application/json")}
+    )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["fields"] == [
+        {"field": "intent", "message": MALFORMED_INTENT_MESSAGE}
+    ]
+    assert library_bytes(tmp_path) == before
+
+
+def test_ac5_p1_not_main_book_comes_before_the_page_range(tmp_path: Path) -> None:
+    # A stale tab's page may belong to the old Book: the 409 wins over the 422.
+    _left_hand, dune = _left_hand_main_and_dune_paused(tmp_path)
+    response = _send(api_client(tmp_path), dune, 9999)
+    assert response.status_code == 409
+    assert response.json()["error"] == {
+        "kind": "refusal",
+        "code": "not_main_book",
+        "message": "This book isn't your Main book anymore.",
+    }
+
+
+def test_ac8_p0_book_not_found_comes_before_not_main_book(tmp_path: Path) -> None:
+    _left_hand_main_and_dune_paused(tmp_path)
+    response = _send(api_client(tmp_path), GONE_ID, -5)
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "book_not_found"

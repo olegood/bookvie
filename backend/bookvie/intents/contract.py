@@ -49,6 +49,7 @@ class ErrorCode(StrEnum):
     RESTORE_UNSAFE = "restore_unsafe"
     ALREADY_MAIN = "already_main"
     READING_ALREADY_FINISHED = "reading_already_finished"
+    NOT_MAIN_BOOK = "not_main_book"
 
 
 class FieldError(_Wire):
@@ -202,6 +203,21 @@ def already_main() -> IntentError:
             kind=ErrorKind.REFUSAL,
             code=ErrorCode.ALREADY_MAIN,
             message=ALREADY_MAIN_MESSAGE,
+        ),
+    )
+
+
+NOT_MAIN_BOOK_MESSAGE = "This book isn't your Main book anymore."
+
+
+def not_main_book() -> IntentError:
+    """409 ``not_main_book``: ``update-page`` for a Book that isn't Main, e.g. a stale tab (AD-9)."""
+    return IntentError(
+        409,
+        ErrorBody(
+            kind=ErrorKind.REFUSAL,
+            code=ErrorCode.NOT_MAIN_BOOK,
+            message=NOT_MAIN_BOOK_MESSAGE,
         ),
     )
 

@@ -1,0 +1,84 @@
+/* DESIGN.md → Page field: a surface-inset container holding the label
+   "Page", the 110px field (tabular figures), "of M" in ink-tertiary, and
+   Update pushed right. Focus and invalid as Text field. */
+.form {
+  margin: 22px 0 0;
+  padding: 14px;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-inset);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.label {
+  margin-right: var(--space-1);
+  font-family: var(--font-body-sm-family);
+  font-size: var(--font-body-sm-size);
+  line-height: var(--font-body-sm-line-height);
+  color: var(--color-ink-secondary);
+}
+
+.input {
+  box-sizing: border-box;
+  width: 110px;
+  height: var(--button-height);
+  padding: 0 14px;
+  border: var(--text-field-border) solid var(--color-input-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-family: var(--font-page-field-family);
+  font-size: var(--font-page-field-size);
+  font-weight: var(--font-page-field-weight);
+  font-variant-numeric: tabular-nums;
+}
+
+.input:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 var(--text-field-halo) var(--color-focus-halo);
+}
+
+.input[aria-invalid="true"] {
+  border: var(--text-field-border-invalid) solid var(--color-ink);
+}
+
+.of {
+  font-family: var(--font-body-sm-family);
+  font-size: var(--font-body-sm-size);
+  line-height: var(--font-body-sm-line-height);
+  color: var(--color-ink-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+.update {
+  margin-left: auto;
+}
+
+/* The inline field message: one line in body-sm / ink, under the field. */
+.message {
+  margin: var(--space-2) 0 0;
+  font-family: var(--font-body-sm-family);
+  font-size: var(--font-body-sm-size);
+  line-height: var(--font-body-sm-line-height);
+  color: var(--color-ink);
+}
+
+/* The live regions' host sits here, directly below the field, after a
+   couldn't-save or a refusal: one calm line in ink. */
+.regions[data-show-alert="true"] [role="alert"] {
+  position: static;
+  width: auto;
+  height: auto;
+  margin: var(--space-2) 0 0;
+  overflow: visible;
+  clip-path: none;
+  white-space: normal;
+  font-family: var(--font-body-sm-family);
+  font-size: var(--font-body-sm-size);
+  line-height: var(--font-body-sm-line-height);
+  color: var(--color-ink);
+}

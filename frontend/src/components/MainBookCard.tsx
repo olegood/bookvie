@@ -3,6 +3,7 @@ import { Link } from 'react-router'
 import type { HomeMainBook } from '../api/index.ts'
 import Cover from './Cover.tsx'
 import Gauge from './Gauge.tsx'
+import PageField from './PageField.tsx'
 import styles from './MainBookCard.module.css'
 
 const NO_MAIN_BOOK = 'No Main book.'
@@ -12,7 +13,8 @@ const CHOOSE_A_BOOK = 'Choose a book in the Catalog'
  * Home's Main book card (EXPERIENCE.md → Main book card): a `region` "Main
  * book", named by its eyebrow. The 200×300 cover or the no-cover placeholder,
  * the "MAIN BOOK" eyebrow, the serif title (3-line clamp) linking to Book
- * detail, the author, "Edition N" only when it isn't 1, then the gauge.
+ * detail, the author, "Edition N" only when it isn't 1, then the gauge and
+ * the page field.
  * Without a Main book the same frame and name hold "No Main book." and a
  * link to the Catalog. `titleRef` is the title link, which Home focuses after
  * a confirmed start.
@@ -50,6 +52,7 @@ export default function MainBookCard({
         <p className={styles.authors}>{book.authors.join('; ')}</p>
         {book.edition !== 1 && <p className={styles.edition}>Edition {book.edition}</p>}
         <Gauge title={book.title} page={book.currentPage} pages={book.pages} percent={book.percent} />
+        <PageField bookId={book.id} currentPage={book.currentPage} pages={book.pages} percent={book.percent} />
       </div>
     </section>
   )

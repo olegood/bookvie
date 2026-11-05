@@ -14,6 +14,8 @@ import {
   setSpineColor,
   startReading,
   setSpineColorForm,
+  updatePage,
+  updatePageForm,
   type BookFields,
 } from './books.ts'
 
@@ -260,6 +262,39 @@ describe('startReading and editPurpose', () => {
     const result = await startReading(client, 'b1', null)
     assert.equal(result.kind, 'refusal')
     assert.equal(result.kind === 'refusal' && result.code, 'already_main')
+    client.clear()
+  })
+})
+
+describe('updatePage', () => {
+  afterEach(() => mock.restoreAll())
+
+  it('posts { bookId, page } with the page as a JSON number, and reads reachedLastPage', async () => {
+    const fetch = mock.method(globalThis, 'fetch', async (..._args: [string, RequestInit]) =>
+      Response.json({ ok: true, reachedLastPage: true }),
+    )
+    const client = new QueryClient()
+    const result = await updatePage(client, 'b1', 330)
+
+    assert.deepEqual(result, { kind: 'ok', ids: {}, reachedLastPage: true })
+    const [url, init] = fetch.mock.calls[0].arguments
+    assert.equal(url, '/api/intents/update-page')
+    assert.equal(init!.method, 'POST')
+    assert.equal((init!.body as FormData).get('intent'), '{"bookId":"b1","page":330}')
+    assert.equal(updatePageForm('b2', 0).get('intent'), '{"bookId":"b2","page":0}')
+    client.clear()
+  })
+
+  it('passes not_main_book through as a refusal', async () => {
+    mock.method(globalThis, 'fetch', async () =>
+      Response.json(
+        { error: { kind: 'refusal', code: 'not_main_book', message: "This book isn't your Main book anymore." } },
+        { status: 409 },
+      ),
+    )
+    const client = new QueryClient()
+    const result = await updatePage(client, 'b1', 12)
+    assert.equal(result.kind === 'refusal' && result.code, 'not_main_book')
     client.clear()
   })
 })

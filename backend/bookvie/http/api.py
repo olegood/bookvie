@@ -68,12 +68,14 @@ from bookvie.intents import (
     parse_restore_intent,
     parse_set_spine_color_intent,
     parse_start_reading_intent,
+    parse_update_page_intent,
     prepare_cover,
     record_export,
     restore,
     restore_unsafe,
     set_spine_color,
     start_reading,
+    update_page,
 )
 
 # Every /api route documents the envelope for these statuses. Declaring 422
@@ -473,6 +475,26 @@ def edit_purpose_intent(
     parsed = parse_edit_purpose_intent(intent)
     edit_purpose(request.app.state.store, parsed)
     return OkResponse(ok=True)
+
+
+@router.post("/intents/update-page", response_model=OkResponse, response_model_exclude_none=True)
+def update_page_intent(
+    request: Request,
+    intent: Annotated[
+        str | None,
+        Form(
+            media_type="multipart/form-data",
+            description=(
+                'JSON object {"bookId": ..., "page": <integer>}: the absolute page '
+                "reached in the Main book, 0 to its page count."
+            ),
+        ),
+    ] = None,
+) -> OkResponse:
+    """Save the Main book's current page; ``reachedLastPage`` at its last page (FR-10)."""
+    parsed = parse_update_page_intent(intent)
+    reached = update_page(request.app.state.store, request.app.state.clock, parsed)
+    return OkResponse(ok=True, reached_last_page=True if reached else None)
 
 
 @router.post("/intents/restore", response_model=OkResponse, response_model_exclude_none=True)

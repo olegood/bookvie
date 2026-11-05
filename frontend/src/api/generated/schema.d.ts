@@ -233,6 +233,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/intents/update-page": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Update Page Intent
+         * @description Save the Main book's current page; ``reachedLastPage`` at its last page (FR-10).
+         */
+        post: operations["update_page_intent_api_intents_update_page_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/intents/restore": {
         parameters: {
             query?: never;
@@ -341,6 +361,14 @@ export interface components {
             /**
              * Intent
              * @description JSON object {"bookId": ..., "purpose": "..." | null}: the Start dialog's Purpose, trimmed, null when empty.
+             */
+            intent?: string | null;
+        };
+        /** Body_update_page_intent_api_intents_update_page_post */
+        Body_update_page_intent_api_intents_update_page_post: {
+            /**
+             * Intent
+             * @description JSON object {"bookId": ..., "page": <integer>}: the absolute page reached in the Main book, 0 to its page count.
              */
             intent?: string | null;
         };
@@ -461,7 +489,7 @@ export interface components {
          * ErrorCode
          * @enum {string}
          */
-        ErrorCode: "invalid_fields" | "couldnt_save" | "duplicate_book" | "book_not_found" | "pages_below_current_page" | "pages_below_card_note" | "cover_too_large" | "couldnt_export" | "restore_invalid" | "restore_newer_version" | "restore_unsafe" | "already_main" | "reading_already_finished";
+        ErrorCode: "invalid_fields" | "couldnt_save" | "duplicate_book" | "book_not_found" | "pages_below_current_page" | "pages_below_card_note" | "cover_too_large" | "couldnt_export" | "restore_invalid" | "restore_newer_version" | "restore_unsafe" | "already_main" | "reading_already_finished" | "not_main_book";
         /**
          * ErrorKind
          * @enum {string}
@@ -1227,6 +1255,66 @@ export interface operations {
         requestBody?: {
             content: {
                 "multipart/form-data": components["schemas"]["Body_edit_purpose_intent_api_intents_edit_purpose_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkResponse"];
+                };
+            };
+            /** @description Refused by a library rule */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Invalid fields */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Couldn't save */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Couldn't save */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    update_page_intent_api_intents_update_page_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_update_page_intent_api_intents_update_page_post"];
             };
         };
         responses: {

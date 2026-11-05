@@ -37,12 +37,13 @@ INTENT_ROUTES = {
     "set-spine-color": {"bookId": DUNE_ID, "spineColor": "#749076"},
     "start-reading": {"bookId": DUNE_ID, "purpose": None},
     "edit-purpose": {"bookId": DUNE_ID, "purpose": None},
+    "update-page": {"bookId": DUNE_ID, "page": 1},
     "restore": {},
 }
 """Each intent route with an intent it would accept for the seeded Dune.
 
-``edit-purpose`` needs a current Reading, so its tests start Dune first
-(:func:`_ready`).
+``edit-purpose`` needs a current Reading and ``update-page`` a Main book, so
+their tests start Dune first (:func:`_ready`).
 """
 
 MALFORMED_INTENT = {
@@ -103,7 +104,7 @@ def _intent_files(route: str) -> dict:
 
 def _ready(client, route: str) -> None:
     """Put the seeded library in the state ``route``'s intent needs."""
-    if route == "edit-purpose":
+    if route in ("edit-purpose", "update-page"):
         response = client.post(
             "/api/intents/start-reading", files=_intent_files("start-reading")
         )
