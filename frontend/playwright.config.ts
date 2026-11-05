@@ -2,6 +2,15 @@ import { defineConfig, devices } from '@playwright/test'
 
 const CI = !!process.env.CI
 
+// One time zone for the whole run, however Playwright is started (CI calls
+// `npm --prefix frontend run e2e` without the root scripts' `TZ=` prefix).
+// The test runner's own date math (e.g. localNoonDaysAgo in e2e/backup.spec.ts)
+// uses it, and the bookvie servers and the seeding `spawnSync` in
+// e2e/fixtures.ts inherit process.env, so they get it too. SERVER_NOW in e2e/home.ts assumes
+// FakeClock's local noon is in this zone.
+const TZ = 'Europe/Madrid'
+process.env.TZ = TZ
+
 // Each worker starts its own `bookvie` (see e2e/fixtures.ts) on a free port,
 // with a data dir under `$TMPDIR/bookvie-e2e/<run-id>/worker-<n>/`. `baseURL`
 // comes from that fixture, not from the environment.
@@ -21,8 +30,8 @@ export default defineConfig({
     ['junit', { outputFile: 'test-results/junit.xml' }],
   ],
   use: {
-    // Dates in the browser are local to the same zone `check:e2e` pins (TZ).
-    timezoneId: 'Europe/Madrid',
+    // Dates in the browser are local to the same zone as the servers (TZ above).
+    timezoneId: TZ,
     actionTimeout: 15_000,
     navigationTimeout: 30_000,
     trace: 'retain-on-failure-and-retries',
