@@ -204,7 +204,7 @@ test.describe('Story 3.7 See the finish on the shelf (ATDD)', () => {
     await page.context().addInitScript(recordMotion)
   })
 
-  test.skip('[P1] AC-1 Done for the Main book scrolls the finished spine into view, fills it to full over about 600 ms ease-out with the highlight ring, shows "Finished X." in the header, updates the meter, and status reads "Finished X. 1 of 121 finished."', async ({
+  test('[P1] AC-1 Done for the Main book scrolls the finished spine into view, fills it to full over about 600 ms ease-out with the highlight ring, shows "Finished X." in the header, updates the meter, and status reads "Finished X. 1 of 121 finished."', async ({
     page,
   }) => {
     // A short window: after the finish, Le Guin's row is the slice's third, below the fold.
@@ -216,7 +216,7 @@ test.describe('Story 3.7 See the finish on the shelf (ATDD)', () => {
 
       await expect(homeBookcase(page).getByText(`Finished ${TITLE}.`, { exact: true })).toBeVisible()
 
-      // The spine was brought into view, then filled from 91% to full: one fill motion of about 600 ms, ease-out.
+      // The spine was brought into view, then filled from 100% of its body (the page field saved p.330 first) to the whole spine: one fill motion of about 600 ms, ease-out.
       const spine = finishedSpine(page)
       await expect(spine).toBeInViewport()
       await expect.poll(async () => (await motions(page)).filter(isFill).length).toBeGreaterThan(0)
@@ -239,7 +239,7 @@ test.describe('Story 3.7 See the finish on the shelf (ATDD)', () => {
     }
   })
 
-  test.skip('[P1] AC-2 once played, the finish moment never plays again: not after a reload, not on a revisit to Home, and not in another tab that only refetched the views; the header line is gone', async ({
+  test('[P1] AC-2 once played, the finish moment never plays again: not after a reload, not on a revisit to Home, and not in another tab that only refetched the views; the header line is gone', async ({
     page,
   }) => {
     const server = await serverAtFakeToday(page, 'finish-once', MAIN_AT_300)
@@ -252,7 +252,38 @@ test.describe('Story 3.7 See the finish on the shelf (ATDD)', () => {
       // Tab A finishes, and its moment plays (the transition this criterion follows).
       await finishFromBookDetail(page, server.url)
       await expect(homeBookcase(page).getByText(`Finished ${TITLE}.`, { exact: true })).toBeVisible()
+      // The fill starts from where the Main fill stood (p.300 of 330), not from 0.
+      const start = await page.waitForFunction(
+        (label) => {
+          const spine = document.querySelector(`button[aria-label="${label}"]`)
+          for (const node of spine === null ? [] : Array.from(spine.querySelectorAll('*'))) {
+            const running = node.getAnimations().find((animation) => (animation as CSSTransition).transitionProperty === 'height')
+            const from = (running?.effect as KeyframeEffect | null | undefined)?.getKeyframes()[0]?.height
+            if (typeof from !== 'string') continue
+            // The keyframe keeps a percentage of the body, or is a resolved length.
+            const body = node.parentElement!.clientHeight
+            return { from: from.endsWith('%') ? (parseFloat(from) / 100) * body : parseFloat(from), body }
+          }
+          return null
+        },
+        `${TITLE} by Ursula K. Le Guin, finished`,
+        { polling: 'raf' },
+      )
+      const { from, body } = (await start.jsonValue())!
+      expect(Math.abs(from - (300 / 330) * body)).toBeLessThanOrEqual(3)
       await expect.poll(async () => (await motions(page)).filter(isFill).length).toBeGreaterThan(0)
+
+      // Still on this Home: a refetch and a repack replay nothing, and the line stays.
+      await expect.poll(() => ringed(finishedSpine(page)), { timeout: 4_000 }).toBe(false)
+      await resetMotion(page)
+      await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange', { bubbles: true })))
+      const size = page.viewportSize()!
+      await page.setViewportSize({ width: size.width - 300, height: size.height })
+      await expect(finishedSpine(page)).toBeVisible()
+      await twoFrames(page)
+      expect((await motions(page)).filter(onFinishedSpine)).toEqual([])
+      expect((await scrolls(page)).filter((scroll) => scroll.spine?.startsWith(`${TITLE} by `))).toEqual([])
+      await expect(homeBookcase(page).getByText(`Finished ${TITLE}.`, { exact: true })).toBeVisible()
 
       // Reload: no fill, no ring, no header line.
       await page.reload()
@@ -278,7 +309,8 @@ test.describe('Story 3.7 See the finish on the shelf (ATDD)', () => {
 
       // Tab B refetches on visibility change: it shows the finish, but plays nothing.
       await tabB.bringToFront()
-      await tabB.evaluate(() => document.dispatchEvent(new Event('visibilitychange')))
+      // As the browser fires it: at the document, bubbling to `window`, where the views listen.
+      await tabB.evaluate(() => document.dispatchEvent(new Event('visibilitychange', { bubbles: true })))
       await expect(noMainHeading(tabB)).toBeVisible()
       await expect(finishedSpine(tabB)).toBeVisible()
       await twoFrames(tabB)
@@ -293,7 +325,7 @@ test.describe('Story 3.7 See the finish on the shelf (ATDD)', () => {
     }
   })
 
-  test.skip('[P2] AC-3 a finished re-read plays only the highlight ring, the header reads "Finished X again.", and the meter count does not change', async ({
+  test('[P2] AC-3 a finished re-read plays only the highlight ring, the header reads "Finished X again.", and the meter count does not change', async ({
     page,
   }) => {
     const server = await serverAtFakeToday(page, 'finish-reread', REREAD_AT_300)
@@ -319,7 +351,7 @@ test.describe('Story 3.7 See the finish on the shelf (ATDD)', () => {
     }
   })
 
-  test.skip('[P2] AC-4 under prefers-reduced-motion the scroll uses behavior auto, and the fill and ring are instant', async ({
+  test('[P2] AC-4 under prefers-reduced-motion the scroll uses behavior auto, and the fill and ring are instant', async ({
     page,
   }) => {
     await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'reduce' })
@@ -346,7 +378,7 @@ test.describe('Story 3.7 See the finish on the shelf (ATDD)', () => {
     }
   })
 
-  test.skip('[P2] AC-5 the finish moment has no sound, no confetti, no praise and no exclamation mark', async ({ page }) => {
+  test('[P2] AC-5 the finish moment has no sound, no confetti, no praise and no exclamation mark', async ({ page }) => {
     // Any sound would go through a media element or Web Audio: count both.
     await page.context().addInitScript(() => {
       const store = window as unknown as { sounds: number }
@@ -373,6 +405,13 @@ test.describe('Story 3.7 See the finish on the shelf (ATDD)', () => {
       await expect(finishLine(page)).toHaveText(`Finished ${TITLE}.`)
 
       await expect(page.getByRole('status')).toHaveText(`Finished ${TITLE}. 1 of 2 finished.`)
+      // The spine was already in view: the fill and the ring still play, and the scroll is a no-op `nearest`.
+      await expect.poll(async () => (await motions(page)).filter(isFill).length).toBeGreaterThan(0)
+      expect((await scrolls(page)).filter((scroll) => scroll.spine?.startsWith(`${TITLE} by `))).toEqual([
+        expect.objectContaining({ options: expect.objectContaining({ block: 'nearest' }) }),
+      ])
+      const ringMotion = (motion: Motion) => onFinishedSpine(motion) && motion.properties.some((name) => RING_PROPERTIES.has(name))
+      await expect.poll(async () => (await motions(page)).some(ringMotion)).toBe(true)
       await expect.poll(() => ringed(finishedSpine(page)), { timeout: 4_000 }).toBe(false)
       // No exclamation mark anywhere on Home or in the live regions.
       expect(await page.locator('body').innerText()).not.toContain('!')

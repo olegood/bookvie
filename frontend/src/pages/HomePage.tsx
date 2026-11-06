@@ -8,12 +8,12 @@ import MainBookCard from '../components/MainBookCard.tsx'
 import PageHeading from '../components/PageHeading.tsx'
 import type { StartedState } from '../components/StartDialog.tsx'
 import { announce, clearAnnouncements } from '../lib/announce.ts'
-import { sortBooks } from '../lib/catalog.ts'
+import { finishStatus, sortBooks } from '../lib/catalog.ts'
 import { COULDNT_LOAD } from '../lib/copy.ts'
 import { usePageTitle } from '../lib/page.ts'
 import { lastExportLine, useNow } from '../lib/relativeDay.ts'
 import { formatToday } from '../lib/today.ts'
-import Bookcase from './Bookcase.tsx'
+import Bookcase, { type FinishMoment } from './Bookcase.tsx'
 import { EmptyShelf, type NewBookState } from './CatalogPage.tsx'
 import styles from './HomePage.module.css'
 
@@ -23,6 +23,15 @@ function wantsStarted(state: unknown): boolean {
 
 function wantsFinished(state: unknown): boolean {
   return typeof state === 'object' && state !== null && (state as Partial<FinishedState>).finished === true
+}
+
+/** The finish moment the hand-off carries, when every field is there and well formed. */
+function finishMoment(state: unknown): FinishMoment | null {
+  if (!wantsFinished(state)) return null
+  const { bookId, title, reread, fromPercent } = state as Partial<FinishedState>
+  if (typeof bookId !== 'string' || typeof title !== 'string' || typeof reread !== 'boolean') return null
+  if (typeof fromPercent !== 'number' || !Number.isFinite(fromPercent)) return null
+  return { id: bookId, title, reread, fromPercent: Math.min(100, Math.max(0, fromPercent)) }
 }
 
 /**
@@ -39,12 +48,12 @@ function clearHandOffState(): void {
 }
 
 /** The bookcase slice below the grid, in Catalog's order (Author). */
-function HomeSlice({ view }: { view: HomeView }) {
+function HomeSlice({ view, finishing }: { view: HomeView; finishing: FinishMoment | null }) {
   const sorted = useMemo(() => sortBooks(view.books), [view.books])
   const slice = useMemo(() => ({ priority: view.slicePriority }), [view.slicePriority])
   return (
     <div className={styles.slice}>
-      <Bookcase books={sorted} meter={view.meter} slice={slice} />
+      <Bookcase books={sorted} meter={view.meter} slice={slice} finishing={finishing} />
     </div>
   )
 }
@@ -62,7 +71,12 @@ function HomeSlice({ view }: { view: HomeView }) {
  * Arriving from a confirmed Start dialog (router state `{started: true}`),
  * focus goes to the Main book card's title link, winning over the `h1`.
  * Arriving from a finish (`{finished: true}`), it goes to the "No Main
- * book." heading the same way.
+ * book." heading the same way, and when the refetched view shows that Book
+ * finished, the finish moment of this visit (Story 3.7): the slice plays it
+ * once, the bookcase header keeps "Finished *X*." until Home unmounts, and
+ * `status` reads "Finished *X*. N of M finished." once focus has moved. The
+ * hand-off is cleared from the history entry, so a reload, Back, Forward, a
+ * revisit or another tab never sees it.
  *
  * Home hosts the Finish dialog the page field opens on `reachedLastPage`,
  * so a refetch that empties the card (a finish or delete in another tab)
@@ -83,6 +97,9 @@ export default function HomePage() {
   const emptyHeading = useRef<HTMLHeadingElement>(null)
   const handledStart = useRef<string | null>(null)
   const handledFinish = useRef<string | null>(null)
+  // This visit's finish moment: taken from the hand-off of one history entry,
+  // kept through refetches, dropped with the Home mount or another entry.
+  const [moment, setMoment] = useState<{ key: string; finishing: FinishMoment } | null>(null)
   const hasMain = view.status === 'ready' && view.data.mainBook !== null
   const noMain = view.status === 'ready' && view.data.mainBook === null && view.data.meter.total > 0
   const pageField = useRef<HTMLInputElement>(null)
@@ -94,6 +111,14 @@ export default function HomePage() {
   // Set when the Finish dialog is cancelled, so focus moves once it has unmounted.
   const [finishRefocus, setFinishRefocus] = useState(0)
   const mainId = view.status === 'ready' ? (view.data.mainBook?.id ?? null) : null
+  // Taken during render, so the slice's first render of the finished spine is the moment's.
+  const handOff = finished && noMain ? finishMoment(location.state) : null
+  const shownFinished =
+    handOff !== null && view.status === 'ready' && view.data.books.some((book) => book.id === handOff.id && book.finished)
+  if (handOff !== null && shownFinished && moment?.key !== location.key) setMoment({ key: location.key, finishing: handOff })
+  // Another history entry (a start, a later finish) is another visit: the line goes.
+  else if (moment !== null && moment.key !== location.key) setMoment(null)
+  const homeMeter = view.status === 'ready' ? view.data.meter : null
   const openFinish = useCallback(
     (savedLine: string) => {
       if (mainId !== null) setFinishing({ bookId: mainId, key: location.key, savedLine })
@@ -125,7 +150,12 @@ export default function HomePage() {
     handledFinish.current = location.key
     emptyHeading.current?.focus()
     clearHandOffState()
-  }, [finished, noMain, location.key])
+    // Once focus has settled, with the refetched view's meter.
+    if (moment?.key === location.key && homeMeter !== null) {
+      const { title, reread } = moment.finishing
+      announce('status', finishStatus(title, reread, homeMeter))
+    }
+  }, [finished, noMain, location.key, moment, homeMeter])
 
   // The couldn't-load line is shown in `main` and set in the shell's alert.
   useEffect(() => {
@@ -189,7 +219,7 @@ export default function HomePage() {
             />
             <div className={styles.side} />
           </div>
-          <HomeSlice view={view.data} />
+          <HomeSlice view={view.data} finishing={moment?.finishing ?? null} />
         </>
       )}
       {finishing !== null && finishing.key === location.key && (

@@ -298,3 +298,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-gh-run-42099788891-pin-e2e-server-tz.md`
   summary: Fix the `.github/workflows/test.yml:58` comment that calls the e2e job "check:e2e" though it runs `npm --prefix frontend run e2e` directly.
   evidence: That mismatch is why CI skipped the root script's TZ prefix (run 42099788891); the spec was told not to edit test.yml.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-7-see-the-finish-on-the-shelf.md`
+  summary: Update AD-7 in the architecture spine so the finish moment covers the scroll into view, the ring-only re-read and the instant reduced-motion variant, not only "a single ~600ms spine fill".
+  evidence: Story 3.7 implements UX-DR42 and the epic ACs (re-read ring only, reduced motion instant, scroll first); the spine check found AD-7's parenthetical out of date.

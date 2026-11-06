@@ -91,6 +91,15 @@
   background: var(--color-accent);
 }
 
+/* Home, after a finish: "Finished *X*." after the heading. */
+.finishLine {
+  margin: 0;
+  font-family: var(--font-body-sm-family);
+  font-size: var(--font-body-sm-size);
+  line-height: var(--font-body-sm-line-height);
+  color: var(--color-ink-secondary);
+}
+
 /* Home's slice: "See all in Catalog" after the meter. */
 .seeAll {
   font-family: var(--font-body-sm-family);
@@ -215,12 +224,6 @@
   transition: height 600ms ease-out;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .fill {
-    transition: none;
-  }
-}
-
 /* The Main-book marker: the strip moves down so the dot sits above it. */
 .marked {
   position: relative;
@@ -295,6 +298,28 @@
 
 .spine.highlight {
   box-shadow: 0 0 0 2px var(--color-page), 0 0 0 4px var(--color-accent);
+}
+
+/*
+ * The finish moment (DESIGN.md → Finish fill): the fill rises past the body
+ * to the whole spine, under the label strip, clipped by the spine's corners.
+ */
+.finishing .body {
+  overflow: visible;
+}
+
+.finishing .strip {
+  position: relative;
+  z-index: 1;
+}
+
+/* After the ring rules, so the fade is off too: the fill and the ring are instant. */
+@media (prefers-reduced-motion: reduce) {
+  .fill,
+  .spine,
+  .spine:not(.highlight) {
+    transition: none;
+  }
 }
 
 .noMatch {

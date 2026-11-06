@@ -59,6 +59,19 @@ export function spineName(book: NamedSpine): string {
   return `${book.title}${by}, ${spineStatus(book)}`
 }
 
+/**
+ * The bookcase header's line after a finish (UX-DR42): "Finished *X*.", or
+ * "Finished *X* again." for a re-read. No praise, no exclamation mark.
+ */
+export function finishLine(title: string, reread: boolean): string {
+  return reread ? `Finished ${title} again.` : `Finished ${title}.`
+}
+
+/** The `status` line after a finish: the header line, then the refetched meter ("25 of 73 finished."). */
+export function finishStatus(title: string, reread: boolean, meter: { finished: number; total: number }): string {
+  return `${finishLine(title, reread)} ${meter.finished} of ${meter.total} finished.`
+}
+
 /** The bookcase list's name; it counts every Book, even during a search. */
 export function bookcaseName(total: number): string {
   return total === 1 ? 'Bookcase, 1 book' : `Bookcase, ${total} books`

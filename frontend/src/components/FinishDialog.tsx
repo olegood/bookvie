@@ -9,8 +9,14 @@ import Button from './Button.tsx'
 import TextField from './TextField.tsx'
 import styles from './FinishDialog.module.css'
 
-/** Router state Home reads after a finish: focus goes to the "No Main book." heading. */
-export type FinishedState = { finished: true }
+/**
+ * Router state Home reads after a finish: focus goes to the "No Main book."
+ * heading, and the finish moment plays once on the bookcase slice (Story
+ * 3.7). Set only by this tab's successful `finish-reading`, never derived
+ * from a view change (AD-7). `reread`: an earlier Reading was already
+ * finished; `fromPercent`: where the Main fill stood when the dialog opened.
+ */
+export type FinishedState = { finished: true; bookId: string; title: string; reread: boolean; fromPercent: number }
 
 const SAVING = 'Finishing the book.'
 const FINISHED_ON = 'finishedOn'
@@ -94,7 +100,13 @@ function OpenFinishDialog({ book, savedLine, onCancel }: { book: BookDetailView;
     const result = await sendFinish(book.id, { finishedOn, purposeFulfilled: fulfilled, rating })
     inFlight.current = false
     if (result.kind === 'ok') {
-      const state: FinishedState = { finished: true }
+      const state: FinishedState = {
+        finished: true,
+        bookId: book.id,
+        title: book.title,
+        reread: book.readings.some((reading) => reading.finishDate !== null),
+        fromPercent: book.currentReading?.percent ?? 0,
+      }
       void navigate('/', { state })
       return
     }

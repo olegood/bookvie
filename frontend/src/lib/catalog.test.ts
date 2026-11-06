@@ -2,6 +2,8 @@ import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import {
   bookcaseName,
+  finishLine,
+  finishStatus,
   formatDateAdded,
   lastTagSegment,
   matchCountCopy,
@@ -160,5 +162,32 @@ describe('tags', () => {
     assert.equal(pickTag('sc', 'science'), 'science, ')
     assert.equal(pickTag('sci-fi, cl', 'classics'), 'sci-fi, classics, ')
     assert.equal(pickTag('sci-fi,cl', 'classics'), 'sci-fi, classics, ')
+  })
+})
+
+describe('finishLine', () => {
+  it('reads "Finished X." for a first finish', () => {
+    assert.equal(finishLine('The Left Hand of Darkness', false), 'Finished The Left Hand of Darkness.')
+  })
+
+  it('reads "Finished X again." for a re-read', () => {
+    assert.equal(finishLine('Dune', true), 'Finished Dune again.')
+  })
+})
+
+describe('finishStatus', () => {
+  it('adds the meter after the line', () => {
+    assert.equal(
+      finishStatus('The Left Hand of Darkness', false, { finished: 25, total: 73 }),
+      'Finished The Left Hand of Darkness. 25 of 73 finished.',
+    )
+  })
+
+  it('keeps "again" for a re-read, with the unchanged meter', () => {
+    assert.equal(finishStatus('Dune', true, { finished: 1, total: 2 }), 'Finished Dune again. 1 of 2 finished.')
+  })
+
+  it('never uses an exclamation mark', () => {
+    assert.doesNotMatch(finishStatus('Dune', false, { finished: 1, total: 1 }), /!/)
   })
 })

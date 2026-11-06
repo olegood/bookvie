@@ -14,7 +14,7 @@ import { Link } from 'react-router'
 import type { LibraryMeter, ShelfBook } from '../api/index.ts'
 import SpinePopover from '../components/SpinePopover.tsx'
 import StartDialog from '../components/StartDialog.tsx'
-import { bookcaseName, matchesTitle, noMatchCopy, sliceName, spineName } from '../lib/catalog.ts'
+import { bookcaseName, finishLine, matchesTitle, noMatchCopy, sliceName, spineName } from '../lib/catalog.ts'
 import { rowCapacity, sliceRows } from '../lib/slice.ts'
 import { nearestVisible, spineHeight } from '../lib/spine.ts'
 import styles from './Bookcase.module.css'
@@ -37,9 +37,40 @@ type CatalogProps = Shared & {
   searchRef: RefObject<HTMLInputElement | null>
 }
 
+/**
+ * Home's finish moment (Story 3.7), from this tab's successful
+ * `finish-reading` hand-off: the finished Book, its title, whether it was a
+ * re-read, and the Main fill's percentage when the Finish dialog opened.
+ */
+export type FinishMoment = { id: string; title: string; reread: boolean; fromPercent: number }
+
 /** Home's slice: up to 3 rows of the full bookcase, chosen by the server's priority (AD-6). */
 type SliceProps = Shared & {
   slice: { priority: readonly string[] }
+  /** This Home visit's finish moment: played once, its header line kept while it is passed. */
+  finishing?: FinishMoment | null
+}
+
+/**
+ * Where a finish moment stands: `from` (the Main-style fill at its old
+ * percentage, one frame), `to` (filling to the whole spine), `done` (the solid
+ * read spine); `ring` while the highlight ring is on.
+ */
+type MomentPhase = { moment: FinishMoment; fill: 'from' | 'to' | 'done'; ring: boolean }
+
+/** How long the ring holds after the fill (or at once) before it fades. */
+const RING_HOLD_MS = 600
+/** Fallbacks when `scrollend` or `transitionend` never comes (a hidden tab, an interrupted scroll). */
+const SCROLL_FALLBACK_MS = 800
+const FILL_FALLBACK_MS = 1000
+
+function prefersReducedMotion(): boolean {
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
+
+function fullyInViewport(element: Element): boolean {
+  const rect = element.getBoundingClientRect()
+  return rect.top >= 0 && rect.left >= 0 && rect.bottom <= window.innerHeight && rect.right <= window.innerWidth
 }
 
 type Props = CatalogProps | SliceProps
@@ -120,6 +151,16 @@ function cssLength(element: Element, property: string): number {
  * width and up to 3 are shown (`sliceRows`), one `li` per row; it recomputes
  * on resize, never filters and never scrolls, and the keys follow the rows as
  * displayed.
+ *
+ * With `finishing` (Home, after this tab's finish), the slice plays the
+ * finish moment once per moment: once the spine is in a row and Home has
+ * moved focus, it is scrolled into view (`nearest`; `smooth`, or `auto` under
+ * reduced motion), then fills from its old percentage to the whole spine with
+ * the `.fill` height transition and becomes the solid read spine, while the
+ * highlight ring is on. A re-read, or reduced motion, skips the fill: the
+ * ring only (instant under reduced motion), on the already solid spine. The
+ * header shows "Finished *X*." ("Finished *X* again." for a re-read) while
+ * `finishing` is passed. A refetch or a repack never replays it.
  */
 export default function Bookcase(props: Props) {
   const { books, meter } = props
@@ -127,6 +168,7 @@ export default function Bookcase(props: Props) {
   const query = props.slice === undefined ? props.query : ''
   const highlightId = props.slice === undefined ? props.highlightId : null
   const priority = props.slice?.priority
+  const finishing = props.slice === undefined ? null : (props.finishing ?? null)
   const ownTargets = useRef(new Map<string, HTMLElement>())
   const noSearch = useRef<HTMLInputElement | null>(null)
   const focusTargets = props.slice === undefined ? props.focusTargets : ownTargets
@@ -176,6 +218,73 @@ export default function Bookcase(props: Props) {
     return () => observer.disconnect()
   }, [sliceMode])
   const visible = useMemo(() => new Set(visibleIds), [visibleIds])
+
+  // The finish moment: a new one (a new object) starts its own phase; the same
+  // one through refetches and repacks keeps it, so it never replays.
+  const [phase, setPhase] = useState<MomentPhase | null>(null)
+  if (finishing !== null && phase?.moment !== finishing) {
+    const instant = finishing.reread || prefersReducedMotion()
+    setPhase({ moment: finishing, fill: instant ? 'done' : 'from', ring: false })
+  }
+  // A moment Home has dropped (another history entry) never starts.
+  const moment = finishing !== null && phase?.moment === finishing ? finishing : null
+  const momentInSlice = moment !== null && rows.some((row) => row.includes(moment.id))
+  const momentStarted = useRef<FinishMoment | null>(null)
+
+  // Scroll, then fill and ring. Runs a frame after the spine is in a row, so
+  // Home's focus on "No Main book." has happened and the old fill is computed.
+  useEffect(() => {
+    if (moment === null || !momentInSlice || momentStarted.current === moment) return
+    momentStarted.current = moment
+    const reduced = prefersReducedMotion()
+    let frame = 0
+    let fallback: ReturnType<typeof setTimeout> | undefined
+    let begun = false
+    const begin = () => {
+      if (begun) return
+      begun = true
+      window.removeEventListener('scrollend', begin)
+      clearTimeout(fallback)
+      setPhase((current) =>
+        current?.moment === moment ? { ...current, fill: current.fill === 'from' ? 'to' : current.fill, ring: true } : current,
+      )
+    }
+    frame = requestAnimationFrame(() => {
+      const spine = buttons.current.get(moment.id)
+      if (spine === undefined) return begin()
+      const inView = fullyInViewport(spine)
+      spine.scrollIntoView({ block: 'nearest', behavior: reduced ? 'auto' : 'smooth' })
+      if (inView || reduced) {
+        frame = requestAnimationFrame(begin)
+        return
+      }
+      window.addEventListener('scrollend', begin)
+      fallback = setTimeout(begin, SCROLL_FALLBACK_MS)
+    })
+    return () => {
+      cancelAnimationFrame(frame)
+      clearTimeout(fallback)
+      window.removeEventListener('scrollend', begin)
+      // Cut short before it began (a remount): the next run may start it again.
+      if (!begun && momentStarted.current === moment) momentStarted.current = null
+    }
+  }, [moment, momentInSlice])
+
+  // The fill ends on its `transitionend`, or here if that never comes.
+  const fillRunning = phase?.fill === 'to'
+  useEffect(() => {
+    if (!fillRunning) return
+    const timer = setTimeout(() => setPhase((current) => (current?.fill === 'to' ? { ...current, fill: 'done' } : current)), FILL_FALLBACK_MS)
+    return () => clearTimeout(timer)
+  }, [fillRunning])
+
+  // Once the spine is solid, the ring holds, then fades (the `box-shadow` transition).
+  const ringHolding = phase?.fill === 'done' && phase.ring
+  useEffect(() => {
+    if (!ringHolding) return
+    const timer = setTimeout(() => setPhase((current) => (current === null ? current : { ...current, ring: false })), RING_HOLD_MS)
+    return () => clearTimeout(timer)
+  }, [ringHolding])
 
   // The Tab stop: the last focused spine, else the nearest visible one in
   // sort order (the previous on a tie), else the first.
@@ -324,15 +433,23 @@ export default function Bookcase(props: Props) {
 
   const spineButton = (book: ShelfBook) => {
     const main = book.role === 'main'
-    const filling = main && !book.finished
-    const classes = [styles.spine, book.finished ? styles.read : filling ? styles.main : styles.unread]
+    // Only the moment still passed: a dropped one draws the solid read spine and never starts.
+    const own = finishing !== null && phase?.moment === finishing && finishing.id === book.id ? phase : null
+    // The finish moment draws the finished spine as a filling Main spine until it is solid.
+    const momentFill = own !== null && own.fill !== 'done' && book.finished
+    const filling = (main && !book.finished) || momentFill
+    const height = measured[book.id]?.height ?? spineHeight(0)
+    const classes = [styles.spine, filling ? styles.main : book.finished ? styles.read : styles.unread]
     if (main) classes.push(styles.marked)
-    if (book.id === highlightId) classes.push(styles.highlight)
+    if (momentFill) classes.push(styles.finishing)
+    if (book.id === highlightId || own?.ring === true) classes.push(styles.highlight)
     if (book.id === openId) classes.push(styles.open)
+    // From the old percentage of the body to the whole spine's height (the line goes past its top).
+    const percent = momentFill ? (own.fill === 'from' ? `${own.moment.fromPercent}%` : `${height}px`) : `${book.percent ?? 0}%`
     const style: CSSProperties & Record<'--spine-color' | '--percent', string | undefined> = {
-      height: measured[book.id]?.height ?? spineHeight(0),
+      height,
       '--spine-color': book.finished || filling ? book.spineColor : undefined,
-      '--percent': filling ? `${book.percent ?? 0}%` : undefined,
+      '--percent': filling ? percent : undefined,
     }
     return (
       <button
@@ -356,6 +473,14 @@ export default function Bookcase(props: Props) {
             sliceFocused.current = false
           }
         }}
+        onTransitionEnd={
+          momentFill && own.fill === 'to'
+            ? (event) => {
+                if (event.propertyName !== 'height') return
+                setPhase((current) => (current?.fill === 'to' ? { ...current, fill: 'done' } : current))
+              }
+            : undefined
+        }
         onClick={(event) => {
           const pressed = closedByPress.current
           closedByPress.current = null
@@ -405,6 +530,7 @@ export default function Bookcase(props: Props) {
         <h2 id={headingId} className={styles.heading}>
           Bookcase
         </h2>
+        {finishing !== null && <p className={styles.finishLine}>{finishLine(finishing.title, finishing.reread)}</p>}
         <MeterBar meter={meter} />
         {sliceMode && (
           <Link to="/catalog" className={styles.seeAll}>
