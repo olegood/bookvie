@@ -7,7 +7,7 @@ paradigm: 'server-owned domain behind an intent (command) API with server-comput
 scope: 'bookvie MVP: whole system (CLI launcher, Python server, data folder, React client)'
 status: final
 created: '2026-10-29'
-updated: '2026-11-04'
+updated: '2026-11-06'
 binds: [FR-1, FR-2, FR-3, FR-4, FR-5, FR-6, FR-7, FR-8, FR-9, FR-10, FR-11, FR-14, FR-15, FR-16, FR-17, FR-18, FR-19, FR-20, FR-21, FR-22, FR-23, FR-24, A1, A2, A3, A4, A5, A6]
 sources:
   - _bmad-output/planning-artifacts/prds/prd-bookvie-2026-10-28/prd.md
@@ -61,15 +61,15 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
 ### AD-3: Domain rules live only in the server; mutations arrive only as intents [ADOPTED]
 
 - **Binds:** FR-1, FR-3, FR-5 to FR-10, FR-14, FR-17, FR-22, FR-23, A2, A3
-- **Prevents:** rules duplicated in TypeScript and Python; stale whole-library writes overwriting another browser's changes; one user action split across several calls that can half-fail.
-- **Rule:** Each user action is exactly one intent call: `POST /api/intents/<verb>`. An intent validates, applies **every** consequence, runs `domain.check_invariants()`, and commits once (AD-2), or it changes nothing and returns a refusal. No CRUD or PATCH endpoints on entities, and no whole-document write endpoint. Every intent is `multipart/form-data` with a JSON part named `intent`, including those with no file (`delete-book`, `set-spine-color`), so every route parses its body one way. Intents that carry a file (`add-book`, `edit-book`, `restore`) add a file part. Each is still one call and one commit.
+- **Prevents:** rules duplicated in TypeScript and Python without a shared check (the one sanctioned pre-check is below); stale whole-library writes overwriting another browser's changes; one user action split across several calls that can half-fail.
+- **Rule:** Each user action is exactly one intent call: `POST /api/intents/<verb>`. An intent validates, applies **every** consequence, runs `domain.check_invariants()`, and commits once (AD-2), or it changes nothing and returns a refusal. No CRUD or PATCH endpoints on entities, and no whole-document write endpoint. A client may pre-check an input against a rule the server also enforces, with the server's exact copy, to refuse it without a round trip: the page field's range check ("Page must be between 0 and N.", story 3.3, `frontend/src/lib/pageField.ts`). The server still refuses the same input with the same copy, and a shared case table keeps the two in step (`frontend/src/lib/pageField.cases.json`, read by both the client's unit tests and `backend/tests/test_update_page.py`); a pre-check never adds a rule the server lacks. Every intent is `multipart/form-data` with a JSON part named `intent`, including those with no file (`delete-book`, `set-spine-color`), so every route parses its body one way. Intents that carry a file (`add-book`, `edit-book`, `restore`) add a file part. Each is still one call and one commit.
 - **Concurrency across tabs:** intents carry no version and no precondition. Each applies to the server's current state (AD-4 serializes them; AD-19 Targeting), so the last intent wins for every field it sends (A2). An open form keeps the values it opened with, and AD-7's refetch doesn't change them, so a stale form in one tab can undo a change made in another: an Edit panel opened before a popover color change puts the old color back on save, and a stale "Remove cover" removes a cover uploaded later. Within one tab the Edit panel is modal, so this can't happen; reloading shows the current data. This is A2 as written; the silent loss it allows (retro F-R1) is closed as an accepted deviation for single-tab use (Oleg, 2026-11-03). Revisit, with a document `revision` and an `expectedRevision` refusal, if the cataloging agent ever edits an existing Book while the app is open in a tab.
 
 ### AD-4: All writes, export and restore are serialized
 
 - **Binds:** AD-2, AD-3, AD-14
 - **Prevents:** two concurrent requests both loading state and one silently discarding the other; an intent overwriting a restore; an export capturing a half-replaced cover.
-- **Rule:** One in-process lock covers *apply intent → write files → commit document → swap in-memory state*. `export` and `restore` hold the same lock: export while it builds the zip (not while it sends it), and restore for the whole operation, staging included. Views read the committed in-memory state. The one write outside the lock is `local-state.json` ("Last export", AD-15), written after the download has gone out. It never touches `library.json` or `covers/`, and it is atomic on its own (story 2.1).
+- **Rule:** One in-process lock covers *apply intent → write files → commit document → swap in-memory state*. `export` and `restore` hold the same lock: export while it builds the zip (not while it sends it), and restore for the whole operation, staging included. Views read the committed in-memory state. The one write outside the lock is `local-state.json` ("Last export", AD-15), written after the download has gone out. It never touches `library.json` or `covers/`, and it is atomic on its own (story 2.1). Two views read it from disk, outside the lock: `views/backup` and `views/shelf` (home, story 3.1).
 
 ### AD-5: One server instance per data folder [ADOPTED]
 
@@ -82,22 +82,25 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
 - **Binds:** FR-4, FR-7, FR-11, FR-15, FR-16, FR-18, FR-19, FR-20, FR-24
 - **Prevents:** percentage, Measured pace, days left, Waiting order, stats or library scope being computed in two places with different results.
 - **Rule:**
-  - **The server computes:** percentages, Measured pace, days left, pages left (per Book and library scope), Waiting for you order, which Books form the Home bookcase slice and in what row priority, stats for a requested date range including the bars, and the "X of Y finished" meter.
+  - **The server computes:** percentages (`floor(page × 100 ÷ pages)`, so 100% only at the last page; story 3.1, `domain/progress`), Measured pace, days left, pages left (per Book and library scope), Waiting for you order, the Home bookcase slice's priority, stats for a requested date range including the bars, and the "X of Y finished" meter.
   - **Stats view:** `GET /api/views/stats?from=YYYY-MM-DD&to=YYYY-MM-DD`, both inclusive local dates; omit both for All time. Response `{ books, pages, bucket: "month" | "year", buckets: [{ period, books, pages }] }`; `bucket` is `year` when the range exceeds 24 months. The browser resolves presets to dates: This month = the 1st..today, This year = 1 January..today, Last year = the full year. All time with no finished Reading returns 0 books, 0 pages and no buckets.
   - **The client may only apply presentation to the views it has fetched:**
     - catalog sort, using `Intl.Collator`, per the UX;
     - filter chips;
-    - packing spines into rows by viewport width;
+    - packing spines into rows by viewport width, and on Home choosing up to 3 of those rows from the view's `slicePriority` (Book ids: the Main book, then Up next, then finishes newest first; story 3.5): free slots up to 3 are filled from the first bookcase rows, priority ids not on the shelf are ignored, and the Main book's row comes first with the others in bookcase order (`frontend/src/lib/slice.ts`);
+    - the gauge's ticks: 0 · round(pages ÷ 2) · pages, the half tick dropped under 4 pages (story 3.1);
     - case-insensitive substring text search (Search titles, Search card notes);
     - pile order and shuffle;
     - copy and date formatting, including relative "N days ago" counted in local calendar days;
-    - the Quick pace calculator's arithmetic. Days to finish = ceil(pages left ÷ pages per day), and the finish date = today + days. It uses the same rounding as the server's days left.
+    - the Quick pace calculator's arithmetic. Days to finish = max(1, ceil(pages left ÷ pages per day)), and the finish date = today + days: the same rounding and minimum as the server's days left. With nothing left to read, or a pages-per-day of zero or less, it shows no days (EXPERIENCE.md → Pace calculator).
+  - **Days left** is `max(1, ceil(pages left ÷ Measured pace))`, and null when there is no Measured pace, when it is 0, or when no pages are left (story 3.4); the client then omits "~N days left".
 
 ### AD-7: The client never patches cached state
 
-- **Binds:** frontend data layer, A2, A3, Couldn't-save pattern, Tone NFR
+- **Binds:** frontend data layer, FR-14 (finish moment), A2, A3, Couldn't-save pattern, Tone NFR
 - **Prevents:** optimistic UI showing a change that was refused or never written; features refreshing different subsets of views; the finish moment replaying.
-- **Rule:** No optimistic updates. View queries are keyed `['view', name, params]`. After every intent response, success or refusal, the client invalidates **all** views. All views also refetch when the window regains focus or becomes visible. A success live-region announcement is made only after the refetched views have rendered. On `couldnt_save` or a network failure, the UI keeps the user's input and shows "Couldn't save. Your data wasn't changed." The finish moment (a single ~600ms spine fill) plays only in the tab that received the successful `finish-reading` response, never because of a view change.
+- **Rule:** No optimistic updates. View queries are keyed `['view', name, params]`. After every intent response, success or refusal, the client invalidates **all** views. All views also refetch when the window regains focus or becomes visible. A success live-region announcement is made only after the refetched views have rendered. On `couldnt_save` or a network failure, the UI keeps the user's input and shows "Couldn't save. Your data wasn't changed." The finish moment plays only in the tab that received the successful `finish-reading` response, never because of a view change (story 3.7). It is carried as router state on the navigation to Home and cleared from that history entry once Home consumes it. When the finish lands while another Book is Main, the state is dropped unplayed, so a reload never replays it (retro item 22). The moment scrolls the finished spine into view if needed, then fills it from its current fill to full over about 600 ms with the highlight ring. A finished re-read plays the ring only. Under reduced motion the fill and ring are instant and the scroll uses `behavior: 'auto'`.
+- **Dialogs read fresh views:** a dialog that fixes its answers when it opens (Start, Finish) waits for a `book` view fetched after it mounted, never a cached copy, because only active views refetch after an intent (retro item 22). Known gap: the Start dialog's trade-off line still reads the home view as cached (open in `deferred-work.md`).
 
 ### AD-8: Python is the contract's source of truth; TS types are generated [ADOPTED]
 
@@ -121,7 +124,7 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
     - An intent that would change nothing is a no-op success, not a refusal: `set-up-next` for the Book already Up next returns 200, changes nothing and commits nothing.
     - HTTP 500 or 503 means `couldnt_save`. A restore write fault (staging, cover copy-in or the document commit) is 503 `couldnt_save`. When `check_invariants()` fails after validation passed, that is a server bug: the intent commits nothing, logs the failed rule to stderr, and returns 500 `couldnt_save`.
     - HTTP 503 with kind and code `couldnt_export` means export failed to read the data; nothing was sent (AD-14).
-  - A global `RequestValidationError` handler maps framework validation errors into this shape. The server owns all message copy (PRD §5 Tone), and the client renders it as is. Error codes are an enum in the contract.
+  - A global `RequestValidationError` handler maps framework validation errors into this shape. The server owns all message copy (PRD §5 Tone), and the client renders it as is; the one exception is AD-3's pre-check, which shows the server's copy verbatim before sending. Error codes are an enum in the contract.
 
 ### AD-10: Duplicate detection is a server refusal
 
@@ -185,7 +188,7 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
 
 - **Binds:** A6, FR-22 "Last export"
 - **Prevents:** "Last export" disagreeing between browsers; UI preferences polluting the export.
-- **Rule:** The last-export timestamp is stored in `local-state.json` in the data folder, as `{"lastExportAt": "<ISO-8601 with offset>"}`. It's outside the export, and restore never touches it (an archive entry with that name is `restore_unsafe`). It is written like a commit (temp `local-state.json.tmp*`, fsync, rename, folder fsync) but outside the AD-4 lock (AD-4); a write failure is only logged, because the download already succeeded. A missing file reads as no export yet; an unreadable or malformed one is logged and read the same way, and the next export overwrites it (story 2.1). UI preferences (theme, catalog view, sort) live in browser `localStorage`, per browser, wrapped in try/catch with defaults.
+- **Rule:** The last-export timestamp is stored in `local-state.json` in the data folder, as `{"lastExportAt": "<ISO-8601 with offset>"}`. It's outside the export, and restore never touches it (an archive entry with that name is `restore_unsafe`). It is written like a commit (temp `local-state.json.tmp*`, fsync, rename, folder fsync) but outside the AD-4 lock (AD-4); a write failure is only logged, because the download already succeeded. Its readers are `views/backup` and `views/shelf` (home, story 3.1). A missing file reads as no export yet; an unreadable or malformed one is logged and read the same way, and the next export overwrites it (story 2.1). UI preferences (theme, catalog view, sort) live in browser `localStorage`, per browser, wrapped in try/catch with defaults.
 
 ### AD-16: Stable loopback address, local trust
 
@@ -223,13 +226,14 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
 
 ### AD-19: Reading identity and status
 
-- **Binds:** FR-5 to FR-11, FR-14, FR-15, FR-24
+- **Binds:** FR-1 (edit-mode Finished on), FR-5 to FR-11, FR-14, FR-15, FR-24
 - **Prevents:** a resumed Reading still counting as paused; two unfinished Readings on a re-read; the page update and the Finish dialog both finishing a Reading.
 - **Rule:**
-  - **Fields:** a Reading stores `id`, `startDate|null`, `currentPage`, `purpose|null`, `lastProgressUpdate` (timestamp; set by `update-page` and by `start-reading`), `pausedAt|null` (a local date, overwritten on every pause and never cleared, not by resume nor by finish), `finishDate|null`, `finishedPages|null`, `purposeFulfilled|null` and `rating|null`.
+  - **Fields:** a Reading stores `id`, `startDate|null`, `currentPage`, `purpose|null`, `lastProgressUpdate|null` (timestamp; set by `update-page` and by `start-reading`; null on a back-filled Reading, and the re-entry line then omits "Last updated"), `pausedAt|null` (a local date, overwritten on every pause and never cleared, not by resume nor by finish), `finishDate|null`, `finishedPages|null`, `purposeFulfilled|null` and `rating|null`.
   - **Current Reading:** a Book's current Reading is its single unfinished Reading.
   - **Status:** `domain.reading_status()` is the only status function. A Reading is *finished* if it has a `finishDate`, *active* if its Book is `mainBookId`, and *paused* otherwise. `pausedAt` is ignored while the Reading is active.
-  - **Starting:** one `start-reading` intent resumes the current Reading, or creates a new one when the Book has none.
+  - **Starting:** one `start-reading` intent resumes the current Reading, or creates a new one when the Book has none. Starting while another Book is Main pauses that Book's Reading (`pausedAt` = today) in the same commit (story 3.2). The Purpose is stored trimmed, null when empty (`domain/purpose`).
+  - **Back-filled finishes in edit:** edit-book's Finished on adds or moves a *past* finish only. With an active or paused Reading that has a start date, a new or changed date after that start is refused ("Finished on can't be after *date*, when the current reading started."); the start day itself is allowed (retro item 21). Known gap: moving the latest finish before another finished Reading's dates is not yet refused (open in `deferred-work.md`).
   - **Finishing:** only `finish-reading` sets `finishDate`. `update-page`, or `start-reading` with a Side read's starting page, at the last page saves the page and returns `reachedLastPage: true`. The client then opens the Finish dialog.
   - **Targeting:** intents address `bookId` (and `readingId` where a finished Reading is edited) and apply to the server's current state. A2 last-write-wins applies to confirmation dialogs too. [ADOPTED]
 
@@ -237,14 +241,14 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
 
 - **Binds:** domain, FR-10, FR-11, FR-14, FR-16, AD-19
 - **Prevents:** tests and code disagreeing on "today"; finish dates shifting by timezone.
-- **Rule:** `domain/` never calls the system clock directly. It receives a `Clock` (now, plus today as a local date in the machine timezone) that tests replace. Local dates are `YYYY-MM-DD`; timestamps are ISO 8601 with offset. Measured pace counts days inclusively (finishDate − startDate + 1), excludes back-filled Readings, and lives only in `domain/`. The browser computes its own "today" for presentation (AD-6), so in e2e tests the Playwright fixture sets the browser clock (`page.clock`) to the same date it passes as `--fake-today`, and the browser `timezoneId` to the server's pinned `TZ`. The pinned zone is `Europe/Madrid`: `check:py` and `check:e2e` run with `TZ=Europe/Madrid`, and Playwright sets `timezoneId: 'Europe/Madrid'`. DST boundary tests use the last Sundays of March and October. Views don't carry the server's date.
+- **Rule:** `domain/` never calls the system clock directly. It receives a `Clock` (now, plus today as a local date in the machine timezone) that tests replace. Local dates are `YYYY-MM-DD`; timestamps are ISO 8601 with offset. Measured pace (`domain/pace`) is Σ `finishedPages` ÷ Σ (finishDate − startDate + 1) over every finished Reading with a start date, re-reads included. It excludes back-filled Readings and any Reading finished before it started, counts a missing `finishedPages` as 0, and lives only in `domain/` (story 3.4). The browser computes its own "today" for presentation (AD-6), so in e2e tests the Playwright fixture sets the browser clock (`page.clock`) to the same date it passes as `--fake-today`, and the browser `timezoneId` to the server's pinned `TZ`. The pinned zone is `Europe/Madrid`: `check:py` and `check:e2e` run with `TZ=Europe/Madrid`, and Playwright sets `timezoneId: 'Europe/Madrid'`. DST boundary tests use the last Sundays of March and October. Views don't carry the server's date.
 
 ## Consistency Conventions
 
 | Concern | Convention |
 | --- | --- |
 | Naming | Domain terms exactly as PRD §3 (Book, Reading, Main book, Up next, Waiting for you, Side read, Card note). Python `snake_case`; JSON fields and TS `camelCase` (Pydantic alias generator). Intent paths are kebab-case verbs under `/api/intents/<verb>`; views are nouns under `GET /api/views/<name>`. |
-| IDs | Server-generated UUID v4 strings, returned in the success `ids`. The client never mints IDs. |
+| IDs | Server-generated UUID v4 strings. The client never mints IDs. An id the client needs next comes back in the success `ids` (`add-book`'s `bookId`); one no client uses is not returned (`start-reading`'s new Reading id, story 3.2). |
 | Dates | AD-20. Server and browser share the machine timezone. |
 | Title ordering (server) | One key for every server-side title ordering: NFKD, strip combining marks, casefold; ties by Book id. The client's catalog sort uses `Intl.Collator` (AD-6). |
 | Errors | AD-9. User-facing copy follows PRD §5 Tone (no exclamation marks, no praise, no red failure states). |
@@ -331,9 +335,9 @@ bookvie/
       cli.py                # flags, start server, open browser, signals
       instance.py           # bookvie.lock, loopback socket, health probe (AD-5)
       http/                 # FastAPI app, routes, Host/Origin guard, error handler, static/
-      intents/              # one module per intent (add_book, edit_book, delete_book, set_spine_color, restore), export; shared: book_form, intent_model, commit, cover (decode, downscale), contract (error enum)
+      intents/              # one module per intent (add_book, edit_book, delete_book, set_spine_color, start_reading, edit_purpose, update_page, finish_reading, restore), export; shared: book_form, intent_model, commit, cover (decode, downscale), contract (error enum)
       views/                # read models: shelf (home, catalog, book detail), backup; models (view shapes)
-      domain/               # model (entities), invariants (check_invariants), book_fields, duplicates (ISBN), cover_color, clock; reading_status and pace planned
+      domain/               # model (entities), invariants (check_invariants), book_fields, duplicates (ISBN), cover_color, clock, progress (percent, current_reading, reading_status), pace (Measured pace, days left), purpose, ordering (title key)
       store/                # store.py (serialize, load/commit, covers, AD-4 lock, staging); fs.py (filesystem seam); restore.py (unpack); local_state.py; migrations/
     tests/
   frontend/
@@ -341,13 +345,14 @@ bookvie/
       api/generated/        # openapi-typescript output, never edited (AD-8)
       api/                  # fetch wrapper, AD-9 envelope, query keys, invalidate-all
       styles/tokens.css     # DESIGN.md custom properties; components use CSS Modules
+      lib/                  # client rules and presentation: pageField (+ .cases.json, AD-3), gauge, slice (AD-6)
       pages/  components/
     e2e/                    # Playwright, label-contract driven
 ```
 
 ## Capability → Architecture Map
 
-Rows for features not built yet name their planned modules (for example `intents/update_page`, `views/stats`).
+Rows for features not built yet name their planned modules (for example `intents/pause`, `views/stats`).
 
 | Capability / Area | Lives in | Governed by |
 | --- | --- | --- |
@@ -355,13 +360,13 @@ Rows for features not built yet name their planned modules (for example `intents
 | FR-2 Agent-friendly form | `frontend` New book panel | AD-9, AD-16, AD-17 |
 | FR-4, FR-20, FR-24 Catalog, filter/sort, bookcase | `views/shelf`, `views/models`; client presentation | AD-6, AD-11 |
 | FR-5 to FR-9 Main book, pause, Up next, Side reads, Purpose | `intents/start_reading`, `pause`, `set_up_next`, `mark_side_read`, `edit_purpose` | AD-3, AD-4, AD-18, AD-19 |
-| FR-10, FR-11 Page update, re-entry | `intents/update_page`; `views/shelf` (home) | AD-6, AD-7, AD-19, AD-20 |
+| FR-10, FR-11 Page update, re-entry | `intents/update_page`; `views/shelf` (home); `domain/pace`, `domain/progress` | AD-6, AD-7, AD-19, AD-20 |
 | FR-14 Finish | `intents/finish_reading` | AD-7, AD-11, AD-19, AD-20 |
 | FR-15 Quick pace calculator | `views/` (pages left, Measured pace); client arithmetic | AD-6, AD-20 |
 | FR-16 Stats | `views/stats` | AD-6, AD-11, AD-20 |
 | FR-17 to FR-19 Card notes | `intents/*_card_note`; `views/card_notes` | AD-3, AD-6, AD-18 |
 | FR-21 Cover | `intents/cover` (decode, downscale); `store/store.py` (write, sweep); `intents/edit_book` (Remove cover); `/media/covers` | AD-11, AD-12 |
-| FR-22, FR-23 Export / restore | `GET /api/export` (`intents/export`), `POST /api/intents/restore` (`intents/restore`); `store/restore` (unpack), `store/store.py` (`replace_all`), `store/local_state`; `views/backup` | AD-4, AD-13, AD-14, AD-15 |
+| FR-22, FR-23 Export / restore | `GET /api/export` (`intents/export`), `POST /api/intents/restore` (`intents/restore`); `store/restore` (unpack), `store/store.py` (`replace_all`), `store/local_state`; `views/backup`, `views/shelf` (home's "Last export") | AD-4, AD-13, AD-14, AD-15 |
 | A1 shared storage | `store/`, `cli.py`, `instance.py` | AD-1, AD-5, AD-16 |
 
 ## Deferred

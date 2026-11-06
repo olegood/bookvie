@@ -234,12 +234,15 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-1-see-my-main-book-on-home.md`
   summary: Add `domain/progress` (percent, current_reading) to the architecture spine's Structural Seed `domain/` listing.
   evidence: Story 3.1 added `backend/bookvie/domain/progress.py`; the seed still lists "model, invariants, book_fields, duplicates, cover_color, clock; reading_status and pace planned" (spine check SC2).
+  resolved: `spec-reconcile-architecture-spine-with-epic-3.md` (Epic 3 retro item 23, 2026-11-06); the Structural Seed's `domain/` line lists `progress`.
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-1-see-my-main-book-on-home.md`
   summary: Name gauge tick placement (0 · Math.round(pages/2) · total, half dropped under 4 pages) in AD-6's list of client presentation arithmetic.
   evidence: `frontend/src/lib/gauge.ts` gaugeTicks computes it on the client as the 3.1 I/O matrix specifies; AD-6's list does not mention it (spine check SC3).
+  resolved: `spec-reconcile-architecture-spine-with-epic-3.md` (Epic 3 retro item 23, 2026-11-06); AD-6 lists the gauge ticks as client presentation.
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-1-see-my-main-book-on-home.md`
   summary: Record in AD-4/AD-15 and the FR-22 map row that the home view also reads `local-state.json` ("Last export") from disk.
   evidence: `views.home_for` calls `read_last_export(store.data_dir)` (story 3.1); the spine names only `views/backup` (spine check SC4).
+  resolved: `spec-reconcile-architecture-spine-with-epic-3.md` (Epic 3 retro item 23, 2026-11-06); AD-4, AD-15 and the FR-22 map row name the home view as a `local-state.json` reader.
 
 ## Deferred from: code review of spec-3-1-see-my-main-book-on-home (2026-11-05)
 
@@ -253,6 +256,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-2-start-reading-a-book.md`
   summary: ARCHITECTURE-SPINE.md drift from story 3.2: the Structural Seed's `intents/` and `domain/` lines miss `start_reading`, `edit_purpose` and `domain/purpose`; the IDs convention says server-minted UUIDs come back in success `ids`, but `start-reading` mints a Reading id and returns `{ok: true}`.
   evidence: Spine Check pass 1 (SC2, SC3). No consumer needs a Reading id; reconcile the spine wording at the next spine reconciliation.
+  resolved: `spec-reconcile-architecture-spine-with-epic-3.md` (Epic 3 retro item 23, 2026-11-06); the seed lists `start_reading`, `edit_purpose` and `domain/purpose`; the IDs convention returns only ids a client needs.
 
 ## Deferred from: code review of spec-3-2-start-reading-a-book (2026-11-05)
 
@@ -262,18 +266,22 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-3-catch-up-with-one-page-update.md`
   summary: ARCHITECTURE-SPINE.md AD-3/AD-9 say domain rules and refusal copy live only on the server, but story 3.3's page field pre-validates the page range and holds its own "Page must be between 0 and N." copy (`frontend/src/lib/pageField.ts`), as the story requires.
   evidence: Spine Check pass 1 (SC1, SC2); the frozen intent mandates the client pre-check, so either the spine gains an exception for client pre-checks that mirror a server refusal or the client sends and renders the 422.
+  resolved: `spec-reconcile-architecture-spine-with-epic-3.md` (Epic 3 retro item 23, 2026-11-06); AD-3 allows a client pre-check that mirrors a server refusal with the same copy.
 
 ## Deferred from: code review of spec-3-3-catch-up-with-one-page-update (2026-11-05)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-3-catch-up-with-one-page-update.md`
   summary: Pass 2 (spine-check, acceptance-auditor) re-raised the AD-3/AD-9 spine drift for the client page pre-check and its copy; it stays as recorded above (SC1/SC2). No new deferrals.
+  resolved: `spec-reconcile-architecture-spine-with-epic-3.md` (Epic 3 retro item 23, 2026-11-06); see the AD-3 entry above.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-4-see-where-i-left-off-and-how-long-is-left.md`
   summary: Reconcile ARCHITECTURE-SPINE with Story 3.4 — Structural Seed should list `domain/pace.py` (and `progress`), AD-20 should state that pace skips a Reading finished before it started and counts a missing `finishedPages` as 0, and AD-6 should state when the server's days left is null (no pace, pace 0, no pages left).
   evidence: Spine-check review of 3.4 (SC1–SC3); the code defines these rules but the spine doesn't, so a later Quick pace calculator could diverge from the server's days left.
+  resolved: `spec-reconcile-architecture-spine-with-epic-3.md` (Epic 3 retro item 23, 2026-11-06); the seed lists `pace` and `progress`; AD-20 states the pace edge rules; AD-6 states when days left is null.
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-4-see-where-i-left-off-and-how-long-is-left.md`
   summary: AD-19 lists `lastProgressUpdate` as a plain timestamp, but the stored model and (since 3.4) the home view allow `null`, and the re-entry line omits "Last updated" for it.
   evidence: Spine-check review of 3.4 (SC4); `domain/model.py:40` is `AwareDatetime | None`, which predates this story.
+  resolved: `spec-reconcile-architecture-spine-with-epic-3.md` (Epic 3 retro item 23, 2026-11-06); AD-19 lists `lastProgressUpdate|null`.
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-4-see-where-i-left-off-and-how-long-is-left.md`
   summary: README status line still says "19 of 41 stories done" though stories 3.1–3.3 are done (20).
   evidence: Blind-hunter review of 3.4 (BH2); epics 1 and 2 have 14 + 3 stories and sprint-status shows 3.1–3.3 done; the count wasn't changed when 3.3 was marked done.
@@ -282,12 +290,14 @@
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-4-see-where-i-left-off-and-how-long-is-left.md`
   summary: Spine-check re-raised the Structural Seed / AD-20 / AD-6 / AD-19 drift for pace, `daysLeft` and nullable `lastProgressUpdate`; it stays as recorded above (SC1–SC4). Blind-hunter re-raised the stale "19 of 41 stories done" count; it stays as recorded above.
+  resolved: spine part only, by `spec-reconcile-architecture-spine-with-epic-3.md` (Epic 3 retro item 23, 2026-11-06). The README story count stays open (Epic 3 retro action 6).
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-4-see-where-i-left-off-and-how-long-is-left.md`
   summary: README's "Test automation summary (currently story 3.2)" pointer (README.md:182) is stale; `automation-summary.md` is at story 3.3. Pre-existing.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-5-see-my-reading-on-home-s-shelf.md`
   summary: ARCHITECTURE-SPINE AD-6 says the server picks "which Books form the Home bookcase slice and in what row priority"; Story 3.5 sends a Book-id `slicePriority` and the client chooses, fills and orders rows.
   evidence: Spine-check finding SC1 in Story 3.5's review; the spine is reconciled per epic.
+  resolved: `spec-reconcile-architecture-spine-with-epic-3.md` (Epic 3 retro item 23, 2026-11-06); AD-6 says the server sends a Book-id `slicePriority` and the client chooses, fills and orders the rows.
 
 ## Deferred from: code review of spec-3-5-see-my-reading-on-home-s-shelf (2026-11-05)
 
@@ -295,6 +305,7 @@
   summary: No test pins the negative refocus case on Home's slice: focus a spine, drop focus to `body` (blank click), resize so the rows repack, and assert no slice spine takes focus. The `onBlur` `isConnected` branch in `Bookcase.tsx` is unguarded by tests.
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-5-see-my-reading-on-home-s-shelf.md`
   summary: Spine-check re-raised the AD-6 wording drift (client chooses slice rows from an id priority); it stays as recorded above.
+  resolved: `spec-reconcile-architecture-spine-with-epic-3.md` (Epic 3 retro item 23, 2026-11-06); see the AD-6 entry above.
 - source_spec: `_bmad-output/implementation-artifacts/spec-gh-run-42099788891-pin-e2e-server-tz.md`
   summary: Fix the `.github/workflows/test.yml:58` comment that calls the e2e job "check:e2e" though it runs `npm --prefix frontend run e2e` directly.
   evidence: That mismatch is why CI skipped the root script's TZ prefix (run 42099788891); the spec was told not to edit test.yml.
@@ -302,6 +313,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-7-see-the-finish-on-the-shelf.md`
   summary: Update AD-7 in the architecture spine so the finish moment covers the scroll into view, the ring-only re-read and the instant reduced-motion variant, not only "a single ~600ms spine fill".
   evidence: Story 3.7 implements UX-DR42 and the epic ACs (re-read ring only, reduced motion instant, scroll first); the spine check found AD-7's parenthetical out of date.
+  resolved: `spec-reconcile-architecture-spine-with-epic-3.md` (Epic 3 retro item 23, 2026-11-06); AD-7 describes the full finish moment.
 
 ## Deferred from: code review of spec-3-7-see-the-finish-on-the-shelf (2026-11-06)
 
@@ -317,9 +329,16 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-epic-3-retro-item-21-bound-edit-finished-on.md`
   summary: Add the "not after the current Reading's start" Finished on rule to story 1.11's ACs in `epics.md` during the Epic 3 spine reconciliation (retro action 4).
   evidence: EXPERIENCE.md now carries the rule and its copy, and `epics.md` 1.11 still lists only the "can't be removed" and "before start" rules.
+  resolved: `spec-reconcile-architecture-spine-with-epic-3.md` (Epic 3 retro item 23, 2026-11-06); story 1.11's ACs in `epics.md` now include the Finished on bound.
 
 ## Deferred from: review of spec-epic-3-retro-item-22-stale-client-hand-offs (2026-11-06)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-epic-3-retro-item-22-stale-client-hand-offs.md`
   summary: The Start dialog's "This pauses *Y* at p.N (P%)." line reads `useHomeView()`, which can be a stale cached copy when the dialog opens from Book detail or Catalog after another tab changed the Main book. It should wait for a home view fetched after it opens, as it now does for the `book` view.
   evidence: `StartDialog.tsx` passes `home.data.mainBook` straight through. Only active views refetch after an intent (`api/intents.ts:53`), and the home view is inactive away from Home.
+
+## Deferred from: review of spec-reconcile-architecture-spine-with-epic-3 (2026-11-06)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-reconcile-architecture-spine-with-epic-3.md`
+  summary: Align `OkResponse.ids`'s docstring ("The ids the intent minted") in `backend/bookvie/intents/contract.py`, and the OpenAPI description generated from it, with the spine's IDs convention: only ids a client needs are returned.
+  evidence: The spine's IDs convention now says `start-reading` does not return its new Reading id. The docstring still says every minted id comes back, and this spec makes no code changes.
