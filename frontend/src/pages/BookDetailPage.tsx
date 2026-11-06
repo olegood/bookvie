@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState, type RefObject } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { useBookView, useCatalogView, useDeleteBook, type BookDetailView } from '../api/index.ts'
 import Button from '../components/Button.tsx'
@@ -78,7 +78,15 @@ function Stars({ rating }: { rating: number }) {
   )
 }
 
-function BookDetail({ book, onDelete }: { book: BookDetailView; onDelete: DeleteBook }) {
+type BookDetailProps = {
+  book: BookDetailView
+  onDelete: DeleteBook
+  /** Opens the Finish dialog, which the page hosts so a refetch to not-found keeps it. */
+  onFinish: () => void
+  finishButton: RefObject<HTMLButtonElement | null>
+}
+
+function BookDetail({ book, onDelete, onFinish, finishButton }: BookDetailProps) {
   usePageTitle(book.title)
   const catalog = useCatalogView()
   const tags = catalog.status === 'ready' ? catalog.data.tags : NO_TAGS
@@ -121,22 +129,6 @@ function BookDetail({ book, onDelete }: { book: BookDetailView; onDelete: Delete
 
   // Mark finished: the Main book only (a non-Main finish is Story 4.5's).
   const canFinish = book.role === 'main'
-  const [finishing, setFinishing] = useState(false)
-  const finishButton = useRef<HTMLButtonElement>(null)
-  // Set when the Finish dialog is cancelled, so focus returns to Mark finished once it has unmounted.
-  const [finishRefocus, setFinishRefocus] = useState(0)
-
-  useEffect(() => {
-    if (finishRefocus === 0) return
-    // The opener is gone when a refetch says the Book isn't Main any more: park focus on `main`.
-    const target = finishButton.current ?? document.getElementById('main')
-    target?.focus()
-  }, [finishRefocus])
-
-  const cancelFinish = useCallback(() => {
-    setFinishing(false)
-    setFinishRefocus((count) => count + 1)
-  }, [])
 
   const openConfirm = () => {
     setShowAlert(false)
@@ -184,7 +176,7 @@ function BookDetail({ book, onDelete }: { book: BookDetailView; onDelete: Delete
               </Button>
             )}
             {canFinish && (
-              <Button ref={finishButton} onClick={() => setFinishing(true)}>
+              <Button ref={finishButton} onClick={onFinish}>
                 Mark finished
               </Button>
             )}
@@ -257,7 +249,6 @@ function BookDetail({ book, onDelete }: { book: BookDetailView; onDelete: Delete
         />
       )}
       {starting && <StartDialog bookId={book.id} onCancel={cancelStart} />}
-      {finishing && <FinishDialog bookId={book.id} onCancel={cancelFinish} />}
       {confirming && (
         <ConfirmDialog
           heading={`Delete ${book.title}?`}
@@ -304,6 +295,25 @@ export default function BookDetailPage() {
   const sendDelete = useDeleteBook()
   const navigate = useNavigate()
   const [deleting, setDeleting] = useState(false)
+  // The Book the Finish dialog is open for. Hosted here, not in BookDetail:
+  // a 409 `book_not_found` refetches the view to `missing`, and the dialog
+  // must keep its alert line and answers over the not-found page.
+  const [finishingId, setFinishingId] = useState<string | null>(null)
+  const finishButton = useRef<HTMLButtonElement>(null)
+  // Set when the Finish dialog is cancelled, so focus returns to Mark finished once it has unmounted.
+  const [finishRefocus, setFinishRefocus] = useState(0)
+
+  useEffect(() => {
+    if (finishRefocus === 0) return
+    // The opener is gone when a refetch says the Book isn't Main any more (or is gone): park focus on `main`.
+    const target = finishButton.current ?? document.getElementById('main')
+    target?.focus()
+  }, [finishRefocus])
+
+  const cancelFinish = useCallback(() => {
+    setFinishingId(null)
+    setFinishRefocus((count) => count + 1)
+  }, [])
 
   const onDelete: DeleteBook = async (id, title) => {
     setDeleting(true)
@@ -317,9 +327,26 @@ export default function BookDetailPage() {
     return { ok: false, message: result.message }
   }
 
+  const finishDialog = finishingId === bookId && <FinishDialog bookId={bookId} onCancel={cancelFinish} />
+  let content
   // While the delete is out, any non-ready view (missing, or a failed refetch) renders nothing.
-  if (view.status === 'loading' || (deleting && view.status !== 'ready')) return null
-  if (view.status === 'missing') return <NotFoundPage />
-  if (view.status === 'failed') return <FailedBook retry={view.retry} />
-  return <BookDetail key={view.data.id} book={view.data} onDelete={onDelete} />
+  if (view.status === 'loading' || (deleting && view.status !== 'ready')) content = null
+  else if (view.status === 'missing') content = <NotFoundPage />
+  else if (view.status === 'failed') content = <FailedBook retry={view.retry} />
+  else
+    content = (
+      <BookDetail
+        key={view.data.id}
+        book={view.data}
+        onDelete={onDelete}
+        onFinish={() => setFinishingId(bookId)}
+        finishButton={finishButton}
+      />
+    )
+  return (
+    <>
+      {content}
+      {finishDialog}
+    </>
+  )
 }

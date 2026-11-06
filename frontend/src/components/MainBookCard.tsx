@@ -39,7 +39,7 @@ export default function MainBookCard({
   now: Date
   titleRef?: Ref<HTMLAnchorElement>
   emptyHeadingRef?: Ref<HTMLHeadingElement>
-  onReachedLastPage?: () => void
+  onReachedLastPage?: (savedLine: string) => void
   pageFieldRef?: Ref<HTMLInputElement>
 }) {
   const eyebrowId = useId()

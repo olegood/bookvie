@@ -35,7 +35,7 @@ import {
   storedBook,
   storedLibrary,
 } from './home.ts'
-import { FINISH_READING, intentOf, requestsTo } from './intents.ts'
+import { DELETE_BOOK, FINISH_READING, intentOf, requestsTo } from './intents.ts'
 
 const PURPOSE = 'To see how Le Guin builds a world'
 const EARLIER = '2026-10-25T21:00:00+01:00'
@@ -44,6 +44,7 @@ const RATINGS = ['No rating', '1 star', '2 stars', '3 stars', '4 stars', '5 star
 const COULDNT_SAVE = "Couldn't save. Your data wasn't changed."
 const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']
 const ALREADY_FINISHED = 'This reading is already finished.'
+const BOOK_GONE = "This book isn't in your catalog anymore."
 
 /** The Main book at p.300 of 330 with a Purpose, last updated three days before the fake today. */
 const MAIN_AT_300 = mainAt(300, {
@@ -272,7 +273,11 @@ test.describe('Story 3.6 Finish my Main book (ATDD)', () => {
       const row = readings.getByRole('listitem')
       await expect(row).toHaveCount(1)
       await expect(row).toContainText('Started 1 Oct 2026 · Finished 28 Oct 2026')
-      await expect(row.getByRole('img', { name: '4 stars', exact: true })).toBeVisible()
+      const stars = row.getByRole('img', { name: '4 stars', exact: true })
+      await expect(stars).toBeVisible()
+      // Filled up to the rating, outlines after: the shape changes, not only the color.
+      const fills = await stars.locator('svg path').evaluateAll((paths) => paths.map((path) => path.getAttribute('fill')))
+      expect(fills).toEqual(['currentColor', 'currentColor', 'currentColor', 'currentColor', 'none'])
       await expect(row).toContainText('Purpose fulfilled: partly')
     } finally {
       await stopAndRemove(server)
@@ -508,6 +513,38 @@ test.describe('Story 3.6 Finish my Main book (review follow-ups)', () => {
       await dialogButton(dialog, 'Cancel').click()
       await expect(dialog).toBeHidden()
       await expect(empty).toBeFocused()
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+
+  test('[P1] AC-8 a Book deleted in another tab: Done from Book detail shows "This book isn\'t in your catalog anymore." in the dialog with the answers kept', async ({
+    page,
+  }) => {
+    const server = await serverAtFakeToday(page, 'finish-gone-detail', MAIN_AT_300)
+    try {
+      await page.goto(`${server.url}/book/${LEFT_HAND_ID}`)
+      await markFinished(page).click()
+      const dialog = finishDialog(page)
+      await fulfilledGroup(dialog).getByRole('radio', { name: /^partly$/i }).check()
+      await ratingGroup(dialog).getByRole('radio', { name: '2 stars', exact: true }).check()
+      const deleted = await page.request.post(`${server.url}${DELETE_BOOK}`, {
+        multipart: { intent: JSON.stringify({ bookId: LEFT_HAND_ID }) },
+      })
+      expect(deleted.status()).toBe(200)
+
+      await dialogButton(dialog, 'Done').click()
+
+      // The refetched view says not found behind the dialog; the dialog keeps its line and answers.
+      await expect(dialog.getByText(BOOK_GONE, { exact: true })).toBeVisible()
+      await expect(dialog).toBeVisible()
+      await expect(fulfilledGroup(dialog).getByRole('radio', { name: /^partly$/i })).toBeChecked()
+      await expect(ratingGroup(dialog).getByRole('radio', { name: '2 stars', exact: true })).toBeChecked()
+      await expect(finishedOn(dialog)).toHaveValue(FAKE_TODAY)
+      await expect(page.getByRole('heading', { level: 1, name: 'Page not found', exact: true })).toBeAttached()
+      await dialogButton(dialog, 'Cancel').click()
+      await expect(dialog).toBeHidden()
+      await expect(page.locator('#main')).toBeFocused()
     } finally {
       await stopAndRemove(server)
     }

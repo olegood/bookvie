@@ -263,7 +263,10 @@ test.describe('Story 3.3 Catch up with one page update (automate)', () => {
 
     await expect(gauge(page)).toHaveAttribute('aria-valuetext', '100%, page 330 of 330')
     // reachedLastPage opens the Finish dialog (Story 3.6); the save alone finishes nothing.
-    await expect(page.getByRole('dialog', { name: 'Finished The Left Hand of Darkness', exact: true })).toBeVisible()
+    // Opening it empties the live regions, so the dialog's description carries the saved page.
+    const dialog = page.getByRole('dialog', { name: 'Finished The Left Hand of Darkness', exact: true })
+    await expect(dialog).toBeVisible()
+    await expect(dialog).toHaveAccessibleDescription('Page 330 of 330, 100%.')
     await expect(pageField(page)).toHaveValue('330')
     const [reading] = storedBook(server, LEFT_HAND_ID).readings
     expect(reading.currentPage).toBe(330)

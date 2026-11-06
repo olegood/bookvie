@@ -122,7 +122,8 @@ export function starsLabel(rating: number): string {
   return rating === 1 ? '1 star' : `${rating} stars`
 }
 
-const ANSWERS: Record<NonNullable<ListedReading['purposeFulfilled']>, string> = {
+/** "Purpose fulfilled?" answers as shown, in the dialog and in the Readings rows. */
+export const PURPOSE_FULFILLED_LABELS: Record<NonNullable<ListedReading['purposeFulfilled']>, string> = {
   yes: 'yes',
   partly: 'partly',
   notYet: 'not yet',
@@ -130,7 +131,7 @@ const ANSWERS: Record<NonNullable<ListedReading['purposeFulfilled']>, string> = 
 
 /** "Purpose fulfilled: partly"; `null` when the question was skipped (or never asked). */
 export function purposeFulfilledLine(answer: ListedReading['purposeFulfilled']): string | null {
-  return answer === null ? null : `Purpose fulfilled: ${ANSWERS[answer]}`
+  return answer === null ? null : `Purpose fulfilled: ${PURPOSE_FULFILLED_LABELS[answer]}`
 }
 
 /** A Readings row: its start/finish text, its rating (1–5, or `null`) and its answer line. */

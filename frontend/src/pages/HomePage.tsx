@@ -88,15 +88,18 @@ export default function HomePage() {
   const pageField = useRef<HTMLInputElement>(null)
   // The Book whose Finish dialog is open, and the history entry it opened on:
   // Done navigates to `/` again, a new entry, which closes it.
-  const [finishing, setFinishing] = useState<{ bookId: string; key: string } | null>(null)
+  const [finishing, setFinishing] = useState<{ bookId: string; key: string; savedLine: string } | null>(null)
   // Leaving that entry drops it for good, so Back to it never reopens a finished Book's dialog.
   if (finishing !== null && finishing.key !== location.key) setFinishing(null)
   // Set when the Finish dialog is cancelled, so focus moves once it has unmounted.
   const [finishRefocus, setFinishRefocus] = useState(0)
   const mainId = view.status === 'ready' ? (view.data.mainBook?.id ?? null) : null
-  const openFinish = useCallback(() => {
-    if (mainId !== null) setFinishing({ bookId: mainId, key: location.key })
-  }, [mainId, location.key])
+  const openFinish = useCallback(
+    (savedLine: string) => {
+      if (mainId !== null) setFinishing({ bookId: mainId, key: location.key, savedLine })
+    },
+    [mainId, location.key],
+  )
   const cancelFinish = useCallback(() => {
     setFinishing(null)
     setFinishRefocus((count) => count + 1)
@@ -190,7 +193,7 @@ export default function HomePage() {
         </>
       )}
       {finishing !== null && finishing.key === location.key && (
-        <FinishDialog bookId={finishing.bookId} onCancel={cancelFinish} />
+        <FinishDialog bookId={finishing.bookId} savedLine={finishing.savedLine} onCancel={cancelFinish} />
       )}
     </div>
   )

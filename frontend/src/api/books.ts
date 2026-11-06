@@ -9,6 +9,7 @@
 
 import { useQueryClient, type QueryClient } from '@tanstack/react-query'
 import type { IntentResult } from './envelope.ts'
+import type { components } from './generated/schema.d.ts'
 import { sendIntent } from './intents.ts'
 
 /** The intent keys, in form order (backend `book_fields.LABELS`). */
@@ -183,8 +184,8 @@ export function useUpdatePage(): (bookId: string, page: number) => Promise<Inten
 // `finish-reading`'s intent part is `{ bookId, finishedOn, purposeFulfilled, rating }`:
 // every key sent, the two answers `null` when skipped.
 
-/** "Purpose fulfilled?" as sent: yes, partly or not yet. */
-export type PurposeFulfilled = 'yes' | 'partly' | 'notYet'
+/** "Purpose fulfilled?" as sent: yes, partly or not yet (the contract's `BookReading` values). */
+export type PurposeFulfilled = NonNullable<components['schemas']['BookReading']['purposeFulfilled']>
 
 /** The Finish dialog's answers. */
 export type FinishAnswers = {

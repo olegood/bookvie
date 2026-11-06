@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router'
 import { useBookView, useFinishReading, type BookDetailView, type PurposeFulfilled } from '../api/index.ts'
 import { announce, clearAnnouncements } from '../lib/announce.ts'
-import { starsLabel } from '../lib/bookDetail.ts'
+import { PURPOSE_FULFILLED_LABELS, starsLabel } from '../lib/bookDetail.ts'
 import { localIsoDate } from '../lib/today.ts'
 import { useAlertDialog } from '../lib/useAlertDialog.ts'
 import Button from './Button.tsx'
@@ -17,17 +17,15 @@ const FINISHED_ON = 'finishedOn'
 const PURPOSE_FULFILLED = 'purposeFulfilled'
 const RATING = 'rating'
 
-const ANSWERS: readonly { value: PurposeFulfilled; label: string }[] = [
-  { value: 'yes', label: 'yes' },
-  { value: 'partly', label: 'partly' },
-  { value: 'notYet', label: 'not yet' },
-]
+const ANSWERS: readonly PurposeFulfilled[] = ['yes', 'partly', 'notYet']
 const STARS = [1, 2, 3, 4, 5] as const
 
 type FieldMessages = Partial<Record<typeof FINISHED_ON | typeof PURPOSE_FULFILLED | typeof RATING, string>>
 
 type Props = {
   bookId: string
+  /** Opened by a last-page save: its "Page M of M, 100%." line, kept as the dialog's description. */
+  savedLine?: string
   /** Cancel, Esc, or the Book gone before it opened: the opener unmounts the dialog and takes focus back. */
   onCancel: () => void
 }
@@ -47,8 +45,9 @@ function Star({ filled }: { filled: boolean }) {
   )
 }
 
-function OpenFinishDialog({ book, onCancel }: { book: BookDetailView; onCancel: () => void }) {
+function OpenFinishDialog({ book, savedLine, onCancel }: { book: BookDetailView; savedLine?: string; onCancel: () => void }) {
   const headingId = useId()
+  const savedId = useId()
   const fulfilledLabelId = useId()
   const fulfilledMessageId = useId()
   const ratingLabelId = useId()
@@ -112,7 +111,10 @@ function OpenFinishDialog({ book, onCancel }: { book: BookDetailView; onCancel: 
     if (Object.keys(next).length > 0) {
       // A field refusal: the message sits under its field, which takes focus.
       if (next.finishedOn) field.current?.focus()
-      else if (next.purposeFulfilled) fulfilledGroup.current?.querySelector('input')?.focus()
+      else if (next.purposeFulfilled) {
+        const group = fulfilledGroup.current
+        ;(group?.querySelector<HTMLInputElement>('input:checked') ?? group?.querySelector('input'))?.focus()
+      }
       else ratingGroup.current?.querySelector<HTMLInputElement>('input:checked')?.focus()
       return
     }
@@ -131,11 +133,22 @@ function OpenFinishDialog({ book, onCancel }: { book: BookDetailView; onCancel: 
   const ratingMessage = messages.rating
 
   return (
-    <dialog ref={dialog} {...dialogProps} className={styles.dialog} aria-labelledby={headingId}>
+    <dialog
+      ref={dialog}
+      {...dialogProps}
+      className={styles.dialog}
+      aria-labelledby={headingId}
+      aria-describedby={savedLine ? savedId : undefined}
+    >
       <form onSubmit={submit} noValidate>
         <h2 id={headingId} className={styles.heading}>
           Finished <span className={styles.bookTitle}>{book.title}</span>
         </h2>
+        {savedLine && (
+          <p id={savedId} className="visuallyHidden">
+            {savedLine}
+          </p>
+        )}
         <TextField
           ref={field}
           className={styles.field}
@@ -160,16 +173,16 @@ function OpenFinishDialog({ book, onCancel }: { book: BookDetailView; onCancel: 
               className={styles.segmented}
             >
               {ANSWERS.map((answer) => (
-                <label key={answer.value} className={styles.segment}>
+                <label key={answer} className={styles.segment}>
                   <input
                     type="radio"
                     className={styles.radio}
                     name={`${radioName}-fulfilled`}
-                    value={answer.value}
-                    checked={fulfilled === answer.value}
-                    onChange={() => setFulfilled(answer.value)}
+                    value={answer}
+                    checked={fulfilled === answer}
+                    onChange={() => setFulfilled(answer)}
                   />
-                  {answer.label}
+                  {PURPOSE_FULFILLED_LABELS[answer]}
                 </label>
               ))}
             </div>
@@ -251,13 +264,15 @@ function OpenFinishDialog({ book, onCancel }: { book: BookDetailView; onCancel: 
  * ignored) and goes to Home, which focuses the "No Main book." heading. A
  * field refusal shows its message under the field; couldn't save or a 409
  * shows the `alert` line above the buttons, every answer kept. Cancel or Esc
- * sends nothing.
+ * sends nothing. Opened by a last-page save, its description is that save's
+ * "Page M of M, 100%." line: opening empties the live regions, so this is
+ * where a screen reader hears that the page itself was saved.
  *
  * It reads the `book` view itself, so an opener (the page field, Book detail)
  * passes only the Book's id; it shows once the view is in, and keeps the view
  * it opened with when a refetch says the Book is finished or gone.
  */
-export default function FinishDialog({ bookId, onCancel }: Props) {
+export default function FinishDialog({ bookId, savedLine, onCancel }: Props) {
   const book = useBookView(bookId)
   const [opened, setOpened] = useState<BookDetailView | null>(book.status === 'ready' ? book.data : null)
   if (opened === null && book.status === 'ready') setOpened(book.data)
@@ -268,5 +283,5 @@ export default function FinishDialog({ bookId, onCancel }: Props) {
   }, [gone, onCancel])
 
   if (opened === null) return null
-  return <OpenFinishDialog book={opened} onCancel={onCancel} />
+  return <OpenFinishDialog book={opened} savedLine={savedLine} onCancel={onCancel} />
 }

@@ -2,7 +2,7 @@
 title: 'Story 3.6: Finish my Main book'
 type: 'feature'
 created: '2026-11-06'
-status: 'in-review'
+status: 'done'
 route: 'dispatch'
 review_loop_iteration: 0
 baseline_commit: '0132f9610f623b273e69e4a87588e0486f53517a'
@@ -85,6 +85,32 @@ Frontend (`frontend/src`):
 **Acceptance Criteria:**
 - Given the ATDD leaves, when activated, then `pytest tests/test_finish_reading.py` and `e2e/finish-reading.spec.ts` pass.
 - Given the whole suite, when `npm run check` runs, then it passes, including coverage gates, `check:api` and axe.
+
+### Review Findings
+
+Code review 2026-11-06 (diff `0132f96..473a1fa`, `_bmad-output/` excluded). Layers: Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor, Spine Check (no AD conflicts).
+
+- [x] [Review][Patch] Last-page save no longer announces "Page 330 of 330, 100%." — opening the Finish dialog clears the live regions (`useAlertDialog`), so a screen-reader user never hears the page save landed. Resolved by Oleg: announce the saved page inside the dialog (as its description) and restore an assertion in `update-page.spec.ts`. [frontend/src/components/FinishDialog.tsx:134] (edge-case-hunter+blind-hunter+acceptance-auditor, low)
+- [x] [Review][Patch] Book detail: a 409 `book_not_found` unmounts the Finish dialog — the refetch turns the view `missing`, `BookDetailPage` returns `NotFoundPage`, and the dialog, its alert line and answers vanish; violates "409s → the alert line inside the dialog, every answer kept". Host the dialog above the `missing` branch (as Home does) and add the e2e leaf for a Book deleted in another tab while the dialog is open. [frontend/src/pages/BookDetailPage.tsx:260] (acceptance-auditor+blind-hunter, medium)
+- [x] [Review][Patch] A `purposeFulfilled` field refusal focuses "yes", not the checked answer — use `input:checked`, falling back to the first input, as the Rating branch does. [frontend/src/components/FinishDialog.tsx:115] (blind-hunter, low)
+- [x] [Review][Patch] Book detail's Readings stars: fills never asserted — AC-6 checks only the "4 stars" name; add the `svg path` fill assertion (`currentColor` ×4, `none`) used by the no-Purpose leaf. [frontend/e2e/finish-reading.spec.ts:275] (verification-gap, low)
+- [x] [Review][Patch] `PurposeFulfilled` is hand-written instead of derived from the generated schema, so `check:api` can't catch a backend enum change on the client. [frontend/src/api/books.ts:187] (blind-hunter, low)
+- [x] [Review][Patch] Answer labels defined twice (dialog `ANSWERS` and `lib/bookDetail.ts` `ANSWERS`), so the dialog and the Readings row can drift — export one map and reuse it. [frontend/src/components/FinishDialog.tsx:20] (blind-hunter, low)
+
+**Rejected:**
+- Browser date ahead of the server Clock makes the prefill 422 (EC) — false: local-first, browser and server share the machine clock and TZ (as in pass 1, BH5).
+- Stale `{finished: true}` when another tab set a new Main (EC) — low: needs a start in another tab between Done and the refetch; already rejected in pass 1 (BH4+EC3).
+- Field errors stay while the user corrects the field (EC) — low: submit-time validation; fix adds `onChange` branches for a cosmetic lag.
+- No way back to "skipped" for Purpose fulfilled (BH) — low: the spec pins yes · partly · not yet, none checked; the fix adds UI beyond the spec.
+- Date field lacks `min`/`max` (BH) — low: the server refusal shows under the field; not a direct correction.
+- Book view `failed` before open cancels silently, untested (BH+EC+VG) — low: the local view fetch failing in that instant is rare; the fix adds an announce branch and route-timing test.
+- Finished Reading keeps `pausedAt` (BH) — false: the contract pins "every other field kept" and AD-19 keeps `pausedAt`.
+- Answers editable while the request is in flight (BH) — low: a local round trip lasts milliseconds; the fix adds disabled states.
+- Missing tests for `purposeFulfilled`/`rating` 422 in e2e, axe in the error state, `start_date is None` branch (BH) — low: those refusals are unreachable from the UI bar a stale Purpose; the `book_not_found` test is folded into the Book detail patch.
+- Star SVG and CSS duplicated (BH) — low: already rejected in pass 1 (BH6); extraction is more than a direct fix.
+- `useImperativeHandle` cast in `PageField` (BH) — low: the input is mounted for the component's lifetime; no named harm.
+- README "19 of 41 stories" stale (BH) — false: the sentence counts Epics 1 and 2's stories (14 + 5 = 19), which is correct.
+- Done stays active after a 409 (BH) — low: a repeat press repeats the same alert; Cancel is the way out.
 
 ## Implementation Notes
 

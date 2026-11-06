@@ -15,8 +15,11 @@ type Props = {
   pages: number
   /** The server's percentage for `currentPage` (AD-6). */
   percent: number
-  /** A save answered `reachedLastPage`: the owner (Home) opens the Finish dialog. */
-  onReachedLastPage?: () => void
+  /**
+   * A save answered `reachedLastPage`: the owner (Home) opens the Finish
+   * dialog, passing on the saved-page line the dialog's opening would silence.
+   */
+  onReachedLastPage?: (savedLine: string) => void
   /** The page input, which the owner focuses when the Finish dialog is cancelled. */
   fieldRef?: Ref<HTMLInputElement>
 }
@@ -41,7 +44,9 @@ type Props = {
  * When the view's Book or page changes (a save, a refetch after another tab
  * changed it), the field resets to the view's page.
  *
- * A save that answers `reachedLastPage` calls `onReachedLastPage`; Home
+ * A save that answers `reachedLastPage` calls `onReachedLastPage` with the
+ * "Page M of M, 100%." line, which the dialog keeps as its description (its
+ * opening empties the live regions, so `status` can't carry it); Home
  * hosts the Finish dialog, so it outlives this field when a refetch empties
  * the card. Each such save calls it again, so the same page reopens it.
  */
@@ -127,7 +132,9 @@ export default function PageField({ bookId, currentPage, pages, percent, onReach
       setInvalid(null)
       savedPage.current = page
       setSaves((count) => count + 1)
-      if (result.reachedLastPage) onReachedLastPage?.()
+      // The last page is 100% (AD-6: `percent` is 100 only at page = pages, and
+      // `reachedLastPage` is exactly that), so the line needs no refetched number.
+      if (result.reachedLastPage) onReachedLastPage?.(pageSavedCopy(page, pages, 100))
       return
     }
     const pageError = result.kind === 'refusal' ? result.fields.find((f) => f.field === PAGE_FIELD) : undefined
