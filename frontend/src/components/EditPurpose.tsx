@@ -90,7 +90,11 @@ export default function EditPurpose({ bookId, purpose }: Props) {
     // Sent as typed: the server trims it, and stores null when nothing is left.
     const result = await sendPurpose(bookId, value)
     inFlight.current = false
-    if (!mounted.current) return
+    if (!mounted.current) {
+      // The block went (the Reading was finished or the Book deleted elsewhere): say why in `alert`.
+      if (result.kind !== 'ok') announce('alert', result.message)
+      return
+    }
     setBusy(false)
     if (result.kind === 'ok') {
       close()

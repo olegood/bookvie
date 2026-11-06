@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router'
-import { useBookView, useFinishReading, type BookDetailView, type PurposeFulfilled } from '../api/index.ts'
+import { useFinishReading, useFreshBookView, type BookDetailView, type PurposeFulfilled } from '../api/index.ts'
 import { announce, clearAnnouncements } from '../lib/announce.ts'
 import { PURPOSE_FULFILLED_LABELS, starsLabel } from '../lib/bookDetail.ts'
 import { localIsoDate } from '../lib/today.ts'
@@ -298,12 +298,14 @@ function OpenFinishDialog({
  * where a screen reader hears that the page itself was saved.
  *
  * It reads the `book` view itself, so an opener (the page field, Book detail)
- * passes only the Book's id; it shows once the view is in, and keeps the view
- * it opened with when a refetch says the Book is finished or gone.
+ * passes only the Book's id; it shows once a view fetched after it opened is
+ * in, and keeps that view when a later refetch says the Book is finished or gone.
  */
 export default function FinishDialog({ bookId, savedLine, fromPercent, onCancel }: Props) {
-  const book = useBookView(bookId)
-  const [opened, setOpened] = useState<BookDetailView | null>(book.status === 'ready' ? book.data : null)
+  // Fetched after opening: a cached view of an earlier visit may predate a
+  // restore or another tab's edit (the Purpose question and the re-read copy).
+  const book = useFreshBookView(bookId)
+  const [opened, setOpened] = useState<BookDetailView | null>(null)
   if (opened === null && book.status === 'ready') setOpened(book.data)
   const gone = opened === null && (book.status === 'missing' || book.status === 'failed')
 

@@ -523,8 +523,10 @@ test.describe('Story 3.2 Start reading a book (automate)', () => {
     const before = libraryBytes(server)
 
     await opener.click()
-    const dialog = startDialog(page, 'Start Dune?')
-    await dialog.getByRole('button', { name: 'Start reading', exact: true }).click()
+    // The dialog reads a view fetched after it opened (Epic 3 retro F-R2), so it
+    // follows the server: Dune now has a current Reading, hence Resume.
+    const dialog = startDialog(page, 'Resume Dune?')
+    await dialog.getByRole('button', { name: 'Resume', exact: true }).click()
 
     await expect(page.getByRole('alert')).toHaveText(ALREADY_MAIN)
     await expect(dialog).toBeVisible()

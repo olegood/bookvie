@@ -48,6 +48,7 @@ export {
   useBackupView,
   useBookView,
   useCatalogView,
+  useFreshBookView,
   useHomeView,
   viewKey,
   type BackupView,

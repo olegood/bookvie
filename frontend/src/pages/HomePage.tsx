@@ -114,8 +114,25 @@ export default function HomePage() {
   // The fill as the card shows it, read by Done (the render it was pressed in):
   // the refetched home view, not a `book` view cached from an earlier visit.
   const mainPercent = view.status === 'ready' ? (view.data.mainBook?.percent ?? null) : null
+  // A finish that landed while another Book is Main (a stale Book detail, or
+  // another tab started one): nothing plays on this entry, and the hand-off is
+  // dropped so a later reload with no Main book can't replay it (AD-7). Only
+  // decided from a view where another Book is Main and the handed one is finished or gone.
+  const [dropped, setDropped] = useState<string | null>(null)
+  if (finished && dropped !== location.key && moment?.key !== location.key && view.status === 'ready') {
+    const handed = finishMoment(location.state)
+    const other = view.data.mainBook
+    const landedElsewhere =
+      handed !== null &&
+      other !== null &&
+      other.id !== handed.id &&
+      // Finished in this view, or deleted since: either way this view postdates the finish.
+      !view.data.books.some((book) => book.id === handed.id && !book.finished)
+    if (landedElsewhere) setDropped(location.key)
+  }
+  const keepsHandOff = finished && dropped !== location.key
   // Taken during render, so the slice's first render of the finished spine is the moment's.
-  const handOff = finished && noMain ? finishMoment(location.state) : null
+  const handOff = keepsHandOff && noMain ? finishMoment(location.state) : null
   const shownFinished =
     handOff !== null && view.status === 'ready' && view.data.books.some((book) => book.id === handOff.id && book.finished)
   if (handOff !== null && shownFinished && moment?.key !== location.key) setMoment({ key: location.key, finishing: handOff })
@@ -147,9 +164,13 @@ export default function HomePage() {
     clearHandOffState()
   }, [started, hasMain, location.key])
 
+  useEffect(() => {
+    if (dropped === location.key) clearHandOffState()
+  }, [dropped, location.key])
+
   // After a finish: the empty card's heading, as after a start the title link.
   useEffect(() => {
-    if (!finished || !noMain || handledFinish.current === location.key) return
+    if (!keepsHandOff || !noMain || handledFinish.current === location.key) return
     handledFinish.current = location.key
     emptyHeading.current?.focus()
     clearHandOffState()
@@ -158,7 +179,7 @@ export default function HomePage() {
       const { title, reread } = moment.finishing
       announce('status', finishStatus(title, reread, homeMeter))
     }
-  }, [finished, noMain, location.key, moment, homeMeter])
+  }, [keepsHandOff, noMain, location.key, moment, homeMeter])
 
   // The couldn't-load line is shown in `main` and set in the shell's alert.
   useEffect(() => {

@@ -105,3 +105,18 @@ export function useBookView(id: string): BookViewState {
   const query = useQuery({ queryKey: bookViewKey(id), queryFn: () => fetchBookView(id) })
   return toBookViewState(query)
 }
+
+/**
+ * The `book` view as fetched after the caller mounted: `loading` until then,
+ * even when an older copy is cached (inactive views don't refetch after an
+ * intent, so that copy may predate another tab's or a restore's change). For
+ * a dialog that fixes its answers when it opens.
+ */
+export function useFreshBookView(id: string): BookViewState {
+  // 'always': refetch on mount even if a later default makes cached data count as fresh.
+  const query = useQuery({ queryKey: bookViewKey(id), queryFn: () => fetchBookView(id), refetchOnMount: 'always' })
+  if (!query.isFetchedAfterMount) return { status: 'loading' }
+  // A failed fetch keeps the cached copy as `data`; that copy is what this hook avoids.
+  if (query.status === 'error') return toBookViewState({ ...query, data: undefined })
+  return toBookViewState(query)
+}

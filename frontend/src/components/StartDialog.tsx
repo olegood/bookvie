@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router'
-import { useBookView, useHomeView, useStartReading, type BookDetailView, type HomeMainBook } from '../api/index.ts'
+import { useFreshBookView, useHomeView, useStartReading, type BookDetailView, type HomeMainBook } from '../api/index.ts'
 import { announce, clearAnnouncements } from '../lib/announce.ts'
 import { useAlertDialog } from '../lib/useAlertDialog.ts'
 import Button from './Button.tsx'
@@ -20,7 +20,7 @@ type Props = {
 
 type OpenProps = {
   book: BookDetailView
-  /** The `book` view as the opener showed it: it decides Start or Resume and the prefill. */
+  /** The first `book` view fetched after opening: it decides Start or Resume and the prefill. */
   opened: BookDetailView
   /** The home view's Main book: the trade-off line's title, page and percent (AD-6). */
   mainBook: HomeMainBook | null
@@ -32,8 +32,8 @@ function OpenStartDialog({ book, opened, mainBook, onCancel }: OpenProps) {
   const tradeOffId = useId()
   const navigate = useNavigate()
   const sendStart = useStartReading()
-  // Fixed at open, as the opener showed it: a refetch (another tab made it
-  // Main meanwhile) never flips Start to Resume.
+  // Fixed at open: a later refetch (another tab made it Main meanwhile)
+  // never flips Start to Resume.
   const [resume] = useState(opened.currentReading !== null)
   const [purpose, setPurpose] = useState(opened.currentReading?.purpose ?? '')
   const [busy, setBusy] = useState(false)
@@ -146,10 +146,14 @@ function OpenStartDialog({ book, opened, mainBook, onCancel }: OpenProps) {
  * the spine popover) passes only the Book's id; it shows once both are in.
  */
 export default function StartDialog({ bookId, onCancel }: Props) {
-  const book = useBookView(bookId)
+  // Fetched after opening, never a cached view of an earlier visit: another
+  // tab or a restore may have paused or started it since (Start vs Resume,
+  // the Purpose prefill).
+  const book = useFreshBookView(bookId)
   const home = useHomeView()
-  // The data the opener rendered from (Book detail's cached view), if any.
-  const [atOpen] = useState(book.status === 'ready' ? book.data : null)
+  // Fixed from the first fresh view: a later refetch never flips Start to Resume.
+  const [atOpen, setAtOpen] = useState<BookDetailView | null>(null)
+  if (atOpen === null && book.status === 'ready') setAtOpen(book.data)
   const gone = book.status === 'missing' || book.status === 'failed' || home.status === 'failed'
 
   useEffect(() => {

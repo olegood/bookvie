@@ -317,3 +317,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-epic-3-retro-item-21-bound-edit-finished-on.md`
   summary: Add the "not after the current Reading's start" Finished on rule to story 1.11's ACs in `epics.md` during the Epic 3 spine reconciliation (retro action 4).
   evidence: EXPERIENCE.md now carries the rule and its copy, and `epics.md` 1.11 still lists only the "can't be removed" and "before start" rules.
+
+## Deferred from: review of spec-epic-3-retro-item-22-stale-client-hand-offs (2026-11-06)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-epic-3-retro-item-22-stale-client-hand-offs.md`
+  summary: The Start dialog's "This pauses *Y* at p.N (P%)." line reads `useHomeView()`, which can be a stale cached copy when the dialog opens from Book detail or Catalog after another tab changed the Main book. It should wait for a home view fetched after it opens, as it now does for the `book` view.
+  evidence: `StartDialog.tsx` passes `home.data.mainBook` straight through. Only active views refetch after an intent (`api/intents.ts:53`), and the home view is inactive away from Home.
