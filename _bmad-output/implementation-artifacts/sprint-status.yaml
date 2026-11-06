@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-29-2026 17:21
-last_updated: 11-06-2026 16:02
+last_updated: 11-06-2026 16:38
 project: bookvie
 project_key: NOKEY
 tracking_system: file-system
@@ -294,7 +294,7 @@ action_items:
     action: "Make the e2e entry point build or verify a fresh frontend bundle (Playwright
       globalSetup or a dist-vs-src freshness check) (PL-2)"
     owner: "Amelia (Dev)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-3-retro-2026-11-06.md"
   - id: "epic-3-retro-item-28-record-in-agents-md-which-formatters-ruf"
     epic: 3
