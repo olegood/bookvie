@@ -342,3 +342,13 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-reconcile-architecture-spine-with-epic-3.md`
   summary: Align `OkResponse.ids`'s docstring ("The ids the intent minted") in `backend/bookvie/intents/contract.py`, and the OpenAPI description generated from it, with the spine's IDs convention: only ids a client needs are returned.
   evidence: The spine's IDs convention now says `start-reading` does not return its new Reading id. The docstring still says every minted id comes back, and this spec makes no code changes.
+
+## Recorded from: Epic 3 retro item 29, load-sensitive specs (2026-11-06)
+
+- source_spec: `_bmad-output/implementation-artifacts/epic-3-retro-2026-11-06.md` (PL-5)
+  summary: `home-slice.spec.ts` "[P2] AC-2 an open slice popover follows its spine when a resize repacks the rows" failed under load. It polled `rowCapacity`, which reads the list's width. The width changes as soon as the viewport is resized, but the app repacks the rows (and re-places the popover) in a ResizeObserver callback on the next frame, so `placed` was sometimes read before the repack. The product was right; the test raced it.
+  evidence: Burn-in at load about 65: 5 of 30 failed, with the popover at x 764 before and x 61 after the scroll re-placement. The leaf now waits for the rendered rows (`sliceRows`), as its sibling at `:467` already did. After the fix: 50 of 50 at load about 45, and both whole files 5 times over, 155 of 155.
+  resolved: test fix in `frontend/e2e/home-slice.spec.ts` (Epic 3 retro item 29, 2026-11-06).
+- source_spec: `_bmad-output/implementation-artifacts/epic-3-retro-2026-11-06.md` (PL-5)
+  summary: `spine-popover.spec.ts` "[P1] AC-1 at 1024px every popover is inside the viewport …" was reported as failing once under load in story 3.5. It did not reproduce: 30 of 30 at load about 65, 50 of 50 at about 45, and every run of the 5-times file burn-in passed. No race was found in it, so it is unchanged. If it fails again, keep the trace (`test-results/…/trace.zip`) and reopen this entry.
+  evidence: Burn-ins on 2026-11-06 at commit `614887c` plus the home-slice fix, `--workers=4 --retries=0`.

@@ -533,6 +533,11 @@ test.describe('Story 3.5 See my reading on Home’s shelf (ATDD)', () => {
 
     await page.setViewportSize({ width: 900, height: 900 })
     await expect.poll(() => rowCapacity(page)).toBeLessThan(k)
+    // Wait for the repack itself, not only the new width: the width changes at
+    // once, and the rows (and the popover with them) follow a frame later.
+    const titles = books.map((book) => book.title)
+    const narrow = expectedSlice(titles, await rowCapacity(page), ['Book 170'], true)
+    await expect.poll(() => sliceRows(page)).toEqual(narrow)
     await expect(dialog).toBeVisible()
 
     // The criterion: the popover already sits where a fresh placement puts it.
