@@ -220,7 +220,13 @@ def book_detail(library: Library, book_id: str) -> BookDetailView | None:
         finished=_finished(book),
         latest_finish_date=latest.finish_date if latest else None,
         readings=[
-            BookReading(id=r.id, start_date=r.start_date, finish_date=r.finish_date)
+            BookReading(
+                id=r.id,
+                start_date=r.start_date,
+                finish_date=r.finish_date,
+                rating=r.rating,
+                purpose_fulfilled=r.purpose_fulfilled,
+            )
             for r in book.readings
         ],
         role=role,

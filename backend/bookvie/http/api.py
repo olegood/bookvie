@@ -58,6 +58,7 @@ from bookvie.intents import (
     edit_book,
     edit_purpose,
     export_filename,
+    finish_reading,
     invalid_fields,
     malformed_intent,
     max_upload_bytes,
@@ -65,6 +66,7 @@ from bookvie.intents import (
     parse_delete_book_intent,
     parse_edit_book_intent,
     parse_edit_purpose_intent,
+    parse_finish_reading_intent,
     parse_restore_intent,
     parse_set_spine_color_intent,
     parse_start_reading_intent,
@@ -495,6 +497,27 @@ def update_page_intent(
     parsed = parse_update_page_intent(intent)
     reached = update_page(request.app.state.store, request.app.state.clock, parsed)
     return OkResponse(ok=True, reached_last_page=True if reached else None)
+
+
+@router.post("/intents/finish-reading", response_model=OkResponse, response_model_exclude_none=True)
+def finish_reading_intent(
+    request: Request,
+    intent: Annotated[
+        str | None,
+        Form(
+            media_type="multipart/form-data",
+            description=(
+                'JSON object {"bookId": ..., "finishedOn": "YYYY-MM-DD", '
+                '"purposeFulfilled": "yes" | "partly" | "notYet" | null, "rating": 1..5 | null}: '
+                "the Finish dialog's answers, null when skipped."
+            ),
+        ),
+    ] = None,
+) -> OkResponse:
+    """Finish a Book's current Reading and clear it as the Main book (FR-14)."""
+    parsed = parse_finish_reading_intent(intent)
+    finish_reading(request.app.state.store, request.app.state.clock, parsed)
+    return OkResponse(ok=True)
 
 
 @router.post("/intents/restore", response_model=OkResponse, response_model_exclude_none=True)

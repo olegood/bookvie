@@ -23,3 +23,10 @@ const MONTHS = [
 export function formatToday(now: Date): string {
   return `${WEEKDAYS[now.getDay()]}, ${now.getDate()} ${MONTHS[now.getMonth()]}`
 }
+
+/** The local calendar date of `now` as `YYYY-MM-DD` (the Finish dialog's Finished on). */
+export function localIsoDate(now: Date): string {
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  return `${now.getFullYear()}-${month}-${day}`
+}

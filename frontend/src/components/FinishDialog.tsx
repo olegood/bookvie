@@ -1,0 +1,272 @@
+import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
+import { useNavigate } from 'react-router'
+import { useBookView, useFinishReading, type BookDetailView, type PurposeFulfilled } from '../api/index.ts'
+import { announce, clearAnnouncements } from '../lib/announce.ts'
+import { starsLabel } from '../lib/bookDetail.ts'
+import { localIsoDate } from '../lib/today.ts'
+import { useAlertDialog } from '../lib/useAlertDialog.ts'
+import Button from './Button.tsx'
+import TextField from './TextField.tsx'
+import styles from './FinishDialog.module.css'
+
+/** Router state Home reads after a finish: focus goes to the "No Main book." heading. */
+export type FinishedState = { finished: true }
+
+const SAVING = 'Finishing the book.'
+const FINISHED_ON = 'finishedOn'
+const PURPOSE_FULFILLED = 'purposeFulfilled'
+const RATING = 'rating'
+
+const ANSWERS: readonly { value: PurposeFulfilled; label: string }[] = [
+  { value: 'yes', label: 'yes' },
+  { value: 'partly', label: 'partly' },
+  { value: 'notYet', label: 'not yet' },
+]
+const STARS = [1, 2, 3, 4, 5] as const
+
+type FieldMessages = Partial<Record<typeof FINISHED_ON | typeof PURPOSE_FULFILLED | typeof RATING, string>>
+
+type Props = {
+  bookId: string
+  /** Cancel, Esc, or the Book gone before it opened: the opener unmounts the dialog and takes focus back. */
+  onCancel: () => void
+}
+
+/** A star: filled (selected or lower) or an outline, so the shape changes, not only the color. */
+function Star({ filled }: { filled: boolean }) {
+  return (
+    <svg className={styles.star} viewBox="0 0 24 24" aria-hidden="true" focusable="false" data-filled={filled ? 'true' : undefined}>
+      <path
+        d="M12 2.8l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2l-5.7 3.1 1.2-6.4-4.7-4.4 6.4-.8z"
+        fill={filled ? 'currentColor' : 'none'}
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+function OpenFinishDialog({ book, onCancel }: { book: BookDetailView; onCancel: () => void }) {
+  const headingId = useId()
+  const fulfilledLabelId = useId()
+  const fulfilledMessageId = useId()
+  const ratingLabelId = useId()
+  const ratingMessageId = useId()
+  const radioName = useId()
+  const navigate = useNavigate()
+  const sendFinish = useFinishReading()
+  // Fixed at open: a refetch (another tab finished it) never changes what is asked.
+  const [purpose] = useState(book.currentReading?.purpose ?? null)
+  const [finishedOn, setFinishedOn] = useState(() => localIsoDate(new Date()))
+  const [fulfilled, setFulfilled] = useState<PurposeFulfilled | null>(null)
+  const [rating, setRating] = useState<number | null>(null)
+  const [messages, setMessages] = useState<FieldMessages>({})
+  const [busy, setBusy] = useState(false)
+  const [showAlert, setShowAlert] = useState(false)
+  // A press while one is in flight is ignored even before `busy` renders.
+  const inFlight = useRef(false)
+  const field = useRef<HTMLInputElement>(null)
+  const fulfilledGroup = useRef<HTMLDivElement>(null)
+  const ratingGroup = useRef<HTMLDivElement>(null)
+
+  const dismiss = () => {
+    if (inFlight.current) {
+      // Esc is ignored in flight; a native close that slipped past `cancel` is undone.
+      const element = dialog.current
+      if (element && !element.open) {
+        element.showModal()
+        field.current?.focus()
+      }
+      return
+    }
+    // A couldn't-save line must not outlive the dialog.
+    clearAnnouncements()
+    onCancel()
+  }
+  const { dialog, regionSlot, dialogProps } = useAlertDialog({ onDismiss: dismiss, initialFocus: field, role: 'dialog' })
+
+  const confirm = async () => {
+    if (inFlight.current) return
+    inFlight.current = true
+    clearAnnouncements()
+    setShowAlert(false)
+    setBusy(true)
+    const result = await sendFinish(book.id, { finishedOn, purposeFulfilled: fulfilled, rating })
+    inFlight.current = false
+    if (result.kind === 'ok') {
+      const state: FinishedState = { finished: true }
+      void navigate('/', { state })
+      return
+    }
+    setBusy(false)
+    const fields = result.kind === 'refusal' ? result.fields : []
+    const next: FieldMessages = {}
+    for (const error of fields) {
+      if (error.field === FINISHED_ON || error.field === PURPOSE_FULFILLED || error.field === RATING) {
+        next[error.field] ??= error.message
+      }
+    }
+    setMessages(next)
+    announce('alert', result.message)
+    if (Object.keys(next).length > 0) {
+      // A field refusal: the message sits under its field, which takes focus.
+      if (next.finishedOn) field.current?.focus()
+      else if (next.purposeFulfilled) fulfilledGroup.current?.querySelector('input')?.focus()
+      else ratingGroup.current?.querySelector<HTMLInputElement>('input:checked')?.focus()
+      return
+    }
+    // Couldn't save, or a 409 (finished or deleted in another tab): the line
+    // above the buttons, every answer kept; the refetched views are already in.
+    setShowAlert(true)
+  }
+
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    void confirm()
+  }
+
+  const reason = busy ? SAVING : undefined
+  const fulfilledMessage = messages.purposeFulfilled
+  const ratingMessage = messages.rating
+
+  return (
+    <dialog ref={dialog} {...dialogProps} className={styles.dialog} aria-labelledby={headingId}>
+      <form onSubmit={submit} noValidate>
+        <h2 id={headingId} className={styles.heading}>
+          Finished <span className={styles.bookTitle}>{book.title}</span>
+        </h2>
+        <TextField
+          ref={field}
+          className={styles.field}
+          label="Finished on"
+          type="date"
+          value={finishedOn}
+          error={messages.finishedOn}
+          onChange={(event) => setFinishedOn(event.target.value)}
+        />
+        {purpose !== null && (
+          <div className={styles.question}>
+            <p className={styles.purpose}>{`“${purpose}”`}</p>
+            <p id={fulfilledLabelId} className={styles.label}>
+              Purpose fulfilled?
+            </p>
+            <div
+              ref={fulfilledGroup}
+              role="radiogroup"
+              aria-labelledby={fulfilledLabelId}
+              aria-describedby={fulfilledMessage ? fulfilledMessageId : undefined}
+              aria-invalid={fulfilledMessage ? 'true' : undefined}
+              className={styles.segmented}
+            >
+              {ANSWERS.map((answer) => (
+                <label key={answer.value} className={styles.segment}>
+                  <input
+                    type="radio"
+                    className={styles.radio}
+                    name={`${radioName}-fulfilled`}
+                    value={answer.value}
+                    checked={fulfilled === answer.value}
+                    onChange={() => setFulfilled(answer.value)}
+                  />
+                  {answer.label}
+                </label>
+              ))}
+            </div>
+            {fulfilledMessage && (
+              <p id={fulfilledMessageId} className={styles.message}>
+                {fulfilledMessage}
+              </p>
+            )}
+          </div>
+        )}
+        <div className={styles.question}>
+          <p id={ratingLabelId} className={styles.label}>
+            Rating
+          </p>
+          <div
+            ref={ratingGroup}
+            role="radiogroup"
+            aria-labelledby={ratingLabelId}
+            aria-describedby={ratingMessage ? ratingMessageId : undefined}
+            aria-invalid={ratingMessage ? 'true' : undefined}
+            className={styles.rating}
+          >
+            <label className={styles.noRating}>
+              <input
+                type="radio"
+                className={styles.radio}
+                name={`${radioName}-rating`}
+                value=""
+                checked={rating === null}
+                onChange={() => setRating(null)}
+              />
+              No rating
+            </label>
+            {STARS.map((stars) => (
+              <label key={stars} className={styles.starOption}>
+                <input
+                  type="radio"
+                  className={styles.radio}
+                  name={`${radioName}-rating`}
+                  value={stars}
+                  checked={rating === stars}
+                  onChange={() => setRating(stars)}
+                />
+                <Star filled={rating !== null && stars <= rating} />
+                <span className="visuallyHidden">{starsLabel(stars)}</span>
+              </label>
+            ))}
+          </div>
+          {ratingMessage && (
+            <p id={ratingMessageId} className={styles.message}>
+              {ratingMessage}
+            </p>
+          )}
+        </div>
+        <div ref={regionSlot} className={styles.regions} data-show-alert={showAlert ? 'true' : undefined} />
+        <div className={styles.actions}>
+          <Button type="submit" variant="primary" disabledReason={reason}>
+            Done
+          </Button>
+          <Button disabledReason={reason} onClick={dismiss}>
+            Cancel
+          </Button>
+        </div>
+      </form>
+    </dialog>
+  )
+}
+
+/**
+ * The Finish dialog (DESIGN.md / EXPERIENCE.md → Finish dialog): a modal
+ * `dialog` headed "Finished *X*", *X* in the book-title face, 440px.
+ * **Finished on** (a date field prefilled with the local today, focused on
+ * open); the Purpose quoted above "Purpose fulfilled?" (yes · partly · not
+ * yet, none checked) only when the Reading has a Purpose; "Rating" ("No
+ * rating", checked, then 1 to 5 stars, the selected and lower ones filled);
+ * **Done** and **Cancel**.
+ *
+ * Done sends `finish-reading` (`aria-disabled` in flight; presses and Esc are
+ * ignored) and goes to Home, which focuses the "No Main book." heading. A
+ * field refusal shows its message under the field; couldn't save or a 409
+ * shows the `alert` line above the buttons, every answer kept. Cancel or Esc
+ * sends nothing.
+ *
+ * It reads the `book` view itself, so an opener (the page field, Book detail)
+ * passes only the Book's id; it shows once the view is in, and keeps the view
+ * it opened with when a refetch says the Book is finished or gone.
+ */
+export default function FinishDialog({ bookId, onCancel }: Props) {
+  const book = useBookView(bookId)
+  const [opened, setOpened] = useState<BookDetailView | null>(book.status === 'ready' ? book.data : null)
+  if (opened === null && book.status === 'ready') setOpened(book.data)
+  const gone = opened === null && (book.status === 'missing' || book.status === 'failed')
+
+  useEffect(() => {
+    if (gone) onCancel()
+  }, [gone, onCancel])
+
+  if (opened === null) return null
+  return <OpenFinishDialog book={opened} onCancel={onCancel} />
+}

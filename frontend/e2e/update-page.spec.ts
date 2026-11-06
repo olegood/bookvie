@@ -252,7 +252,7 @@ const DUNE_PAUSED = {
 }
 
 test.describe('Story 3.3 Catch up with one page update (automate)', () => {
-  test('[P0] AC-4 Update with the last page saves it: 100%, no dialog, and the Reading stays unfinished', async ({
+  test('[P0] AC-4 Update with the last page saves it: 100%, the Finish dialog opens, and the Reading stays unfinished', async ({
     page,
     seededServer,
   }) => {
@@ -261,10 +261,9 @@ test.describe('Story 3.3 Catch up with one page update (automate)', () => {
     await pageField(page).fill('330')
     await updateButton(page).click()
 
-    await expect(page.getByRole('status')).toHaveText('Page 330 of 330, 100%.')
     await expect(gauge(page)).toHaveAttribute('aria-valuetext', '100%, page 330 of 330')
-    // reachedLastPage is ignored until Story 3.6: no dialog, the card stays.
-    await expect(page.getByRole('dialog')).toHaveCount(0)
+    // reachedLastPage opens the Finish dialog (Story 3.6); the save alone finishes nothing.
+    await expect(page.getByRole('dialog', { name: 'Finished The Left Hand of Darkness', exact: true })).toBeVisible()
     await expect(pageField(page)).toHaveValue('330')
     const [reading] = storedBook(server, LEFT_HAND_ID).readings
     expect(reading.currentPage).toBe(330)

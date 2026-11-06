@@ -1,0 +1,233 @@
+/* DESIGN.md → Finish dialog: the Confirm dialog's frame at 440px, with
+   Finished on, the Purpose question and the Rating between the heading and
+   the buttons. */
+.dialog {
+  box-sizing: border-box;
+  width: var(--dialog-width);
+  max-width: calc(100vw - 2 * var(--space-6));
+  margin: auto;
+  padding: var(--space-6);
+  border: var(--hairline) solid var(--color-line);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  box-shadow: var(--shadow-overlay);
+}
+
+.dialog::backdrop {
+  background: var(--color-scrim);
+}
+
+.heading {
+  margin: 0 0 var(--space-4);
+  font-family: var(--font-panel-heading-family);
+  font-size: var(--font-panel-heading-size);
+  font-weight: var(--font-panel-heading-weight);
+  line-height: var(--font-panel-heading-line-height);
+  overflow-wrap: anywhere;
+}
+
+/* *X*: the book-title face. */
+.bookTitle {
+  font-family: var(--font-book-title-md-family);
+  font-style: normal;
+}
+
+.field {
+  margin: 0 0 var(--space-5);
+}
+
+.question {
+  margin: 0 0 var(--space-5);
+}
+
+.purpose {
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-body-family);
+  font-size: var(--font-body-size);
+  line-height: var(--font-body-line-height);
+  color: var(--color-ink-secondary);
+  overflow-wrap: anywhere;
+}
+
+.label {
+  margin: 0 0 var(--space-1);
+  font-family: var(--font-body-sm-family);
+  font-size: var(--font-body-sm-size);
+  line-height: var(--font-body-sm-line-height);
+  color: var(--color-ink-secondary);
+}
+
+.message {
+  margin: var(--space-1) 0 0;
+  font-family: var(--font-body-sm-family);
+  font-size: var(--font-body-sm-size);
+  line-height: var(--font-body-sm-line-height);
+  color: var(--color-ink);
+}
+
+/* The native radio stays in the tree (arrow keys, the name) and covers its
+   label, invisible; the label's content is the visible control. */
+.radio {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+/* Purpose fulfilled?: a segmented control, the theme toggle's selected
+   treatment (accent-soft fill, 2px accent bar, weight 600). */
+.segmented {
+  display: inline-flex;
+  overflow: hidden;
+  border: var(--hairline) solid var(--color-input-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.segmented[aria-invalid="true"] {
+  border: var(--text-field-border-invalid) solid var(--color-ink);
+}
+
+.segment {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-1) var(--space-3);
+  border-bottom: var(--indicator-width) solid transparent;
+  color: var(--color-ink-secondary);
+  font-family: var(--font-nav-family);
+  font-size: var(--font-body-sm-size);
+  line-height: var(--font-body-sm-line-height);
+  cursor: pointer;
+}
+
+.segment + .segment {
+  border-left: var(--hairline) solid var(--color-line);
+}
+
+.segment:has(.radio:checked) {
+  border-bottom-color: var(--color-accent);
+  background: var(--color-accent-soft);
+  color: var(--color-ink);
+  font-weight: var(--font-nav-active-weight);
+}
+
+.segment:has(.radio:focus-visible) {
+  outline: var(--focus-ring-width) solid var(--color-accent);
+  outline-offset: calc(var(--focus-ring-width) * -1);
+}
+
+/* Rating: "No rating" as text, then five stars. Selected and lower stars are
+   filled accent; the others are input-border outlines. */
+.rating {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.rating[aria-invalid="true"] {
+  outline: var(--text-field-border-invalid) solid var(--color-ink);
+  outline-offset: var(--space-1);
+}
+
+.noRating {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  margin-right: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  border: var(--hairline) solid var(--color-input-border);
+  border-bottom: var(--indicator-width) solid var(--color-input-border);
+  border-radius: var(--radius-md);
+  color: var(--color-ink-secondary);
+  font-family: var(--font-nav-family);
+  font-size: var(--font-body-sm-size);
+  line-height: var(--font-body-sm-line-height);
+  cursor: pointer;
+}
+
+.noRating:has(.radio:checked) {
+  border-bottom-color: var(--color-accent);
+  background: var(--color-accent-soft);
+  color: var(--color-ink);
+  font-weight: var(--font-nav-active-weight);
+}
+
+.starOption {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.star {
+  width: 24px;
+  height: 24px;
+  color: var(--color-input-border);
+}
+
+.star[data-filled="true"] {
+  color: var(--color-accent);
+}
+
+.noRating:has(.radio:focus-visible),
+.starOption:has(.radio:focus-visible) {
+  outline: var(--focus-ring-width) solid var(--color-accent);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* The live regions' host sits here, above the buttons, while the dialog is
+   open. A couldn't-save or refusal shows as one calm line in ink. */
+.regions[data-show-alert="true"] [role="alert"] {
+  position: static;
+  width: auto;
+  height: auto;
+  margin: 0 0 var(--space-3);
+  overflow: visible;
+  clip-path: none;
+  white-space: normal;
+  font-family: var(--font-body-sm-family);
+  font-size: var(--font-body-sm-size);
+  font-weight: var(--font-body-sm-weight);
+  line-height: var(--font-body-sm-line-height);
+  color: var(--color-ink);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
+/* Forced colors: the selected segment keeps its bar, and the stars stay
+   distinct by shape (filled versus outline) in system colors. */
+@media (forced-colors: active) {
+  .segment:has(.radio:checked),
+  .noRating:has(.radio:checked) {
+    border-bottom-color: Highlight;
+  }
+
+  .star {
+    color: CanvasText;
+  }
+
+  .star[data-filled="true"] {
+    color: Highlight;
+  }
+
+  .segment:has(.radio:focus-visible),
+  .noRating:has(.radio:focus-visible),
+  .starOption:has(.radio:focus-visible) {
+    outline-color: Highlight;
+  }
+}

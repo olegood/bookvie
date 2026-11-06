@@ -10,6 +10,8 @@ import {
   editBook,
   editBookForm,
   editPurpose,
+  finishReading,
+  finishReadingForm,
   purposeForm,
   setSpineColor,
   startReading,
@@ -295,6 +297,43 @@ describe('updatePage', () => {
     const client = new QueryClient()
     const result = await updatePage(client, 'b1', 12)
     assert.equal(result.kind === 'refusal' && result.code, 'not_main_book')
+    client.clear()
+  })
+})
+
+describe('finishReading', () => {
+  afterEach(() => mock.restoreAll())
+
+  it('posts every key, the skipped answers as explicit nulls', async () => {
+    const fetch = mock.method(globalThis, 'fetch', async (..._args: [string, RequestInit]) => Response.json({ ok: true }))
+    const client = new QueryClient()
+    const result = await finishReading(client, 'b1', { finishedOn: '2026-10-28', purposeFulfilled: 'partly', rating: 4 })
+
+    assert.deepEqual(result, { kind: 'ok', ids: {}, reachedLastPage: false })
+    const [url, init] = fetch.mock.calls[0].arguments
+    assert.equal(url, '/api/intents/finish-reading')
+    assert.equal(init!.method, 'POST')
+    assert.equal(
+      (init!.body as FormData).get('intent'),
+      '{"bookId":"b1","finishedOn":"2026-10-28","purposeFulfilled":"partly","rating":4}',
+    )
+    assert.equal(
+      finishReadingForm('b2', { finishedOn: '2026-10-01', purposeFulfilled: null, rating: null }).get('intent'),
+      '{"bookId":"b2","finishedOn":"2026-10-01","purposeFulfilled":null,"rating":null}',
+    )
+    client.clear()
+  })
+
+  it('passes reading_already_finished through as a refusal', async () => {
+    mock.method(globalThis, 'fetch', async () =>
+      Response.json(
+        { error: { kind: 'refusal', code: 'reading_already_finished', message: 'This reading is already finished.' } },
+        { status: 409 },
+      ),
+    )
+    const client = new QueryClient()
+    const result = await finishReading(client, 'b1', { finishedOn: '2026-10-28', purposeFulfilled: null, rating: null })
+    assert.equal(result.kind === 'refusal' && result.code, 'reading_already_finished')
     client.clear()
   })
 })

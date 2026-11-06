@@ -58,7 +58,6 @@ from tests.helpers import (
     stored_book,
 )
 
-RED = "ATDD red phase: Story 3.6 finish-reading is not implemented yet"
 
 GONE_ID = "00000000-0000-4000-8000-000000000000"
 TODAY_ISO = TODAY.isoformat()  # 2026-10-30
@@ -124,7 +123,6 @@ def _left_hand_main_and_dune(
 # --- AC-2: Done records the finish ---------------------------------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_ac2_p0_finish_reading_stores_the_finish_and_the_answers_and_clears_the_main_book(
     tmp_path: Path,
 ) -> None:
@@ -186,7 +184,6 @@ def test_ac2_p0_finish_reading_stores_the_finish_and_the_answers_and_clears_the_
 # --- AC-3: Finished on is not in the future, nor before the start --------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_ac3_p1_finished_on_in_the_future_or_before_the_start_is_refused_and_nothing_is_saved(
     tmp_path: Path,
 ) -> None:
@@ -224,7 +221,6 @@ def test_ac3_p1_finished_on_in_the_future_or_before_the_start_is_refused_and_not
 # --- AC-7: only finish-reading ever sets finishDate (AD-19) --------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_ac7_p0_only_finish_reading_ever_sets_finish_date(tmp_path: Path) -> None:
     # A re-read: finished once in April, now the Main book again at p.300.
     builder = LibraryBuilder()
@@ -272,7 +268,6 @@ def test_ac7_p0_only_finish_reading_ever_sets_finish_date(tmp_path: Path) -> Non
 # --- AC-8: a Reading already finished in another tab ---------------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_ac8_p1_finish_reading_for_a_reading_already_finished_is_refused(
     tmp_path: Path,
 ) -> None:
@@ -311,7 +306,6 @@ def test_ac8_p1_finish_reading_for_a_reading_already_finished_is_refused(
 # --- AC-9: the standard intent guarantees (TR8) --------------------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_ac9_p0_finish_reading_keeps_the_standard_intent_guarantees(
     tmp_path: Path,
 ) -> None:
@@ -356,3 +350,237 @@ def test_ac9_p0_finish_reading_keeps_the_standard_intent_guarantees(
         "reading_already_finished"
         in schema["components"]["schemas"]["ErrorCode"]["enum"]
     )
+
+
+# --- Green-phase follow-ups: the Matrix boundaries and FIN-API-004 -------------
+
+
+@pytest.mark.parametrize("finished_on", [TODAY_ISO, "2026-10-01"])
+def test_finished_on_today_or_on_the_start_date_is_accepted(
+    tmp_path: Path, finished_on: str
+) -> None:
+    left_hand, _dune = _left_hand_main_and_dune(tmp_path, start_date="2026-10-01")
+
+    response = _finish(api_client(tmp_path), left_hand, finished_on)
+
+    assert response.status_code == 200
+    assert stored_book(tmp_path, left_hand)["readings"][0]["finishDate"] == finished_on
+    assert_invariants(tmp_path)
+
+
+def test_only_the_current_reading_of_a_re_read_is_finished(tmp_path: Path) -> None:
+    builder = LibraryBuilder()
+    left_hand = builder.book(title="The Left Hand of Darkness", pages=330)
+    builder.reading(
+        left_hand,
+        start_date="2026-04-01",
+        current_page=330,
+        finish_date="2026-04-20",
+        finished_pages=330,
+        purpose_fulfilled=None,
+        rating=5,
+    )
+    builder.reading(left_hand, start_date="2026-10-01", current_page=120, purpose=PURPOSE)
+    builder.main(left_hand)
+    builder.write(tmp_path)
+    first_before, current_before = stored_book(tmp_path, left_hand)["readings"]
+
+    response = _finish(api_client(tmp_path), left_hand, purpose_fulfilled="yes", rating=2)
+
+    assert response.status_code == 200
+    first, current = stored_book(tmp_path, left_hand)["readings"]
+    assert first == first_before
+    assert current == {
+        **current_before,
+        "finishDate": TODAY_ISO,
+        "finishedPages": 330,
+        "purposeFulfilled": "yes",
+        "rating": 2,
+    }
+    assert_invariants(tmp_path)
+
+
+def test_a_paused_book_is_finished_and_the_main_book_stays(tmp_path: Path) -> None:
+    # The API allows it (the UI offers Mark finished only for the Main book):
+    # the Main pointer is cleared only when it names the finished Book.
+    builder = LibraryBuilder()
+    paused = builder.book(title="Neuromancer", pages=271)
+    builder.reading(paused, current_page=50, paused_at="2026-10-01")
+    main = builder.book(title="Dune", pages=412)
+    builder.reading(main, current_page=10)
+    builder.main(main)
+    builder.write(tmp_path)
+
+    response = _finish(api_client(tmp_path), paused)
+
+    assert response.status_code == 200
+    assert stored_book(tmp_path, paused)["readings"][0]["finishedPages"] == 271
+    assert _stored(tmp_path)["mainBookId"] == main
+    assert_invariants(tmp_path)
+
+
+def test_purpose_fulfilled_without_a_purpose_is_refused(tmp_path: Path) -> None:
+    left_hand, _dune = _left_hand_main_and_dune(tmp_path, purpose=None)
+    before = library_bytes(tmp_path)
+
+    response = _finish(api_client(tmp_path), left_hand, purpose_fulfilled="yes", rating=4)
+
+    assert response.status_code == 422
+    assert response.json()["error"] == {
+        "kind": "refusal",
+        "code": "invalid_fields",
+        "message": "Not saved. 1 field needs attention: Purpose fulfilled.",
+        "fields": [
+            {
+                "field": "purposeFulfilled",
+                "message": "Purpose fulfilled needs a Purpose on this reading.",
+            }
+        ],
+    }
+    assert library_bytes(tmp_path) == before
+
+
+def _send_raw(client: TestClient, intent: Any):
+    return client.post(
+        FINISH_READING, files={"intent": (None, json.dumps(intent), "application/json")}
+    )
+
+
+@pytest.mark.parametrize("rating", [0, 6, "4", 4.5, True, [4]])
+def test_a_rating_that_is_not_1_to_5_is_a_rating_field_error(
+    tmp_path: Path, rating: Any
+) -> None:
+    left_hand, _dune = _left_hand_main_and_dune(tmp_path)
+    before = library_bytes(tmp_path)
+    intent = {
+        "bookId": left_hand,
+        "finishedOn": TODAY_ISO,
+        "purposeFulfilled": None,
+        "rating": rating,
+    }
+
+    response = _send_raw(api_client(tmp_path), intent)
+
+    assert response.status_code == 422
+    assert response.json()["error"]["fields"] == [
+        {"field": "rating", "message": "Rating must be 1 to 5 stars, or no rating."}
+    ]
+    assert library_bytes(tmp_path) == before
+
+
+@pytest.mark.parametrize("answer", ["not yet", "Yes", "", 1, {"a": 1}])
+def test_an_answer_that_is_not_yes_partly_or_not_yet_is_a_field_error(
+    tmp_path: Path, answer: Any
+) -> None:
+    left_hand, _dune = _left_hand_main_and_dune(tmp_path)
+    before = library_bytes(tmp_path)
+    intent = {
+        "bookId": left_hand,
+        "finishedOn": TODAY_ISO,
+        "purposeFulfilled": answer,
+        "rating": None,
+    }
+
+    response = _send_raw(api_client(tmp_path), intent)
+
+    assert response.status_code == 422
+    assert response.json()["error"]["fields"] == [
+        {
+            "field": "purposeFulfilled",
+            "message": "Purpose fulfilled must be yes, partly or not yet.",
+        }
+    ]
+    assert library_bytes(tmp_path) == before
+
+
+@pytest.mark.parametrize("finished_on", ["28/10/2026", "", "  ", "2026-02-30", None, 20261028])
+def test_a_finished_on_that_is_not_a_date_is_a_finished_on_field_error(
+    tmp_path: Path, finished_on: Any
+) -> None:
+    left_hand, _dune = _left_hand_main_and_dune(tmp_path)
+    before = library_bytes(tmp_path)
+    intent = {
+        "bookId": left_hand,
+        "finishedOn": finished_on,
+        "purposeFulfilled": None,
+        "rating": None,
+    }
+
+    response = _send_raw(api_client(tmp_path), intent)
+
+    assert response.status_code == 422
+    assert response.json()["error"]["fields"] == [
+        {"field": "finishedOn", "message": "Finished on must be a date, like 2026-03-14."}
+    ]
+    assert library_bytes(tmp_path) == before
+
+
+def test_every_failing_field_is_named_in_form_order(tmp_path: Path) -> None:
+    left_hand, _dune = _left_hand_main_and_dune(tmp_path, purpose=None)
+
+    response = _finish(api_client(tmp_path), left_hand, "2026-10-31", "partly", 9)  # type: ignore[arg-type]
+
+    assert response.status_code == 422
+    assert response.json()["error"]["message"] == (
+        "Not saved. 3 fields need attention: Finished on, Purpose fulfilled, Rating."
+    )
+    assert [f["field"] for f in response.json()["error"]["fields"]] == [
+        "finishedOn",
+        "purposeFulfilled",
+        "rating",
+    ]
+
+
+@pytest.mark.parametrize(
+    "intent",
+    [
+        {"bookId": "x", "finishedOn": TODAY_ISO, "purposeFulfilled": None},
+        {"bookId": "x", "finishedOn": TODAY_ISO, "rating": None},
+        {"bookId": "x", "purposeFulfilled": None, "rating": None},
+        {"finishedOn": TODAY_ISO, "purposeFulfilled": None, "rating": None},
+        {"bookId": None, "finishedOn": TODAY_ISO, "purposeFulfilled": None, "rating": None},
+        {
+            "bookId": "x",
+            "finishedOn": TODAY_ISO,
+            "purposeFulfilled": None,
+            "rating": None,
+            "extra": 1,
+        },
+        [],
+    ],
+)
+def test_a_malformed_intent_is_an_intent_field_error(tmp_path: Path, intent: Any) -> None:
+    left_hand, _dune = _left_hand_main_and_dune(tmp_path)
+    if isinstance(intent, dict) and intent.get("bookId") == "x":
+        intent = {**intent, "bookId": left_hand}
+    before = library_bytes(tmp_path)
+
+    response = _send_raw(api_client(tmp_path), intent)
+
+    assert response.status_code == 422
+    assert response.json()["error"]["fields"] == [
+        {
+            "field": "intent",
+            "message": "The intent must be a JSON object of the form's fields.",
+        }
+    ]
+    assert library_bytes(tmp_path) == before
+
+
+def test_a_missing_intent_part_is_an_intent_field_error(tmp_path: Path) -> None:
+    response = api_client(tmp_path).post(FINISH_READING)
+
+    assert response.status_code == 422
+    assert response.json()["error"]["fields"][0]["field"] == "intent"
+
+
+def test_the_book_view_lists_each_readings_rating_and_answer(tmp_path: Path) -> None:
+    left_hand, _dune = _left_hand_main_and_dune(tmp_path)
+    client = api_client(tmp_path)
+    assert _finish(client, left_hand, purpose_fulfilled="notYet", rating=1).status_code == 200
+
+    (reading,) = client.get("/api/views/book", params={"id": left_hand}).json()["readings"]
+
+    assert reading["finishDate"] == TODAY_ISO
+    assert reading["rating"] == 1
+    assert reading["purposeFulfilled"] == "notYet"

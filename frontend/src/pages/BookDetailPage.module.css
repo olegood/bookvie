@@ -174,3 +174,36 @@
   line-height: var(--font-body-sm-line-height);
   color: var(--color-ink-secondary);
 }
+
+/* A Readings row: the dates, the stars, the Purpose answer. */
+.reading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+}
+
+.stars {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.star {
+  width: 14px;
+  height: 14px;
+  color: var(--color-input-border);
+}
+
+.star[data-filled="true"] {
+  color: var(--color-accent);
+}
+
+@media (forced-colors: active) {
+  .star {
+    color: CanvasText;
+  }
+
+  .star[data-filled="true"] {
+    color: Highlight;
+  }
+}

@@ -253,6 +253,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/intents/finish-reading": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Finish Reading Intent
+         * @description Finish a Book's current Reading and clear it as the Main book (FR-14).
+         */
+        post: operations["finish_reading_intent_api_intents_finish_reading_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/intents/restore": {
         parameters: {
             query?: never;
@@ -332,6 +352,14 @@ export interface components {
             /**
              * Intent
              * @description JSON object {"bookId": ..., "purpose": "..." | null}: the new Purpose of the Book's current Reading, trimmed, null when empty.
+             */
+            intent?: string | null;
+        };
+        /** Body_finish_reading_intent_api_intents_finish_reading_post */
+        Body_finish_reading_intent_api_intents_finish_reading_post: {
+            /**
+             * Intent
+             * @description JSON object {"bookId": ..., "finishedOn": "YYYY-MM-DD", "purposeFulfilled": "yes" | "partly" | "notYet" | null, "rating": 1..5 | null}: the Finish dialog's answers, null when skipped.
              */
             intent?: string | null;
         };
@@ -434,6 +462,10 @@ export interface components {
             startDate: string | null;
             /** Finishdate */
             finishDate: string | null;
+            /** Rating */
+            rating: number | null;
+            /** Purposefulfilled */
+            purposeFulfilled: ("yes" | "partly" | "notYet") | null;
         };
         /** CatalogView */
         CatalogView: {
@@ -1321,6 +1353,66 @@ export interface operations {
         requestBody?: {
             content: {
                 "multipart/form-data": components["schemas"]["Body_update_page_intent_api_intents_update_page_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkResponse"];
+                };
+            };
+            /** @description Refused by a library rule */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Invalid fields */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Couldn't save */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Couldn't save */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    finish_reading_intent_api_intents_finish_reading_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_finish_reading_intent_api_intents_finish_reading_post"];
             };
         };
         responses: {

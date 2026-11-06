@@ -37,6 +37,11 @@ from .delete_book import DeleteBookIntent, delete_book, parse_delete_book_intent
 from .edit_book import EditBookIntent, edit_book, parse_edit_book_intent
 from .edit_purpose import EditPurposeIntent, edit_purpose, parse_edit_purpose_intent
 from .export import EXPORT_CHUNK, build_export, export_filename, record_export
+from .finish_reading import (
+    FinishReadingIntent,
+    finish_reading,
+    parse_finish_reading_intent,
+)
 from .intent_model import malformed as malformed_intent
 from .restore import RestoreIntent, max_upload_bytes, parse_restore_intent, restore
 from .set_spine_color import (
@@ -66,6 +71,7 @@ __all__ = [
     "ErrorResponse",
     "FakeClock",
     "FieldError",
+    "FinishReadingIntent",
     "IntentError",
     "OkResponse",
     "PreparedCover",
@@ -89,6 +95,7 @@ __all__ = [
     "edit_book",
     "edit_purpose",
     "export_filename",
+    "finish_reading",
     "invalid_fields",
     "malformed_intent",
     "max_upload_bytes",
@@ -98,6 +105,7 @@ __all__ = [
     "parse_delete_book_intent",
     "parse_edit_book_intent",
     "parse_edit_purpose_intent",
+    "parse_finish_reading_intent",
     "parse_restore_intent",
     "parse_set_spine_color_intent",
     "parse_start_reading_intent",

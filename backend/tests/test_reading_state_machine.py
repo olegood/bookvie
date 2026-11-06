@@ -1,24 +1,27 @@
 """RDG-UNIT-002 (R-01): random intent sequences keep the reading plan sound.
 
 A Hypothesis state machine drives ``start-reading``, ``edit-purpose``,
-``update-page`` and ``delete-book`` (with days passing in between) over a small library that
+``update-page``, ``finish-reading`` and ``delete-book`` (with days passing in between) over a small library that
 starts with a Book in each state: never started, finished, paused, and Main.
 After every step:
 
 - a refusal is the one a simple model predicts (``book_not_found``,
   ``already_main``, ``reading_already_finished``, ``not_main_book``,
-  ``invalid_fields`` for a page out of range) and leaves ``library.json``
+  ``invalid_fields`` for a page out of range, a Finished on date in the
+  future or before the start, or Purpose fulfilled sent for a Reading with no
+  Purpose) and leaves ``library.json``
   byte-for-byte unchanged;
 - an accepted intent changed exactly what its contract says and nothing else
   (the paused Main book, the resumed or appended Reading, the one Purpose,
-  the Main book's page and ``lastProgressUpdate``);
+  the Main book's page and ``lastProgressUpdate``, the finished Reading and
+  the cleared Main book);
 - ``check_invariants()`` holds, each Book has at most one unfinished Reading,
   and the file on disk reads back as the committed library;
 - the views agree: only ``mainBookId`` is ``main``, ``waiting`` is exactly the
   paused Books (Up next is Epic 4, so none here), and Home's Main book is the
   Main book's current Reading.
 
-Story 3.4+ intents (finish, pause, Up next, Side reads) join the
+Later intents (pause, Up next, Side reads) join the
 machine as they land.
 """
 
@@ -36,6 +39,7 @@ from bookvie.domain import FakeClock, Library, check_invariants, normalize_purpo
 from bookvie.intents import IntentError
 from bookvie.intents.delete_book import delete_book, parse_delete_book_intent
 from bookvie.intents.edit_purpose import edit_purpose, parse_edit_purpose_intent
+from bookvie.intents.finish_reading import finish_reading, parse_finish_reading_intent
 from bookvie.intents.start_reading import parse_start_reading_intent, start_reading
 from bookvie.intents.update_page import parse_update_page_intent, update_page
 from bookvie.store import Store
@@ -52,6 +56,10 @@ _purposes = (
 )
 _pages = st.integers(min_value=-2, max_value=415)
 """A page sent by the page field: in range for some Books, out of range for others."""
+_finish_offsets = st.integers(min_value=-200, max_value=2)
+"""Finished on, in days from today: the past (maybe before the start), today, or the future."""
+_answers = st.sampled_from([None, "yes", "partly", "notYet"])
+_ratings = st.none() | st.integers(min_value=1, max_value=5)
 _slots = st.integers(min_value=0, max_value=4)
 """Which Book an intent names: the four seeded Books, or 4 for one that never existed."""
 
@@ -263,6 +271,62 @@ class ReadingPlan(RuleBasedStateMachine):
         assert after == {**before, book_id: expected_book}
         assert self.store.library.main_book_id == book_id
         assert reached == [page == before[book_id]["pages"]]
+
+    @rule(slot=_slots, offset=_finish_offsets, answer=_answers, rating=_ratings)
+    def finish(self, slot: int, offset: int, answer: str | None, rating: int | None) -> None:
+        book_id = self._book_id(slot)
+        library = self.store.library
+        before = _books(library)
+        old_main = library.main_book_id
+        finished_on = self.today + timedelta(days=offset)
+        current = _current(before[book_id]) if book_id in before else None
+        if book_id not in before:
+            expected = "book_not_found"
+        elif current is None:
+            expected = "reading_already_finished"
+        elif finished_on > self.today or (
+            current["startDate"] is not None
+            and finished_on.isoformat() < current["startDate"]
+        ):
+            expected = "invalid_fields"
+        elif answer is not None and current["purpose"] is None:
+            expected = "invalid_fields"
+        else:
+            expected = None
+        clock = FakeClock(self.today)
+        intent = parse_finish_reading_intent(
+            json.dumps(
+                {
+                    "bookId": book_id,
+                    "finishedOn": finished_on.isoformat(),
+                    "purposeFulfilled": answer,
+                    "rating": rating,
+                }
+            )
+        )
+        if not self._send(lambda: finish_reading(self.store, clock, intent), expected):
+            return
+
+        after = _books(self.store.library)
+        assert current is not None
+        expected_book = {
+            **before[book_id],
+            "readings": [
+                {
+                    **r,
+                    "finishDate": finished_on.isoformat(),
+                    "finishedPages": before[book_id]["pages"],
+                    "purposeFulfilled": answer,
+                    "rating": rating,
+                }
+                if r["id"] == current["id"]
+                else r
+                for r in before[book_id]["readings"]
+            ],
+        }
+        # Only the current Reading is finished; history and other Books stay.
+        assert after == {**before, book_id: expected_book}
+        assert self.store.library.main_book_id == (None if old_main == book_id else old_main)
 
     @rule(slot=_slots)
     def delete(self, slot: int) -> None:

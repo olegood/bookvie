@@ -9,9 +9,11 @@ import {
   markDeleteHandled,
   metadata,
   panelCover,
+  purposeFulfilledLine,
   readingLines,
   roleLine,
   shortDate,
+  starsLabel,
   toPanelFields,
   type EditableBook,
 } from './bookDetail.ts'
@@ -100,20 +102,20 @@ describe('readingLines', () => {
   it('formats each kind of Reading', () => {
     assert.deepEqual(
       readingLines([
-        { id: 'a', startDate: '2026-09-02', finishDate: '2026-10-03' },
+        { id: 'a', startDate: '2026-09-02', finishDate: '2026-10-03', rating: null, purposeFulfilled: null },
       ]).map((line) => line.text),
       ['Started 2 Sep 2026 · Finished 3 Oct 2026'],
     )
-    assert.deepEqual(readingLines([{ id: 'b', startDate: null, finishDate: '2019-08-14' }])[0].text, 'Finished 14 Aug 2019')
-    assert.deepEqual(readingLines([{ id: 'c', startDate: '2026-09-02', finishDate: null }])[0].text, 'Started 2 Sep 2026')
+    assert.deepEqual(readingLines([{ id: 'b', startDate: null, finishDate: '2019-08-14', rating: null, purposeFulfilled: null }])[0].text, 'Finished 14 Aug 2019')
+    assert.deepEqual(readingLines([{ id: 'c', startDate: '2026-09-02', finishDate: null, rating: null, purposeFulfilled: null }])[0].text, 'Started 2 Sep 2026')
   })
 
   it('lists newest first: the unfinished Reading, then by finish date, later stored first on a tie', () => {
     const lines = readingLines([
-      { id: 'old', startDate: null, finishDate: '2019-08-14' },
-      { id: 'now', startDate: '2026-09-02', finishDate: null },
-      { id: 'tie1', startDate: null, finishDate: '2024-02-10' },
-      { id: 'tie2', startDate: '2024-01-02', finishDate: '2024-02-10' },
+      { id: 'old', startDate: null, finishDate: '2019-08-14', rating: null, purposeFulfilled: null },
+      { id: 'now', startDate: '2026-09-02', finishDate: null, rating: null, purposeFulfilled: null },
+      { id: 'tie1', startDate: null, finishDate: '2024-02-10', rating: null, purposeFulfilled: null },
+      { id: 'tie2', startDate: '2024-01-02', finishDate: '2024-02-10', rating: null, purposeFulfilled: null },
     ])
     assert.deepEqual(
       lines.map((line) => line.id),
@@ -123,6 +125,34 @@ describe('readingLines', () => {
 
   it('is empty with no Readings', () => {
     assert.deepEqual(readingLines([]), [])
+  })
+
+  it('carries the rating and the Purpose fulfilled line, null when skipped', () => {
+    assert.deepEqual(
+      readingLines([
+        { id: 'a', startDate: '2026-10-01', finishDate: '2026-10-28', rating: 4, purposeFulfilled: 'partly' },
+        { id: 'b', startDate: null, finishDate: '2019-08-14', rating: null, purposeFulfilled: null },
+      ]),
+      [
+        { id: 'a', text: 'Started 1 Oct 2026 · Finished 28 Oct 2026', rating: 4, purposeFulfilled: 'Purpose fulfilled: partly' },
+        { id: 'b', text: 'Finished 14 Aug 2019', rating: null, purposeFulfilled: null },
+      ],
+    )
+  })
+})
+
+describe('starsLabel', () => {
+  it('names one star and many stars', () => {
+    assert.deepEqual([1, 2, 5].map(starsLabel), ['1 star', '2 stars', '5 stars'])
+  })
+})
+
+describe('purposeFulfilledLine', () => {
+  it('reads each answer, notYet as "not yet", and nothing when skipped', () => {
+    assert.equal(purposeFulfilledLine('yes'), 'Purpose fulfilled: yes')
+    assert.equal(purposeFulfilledLine('partly'), 'Purpose fulfilled: partly')
+    assert.equal(purposeFulfilledLine('notYet'), 'Purpose fulfilled: not yet')
+    assert.equal(purposeFulfilledLine(null), null)
   })
 })
 

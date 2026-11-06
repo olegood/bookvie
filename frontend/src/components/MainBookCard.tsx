@@ -20,24 +20,35 @@ const CHOOSE_A_BOOK = 'Choose a book in the Catalog'
  * with the date header on focus and visibility.
  * Without a Main book the same frame and name hold "No Main book." and a
  * link to the Catalog. `titleRef` is the title link, which Home focuses after
- * a confirmed start.
+ * a confirmed start; `emptyHeadingRef` is the "No Main book." heading
+ * (focusable by script only), which Home focuses after a finish.
+ * `onReachedLastPage` and `pageFieldRef` pass through to the page field, so
+ * Home can host the Finish dialog and return focus to the field.
  */
 export default function MainBookCard({
   book,
   lastExportAt,
   now,
   titleRef,
+  emptyHeadingRef,
+  onReachedLastPage,
+  pageFieldRef,
 }: {
   book: HomeMainBook | null
   lastExportAt: string | null
   now: Date
   titleRef?: Ref<HTMLAnchorElement>
+  emptyHeadingRef?: Ref<HTMLHeadingElement>
+  onReachedLastPage?: () => void
+  pageFieldRef?: Ref<HTMLInputElement>
 }) {
   const eyebrowId = useId()
   if (book === null) {
     return (
       <section className={`${styles.card} ${styles.empty}`} aria-label="Main book">
-        <h2 className={styles.emptyHeading}>{NO_MAIN_BOOK}</h2>
+        <h2 ref={emptyHeadingRef} className={styles.emptyHeading} tabIndex={-1}>
+          {NO_MAIN_BOOK}
+        </h2>
         <p className={styles.emptyBody}>
           <Link to="/catalog">{CHOOSE_A_BOOK}</Link>
         </p>
@@ -59,7 +70,14 @@ export default function MainBookCard({
         <p className={styles.authors}>{book.authors.join('; ')}</p>
         {book.edition !== 1 && <p className={styles.edition}>Edition {book.edition}</p>}
         <Gauge title={book.title} page={book.currentPage} pages={book.pages} percent={book.percent} />
-        <PageField bookId={book.id} currentPage={book.currentPage} pages={book.pages} percent={book.percent} />
+        <PageField
+          bookId={book.id}
+          currentPage={book.currentPage}
+          pages={book.pages}
+          percent={book.percent}
+          onReachedLastPage={onReachedLastPage}
+          fieldRef={pageFieldRef}
+        />
         <ReentryLine
           lastProgressUpdate={book.lastProgressUpdate}
           daysLeft={book.daysLeft}

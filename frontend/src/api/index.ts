@@ -7,6 +7,7 @@ export {
   deleteBook,
   editBook,
   editPurpose,
+  finishReading,
   setSpineColor,
   startReading,
   updatePage,
@@ -14,6 +15,7 @@ export {
   useDeleteBook,
   useEditBook,
   useEditPurpose,
+  useFinishReading,
   useSetSpineColor,
   useStartReading,
   useUpdatePage,
@@ -22,6 +24,8 @@ export {
   type BookFields,
   type BookSaveOptions,
   type EditBookOptions,
+  type FinishAnswers,
+  type PurposeFulfilled,
 } from './books.ts'
 export {
   COULDNT_SAVE_MESSAGE,

@@ -117,16 +117,40 @@ export function readingLine(reading: ListedReading): string {
   return parts.join(' · ')
 }
 
+/** A rating's accessible name: "1 star", "4 stars". */
+export function starsLabel(rating: number): string {
+  return rating === 1 ? '1 star' : `${rating} stars`
+}
+
+const ANSWERS: Record<NonNullable<ListedReading['purposeFulfilled']>, string> = {
+  yes: 'yes',
+  partly: 'partly',
+  notYet: 'not yet',
+}
+
+/** "Purpose fulfilled: partly"; `null` when the question was skipped (or never asked). */
+export function purposeFulfilledLine(answer: ListedReading['purposeFulfilled']): string | null {
+  return answer === null ? null : `Purpose fulfilled: ${ANSWERS[answer]}`
+}
+
+/** A Readings row: its start/finish text, its rating (1–5, or `null`) and its answer line. */
+export type ReadingRow = { id: string; text: string; rating: number | null; purposeFulfilled: string | null }
+
 /**
  * Newest first: the unfinished Reading (there is at most one) on top, then
  * finished ones by finish date, the later in stored order first on a tie.
  */
-export function readingLines(readings: readonly ListedReading[]): { id: string; text: string }[] {
+export function readingLines(readings: readonly ListedReading[]): ReadingRow[] {
   const order = (reading: ListedReading) => reading.finishDate ?? '9999-99-99'
   return readings
     .map((reading, index) => ({ reading, index }))
     .sort((a, b) => order(b.reading).localeCompare(order(a.reading)) || b.index - a.index)
-    .map(({ reading }) => ({ id: reading.id, text: readingLine(reading) }))
+    .map(({ reading }) => ({
+      id: reading.id,
+      text: readingLine(reading),
+      rating: reading.rating,
+      purposeFulfilled: purposeFulfilledLine(reading.purposeFulfilled),
+    }))
 }
 
 /** The fields of the `book` view the Confirm dialog's role line reads. */

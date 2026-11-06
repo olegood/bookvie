@@ -179,3 +179,36 @@ export function useUpdatePage(): (bookId: string, page: number) => Promise<Inten
   const client = useQueryClient()
   return (bookId, page) => updatePage(client, bookId, page)
 }
+
+// `finish-reading`'s intent part is `{ bookId, finishedOn, purposeFulfilled, rating }`:
+// every key sent, the two answers `null` when skipped.
+
+/** "Purpose fulfilled?" as sent: yes, partly or not yet. */
+export type PurposeFulfilled = 'yes' | 'partly' | 'notYet'
+
+/** The Finish dialog's answers. */
+export type FinishAnswers = {
+  /** The Finished on field's `YYYY-MM-DD`, as typed. */
+  finishedOn: string
+  purposeFulfilled: PurposeFulfilled | null
+  /** 1 to 5 stars, or `null` for No rating. */
+  rating: number | null
+}
+
+export function finishReadingForm(bookId: string, answers: FinishAnswers): FormData {
+  const form = new FormData()
+  const { finishedOn, purposeFulfilled, rating } = answers
+  form.set('intent', JSON.stringify({ bookId, finishedOn, purposeFulfilled, rating }))
+  return form
+}
+
+/** Sends `finish-reading` (the Book's current Reading); resolves after the views have refetched. */
+export function finishReading(client: QueryClient, bookId: string, answers: FinishAnswers): Promise<IntentResult> {
+  return sendIntent(client, 'finish-reading', finishReadingForm(bookId, answers))
+}
+
+/** `finishReading` bound to the app's QueryClient. */
+export function useFinishReading(): (bookId: string, answers: FinishAnswers) => Promise<IntentResult> {
+  const client = useQueryClient()
+  return (bookId, answers) => finishReading(client, bookId, answers)
+}

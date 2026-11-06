@@ -711,7 +711,14 @@ def test_book_view_returns_the_book_and_its_latest_finish(
         dune, start_date=None, finish_date="2019-08-14", current_page=412, finished_pages=412
     )
     new = library_builder.reading(
-        dune, start_date="2024-01-02", finish_date="2024-02-10", current_page=412, finished_pages=412
+        dune,
+        start_date="2024-01-02",
+        finish_date="2024-02-10",
+        current_page=412,
+        finished_pages=412,
+        purpose="Why Arrakis",
+        purpose_fulfilled="partly",
+        rating=4,
     )
     library_builder.write(tmp_path)
     before = library_bytes(tmp_path)
@@ -747,8 +754,20 @@ def test_book_view_returns_the_book_and_its_latest_finish(
     }
     assert sorted(readings, key=lambda r: r["id"]) == sorted(
         [
-            {"id": old, "startDate": None, "finishDate": "2019-08-14"},
-            {"id": new, "startDate": "2024-01-02", "finishDate": "2024-02-10"},
+            {
+                "id": old,
+                "startDate": None,
+                "finishDate": "2019-08-14",
+                "rating": None,
+                "purposeFulfilled": None,
+            },
+            {
+                "id": new,
+                "startDate": "2024-01-02",
+                "finishDate": "2024-02-10",
+                "rating": 4,
+                "purposeFulfilled": "partly",
+            },
         ],
         key=lambda r: r["id"],
     )

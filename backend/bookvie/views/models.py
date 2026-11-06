@@ -98,6 +98,10 @@ class BookReading(_View):
     id: str
     start_date: date | None
     finish_date: date | None
+    rating: int | None
+    """1 to 5 stars; ``null`` when unrated or not finished."""
+    purpose_fulfilled: Literal["yes", "partly", "notYet"] | None
+    """The Finish dialog's answer; ``null`` when skipped or not finished."""
 
 
 class CurrentReading(_View):

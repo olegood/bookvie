@@ -1,4 +1,4 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useId, useImperativeHandle, useLayoutEffect, useRef, useState, type FormEvent, type Ref } from 'react'
 import { useUpdatePage } from '../api/index.ts'
 import { adoptRegions, announce, clearAnnouncements, releaseRegions } from '../lib/announce.ts'
 import { pageRangeMessage, pageSavedCopy, parsePage } from '../lib/pageField.ts'
@@ -15,6 +15,10 @@ type Props = {
   pages: number
   /** The server's percentage for `currentPage` (AD-6). */
   percent: number
+  /** A save answered `reachedLastPage`: the owner (Home) opens the Finish dialog. */
+  onReachedLastPage?: () => void
+  /** The page input, which the owner focuses when the Finish dialog is cancelled. */
+  fieldRef?: Ref<HTMLInputElement>
 }
 
 /**
@@ -36,8 +40,12 @@ type Props = {
  *
  * When the view's Book or page changes (a save, a refetch after another tab
  * changed it), the field resets to the view's page.
+ *
+ * A save that answers `reachedLastPage` calls `onReachedLastPage`; Home
+ * hosts the Finish dialog, so it outlives this field when a refetch empties
+ * the card. Each such save calls it again, so the same page reopens it.
  */
-export default function PageField({ bookId, currentPage, pages, percent }: Props) {
+export default function PageField({ bookId, currentPage, pages, percent, onReachedLastPage, fieldRef }: Props) {
   const fieldId = useId()
   const ofId = useId()
   const messageId = useId()
@@ -55,6 +63,8 @@ export default function PageField({ bookId, currentPage, pages, percent }: Props
   const mounted = useRef(true)
   const field = useRef<HTMLInputElement>(null)
   const regionSlot = useRef<HTMLDivElement>(null)
+  // Mounted with the input, so the handle is the element itself.
+  useImperativeHandle(fieldRef, () => field.current as HTMLInputElement, [])
 
   // The view moved on: show its page.
   if (seen.bookId !== bookId || seen.currentPage !== currentPage) {
@@ -112,12 +122,12 @@ export default function PageField({ bookId, currentPage, pages, percent }: Props
       return
     }
     setBusy(false)
-    // `reachedLastPage` opens the Finish dialog from Story 3.6; ignored until then.
     if (result.kind === 'ok') {
       // The value comes from the refetched view (the render-phase reset).
       setInvalid(null)
       savedPage.current = page
       setSaves((count) => count + 1)
+      if (result.reachedLastPage) onReachedLastPage?.()
       return
     }
     const pageError = result.kind === 'refusal' ? result.fields.find((f) => f.field === PAGE_FIELD) : undefined
