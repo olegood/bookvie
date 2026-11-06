@@ -96,6 +96,10 @@ def finished_before_start_message(start: date) -> str:
     return f"Finished on can't be before {long_date(start)}, when this reading started."
 
 
+def finished_after_current_start_message(start: date) -> str:
+    return f"Finished on can't be after {long_date(start)}, when the current reading started."
+
+
 def pages_below_current_page_message(page: int) -> str:
     return f"Pages can't be less than {page}, the page you're on."
 

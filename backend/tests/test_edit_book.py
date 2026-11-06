@@ -305,6 +305,94 @@ def test_ac10_p0_finished_on_back_fills_a_reading_and_leaves_the_current_one_unt
     assert backfill["finishedPages"] == 271
 
 
+# --- Epic 3 retro F-R1: a stored finish is a past Reading's ------------------
+
+
+def test_a_back_fill_after_the_current_readings_start_is_422_and_saves_nothing(
+    tmp_path: Path, library_builder: LibraryBuilder
+) -> None:
+    dune = library_builder.book(**DUNE)
+    library_builder.reading(dune, start_date="2026-10-01", current_page=120)
+    library_builder.main(dune)
+    neuromancer = library_builder.book(**NEUROMANCER)
+    library_builder.reading(neuromancer, start_date="2026-09-01", paused_at="2026-10-01")
+    library_builder.write(tmp_path)
+    client = api_client(tmp_path)
+    before = library_bytes(tmp_path)
+
+    # Inside the active Reading (the retro probe), and inside a paused one.
+    response = _edit(client, dune, DUNE_FORM, finishedOn="2026-10-20")
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "invalid_fields"
+    assert field_messages(response) == {
+        "finishedOn": "Finished on can't be after 1 October 2026, when the current reading started."
+    }
+    response = _edit(client, neuromancer, NEUROMANCER_FORM, finishedOn="2026-09-02")
+    assert field_messages(response) == {
+        "finishedOn": "Finished on can't be after 1 September 2026, when the current reading started."
+    }
+    assert library_bytes(tmp_path) == before
+
+    # The start day itself is a past Reading's finish, as a same-day re-read makes.
+    assert _edit(client, dune, DUNE_FORM, finishedOn="2026-10-01").status_code == 200
+    finished = [r for r in _readings(tmp_path, dune) if r["finishDate"] is not None]
+    assert [(r["startDate"], r["finishDate"]) for r in finished] == [(None, "2026-10-01")]
+    assert json.loads(library_bytes(tmp_path))["mainBookId"] == dune
+    assert_invariants(tmp_path)
+
+
+def test_the_latest_finish_cannot_move_past_a_re_reads_start(
+    tmp_path: Path, library_builder: LibraryBuilder
+) -> None:
+    dune = library_builder.book(**DUNE)
+    earlier = library_builder.reading(
+        dune, start_date="2026-01-01", finish_date="2026-02-01", current_page=412, finished_pages=412
+    )
+    library_builder.reading(dune, start_date="2026-10-01", current_page=40)
+    library_builder.main(dune)
+    library_builder.write(tmp_path)
+    client = api_client(tmp_path)
+    form = {**DUNE_FORM, "finishedOn": "2026-02-01"}
+    before = library_bytes(tmp_path)
+
+    response = _edit(client, dune, form, finishedOn="2026-10-25")
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "invalid_fields"
+    assert field_messages(response) == {
+        "finishedOn": "Finished on can't be after 1 October 2026, when the current reading started."
+    }
+    assert library_bytes(tmp_path) == before
+    # Up to the re-read's start day is fine.
+    assert _edit(client, dune, form, finishedOn="2026-10-01").status_code == 200
+    by_id = {r["id"]: r["finishDate"] for r in _readings(tmp_path, dune)}
+    assert by_id[earlier] == "2026-10-01"
+    # Moving it earlier again still saves.
+    assert _edit(client, dune, form, finishedOn="2026-03-01").status_code == 200
+    by_id = {r["id"]: r["finishDate"] for r in _readings(tmp_path, dune)}
+    assert by_id[earlier] == "2026-03-01"
+
+
+def test_an_unchanged_finish_already_past_the_current_start_still_saves_other_fields(
+    tmp_path: Path, library_builder: LibraryBuilder
+) -> None:
+    # Data from before this rule (or a restore) may already overlap: resending
+    # the prefilled date must not block an unrelated edit.
+    dune = library_builder.book(**DUNE)
+    library_builder.reading(
+        dune, start_date="2026-01-01", finish_date="2026-10-25", current_page=412, finished_pages=412
+    )
+    library_builder.reading(dune, start_date="2026-10-01", current_page=40)
+    library_builder.write(tmp_path)
+    client = api_client(tmp_path)
+
+    response = _edit(client, dune, {**DUNE_FORM, "finishedOn": "2026-10-25"}, subtitle="A Novel")
+
+    assert response.status_code == 200
+    assert stored_book(tmp_path, dune)["subtitle"] == "A Novel"
+    assert [r["finishDate"] for r in _readings(tmp_path, dune)] == ["2026-10-25", None]
+
+
 # --- AC-11: spine color is re-resolved only when an input changes -------------
 
 

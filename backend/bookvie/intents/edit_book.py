@@ -29,16 +29,20 @@ Finished on in edit: with ``latest`` the finished Reading with the greatest
 ``finishDate`` (the later in list order on a tie), an empty value is refused,
 a date before ``latest``'s start is refused, and any other changed date sets
 ``latest.finishDate``. With no finished Reading, a date appends a back-fill.
+Either way a stored date must be a *past* Reading's: when the Book has an
+unfinished Reading with a start date, a new or changed date after that start
+is refused (the start day itself is allowed, as a same-day re-read makes).
 """
 
 import uuid
 from datetime import date
 from functools import partial
 
-from bookvie.domain import Book, Clock, Library, Reading
+from bookvie.domain import Book, Clock, Library, Reading, current_reading
 from bookvie.domain.book_fields import (
     FINISH_DATE_REMOVED_MESSAGE,
     BookFields,
+    finished_after_current_start_message,
     finished_before_start_message,
     pages_below_card_note_message,
     pages_below_current_page_message,
@@ -91,12 +95,22 @@ def parse_edit_book_intent(raw: str | None, has_cover: bool = False) -> EditBook
 def _finished_on_failure(book: Book, finished_on: date | None) -> str | None:
     latest = book.latest_finished()
     if latest is None:
-        return None
+        return None if finished_on is None else _after_current_start(book, finished_on)
     if finished_on is None:
         return FINISH_DATE_REMOVED_MESSAGE
     if latest.start_date is not None and finished_on < latest.start_date:
         return finished_before_start_message(latest.start_date)
+    if finished_on != latest.finish_date:
+        return _after_current_start(book, finished_on)
     return None
+
+
+def _after_current_start(book: Book, finished_on: date) -> str | None:
+    """Refuse a stored finish after the current Reading's start: it would overlap it."""
+    current = current_reading(book)
+    if current is None or current.start_date is None or finished_on <= current.start_date:
+        return None
+    return finished_after_current_start_message(current.start_date)
 
 
 def _check_pages_floors(book: Book, pages: int) -> None:

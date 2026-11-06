@@ -308,3 +308,12 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-7-see-the-finish-on-the-shelf.md`
   summary: Automate the ATDD checklist's remaining green-phase follow-ups for the finish moment: the ring and fill in dark theme and under forced colors; a second `browser.newContext()`; Back to Book detail and Forward to Home playing nothing; a 503 on the first Done, then the moment once after the retry; the re-read finished from Book detail's Mark finished; focusing "No Main book." not scrolling the spine back out of view; the AC-5 tone checks under reduced motion and on a re-read; pixel-sampling "from its current fill".
   evidence: `_bmad-output/test-artifacts/atdd-checklist-3-7-see-the-finish-on-the-shelf.md` → Green-Phase Follow-ups. The 3.7 leaves cover the scroll order, the smooth default, the `fromPercent` start (keyframe, not pixels) and the same-mount refetch; the rest has no test. Run `bmad-testarch-automate` for 3.7.
+
+## Deferred from: review of spec-epic-3-retro-item-21-bound-edit-finished-on (2026-11-06)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-epic-3-retro-item-21-bound-edit-finished-on.md`
+  summary: Edit book can move the latest finish (for example a back-fill) before another finished Reading's finish or start, so finished Readings overlap or swap and `latestFinishDate` jumps to another Reading.
+  evidence: `edit_book._finished_on_failure` checks the latest finish only against its own `startDate` and the current Reading. This predates the fix (story 1.11).
+- source_spec: `_bmad-output/implementation-artifacts/spec-epic-3-retro-item-21-bound-edit-finished-on.md`
+  summary: Add the "not after the current Reading's start" Finished on rule to story 1.11's ACs in `epics.md` during the Epic 3 spine reconciliation (retro action 4).
+  evidence: EXPERIENCE.md now carries the rule and its copy, and `epics.md` 1.11 still lists only the "can't be removed" and "before start" rules.
