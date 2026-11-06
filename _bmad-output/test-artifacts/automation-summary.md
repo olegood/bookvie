@@ -2,15 +2,16 @@
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03c-aggregate', 'step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
 lastSaved: '2026-11-06'
-storyId: '3.6'
+storyId: '3.7'
 inputDocuments:
-  - _bmad-output/implementation-artifacts/spec-3-6-finish-my-main-book.md (incl. I/O matrix, Review Findings and Review Triage Log)
-  - _bmad-output/test-artifacts/atdd-checklist-3-6-finish-my-main-book.md
+  - _bmad-output/implementation-artifacts/spec-3-7-see-the-finish-on-the-shelf.md (incl. I/O matrix and Review Triage Log)
+  - _bmad-output/test-artifacts/atdd-checklist-3-7-see-the-finish-on-the-shelf.md (Green-Phase Follow-ups)
+  - _bmad-output/implementation-artifacts/deferred-work.md (3.7 automate entry)
   - _bmad/tea/config.yaml
-  - backend/bookvie/intents/finish_reading.py
-  - backend/tests/test_finish_reading.py, test_reading_state_machine.py
-  - frontend/src/components/FinishDialog.tsx, frontend/src/lib/bookDetail.ts (+ bookDetail.test.ts, today.test.ts, api/books.test.ts)
-  - frontend/e2e/finish-reading.spec.ts
+  - frontend/src/pages/Bookcase.tsx, Bookcase.module.css, HomePage.tsx
+  - frontend/src/components/FinishDialog.tsx, frontend/src/lib/catalog.ts (+ catalog.test.ts)
+  - frontend/src/styles/base.css
+  - frontend/e2e/finish-moment.spec.ts, home-slice.spec.ts, bookcase-details.spec.ts, finish-reading.spec.ts
   - knowledge/test-levels-framework.md
   - knowledge/test-priorities-matrix.md
   - knowledge/data-factories.md
@@ -22,83 +23,87 @@ inputDocuments:
   - knowledge/playwright-cli.md
 ---
 
-# Automation Summary: Story 3.6, Finish my Main book
+# Automation Summary: Story 3.7, See the finish on the shelf
 
-The Story 3.5 summary that used to live in this file is in git history (`1b59f16`).
+The Story 3.6 summary that used to live in this file is in git history (`ab2d1ed`).
 
-**Execution mode:** BMad-Integrated. Inputs: the story spec (I/O matrix, review findings, triage log) and the ATDD checklist.
-**Detected stack:** fullstack (`backend/pyproject.toml` + `frontend/playwright.config.ts`).
+**Execution mode:** BMad-Integrated. Inputs: the story spec (I/O matrix, triage log), the ATDD checklist's green-phase follow-ups, and the deferred-work entry that sent them here.
+**Detected stack:** fullstack (`backend/pyproject.toml` + `frontend/playwright.config.ts`). Story 3.7 is client only, so every target is in the frontend.
 **Playwright Utils mandate:** off (`tea_use_playwright_utils: false`).
 **Pact.js Utils mandate:** not applicable (the repo has no contract testing).
-**Subagent execution:** SEQUENTIAL. The mode was `auto` and subagents were available, but there were only two small targets, so I wrote them inline.
-**Total tests added:** 1 pytest test and 1 Playwright test. Results are under Validation.
-**Browser exploration:** skipped. The dialog's roles and names are already pinned by the ATDD leaves, so I worked from source and the spec.
+**Subagent execution:** SEQUENTIAL. Two small e2e targets, written inline.
+**Total tests added:** 2 Playwright tests. Results are under Validation.
+**Browser exploration:** skipped. The roles and names are pinned by the ATDD leaves; I worked from source and mutation probes.
 
 ## Coverage Plan by Test Level and Priority
 
-Scope: **selective**. Story 3.6 shipped with broad coverage:
+Scope: **selective**. Story 3.7 shipped with:
 
-- Backend: `test_finish_reading.py` has 17 tests (AC-2/3/7/8/9 plus the follow-ups: Matrix boundaries, re-read, paused non-Main, `purposeFulfilled` without a Purpose, malformed answers, ratings and dates, form-order errors, malformed intent, the Book view). `test_reading_state_machine.py` has a `finish` rule. Branch coverage of `intents/finish_reading.py` is 100%.
-- Client logic: `bookDetail.test.ts` (`readingLines`, `starsLabel`, `purposeFulfilledLine`), `today.test.ts` (`localIsoDate`), `books.test.ts` (`finishReading`).
-- E2E: `finish-reading.spec.ts` has 15 tests: the ATDD leaves plus the review patches (409 from both openers, the hand-off focusing once, Back not reopening, axe, couldn't-save, a future date, no Purpose).
+- E2E: `finish-moment.spec.ts`, 7 tests (the 5 ATDD leaves plus two review patches: the fill starts from Home's percentage, and a Start on the same Home drops the line).
+- Unit: `catalog.test.ts` covers `finishLine` and `finishStatus` (first finish, re-read, no "!").
 
-Branch coverage is not the same as pinned behaviour, so I ran mutation probes.
+The deferred-work entry listed 8 ATDD follow-ups. To pick among them I ran mutation probes on the moment's code against the 7 leaves:
 
-**`finish_reading.py`, full pytest suite:**
-
-| Mutant | pytest |
+| Mutant | 7 leaves |
 |---|---|
-| `finishedOn < start` → `<=` | killed |
-| `finishedPages` = `currentPage` instead of the Book's pages | killed |
-| always clear Main / never clear Main | killed / killed |
-| drop the answer / drop the rating | killed / killed |
-| finish every Reading, not only the current one | killed |
-| rating 0 accepted / `True` accepted as 1 | killed / killed |
-| no "needs a Purpose" check | killed |
-| only the first field error reported | killed |
-| check field errors **before** `reading_already_finished` | **killed only by the Hypothesis state machine** (`test_reading_plan_holds_under_random_intent_sequences`, not derandomized, 60 examples) |
-
-**`FinishDialog.tsx`, finish-reading + update-page e2e (26 tests):**
-
-| Mutant | e2e |
-|---|---|
-| "No rating" `onChange` is a no-op | **survives** (26 passed) |
+| M1 the fill never reaches `done` (spine stays Main-style) | killed (4 failed) |
+| M2 focus on "No Main book." delayed 1.5 s | **survives** |
+| M3 the fill starts at once instead of on `scrollend` | **survives** |
+| M4 reduced motion still runs the fill phases | survives |
+| M5 the scroll is always `behavior: 'auto'` | **survives** |
+| M6 no `scrollIntoView` at all | killed (3 failed) |
+| M7 forced-colors ring `dashed` → `solid` (no test in the repo mentions it) | **survives** |
 
 | # | Gap | Evidence | Level | Priority |
 |---|---|---|---|---|
-| G1 | **No example test pins `reading_already_finished` before the 422s.** | The spec's Always clause fixes the refusal order: `book_not_found`, then `reading_already_finished`, then `invalid_fields`. The Matrix row "Gone Book + bad date" pins the first step (AC-9). AC-8 sends valid fields, so the second step is caught only when Hypothesis happens to draw a finish of a finished Book with a bad date. A stale tab with a bad date would otherwise get pointed at its fields instead of told the Reading is finished. | API (pytest) | P2 (AC-8, AD-9) |
-| G2 | **Nothing tests changing your mind back to "No rating".** | With the no-op mutant, a user who picks a star can't un-rate: the controlled radio snaps back, and Done sends the star. No leaf checks a star and then "No rating". AC-1 only checks that "No rating" is selected on open. The unrated, unanswered Readings row (dates only, no star image) also had no e2e check. | E2E | P2 (AC-2, AC-6) |
+| G1 | **The order below the fold is unpinned.** The spec says to scroll first (`smooth` by default), start the fill only once the scroll ends, and focus "No Main book." without scrolling the spine back out of view. | M2, M3 and M5 survive. AC-1's `toBeInViewport` is retried, so a brief moment in view passes it, and no leaf reads the scroll's `behavior` outside reduced motion. Story 4.1 will move this focus to Up next, which is exactly where M2 could come back. | E2E | P2 (AC-1) |
+| G2 | **The forced-colors highlight ring has no test anywhere.** Story 1.10's review chose a dashed `Highlight` outline so the ring differs from the focus outline. The moment reuses `.highlight`. | M7 survives. `grep dashed frontend/e2e` finds nothing. | E2E | P3 (AC-1, a11y) |
 
 **Not selected:**
-- More `finish_reading.py` tests. Every other mutant is killed.
-- Going back to "no answer" for Purpose fulfilled. The spec pins yes · partly · not yet with none checked, and the review rejected adding a way back.
-- Things the code review deferred or rejected: `min`/`max` on the date field, answers editable in flight, the Book view failing before open, a stale cached Purpose. Testing them would pre-empt those decisions.
-- Component tests. The node runner has no DOM, and the repo has no `.test.tsx` convention.
-- Pre-existing ruff findings in `test_finish_reading.py` (import block and 41 format lines, present at HEAD; `npm run check` doesn't run ruff). Out of scope; my added lines are formatted.
+- M4 (reduced motion runs the fill phases). Under reduced motion the fill has no transition, so the spine sits filled to the top for up to 1 s before it becomes the read spine. The two look almost the same, and AC-4 already pins "nothing moves". The cost of a test would be pixel sampling.
+- Dark theme. The ring and the fill use the same tokens and classes as Catalog and the Main fill, and `home-slice.spec.ts` covers those.
+- A second `browser.newContext()`. AC-2's tab B already proves another page that only refetched plays nothing. The moment doesn't use storage, so a separate context exercises no extra code.
+- Back and Forward. The hand-off is cleared from the entry by 3.6's `clearHandOffState`, and `finish-reading.spec.ts` covers Back and Forward for the same gate (`finished && noMain`). AC-2's reload kills a mutant that skips the clear.
+- A 503, then a retry. `FinishedState` is built only on `ok`, and 3.6 covers the dialog keeping its answers after a couldn't-save.
+- The re-read from Book detail's Mark finished. Both openers share `FinishDialog`, and `reread` comes from `book.readings` either way.
+- Tone checks under reduced motion and on a re-read. The copy comes from the unit-tested helpers, and AC-3 pins the re-read line exactly.
+- Pixel-sampling "from its current fill". The AC-2 leaf and the cached-view leaf already read the fill's first keyframe.
+- Malformed router state (`finishMoment` parsing). The review rejected this (BH8): it needs history tampering.
 
 ## Tests Added
 
-1. **`backend/tests/test_finish_reading.py::test_a_reading_already_finished_is_refused_before_any_field_error`** (P2, G1, AC-8). The Left Hand of Darkness is already finished (2026-10-29). The test sends a future `finishedOn`, `"partly"` with no Purpose, and rating 9, then asserts 409 `reading_already_finished` and unchanged bytes.
-2. **`frontend/e2e/finish-reading.spec.ts` › `[P2] AC-2 choosing a star, then No rating again, finishes with no rating and the Readings row shows no stars`** (P2, G2). From Mark finished: pick 3 stars, then "No rating". The test asserts every star is an outline, then Done. It checks the intent `{…, purposeFulfilled: null, rating: null}` and the stored nulls. On Book detail it checks the row reads "Started 1 Oct 2026 · Finished 28 Oct 2026" with no star image.
+In a new `Story 3.7 See the finish on the shelf (automate)` block in `frontend/e2e/finish-moment.spec.ts`:
+
+1. **`[P2] AC-1 below the fold the spine is scrolled to smoothly, the fill starts only once the scroll has stopped, and focusing "No Main book." never scrolls it back out of view`** (G1). Setup: `MAIN_AT_300_LAST_ROW` at 1280×480. An extra init script records `window.scrollY` when the finished spine's `height` transition starts. After the finish from the page field, the test asserts:
+   - exactly one scroll call on the spine, `{block: 'nearest', behavior: 'smooth'}`;
+   - the ring comes on and goes, and the spine is solid in its color;
+   - the page is scrolled (`scrollY > 0`), and the fill started within 1 px of where the scroll came to rest;
+   - "No Main book." has focus, and the spine is still in view at the same `scrollY`.
+2. **`[P3] AC-1 under forced colors the ring is the dashed Highlight outline for the moment, then goes, and the spine ends solid`** (G2). Setup: `MAIN_AT_300` with `forcedColors: 'active'`. After the finish, the spine's `outline-style` is `dashed`, then `none` within 4 s. The spine ends in its own color, and "No Main book." has focus.
 
 ## Files Created/Updated
 
-- `backend/tests/test_finish_reading.py`: 1 test added.
-- `frontend/e2e/finish-reading.spec.ts`: 1 test added (automate block).
+- `frontend/e2e/finish-moment.spec.ts`: 2 tests added (automate block).
 - `_bmad-output/test-artifacts/automation-summary.md`: this summary.
 
 ## Validation
 
-- `npm run check` passes. pytest went from 1024 to 1025 passed. Coverage gates: domain 100%, intents+store 97.72%. `check:api` is clean, e2e went from 275 to 276 passed, and smoke is ok.
-- Mutation check. G1's test fails on the refusal-order mutant (`assert 422 == 409`). G2's test is the only one of 27 that fails on the no-op "No rating" mutant (`locator.check: Clicking the checkbox did not change its state`). Both mutants were reverted, and `git diff frontend/src backend/bookvie` is empty.
-- Burn-in: the new e2e leaf passed `--repeat-each=10 --retries=0`, 10 of 10. The pytest test is deterministic: built in memory with `LibraryBuilder`, fixed Clock.
-- No CLI browser sessions were opened. Probe scripts and backups stayed in the session scratchpad, outside the repo.
+- `npm run check` passes: pytest 1025 passed, coverage gates domain 100% and intents+store 97.72%, `check:api` clean, e2e 283 → 285 passed, smoke ok.
+- Mutation check against the new tests:
+  - G1 kills M2, failing at `expect(settled).toBeGreaterThan(0)`: the late focus scrolled the page back to the top.
+  - G1 kills M3, failing at the fill's `scrollY` check: the fill started part-way down.
+  - G1 kills M5 at the scroll-call assertion.
+  - G2 kills M7.
+  - Every mutant was reverted after its run, and `git status frontend/src` is clean.
+- Burn-in: both new tests passed `--repeat-each=10 --retries=0` with parallel workers, 20 of 20.
+- No CLI browser sessions were opened. The probe script and logs stayed in the session scratchpad, outside the repo.
 
 ## Assumptions and Risks
 
-- The state machine stays non-derandomized. G1 makes the refusal order deterministic, so the property test still adds value without carrying the order alone.
-- The G2 leaf asserts the row's exact text. If Story 3.7 or 4.5 adds row content for unrated Readings, update this leaf.
+- G1 relies on Chromium animating `behavior: 'smooth'` in headless runs. It does today: M3 fails because `scrollY` was mid-scroll at the fill's start. If a browser ever scrolls instantly, G1's order check would pass trivially. It would not fail.
+- **Comment drift, not a test gap:** the `@media (prefers-reduced-motion)` block in `Bookcase.module.css` says "Catalog's add highlight keeps its fade". It doesn't: `base.css` already sets every `transition-duration` to `0s !important` under reduced motion. That is also why the `.sliceShelf` scoping made no difference to any test. Worth a one-line comment fix whenever someone next edits that CSS.
+- The deferred-work entry for these follow-ups is still open. G1 and G2 close the focus/scroll item and the forced-colors part. "Not selected" above records why I dropped each of the others.
 
 ## Next Recommended Workflow
 
-`bmad-testarch-test-review` on `finish-reading.spec.ts` (16 tests, now the largest spec in Epic 3), or `bmad-testarch-trace` at the Epic 3 gate.
+`bmad-testarch-trace` at the Epic 3 gate: 3.7 was the last story in Epic 3. Or `bmad-testarch-test-review` on `finish-moment.spec.ts`, now 9 tests, which carries its own motion recorder.

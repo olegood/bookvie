@@ -494,3 +494,87 @@ test.describe('Story 3.7 See the finish on the shelf (ATDD)', () => {
     }
   })
 })
+
+// Automate (Story 3.7): the green-phase follow-ups mutation probes showed
+// unpinned. Delaying the "No Main book." focus, starting the fill before the
+// scroll ends, or scrolling with `auto` by default all kept the leaves above
+// green; nothing anywhere checked the forced-colors highlight ring.
+test.describe('Story 3.7 See the finish on the shelf (automate)', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'no-preference' })
+    await page.context().addInitScript(recordMotion)
+  })
+
+  test('[P2] AC-1 below the fold the spine is scrolled to smoothly, the fill starts only once the scroll has stopped, and focusing "No Main book." never scrolls it back out of view', async ({
+    page,
+  }) => {
+    // Where the window was scrolled when the finished spine's fill started.
+    await page.context().addInitScript((label) => {
+      const store = window as unknown as { fillScrollY: number[] }
+      store.fillScrollY = []
+      document.addEventListener(
+        'transitionrun',
+        (event) => {
+          const target = event.target
+          if ((event as TransitionEvent).propertyName !== 'height' || !(target instanceof Element)) return
+          if (target.closest('button[aria-label]')?.getAttribute('aria-label') === label) store.fillScrollY.push(window.scrollY)
+        },
+        true,
+      )
+    }, `${TITLE} by Ursula K. Le Guin, finished`)
+    await page.setViewportSize({ width: 1280, height: 480 })
+    const server = await serverAtFakeToday(page, 'finish-scroll-order', MAIN_AT_300_LAST_ROW)
+    try {
+      await page.goto(server.url)
+      await finishFromPageField(page)
+
+      // One scroll call on the finished spine: `nearest`, and smooth when motion is allowed.
+      await expect
+        .poll(async () => (await scrolls(page)).filter((scroll) => scroll.spine?.startsWith(`${TITLE} by `)))
+        .toEqual([{ spine: `${TITLE} by Ursula K. Le Guin, finished`, options: { block: 'nearest', behavior: 'smooth' } }])
+
+      // The moment runs to its end: the fill, then the ring fades.
+      const spine = finishedSpine(page)
+      await expect.poll(() => ringed(spine)).toBe(true)
+      await expect.poll(() => ringed(spine), { timeout: 4_000 }).toBe(false)
+      await expect(spine).toHaveCSS('background-color', SPINE_COLOR.rgb)
+
+      // The fill started where the scroll came to rest, not part-way down.
+      const settled = await page.evaluate(() => window.scrollY)
+      expect(settled).toBeGreaterThan(0)
+      const fillScrollY = await page.evaluate(() => (window as unknown as { fillScrollY: number[] }).fillScrollY)
+      expect(fillScrollY).toHaveLength(1)
+      expect(Math.abs(fillScrollY[0] - settled)).toBeLessThanOrEqual(1)
+
+      // Focus is on "No Main book." and the spine is still in view: the focus did not undo the scroll.
+      await expect(noMainHeading(page)).toBeFocused()
+      await expect(spine).toBeInViewport()
+      expect(await page.evaluate(() => window.scrollY)).toBe(settled)
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+
+  test('[P3] AC-1 under forced colors the ring is the dashed Highlight outline for the moment, then goes, and the spine ends solid', async ({
+    page,
+  }) => {
+    await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'no-preference', forcedColors: 'active' })
+    const server = await serverAtFakeToday(page, 'finish-forced-colors', MAIN_AT_300)
+    try {
+      await page.goto(server.url)
+      await finishFromPageField(page)
+      await expect(finishLine(page)).toHaveText(`Finished ${TITLE}.`)
+
+      // Forced colors drop the accent box-shadow: the ring is a dashed outline instead (Story 1.10), apart from the solid focus outline.
+      const spine = finishedSpine(page)
+      const outline = () => spine.evaluate((element) => getComputedStyle(element).outlineStyle)
+      await expect.poll(outline).toBe('dashed')
+      await expect.poll(outline, { timeout: 4_000 }).toBe('none')
+      // The finished spine keeps its own color (the read spine opts out of forced colors).
+      await expect(spine).toHaveCSS('background-color', SPINE_COLOR.rgb)
+      await expect(noMainHeading(page)).toBeFocused()
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+})
