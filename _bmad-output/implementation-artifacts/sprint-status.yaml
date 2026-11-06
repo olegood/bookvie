@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-29-2026 17:21
-last_updated: 11-06-2026 14:38
+last_updated: 11-06-2026 15:24
 project: bookvie
 project_key: NOKEY
 tracking_system: file-system
@@ -58,7 +58,7 @@ development_status:
   2-3-refuse-damaged-hostile-or-newer-files: done
   epic-2-retrospective: done
 
-  epic-3: in-progress
+  epic-3: done
   3-1-see-my-main-book-on-home: done
   3-2-start-reading-a-book: done
   3-3-catch-up-with-one-page-update: done
@@ -66,7 +66,7 @@ development_status:
   3-5-see-my-reading-on-home-s-shelf: done
   3-6-finish-my-main-book: done
   3-7-see-the-finish-on-the-shelf: done
-  epic-3-retrospective: optional
+  epic-3-retrospective: done
 
   epic-4: backlog
   4-1-keep-the-interrupted-book-as-up-next: backlog
@@ -157,8 +157,9 @@ action_items:
     ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-11-03.md"
   - id: "epic-1-retro-item-9-before-epic-3-extract-usespinepopover-fr"
     epic: 1
-    action: "Before Story 3.5 (re-scoped from before Epic 3 at 3.1 planning, 2026-11-05): extract
-      useSpinePopover from Bookcase.tsx and split domain/book_fields.py (F-A11, F-A3)"
+    action: "Before Story 3.5 (re-scoped from before Epic 3 at 3.1 planning, 2026-11-05):
+      extract useSpinePopover from Bookcase.tsx and split domain/book_fields.py (F-A11,
+      F-A3)"
     owner: "Amelia (Dev)"
     status: open
     ref: "_bmad-output/implementation-artifacts/epic-1-retro-2026-11-03.md"
@@ -217,7 +218,7 @@ action_items:
     action: "Story spec creation pulls in open deferred-work items naming that story;
       README update is part of story done (PL-2, PL-7)"
     owner: "Oleg / bmad-build config"
-    status: open
+    status: in-progress
     ref: "_bmad-output/implementation-artifacts/epic-2-retro-2026-11-04.md"
   - id: "epic-2-retro-item-18-tick-or-retire-the-105-stale-epic-2-atdd"
     epic: 2
@@ -233,3 +234,94 @@ action_items:
     owner: "Amelia (Dev), decided by Oleg"
     status: open
     ref: "_bmad-output/implementation-artifacts/epic-2-retro-2026-11-04.md"
+  - id: "epic-3-retro-item-20-before-epic-4-run-the-epic-3-trace-and-g"
+    epic: 3
+    action: "Before Epic 4: run the Epic 3 trace and gate against TR7 (P0 = 100%,
+      P1 >= 95%) (F-S4)"
+    owner: "Murat (TEA)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-3-retro-2026-11-06.md"
+  - id: "epic-3-retro-item-21-before-epic-4-edit-book-finished-on-must"
+    epic: 3
+    action: "Before Epic 4: edit-book Finished on must respect Epic 3 Readings - no
+      back-fill beside an unfinished Reading, no moving the latest finish past a later
+      Reading's start; with tests (F-R1)"
+    owner: "Amelia (Dev)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-3-retro-2026-11-06.md"
+  - id: "epic-3-retro-item-22-before-epic-4-start-finish-dialogs-use-a"
+    epic: 3
+    action: "Before Epic 4: Start/Finish dialogs use a fresh book view, clear the
+      finished hand-off state on any Home visit, EditPurpose announces a refusal after
+      unmount; with e2e (F-R2, F-R3, F-R4)"
+    owner: "Amelia (Dev)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-3-retro-2026-11-06.md"
+  - id: "epic-3-retro-item-23-before-epic-4-reconcile-architecture-spi"
+    epic: 3
+    action: "Before Epic 4: reconcile ARCHITECTURE-SPINE with Epic 3 (seed modules,
+      AD-6 ticks/slice/days left, AD-3/AD-9 client pre-check, AD-4/AD-15 home reads
+      local-state, AD-19 nullable lastProgressUpdate, AD-20 pace, AD-7 finish moment)
+      and close the deferred-work entries (F-S1, F-A6)"
+    owner: "Winston (Architect), applied by Oleg"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-3-retro-2026-11-06.md"
+  - id: "epic-3-retro-item-24-decide-the-spine-policy-adopt-per-epic-r"
+    epic: 3
+    action: "Decide the spine policy: adopt per-epic reconciliation officially (supersede
+      epic-2 item 16) or enforce per-story closure in bmad-code-review config (PL-1,
+      F-S2)"
+    owner: "Oleg"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-3-retro-2026-11-06.md"
+  - id: "epic-3-retro-item-25-readme-story-count-24-of-41-spec-links-f"
+    epic: 3
+    action: "README: story count 24 of 41, spec links for 3.5-3.7, automation-summary
+      pointer, Epic 3 status (F-S5)"
+    owner: "Amelia (Dev)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-3-retro-2026-11-06.md"
+  - id: "epic-3-retro-item-26-before-story-4-6-extract-usespinepopover"
+    epic: 3
+    action: "Before story 4.6: extract useSpinePopover and useFinishMoment from Bookcase.tsx
+      (601 lines) and split domain/book_fields.py - supersedes epic-1 item 9 (F-A1,
+      PL-10)"
+    owner: "Amelia (Dev)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-3-retro-2026-11-06.md"
+  - id: "epic-3-retro-item-27-make-the-e2e-entry-point-build-or-verify"
+    epic: 3
+    action: "Make the e2e entry point build or verify a fresh frontend bundle (Playwright
+      globalSetup or a dist-vs-src freshness check) (PL-2)"
+    owner: "Amelia (Dev)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-3-retro-2026-11-06.md"
+  - id: "epic-3-retro-item-28-record-in-agents-md-which-formatters-ruf"
+    epic: 3
+    action: "Record in AGENTS.md which formatters (ruff, Prettier) are enforced and
+      the exact commands, or that none are (PL-4, with epic-2 item 19)"
+    owner: "Amelia (Dev), decided by Oleg"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-3-retro-2026-11-06.md"
+  - id: "epic-3-retro-item-29-record-the-load-sensitive-specs-spine-po"
+    epic: 3
+    action: "Record the load-sensitive specs (spine-popover 1024px, 3.5 slice popover
+      resize repack) in deferred-work and burn them in (PL-5)"
+    owner: "Murat (TEA)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-3-retro-2026-11-06.md"
+  - id: "epic-3-retro-item-30-at-an-epic-s-last-story-the-code-review"
+    epic: 3
+    action: "At an epic's last story, the code-review next-story option offers automate
+      and the retrospective instead of starting the next epic; add to bmad-code-review
+      config (PL-6)"
+    owner: "Oleg / bmad config"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-3-retro-2026-11-06.md"
+  - id: "epic-3-retro-item-31-each-retro-process-item-names-the-file-i"
+    epic: 3
+    action: "Each retro process item names the file it will change; sprint planning
+      lists open action items with owners (follow-through)"
+    owner: "Oleg"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-3-retro-2026-11-06.md"
