@@ -316,8 +316,8 @@
 /* After the ring rules, so the fade is off too: the fill and the ring are instant. */
 @media (prefers-reduced-motion: reduce) {
   .fill,
-  .spine,
-  .spine:not(.highlight) {
+  /* Home's slice only (the finish moment's ring); Catalog's add highlight keeps its fade. */
+  .sliceShelf .spine:not(.highlight) {
     transition: none;
   }
 }

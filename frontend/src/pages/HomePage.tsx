@@ -111,6 +111,9 @@ export default function HomePage() {
   // Set when the Finish dialog is cancelled, so focus moves once it has unmounted.
   const [finishRefocus, setFinishRefocus] = useState(0)
   const mainId = view.status === 'ready' ? (view.data.mainBook?.id ?? null) : null
+  // The fill as the card shows it, read by Done (the render it was pressed in):
+  // the refetched home view, not a `book` view cached from an earlier visit.
+  const mainPercent = view.status === 'ready' ? (view.data.mainBook?.percent ?? null) : null
   // Taken during render, so the slice's first render of the finished spine is the moment's.
   const handOff = finished && noMain ? finishMoment(location.state) : null
   const shownFinished =
@@ -223,7 +226,12 @@ export default function HomePage() {
         </>
       )}
       {finishing !== null && finishing.key === location.key && (
-        <FinishDialog bookId={finishing.bookId} savedLine={finishing.savedLine} onCancel={cancelFinish} />
+        <FinishDialog
+          bookId={finishing.bookId}
+          savedLine={finishing.savedLine}
+          fromPercent={mainPercent ?? undefined}
+          onCancel={cancelFinish}
+        />
       )}
     </div>
   )

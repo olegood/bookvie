@@ -2,7 +2,7 @@
 title: 'Story 3.7: See the finish on the shelf'
 type: 'feature'
 created: '2026-11-06'
-status: 'in-review'
+status: 'done'
 route: 'dispatch'
 review_loop_iteration: 0
 baseline_commit: '6d53e90e2e61ba7357a0e38b603c104bf411645a'
@@ -71,6 +71,38 @@ context:
 **Acceptance Criteria:**
 - Given the 5 ATDD leaves, when un-skipped, then `npx playwright test e2e/finish-moment.spec.ts` passes, and `finish-reading.spec.ts`, `home-slice.spec.ts`, `update-page.spec.ts` stay green.
 - Given the whole suite, when `npm run check` runs, then it passes, including axe and coverage gates.
+
+### Review Findings
+
+Code review 2026-11-06 (diff `ab2d1ed..c6b2266`; layers: Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor, Spine Check).
+
+- [x] [Review][Patch] `fromPercent` can come from a stale cached `book` view — resolved (1b): Home passes the Main book's percent from the home view to `FinishDialog` [frontend/src/pages/HomePage.tsx:226]
+- [x] [Review][Patch] Reduced-motion block also stops Catalog's add-highlight fade — resolved (2b): scope the `.spine` transition-off to the slice so Catalog is unchanged [frontend/src/pages/Bookcase.module.css:317]
+- [x] [Review][Patch] AC-4 never checks the ring fade after the ring is removed [frontend/e2e/finish-moment.spec.ts:354]
+- [x] [Review][Patch] No leaf for the header line dropping on a new history entry within the same Home mount (e.g. Start from a slice spine popover) [frontend/src/pages/HomePage.tsx:120]
+- [x] [Review][Patch] AC-2's same-mount "refetch replays nothing" check doesn't wait for the refetched home view [frontend/e2e/finish-moment.spec.ts:279]
+- [x] [Review][Patch] README status line says Home "fills the finished spine once"; a re-read rings only and reduced motion has no motion [README.md:8]
+- [x] [Review][Patch] ATDD checklist's green-phase follow-ups (dark/forced colors, Back/Forward, 503 retry, second context, Mark finished re-read, focus vs scroll, tone checks, pixel-sampled start) are tracked nowhere [_bmad-output/implementation-artifacts/deferred-work.md]
+- [x] [Review][Defer] AD-7 spine text out of date (scroll, ring-only re-read, reduced motion) [_bmad-output/planning-artifacts/ARCHITECTURE-SPINE.md] — deferred: already logged as SC1 in pass 1 and in deferred-work.md.
+
+**Rejected:**
+- TDD task "each failing first" ticked though leaves passed on first un-skip — low; fix edits the spec.
+- ATDD checklist still says "no spec file yet" and the Dev Notes link step was skipped — low; documentation in another artifact, frontmatter `context` already links it.
+- Forced colors: the rising fill draws in `CanvasText`, then the spine jumps to its color — low; forced colors plus a finish only, fix adds a new rule.
+- Plain `.spine` in the reduced-motion selector is redundant — low; harmless.
+- AC-2 doesn't assert tab A's `status` after the revisit — low; an unchanged live-region text is not re-announced.
+- `finishing` / `moment` names mean two things in HomePage vs Bookcase — low; no caller named that diverges.
+- `FinishedState` and `FinishMoment` duplicate fields — low; the mapping lives in one place (`finishMoment()`).
+- Label strip moves in the first moment frame (marker gone) — low; the marker goes with any finish, the Book is no longer Main.
+- Header line and late moment when the spine is outside the slice — low; already rejected as EC2+BH5 in pass 1.
+- Triage log doesn't record applied patches — fix edits the spec.
+- Ring comes on only after the scroll, not for the whole moment — low; a defensible reading of "the moment", fix restructures the timers.
+- A `Bookcase` remount within one Home mount replays the moment — low; needs the library emptied and refilled during the visit.
+- Hand-off not cleared if the user leaves Home before `noMain` — low; `finishReading` resolves after the refetch, so the window is about one render.
+- Status never announced when `moment` lands after focus — false; `noMain` and `shownFinished` read the same `view.data` in the same render (pass-1 EC6).
+- Spine flashes solid, then refills, when the refetch renders before `navigate` — maybe-false, at most one cosmetic frame (low).
+- Fill starts mid-scroll when a smooth scroll lasts more than 800 ms — low; the ~800 ms fallback is spec-mandated.
+- The ring-hold timer clears a newer moment's ring — false; a new phase starts with `ring: false`, so `ringHolding` flips and the cleanup clears the timer.
 
 ## Implementation Notes
 

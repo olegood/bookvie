@@ -183,6 +183,32 @@ function ringed(spine: Locator): Promise<boolean> {
   )
 }
 
+/** Where the running fill started, in px, and the spine body's height (polled each frame until the fill runs). */
+async function fillStart(page: Page): Promise<{ from: number; body: number }> {
+  const start = await page.waitForFunction(
+    (label) => {
+      const spine = document.querySelector(`button[aria-label="${label}"]`)
+      for (const node of spine === null ? [] : Array.from(spine.querySelectorAll('*'))) {
+        const running = node.getAnimations().find((animation) => (animation as CSSTransition).transitionProperty === 'height')
+        const from = (running?.effect as KeyframeEffect | null | undefined)?.getKeyframes()[0]?.height
+        if (typeof from !== 'string') continue
+        // The keyframe keeps a percentage of the body, or is a resolved length.
+        const body = node.parentElement!.clientHeight
+        return { from: from.endsWith('%') ? (parseFloat(from) / 100) * body : parseFloat(from), body }
+      }
+      return null
+    },
+    `${TITLE} by Ursula K. Le Guin, finished`,
+    { polling: 'raf' },
+  )
+  return (await start.jsonValue())!
+}
+
+/** The next home view response: a refetch has landed once it resolves. */
+function homeViewRefetch(page: Page): Promise<unknown> {
+  return page.waitForResponse((response) => new URL(response.url()).pathname === '/api/views/home')
+}
+
 /** The Finish dialog's Done, opened from Home's page field at the last page. */
 async function finishFromPageField(page: Page): Promise<void> {
   const card = mainBookCard(page)
@@ -253,30 +279,16 @@ test.describe('Story 3.7 See the finish on the shelf (ATDD)', () => {
       await finishFromBookDetail(page, server.url)
       await expect(homeBookcase(page).getByText(`Finished ${TITLE}.`, { exact: true })).toBeVisible()
       // The fill starts from where the Main fill stood (p.300 of 330), not from 0.
-      const start = await page.waitForFunction(
-        (label) => {
-          const spine = document.querySelector(`button[aria-label="${label}"]`)
-          for (const node of spine === null ? [] : Array.from(spine.querySelectorAll('*'))) {
-            const running = node.getAnimations().find((animation) => (animation as CSSTransition).transitionProperty === 'height')
-            const from = (running?.effect as KeyframeEffect | null | undefined)?.getKeyframes()[0]?.height
-            if (typeof from !== 'string') continue
-            // The keyframe keeps a percentage of the body, or is a resolved length.
-            const body = node.parentElement!.clientHeight
-            return { from: from.endsWith('%') ? (parseFloat(from) / 100) * body : parseFloat(from), body }
-          }
-          return null
-        },
-        `${TITLE} by Ursula K. Le Guin, finished`,
-        { polling: 'raf' },
-      )
-      const { from, body } = (await start.jsonValue())!
+      const { from, body } = await fillStart(page)
       expect(Math.abs(from - (300 / 330) * body)).toBeLessThanOrEqual(3)
       await expect.poll(async () => (await motions(page)).filter(isFill).length).toBeGreaterThan(0)
 
       // Still on this Home: a refetch and a repack replay nothing, and the line stays.
       await expect.poll(() => ringed(finishedSpine(page)), { timeout: 4_000 }).toBe(false)
       await resetMotion(page)
+      const refetched = homeViewRefetch(page)
       await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange', { bubbles: true })))
+      await refetched
       const size = page.viewportSize()!
       await page.setViewportSize({ width: size.width - 300, height: size.height })
       await expect(finishedSpine(page)).toBeVisible()
@@ -373,6 +385,10 @@ test.describe('Story 3.7 See the finish on the shelf (ATDD)', () => {
       await expect(spine).toHaveCSS('transition-duration', '0s')
       await expect(spine).toHaveCSS('background-color', SPINE_COLOR.rgb)
       await expect(homeBookcase(page).getByText(`Finished ${TITLE}.`, { exact: true })).toBeVisible()
+      // The ring goes at once too: no box-shadow fade once it is removed.
+      await expect.poll(() => ringed(spine), { timeout: 4_000 }).toBe(false)
+      await twoFrames(page)
+      expect((await motions(page)).filter((motion) => onFinishedSpine(motion) && motion.duration > 0)).toEqual([])
     } finally {
       await stopAndRemove(server)
     }
@@ -420,6 +436,59 @@ test.describe('Story 3.7 See the finish on the shelf (ATDD)', () => {
       expect(await page.evaluate(() => (window as unknown as { sounds: number }).sounds)).toBe(0)
       await expect(page.locator('canvas, audio, video')).toHaveCount(0)
       expect(await homeBookcase(page).innerText()).not.toMatch(/\b(great|well done|congrat|amazing|awesome|nice)/i)
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+  test('[P2] the fill starts from the Main fill Home shows, not from a cached Book view of an earlier visit', async ({ page }) => {
+    const server = await serverAtFakeToday(page, 'finish-cached-view', MAIN_AT_300)
+    try {
+      // Book detail at p.300 caches the `book` view at 91%; Home's page field then saves p.330.
+      await page.goto(`${server.url}/book/${LEFT_HAND_ID}`)
+      await expect(page.getByRole('main').getByRole('button', { name: 'Mark finished', exact: true })).toBeVisible()
+      await page.getByRole('navigation').getByRole('link', { name: 'Home', exact: true }).click()
+      const card = mainBookCard(page)
+      await card.getByRole('spinbutton', { name: 'Page', exact: true }).fill('330')
+      await card.getByRole('button', { name: 'Update', exact: true }).click()
+      const dialog = page.getByRole('dialog', { name: `Finished ${TITLE}`, exact: true })
+      await expect(dialog).toBeVisible()
+      // Home has rendered the saved page (the card behind the modal reads 100%), and the
+      // Main fill's own 91% → 100% transition has ended, so only the moment's fill is measured.
+      await expect(page.locator('[aria-valuetext="100%, page 330 of 330"]')).toHaveCount(1)
+      await page.waitForFunction(() => document.getAnimations().length === 0)
+      await dialog.getByRole('button', { name: 'Done', exact: true }).click()
+
+      const { from, body } = await fillStart(page)
+      expect(Math.abs(from - body)).toBeLessThanOrEqual(3)
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+
+  test('[P2] a new history entry on the same Home (a Start from the slice) drops the header line and replays nothing', async ({
+    page,
+  }) => {
+    const server = await serverAtFakeToday(page, 'finish-then-start', MAIN_AT_300)
+    try {
+      await page.goto(server.url)
+      await finishFromPageField(page)
+      await expect(finishLine(page)).toHaveText(`Finished ${TITLE}.`)
+      // The moment has played: the ring came on, then went.
+      await expect.poll(() => ringed(finishedSpine(page))).toBe(true)
+      await expect.poll(() => ringed(finishedSpine(page)), { timeout: 4_000 }).toBe(false)
+
+      // Start Dune from its spine popover: Home stays mounted, on a new entry.
+      await resetMotion(page)
+      const slice = page.getByRole('main').getByRole('list', { name: /^Bookcase slice, \d+ rows?$/ })
+      await slice.getByRole('button', { name: 'Dune by Frank Herbert, not read yet', exact: true }).click()
+      await page.getByRole('dialog', { name: 'Dune', exact: true }).getByRole('button', { name: 'Start reading', exact: true }).click()
+      await page.getByRole('dialog', { name: 'Start Dune?', exact: true }).getByRole('button', { name: 'Start reading', exact: true }).click()
+
+      await expect(mainBookCard(page).getByRole('link', { name: 'Dune', exact: true })).toBeVisible()
+      await expect(finishLine(page)).toHaveCount(0)
+      await twoFrames(page)
+      expect((await motions(page)).filter(onFinishedSpine)).toEqual([])
+      expect(await ringed(finishedSpine(page))).toBe(false)
     } finally {
       await stopAndRemove(server)
     }

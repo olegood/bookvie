@@ -32,6 +32,13 @@ type Props = {
   bookId: string
   /** Opened by a last-page save: its "Page M of M, 100%." line, kept as the dialog's description. */
   savedLine?: string
+  /**
+   * The Main fill's percentage as the opener shows it (Home's own view), for
+   * the finish moment. The `book` view may be a cached one from an earlier
+   * visit (only active views refetch after a save), so the opener's is used
+   * when it has one.
+   */
+  fromPercent?: number
   /** Cancel, Esc, or the Book gone before it opened: the opener unmounts the dialog and takes focus back. */
   onCancel: () => void
 }
@@ -51,7 +58,17 @@ function Star({ filled }: { filled: boolean }) {
   )
 }
 
-function OpenFinishDialog({ book, savedLine, onCancel }: { book: BookDetailView; savedLine?: string; onCancel: () => void }) {
+function OpenFinishDialog({
+  book,
+  savedLine,
+  fromPercent,
+  onCancel,
+}: {
+  book: BookDetailView
+  savedLine?: string
+  fromPercent?: number
+  onCancel: () => void
+}) {
   const headingId = useId()
   const savedId = useId()
   const fulfilledLabelId = useId()
@@ -105,7 +122,7 @@ function OpenFinishDialog({ book, savedLine, onCancel }: { book: BookDetailView;
         bookId: book.id,
         title: book.title,
         reread: book.readings.some((reading) => reading.finishDate !== null),
-        fromPercent: book.currentReading?.percent ?? 0,
+        fromPercent: fromPercent ?? book.currentReading?.percent ?? 0,
       }
       void navigate('/', { state })
       return
@@ -284,7 +301,7 @@ function OpenFinishDialog({ book, savedLine, onCancel }: { book: BookDetailView;
  * passes only the Book's id; it shows once the view is in, and keeps the view
  * it opened with when a refetch says the Book is finished or gone.
  */
-export default function FinishDialog({ bookId, savedLine, onCancel }: Props) {
+export default function FinishDialog({ bookId, savedLine, fromPercent, onCancel }: Props) {
   const book = useBookView(bookId)
   const [opened, setOpened] = useState<BookDetailView | null>(book.status === 'ready' ? book.data : null)
   if (opened === null && book.status === 'ready') setOpened(book.data)
@@ -295,5 +312,5 @@ export default function FinishDialog({ bookId, savedLine, onCancel }: Props) {
   }, [gone, onCancel])
 
   if (opened === null) return null
-  return <OpenFinishDialog book={opened} savedLine={savedLine} onCancel={onCancel} />
+  return <OpenFinishDialog book={opened} savedLine={savedLine} fromPercent={fromPercent} onCancel={onCancel} />
 }

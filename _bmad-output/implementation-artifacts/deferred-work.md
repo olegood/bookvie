@@ -302,3 +302,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-7-see-the-finish-on-the-shelf.md`
   summary: Update AD-7 in the architecture spine so the finish moment covers the scroll into view, the ring-only re-read and the instant reduced-motion variant, not only "a single ~600ms spine fill".
   evidence: Story 3.7 implements UX-DR42 and the epic ACs (re-read ring only, reduced motion instant, scroll first); the spine check found AD-7's parenthetical out of date.
+
+## Deferred from: code review of spec-3-7-see-the-finish-on-the-shelf (2026-11-06)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-3-7-see-the-finish-on-the-shelf.md`
+  summary: Automate the ATDD checklist's remaining green-phase follow-ups for the finish moment: the ring and fill in dark theme and under forced colors; a second `browser.newContext()`; Back to Book detail and Forward to Home playing nothing; a 503 on the first Done, then the moment once after the retry; the re-read finished from Book detail's Mark finished; focusing "No Main book." not scrolling the spine back out of view; the AC-5 tone checks under reduced motion and on a re-read; pixel-sampling "from its current fill".
+  evidence: `_bmad-output/test-artifacts/atdd-checklist-3-7-see-the-finish-on-the-shelf.md` → Green-Phase Follow-ups. The 3.7 leaves cover the scroll order, the smooth default, the `fromPercent` start (keyframe, not pixels) and the same-mount refetch; the rest has no test. Run `bmad-testarch-automate` for 3.7.
