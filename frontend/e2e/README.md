@@ -3,9 +3,9 @@
 Playwright tests against a real `bookvie`, built from this checkout. Run them from the repo root:
 
 ```bash
-npm run check:e2e              # builds the SPA, then runs the suite
-npm --prefix frontend run e2e  # runs the suite against the last build
-npm --prefix frontend run e2e -- e2e/shell.spec.ts   # one file
+npm run check:e2e              # type-checks and builds the SPA, then runs the suite
+npm --prefix frontend run e2e  # runs the suite (global setup builds the SPA with Vite first, no type check)
+npm --prefix frontend run e2e -- e2e/shell.spec.ts   # one file (still builds the whole SPA)
 ```
 
 Node 24 or newer (see `.nvmrc`) and `uv` on `PATH` are required. `npm install` at the root installs Chromium.
@@ -13,7 +13,7 @@ Node 24 or newer (see `.nvmrc`) and `uv` on `PATH` are required. `npm install` a
 ## How it works
 
 - **One server per worker.** `fixtures.ts` gives each worker its own `bookvie` on a free port, started with `uv run --project ../backend bookvie --no-browser`. Its data dir is `$TMPDIR/bookvie-e2e/<run-id>/worker-<n>/`. `baseURL` is that server's URL, so `page.goto('/')` and `request.get('/api/health')` reach it. On teardown the server is stopped, its data dir removed, and the fixture fails if the server wrote anything to stdout.
-- **One folder per run.** `global-setup.ts` creates `<run-id>` and exports `BOOKVIE_E2E_RUN_ID`. `global-teardown.ts` removes it.
+- **A fresh build, one folder per run.** `global-setup.ts` first runs `vite build` into `backend/bookvie/http/static` (a failed build fails the run before any test; `--list` skips it), then creates `<run-id>` and exports `BOOKVIE_E2E_RUN_ID`. `global-teardown.ts` removes it.
 - **The path guard.** `guard.ts` (`safeDataDir`) runs before every spawn and every seed. It accepts a data dir only when it is strictly inside `$TMPDIR/bookvie-e2e`, after resolving symlinks, and always refuses `~/bookvie-data` in any spelling. Never bypass it. `guard.spec.ts` covers it.
 - **Seeding.** `seedLibrary(dataDir, partial)` writes `library.json` through the backend's `LibraryBuilder` (`python -m tests.builder`): give a partial camelCase library and every missing field gets a deterministic default. Seed before starting a server on that folder with `startServer(dataDir, { port: await freePort() })`, and `stop()` it in `finally` (see `seed.spec.ts`). The test fixture `seededServer(partial)` does all of this in one call: it seeds a fresh folder, starts a server, and after the test stops it, removes the folder and fails the test if the server wrote to stdout (see `new-book-panel.spec.ts`).
 - **Dev mode.** `test.use({ serverDev: true })` starts the worker's server with `--dev`, so the Vite origin is allowed (see `dev-proxy.spec.ts`).
@@ -43,6 +43,6 @@ npx --prefix frontend playwright show-trace frontend/test-results/<test>/trace.z
 ## Troubleshooting
 
 - **`BOOKVIE_E2E_RUN_ID is not set`**: the suite was started without `playwright.config.ts`. Run it through `npm --prefix frontend run e2e`.
-- **`bookvie never answered health`** or **`exited (code 1)`**: the error includes the server's stderr. Check that `uv` works (`uv run --project backend bookvie --help`) and that the SPA was built (`npm run build`).
+- **`bookvie never answered health`** or **`exited (code 1)`**: the error includes the server's stderr. Check that `uv` works (`uv run --project backend bookvie --help`) and look above the test output for global setup's `vite build` messages.
 - **`e2e guard: refusing data dir ...`**: a test passed a data dir outside `$TMPDIR/bookvie-e2e`. Build paths with `runDir(process.env.BOOKVIE_E2E_RUN_ID!)`.
 - **Leftover folders after a crash**: remove `$TMPDIR/bookvie-e2e/`. Nothing else is written.
