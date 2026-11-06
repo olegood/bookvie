@@ -120,7 +120,9 @@ test.describe('Story 3.2 Start reading a book (ATDD)', () => {
       await page.goto(`${server.url}/book/${DUNE_ID}`)
       await detailButton(page, 'Start reading').click()
       const dialog = startDialog(page, 'Start Dune?')
-      await dialog.getByRole('textbox', { name: 'Purpose (optional)', exact: true }).fill('  To finally see what Arrakis is about  ')
+      await dialog
+        .getByRole('textbox', { name: 'Purpose (optional)', exact: true })
+        .fill('  To finally see what Arrakis is about  ')
       await dialog.getByRole('button', { name: 'Start reading', exact: true }).click()
 
       await expect(mainBookCard(page).getByRole('link', { name: 'Dune', exact: true })).toBeFocused()
@@ -169,7 +171,10 @@ test.describe('Story 3.2 Start reading a book (ATDD)', () => {
 
       await expect(mainBookCard(page).getByRole('link', { name: 'Dune', exact: true })).toBeFocused()
       // 120 of 412 is 29.1…%: the same Reading, at its page.
-      await expect(mainBookCard(page).getByRole('progressbar')).toHaveAttribute('aria-valuetext', '29%, page 120 of 412')
+      await expect(mainBookCard(page).getByRole('progressbar')).toHaveAttribute(
+        'aria-valuetext',
+        '29%, page 120 of 412',
+      )
       expect(storedLibrary(server).mainBookId).toBe(DUNE_ID)
       const { readings } = storedBook(server, DUNE_ID)
       expect(readings).toHaveLength(1)
@@ -268,11 +273,7 @@ test.describe('Story 3.2 Start reading a book (ATDD)', () => {
     seededServer,
   }) => {
     const server = await seededServer({
-      books: [
-        DUNE,
-        { ...LEFT_HAND, readings: [{ currentPage: 120, pausedAt: '2026-10-20' }] },
-        NEUROMANCER,
-      ],
+      books: [DUNE, { ...LEFT_HAND, readings: [{ currentPage: 120, pausedAt: '2026-10-20' }] }, NEUROMANCER],
     })
     await page.goto(`${server.url}/catalog`)
     const popover = (title: string) => page.getByRole('dialog', { name: title, exact: true })
@@ -470,7 +471,10 @@ test.describe('Story 3.2 Start reading a book (automate)', () => {
     await expect(listed.nth(1)).toContainText('Finished')
   })
 
-  test('[P1] AC-1 the Main book has neither Start reading nor Resume on Book detail', async ({ page, seededServer }) => {
+  test('[P1] AC-1 the Main book has neither Start reading nor Resume on Book detail', async ({
+    page,
+    seededServer,
+  }) => {
     const server = await seededServer(mainAt(212))
     await page.goto(`${server.url}/book/${LEFT_HAND_ID}`)
     await expect(page.getByRole('heading', { level: 1, name: LEFT_HAND.title, exact: true })).toBeVisible()
@@ -609,7 +613,9 @@ test.describe('Story 3.2 Start reading a book (automate)', () => {
 
     // Keyboard: Enter opens the popover with Start reading focused, Enter opens the dialog, Esc closes it.
     await page.keyboard.press('Enter')
-    await expect(page.getByRole('dialog', { name: 'Dune', exact: true }).getByRole('button', { name: 'Start reading' })).toBeFocused()
+    await expect(
+      page.getByRole('dialog', { name: 'Dune', exact: true }).getByRole('button', { name: 'Start reading' }),
+    ).toBeFocused()
     await page.keyboard.press('Enter')
     await expect(purposeField(dialog)).toBeFocused()
     await page.keyboard.press('Escape')
@@ -647,7 +653,10 @@ test.describe('Story 3.2 Start reading a book (automate)', () => {
     expect(after).toEqual({ ...before, purpose: null })
   })
 
-  test('[P1] AC-9 Esc cancels Edit Purpose with focus on Save, not only in the field', async ({ page, seededServer }) => {
+  test('[P1] AC-9 Esc cancels Edit Purpose with focus on Save, not only in the field', async ({
+    page,
+    seededServer,
+  }) => {
     const server = await seededServer({ books: [DUNE_PAUSED] })
     const before = libraryBytes(server)
     const edits = requestsTo(page, EDIT_PURPOSE)

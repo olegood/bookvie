@@ -13,10 +13,11 @@
     "install:local": "npm --prefix frontend ci && npm run build && uv tool install --reinstall ./backend",
     "dev": "npm --prefix frontend run dev",
     "check": "npm run check:py && npm run check:api && npm run check:e2e && npm run check:smoke",
-    "check:py": "cd backend && TZ=Europe/Madrid uv run pytest --cov=bookvie --cov-report=term --cov-report=json:.coverage.json && uv run python scripts/coverage_gate.py .coverage.json",
+    "check:py": "cd backend && uv run ruff format --check . && uv run ruff check . && TZ=Europe/Madrid uv run pytest --cov=bookvie --cov-report=term --cov-report=json:.coverage.json && uv run python scripts/coverage_gate.py .coverage.json",
     "check:api": "npm --prefix frontend run check:api",
     "check:e2e": "npm run build && TZ=Europe/Madrid npm --prefix frontend run e2e",
     "check:smoke": "node scripts/smoke.mjs",
-    "e2e:burn-in": "npm run build && TZ=Europe/Madrid npm --prefix frontend run e2e -- --repeat-each=10 --retries=0 && node scripts/e2e-count.mjs --repeat-each=10"
+    "e2e:burn-in": "npm run build && TZ=Europe/Madrid npm --prefix frontend run e2e -- --repeat-each=10 --retries=0 && node scripts/e2e-count.mjs --repeat-each=10",
+    "format": "npm --prefix frontend run format && cd backend && uv run ruff check --fix . && uv run ruff format ."
   }
 }

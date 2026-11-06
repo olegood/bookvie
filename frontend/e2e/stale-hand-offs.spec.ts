@@ -13,7 +13,17 @@
 
 import type { Page } from '@playwright/test'
 import { expect, test, type Server } from './fixtures.ts'
-import { DUNE, DUNE_ID, LEFT_HAND, LEFT_HAND_ID, mainAt, mainBookCard, serverAtFakeToday, stopAndRemove, storedBook } from './home.ts'
+import {
+  DUNE,
+  DUNE_ID,
+  LEFT_HAND,
+  LEFT_HAND_ID,
+  mainAt,
+  mainBookCard,
+  serverAtFakeToday,
+  stopAndRemove,
+  storedBook,
+} from './home.ts'
 import { EDIT_PURPOSE, FINISH_READING, START_READING } from './intents.ts'
 
 const PURPOSE = 'To see how Le Guin builds a world'
@@ -32,7 +42,11 @@ function nav(page: Page, name: string) {
 
 test.describe('Epic 3 retro: stale client hand-offs', () => {
   test('[P1] F-R2 the Finish dialog asks about the Purpose the server has, not a cached one', async ({ page }) => {
-    const server = await serverAtFakeToday(page, 'stale-finish', mainAt(300, { reading: { startDate: '2026-10-01', purpose: PURPOSE }, others: [DUNE] }))
+    const server = await serverAtFakeToday(
+      page,
+      'stale-finish',
+      mainAt(300, { reading: { startDate: '2026-10-01', purpose: PURPOSE }, others: [DUNE] }),
+    )
     try {
       // Book detail caches the Reading with its Purpose.
       await page.goto(`${server.url}/book/${LEFT_HAND_ID}`)
@@ -55,7 +69,9 @@ test.describe('Epic 3 retro: stale client hand-offs', () => {
     }
   })
 
-  test('[P1] F-R2 the Start dialog resumes with the stored Purpose when the cached view still says Start', async ({ page }) => {
+  test('[P1] F-R2 the Start dialog resumes with the stored Purpose when the cached view still says Start', async ({
+    page,
+  }) => {
     const server = await serverAtFakeToday(page, 'stale-start', { books: [{ ...LEFT_HAND, readings: [] }, DUNE] })
     try {
       // Book detail caches The Left Hand of Darkness as never started.
@@ -66,7 +82,9 @@ test.describe('Epic 3 retro: stale client hand-offs', () => {
       await elsewhere(page, server, START_READING, { bookId: DUNE_ID, purpose: null })
 
       await nav(page, 'Catalog').click()
-      await page.getByRole('button', { name: /^The Left Hand of Darkness by Ursula K\. Le Guin, waiting for you/ }).click()
+      await page
+        .getByRole('button', { name: /^The Left Hand of Darkness by Ursula K\. Le Guin, waiting for you/ })
+        .click()
       await page
         .getByRole('dialog', { name: 'The Left Hand of Darkness', exact: true })
         .getByRole('button', { name: 'Resume', exact: true })
@@ -80,8 +98,14 @@ test.describe('Epic 3 retro: stale client hand-offs', () => {
     }
   })
 
-  test('[P1] F-R3 a finish that lands on Home with another Main book never replays on a later reload', async ({ page }) => {
-    const server = await serverAtFakeToday(page, 'stale-hand-off', mainAt(300, { reading: { startDate: '2026-10-01' }, others: [DUNE] }))
+  test('[P1] F-R3 a finish that lands on Home with another Main book never replays on a later reload', async ({
+    page,
+  }) => {
+    const server = await serverAtFakeToday(
+      page,
+      'stale-hand-off',
+      mainAt(300, { reading: { startDate: '2026-10-01' }, others: [DUNE] }),
+    )
     try {
       // This tab still shows The Left Hand of Darkness as Main …
       await page.goto(`${server.url}/book/${LEFT_HAND_ID}`)
@@ -98,7 +122,12 @@ test.describe('Epic 3 retro: stale client hand-offs', () => {
       expect(storedBook(server, LEFT_HAND_ID).readings[0]?.finishDate).toBe('2026-10-28')
 
       // Another tab finishes Dune too: now there is no Main book.
-      await elsewhere(page, server, FINISH_READING, { bookId: DUNE_ID, finishedOn: '2026-10-28', purposeFulfilled: null, rating: null })
+      await elsewhere(page, server, FINISH_READING, {
+        bookId: DUNE_ID,
+        finishedOn: '2026-10-28',
+        purposeFulfilled: null,
+        rating: null,
+      })
       await page.reload()
 
       const empty = mainBookCard(page).getByRole('heading', { name: 'No Main book.', exact: true })
@@ -111,14 +140,23 @@ test.describe('Epic 3 retro: stale client hand-offs', () => {
   })
 
   test('[P1] F-R4 a refusal that removes Edit Purpose still reads in alert', async ({ page }) => {
-    const server = await serverAtFakeToday(page, 'stale-purpose', mainAt(300, { reading: { startDate: '2026-10-01', purpose: PURPOSE }, others: [DUNE] }))
+    const server = await serverAtFakeToday(
+      page,
+      'stale-purpose',
+      mainAt(300, { reading: { startDate: '2026-10-01', purpose: PURPOSE }, others: [DUNE] }),
+    )
     try {
       await page.goto(`${server.url}/book/${LEFT_HAND_ID}`)
       await page.getByRole('main').getByRole('button', { name: 'Edit Purpose', exact: true }).click()
       const field = page.getByRole('main').getByRole('textbox', { name: 'Purpose', exact: true })
       await field.fill('For the politics')
       // Another tab finishes the Reading.
-      await elsewhere(page, server, FINISH_READING, { bookId: LEFT_HAND_ID, finishedOn: '2026-10-28', purposeFulfilled: null, rating: null })
+      await elsewhere(page, server, FINISH_READING, {
+        bookId: LEFT_HAND_ID,
+        finishedOn: '2026-10-28',
+        purposeFulfilled: null,
+        rating: null,
+      })
 
       await field.press('Enter')
 

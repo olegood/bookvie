@@ -55,7 +55,9 @@
 }
 
 .table .highlight {
-  box-shadow: 0 0 0 2px var(--color-page), 0 0 0 4px var(--color-accent);
+  box-shadow:
+    0 0 0 2px var(--color-page),
+    0 0 0 4px var(--color-accent);
 }
 
 .status {

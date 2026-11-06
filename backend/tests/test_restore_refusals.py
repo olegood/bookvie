@@ -868,7 +868,9 @@ def test_ac2_a_newer_export_missing_its_covers_is_still_restore_newer_version(
     assert response.json() == RESTORE_NEWER_VERSION_BODY
     assert response.status_code == 422
     _Snapshot.assert_unchanged(before, target, "a newer export without its covers")
-    expected = f"couldn't restore: library.json is schemaVersion {current + 1}, newer than {current}"
+    expected = (
+        f"couldn't restore: library.json is schemaVersion {current + 1}, newer than {current}"
+    )
     assert expected in capsys.readouterr().err
 
 

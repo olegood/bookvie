@@ -61,9 +61,12 @@ describe('exportAll', () => {
 
   it("throws the server's message on a non-OK answer", async () => {
     mock.method(globalThis, 'fetch', async () =>
-      Response.json({ error: { kind: 'couldnt_export', code: 'couldnt_export', message: 'From the server.' } }, {
-        status: 503,
-      }),
+      Response.json(
+        { error: { kind: 'couldnt_export', code: 'couldnt_export', message: 'From the server.' } },
+        {
+          status: 503,
+        },
+      ),
     )
     await assert.rejects(exportAll(), (error) => error instanceof ExportError && error.message === 'From the server.')
   })
@@ -72,7 +75,10 @@ describe('exportAll', () => {
     mock.method(globalThis, 'fetch', async () => {
       throw new TypeError('fetch failed')
     })
-    await assert.rejects(exportAll(), (error) => error instanceof ExportError && error.message === COULDNT_EXPORT_MESSAGE)
+    await assert.rejects(
+      exportAll(),
+      (error) => error instanceof ExportError && error.message === COULDNT_EXPORT_MESSAGE,
+    )
   })
 })
 
@@ -81,7 +87,9 @@ describe('refreshLastExport', () => {
 
   const answers = (values: (string | null)[]) => {
     let call = 0
-    return mock.method(globalThis, 'fetch', async () => Response.json({ lastExportAt: values[Math.min(call++, values.length - 1)] }))
+    return mock.method(globalThis, 'fetch', async () =>
+      Response.json({ lastExportAt: values[Math.min(call++, values.length - 1)] }),
+    )
   }
 
   it('refetches until the record changes and leaves it in the cache', async () => {

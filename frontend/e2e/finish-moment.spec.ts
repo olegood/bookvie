@@ -38,7 +38,15 @@ const PURPOSE = 'To see how Le Guin builds a world'
 const EARLIER = '2026-10-25T21:00:00+01:00'
 const SPINE_COLOR = { hex: '#4F7096', rgb: 'rgb(79, 112, 150)' }
 /** What the ring may animate; anything else on the spine is the fill. */
-const RING_PROPERTIES = new Set(['box-shadow', 'boxShadow', 'outline', 'outline-color', 'outlineColor', 'outline-offset', 'outlineOffset'])
+const RING_PROPERTIES = new Set([
+  'box-shadow',
+  'boxShadow',
+  'outline',
+  'outline-color',
+  'outlineColor',
+  'outline-offset',
+  'outlineOffset',
+])
 
 /** The Main book at p.300 of 330, never finished, in a known color, plus Dune: 0 of 2 finished. */
 const MAIN_AT_300 = mainAt(300, {
@@ -55,7 +63,11 @@ const MAIN_AT_300 = mainAt(300, {
 const MAIN_AT_300_LAST_ROW = mainAt(300, {
   book: { spineColorUser: SPINE_COLOR.hex },
   reading: { startDate: '2026-10-01', lastProgressUpdate: EARLIER },
-  others: shelfOf(120).map((book, n) => ({ ...book, id: `00000000-0000-4000-8000-${String(n + 1).padStart(12, '0')}`, pages: 300 })),
+  others: shelfOf(120).map((book, n) => ({
+    ...book,
+    id: `00000000-0000-4000-8000-${String(n + 1).padStart(12, '0')}`,
+    pages: 300,
+  })),
 })
 
 /** A re-read: finished in April with 5 stars, now the Main book again at p.300. 1 of 2 finished. */
@@ -104,8 +116,14 @@ function recordMotion(): void {
           ? [(animation as CSSTransition).transitionProperty]
           : [...new Set(keyframes.flatMap((frame) => Object.keys(frame).filter((key) => !skip.has(key))))]
       const timing = effect.getTiming()
-      const easing = timing.easing !== undefined && timing.easing !== 'linear' ? timing.easing : (keyframes[0]?.easing ?? 'linear')
-      store.motions.push({ spine: spine.getAttribute('aria-label'), properties, duration: Number(timing.duration), easing })
+      const easing =
+        timing.easing !== undefined && timing.easing !== 'linear' ? timing.easing : (keyframes[0]?.easing ?? 'linear')
+      store.motions.push({
+        spine: spine.getAttribute('aria-label'),
+        properties,
+        duration: Number(timing.duration),
+        easing,
+      })
     }
   }
   document.addEventListener('transitionrun', note, true)
@@ -134,7 +152,9 @@ function resetMotion(page: Page): Promise<void> {
 }
 
 function isFill(motion: Motion): boolean {
-  return motion.spine?.startsWith(`${TITLE} by `) === true && motion.properties.some((name) => !RING_PROPERTIES.has(name))
+  return (
+    motion.spine?.startsWith(`${TITLE} by `) === true && motion.properties.some((name) => !RING_PROPERTIES.has(name))
+  )
 }
 
 function onFinishedSpine(motion: Motion): boolean {
@@ -189,7 +209,9 @@ async function fillStart(page: Page): Promise<{ from: number; body: number }> {
     (label) => {
       const spine = document.querySelector(`button[aria-label="${label}"]`)
       for (const node of spine === null ? [] : Array.from(spine.querySelectorAll('*'))) {
-        const running = node.getAnimations().find((animation) => (animation as CSSTransition).transitionProperty === 'height')
+        const running = node
+          .getAnimations()
+          .find((animation) => (animation as CSSTransition).transitionProperty === 'height')
         const from = (running?.effect as KeyframeEffect | null | undefined)?.getKeyframes()[0]?.height
         if (typeof from !== 'string') continue
         // The keyframe keeps a percentage of the body, or is a resolved length.
@@ -214,14 +236,20 @@ async function finishFromPageField(page: Page): Promise<void> {
   const card = mainBookCard(page)
   await card.getByRole('spinbutton', { name: 'Page', exact: true }).fill('330')
   await card.getByRole('button', { name: 'Update', exact: true }).click()
-  await page.getByRole('dialog', { name: `Finished ${TITLE}`, exact: true }).getByRole('button', { name: 'Done', exact: true }).click()
+  await page
+    .getByRole('dialog', { name: `Finished ${TITLE}`, exact: true })
+    .getByRole('button', { name: 'Done', exact: true })
+    .click()
 }
 
 /** The Finish dialog's Done, opened from **Mark finished** on the Main book's Book detail. */
 async function finishFromBookDetail(page: Page, url: string): Promise<void> {
   await page.goto(`${url}/book/${LEFT_HAND_ID}`)
   await page.getByRole('main').getByRole('button', { name: 'Mark finished', exact: true }).click()
-  await page.getByRole('dialog', { name: `Finished ${TITLE}`, exact: true }).getByRole('button', { name: 'Done', exact: true }).click()
+  await page
+    .getByRole('dialog', { name: `Finished ${TITLE}`, exact: true })
+    .getByRole('button', { name: 'Done', exact: true })
+    .click()
 }
 
 test.describe('Story 3.7 See the finish on the shelf (ATDD)', () => {
@@ -426,7 +454,8 @@ test.describe('Story 3.7 See the finish on the shelf (ATDD)', () => {
       expect((await scrolls(page)).filter((scroll) => scroll.spine?.startsWith(`${TITLE} by `))).toEqual([
         expect.objectContaining({ options: expect.objectContaining({ block: 'nearest' }) }),
       ])
-      const ringMotion = (motion: Motion) => onFinishedSpine(motion) && motion.properties.some((name) => RING_PROPERTIES.has(name))
+      const ringMotion = (motion: Motion) =>
+        onFinishedSpine(motion) && motion.properties.some((name) => RING_PROPERTIES.has(name))
       await expect.poll(async () => (await motions(page)).some(ringMotion)).toBe(true)
       await expect.poll(() => ringed(finishedSpine(page)), { timeout: 4_000 }).toBe(false)
       // No exclamation mark anywhere on Home or in the live regions.
@@ -440,7 +469,9 @@ test.describe('Story 3.7 See the finish on the shelf (ATDD)', () => {
       await stopAndRemove(server)
     }
   })
-  test('[P2] the fill starts from the Main fill Home shows, not from a cached Book view of an earlier visit', async ({ page }) => {
+  test('[P2] the fill starts from the Main fill Home shows, not from a cached Book view of an earlier visit', async ({
+    page,
+  }) => {
     const server = await serverAtFakeToday(page, 'finish-cached-view', MAIN_AT_300)
     try {
       // Book detail at p.300 caches the `book` view at 91%; Home's page field then saves p.330.
@@ -481,8 +512,14 @@ test.describe('Story 3.7 See the finish on the shelf (ATDD)', () => {
       await resetMotion(page)
       const slice = page.getByRole('main').getByRole('list', { name: /^Bookcase slice, \d+ rows?$/ })
       await slice.getByRole('button', { name: 'Dune by Frank Herbert, not read yet', exact: true }).click()
-      await page.getByRole('dialog', { name: 'Dune', exact: true }).getByRole('button', { name: 'Start reading', exact: true }).click()
-      await page.getByRole('dialog', { name: 'Start Dune?', exact: true }).getByRole('button', { name: 'Start reading', exact: true }).click()
+      await page
+        .getByRole('dialog', { name: 'Dune', exact: true })
+        .getByRole('button', { name: 'Start reading', exact: true })
+        .click()
+      await page
+        .getByRole('dialog', { name: 'Start Dune?', exact: true })
+        .getByRole('button', { name: 'Start reading', exact: true })
+        .click()
 
       await expect(mainBookCard(page).getByRole('link', { name: 'Dune', exact: true })).toBeVisible()
       await expect(finishLine(page)).toHaveCount(0)
@@ -517,7 +554,8 @@ test.describe('Story 3.7 See the finish on the shelf (automate)', () => {
         (event) => {
           const target = event.target
           if ((event as TransitionEvent).propertyName !== 'height' || !(target instanceof Element)) return
-          if (target.closest('button[aria-label]')?.getAttribute('aria-label') === label) store.fillScrollY.push(window.scrollY)
+          if (target.closest('button[aria-label]')?.getAttribute('aria-label') === label)
+            store.fillScrollY.push(window.scrollY)
         },
         true,
       )
@@ -531,7 +569,9 @@ test.describe('Story 3.7 See the finish on the shelf (automate)', () => {
       // One scroll call on the finished spine: `nearest`, and smooth when motion is allowed.
       await expect
         .poll(async () => (await scrolls(page)).filter((scroll) => scroll.spine?.startsWith(`${TITLE} by `)))
-        .toEqual([{ spine: `${TITLE} by Ursula K. Le Guin, finished`, options: { block: 'nearest', behavior: 'smooth' } }])
+        .toEqual([
+          { spine: `${TITLE} by Ursula K. Le Guin, finished`, options: { block: 'nearest', behavior: 'smooth' } },
+        ])
 
       // The moment runs to its end: the fill, then the ring fades.
       const spine = finishedSpine(page)

@@ -162,12 +162,8 @@ def test_only_the_user_color_and_the_resolved_color_change(tmp_path: Path) -> No
         assert after["spineColorCurated"] == SAGE
 
 
-@pytest.mark.parametrize(
-    "color", ["Teal", "#12345", "", "#4B7C7BFF", " #4B7C7B", "#GGGGGG"]
-)
-def test_a_color_that_is_not_hex_is_refused_on_spine_color(
-    tmp_path: Path, color: str
-) -> None:
+@pytest.mark.parametrize("color", ["Teal", "#12345", "", "#4B7C7BFF", " #4B7C7B", "#GGGGGG"])
+def test_a_color_that_is_not_hex_is_refused_on_spine_color(tmp_path: Path, color: str) -> None:
     seed_dune_with_cover(tmp_path)
     before = library_bytes(tmp_path)
     response = _set(api_client(tmp_path), DUNE_ID, color)
@@ -175,9 +171,7 @@ def test_a_color_that_is_not_hex_is_refused_on_spine_color(
     body = response.json()["error"]
     assert body["code"] == "invalid_fields"
     assert body["message"] == "Not saved. 1 field needs attention: Spine color."
-    assert field_messages(response) == {
-        "spineColor": "Spine color must be #RRGGBB or empty."
-    }
+    assert field_messages(response) == {"spineColor": "Spine color must be #RRGGBB or empty."}
     assert library_bytes(tmp_path) == before
 
 

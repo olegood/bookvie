@@ -134,8 +134,11 @@ export default function HomePage() {
   // Taken during render, so the slice's first render of the finished spine is the moment's.
   const handOff = keepsHandOff && noMain ? finishMoment(location.state) : null
   const shownFinished =
-    handOff !== null && view.status === 'ready' && view.data.books.some((book) => book.id === handOff.id && book.finished)
-  if (handOff !== null && shownFinished && moment?.key !== location.key) setMoment({ key: location.key, finishing: handOff })
+    handOff !== null &&
+    view.status === 'ready' &&
+    view.data.books.some((book) => book.id === handOff.id && book.finished)
+  if (handOff !== null && shownFinished && moment?.key !== location.key)
+    setMoment({ key: location.key, finishing: handOff })
   // Another history entry (a start, a later finish) is another visit: the line goes.
   else if (moment !== null && moment.key !== location.key) setMoment(null)
   const homeMeter = view.status === 'ready' ? view.data.meter : null

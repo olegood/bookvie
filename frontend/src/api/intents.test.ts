@@ -8,9 +8,7 @@ import { viewKey } from './views.ts'
 type FetchArgs = [string, RequestInit]
 
 function respond(body: unknown, status: number) {
-  return mock.method(globalThis, 'fetch', async (..._args: FetchArgs) =>
-    new Response(JSON.stringify(body), { status }),
-  )
+  return mock.method(globalThis, 'fetch', async (..._args: FetchArgs) => new Response(JSON.stringify(body), { status }))
 }
 
 describe('sendIntent', () => {

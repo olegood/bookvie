@@ -89,7 +89,7 @@
   background: var(--color-surface);
 }
 
-.segmented[aria-invalid="true"] {
+.segmented[aria-invalid='true'] {
   border: var(--text-field-border-invalid) solid var(--color-ink);
 }
 
@@ -131,7 +131,7 @@
   gap: var(--space-1);
 }
 
-.rating[aria-invalid="true"] {
+.rating[aria-invalid='true'] {
   outline: var(--text-field-border-invalid) solid var(--color-ink);
   outline-offset: var(--space-1);
 }
@@ -176,7 +176,7 @@
   color: var(--color-input-border);
 }
 
-.star[data-filled="true"] {
+.star[data-filled='true'] {
   color: var(--color-accent);
 }
 
@@ -188,7 +188,7 @@
 
 /* The live regions' host sits here, above the buttons, while the dialog is
    open. A couldn't-save or refusal shows as one calm line in ink. */
-.regions[data-show-alert="true"] [role="alert"] {
+.regions[data-show-alert='true'] [role='alert'] {
   position: static;
   width: auto;
   height: auto;
@@ -221,7 +221,7 @@
     color: CanvasText;
   }
 
-  .star[data-filled="true"] {
+  .star[data-filled='true'] {
     color: Highlight;
   }
 

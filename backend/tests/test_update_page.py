@@ -230,7 +230,12 @@ def test_ac3_p1_update_page_refuses_a_page_that_isnt_a_whole_number_in_range(
 
 @pytest.mark.parametrize(
     "intent",
-    [{"bookId": "x"}, {"page": 1}, {"bookId": "x", "page": 1, "extra": 1}, {"bookId": None, "page": 1}],
+    [
+        {"bookId": "x"},
+        {"page": 1},
+        {"bookId": "x", "page": 1, "extra": 1},
+        {"bookId": None, "page": 1},
+    ],
     ids=["missing-page", "missing-book-id", "extra-key", "null-book-id"],
 )
 def test_ac3_p1_a_malformed_update_page_part_is_refused_on_intent(
@@ -272,9 +277,7 @@ def test_ac8_p0_book_not_found_comes_before_not_main_book(tmp_path: Path) -> Non
 
 # --- The page rule the page field shares (frontend/src/lib/pageField.cases.json) --
 
-PAGE_CASES = (
-    Path(__file__).resolve().parents[2] / "frontend/src/lib/pageField.cases.json"
-)
+PAGE_CASES = Path(__file__).resolve().parents[2] / "frontend/src/lib/pageField.cases.json"
 
 
 @pytest.mark.skipif(not PAGE_CASES.is_file(), reason="needs the frontend checkout")

@@ -32,7 +32,7 @@ def _uv_dir(*args: str) -> str | None:
         return None
     try:
         out = subprocess.run([uv, *args], capture_output=True, text=True, timeout=30)
-    except (OSError, subprocess.SubprocessError):
+    except OSError, subprocess.SubprocessError:
         return None
     if out.returncode != 0:
         return None

@@ -65,7 +65,12 @@ function hexHueSaturation(hex) {
   if (max === min) return { hue: 0, saturation: 0 }
   const delta = max - min
   const saturation = delta / (1 - Math.abs(2 * lightness - 1))
-  const hue = max === r ? (60 * ((g - b) / delta) + 360) % 360 : max === g ? 60 * ((b - r) / delta + 2) : 60 * ((r - g) / delta + 4)
+  const hue =
+    max === r
+      ? (60 * ((g - b) / delta) + 360) % 360
+      : max === g
+        ? 60 * ((b - r) / delta + 2)
+        : 60 * ((r - g) / delta + 4)
   return { hue, saturation }
 }
 
@@ -101,18 +106,29 @@ const FORBIDDEN_CODE = [
 ]
 
 const forbiddenCode = (code) =>
-  code.flatMap(({ file, source }) => FORBIDDEN_CODE.filter((rule) => rule.test(source)).map((rule) => `${file}: ${rule}`))
+  code.flatMap(({ file, source }) =>
+    FORBIDDEN_CODE.filter((rule) => rule.test(source)).map((rule) => `${file}: ${rule}`),
+  )
 
 describe('copy and interaction guard', () => {
   it('[P1] AC-14 no message shouts, greets or praises, and nothing is red, key-bound, draggable or hover-only', () => {
     const copy = [...serverCopy(), ...clientCopy()]
     assert.deepEqual(shouting(copy), [])
 
-    assert.ok(copy.some(({ text }) => text === "Couldn't save. Your data wasn't changed."), 'server copy was scanned')
-    assert.ok(copy.some(({ text }) => text === 'Your shelf is empty. Add your first book.'), 'client copy was scanned')
+    assert.ok(
+      copy.some(({ text }) => text === "Couldn't save. Your data wasn't changed."),
+      'server copy was scanned',
+    )
+    assert.ok(
+      copy.some(({ text }) => text === 'Your shelf is empty. Add your first book.'),
+      'client copy was scanned',
+    )
     assert.deepEqual(greetingsOrPraise(copy), [])
 
-    const css = files(SRC, ['.css']).map((file) => ({ file: where(file), source: withoutComments(readFileSync(file, 'utf8')) }))
+    const css = files(SRC, ['.css']).map((file) => ({
+      file: where(file),
+      source: withoutComments(readFileSync(file, 'utf8')),
+    }))
     assert.deepEqual(redColors(css), [])
     assert.deepEqual(hoverOnly(css), [])
 
@@ -128,11 +144,14 @@ describe('copy and interaction guard', () => {
       file: 'sample',
       text,
     }))
-    assert.deepEqual(shouting(copy).map(({ text }) => text), ['Saved!'])
-    assert.deepEqual(greetingsOrPraise(copy).map(({ text }) => text), [
-      'Welcome back.',
-      'Great job, three books this month.',
-    ])
+    assert.deepEqual(
+      shouting(copy).map(({ text }) => text),
+      ['Saved!'],
+    )
+    assert.deepEqual(
+      greetingsOrPraise(copy).map(({ text }) => text),
+      ['Welcome back.', 'Great job, three books this month.'],
+    )
 
     const css = [
       {

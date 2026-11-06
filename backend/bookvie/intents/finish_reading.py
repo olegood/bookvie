@@ -54,9 +54,7 @@ FINISH_LABELS = {
 }
 
 PURPOSE_FULFILLED_MESSAGE = "Purpose fulfilled must be yes, partly or not yet."
-PURPOSE_FULFILLED_WITHOUT_PURPOSE_MESSAGE = (
-    "Purpose fulfilled needs a Purpose on this reading."
-)
+PURPOSE_FULFILLED_WITHOUT_PURPOSE_MESSAGE = "Purpose fulfilled needs a Purpose on this reading."
 RATING_MESSAGE = "Rating must be 1 to 5 stars, or no rating."
 
 _ANSWERS: tuple[str, ...] = get_args(PurposeFulfilled)
@@ -78,9 +76,7 @@ def parse_finish_reading_intent(raw: str | None) -> FinishReadingIntent:
     return parse_form_intent(FinishReadingIntent, raw)
 
 
-def _finished_on(
-    value: JsonValue, reading: Reading, today: date
-) -> tuple[date | None, str | None]:
+def _finished_on(value: JsonValue, reading: Reading, today: date) -> tuple[date | None, str | None]:
     """``finishedOn`` as a date, or its failure message (format, future, before start)."""
     if not isinstance(value, str):
         return None, FINISHED_ON_FORMAT_MESSAGE
@@ -123,9 +119,7 @@ def finish_reading(store: Store, clock: Clock, intent: FinishReadingIntent) -> N
         reading = current_reading(book)
         if reading is None:
             raise reading_already_finished()
-        finished_on, finished_on_failure = _finished_on(
-            intent.finished_on, reading, clock.today()
-        )
+        finished_on, finished_on_failure = _finished_on(intent.finished_on, reading, clock.today())
         failures = [
             (FINISHED_ON_FIELD, finished_on_failure),
             (
@@ -151,11 +145,7 @@ def finish_reading(store: Store, clock: Clock, intent: FinishReadingIntent) -> N
         )
         library.replace_book(
             book.model_copy(
-                update={
-                    "readings": [
-                        finished if r.id == reading.id else r for r in book.readings
-                    ]
-                }
+                update={"readings": [finished if r.id == reading.id else r for r in book.readings]}
             )
         )
         if library.main_book_id == book_id:

@@ -61,9 +61,7 @@ NOW = FakeClock(TODAY).now()
 def _send(client: TestClient, path: str, book_id: str, purpose: str | None):
     """An intent as the Start dialog or the Edit Purpose field sends it."""
     intent = {"bookId": book_id, "purpose": purpose}
-    return client.post(
-        path, files={"intent": (None, json.dumps(intent), "application/json")}
-    )
+    return client.post(path, files={"intent": (None, json.dumps(intent), "application/json")})
 
 
 def _stored(data_dir: Path) -> dict:
@@ -73,12 +71,8 @@ def _stored(data_dir: Path) -> dict:
 def _fahrenheit_main_and_dune(data_dir: Path) -> tuple[str, str]:
     """Fahrenheit 451 as the Main book at p.120 of 187, and Dune never started."""
     builder = LibraryBuilder()
-    fahrenheit = builder.book(
-        title="Fahrenheit 451", authors=["Ray Bradbury"], pages=187
-    )
-    builder.reading(
-        fahrenheit, current_page=120, purpose="Read it before the film club"
-    )
+    fahrenheit = builder.book(title="Fahrenheit 451", authors=["Ray Bradbury"], pages=187)
+    builder.reading(fahrenheit, current_page=120, purpose="Read it before the film club")
     builder.main(fahrenheit)
     dune = builder.book(title="Dune", authors=["Frank Herbert"], pages=412)
     builder.write(data_dir)
@@ -106,9 +100,7 @@ def test_ac3_p0_starting_a_finished_book_creates_a_new_reading_and_keeps_the_ear
     builder.write(tmp_path)
     (earlier,) = stored_book(tmp_path, dune)["readings"]
 
-    response = _send(
-        api_client(tmp_path), START_READING, dune, "  For the ecology of Arrakis  "
-    )
+    response = _send(api_client(tmp_path), START_READING, dune, "  For the ecology of Arrakis  ")
 
     # The criterion: a second Reading, the re-read.
     readings = stored_book(tmp_path, dune)["readings"]
@@ -268,9 +260,7 @@ def _seed(data_dir: Path, state: str, with_main: bool) -> tuple[str, str | None]
 
 @pytest.mark.parametrize("with_main", [False, True], ids=["no-main", "with-main"])
 @pytest.mark.parametrize("state", ["never", "finished", "paused"])
-def test_start_reading_across_the_state_matrix(
-    tmp_path: Path, state: str, with_main: bool
-) -> None:
+def test_start_reading_across_the_state_matrix(tmp_path: Path, state: str, with_main: bool) -> None:
     dune, fahrenheit = _seed(tmp_path, state, with_main)
     before = stored_book(tmp_path, dune)["readings"]
     fahrenheit_before = stored_book(tmp_path, fahrenheit)["readings"] if fahrenheit else None

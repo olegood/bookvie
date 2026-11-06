@@ -103,7 +103,7 @@
 
 /* The live regions' host sits here while the panel is open. The alert shows
    as one calm line in ink only for an outcome with no field to point at. */
-.regions[data-show-alert="true"] [role="alert"] {
+.regions[data-show-alert='true'] [role='alert'] {
   position: static;
   width: auto;
   height: auto;

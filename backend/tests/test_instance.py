@@ -86,8 +86,16 @@ def test_racing_acquires_exactly_one_wins(tmp_path: Path) -> None:
 
 @pytest.mark.parametrize(
     "raw",
-    [b"", b"{", b"[]", b'{"pid": 1}', b'{"pid": "1", "port": 2}', b'{"pid": 0, "port": 2}',
-     b'{"pid": 1, "port": 70000}', b'{"pid": true, "port": 2}'],
+    [
+        b"",
+        b"{",
+        b"[]",
+        b'{"pid": 1}',
+        b'{"pid": "1", "port": 2}',
+        b'{"pid": 0, "port": 2}',
+        b'{"pid": 1, "port": 70000}',
+        b'{"pid": true, "port": 2}',
+    ],
 )
 def test_unreadable_lock_reads_as_none(tmp_path: Path, raw: bytes) -> None:
     (tmp_path / LOCK_NAME).write_bytes(raw)
@@ -205,7 +213,9 @@ def _serve_once(sock: socket.socket, reply: bytes) -> threading.Thread:
 
 def _http_ok(body: dict) -> bytes:
     raw = json.dumps(body).encode()
-    head = f"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {len(raw)}\r\n\r\n"
+    head = (
+        f"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {len(raw)}\r\n\r\n"
+    )
     return head.encode() + raw
 
 
@@ -416,8 +426,16 @@ def test_takeover_gives_up_after_bounded_retries(
 
 
 def _launch(data_dir: Path, port: int) -> list[str]:
-    return [sys.executable, "-m", "bookvie.cli", "--no-browser",
-            "--port", str(port), "--data-dir", str(data_dir)]
+    return [
+        sys.executable,
+        "-m",
+        "bookvie.cli",
+        "--no-browser",
+        "--port",
+        str(port),
+        "--data-dir",
+        str(data_dir),
+    ]
 
 
 @pytest.mark.parametrize("sig", [signal.SIGINT, signal.SIGTERM], ids=["SIGINT", "SIGTERM"])
@@ -525,8 +543,10 @@ def test_server_makes_no_outbound_connections(tmp_path: Path) -> None:
     argv = ["--no-browser", "--port", str(port), "--data-dir", str(data_dir)]
     code = f"from bookvie.cli import main\nsys.exit(main({argv!r}))\n"
     server = subprocess.Popen(
-        _audited(code), env=os.environ | {"HOME": str(tmp_path / "home")},
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        _audited(code),
+        env=os.environ | {"HOME": str(tmp_path / "home")},
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
     )
     try:
         wait_for_health(server, port, data_dir)

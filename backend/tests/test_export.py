@@ -121,16 +121,12 @@ class Run:
 
     @property
     def statuses(self) -> list[int]:
-        return [
-            m["status"] for m in self.messages if m["type"] == "http.response.start"
-        ]
+        return [m["status"] for m in self.messages if m["type"] == "http.response.start"]
 
     @property
     def body(self) -> bytes:
         return b"".join(
-            m.get("body", b"")
-            for m in self.messages
-            if m["type"] == "http.response.body"
+            m.get("body", b"") for m in self.messages if m["type"] == "http.response.body"
         )
 
 
@@ -266,9 +262,7 @@ def test_ac5_p1_only_a_complete_download_records_last_export_in_local_state(
     _run(app)
 
     assert _last_export_at(data_dir) == LAST_EXPORT_NOW
-    assert json.loads(_local_state(data_dir) or b"null") == {
-        "lastExportAt": LAST_EXPORT_NOW
-    }
+    assert json.loads(_local_state(data_dir) or b"null") == {"lastExportAt": LAST_EXPORT_NOW}
     assert library_bytes(data_dir) == library_before
 
     # A client that goes away halfway records nothing.

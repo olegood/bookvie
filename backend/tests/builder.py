@@ -150,15 +150,15 @@ class LibraryBuilder:
 
     # --- pointers ----------------------------------------------------------
 
-    def main(self, book_id: str | None) -> "LibraryBuilder":
+    def main(self, book_id: str | None) -> LibraryBuilder:
         self._doc["mainBookId"] = book_id
         return self
 
-    def up_next(self, book_id: str | None) -> "LibraryBuilder":
+    def up_next(self, book_id: str | None) -> LibraryBuilder:
         self._doc["upNextBookId"] = book_id
         return self
 
-    def side_read(self, book_id: str) -> "LibraryBuilder":
+    def side_read(self, book_id: str) -> LibraryBuilder:
         self._doc["sideReadBookIds"].append(book_id)
         return self
 
@@ -179,7 +179,7 @@ class LibraryBuilder:
         return path
 
     @classmethod
-    def from_partial(cls, partial: dict[str, Any]) -> "LibraryBuilder":
+    def from_partial(cls, partial: dict[str, Any]) -> LibraryBuilder:
         """A builder holding ``partial`` (camelCase) with every default filled in."""
         builder = cls()
         partial = dict(partial)

@@ -270,19 +270,19 @@ test.describe('Story 1.14 Change a book’s color from the shelf (ATDD)', () => 
     await expect(block.getByText('Color: set by you', { exact: true })).toBeVisible()
     await expect(swatch(block, 'Teal')).toHaveAttribute('aria-pressed', 'true')
     await swatch(block, 'Sage').click()
-    await expect.poll(() => sent.map(intentOf)).toEqual([
-      { bookId: DUNE_ID, spineColor: TEAL },
-      { bookId: DUNE_ID, spineColor: SAGE },
-    ])
+    await expect
+      .poll(() => sent.map(intentOf))
+      .toEqual([
+        { bookId: DUNE_ID, spineColor: TEAL },
+        { bookId: DUNE_ID, spineColor: SAGE },
+      ])
     await expect(page.getByRole('status')).toHaveText('Color set to Sage.')
     await expect(swatch(block, 'Sage')).toHaveAttribute('aria-pressed', 'true')
     await expect(swatch(block, 'Teal')).toHaveAttribute('aria-pressed', 'false')
 
     // On an unread Book the heading adds "· shown once read", here and in the popover.
     await page.goto(`${server.url}/book/${NEUROMANCER_ID}`)
-    await expect(
-      changeColor(page).getByRole('heading', { name: /^Change color\s*· shown once read$/ }),
-    ).toBeVisible()
+    await expect(changeColor(page).getByRole('heading', { name: /^Change color\s*· shown once read$/ })).toBeVisible()
     await expect(changeColor(page).getByText('Color: Slate', { exact: true })).toBeVisible()
     await page.goto(`${server.url}/catalog`)
     await spine(page, NEUROMANCER_SPINE).click()
@@ -416,7 +416,9 @@ test.describe('Story 1.14 Change a book’s color from the shelf (follow-ups)', 
 
     await expect(fromCover).toHaveAttribute('aria-pressed', 'true')
     for (const name of SWATCH_NAMES) await expect(swatch(card, name)).toHaveAttribute('aria-pressed', 'false')
-    const names = await card.getByRole('button').evaluateAll((all) => all.map((el) => el.textContent || el.getAttribute('aria-label')))
+    const names = await card
+      .getByRole('button')
+      .evaluateAll((all) => all.map((el) => el.textContent || el.getAttribute('aria-label')))
     expect(names.slice(0, 2)).toEqual(['From cover', 'Sage'])
     // rgb(200, 60, 40) is nearest to Clay.
     await expect(card.getByText('Color: Clay, from cover', { exact: true })).toBeVisible()
@@ -498,9 +500,7 @@ test.describe('Story 1.14 Change a book’s color from the shelf (follow-ups)', 
     // control, "Start reading" for a Book never started (Story 3.2).
     await dune.click()
     await spine(page, NEUROMANCER_SPINE).click()
-    await expect(
-      popover(page, 'Neuromancer').getByRole('button', { name: 'Start reading', exact: true }),
-    ).toBeFocused()
+    await expect(popover(page, 'Neuromancer').getByRole('button', { name: 'Start reading', exact: true })).toBeFocused()
 
     // A search that hides the open spine closes its popover.
     await page.keyboard.press('Escape')
@@ -584,7 +584,9 @@ test.describe('Story 1.14 Change a book’s color from the shelf (follow-ups)', 
     const fromCover = block.getByRole('button', { name: 'From cover', exact: true })
 
     await expect(fromCover).toHaveAttribute('aria-pressed', 'true')
-    const names = await block.getByRole('button').evaluateAll((all) => all.map((el) => el.textContent || el.getAttribute('aria-label')))
+    const names = await block
+      .getByRole('button')
+      .evaluateAll((all) => all.map((el) => el.textContent || el.getAttribute('aria-label')))
     expect(names.slice(0, 2)).toEqual(['From cover', 'Sage'])
     await expect(block.getByText('Color: Clay, from cover', { exact: true })).toBeVisible()
 
@@ -673,10 +675,12 @@ test.describe('Story 1.14 Change a book’s color from the shelf (follow-ups)', 
 
     // Wider: the spines reflow, so Dune moves and its popover must follow.
     await page.setViewportSize({ width: 1400, height: 800 })
-    await expect.poll(async () => {
-      const box = (await dune.boundingBox())!
-      return box.x !== before.x || box.y !== before.y
-    }).toBe(true)
+    await expect
+      .poll(async () => {
+        const box = (await dune.boundingBox())!
+        return box.x !== before.x || box.y !== before.y
+      })
+      .toBe(true)
     await expect(card).toBeVisible()
     await expect
       .poll(async () => {

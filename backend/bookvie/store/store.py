@@ -254,7 +254,7 @@ class Store:
     # --- startup -----------------------------------------------------------
 
     @classmethod
-    def open(cls, data_dir: Path, fs: FileSystem | None = None) -> "Store":
+    def open(cls, data_dir: Path, fs: FileSystem | None = None) -> Store:
         """Load or migrate ``library.json``, sweep, then create or commit it.
 
         Raises :class:`StartupError` when the folder can't be served. A newer
@@ -508,8 +508,10 @@ class Store:
                 try:
                     data = source.read_bytes()
                     if os.path.lexists(target):
-                        same = target.is_file() and not target.is_symlink() and (
-                            target.read_bytes() == data
+                        same = (
+                            target.is_file()
+                            and not target.is_symlink()
+                            and (target.read_bytes() == data)
                         )
                         if not same:
                             _log(f"kept {COVERS_DIR}/{name}; the export's copy differs")

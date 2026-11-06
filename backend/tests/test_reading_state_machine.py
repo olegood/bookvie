@@ -49,11 +49,7 @@ from tests.helpers import TODAY
 
 GONE_ID = "00000000-0000-4000-8000-000000000000"
 
-_purposes = (
-    st.none()
-    | st.sampled_from(["", "   ", "  x  ", "Why Arrakis"])
-    | st.text(max_size=8)
-)
+_purposes = st.none() | st.sampled_from(["", "   ", "  x  ", "Why Arrakis"]) | st.text(max_size=8)
 _pages = st.integers(min_value=-2, max_value=415)
 """A page sent by the page field: in range for some Books, out of range for others."""
 _finish_offsets = st.integers(min_value=-200, max_value=2)
@@ -69,13 +65,9 @@ def _seed(data_dir: Path) -> list[str]:
     builder = LibraryBuilder()
     dune = builder.book(title="Dune", pages=412)
     emma = builder.book(title="Emma", pages=400)
-    builder.reading(
-        emma, current_page=400, finish_date="2026-04-10", finished_pages=400, rating=4
-    )
+    builder.reading(emma, current_page=400, finish_date="2026-04-10", finished_pages=400, rating=4)
     neuromancer = builder.book(title="Neuromancer", pages=271)
-    builder.reading(
-        neuromancer, current_page=50, purpose="Cyberspace", paused_at="2026-10-01"
-    )
+    builder.reading(neuromancer, current_page=50, purpose="Cyberspace", paused_at="2026-10-01")
     fahrenheit = builder.book(title="Fahrenheit 451", pages=187)
     builder.reading(fahrenheit, current_page=120)
     builder.main(fahrenheit)
@@ -94,9 +86,7 @@ def _current(book: dict[str, Any]) -> dict[str, Any] | None:
     return unfinished[0] if unfinished else None
 
 
-def _intent(
-    book_id: str, purpose: str | None = None, *, with_purpose: bool = True
-) -> str:
+def _intent(book_id: str, purpose: str | None = None, *, with_purpose: bool = True) -> str:
     return json.dumps(
         {"bookId": book_id, "purpose": purpose} if with_purpose else {"bookId": book_id}
     )
@@ -135,9 +125,7 @@ class ReadingPlan(RuleBasedStateMachine):
             assert exc.body.code == expected_code, (exc.body.code, expected_code)
             assert self._bytes() == before
             return False
-        assert expected_code is None, (
-            f"expected {expected_code}, the intent was accepted"
-        )
+        assert expected_code is None, f"expected {expected_code}, the intent was accepted"
         return True
 
     # --- rules -----------------------------------------------------------------
@@ -169,9 +157,7 @@ class ReadingPlan(RuleBasedStateMachine):
             expected_main = {
                 **before[old_main],
                 "readings": [
-                    {**r, "pausedAt": self.today.isoformat()}
-                    if r["id"] == paused["id"]
-                    else r
+                    {**r, "pausedAt": self.today.isoformat()} if r["id"] == paused["id"] else r
                     for r in before[old_main]["readings"]
                 ],
             }
@@ -227,9 +213,7 @@ class ReadingPlan(RuleBasedStateMachine):
         expected_book = {
             **before[book_id],
             "readings": [
-                {**r, "purpose": normalize_purpose(purpose)}
-                if r["id"] == current["id"]
-                else r
+                {**r, "purpose": normalize_purpose(purpose)} if r["id"] == current["id"] else r
                 for r in before[book_id]["readings"]
             ],
         }
@@ -285,8 +269,7 @@ class ReadingPlan(RuleBasedStateMachine):
         elif current is None:
             expected = "reading_already_finished"
         elif finished_on > self.today or (
-            current["startDate"] is not None
-            and finished_on.isoformat() < current["startDate"]
+            current["startDate"] is not None and finished_on.isoformat() < current["startDate"]
         ):
             expected = "invalid_fields"
         elif answer is not None and current["purpose"] is None:
@@ -342,9 +325,7 @@ class ReadingPlan(RuleBasedStateMachine):
         after = _books(self.store.library)
         assert after == {k: v for k, v in before.items() if k != book_id}
         # Nothing is promoted into a vacated Main book (CAT-API-007).
-        assert self.store.library.main_book_id == (
-            None if old_main == book_id else old_main
-        )
+        assert self.store.library.main_book_id == (None if old_main == book_id else old_main)
 
     @rule(days=st.integers(min_value=1, max_value=3))
     def days_pass(self, days: int) -> None:
@@ -398,9 +379,7 @@ test_reading_plan_holds_under_random_intent_sequences = ReadingPlan.TestCase
 def test_the_seed_covers_every_starting_state(tmp_path: Path) -> None:
     """The machine starts from never started, finished, paused and Main (RDG-API-001's rows)."""
     dune, emma, neuromancer, fahrenheit = _seed(tmp_path)
-    roles = {
-        b.id: (b.role, b.finished) for b in catalog(Store.open(tmp_path).library).books
-    }
+    roles = {b.id: (b.role, b.finished) for b in catalog(Store.open(tmp_path).library).books}
     assert roles == {
         dune: (None, False),
         emma: (None, True),

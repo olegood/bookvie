@@ -345,7 +345,7 @@ test.describe('Story 3.1 See my Main book on Home (automate)', () => {
     await expect(date.locator('..')).not.toContainText(/Last export|No export yet/)
   })
 
-  test('[P1] a failed first load of Home shows Couldn\'t load with Try again, which refetches', async ({
+  test("[P1] a failed first load of Home shows Couldn't load with Try again, which refetches", async ({
     page,
     seededServer,
   }) => {
@@ -395,7 +395,12 @@ test.describe('Story 3.1 See my Main book on Home (automate)', () => {
     page,
     seededServer,
   }) => {
-    const unread = { id: '0c4e8a2b-1d3f-4a5b-8c6d-7e8f9a0b1c2d', title: 'Neuromancer', authors: ['William Gibson'], pages: 271 }
+    const unread = {
+      id: '0c4e8a2b-1d3f-4a5b-8c6d-7e8f9a0b1c2d',
+      title: 'Neuromancer',
+      authors: ['William Gibson'],
+      pages: 271,
+    }
     const finished = {
       id: '9d2b7c4e-3a1f-4e6b-a5c8-2f1e0d9c8b7a',
       title: 'Piranesi',

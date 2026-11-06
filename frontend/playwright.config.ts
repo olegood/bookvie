@@ -24,11 +24,7 @@ export default defineConfig({
   timeout: 60_000,
   expect: { timeout: 10_000 },
   // HTML report in playwright-report/, JUnit in test-results/ (both gitignored).
-  reporter: [
-    ['list'],
-    ['html', { open: 'never' }],
-    ['junit', { outputFile: 'test-results/junit.xml' }],
-  ],
+  reporter: [['list'], ['html', { open: 'never' }], ['junit', { outputFile: 'test-results/junit.xml' }]],
   use: {
     // Dates in the browser are local to the same zone as the servers (TZ above).
     timezoneId: TZ,

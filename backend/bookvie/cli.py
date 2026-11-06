@@ -32,9 +32,7 @@ def _local_date(value: str) -> date:
             raise ValueError(value)
         return date.fromisoformat(value)
     except ValueError:
-        raise argparse.ArgumentTypeError(
-            f"must be a date as YYYY-MM-DD, got {value!r}"
-        ) from None
+        raise argparse.ArgumentTypeError(f"must be a date as YYYY-MM-DD, got {value!r}") from None
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -87,9 +85,7 @@ def _log_config() -> dict:
     return config
 
 
-def _open_browser_when_started(
-    server: uvicorn.Server, url: str, done: threading.Event
-) -> None:
+def _open_browser_when_started(server: uvicorn.Server, url: str, done: threading.Event) -> None:
     deadline = time.monotonic() + _BROWSER_WAIT_SECONDS
     while not server.started:
         if done.is_set() or server.should_exit or time.monotonic() > deadline:

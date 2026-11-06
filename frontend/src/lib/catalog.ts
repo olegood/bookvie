@@ -12,9 +12,7 @@ const collator = new Intl.Collator(undefined)
 
 /** By first author with `Intl.Collator`, then by title; a new array. */
 export function sortBooks<B extends ListedBook>(books: readonly B[]): B[] {
-  return [...books].sort(
-    (a, b) => collator.compare(a.firstAuthor, b.firstAuthor) || collator.compare(a.title, b.title),
-  )
+  return [...books].sort((a, b) => collator.compare(a.firstAuthor, b.firstAuthor) || collator.compare(a.title, b.title))
 }
 
 /** Whether `title` contains the search text, ignoring case. Empty text matches all. */

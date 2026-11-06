@@ -19,7 +19,15 @@ from .model import Book
 _WHITESPACE = re.compile(r"\s+")
 # A title pasted from a store page carries ’ and – where a typed one has ' and -.
 _TYPOGRAPHIC = str.maketrans(
-    {"\u2018": "'", "\u2019": "'", "\u02bc": "'", "\u201c": '"', "\u201d": '"', "\u2013": "-", "\u2014": "-"}
+    {
+        "\u2018": "'",
+        "\u2019": "'",
+        "\u02bc": "'",
+        "\u201c": '"',
+        "\u201d": '"',
+        "\u2013": "-",
+        "\u2014": "-",
+    }
 )
 
 

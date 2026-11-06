@@ -61,6 +61,9 @@ describe('relativeDay across time zones', () => {
 describe('lastExportLine', () => {
   it('says No export yet before the first, else Last export with the relative day', () => {
     assert.equal(lastExportLine(null, at(2026, 10, 28)), 'No export yet')
-    assert.equal(lastExportLine(at(2026, 10, 16, 9, 30).toISOString(), at(2026, 10, 28, 10)), 'Last export: 12 days ago')
+    assert.equal(
+      lastExportLine(at(2026, 10, 16, 9, 30).toISOString(), at(2026, 10, 28, 10)),
+      'Last export: 12 days ago',
+    )
   })
 })

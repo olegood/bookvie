@@ -63,9 +63,7 @@ NEUROMANCER_FORM = {
 def _edit(client: TestClient, book_id: str, form: dict[str, Any], **changes: Any):
     """``edit-book`` for ``book_id``: the prefilled ``form`` with ``changes``."""
     intent = {"bookId": book_id, **form, **changes}
-    return client.post(
-        EDIT_BOOK, files={"intent": (None, json.dumps(intent), "application/json")}
-    )
+    return client.post(EDIT_BOOK, files={"intent": (None, json.dumps(intent), "application/json")})
 
 
 def _readings(data_dir: Path, book_id: str) -> list[dict[str, Any]]:
@@ -134,7 +132,11 @@ def test_ac6_p0_pages_below_the_current_page_is_409_and_finished_readings_keep_t
 ) -> None:
     dune = library_builder.book(**DUNE)
     first = library_builder.reading(
-        dune, start_date="2025-01-05", finish_date="2025-02-20", current_page=412, finished_pages=412
+        dune,
+        start_date="2025-01-05",
+        finish_date="2025-02-20",
+        current_page=412,
+        finished_pages=412,
     )
     library_builder.reading(dune, start_date="2026-09-01", current_page=300)  # re-reading
     library_builder.main(dune)
@@ -216,7 +218,11 @@ def test_ac8_p0_finished_on_changes_the_most_recent_finish_and_cannot_be_cleared
         dune, start_date=None, finish_date="2019-08-14", current_page=412, finished_pages=412
     )
     latest = library_builder.reading(
-        dune, start_date="2025-05-01", finish_date="2025-06-01", current_page=412, finished_pages=412
+        dune,
+        start_date="2025-05-01",
+        finish_date="2025-06-01",
+        current_page=412,
+        finished_pages=412,
     )
     library_builder.write(tmp_path)
     client = api_client(tmp_path)
@@ -252,7 +258,11 @@ def test_ac9_p1_finished_on_before_the_readings_start_date_is_422_and_saves_noth
 ) -> None:
     dune = library_builder.book(**DUNE)
     library_builder.reading(
-        dune, start_date="2026-03-12", finish_date="2026-04-02", current_page=412, finished_pages=412
+        dune,
+        start_date="2026-03-12",
+        finish_date="2026-04-02",
+        current_page=412,
+        finished_pages=412,
     )
     library_builder.write(tmp_path)
     client = api_client(tmp_path)
@@ -346,7 +356,11 @@ def test_the_latest_finish_cannot_move_past_a_re_reads_start(
 ) -> None:
     dune = library_builder.book(**DUNE)
     earlier = library_builder.reading(
-        dune, start_date="2026-01-01", finish_date="2026-02-01", current_page=412, finished_pages=412
+        dune,
+        start_date="2026-01-01",
+        finish_date="2026-02-01",
+        current_page=412,
+        finished_pages=412,
     )
     library_builder.reading(dune, start_date="2026-10-01", current_page=40)
     library_builder.main(dune)
@@ -380,7 +394,11 @@ def test_an_unchanged_finish_already_past_the_current_start_still_saves_other_fi
     # the prefilled date must not block an unrelated edit.
     dune = library_builder.book(**DUNE)
     library_builder.reading(
-        dune, start_date="2026-01-01", finish_date="2026-10-25", current_page=412, finished_pages=412
+        dune,
+        start_date="2026-01-01",
+        finish_date="2026-10-25",
+        current_page=412,
+        finished_pages=412,
     )
     library_builder.reading(dune, start_date="2026-10-01", current_page=40)
     library_builder.write(tmp_path)
@@ -453,7 +471,10 @@ def test_ac12_p0_edit_book_keeps_the_standard_intent_guarantees(tmp_path: Path) 
     builder.main(dune)
     builder.write(data_dir)
     client = api_client(data_dir)
-    assert _edit(client, dune, DUNE_FORM, subtitle="Book One", finishedOn="2024-05-01").status_code == 200
+    assert (
+        _edit(client, dune, DUNE_FORM, subtitle="Book One", finishedOn="2024-05-01").status_code
+        == 200
+    )
     assert_invariants(data_dir)
 
     # A Book that no longer exists is refused, and nothing changes.
@@ -628,11 +649,15 @@ def test_below_both_floors_the_higher_floor_wins(
         "kind": "refusal",
         "code": "pages_below_card_note",
         "message": "Not saved. 1 field needs attention: Pages.",
-        "fields": [{"field": "pages", "message": "Pages can't be less than 320, where a card note is."}],
+        "fields": [
+            {"field": "pages", "message": "Pages can't be less than 320, where a card note is."}
+        ],
     }
 
     other = {**DUNE_FORM, "isbn": "", "year": "", "publisher": "Publisher"}
-    by_page = _edit(client, hyperion, {**other, "title": "Hyperion", "authors": "Dan Simmons"}, pages="100")
+    by_page = _edit(
+        client, hyperion, {**other, "title": "Hyperion", "authors": "Dan Simmons"}, pages="100"
+    )
     assert by_page.json()["error"]["code"] == "pages_below_current_page"
     assert field_messages(by_page) == {"pages": "Pages can't be less than 330, the page you're on."}
 
@@ -662,9 +687,7 @@ def test_pages_floors_come_before_the_duplicate_check(
     assert library_bytes(tmp_path) == before
 
 
-def test_a_paused_reading_is_a_pages_floor(
-    tmp_path: Path, library_builder: LibraryBuilder
-) -> None:
+def test_a_paused_reading_is_a_pages_floor(tmp_path: Path, library_builder: LibraryBuilder) -> None:
     dune = library_builder.book(**DUNE)
     library_builder.reading(dune, current_page=300, paused_at="2026-10-01")
     library_builder.write(tmp_path)
@@ -681,13 +704,19 @@ def test_field_failures_come_before_the_pages_floors_in_form_order(
 ) -> None:
     dune = library_builder.book(**DUNE)
     library_builder.reading(
-        dune, start_date="2026-03-12", finish_date="2026-04-02", current_page=412, finished_pages=412
+        dune,
+        start_date="2026-03-12",
+        finish_date="2026-04-02",
+        current_page=412,
+        finished_pages=412,
     )
     library_builder.card_note(dune, page_start=270)
     library_builder.write(tmp_path)
     client = api_client(tmp_path)
 
-    response = _edit(client, dune, DUNE_FORM, pages="100", finishedOn="", spineColor="red", title="")
+    response = _edit(
+        client, dune, DUNE_FORM, pages="100", finishedOn="", spineColor="red", title=""
+    )
 
     assert response.status_code == 422
     assert [f["field"] for f in response.json()["error"]["fields"]] == [
@@ -708,7 +737,11 @@ def test_the_same_finish_date_resent_is_a_no_op_and_a_tie_edits_the_later_readin
         dune, start_date=None, finish_date="2025-06-01", current_page=412, finished_pages=412
     )
     second = library_builder.reading(
-        dune, start_date="2025-05-01", finish_date="2025-06-01", current_page=412, finished_pages=412
+        dune,
+        start_date="2025-05-01",
+        finish_date="2025-06-01",
+        current_page=412,
+        finished_pages=412,
     )
     library_builder.write(tmp_path)
     client = api_client(tmp_path)
@@ -764,9 +797,22 @@ def test_edit_keeps_identity_cover_curated_color_and_card_notes(
     before = stored_book(tmp_path, dune)
     client = api_client(tmp_path)
 
-    assert _edit(client, dune, DUNE_FORM, title="Dune (Ace)", tags="sci-fi, SCI-FI, classics").status_code == 200
+    assert (
+        _edit(
+            client, dune, DUNE_FORM, title="Dune (Ace)", tags="sci-fi, SCI-FI, classics"
+        ).status_code
+        == 200
+    )
     after = stored_book(tmp_path, dune)
-    for key in ("id", "createdAt", "ownership", "coverFile", "spineColorCurated", "spineColor", "cardNotes"):
+    for key in (
+        "id",
+        "createdAt",
+        "ownership",
+        "coverFile",
+        "spineColorCurated",
+        "spineColor",
+        "cardNotes",
+    ):
         assert after[key] == before[key], key
     assert after["tags"] == ["sci-fi", "classics"]
     assert after["title"] == "Dune (Ace)"
@@ -776,7 +822,9 @@ def test_edit_keeps_identity_cover_curated_color_and_card_notes(
     "intent",
     [None, "[]", "{", json.dumps({**DUNE_FORM}), json.dumps({"bookId": None, **DUNE_FORM})],
 )
-def test_a_malformed_edit_intent_is_an_intent_field_error(tmp_path: Path, intent: str | None) -> None:
+def test_a_malformed_edit_intent_is_an_intent_field_error(
+    tmp_path: Path, intent: str | None
+) -> None:
     client = api_client(tmp_path)
     files = {"intent": (None, intent, "application/json")} if intent is not None else None
     response = client.post(EDIT_BOOK, files=files) if files else client.post(EDIT_BOOK)

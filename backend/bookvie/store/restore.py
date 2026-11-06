@@ -150,8 +150,7 @@ def _copy_entry(
                     break
                 if len(chunk) > budget.left:
                     raise ArchiveUnsafe(
-                        f"unpacks to more than {MAX_EXTRACTED_BYTES} bytes "
-                        f"(at {info.filename})"
+                        f"unpacks to more than {MAX_EXTRACTED_BYTES} bytes (at {info.filename})"
                     )
                 try:
                     out.write(chunk)

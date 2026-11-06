@@ -9,7 +9,9 @@ from bookvie import instance
 POLL_SECONDS = 0.1
 
 
-def wait_for_health(server: subprocess.Popen, port: int, data_dir: Path, timeout: float = 20) -> None:
+def wait_for_health(
+    server: subprocess.Popen, port: int, data_dir: Path, timeout: float = 20
+) -> None:
     """Return once ``/api/health`` on ``port`` answers for ``data_dir``.
 
     Fails with the server's stderr if it exits first, or after ``timeout``

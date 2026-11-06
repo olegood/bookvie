@@ -181,9 +181,7 @@ def api_client(
     store = Store.open(data_dir)
     if fs is not None:
         store.fs = fs
-    app = create_app(
-        data_dir / "no-static", data_dir=data_dir, store=store, clock=FakeClock(TODAY)
-    )
+    app = create_app(data_dir / "no-static", data_dir=data_dir, store=store, clock=FakeClock(TODAY))
     return TestClient(app, base_url=BASE_URL, raise_server_exceptions=raise_server_exceptions)
 
 

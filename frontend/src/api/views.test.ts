@@ -80,9 +80,7 @@ describe('fetchView', () => {
   afterEach(() => mock.restoreAll())
 
   it('GETs the view route', async () => {
-    const fetch = mock.method(globalThis, 'fetch', async (..._args: [string]) =>
-      Response.json(empty),
-    )
+    const fetch = mock.method(globalThis, 'fetch', async (..._args: [string]) => Response.json(empty))
     assert.deepEqual(await fetchView('catalog'), empty)
     assert.equal(fetch.mock.calls[0].arguments[0], '/api/views/catalog')
   })

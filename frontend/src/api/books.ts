@@ -89,7 +89,11 @@ export function editBook(
 }
 
 /** `editBook` bound to the app's QueryClient. */
-export function useEditBook(): (bookId: string, fields: BookFields, options?: EditBookOptions) => Promise<IntentResult> {
+export function useEditBook(): (
+  bookId: string,
+  fields: BookFields,
+  options?: EditBookOptions,
+) => Promise<IntentResult> {
   const client = useQueryClient()
   return (bookId, fields, options) => editBook(client, bookId, fields, options)
 }

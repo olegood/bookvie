@@ -104,7 +104,10 @@ describe('spineName', () => {
   it('names the Main book with its percentage, or as a re-read once finished', () => {
     const main = { ...book, finished: false, role: 'main', percent: 64 } as const
     assert.equal(spineName(main), 'Dune by Frank Herbert, Main book, 64%')
-    assert.equal(spineName({ ...main, finished: true, percent: 12 }), 'Dune by Frank Herbert, finished, re-reading, 12%')
+    assert.equal(
+      spineName({ ...main, finished: true, percent: 12 }),
+      'Dune by Frank Herbert, finished, re-reading, 12%',
+    )
   })
 
   it('names a paused Book waiting for you at its page, finished or not', () => {
@@ -117,7 +120,10 @@ describe('spineName', () => {
   })
 
   it('keeps Up next to the read status (no Up-next names this story)', () => {
-    assert.equal(spineName({ ...book, finished: false, role: 'upNext', percent: 29 }), 'Dune by Frank Herbert, not read yet')
+    assert.equal(
+      spineName({ ...book, finished: false, role: 'upNext', percent: 29 }),
+      'Dune by Frank Herbert, not read yet',
+    )
   })
 })
 

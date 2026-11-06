@@ -63,9 +63,7 @@ FORMAT_MESSAGE = "Cover must be a JPEG, PNG or WebP image."
 TOO_LARGE_MESSAGE = "Cover must be 20 MB or smaller."
 COVER_LIMIT = 20 * 1024 * 1024
 _UUID = r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
-COVER_NAME = re.compile(
-    rf"^covers/(?P<book>{_UUID})-(?P<minted>{_UUID})\.(?P<ext>jpg|png)$"
-)
+COVER_NAME = re.compile(rf"^covers/(?P<book>{_UUID})-(?P<minted>{_UUID})\.(?P<ext>jpg|png)$")
 # HEIC's ISO-BMFF header: a real image format Pillow can't decode without a plugin.
 HEIC_BYTES = b"\x00\x00\x00\x18ftypheic\x00\x00\x00\x00mif1heic" + b"\x00" * 64
 
@@ -82,10 +80,7 @@ def _rotated_jpeg() -> bytes:
 
 def _animated_gif() -> bytes:
     """Three frames: red-orange first, then blue, then green."""
-    frames = [
-        Image.new("RGB", (30, 45), c)
-        for c in (RED_ORANGE, (30, 60, 200), (40, 180, 60))
-    ]
+    frames = [Image.new("RGB", (30, 45), c) for c in (RED_ORANGE, (30, 60, 200), (40, 180, 60))]
     buffer = io.BytesIO()
     frames[0].save(buffer, "GIF", save_all=True, append_images=frames[1:], duration=100)
     return buffer.getvalue()
@@ -119,11 +114,9 @@ def _rgb(hex_color: str | None) -> tuple[int, int, int] | None:
     return tuple(int(hex_color[i : i + 2], 16) for i in (1, 3, 5))  # type: ignore[return-value]
 
 
-def _close(
-    actual: tuple[int, ...] | None, expected: tuple[int, ...], tolerance: int = 6
-) -> bool:
+def _close(actual: tuple[int, ...] | None, expected: tuple[int, ...], tolerance: int = 6) -> bool:
     return actual is not None and all(
-        abs(a - e) <= tolerance for a, e in zip(actual, expected)
+        abs(a - e) <= tolerance for a, e in zip(actual, expected, strict=False)
     )
 
 
@@ -232,9 +225,7 @@ def test_ac2_p0_a_non_image_with_an_image_extension_is_refused_on_cover(
     before = library_bytes(data_dir)
     client = api_client(data_dir)
 
-    response = _add_with_cover(
-        client, b"not an image at all\n", "cover.jpg", "image/jpeg"
-    )
+    response = _add_with_cover(client, b"not an image at all\n", "cover.jpg", "image/jpeg")
 
     assert response.status_code == 422
     assert response.json() == {
@@ -252,9 +243,7 @@ def test_ac2_p0_a_non_image_with_an_image_extension_is_refused_on_cover(
     for junk in (image_bytes()[:40], b""):
         response = _add_with_cover(client, junk)
         assert response.status_code == 422
-        assert response.json()["error"]["fields"] == [
-            {"field": "cover", "message": IMAGE_MESSAGE}
-        ]
+        assert response.json()["error"]["fields"] == [{"field": "cover", "message": IMAGE_MESSAGE}]
 
     # Over 20 MB: 413 cover_too_large, refused while streaming.
     response = _add_with_cover(client, b"\x89PNG" + b"\x00" * COVER_LIMIT)
@@ -271,9 +260,7 @@ def test_ac2_p0_a_non_image_with_an_image_extension_is_refused_on_cover(
     # HEIC (no plugin): the message names the supported formats.
     response = _add_with_cover(client, HEIC_BYTES, "IMG_0042.heic", "image/heic")
     assert response.status_code == 422
-    assert response.json()["error"]["fields"] == [
-        {"field": "cover", "message": FORMAT_MESSAGE}
-    ]
+    assert response.json()["error"]["fields"] == [{"field": "cover", "message": FORMAT_MESSAGE}]
 
     # A decompression bomb over MAX_IMAGE_PIXELS is refused like a non-image,
     # both where Pillow only warns (over 1×) and where it raises (over 2×).
@@ -281,9 +268,7 @@ def test_ac2_p0_a_non_image_with_an_image_extension_is_refused_on_cover(
     for size in ((120, 120), (200, 200)):
         response = _add_with_cover(client, image_bytes(size))
         assert response.status_code == 422, size
-        assert response.json()["error"]["fields"] == [
-            {"field": "cover", "message": IMAGE_MESSAGE}
-        ]
+        assert response.json()["error"]["fields"] == [{"field": "cover", "message": IMAGE_MESSAGE}]
 
     assert library_bytes(data_dir) == before
     assert _cover_files(data_dir) == set()
@@ -374,16 +359,8 @@ def test_ac5_p0_a_failed_document_commit_keeps_the_old_cover_and_cleans_up_the_n
 
     response = _edit_with_cover(client, DUNE_ID, image_bytes())
 
-    written = [
-        path
-        for op, path in fs.events
-        if op == "replace" and path.parent.name == "covers"
-    ]
-    removed = [
-        path
-        for op, path in fs.events
-        if op == "remove" and path.parent.name == "covers"
-    ]
+    written = [path for op, path in fs.events if op == "replace" and path.parent.name == "covers"]
+    removed = [path for op, path in fs.events if op == "remove" and path.parent.name == "covers"]
     assert len(written) == 1 and removed == written
     assert response.status_code == 503
     assert response.json() == COULDNT_SAVE_BODY
@@ -405,9 +382,7 @@ def test_ac6_p1_a_failed_delete_after_the_commit_is_logged_still_200_and_swept_a
     response = _edit_with_cover(client, DUNE_ID, image_bytes())
 
     err = capsys.readouterr().err
-    assert re.search(rf"^bookvie: .*{re.escape(Path(old).name)}", err, re.MULTILINE), (
-        err
-    )
+    assert re.search(rf"^bookvie: .*{re.escape(Path(old).name)}", err, re.MULTILINE), err
     assert response.status_code == 200
     assert response.json() == {"ok": True}
     new = _only_book(data_dir)["coverFile"]
@@ -468,18 +443,14 @@ def test_ac8_p1_spine_color_from_cover_is_the_dominant_non_neutral_hue_capped_at
 
     book = _only_book(data_dir)
     expected = _capped_hex(RED_ORANGE)
-    assert _close(_rgb(book["spineColorFromCover"]), expected), book[
-        "spineColorFromCover"
-    ]
+    assert _close(_rgb(book["spineColorFromCover"]), expected), book["spineColorFromCover"]
     assert response.status_code == 200
     # No user color: the resolved color is the cover's; curated stays assigned.
     assert book["spineColor"] == book["spineColorFromCover"]
     assert book["spineColorCurated"] == CURATED[0]
 
     # A black-and-white cover gives none, so curated applies.
-    response = _add_with_cover(
-        client, _grayscale(), title="Ficciones", authors="Jorge Luis Borges"
-    )
+    response = _add_with_cover(client, _grayscale(), title="Ficciones", authors="Jorge Luis Borges")
     assert response.status_code == 200
     ficciones = stored_books(data_dir)[1]
     assert ficciones["coverFile"] is not None
@@ -522,9 +493,7 @@ def test_ac11_p0_cover_paths_of_add_book_and_edit_book_keep_the_standard_intent_
         edit_dir = tmp_path / f"edit-{step}"
         old = seed_dune_with_cover(edit_dir)
         before = library_bytes(edit_dir)
-        response = _edit_with_cover(
-            api_client(edit_dir, fs=FaultyFs(step)), DUNE_ID, image_bytes()
-        )
+        response = _edit_with_cover(api_client(edit_dir, fs=FaultyFs(step)), DUNE_ID, image_bytes())
         assert response.status_code == 503, step
         assert response.json() == COULDNT_SAVE_BODY, step
         assert library_bytes(edit_dir) == before, step

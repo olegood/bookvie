@@ -134,9 +134,7 @@ def _check_pages_floors(book: Book, pages: int) -> None:
 
 
 def _identity_changed(book: Book, fields: BookFields) -> bool:
-    return (
-        fields.title != book.title or fields.authors != book.authors or fields.isbn != book.isbn
-    )
+    return fields.title != book.title or fields.authors != book.authors or fields.isbn != book.isbn
 
 
 def _readings(book: Book, fields: BookFields, reading_id: str) -> list[Reading]:

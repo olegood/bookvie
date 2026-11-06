@@ -27,7 +27,7 @@
   border-left: var(--hairline) solid var(--color-line);
 }
 
-.option[aria-pressed="true"] {
+.option[aria-pressed='true'] {
   border-bottom-color: var(--color-accent);
   background: var(--color-accent-soft);
   color: var(--color-ink);
@@ -39,7 +39,7 @@
 }
 
 @media (forced-colors: active) {
-  .option[aria-pressed="true"] {
+  .option[aria-pressed='true'] {
     border-bottom-color: Highlight;
   }
 }

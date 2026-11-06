@@ -34,7 +34,7 @@ test.describe('Story 1.6 Catalog states (ATDD)', () => {
     await expect(page.getByRole('button', { name: 'New book' }).first()).toBeVisible()
   })
 
-  test('[P0] AC-7 a failed first load shows Couldn\'t load with Try again, which refetches', async ({ page }) => {
+  test("[P0] AC-7 a failed first load shows Couldn't load with Try again, which refetches", async ({ page }) => {
     let down = true
     await page.route(CATALOG_VIEW, (route) => (down ? route.abort('connectionrefused') : route.continue()))
 
@@ -123,7 +123,7 @@ test.describe('Story 1.6 Catalog states (ATDD)', () => {
 })
 
 test.describe('Story 1.6 Catalog states (automate)', () => {
-  test('[P2] AC-7 a Try again that fails again shows and announces Couldn\'t load again', async ({ page }) => {
+  test("[P2] AC-7 a Try again that fails again shows and announces Couldn't load again", async ({ page }) => {
     await page.route(CATALOG_VIEW, (route) => route.abort('connectionrefused'))
     await page.goto('/catalog')
     const alert = page.getByRole('alert')

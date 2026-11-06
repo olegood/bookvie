@@ -105,9 +105,7 @@ def _intent_files(route: str) -> dict:
 def _ready(client, route: str) -> None:
     """Put the seeded library in the state ``route``'s intent needs."""
     if route in ("edit-purpose", "update-page"):
-        response = client.post(
-            "/api/intents/start-reading", files=_intent_files("start-reading")
-        )
+        response = client.post("/api/intents/start-reading", files=_intent_files("start-reading"))
         assert response.status_code == 200
 
 
@@ -144,7 +142,9 @@ def test_unparseable_body_is_malformed_intent(
 @pytest.mark.parametrize("route", INTENT_ROUTES)
 def test_missing_intent_part_is_malformed_intent(data_dir: Path, route: str) -> None:
     before = library_bytes(data_dir)
-    files = {"other": (None, "{}")} | {k: v for k, v in _intent_files(route).items() if k != "intent"}
+    files = {"other": (None, "{}")} | {
+        k: v for k, v in _intent_files(route).items() if k != "intent"
+    }
     response = api_client(data_dir).post(f"/api/intents/{route}", files=files)
     assert response.status_code == 422
     assert response.json() == MALFORMED_INTENT

@@ -106,8 +106,16 @@ describe('readingLines', () => {
       ]).map((line) => line.text),
       ['Started 2 Sep 2026 · Finished 3 Oct 2026'],
     )
-    assert.deepEqual(readingLines([{ id: 'b', startDate: null, finishDate: '2019-08-14', rating: null, purposeFulfilled: null }])[0].text, 'Finished 14 Aug 2019')
-    assert.deepEqual(readingLines([{ id: 'c', startDate: '2026-09-02', finishDate: null, rating: null, purposeFulfilled: null }])[0].text, 'Started 2 Sep 2026')
+    assert.deepEqual(
+      readingLines([{ id: 'b', startDate: null, finishDate: '2019-08-14', rating: null, purposeFulfilled: null }])[0]
+        .text,
+      'Finished 14 Aug 2019',
+    )
+    assert.deepEqual(
+      readingLines([{ id: 'c', startDate: '2026-09-02', finishDate: null, rating: null, purposeFulfilled: null }])[0]
+        .text,
+      'Started 2 Sep 2026',
+    )
   })
 
   it('lists newest first: the unfinished Reading, then by finish date, later stored first on a tie', () => {
@@ -134,7 +142,12 @@ describe('readingLines', () => {
         { id: 'b', startDate: null, finishDate: '2019-08-14', rating: null, purposeFulfilled: null },
       ]),
       [
-        { id: 'a', text: 'Started 1 Oct 2026 · Finished 28 Oct 2026', rating: 4, purposeFulfilled: 'Purpose fulfilled: partly' },
+        {
+          id: 'a',
+          text: 'Started 1 Oct 2026 · Finished 28 Oct 2026',
+          rating: 4,
+          purposeFulfilled: 'Purpose fulfilled: partly',
+        },
         { id: 'b', text: 'Finished 14 Aug 2019', rating: null, purposeFulfilled: null },
       ],
     )
@@ -273,6 +286,9 @@ describe('currentReadingStatus', () => {
       currentReadingStatus({ status: 'waiting', currentPage: 120, startDate: '2026-09-02' }),
       'Waiting for you, page 120 · started 2 Sep 2026',
     )
-    assert.equal(currentReadingStatus({ status: 'waiting', currentPage: 120, startDate: null }), 'Waiting for you, page 120')
+    assert.equal(
+      currentReadingStatus({ status: 'waiting', currentPage: 120, startDate: null }),
+      'Waiting for you, page 120',
+    )
   })
 })

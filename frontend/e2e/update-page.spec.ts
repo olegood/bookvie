@@ -340,7 +340,10 @@ test.describe('Story 3.3 Catch up with one page update (automate)', () => {
     const tabB = await page.context().newPage()
     await tabB.goto(`${server.url}/book/${DUNE_ID}`)
     await tabB.getByRole('main').getByRole('button', { name: 'Resume', exact: true }).click()
-    await tabB.getByRole('dialog', { name: 'Resume Dune?', exact: true }).getByRole('button', { name: 'Resume' }).click()
+    await tabB
+      .getByRole('dialog', { name: 'Resume Dune?', exact: true })
+      .getByRole('button', { name: 'Resume' })
+      .click()
     await expect(mainBookCard(tabB).getByRole('link', { name: 'Dune', exact: true })).toBeVisible()
     expect(storedLibrary(server).mainBookId).toBe(DUNE_ID)
     const before = libraryBytes(server)
@@ -447,7 +450,7 @@ test.describe('Story 3.3 Catch up with one page update (automate)', () => {
     expect(storedBook(server, LEFT_HAND_ID).readings[0].currentPage).toBe(212)
   })
 
-  test('[P1] axe finds no WCAG 2.2 AA violations on Home with an invalid page field or a couldn\'t-save line, in both themes', async ({
+  test("[P1] axe finds no WCAG 2.2 AA violations on Home with an invalid page field or a couldn't-save line, in both themes", async ({
     page,
     seededServer,
   }) => {

@@ -30,13 +30,22 @@ describe('frontend boundaries', () => {
       .map(({ file }) => file)
 
     assert.ok(callers.includes('src/api/views.ts'), 'the API layer was scanned')
-    assert.deepEqual(callers.filter((file) => !file.startsWith('src/api/')), [])
+    assert.deepEqual(
+      callers.filter((file) => !file.startsWith('src/api/')),
+      [],
+    )
   })
 
   it('[P1] no data-testid in src/ or e2e/', () => {
     const scanned = [...sources('src', { tests: true }), ...sources('e2e', { tests: true })]
 
-    assert.ok(scanned.some(({ file }) => file === 'e2e/app-shell.spec.ts'), 'the e2e specs were scanned')
-    assert.deepEqual(scanned.filter(({ source }) => TEST_ID.test(source)).map(({ file }) => file), [])
+    assert.ok(
+      scanned.some(({ file }) => file === 'e2e/app-shell.spec.ts'),
+      'the e2e specs were scanned',
+    )
+    assert.deepEqual(
+      scanned.filter(({ source }) => TEST_ID.test(source)).map(({ file }) => file),
+      [],
+    )
   })
 })

@@ -30,9 +30,7 @@ def test_ac6_p0_the_home_view_supplies_the_main_book_percentage_floored_on_the_s
 ) -> None:
     _main_at(212, 330).write(tmp_path)
 
-    body = (
-        api_client(tmp_path, raise_server_exceptions=True).get("/api/views/home").json()
-    )
+    body = api_client(tmp_path, raise_server_exceptions=True).get("/api/views/home").json()
 
     # The criterion: 212 of 330 is 64.24…%, and the server says 64.
     assert (body.get("mainBook") or {}).get("percent") == 64

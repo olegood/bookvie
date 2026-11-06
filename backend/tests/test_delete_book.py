@@ -220,9 +220,7 @@ def test_a_malformed_delete_intent_is_an_intent_field_error(
     if intent is None:
         response = client.post(DELETE_BOOK)
     else:
-        response = client.post(
-            DELETE_BOOK, files={"intent": (None, intent, "application/json")}
-        )
+        response = client.post(DELETE_BOOK, files={"intent": (None, intent, "application/json")})
     assert response.status_code == 422
     assert field_messages(response) == {
         "intent": "The intent must be a JSON object of the form's fields."

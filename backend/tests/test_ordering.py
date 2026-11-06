@@ -15,9 +15,7 @@ from bookvie.domain import title_key
         ("ﬁre", "fire"),  # NFKD folds the ligature
     ],
 )
-def test_title_key_ignores_diacritics_case_and_compatibility_forms(
-    a: str, b: str
-) -> None:
+def test_title_key_ignores_diacritics_case_and_compatibility_forms(a: str, b: str) -> None:
     assert title_key(a) == title_key(b)
 
 

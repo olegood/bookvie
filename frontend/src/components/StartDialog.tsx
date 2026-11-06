@@ -56,7 +56,11 @@ function OpenStartDialog({ book, opened, mainBook, onCancel }: OpenProps) {
     clearAnnouncements()
     onCancel()
   }
-  const { dialog, regionSlot, dialogProps } = useAlertDialog({ onDismiss: dismiss, initialFocus: field, role: 'dialog' })
+  const { dialog, regionSlot, dialogProps } = useAlertDialog({
+    onDismiss: dismiss,
+    initialFocus: field,
+    role: 'dialog',
+  })
 
   const confirm = async () => {
     if (inFlight.current) return
@@ -161,5 +165,7 @@ export default function StartDialog({ bookId, onCancel }: Props) {
   }, [gone, onCancel])
 
   if (book.status !== 'ready' || home.status !== 'ready') return null
-  return <OpenStartDialog book={book.data} opened={atOpen ?? book.data} mainBook={home.data.mainBook} onCancel={onCancel} />
+  return (
+    <OpenStartDialog book={book.data} opened={atOpen ?? book.data} mainBook={home.data.mainBook} onCancel={onCancel} />
+  )
 }

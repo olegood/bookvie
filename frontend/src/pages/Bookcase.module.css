@@ -297,7 +297,9 @@
 }
 
 .spine.highlight {
-  box-shadow: 0 0 0 2px var(--color-page), 0 0 0 4px var(--color-accent);
+  box-shadow:
+    0 0 0 2px var(--color-page),
+    0 0 0 4px var(--color-accent);
 }
 
 /*
@@ -450,7 +452,13 @@
   .swatchMain {
     forced-color-adjust: none;
     border-color: CanvasText;
-    background: linear-gradient(0deg, CanvasText 55%, Highlight 55%, Highlight calc(55% + 1.5px), Canvas calc(55% + 1.5px));
+    background: linear-gradient(
+      0deg,
+      CanvasText 55%,
+      Highlight 55%,
+      Highlight calc(55% + 1.5px),
+      Canvas calc(55% + 1.5px)
+    );
   }
 
   /* A Canvas dot in a CanvasText ring reads on the Canvas body and on a read fill. */

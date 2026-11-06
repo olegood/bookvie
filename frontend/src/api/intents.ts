@@ -37,11 +37,7 @@ async function requestInit(body: unknown): Promise<RequestInit> {
   }
 }
 
-export async function sendIntent(
-  client: QueryClient,
-  verb: string,
-  body: unknown,
-): Promise<IntentResult> {
+export async function sendIntent(client: QueryClient, verb: string, body: unknown): Promise<IntentResult> {
   let result: IntentResult
   try {
     const response = await fetch(`${INTENTS_BASE}/${verb}`, await requestInit(body))

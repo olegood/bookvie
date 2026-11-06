@@ -191,7 +191,9 @@ test.describe('Story 1.10 Bookcase view details (automate)', () => {
     expect(await topRow()).toBe(capacity)
     const first = (await spines(page).first().boundingBox())!
     expect(first.x - shelf.x).toBe(SHELF_PADDING)
-    const endOfRow = (await spines(page).nth(capacity - 1).boundingBox())!
+    const endOfRow = (await spines(page)
+      .nth(capacity - 1)
+      .boundingBox())!
     const rightGap = shelf.x + shelf.width - (endOfRow.x + endOfRow.width)
     expect(rightGap).toBeGreaterThanOrEqual(SHELF_PADDING)
     expect(rightGap).toBeLessThan(SHELF_PADDING + SPINE_PITCH)
@@ -217,7 +219,10 @@ test.describe('Story 1.10 Bookcase view details (automate)', () => {
     for (const key of ['Enter', 'Space']) {
       await page.keyboard.press(key)
       await expect(page.getByRole('dialog', { name: 'Book 002', exact: true }), key).toBeVisible()
-      await expect(page.getByRole('dialog', { name: 'Book 002', exact: true })).not.toHaveAttribute('aria-modal', 'true')
+      await expect(page.getByRole('dialog', { name: 'Book 002', exact: true })).not.toHaveAttribute(
+        'aria-modal',
+        'true',
+      )
       await expect(page.getByRole('alertdialog')).toHaveCount(0)
       expect(page.url(), key).toBe(url)
       await page.keyboard.press('Escape')
@@ -343,7 +348,10 @@ test.describe('Story 1.10 Bookcase view details (automate)', () => {
 
     await expect(bookcase(page).getByRole('button', { name: dune, exact: true })).toHaveCount(2)
     const focus = await page.evaluate(
-      (previous) => ({ name: document.activeElement?.getAttribute('aria-label'), old: document.activeElement === previous }),
+      (previous) => ({
+        name: document.activeElement?.getAttribute('aria-label'),
+        old: document.activeElement === previous,
+      }),
       old,
     )
     expect(focus).toEqual({ name: dune, old: false })
@@ -369,11 +377,7 @@ test.describe('Story 1.10 Bookcase view details (automate)', () => {
 
     const unread = await look(spine(page, 'Neuromancer by William Gibson, not read yet'), 'Neuromancer')
     expect(unread.fill).toBe(SPINE_UNREAD_FILL_DARK)
-    expect(unread.edgeColors).toEqual([
-      SPINE_UNREAD_OUTLINE_DARK,
-      SPINE_UNREAD_OUTLINE_DARK,
-      SPINE_UNREAD_OUTLINE_DARK,
-    ])
+    expect(unread.edgeColors).toEqual([SPINE_UNREAD_OUTLINE_DARK, SPINE_UNREAD_OUTLINE_DARK, SPINE_UNREAD_OUTLINE_DARK])
     expect(unread.labelColor).toBe(SPINE_UNREAD_TEXT_DARK)
     expect(unread.strip).toBeNull()
   })

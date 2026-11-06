@@ -4,6 +4,8 @@ import errno
 import fcntl
 import json
 import os
+import subprocess
+import sys
 import threading
 from datetime import UTC, date, datetime, timedelta, timezone
 from pathlib import Path
@@ -494,6 +496,7 @@ def test_uncreatable_folder_is_refused(tmp_path: Path, name: str) -> None:
     assert exc.value.path == tmp_path / name
     assert not (tmp_path / "library.json").exists()
 
+
 def test_failed_backup_stops_migration(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from bookvie.store import migrations
 
@@ -675,6 +678,7 @@ def test_non_oserror_in_cleanup_still_removes_the_temp_file(tmp_path: Path) -> N
     assert (tmp_path / "library.json").read_bytes() == before
     assert _temps(tmp_path) == []
 
+
 @pytest.mark.parametrize("version", [0, 2])
 def test_change_to_schema_version_commits_nothing(tmp_path: Path, version: int) -> None:
     store = _seeded_store(tmp_path)
@@ -689,6 +693,7 @@ def test_change_to_schema_version_commits_nothing(tmp_path: Path, version: int) 
     assert exc.value.rule == "schema_version"
     assert (tmp_path / "library.json").read_bytes() == before
     assert store.library is old
+
 
 def test_invariant_failure_commits_nothing(tmp_path: Path) -> None:
     store = _seeded_store(tmp_path)
@@ -773,10 +778,7 @@ def test_apply_holds_the_ad4_lock(tmp_path: Path) -> None:
 # --- seeding a data folder (LibraryBuilder CLI) -----------------------------
 
 
-def _run_builder(args: list[str], stdin: str) -> "subprocess.CompletedProcess[str]":
-    import subprocess
-    import sys
-
+def _run_builder(args: list[str], stdin: str) -> subprocess.CompletedProcess[str]:
     backend = Path(__file__).resolve().parents[1]
     return subprocess.run(
         [sys.executable, "-m", "tests.builder", *args],
@@ -935,7 +937,9 @@ def test_ensure_writable_flushes_the_parent_of_an_existing_folder(tmp_path: Path
     assert fs.events == [("fsync_dir", tmp_path)]
 
 
-def test_ensure_writable_normalizes_dot_dot(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_ensure_writable_normalizes_dot_dot(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.chdir(tmp_path)
     fs = _EventFs()
     ensure_writable(Path("x/../data"), fs=fs)

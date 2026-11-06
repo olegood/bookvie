@@ -250,9 +250,7 @@ def test_unexpected_exception_outside_api_is_plain_500(client: TestClient) -> No
 
 
 @pytest.mark.parametrize("step", ["create_temp", "write", "fsync", "close", "replace"])
-def test_seam_fault_is_503(
-    data_dir: Path, step: str, capsys: pytest.CaptureFixture[str]
-) -> None:
+def test_seam_fault_is_503(data_dir: Path, step: str, capsys: pytest.CaptureFixture[str]) -> None:
     app = _app(data_dir)
     app.state.store.fs = FaultyFs(step)
     client = TestClient(app, base_url=BASE_URL, raise_server_exceptions=False)

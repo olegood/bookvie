@@ -32,7 +32,5 @@ test('a seeded per-test server starts and leaves library.json byte-identical', a
 })
 
 test('seeding refuses a data dir outside the e2e root', () => {
-  expect(() => seedLibrary('/tmp/bookvie-e2e-should-not-exist', {})).toThrow(
-    '/tmp/bookvie-e2e-should-not-exist',
-  )
+  expect(() => seedLibrary('/tmp/bookvie-e2e-should-not-exist', {})).toThrow('/tmp/bookvie-e2e-should-not-exist')
 })

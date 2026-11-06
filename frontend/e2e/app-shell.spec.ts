@@ -112,7 +112,9 @@ test.describe('Story 1.6 app shell (ATDD)', () => {
     await expect(catalogHeading(page)).toHaveCSS('font-family', /^system-ui/)
   })
 
-  test('[P0] AC-2 the top nav shows Skip to content, the wordmark and Home · Catalog · Backup, Catalog marked current', async ({ page }) => {
+  test('[P0] AC-2 the top nav shows Skip to content, the wordmark and Home · Catalog · Backup, Catalog marked current', async ({
+    page,
+  }) => {
     await page.goto('/catalog')
 
     const nav = page.getByRole('banner').getByRole('navigation')
@@ -141,7 +143,9 @@ test.describe('Story 1.6 app shell (ATDD)', () => {
     await expect(catalog).toHaveCSS('font-weight', '600')
   })
 
-  test('[P0] AC-3 the theme toggle switches instantly, follows the OS on System and is remembered', async ({ page }) => {
+  test('[P0] AC-3 the theme toggle switches instantly, follows the OS on System and is remembered', async ({
+    page,
+  }) => {
     await page.emulateMedia({ colorScheme: 'light' })
     await page.goto('/catalog')
     const theme = page.getByRole('group', { name: 'Theme' })
@@ -211,7 +215,9 @@ test.describe('Story 1.6 app shell (ATDD)', () => {
     expect(current).not.toBe(unpressed)
   })
 
-  test('[P1] AC-4 each route has header, nav and main, one h1, its title, and focus on the h1 after navigating', async ({ page }) => {
+  test('[P1] AC-4 each route has header, nav and main, one h1, its title, and focus on the h1 after navigating', async ({
+    page,
+  }) => {
     for (const [path, title] of [
       ['/', 'Home — bookvie'],
       ['/catalog', 'Catalog — bookvie'],

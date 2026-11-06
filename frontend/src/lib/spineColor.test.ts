@@ -13,7 +13,12 @@ import {
 } from './spineColor.ts'
 
 const curated: ColoredBook = { spineColor: '#749076', spineColorUser: null, spineColorFromCover: null, hasCover: false }
-const covered: ColoredBook = { spineColor: '#A85A4A', spineColorUser: null, spineColorFromCover: '#A85A4A', hasCover: true }
+const covered: ColoredBook = {
+  spineColor: '#A85A4A',
+  spineColorUser: null,
+  spineColorFromCover: '#A85A4A',
+  hasCover: true,
+}
 const picked: ColoredBook = { ...covered, spineColor: '#4B7C7B', spineColorUser: '#4B7C7B' }
 
 describe('swatchName', () => {

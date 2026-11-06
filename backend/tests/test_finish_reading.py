@@ -58,7 +58,6 @@ from tests.helpers import (
     stored_book,
 )
 
-
 GONE_ID = "00000000-0000-4000-8000-000000000000"
 TODAY_ISO = TODAY.isoformat()  # 2026-10-30
 EARLIER = "2026-10-25T21:00:00+01:00"
@@ -134,9 +133,7 @@ def test_ac2_p0_finish_reading_stores_the_finish_and_the_answers_and_clears_the_
     dune_before = stored_book(data_dir, dune)
     client = api_client(data_dir)
 
-    response = _finish(
-        client, left_hand, TODAY_ISO, purpose_fulfilled="partly", rating=4
-    )
+    response = _finish(client, left_hand, TODAY_ISO, purpose_fulfilled="partly", rating=4)
 
     # The criterion: the Reading is finished on the Finished on date.
     assert stored_book(data_dir, left_hand)["readings"][0]["finishDate"] == TODAY_ISO
@@ -200,10 +197,7 @@ def test_ac3_p1_finished_on_in_the_future_or_before_the_start_is_refused_and_not
 
     assert future.status_code == 422
     assert future.json()["error"]["code"] == "invalid_fields"
-    assert (
-        future.json()["error"]["message"]
-        == "Not saved. 1 field needs attention: Finished on."
-    )
+    assert future.json()["error"]["message"] == "Not saved. 1 field needs attention: Finished on."
     assert library_bytes(tmp_path) == before
 
     early = _finish(client, left_hand, "2026-03-11", purpose_fulfilled="yes", rating=5)
@@ -346,10 +340,7 @@ def test_ac9_p0_finish_reading_keeps_the_standard_intent_guarantees(
     # The intent and its refusal code are in the contract (AD-8).
     schema = create_app().openapi()
     assert FINISH_READING in schema["paths"]
-    assert (
-        "reading_already_finished"
-        in schema["components"]["schemas"]["ErrorCode"]["enum"]
-    )
+    assert "reading_already_finished" in schema["components"]["schemas"]["ErrorCode"]["enum"]
 
 
 # --- Green-phase follow-ups: the Matrix boundaries and FIN-API-004 -------------
@@ -472,9 +463,7 @@ def _send_raw(client: TestClient, intent: Any):
 
 
 @pytest.mark.parametrize("rating", [0, 6, "4", 4.5, True, [4]])
-def test_a_rating_that_is_not_1_to_5_is_a_rating_field_error(
-    tmp_path: Path, rating: Any
-) -> None:
+def test_a_rating_that_is_not_1_to_5_is_a_rating_field_error(tmp_path: Path, rating: Any) -> None:
     left_hand, _dune = _left_hand_main_and_dune(tmp_path)
     before = library_bytes(tmp_path)
     intent = {

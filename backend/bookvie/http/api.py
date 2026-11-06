@@ -427,8 +427,7 @@ def set_spine_color_intent(
         Form(
             media_type="multipart/form-data",
             description=(
-                'JSON object {"bookId": ..., "spineColor": "#RRGGBB" | null}: '
-                "null is From cover."
+                'JSON object {"bookId": ..., "spineColor": "#RRGGBB" | null}: null is From cover.'
             ),
         ),
     ] = None,

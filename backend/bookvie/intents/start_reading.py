@@ -75,9 +75,7 @@ def start_reading(store: Store, clock: Clock, intent: StartReadingIntent) -> Non
         now = clock.now()
         reading = current_reading(book)
         if reading is not None:
-            resumed = reading.model_copy(
-                update={"last_progress_update": now, "purpose": purpose}
-            )
+            resumed = reading.model_copy(update={"last_progress_update": now, "purpose": purpose})
             readings = [resumed if r.id == reading.id else r for r in book.readings]
         else:
             started = Reading(

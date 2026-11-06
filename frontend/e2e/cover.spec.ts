@@ -10,16 +10,7 @@ import { readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import type { Locator, Page } from '@playwright/test'
 import { expect, type Server, test } from './fixtures.ts'
-import {
-  ADD_BOOK,
-  COVER_PNG,
-  DELETE_BOOK,
-  EDIT_BOOK,
-  attachCover,
-  bodyOf,
-  intentOf,
-  requestsTo,
-} from './intents.ts'
+import { ADD_BOOK, COVER_PNG, DELETE_BOOK, EDIT_BOOK, attachCover, bodyOf, intentOf, requestsTo } from './intents.ts'
 import { DUNE_ID, newBookPanel, openEdit, rgbOf } from './library.ts'
 
 const MIB = 1024 * 1024

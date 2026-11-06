@@ -83,9 +83,7 @@ class HostOriginGuard:
     needs exactly one ``X-Bookvie-Export: 1``.
     """
 
-    def __init__(
-        self, app: ASGIApp, *, port: int, extra_origins: Iterable[str] = ()
-    ) -> None:
+    def __init__(self, app: ASGIApp, *, port: int, extra_origins: Iterable[str] = ()) -> None:
         self.app = app
         self.hosts = {f"127.0.0.1:{port}", f"localhost:{port}"}
         self.origins = {f"http://{host}" for host in self.hosts} | set(extra_origins)
@@ -160,9 +158,7 @@ def create_app(
     app.state.write_lock = store.lock if store is not None else threading.Lock()
     # Added first, so it runs inside the guard.
     app.add_middleware(BodySizeCap)
-    app.add_middleware(
-        HostOriginGuard, port=port, extra_origins=DEV_ORIGINS if dev else ()
-    )
+    app.add_middleware(HostOriginGuard, port=port, extra_origins=DEV_ORIGINS if dev else ())
 
     @app.get("/api/health")
     async def health() -> dict[str, str | int | None]:

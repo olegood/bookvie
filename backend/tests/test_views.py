@@ -165,7 +165,10 @@ def test_book_view_role_names_main_up_next_and_waiting(
     library_builder.reading(accelerate, current_page=40)
     finished = library_builder.book(title="Emma", pages=300)
     library_builder.reading(
-        finished, current_page=300, paused_at="2026-08-01", finish_date="2026-09-01",
+        finished,
+        current_page=300,
+        paused_at="2026-08-01",
+        finish_date="2026-09-01",
         finished_pages=300,
     )
     # A Side read with a paused Reading is waiting for you like any other.
@@ -242,7 +245,9 @@ def test_shelf_books_carry_what_the_spine_popover_shows(
     )
     library_builder.book(title="Emma")
     library_builder.write(tmp_path)
-    books = api_client(tmp_path, raise_server_exceptions=True).get(f"/api/views/{view}").json()["books"]
+    books = (
+        api_client(tmp_path, raise_server_exceptions=True).get(f"/api/views/{view}").json()["books"]
+    )
     fields = ("subtitle", "year", "spineColor", "spineColorUser", "spineColorFromCover", "hasCover")
     assert [tuple(book[key] for key in fields) for book in books] == [
         ("Book One", 1965, "#4B7C7B", "#4B7C7B", "#A85A4A", True),
@@ -270,7 +275,9 @@ def test_book_view_carries_finished_and_has_cover_as_the_shelf_does(
 ) -> None:
     """Book detail's Change color reads the server's flags, not its own (F-A7)."""
     covered_read = library_builder.book(title="Dune", cover_file="covers/dune.jpg")
-    library_builder.reading(covered_read, start_date=None, finish_date="2026-02-01", current_page=300)
+    library_builder.reading(
+        covered_read, start_date=None, finish_date="2026-02-01", current_page=300
+    )
     covered_reading = library_builder.book(title="Emma", cover_file="covers/emma.jpg")
     library_builder.reading(covered_reading, current_page=40)
     bare_read = library_builder.book(title="Piranesi")
@@ -462,7 +469,9 @@ def test_book_view_current_reading_main_paused_and_none(
     neuromancer = library_builder.book(title="Neuromancer", pages=271)
     library_builder.reading(neuromancer, current_page=80, paused_at="2026-10-01")
     finished = library_builder.book(title="Emma", pages=300)
-    library_builder.reading(finished, finish_date="2026-09-01", finished_pages=300, current_page=300)
+    library_builder.reading(
+        finished, finish_date="2026-09-01", finished_pages=300, current_page=300
+    )
     library_builder.main(left_hand).up_next(neuromancer)
     library_builder.write(tmp_path)
     client = api_client(tmp_path, raise_server_exceptions=True)

@@ -11,7 +11,6 @@ import tempfile
 from pathlib import Path
 from typing import Protocol
 
-
 # What a filesystem that doesn't do F_FULLFSYNC answers; anything else is a real I/O failure.
 _FULLFSYNC_UNSUPPORTED = {errno.ENOTSUP, errno.EINVAL, errno.ENOTTY}
 

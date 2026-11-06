@@ -30,13 +30,9 @@ from tests.builder import LibraryBuilder
 from tests.helpers import api_client
 
 
-def _finish(
-    builder: LibraryBuilder, book: str, on: str, start: str | None = "2026-01-02"
-) -> None:
+def _finish(builder: LibraryBuilder, book: str, on: str, start: str | None = "2026-01-02") -> None:
     """A finished Reading of ``book`` on ``on`` (``start`` ``None``: back-filled)."""
-    builder.reading(
-        book, start_date=start, finish_date=on, finished_pages=300, current_page=300
-    )
+    builder.reading(book, start_date=start, finish_date=on, finished_pages=300, current_page=300)
 
 
 def test_ac1_p1_the_home_view_supplies_main_then_up_next_then_most_recent_finishes(
@@ -69,14 +65,10 @@ def test_ac1_p1_the_home_view_supplies_main_then_up_next_then_most_recent_finish
     # Neither finished nor in a role: not listed.
     builder.book(title="Never Read", authors=["Nobody"], pages=300)
     paused = builder.book(title="Paused Book", authors=["Someone"], pages=300)
-    builder.reading(
-        paused, start_date="2026-09-01", current_page=40, paused_at="2026-10-11"
-    )
+    builder.reading(paused, start_date="2026-09-01", current_page=40, paused_at="2026-10-11")
     builder.write(tmp_path)
 
-    body = (
-        api_client(tmp_path, raise_server_exceptions=True).get("/api/views/home").json()
-    )
+    body = api_client(tmp_path, raise_server_exceptions=True).get("/api/views/home").json()
 
     # The criterion: Main, Up next, then finishes newest first.
     assert body.get("slicePriority") == [
@@ -151,9 +143,7 @@ def test_slice_priority_skips_a_role_naming_a_missing_book() -> None:
     assert home(builder.build()).slice_priority == [dune]
 
 
-def test_slice_priority_places_a_book_by_its_latest_finish_date_not_its_stored_order() -> (
-    None
-):
+def test_slice_priority_places_a_book_by_its_latest_finish_date_not_its_stored_order() -> None:
     """A Book's place is its greatest ``finishDate``, wherever that Reading is stored.
 
     Readings aren't stored in date order: a back-filled read from years ago is

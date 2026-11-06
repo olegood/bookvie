@@ -140,9 +140,7 @@ def test_ac2_p1_the_home_view_supplies_days_left_rounded_up_and_null_when_it_can
 ) -> None:
     _paced_library(main_page=151).write(tmp_path)
 
-    body = (
-        api_client(tmp_path, raise_server_exceptions=True).get("/api/views/home").json()
-    )
+    body = api_client(tmp_path, raise_server_exceptions=True).get("/api/views/home").json()
 
     # The criterion: 179 pages left at 900/31 pages a day is 6.16… days, so 7.
     assert (body.get("mainBook") or {}).get("daysLeft") == 7
@@ -228,9 +226,7 @@ def test_ac2_p1_the_home_view_says_no_last_progress_update_as_null(
 ) -> None:
     builder = LibraryBuilder()
     left_hand = builder.book(title="The Left Hand of Darkness", pages=330)
-    builder.reading(
-        left_hand, start_date="2026-10-11", current_page=151, last_progress_update=None
-    )
+    builder.reading(left_hand, start_date="2026-10-11", current_page=151, last_progress_update=None)
     builder.main(left_hand)
     # Emma, 400 pages over 20 days: Measured pace 20 a day, so days left still shows.
     emma = builder.book(title="Emma", pages=400)

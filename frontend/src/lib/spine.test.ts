@@ -26,7 +26,10 @@ describe('spineHeight', () => {
 
 describe('nearestVisible', () => {
   const ids = ['a', 'b', 'c', 'd', 'e']
-  const only = (...shown: string[]) => (id: string) => shown.includes(id)
+  const only =
+    (...shown: string[]) =>
+    (id: string) =>
+      shown.includes(id)
 
   it('keeps the stop when it is visible', () => {
     assert.equal(nearestVisible(ids, 2, only('a', 'c')), 'c')

@@ -46,7 +46,13 @@ type Props = {
 /** A star: filled (selected or lower) or an outline, so the shape changes, not only the color. */
 function Star({ filled }: { filled: boolean }) {
   return (
-    <svg className={styles.star} viewBox="0 0 24 24" aria-hidden="true" focusable="false" data-filled={filled ? 'true' : undefined}>
+    <svg
+      className={styles.star}
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      focusable="false"
+      data-filled={filled ? 'true' : undefined}
+    >
       <path
         d="M12 2.8l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2l-5.7 3.1 1.2-6.4-4.7-4.4 6.4-.8z"
         fill={filled ? 'currentColor' : 'none'}
@@ -106,7 +112,11 @@ function OpenFinishDialog({
     clearAnnouncements()
     onCancel()
   }
-  const { dialog, regionSlot, dialogProps } = useAlertDialog({ onDismiss: dismiss, initialFocus: field, role: 'dialog' })
+  const { dialog, regionSlot, dialogProps } = useAlertDialog({
+    onDismiss: dismiss,
+    initialFocus: field,
+    role: 'dialog',
+  })
 
   const confirm = async () => {
     if (inFlight.current) return
@@ -143,8 +153,7 @@ function OpenFinishDialog({
       else if (next.purposeFulfilled) {
         const group = fulfilledGroup.current
         ;(group?.querySelector<HTMLInputElement>('input:checked') ?? group?.querySelector('input'))?.focus()
-      }
-      else ratingGroup.current?.querySelector<HTMLInputElement>('input:checked')?.focus()
+      } else ratingGroup.current?.querySelector<HTMLInputElement>('input:checked')?.focus()
       return
     }
     // Couldn't save, or a 409 (finished or deleted in another tab): the line

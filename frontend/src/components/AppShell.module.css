@@ -75,7 +75,7 @@
   text-decoration: none;
 }
 
-.link[aria-current="page"] {
+.link[aria-current='page'] {
   border-bottom-color: var(--color-accent);
   color: var(--color-ink);
   font-family: var(--font-nav-active-family);
@@ -97,7 +97,7 @@
 }
 
 @media (forced-colors: active) {
-  .link[aria-current="page"] {
+  .link[aria-current='page'] {
     border-bottom-color: Highlight;
   }
 }

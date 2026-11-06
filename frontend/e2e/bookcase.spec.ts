@@ -224,7 +224,9 @@ test.describe('Story 1.10 Bookcase view (ATDD)', () => {
     const server = await seededServer({ books: shelfOf(500) })
     await page.goto(`${server.url}/catalog`)
 
-    await expect(page.getByRole('list', { name: 'Bookcase, 500 books', exact: true }).getByRole('button')).toHaveCount(500)
+    await expect(page.getByRole('list', { name: 'Bookcase, 500 books', exact: true }).getByRole('button')).toHaveCount(
+      500,
+    )
     // No lazy rows: the last title is text in the page for find-in-page…
     await expect(bookcase(page).getByText('Book 500', { exact: true })).toBeAttached()
     // …and the keyboard reaches it.
@@ -444,7 +446,9 @@ test.describe('Story 1.10 Bookcase view (ATDD)', () => {
     const read = spine(page, 'Dune by Frank Herbert, finished')
     const unread = spine(page, 'Neuromancer by William Gibson, not read yet')
     const fills = () =>
-      Promise.all([read, unread].map((button) => button.evaluate((element) => getComputedStyle(element).backgroundColor)))
+      Promise.all(
+        [read, unread].map((button) => button.evaluate((element) => getComputedStyle(element).backgroundColor)),
+      )
 
     for (const colorScheme of ['light', 'dark'] as const) {
       await page.emulateMedia({ colorScheme, forcedColors: 'none' })
@@ -505,10 +509,7 @@ test.describe('Story 1.10 Bookcase view (ATDD)', () => {
     await expect(spine(page, 'Dune by Frank Herbert, not read yet')).toBeVisible()
   })
 
-  test('[P1] AC-1 storage that throws opens Bookcase and the toggle still switches', async ({
-    page,
-    seededServer,
-  }) => {
+  test('[P1] AC-1 storage that throws opens Bookcase and the toggle still switches', async ({ page, seededServer }) => {
     const server = await seededServer({ books: [{ title: 'Dune', authors: ['Frank Herbert'] }] })
     await page.addInitScript(() => {
       const fail = () => {

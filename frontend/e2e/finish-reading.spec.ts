@@ -247,8 +247,14 @@ test.describe('Story 3.6 Finish my Main book (ATDD)', () => {
       await page.goto(server.url)
       await reachLastPage(page)
       const dialog = finishDialog(page)
-      await dialog.getByRole('radiogroup', { name: 'Purpose fulfilled?', exact: true }).getByRole('radio', { name: /^partly$/i }).check()
-      await dialog.getByRole('radiogroup', { name: 'Rating', exact: true }).getByRole('radio', { name: '4 stars', exact: true }).check()
+      await dialog
+        .getByRole('radiogroup', { name: 'Purpose fulfilled?', exact: true })
+        .getByRole('radio', { name: /^partly$/i })
+        .check()
+      await dialog
+        .getByRole('radiogroup', { name: 'Rating', exact: true })
+        .getByRole('radio', { name: '4 stars', exact: true })
+        .check()
       await dialogButton(dialog, 'Done').click()
 
       await expect(mainBookCard(page).getByRole('heading', { name: 'No Main book.', exact: true })).toBeFocused()
@@ -265,7 +271,12 @@ test.describe('Story 3.6 Finish my Main book (ATDD)', () => {
       })
       expect(storedLibrary(server).mainBookId).toBeNull()
       const [reading] = storedBook(server, LEFT_HAND_ID).readings
-      expect(reading).toMatchObject({ finishDate: FAKE_TODAY, finishedPages: 330, purposeFulfilled: 'partly', rating: 4 })
+      expect(reading).toMatchObject({
+        finishDate: FAKE_TODAY,
+        finishedPages: 330,
+        purposeFulfilled: 'partly',
+        rating: 4,
+      })
 
       // Book detail's Readings block: start, finish, stars, Purpose fulfilled.
       await page.goto(`${server.url}/book/${LEFT_HAND_ID}`)
@@ -276,7 +287,9 @@ test.describe('Story 3.6 Finish my Main book (ATDD)', () => {
       const stars = row.getByRole('img', { name: '4 stars', exact: true })
       await expect(stars).toBeVisible()
       // Filled up to the rating, outlines after: the shape changes, not only the color.
-      const fills = await stars.locator('svg path').evaluateAll((paths) => paths.map((path) => path.getAttribute('fill')))
+      const fills = await stars
+        .locator('svg path')
+        .evaluateAll((paths) => paths.map((path) => path.getAttribute('fill')))
       expect(fills).toEqual(['currentColor', 'currentColor', 'currentColor', 'currentColor', 'none'])
       await expect(row).toContainText('Purpose fulfilled: partly')
     } finally {
@@ -321,7 +334,9 @@ test.describe('Story 3.6 Finish my Main book (automate)', () => {
       await markFinished(page).click()
       const dialog = finishDialog(page)
       await finishedOn(dialog).fill('2026-10-27')
-      await fulfilledGroup(dialog).getByRole('radio', { name: /^not yet$/i }).check()
+      await fulfilledGroup(dialog)
+        .getByRole('radio', { name: /^not yet$/i })
+        .check()
       await ratingGroup(dialog).getByRole('radio', { name: '2 stars', exact: true }).check()
       const done = dialogButton(dialog, 'Done')
 
@@ -379,7 +394,9 @@ test.describe('Story 3.6 Finish my Main book (automate)', () => {
     }
   })
 
-  test('[P1] AC-1 a Reading with no Purpose asks no Purpose question, and selected stars change shape', async ({ page }) => {
+  test('[P1] AC-1 a Reading with no Purpose asks no Purpose question, and selected stars change shape', async ({
+    page,
+  }) => {
     const server = await serverAtFakeToday(page, 'finish-no-purpose', MAIN_AT_300_NO_PURPOSE)
     try {
       await page.goto(`${server.url}/book/${LEFT_HAND_ID}`)
@@ -425,13 +442,20 @@ test.describe('Story 3.6 Finish my Main book (automate)', () => {
 
       // Back to no rating: every star an outline again.
       await expect(rating.getByRole('radio', { name: 'No rating', exact: true })).toBeChecked()
-      const fills = await rating.locator('svg path').evaluateAll((paths) => paths.map((path) => path.getAttribute('fill')))
+      const fills = await rating
+        .locator('svg path')
+        .evaluateAll((paths) => paths.map((path) => path.getAttribute('fill')))
       expect(fills).toEqual(['none', 'none', 'none', 'none', 'none'])
 
       await dialogButton(dialog, 'Done').click()
       await expect(mainBookCard(page).getByRole('heading', { name: 'No Main book.', exact: true })).toBeFocused()
       expect(sent).toHaveLength(1)
-      expect(intentOf(sent[0])).toEqual({ bookId: LEFT_HAND_ID, finishedOn: FAKE_TODAY, purposeFulfilled: null, rating: null })
+      expect(intentOf(sent[0])).toEqual({
+        bookId: LEFT_HAND_ID,
+        finishedOn: FAKE_TODAY,
+        purposeFulfilled: null,
+        rating: null,
+      })
       const [reading] = storedBook(server, LEFT_HAND_ID).readings
       expect(reading).toMatchObject({ finishDate: FAKE_TODAY, purposeFulfilled: null, rating: null })
 
@@ -533,7 +557,9 @@ test.describe('Story 3.6 Finish my Main book (review follow-ups)', () => {
       await page.goto(server.url)
       await reachLastPage(page)
       const dialog = finishDialog(page)
-      await fulfilledGroup(dialog).getByRole('radio', { name: /^partly$/i }).check()
+      await fulfilledGroup(dialog)
+        .getByRole('radio', { name: /^partly$/i })
+        .check()
       await ratingGroup(dialog).getByRole('radio', { name: '4 stars', exact: true }).check()
       await finishElsewhere(page, server.url)
 
@@ -561,7 +587,9 @@ test.describe('Story 3.6 Finish my Main book (review follow-ups)', () => {
       await page.goto(`${server.url}/book/${LEFT_HAND_ID}`)
       await markFinished(page).click()
       const dialog = finishDialog(page)
-      await fulfilledGroup(dialog).getByRole('radio', { name: /^partly$/i }).check()
+      await fulfilledGroup(dialog)
+        .getByRole('radio', { name: /^partly$/i })
+        .check()
       await ratingGroup(dialog).getByRole('radio', { name: '2 stars', exact: true }).check()
       const deleted = await page.request.post(`${server.url}${DELETE_BOOK}`, {
         multipart: { intent: JSON.stringify({ bookId: LEFT_HAND_ID }) },

@@ -305,9 +305,15 @@ describe('finishReading', () => {
   afterEach(() => mock.restoreAll())
 
   it('posts every key, the skipped answers as explicit nulls', async () => {
-    const fetch = mock.method(globalThis, 'fetch', async (..._args: [string, RequestInit]) => Response.json({ ok: true }))
+    const fetch = mock.method(globalThis, 'fetch', async (..._args: [string, RequestInit]) =>
+      Response.json({ ok: true }),
+    )
     const client = new QueryClient()
-    const result = await finishReading(client, 'b1', { finishedOn: '2026-10-28', purposeFulfilled: 'partly', rating: 4 })
+    const result = await finishReading(client, 'b1', {
+      finishedOn: '2026-10-28',
+      purposeFulfilled: 'partly',
+      rating: 4,
+    })
 
     assert.deepEqual(result, { kind: 'ok', ids: {}, reachedLastPage: false })
     const [url, init] = fetch.mock.calls[0].arguments

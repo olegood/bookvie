@@ -276,7 +276,10 @@ test.describe('Story 3.5 See my reading on Home’s shelf (ATDD)', () => {
     seededServer,
   }) => {
     const server = await seededServer(
-      mainAt(212, { book: { spineColorUser: MAIN_COLOR.hex }, others: [{ title: 'Dune', authors: ['Frank Herbert'] }] }),
+      mainAt(212, {
+        book: { spineColorUser: MAIN_COLOR.hex },
+        others: [{ title: 'Dune', authors: ['Frank Herbert'] }],
+      }),
     )
     await page.goto(server.url)
     const spine = sliceSpine(page, LEFT_HAND.title)
@@ -316,7 +319,9 @@ test.describe('Story 3.5 See my reading on Home’s shelf (ATDD)', () => {
     const spine = sliceSpine(page, LEFT_HAND.title)
 
     // The criterion.
-    await expect(spine).toHaveAccessibleName('The Left Hand of Darkness by Ursula K. Le Guin, finished, re-reading, 12%')
+    await expect(spine).toHaveAccessibleName(
+      'The Left Hand of Darkness by Ursula K. Le Guin, finished, re-reading, 12%',
+    )
 
     // Full color below the strip (no fill line), plus the marker.
     const column = await spineColumn(page, spine)
@@ -366,7 +371,10 @@ test.describe('Story 3.5 See my reading on Home’s shelf (ATDD)', () => {
   }) => {
     await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'reduce' })
     const server = await seededServer(
-      mainAt(150, { book: { spineColorUser: MAIN_COLOR.hex }, others: [{ title: 'Dune', authors: ['Frank Herbert'] }] }),
+      mainAt(150, {
+        book: { spineColorUser: MAIN_COLOR.hex },
+        others: [{ title: 'Dune', authors: ['Frank Herbert'] }],
+      }),
     )
     await page.goto(server.url)
     const gauge = mainBookCard(page).getByRole('progressbar')
@@ -452,7 +460,10 @@ test.describe('Story 3.5 See my reading on Home’s shelf (ATDD)', () => {
     seededServer,
   }) => {
     const server = await seededServer(
-      mainAt(330, { book: { spineColorUser: MAIN_COLOR.hex }, others: [{ title: 'Dune', authors: ['Frank Herbert'] }] }),
+      mainAt(330, {
+        book: { spineColorUser: MAIN_COLOR.hex },
+        others: [{ title: 'Dune', authors: ['Frank Herbert'] }],
+      }),
     )
     await page.goto(server.url)
     const spine = sliceSpine(page, LEFT_HAND.title)
@@ -489,7 +500,10 @@ test.describe('Story 3.5 See my reading on Home’s shelf (ATDD)', () => {
     seededServer,
   }) => {
     const server = await seededServer(
-      mainAt(212, { book: { spineColorUser: MAIN_COLOR.hex }, others: [{ title: 'Dune', authors: ['Frank Herbert'] }] }),
+      mainAt(212, {
+        book: { spineColorUser: MAIN_COLOR.hex },
+        others: [{ title: 'Dune', authors: ['Frank Herbert'] }],
+      }),
     )
     await page.goto(`${server.url}/catalog`)
     const spine = page
@@ -553,7 +567,10 @@ test.describe('Story 3.5 See my reading on Home’s shelf (ATDD)', () => {
   }) => {
     await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'no-preference' })
     const server = await seededServer(
-      mainAt(212, { book: { spineColorUser: MAIN_COLOR.hex }, others: [{ title: 'Dune', authors: ['Frank Herbert'] }] }),
+      mainAt(212, {
+        book: { spineColorUser: MAIN_COLOR.hex },
+        others: [{ title: 'Dune', authors: ['Frank Herbert'] }],
+      }),
     )
     await page.goto(server.url)
     const spine = sliceSpine(page, LEFT_HAND.title)
@@ -573,7 +590,10 @@ test.describe('Story 3.5 See my reading on Home’s shelf (ATDD)', () => {
   }) => {
     await page.emulateMedia({ colorScheme: 'light', forcedColors: 'active' })
     const server = await seededServer(
-      mainAt(212, { book: { spineColorUser: MAIN_COLOR.hex }, others: [{ title: 'Dune', authors: ['Frank Herbert'] }] }),
+      mainAt(212, {
+        book: { spineColorUser: MAIN_COLOR.hex },
+        others: [{ title: 'Dune', authors: ['Frank Herbert'] }],
+      }),
     )
     await page.goto(server.url)
     const spine = sliceSpine(page, LEFT_HAND.title)

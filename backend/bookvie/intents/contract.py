@@ -108,7 +108,7 @@ class IntentError(Exception):
 
 
 def fields_summary(errors: Iterable[FieldError], labels: Mapping[str, str] | None = None) -> str:
-    """"Not saved. 2 fields need attention: Pages, Language."
+    """ "Not saved. 2 fields need attention: Pages, Language."
 
     Each field is named by its form label when ``labels`` has one, else by its
     key; a field listed twice is named once.

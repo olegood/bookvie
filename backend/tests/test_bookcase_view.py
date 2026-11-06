@@ -18,9 +18,7 @@ def test_ac2_p0_catalog_view_supplies_spine_inputs_and_the_meter(
     tmp_path: Path, library_builder: LibraryBuilder
 ) -> None:
     # Back-filled with Finished on, in a color the user picked.
-    dune = library_builder.book(
-        title="Dune", authors=["Frank Herbert"], spine_color_user="#F2D35B"
-    )
+    dune = library_builder.book(title="Dune", authors=["Frank Herbert"], spine_color_user="#F2D35B")
     library_builder.reading(dune, start_date=None, finish_date="2026-02-01", current_page=300)
     # Finished once, now being re-read, with a cover-derived color.
     omens = library_builder.book(

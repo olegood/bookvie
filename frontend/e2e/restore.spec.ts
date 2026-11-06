@@ -107,9 +107,14 @@ test.describe('Story 2.2 Restore my library from an export (ATDD)', () => {
   }, testInfo) => {
     const source = await seededServer(SOURCE_LIBRARY)
     const archive = await exportOf(page, source)
-    const target = await startSeededServer(testInfo, 'restore-target', { books: [LEFT_HAND] }, {
-      'local-state.json': EARLIER_EXPORT,
-    })
+    const target = await startSeededServer(
+      testInfo,
+      'restore-target',
+      { books: [LEFT_HAND] },
+      {
+        'local-state.json': EARLIER_EXPORT,
+      },
+    )
     try {
       const localState = path.join(target.dataDir, 'local-state.json')
       await page.goto(`${target.url}/backup`)
@@ -250,7 +255,7 @@ test.describe('Story 2.2 Restore my library from an export (ATDD)', () => {
     expect(await catalogTitles(page, target)).toEqual(['Dune', 'Neuromancer'])
   })
 
-  test('[P1] a file that isn\'t an export shows the ink line under Restore and returns focus there', async ({
+  test("[P1] a file that isn't an export shows the ink line under Restore and returns focus there", async ({
     page,
     seededServer,
   }) => {

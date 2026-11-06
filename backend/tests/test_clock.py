@@ -43,7 +43,9 @@ def test_dst_days_keep_the_local_date(day: date) -> None:
     # resolves to a time on that same local date.
     for hour in range(24):
         assert datetime(day.year, day.month, day.day, hour).astimezone().date() == day
-    before, after = (datetime.combine(day, datetime.min.time()) + timedelta(hours=h) for h in (1, 4))
+    before, after = (
+        datetime.combine(day, datetime.min.time()) + timedelta(hours=h) for h in (1, 4)
+    )
     assert before.astimezone().utcoffset() != after.astimezone().utcoffset()
 
 

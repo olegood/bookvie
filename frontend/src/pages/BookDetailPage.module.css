@@ -194,7 +194,7 @@
   color: var(--color-input-border);
 }
 
-.star[data-filled="true"] {
+.star[data-filled='true'] {
   color: var(--color-accent);
 }
 
@@ -203,7 +203,7 @@
     color: CanvasText;
   }
 
-  .star[data-filled="true"] {
+  .star[data-filled='true'] {
     color: Highlight;
   }
 }

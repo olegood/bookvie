@@ -42,7 +42,7 @@
   box-shadow: 0 0 0 var(--text-field-halo) var(--color-focus-halo);
 }
 
-.input[aria-invalid="true"] {
+.input[aria-invalid='true'] {
   border: var(--text-field-border-invalid) solid var(--color-ink);
 }
 
@@ -69,7 +69,7 @@
 
 /* The live regions' host sits here, directly below the field, after a
    couldn't-save or a refusal: one calm line in ink. */
-.regions[data-show-alert="true"] [role="alert"] {
+.regions[data-show-alert='true'] [role='alert'] {
   position: static;
   width: auto;
   height: auto;

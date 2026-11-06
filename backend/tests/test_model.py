@@ -91,7 +91,9 @@ def test_unknown_key_is_refused(library_builder: LibraryBuilder) -> None:
         ("title", None),
     ],
 )
-def test_wrong_types_are_refused(library_builder: LibraryBuilder, field: str, value: object) -> None:
+def test_wrong_types_are_refused(
+    library_builder: LibraryBuilder, field: str, value: object
+) -> None:
     doc = _doc(library_builder)
     doc["books"][0][field] = value
     _reject(doc)

@@ -6,7 +6,10 @@ import type { Locator, Page } from '@playwright/test'
 import { expect, test } from './fixtures.ts'
 
 function bookRows(page: Page): Locator {
-  return page.getByRole('table').getByRole('row').filter({ hasNot: page.getByRole('columnheader') })
+  return page
+    .getByRole('table')
+    .getByRole('row')
+    .filter({ hasNot: page.getByRole('columnheader') })
 }
 
 test.describe('Story 1.8 List view and Search titles (ATDD)', () => {
@@ -66,12 +69,14 @@ test.describe('Story 1.8 List view and Search titles (ATDD)', () => {
     await page.goto(`${server.url}/catalog`)
 
     const cells = (title: string) =>
-      bookRows(page).filter({ has: page.getByText(title, { exact: true }) }).getByRole('cell')
+      bookRows(page)
+        .filter({ has: page.getByText(title, { exact: true }) })
+        .getByRole('cell')
     await expect(cells('Dune')).toHaveText(['Dune', 'Frank Herbert; Brian Herbert', '1,412', 'Finished', '15 Mar 2026'])
     await expect(cells('Nana')).toHaveText(['Nana', 'Émile Zola', '464', 'Not read yet', '15 Mar 2026'])
   })
 
-  test('[P0] AC-10 Search titles hides rows whose titles don\'t contain the text and announces the count', async ({
+  test("[P0] AC-10 Search titles hides rows whose titles don't contain the text and announces the count", async ({
     page,
     seededServer,
   }) => {
@@ -105,7 +110,9 @@ test.describe('Story 1.8 List view and Search titles (ATDD)', () => {
     await expect(page.getByText('The Left Hand of Darkness', { exact: true })).toBeHidden()
     await expect(status).toHaveText('3 books match.')
     expect(
-      (await page.evaluate(() => (window as Window & { statusTexts?: string[] }).statusTexts))?.filter((text) => text !== ''),
+      (await page.evaluate(() => (window as Window & { statusTexts?: string[] }).statusTexts))?.filter(
+        (text) => text !== '',
+      ),
     ).toEqual(['3 books match.'])
 
     // No matches.

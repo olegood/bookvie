@@ -64,7 +64,7 @@ def parse_form_intent[T: IntentModel](model: type[T], raw: str | None) -> T:
         raise malformed()
     try:
         doc = json.loads(raw)
-    except (ValueError, RecursionError):
+    except ValueError, RecursionError:
         raise malformed() from None
     if not isinstance(doc, dict):
         raise malformed()

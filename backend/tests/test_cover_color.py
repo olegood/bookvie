@@ -26,7 +26,7 @@ def test_no_pixels_and_only_neutral_pixels_give_none() -> None:
 def test_near_neutral_pixels_are_ignored() -> None:
     # Saturation just under 0.15 is ignored; the one colored pixel decides.
     dull = (140, 120, 115)
-    assert _hls("#%02X%02X%02X" % dull)[2] < 0.15
+    assert _hls("#{:02X}{:02X}{:02X}".format(*dull))[2] < 0.15
     color = spine_color_from_pixels([dull] * 50 + [WHITE] * 50 + [BLACK] * 50 + [RED_ORANGE])
     assert color == spine_color_from_pixels([RED_ORANGE])
 
@@ -53,7 +53,7 @@ def test_the_fullest_hue_bin_wins_and_its_pixels_are_averaged() -> None:
     assert color is not None
     hue = _hls(color)[0]
     assert int(hue * HUE_BINS) == int(colorsys.rgb_to_hls(*(c / 255 for c in blue))[0] * HUE_BINS)
-    average = tuple((a + b) / 2 / 255 for a, b in zip(blue, blue_lighter))
+    average = tuple((a + b) / 2 / 255 for a, b in zip(blue, blue_lighter, strict=True))
     want_hue, want_lightness, _ = colorsys.rgb_to_hls(*average)
     assert abs(hue - want_hue) < 0.01
     assert abs(_hls(color)[1] - want_lightness) < 0.01

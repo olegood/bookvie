@@ -162,7 +162,7 @@ test.describe('Story 1.9 Duplicate dialog (ATDD)', () => {
     expect(await catalogTitles(page, server)).toEqual(['Dune', 'Dune', 'Neuromancer'])
   })
 
-  test('[P1] AC-6 Esc acts as Don\'t add and the live regions follow the topmost modal', async ({
+  test("[P1] AC-6 Esc acts as Don't add and the live regions follow the topmost modal", async ({
     page,
     seededServer,
   }) => {
@@ -191,7 +191,10 @@ test.describe('Story 1.9 Duplicate dialog (ATDD)', () => {
     expect(await catalogTitles(page, server)).toEqual(['Dune', 'Neuromancer'])
   })
 
-  test('[P1] AC-7 a duplicate refusal clears the field errors of an earlier refusal', async ({ page, seededServer }) => {
+  test('[P1] AC-7 a duplicate refusal clears the field errors of an earlier refusal', async ({
+    page,
+    seededServer,
+  }) => {
     const server = await seededServer({ books: [{ title: 'Dune', authors: ['Frank Herbert'] }, NEUROMANCER] })
     await page.goto(`${server.url}/catalog`)
     const panel = await openNewBook(page)

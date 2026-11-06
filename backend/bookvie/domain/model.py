@@ -99,7 +99,7 @@ class Library(_Model):
     books: list[Book]
 
     @classmethod
-    def empty(cls) -> "Library":
+    def empty(cls) -> Library:
         return cls(
             schema_version=SCHEMA_VERSION,
             main_book_id=None,

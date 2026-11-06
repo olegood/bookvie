@@ -15,10 +15,7 @@ import openapiTS, { astToString } from 'openapi-typescript'
 const frontendDir = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const backendDir = resolve(frontendDir, '../backend')
 // API_CONTRACT_TARGET overrides the output path (used by the drift test).
-const target = resolve(
-  frontendDir,
-  process.env.API_CONTRACT_TARGET || 'src/api/generated/schema.d.ts',
-)
+const target = resolve(frontendDir, process.env.API_CONTRACT_TARGET || 'src/api/generated/schema.d.ts')
 const inside = !relative(frontendDir, target).startsWith('..')
 const shown = inside ? relative(frontendDir, target) : target
 

@@ -62,9 +62,19 @@ test.describe('Story 2.3 Refuse damaged, hostile or newer files (ATDD)', () => {
     const library = libraryOf(server)
     const newer = { ...library, schemaVersion: library.schemaVersion + 1 }
     const refusals: [file: Buffer, message: string][] = [
-      [storedZip([['library.json', JSON.stringify(newer)], ['covers/', '']]), NEWER_VERSION],
       [
-        storedZip([['library.json', JSON.stringify(library)], ['covers/', ''], ['../evil.jpg', 'x']]),
+        storedZip([
+          ['library.json', JSON.stringify(newer)],
+          ['covers/', ''],
+        ]),
+        NEWER_VERSION,
+      ],
+      [
+        storedZip([
+          ['library.json', JSON.stringify(library)],
+          ['covers/', ''],
+          ['../evil.jpg', 'x'],
+        ]),
         RESTORE_INVALID, // restore_unsafe shares restore_invalid's copy
       ],
       [ANY_FILE.buffer, RESTORE_INVALID],
@@ -99,7 +109,11 @@ test.describe('Story 2.3 Refuse damaged, hostile or newer files (ATDD)', () => {
   }) => {
     const server = await seededServer({ books: [LEFT_HAND] })
     const library = libraryOf(server)
-    const unsafe = storedZip([['library.json', JSON.stringify(library)], ['covers/', ''], ['../evil.jpg', 'x']])
+    const unsafe = storedZip([
+      ['library.json', JSON.stringify(library)],
+      ['covers/', ''],
+      ['../evil.jpg', 'x'],
+    ])
 
     for (const [colorScheme, ink] of [
       ['light', INK],

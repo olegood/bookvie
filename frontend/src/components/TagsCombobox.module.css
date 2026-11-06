@@ -28,13 +28,13 @@
   cursor: pointer;
 }
 
-.option[aria-selected="true"] {
+.option[aria-selected='true'] {
   background: var(--color-accent-soft);
   box-shadow: inset var(--indicator-width) 0 0 var(--color-accent);
 }
 
 @media (forced-colors: active) {
-  .option[aria-selected="true"] {
+  .option[aria-selected='true'] {
     outline: var(--hairline) solid Highlight;
   }
 }

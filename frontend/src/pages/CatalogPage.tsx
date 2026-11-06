@@ -226,9 +226,7 @@ export default function CatalogPage() {
       ) : (
         <CatalogList books={sorted} query={query} highlightId={highlightId} focusTargets={focusTargets} />
       )}
-      {panelOpen && (
-        <NewBookPanel tags={view.data.tags} onClose={() => setPanelOpen(false)} onSaved={onSaved} />
-      )}
+      {panelOpen && <NewBookPanel tags={view.data.tags} onClose={() => setPanelOpen(false)} onSaved={onSaved} />}
     </div>
   )
 }

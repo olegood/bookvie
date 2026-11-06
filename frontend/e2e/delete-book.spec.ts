@@ -139,37 +139,37 @@ test.describe('Story 1.12 Delete a book (ATDD)', () => {
     expect(await catalogTitles(page, server)).toEqual(['Dune', 'Neuromancer', 'Piranesi', 'The Dispossessed'])
   })
 
-  test(
-    "[P1] AC-4 couldn't save keeps the Confirm dialog open with the alert line above its buttons; the Book is unchanged",
-    async ({ page, seededServer }) => {
-      const server = await seededServer(ROLES_LIBRARY)
-      await page.route(`**${DELETE_BOOK}`, (route) =>
-        route.fulfill({
-          status: 503,
-          contentType: 'application/json',
-          body: COULDNT_SAVE_BODY,
-        }),
-      )
-      await openBook(page, server, PIRANESI_ID)
-      const dialog = confirmDialog(page)
-      await deleteButton(page).click()
-      const confirm = dialog.getByRole('button', { name: 'Delete book', exact: true })
-      const answered = page.waitForResponse((response) => new URL(response.url()).pathname === DELETE_BOOK)
+  test("[P1] AC-4 couldn't save keeps the Confirm dialog open with the alert line above its buttons; the Book is unchanged", async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer(ROLES_LIBRARY)
+    await page.route(`**${DELETE_BOOK}`, (route) =>
+      route.fulfill({
+        status: 503,
+        contentType: 'application/json',
+        body: COULDNT_SAVE_BODY,
+      }),
+    )
+    await openBook(page, server, PIRANESI_ID)
+    const dialog = confirmDialog(page)
+    await deleteButton(page).click()
+    const confirm = dialog.getByRole('button', { name: 'Delete book', exact: true })
+    const answered = page.waitForResponse((response) => new URL(response.url()).pathname === DELETE_BOOK)
 
-      await confirm.click()
-      await answered
-      await expect(dialog.getByRole('alert')).toHaveText(COULDNT_SAVE)
-      await expect(dialog).toBeVisible()
-      // The line sits above the dialog's buttons.
-      const line = await dialog.getByRole('alert').boundingBox()
-      const button = await confirm.boundingBox()
-      expect(line && button && line.y + line.height <= button.y).toBe(true)
-      // The Book is unchanged, and the page still shows it.
-      expect(await catalogTitles(page, server)).toContain('Piranesi')
-      await expect(page).toHaveURL(`${server.url}/book/${PIRANESI_ID}`)
-      await expect(page.getByRole('status')).toHaveText('')
-    },
-  )
+    await confirm.click()
+    await answered
+    await expect(dialog.getByRole('alert')).toHaveText(COULDNT_SAVE)
+    await expect(dialog).toBeVisible()
+    // The line sits above the dialog's buttons.
+    const line = await dialog.getByRole('alert').boundingBox()
+    const button = await confirm.boundingBox()
+    expect(line && button && line.y + line.height <= button.y).toBe(true)
+    // The Book is unchanged, and the page still shows it.
+    expect(await catalogTitles(page, server)).toContain('Piranesi')
+    await expect(page).toHaveURL(`${server.url}/book/${PIRANESI_ID}`)
+    await expect(page.getByRole('status')).toHaveText('')
+  })
 
   test('[P0] AC-3 Delete book goes to Catalog with Search titles focused; Back does not return to the deleted Book', async ({
     page,
@@ -525,4 +525,3 @@ test.describe('Story 1.12 Delete a book (ATDD)', () => {
     await expect(dialog.getByRole('button', { name: 'Cancel', exact: true })).toBeInViewport()
   })
 })
-

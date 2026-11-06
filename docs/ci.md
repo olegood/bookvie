@@ -6,8 +6,8 @@
 
 | Job | Runs | When |
 | --- | --- | --- |
-| Lint (check:api) | `npm run check:api`: API contract diff, `tsc -b`, oxlint, the `src/api` unit tests and the contract drift test | every run; the other jobs wait for it |
-| Backend (check:py) | `npm run check:py`: pytest with the 90% `domain` and 80% `intents`+`store` coverage gates | every run |
+| Lint (check:api) | `npm run check:api`: API contract diff, `prettier --check`, `tsc -b`, oxlint, the `src/api` unit tests and the contract drift test | every run; the other jobs wait for it |
+| Backend (check:py) | `npm run check:py`: `ruff format --check` and `ruff check`, then pytest with the 90% `domain` and 80% `intents`+`store` coverage gates | every run |
 | E2E (shard 1/1) | `npm run build`, the Playwright suite, then `scripts/e2e-count.mjs` | every run |
 | Install smoke (check:smoke) | `npm run check:smoke`: `uv tool install` into a temp dir, start, fetch the SPA | every run |
 | Burn-in (e2e x10) | `npm run e2e:burn-in`: every e2e test 10 times with retries off | pull requests, Sundays 02:00 UTC, manual runs |

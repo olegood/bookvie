@@ -70,7 +70,7 @@
 
 /* The live regions' host sits here, directly below the field, after a
    couldn't-save: one calm line in ink. */
-.regions[data-show-alert="true"] [role="alert"] {
+.regions[data-show-alert='true'] [role='alert'] {
   position: static;
   width: auto;
   height: auto;

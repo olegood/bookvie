@@ -73,9 +73,7 @@ def test_own_host_and_origin_pass(
         "",
     ],
 )
-def test_bad_host_is_403_and_handler_not_run(
-    static_dir: Path, tmp_path: Path, host: str
-) -> None:
+def test_bad_host_is_403_and_handler_not_run(static_dir: Path, tmp_path: Path, host: str) -> None:
     client = _client(static_dir, tmp_path)
     hits = _hits(client)
     response = client.get("/api/probe-handler", headers={"Host": host})
@@ -110,9 +108,7 @@ def test_foreign_origin_is_403_and_handler_not_run(
 
 
 @pytest.mark.parametrize("origin", ["http://127.0.0.1:5173", "http://localhost:5173"])
-def test_dev_origin_rejected_without_dev(
-    static_dir: Path, tmp_path: Path, origin: str
-) -> None:
+def test_dev_origin_rejected_without_dev(static_dir: Path, tmp_path: Path, origin: str) -> None:
     client = _client(static_dir, tmp_path)
     hits = _hits(client)
     response = client.get(
@@ -145,7 +141,9 @@ def test_dev_does_not_relax_host(static_dir: Path, tmp_path: Path) -> None:
 def test_guard_uses_configured_port(static_dir: Path, tmp_path: Path) -> None:
     app = create_app(static_dir, data_dir=tmp_path, port=8799)
     assert TestClient(app, base_url="http://127.0.0.1:8799").get("/api/health").status_code == 200
-    assert TestClient(app, base_url=f"http://127.0.0.1:{PORT}").get("/api/health").status_code == 403
+    assert (
+        TestClient(app, base_url=f"http://127.0.0.1:{PORT}").get("/api/health").status_code == 403
+    )
 
 
 def test_health_is_guarded_too(static_dir: Path, tmp_path: Path) -> None:
@@ -179,9 +177,7 @@ def test_own_fetch_site_reaches_server_path(
     assert hits == ["ran"]
 
 
-def test_export_needs_its_header_and_no_other_path_does(
-    static_dir: Path, tmp_path: Path
-) -> None:
+def test_export_needs_its_header_and_no_other_path_does(static_dir: Path, tmp_path: Path) -> None:
     # The one GET with a side effect requires X-Bookvie-Export (AD-16); every
     # other path still takes a request without it (curl, the agent).
     client = _client(static_dir, tmp_path)
@@ -194,9 +190,7 @@ def test_export_needs_its_header_and_no_other_path_does(
     assert hits == ["ran"]
 
 
-def test_an_export_path_variant_never_reaches_the_export(
-    static_dir: Path, tmp_path: Path
-) -> None:
+def test_an_export_path_variant_never_reaches_the_export(static_dir: Path, tmp_path: Path) -> None:
     # The guard matches the routed path exactly; a variant 404s, so it needs no
     # header. (`//api/export` can't be sent through TestClient; it 404s the same
     # way, see test_guard_treats_odd_server_paths_as_server_paths.)

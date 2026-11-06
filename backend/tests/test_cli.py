@@ -20,7 +20,7 @@ REAL_BIND = instance.bind_socket
 
 
 class FakeServer:
-    instances: list["FakeServer"] = []
+    instances: list[FakeServer] = []
 
     def __init__(self, config, *, release) -> None:
         self.config = config
@@ -117,7 +117,9 @@ def test_fake_today_without_no_browser_is_a_usage_error(
     assert "--fake-today is only allowed with --no-browser" in capsys.readouterr().err
 
 
-@pytest.mark.parametrize("value", ["2026-02-30", "30/10/2026", "20261030", "2026-1-5", "", "2026-W44-5"])
+@pytest.mark.parametrize(
+    "value", ["2026-02-30", "30/10/2026", "20261030", "2026-1-5", "", "2026-W44-5"]
+)
 def test_fake_today_must_be_a_date(value: str, capsys: pytest.CaptureFixture[str]) -> None:
     with pytest.raises(SystemExit) as exc:
         cli.parse_args(["--fake-today", value, "--no-browser"])
@@ -269,9 +271,7 @@ def test_app_rejects_dev_origin_without_dev(
 def test_app_gets_a_fake_clock_with_fake_today(
     tmp_path: Path, fake_server: type[FakeServer], opened: list[str]
 ) -> None:
-    cli.main(
-        ["--data-dir", str(tmp_path / "d"), "--no-browser", "--fake-today", "2026-03-29"]
-    )
+    cli.main(["--data-dir", str(tmp_path / "d"), "--no-browser", "--fake-today", "2026-03-29"])
     clock = fake_server.instances[0].config.app.state.clock
     assert isinstance(clock, FakeClock)
     assert clock.today() == date(2026, 3, 29)
@@ -416,7 +416,9 @@ def test_port_held_by_bookvie_for_same_folder_opens_it(
         assert cli.main(["--data-dir", str(data_dir), "--port", str(port)]) == 0
     finally:
         holder.close()
-    assert f"bookvie is already running, opening http://127.0.0.1:{port}/" in capsys.readouterr().err
+    assert (
+        f"bookvie is already running, opening http://127.0.0.1:{port}/" in capsys.readouterr().err
+    )
     assert opened == [f"http://127.0.0.1:{port}/"]
     assert fake_server.instances == []
     assert not (data_dir / LOCK_NAME).exists()

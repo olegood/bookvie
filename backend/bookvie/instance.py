@@ -69,7 +69,7 @@ def _parse(raw: bytes) -> LockInfo | None:
     try:
         data = json.loads(raw)
         pid, port = data["pid"], data["port"]
-    except (ValueError, TypeError, KeyError):
+    except ValueError, TypeError, KeyError:
         return None
     if type(pid) is not int or type(port) is not int or pid <= 0 or not 0 < port < 65536:
         return None
@@ -120,7 +120,7 @@ def pid_alive(pid: int) -> bool:
         return False
     except PermissionError:
         return True
-    except (OSError, OverflowError):
+    except OSError, OverflowError:
         return False
     return True
 
@@ -142,7 +142,7 @@ def _health(port: int, timeout: float) -> dict | None:
             if response.status != 200:
                 return None
             data = json.loads(response.read(64 * 1024))
-    except (OSError, ValueError, urllib.error.URLError, http.client.HTTPException):
+    except OSError, ValueError, urllib.error.URLError, http.client.HTTPException:
         return None
     if not isinstance(data, dict) or data.get("app") != "bookvie":
         return None
@@ -169,11 +169,11 @@ def same_folder(reported: str | None, data_dir: Path) -> bool:
     # samefile sees through case and Unicode variants on case-insensitive disks.
     try:
         return os.path.samefile(reported, data_dir)
-    except (OSError, ValueError):
+    except OSError, ValueError:
         pass
     try:
         return Path(reported).resolve() == Path(data_dir).resolve()
-    except (OSError, ValueError):
+    except OSError, ValueError:
         return False
 
 

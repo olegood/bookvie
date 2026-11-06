@@ -62,7 +62,10 @@ export function search(page: Page): Locator {
 }
 
 export function bookRows(page: Page): Locator {
-  return page.getByRole('table').getByRole('row').filter({ hasNot: page.getByRole('columnheader') })
+  return page
+    .getByRole('table')
+    .getByRole('row')
+    .filter({ hasNot: page.getByRole('columnheader') })
 }
 
 /** Moves focus into the bookcase the way a keyboard user does: Tab from New book. */

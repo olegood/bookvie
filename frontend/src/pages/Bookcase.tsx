@@ -246,7 +246,9 @@ export default function Bookcase(props: Props) {
       window.removeEventListener('scrollend', begin)
       clearTimeout(fallback)
       setPhase((current) =>
-        current?.moment === moment ? { ...current, fill: current.fill === 'from' ? 'to' : current.fill, ring: true } : current,
+        current?.moment === moment
+          ? { ...current, fill: current.fill === 'from' ? 'to' : current.fill, ring: true }
+          : current,
       )
     }
     frame = requestAnimationFrame(() => {
@@ -274,7 +276,10 @@ export default function Bookcase(props: Props) {
   const fillRunning = phase?.fill === 'to'
   useEffect(() => {
     if (!fillRunning) return
-    const timer = setTimeout(() => setPhase((current) => (current?.fill === 'to' ? { ...current, fill: 'done' } : current)), FILL_FALLBACK_MS)
+    const timer = setTimeout(
+      () => setPhase((current) => (current?.fill === 'to' ? { ...current, fill: 'done' } : current)),
+      FILL_FALLBACK_MS,
+    )
     return () => clearTimeout(timer)
   }, [fillRunning])
 
@@ -282,7 +287,10 @@ export default function Bookcase(props: Props) {
   const ringHolding = phase?.fill === 'done' && phase.ring
   useEffect(() => {
     if (!ringHolding) return
-    const timer = setTimeout(() => setPhase((current) => (current === null ? current : { ...current, ring: false })), RING_HOLD_MS)
+    const timer = setTimeout(
+      () => setPhase((current) => (current === null ? current : { ...current, ring: false })),
+      RING_HOLD_MS,
+    )
     return () => clearTimeout(timer)
   }, [ringHolding])
 
@@ -445,7 +453,11 @@ export default function Bookcase(props: Props) {
     if (book.id === highlightId || own?.ring === true) classes.push(styles.highlight)
     if (book.id === openId) classes.push(styles.open)
     // From the old percentage of the body to the whole spine's height (the line goes past its top).
-    const percent = momentFill ? (own.fill === 'from' ? `${own.moment.fromPercent}%` : `${height}px`) : `${book.percent ?? 0}%`
+    const percent = momentFill
+      ? own.fill === 'from'
+        ? `${own.moment.fromPercent}%`
+        : `${height}px`
+      : `${book.percent ?? 0}%`
     const style: CSSProperties & Record<'--spine-color' | '--percent', string | undefined> = {
       height,
       '--spine-color': book.finished || filling ? book.spineColor : undefined,

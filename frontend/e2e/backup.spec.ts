@@ -47,7 +47,12 @@ async function serverWithLastExport(
 ): Promise<Server> {
   const files: Record<string, string | Buffer> = { 'local-state.json': JSON.stringify({ lastExportAt }) }
   if (cover) files[COVER_FILE] = cover
-  return startSeededServer(testInfo, 'last-export', { books: [cover ? { ...DUNE, coverFile: COVER_FILE } : DUNE] }, files)
+  return startSeededServer(
+    testInfo,
+    'last-export',
+    { books: [cover ? { ...DUNE, coverFile: COVER_FILE } : DUNE] },
+    files,
+  )
 }
 
 /** Today's local date as the browser names the download. */

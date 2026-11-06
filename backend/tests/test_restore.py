@@ -316,6 +316,7 @@ def test_a_failing_migration_step_is_422_restore_invalid_and_changes_nothing(
         "step 1 broke"
     ) in capsys.readouterr().err
 
+
 # --- AC-6: export → restore at the same schemaVersion is byte-identical (BKP-API-001)
 
 
@@ -427,6 +428,7 @@ def test_an_archive_without_a_covers_directory_entry_still_restores_its_covers(
     assert library_bytes(target) == library_bytes(tmp_path / "source")
     assert covers_in(target) == {DUNE_COVER: dune_cover}
     assert staging_in(target) == []
+
 
 def test_ac10_p1_a_failed_cleanup_after_the_commit_still_succeeds_and_startup_sweeps_it(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]

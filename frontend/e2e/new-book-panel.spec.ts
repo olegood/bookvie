@@ -135,7 +135,9 @@ test.describe('Story 1.8 New book panel (ATDD)', () => {
       await expect(field, name).toHaveAccessibleName(name)
       // "(required)" sits outside the label element; requiredness is `required`.
       expect(
-        await field.evaluate((element) => Array.from((element as HTMLInputElement).labels!, (label) => label.textContent)),
+        await field.evaluate((element) =>
+          Array.from((element as HTMLInputElement).labels!, (label) => label.textContent),
+        ),
         name,
       ).toEqual([name])
       expect(await field.evaluate((element) => (element as HTMLInputElement).required), name).toBe(required)
@@ -155,7 +157,10 @@ test.describe('Story 1.8 New book panel (ATDD)', () => {
     await expect(panel.getByRole('button', { name: 'Remove cover', exact: true })).toHaveCount(0)
 
     for (const swatch of Object.keys(SWATCHES)) {
-      await expect(panel.getByRole('button', { name: swatch, exact: true }), swatch).toHaveAttribute('aria-pressed', 'false')
+      await expect(panel.getByRole('button', { name: swatch, exact: true }), swatch).toHaveAttribute(
+        'aria-pressed',
+        'false',
+      )
     }
     // From cover only exists once a Book has a cover (Story 1.13).
     await expect(panel.getByRole('button', { name: 'From cover', exact: true })).toHaveCount(0)
@@ -217,10 +222,7 @@ test.describe('Story 1.8 New book panel (ATDD)', () => {
     expect((await catalog(page, server)).tags).toContain('zines')
   })
 
-  test('[P1] AC-4 a swatch fills Spine color with its hex and shows aria-pressed', async ({
-    page,
-    seededServer,
-  }) => {
+  test('[P1] AC-4 a swatch fills Spine color with its hex and shows aria-pressed', async ({ page, seededServer }) => {
     const server = await seededServer({ books: [NEUROMANCER] })
     await page.goto(`${server.url}/catalog`)
     const panel = await openNewBook(page)
@@ -232,7 +234,10 @@ test.describe('Story 1.8 New book panel (ATDD)', () => {
     )
     await expect(clay).toHaveAttribute('aria-pressed', 'true')
     for (const swatch of Object.keys(SWATCHES).filter((name) => name !== 'Clay')) {
-      await expect(panel.getByRole('button', { name: swatch, exact: true }), swatch).toHaveAttribute('aria-pressed', 'false')
+      await expect(panel.getByRole('button', { name: swatch, exact: true }), swatch).toHaveAttribute(
+        'aria-pressed',
+        'false',
+      )
     }
   })
 
@@ -265,7 +270,10 @@ test.describe('Story 1.8 New book panel (ATDD)', () => {
     expect((await recordedTexts(page, 'status'))?.filter((text) => text !== '')).toEqual(['Added Dune.'])
 
     await expect(search).toHaveValue('')
-    const row = page.getByRole('table').getByRole('row').filter({ has: page.getByText('Dune', { exact: true }) })
+    const row = page
+      .getByRole('table')
+      .getByRole('row')
+      .filter({ has: page.getByText('Dune', { exact: true }) })
     await expect(row).toHaveCount(1)
     await expect(row.locator(':focus')).toHaveText('Dune')
     // Highlight ring: accent box-shadow on the row or one of its cells, gone
@@ -321,7 +329,7 @@ test.describe('Story 1.8 New book panel (ATDD)', () => {
     expect((await catalog(page, server)).books.map((book) => book.title)).toEqual(['Neuromancer'])
   })
 
-  test('[P0] AC-7 couldn\'t save keeps the panel open with every value and says so in ink', async ({
+  test("[P0] AC-7 couldn't save keeps the panel open with every value and says so in ink", async ({
     page,
     seededServer,
   }) => {
@@ -406,7 +414,7 @@ test.describe('Story 1.8 New book panel (ATDD)', () => {
       // A browser close that skips `cancel` must still close the panel, so the
       // next round can open it again.
       ['native close', (panel) => panel.evaluate((dialog) => (dialog as HTMLDialogElement).close())],
-      ['Esc',(panel) => panel.getByLabel('Title', { exact: true }).press('Escape')],
+      ['Esc', (panel) => panel.getByLabel('Title', { exact: true }).press('Escape')],
     ]
 
     for (const [how, close] of closers) {

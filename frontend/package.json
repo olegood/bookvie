@@ -10,9 +10,11 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
+    "format": "prettier --write 'src/**/*.{ts,tsx,css}' 'e2e/**/*.ts' 'scripts/**/*.mjs' '*.ts' '../scripts/*.mjs'",
+    "format:check": "prettier --check 'src/**/*.{ts,tsx,css}' 'e2e/**/*.ts' 'scripts/**/*.mjs' '*.ts' '../scripts/*.mjs'",
     "preview": "vite preview",
     "api:gen": "node scripts/api-contract.mjs --write",
-    "check:api": "node scripts/api-contract.mjs && tsc -b && oxlint && node --test 'src/**/*.test.ts' 'scripts/*.test.mjs'",
+    "check:api": "node scripts/api-contract.mjs && npm run format:check && tsc -b && oxlint && node --test 'src/**/*.test.ts' 'scripts/*.test.mjs'",
     "e2e": "playwright test"
   },
   "dependencies": {
@@ -30,6 +32,7 @@
     "@vitejs/plugin-react": "^6.1.2",
     "openapi-typescript": "~7.13.0",
     "oxlint": "^1.89.0",
+    "prettier": "~3.6.2",
     "typescript": "~5.9.3",
     "vite": "~8.3.5"
   }

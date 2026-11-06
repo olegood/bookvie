@@ -365,7 +365,12 @@ def test_titles_and_authors_fold_typographic_punctuation_and_compatibility_forms
     assert titles_match("Ender\u2019s Game", "Ender's Game") is True
     assert titles_match("\u2018Salem\u2019s Lot", "'Salem's Lot") is True
     assert titles_match("\u201cQuoted\u201d", '"Quoted"') is True
-    assert titles_match("Twenty Thousand Leagues \u2013 Part One", "Twenty Thousand Leagues - Part One") is True
+    assert (
+        titles_match(
+            "Twenty Thousand Leagues \u2013 Part One", "Twenty Thousand Leagues - Part One"
+        )
+        is True
+    )
     assert titles_match("Spin\u2014Off", "Spin-Off") is True
     # NFKC: a ligature and full-width letters.
     assert titles_match("\ufb01re", "fire") is True
@@ -473,7 +478,9 @@ def test_two_simultaneous_identical_adds_save_one_book_and_refuse_the_other(
     outcomes: dict[str, object] = {}
 
     def add(name: str) -> None:
-        intent = parse_add_book_intent(json.dumps({**VALID, "title": "Dune", "authors": "Frank Herbert"}))
+        intent = parse_add_book_intent(
+            json.dumps({**VALID, "title": "Dune", "authors": "Frank Herbert"})
+        )
         try:
             outcomes[name] = add_book(store, clock, intent)
         except IntentError as exc:

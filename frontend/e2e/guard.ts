@@ -88,8 +88,7 @@ export function safeDataDir(dir: string, root: string = e2eRoot()): string {
   const resolvedRoot = resolveReal(root)
   if (resolved === resolvedRoot || !within(resolved, resolvedRoot)) {
     throw new Error(
-      `e2e guard: refusing data dir ${dir} (resolves to ${resolved}): ` +
-        `it must be strictly inside ${resolvedRoot}`,
+      `e2e guard: refusing data dir ${dir} (resolves to ${resolved}): ` + `it must be strictly inside ${resolvedRoot}`,
     )
   }
   return resolved

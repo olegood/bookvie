@@ -100,9 +100,7 @@ export async function startServer(
     const failure = await Promise.race([
       spawnError,
       earlyExit,
-      health(port).then((answer) =>
-        answer?.app === 'bookvie' && answer.dataDir === dir ? null : undefined,
-      ),
+      health(port).then((answer) => (answer?.app === 'bookvie' && answer.dataDir === dir ? null : undefined)),
     ])
     if (failure === null) break
     if (failure instanceof Error) {
@@ -129,11 +127,12 @@ export function seedLibrary(
   { root = e2eRoot() }: { root?: string } = {},
 ): string {
   const dir = safeDataDir(dataDir, root) // before any spawn
-  const result = spawnSync(
-    'uv',
-    ['run', '--project', BACKEND, 'python', '-m', 'tests.builder', dir],
-    { cwd: BACKEND, input: JSON.stringify(partial), encoding: 'utf8', timeout: START_TIMEOUT_MS },
-  )
+  const result = spawnSync('uv', ['run', '--project', BACKEND, 'python', '-m', 'tests.builder', dir], {
+    cwd: BACKEND,
+    input: JSON.stringify(partial),
+    encoding: 'utf8',
+    timeout: START_TIMEOUT_MS,
+  })
   if (result.error) throw result.error
   if (result.status !== 0) {
     throw new Error(`seeding ${dir} failed (code ${result.status})\n${result.stderr}`)

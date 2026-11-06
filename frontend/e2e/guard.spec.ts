@@ -75,9 +75,7 @@ test('refuses a dangling symlink inside the root', () => {
 test('accepts a symlink that stays inside the root', () => {
   mkdirSync(path.join(root, 'real'))
   symlinkSync(path.join(root, 'real'), path.join(root, 'alias'))
-  expect(safeDataDir(path.join(root, 'alias', 'w'), root)).toBe(
-    path.join(realpathSync.native(root), 'real', 'w'),
-  )
+  expect(safeDataDir(path.join(root, 'alias', 'w'), root)).toBe(path.join(realpathSync.native(root), 'real', 'w'))
 })
 
 test.describe('the real library', () => {

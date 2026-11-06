@@ -46,7 +46,7 @@
 
 /* The live regions' host sits here, above the buttons, while the dialog is
    open. A couldn't-save or refusal shows as one calm line in ink. */
-.regions[data-show-alert="true"] [role="alert"] {
+.regions[data-show-alert='true'] [role='alert'] {
   position: static;
   width: auto;
   height: auto;

@@ -82,7 +82,11 @@ test.describe('Story 3.4 See where I left off and how long is left (ATDD)', () =
     try {
       await page.goto(paced.url)
 
-      await expect(reentryFacts(page)).toHaveText(['Last updated 3 days ago', '~9 days left', 'Last export: 12 days ago'])
+      await expect(reentryFacts(page)).toHaveText([
+        'Last updated 3 days ago',
+        '~9 days left',
+        'Last export: 12 days ago',
+      ])
 
       // Muted in both themes: ink-secondary text, a 6px ink-tertiary dot before
       // every fact but the first, and nothing announced as an alert (UX-DR37, NFR6).
@@ -125,7 +129,12 @@ test.describe('Story 3.4 See where I left off and how long is left (ATDD)', () =
     page,
   }) => {
     const withMain = await serverAtFakeToday(page, 'reentry-export-main', pacedMainAt(151), EXPORTED_12_DAYS_AGO)
-    const noMain = await serverAtFakeToday(page, 'reentry-export-no-main', { books: [LEFT_HAND, EMMA] }, EXPORTED_12_DAYS_AGO)
+    const noMain = await serverAtFakeToday(
+      page,
+      'reentry-export-no-main',
+      { books: [LEFT_HAND, EMMA] },
+      EXPORTED_12_DAYS_AGO,
+    )
     try {
       await page.goto(withMain.url)
       const main = page.getByRole('main')
@@ -153,7 +162,10 @@ test.describe('Story 3.4 See where I left off and how long is left (ATDD)', () =
 
       await expect(reentryFacts(page)).toHaveText(['Last updated 3 days ago', 'Last export: 12 days ago'])
 
-      await expect(mainBookCard(page).getByRole('progressbar')).toHaveAttribute('aria-valuetext', '100%, page 330 of 330')
+      await expect(mainBookCard(page).getByRole('progressbar')).toHaveAttribute(
+        'aria-valuetext',
+        '100%, page 330 of 330',
+      )
       await expect(mainBookCard(page)).not.toContainText(/days? left/)
     } finally {
       await stopAndRemove(server)
@@ -242,12 +254,20 @@ test.describe('Story 3.4 See where I left off and how long is left (ATDD)', () =
     try {
       await page.clock.setFixedTime(new Date(`${FAKE_TODAY}T23:59:00+01:00`))
       await page.goto(server.url)
-      await expect(reentryFacts(page)).toHaveText(['Last updated 3 days ago', '~9 days left', 'Last export: 12 days ago'])
+      await expect(reentryFacts(page)).toHaveText([
+        'Last updated 3 days ago',
+        '~9 days left',
+        'Last export: 12 days ago',
+      ])
 
       await page.clock.setFixedTime(new Date('2026-10-29T00:01:00+01:00'))
       await page.evaluate(() => window.dispatchEvent(new Event('focus')))
 
-      await expect(reentryFacts(page)).toHaveText(['Last updated 4 days ago', '~9 days left', 'Last export: 13 days ago'])
+      await expect(reentryFacts(page)).toHaveText([
+        'Last updated 4 days ago',
+        '~9 days left',
+        'Last export: 13 days ago',
+      ])
       await expect(page.getByRole('main').getByText('Thursday, 29 October', { exact: true })).toBeVisible()
     } finally {
       await stopAndRemove(server)

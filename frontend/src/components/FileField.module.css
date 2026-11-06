@@ -48,7 +48,7 @@
   box-shadow: 0 0 0 var(--text-field-halo) var(--color-focus-halo);
 }
 
-.input[aria-invalid="true"] {
+.input[aria-invalid='true'] {
   border: var(--text-field-border-invalid) solid var(--color-ink);
 }
 

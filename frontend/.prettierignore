@@ -1,0 +1,4 @@
+# Generated from the backend models by `npm run api:gen`; api-contract compares it byte for byte.
+src/api/generated/
+# Design tokens are copied from DESIGN.md character for character, and app-shell.spec.ts compares them.
+src/styles/tokens.css

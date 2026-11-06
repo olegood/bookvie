@@ -91,11 +91,17 @@ describe('parseIntentResponse', () => {
     ],
     [
       'a match with a numeric isbn',
-      json({ error: { kind: 'refusal', code: 'x', message: 'm', duplicates: [{ title: 'D', authors: [], isbn: 1 }] } }, 409),
+      json(
+        { error: { kind: 'refusal', code: 'x', message: 'm', duplicates: [{ title: 'D', authors: [], isbn: 1 }] } },
+        409,
+      ),
     ],
     [
       'a match with a non-string author',
-      json({ error: { kind: 'refusal', code: 'x', message: 'm', duplicates: [{ title: 'D', authors: [1], isbn: null }] } }, 409),
+      json(
+        { error: { kind: 'refusal', code: 'x', message: 'm', duplicates: [{ title: 'D', authors: [1], isbn: null }] } },
+        409,
+      ),
     ],
   ]
   for (const [name, response] of notEnvelopes) {

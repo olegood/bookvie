@@ -53,9 +53,7 @@ def data_dir(tmp_path: Path) -> Path:
 
 def _add(client: TestClient, **fields: str):
     intent = {**VALID, **fields}
-    return client.post(
-        ADD_BOOK, files={"intent": (None, json.dumps(intent), "application/json")}
-    )
+    return client.post(ADD_BOOK, files={"intent": (None, json.dumps(intent), "application/json")})
 
 
 # --- saving -------------------------------------------------------------------
@@ -368,9 +366,7 @@ def test_accepted_values_are_stored_normalized(
     assert {key: book[key] for key in stored} == stored
 
 
-@pytest.mark.parametrize(
-    "key", ["title", "pages", "authors", "language", "publisher", "type"]
-)
+@pytest.mark.parametrize("key", ["title", "pages", "authors", "language", "publisher", "type"])
 def test_a_missing_required_key_is_required(data_dir: Path, key: str) -> None:
     intent = {k: v for k, v in VALID.items() if k != key}
     response = api_client(data_dir).post(

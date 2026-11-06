@@ -40,7 +40,10 @@ export function mainBookCard(page: Page): Locator {
  * holding "Last updated …". The dots between them are drawn by CSS, not text.
  */
 export function reentryFacts(page: Page): Locator {
-  return mainBookCard(page).getByText(/^Last updated /).locator('xpath=..').locator(':scope > *')
+  return mainBookCard(page)
+    .getByText(/^Last updated /)
+    .locator('xpath=..')
+    .locator(':scope > *')
 }
 
 /**
