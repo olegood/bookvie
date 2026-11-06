@@ -419,6 +419,31 @@ def test_a_paused_book_is_finished_and_the_main_book_stays(tmp_path: Path) -> No
     assert_invariants(tmp_path)
 
 
+def test_a_reading_already_finished_is_refused_before_any_field_error(
+    tmp_path: Path,
+) -> None:
+    # A stale tab whose answers are all wrong too: the 409 comes first, so the
+    # dialog says the Reading is finished instead of pointing at its fields.
+    builder = LibraryBuilder()
+    left_hand = builder.book(title="The Left Hand of Darkness", pages=330)
+    builder.reading(
+        left_hand,
+        start_date="2026-10-01",
+        current_page=330,
+        finish_date="2026-10-29",
+        finished_pages=330,
+    )
+    builder.write(tmp_path)
+    before = library_bytes(tmp_path)
+
+    # In the future, an answer with no Purpose, and a rating out of range.
+    response = _finish(api_client(tmp_path), left_hand, "2026-10-31", "partly", 9)  # type: ignore[arg-type]
+
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "reading_already_finished"
+    assert library_bytes(tmp_path) == before
+
+
 def test_purpose_fulfilled_without_a_purpose_is_refused(tmp_path: Path) -> None:
     left_hand, _dune = _left_hand_main_and_dune(tmp_path, purpose=None)
     before = library_bytes(tmp_path)

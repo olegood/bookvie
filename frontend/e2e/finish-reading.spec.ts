@@ -410,6 +410,41 @@ test.describe('Story 3.6 Finish my Main book (automate)', () => {
     }
   })
 
+  test('[P2] AC-2 choosing a star, then No rating again, finishes with no rating and the Readings row shows no stars', async ({
+    page,
+  }) => {
+    const server = await serverAtFakeToday(page, 'finish-unrate', MAIN_AT_300)
+    try {
+      const sent = requestsTo(page, FINISH_READING)
+      await page.goto(`${server.url}/book/${LEFT_HAND_ID}`)
+      await markFinished(page).click()
+      const dialog = finishDialog(page)
+      const rating = ratingGroup(dialog)
+      await rating.getByRole('radio', { name: '3 stars', exact: true }).check()
+      await rating.getByRole('radio', { name: 'No rating', exact: true }).check()
+
+      // Back to no rating: every star an outline again.
+      await expect(rating.getByRole('radio', { name: 'No rating', exact: true })).toBeChecked()
+      const fills = await rating.locator('svg path').evaluateAll((paths) => paths.map((path) => path.getAttribute('fill')))
+      expect(fills).toEqual(['none', 'none', 'none', 'none', 'none'])
+
+      await dialogButton(dialog, 'Done').click()
+      await expect(mainBookCard(page).getByRole('heading', { name: 'No Main book.', exact: true })).toBeFocused()
+      expect(sent).toHaveLength(1)
+      expect(intentOf(sent[0])).toEqual({ bookId: LEFT_HAND_ID, finishedOn: FAKE_TODAY, purposeFulfilled: null, rating: null })
+      const [reading] = storedBook(server, LEFT_HAND_ID).readings
+      expect(reading).toMatchObject({ finishDate: FAKE_TODAY, purposeFulfilled: null, rating: null })
+
+      // An unrated, unanswered Reading: dates only, no stars, no answer line.
+      await page.goto(`${server.url}/book/${LEFT_HAND_ID}`)
+      const row = page.getByRole('main').getByRole('region', { name: 'Readings', exact: true }).getByRole('listitem')
+      await expect(row).toHaveText('Started 1 Oct 2026 · Finished 28 Oct 2026')
+      await expect(row.getByRole('img')).toHaveCount(0)
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+
   test('[P1] AC-4 Esc from Mark finished on Book detail closes the dialog and returns focus to Mark finished', async ({
     page,
   }) => {
