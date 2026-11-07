@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-29-2026 17:21
-last_updated: 11-07-2026 20:38
+last_updated: 11-07-2026 20:41
 project: bookvie
 project_key: NOKEY
 tracking_system: file-system
@@ -218,7 +218,7 @@ action_items:
     action: "Story spec creation pulls in open deferred-work items naming that story;
       README update is part of story done (PL-2, PL-7)"
     owner: "Oleg / bmad-build config"
-    status: in-progress
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-2-retro-2026-11-04.md"
   - id: "epic-2-retro-item-18-tick-or-retire-the-105-stale-epic-2-atdd"
     epic: 2
