@@ -65,7 +65,7 @@ Make the user's library survive a dead disk or a new laptop. One click exports a
   - Export: **Export all data** (`button-primary`), with "Last export: N days ago" or "No export yet" below it in `meta` / `ink-tertiary`.
   - Restore: **Restore from file…** (`button-secondary`) with a one-line explanation.
 - **Busy state:** when Export or Restore takes longer than about 300 ms, the button reads "Exporting…" or "Restoring…". It stays accent at 60% opacity, with no spinner. It is natively disabled; these are the only natively disabled controls in the app.
-- **Restore confirmation:** an `alertdialog` reads "Replace all data with this file? Your current books, readings and card notes will be replaced." with **Replace all data** and **Cancel**. Cancel has default focus. Cancel or Esc changes nothing and returns focus to **Restore from file…**. If the save fails, the dialog stays open and shows the couldn't-save line above its buttons.
+- **Restore confirmation:** an `alertdialog` reads "Replace all data with this file? Your current books, readings and card notes will be replaced." with **Replace all data** and **Cancel**. Cancel has default focus. Cancel or Esc changes nothing and returns focus to **Restore from file…**. **Replace all data** closes the dialog and starts the restore. If it fails or is refused, the line shows under **Restore from file…** (in `ink`, announced in `alert`), and focus returns to that button. This is unlike the other Confirm dialogs, which stay open on a failed save (Epic 2 retro item 15).
 - **Restore success:** the `status` region reads "Restored.", the app navigates to the launch page `/`, and focus moves to that page's `h1`. Before Epic 3, `/` opens Catalog.
 - **Messages:**
 
