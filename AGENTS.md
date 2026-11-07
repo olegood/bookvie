@@ -38,3 +38,7 @@ The spine is `_bmad-output/planning-artifacts/architecture/architecture-bookvie-
 - **A finding where the code breaks a decision it should follow** is not drift. Fix it in the story like any other review finding.
 - **The retrospective** always proposes an action item to reconcile the spine with the epic, listing that epic's unresolved "spine drift" entries in `deferred-work.md`.
 - **Before the next epic's first story,** that reconciliation lands: one pass edits the spine and adds a `resolved:` line to each drift entry it closes. `bmad-build` stops at the first story of an epic while the previous epic has unresolved "spine drift" entries, unless you tell it to proceed.
+
+## Epic boundaries
+
+When a story closes its epic (every other story of the epic is `done` in `sprint-status.yaml`), don't start the next epic's first story, even though the retrospective's status reads `optional`. First come test automation for that story (`bmad-testarch-automate`), the epic's retrospective (`bmad-retrospective`), and the retro's before-next-epic items: the trace and gate and the spine reconciliation. `bmad-code-review` offers the first two instead of "Start the next story" at an epic's last story (Epic 3 retro item 30).
