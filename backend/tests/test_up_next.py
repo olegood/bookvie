@@ -302,6 +302,13 @@ def test_ac7_p1_the_home_view_carries_up_next_with_whether_it_is_paused(
     view = home(builder.build()).up_next
     assert view is not None and (view.id, view.paused) == (emma, False)
 
+    # A stored cover is carried as is.
+    persuasion = builder.book(
+        title="Persuasion", authors=["Jane Austen"], cover_file="covers/persuasion.jpg"
+    )
+    view = home(builder.up_next(persuasion).build()).up_next
+    assert view is not None and (view.cover_file, view.has_cover) == ("covers/persuasion.jpg", True)
+
     # An Up next naming no Book, or the Main book, gives none.
     assert home(builder.up_next("gone").build()).up_next is None
     assert home(builder.up_next(fahrenheit).build()).up_next is None

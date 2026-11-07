@@ -67,9 +67,9 @@ function HomeSlice({ view, finishing }: { view: HomeView; finishing: FinishMomen
  * only while there is a Main book; without one the empty card suggests the
  * Up next Book; Home hosts the Start dialog that the pane's and the card's
  * buttons open) with the bookcase slice below: the full bookcase in Catalog's
- * order, up to 3 rows chosen by the view's `slicePriority`. "Last export" sits at the
- * right end of the header line only while there is no Main book; with one it
- * sits in the card's re-entry line, which reads the same `now`.
+ * order, up to 3 rows chosen by the view's `slicePriority`. "Last export"
+ * sits at the right end of the header line only while there is no Main book;
+ * with one it sits in the card's re-entry line, which reads the same `now`.
  *
  * Arriving from a confirmed Start dialog (router state `{started: true}`),
  * focus goes to the Main book card's title link, winning over the `h1`.

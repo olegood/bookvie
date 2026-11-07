@@ -7,8 +7,8 @@
 //
 // Dates: AC-2, AC-5 and AC-6 start `bookvie --fake-today 2026-10-28`, whose
 // clock says "now" is local noon that day, and set the browser clock to the
-// same day in Europe/Madrid (TC-2, AD-20). None of these leaves reads
-// `upNextBookId`: Story 4.1 decides where the paused Book goes (FR-7).
+// same day in Europe/Madrid (TC-2, AD-20). Since Story 4.1 the paused Book
+// becomes Up next (FR-7); AC-6 checks where it shows.
 
 import AxeBuilder from '@axe-core/playwright'
 import type { Locator, Page } from '@playwright/test'

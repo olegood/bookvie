@@ -390,3 +390,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-1-keep-the-interrupted-book-as-up-next.md`
   summary: Spine drift (Capability → Architecture Map, AD-6), reconciled before the next epic: the "FR-5 to FR-9" row should list `views/shelf` (home `upNext` with its server-decided `paused`) and Home's Up next pane, and cite AD-6.
   evidence: Spine-check review of 4.1 (SC3); the row's "Lives in" names only the intents.
+
+## Deferred from: code review of spec-4-1-keep-the-interrupted-book-as-up-next (2026-11-07, pass 2)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-1-keep-the-interrupted-book-as-up-next.md`
+  summary: Book detail's Delete Confirm for a paused Up next reads "It is Up next." and no longer gives the page kept, where Epic 3's interrupted (`waiting`) Book read "It is waiting for you at p.120." Story 4.6, which owns the role lines, should carry the page for a paused Up next.
+  evidence: `frontend/src/lib/bookDetail.ts:170` `roleLine` returns a fixed string for `upNext`; spec 4.1's Code Map froze `roleLine` ("Do not change").

@@ -2,7 +2,7 @@
 title: 'Story 4.1: Keep the interrupted book as Up next'
 type: 'feature'
 created: '2026-11-07'
-status: 'in-review'
+status: 'done'
 route: 'dispatch'
 review_loop_iteration: 0
 baseline_commit: '37d9911b712783aae74a5d93ebd7401b94359bf4'
@@ -80,6 +80,33 @@ context:
 - Given a Main book, when Home opens, then the side column has a region "Up next" with the row (thumbnail, title link, author, a button "Resume *X*"/"Start reading *X*" that opens the Start dialog), or "Nothing up next." with a Catalog link.
 - Given no Main book and an Up next, when Home opens, then there is no Up next pane and the empty card shows "No Main book." with the suggestion. Given the Main book is finished, when Home shows the result, then focus is on the suggestion's button, or on "No Main book." when there is no Up next.
 - Given two browser contexts, when one starts a Book and the other regains focus, then the other shows the new state with no warning, and the last write wins.
+
+### Review Findings
+
+Code review 2026-11-07 (diff `37d9911..c80a3c9`). Layers: blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor, spine-check.
+
+- [x] [Review][Patch] No test renders the Up next thumbnail for a Book with a stored cover. Every Up next fixture has no cover, so the pane and card `img` "Cover of *X*" at 44×64 and the home view's `upNext.coverFile`/`hasCover: true` are untested (medium, verification-gap) [frontend/e2e/up-next.spec.ts; backend/tests/test_up_next.py]
+- [x] [Review][Patch] Triage Log row 1's fix (Home hosts the pane's Start dialog) has no regression test. Open the pane's dialog, empty the Main book in a second context, refocus, then assert the dialog, its Purpose and its alert line survive and Cancel falls back to the suggestion button (medium, blind-hunter) [frontend/e2e/up-next.spec.ts]
+- [x] [Review][Patch] The start matrix never asserts that a displaced Up next (Emma, `up_next="other"` with a Main book) stays byte-identical, as the pointer rule requires (low, blind-hunter+edge-case-hunter) [backend/tests/test_start_reading.py:316]
+- [x] [Review][Patch] The AC-2 Purpose prefill ("any opener") is asserted only for Book detail and the spine popover, not for the pane or the empty card openers, though `LEFT_HAND_PAUSED` carries a Purpose (low, acceptance-auditor) [frontend/e2e/up-next.spec.ts]
+- [x] [Review][Patch] Header comment says "None of these leaves reads `upNextBookId`: Story 4.1 decides…", but AC-6 now asserts the 4.1 outcome (low, acceptance-auditor) [frontend/e2e/start-reading.spec.ts:10]
+- [x] [Review][Patch] Docblock line "order, up to 3 rows chosen by the view's `slicePriority`. "Last export" sits at the" is left unwrapped (89 columns, the block wraps near 78); Triage Log row 9 marked it patched (low, blind-hunter) [frontend/src/pages/HomePage.tsx:73]
+- [x] [Review][Defer] Book detail's Delete Confirm for a paused Up next reads "It is Up next." and no longer gives the page, where Epic 3's interrupted (`waiting`) Book read "It is waiting for you at p.120." [frontend/src/lib/bookDetail.ts:170] — deferred: `roleLine` is frozen by this spec's Code Map ("Do not change"), and Story 4.6 owns the role lines.
+
+**Rejected:**
+- Paused Up next spine reads "not read yet" (blind-hunter): already deferred to Story 4.6 (Triage Log row 5).
+- Code Map says `UpNextPane` hosts its own `StartDialog`, and the Spec Change Log is empty (blind-hunter, edge-case-hunter, acceptance-auditor): real, but the fix edits the spec under review.
+- The state machine never reaches a never-started Up next, and it pins "a finish leaves Up next alone" ahead of Story 4.5 (blind-hunter, edge-case-hunter): low. 4.5's change will turn this test red where it should, and seeding a never-started pointer is more than a direct correction.
+- Empty authors render an empty `<p>` in the pane and the card (blind-hunter, edge-case-hunter ×2): false. Authors are required (`backend/bookvie/domain/book_fields.py:144`).
+- The pane's author line truncates with no way to read the rest (blind-hunter): low. The title links to Book detail, which shows the full authors.
+- `onStartUpNext` is optional in `MainBookCard` (blind-hunter): low. The only caller (`HomePage.tsx:270`) passes it.
+- `test_up_next.py` home-view test chains stages on one builder (blind-hunter): low, test style with no named failure.
+- `HomePage` resets `startingUpNext` during render and gates the JSX on the key too (blind-hunter): low. It mirrors the existing `finishing` pattern (lines 124 and 292) and is harmless.
+- The Start dialog treats an already-Main opener as Resume, which gets 409 `already_main` (blind-hunter): low. Only a stale opener reaches it, and the dialog's error path handles the 409.
+- The spec-3-2 deferred entry's `resolved:` line covers only half (blind-hunter): false. The open Side-read half is split into its own entry (`deferred-work.md:377`).
+- No test covers the displacement `aria-describedby` (blind-hunter): false. `up-next.spec.ts:123` and `:302` assert `toHaveAccessibleDescription`.
+- Cancel focus can land on an opener that now names another Book after a refetch (edge-case-hunter): low. Main and Up next must both change while the dialog is open, and the fix adds opener-tracking state.
+- Three spine-check findings (AD-19, AD-7, map row AD-6): spine drift, already logged in `deferred-work.md` by the implementation and reconciled before Epic 5.
 
 ## Spec Change Log
 

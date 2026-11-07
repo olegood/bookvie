@@ -280,6 +280,7 @@ def test_start_reading_across_the_state_matrix(
     up_next_before = _stored(tmp_path)["upNextBookId"]
     before = stored_book(tmp_path, dune)["readings"]
     fahrenheit_before = stored_book(tmp_path, fahrenheit)["readings"] if fahrenheit else None
+    other_before = stored_book(tmp_path, up_next_before) if up_next == "other" else None
 
     response = _send(api_client(tmp_path), START_READING, dune, "  New purpose ")
 
@@ -319,6 +320,9 @@ def test_start_reading_across_the_state_matrix(
         assert library["upNextBookId"] is None
     else:
         assert library["upNextBookId"] == up_next_before
+    # A displaced (or kept) other Up next is byte-for-byte the same Book.
+    if other_before is not None:
+        assert stored_book(tmp_path, up_next_before) == other_before
     assert_invariants(tmp_path)
 
 

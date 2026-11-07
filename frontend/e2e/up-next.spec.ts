@@ -14,7 +14,7 @@
 
 import AxeBuilder from '@axe-core/playwright'
 import type { Locator, Page } from '@playwright/test'
-import { expect, test } from './fixtures.ts'
+import { expect, startSeededServer, test } from './fixtures.ts'
 import {
   DUNE,
   DUNE_ID,
@@ -27,13 +27,15 @@ import {
   storedBook,
   storedLibrary,
 } from './home.ts'
-import { START_READING, requestsTo } from './intents.ts'
+import { COVER_PNG, DELETE_BOOK, START_READING, requestsTo } from './intents.ts'
 
 const FAHRENHEIT_ID = '9d4e7a10-2b3c-4d5e-8f60-718293a4b5c6'
 const FAHRENHEIT = { id: FAHRENHEIT_ID, title: 'Fahrenheit 451', authors: ['Ray Bradbury'], pages: 187 }
 const LEFT_HAND_READING_ID = '5a4b3c2d-1e0f-4a9b-8c7d-6e5f4a3b2c1d'
 const DUNE_READING_ID = '0f9e8d7c-6b5a-4493-8271-605f4e3d2c1b'
 const RESUME_LEFT_HAND = 'Resume The Left Hand of Darkness'
+const LEFT_HAND_PURPOSE = 'To see how Le Guin builds a world'
+const LEFT_HAND_COVER = 'covers/left-hand.png'
 const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']
 
 /** Dune paused at p.120 since 20 October, with a Purpose. */
@@ -58,7 +60,7 @@ const LEFT_HAND_PAUSED = {
       id: LEFT_HAND_READING_ID,
       startDate: '2026-10-02',
       currentPage: 212,
-      purpose: 'To see how Le Guin builds a world',
+      purpose: LEFT_HAND_PURPOSE,
       lastProgressUpdate: '2026-10-21T21:00:00+02:00',
       pausedAt: '2026-10-22',
     },
@@ -175,6 +177,9 @@ test.describe('Story 4.1 Keep the interrupted book as Up next (ATDD)', () => {
     await resume.click()
     const dialog = startDialog(page, 'Resume The Left Hand of Darkness?')
     await expect(dialog).toBeVisible()
+    await expect(dialog.getByRole('textbox', { name: 'Purpose (optional)', exact: true })).toHaveValue(
+      LEFT_HAND_PURPOSE,
+    )
     await expect(dialog).toContainText('This pauses Dune at p.100 (24%).')
     // X is the Up next Book: no displacement line.
     await expect(dialog).not.toContainText('moves to Waiting for you')
@@ -218,6 +223,9 @@ test.describe('Story 4.1 Keep the interrupted book as Up next (ATDD)', () => {
     await resume.click()
     const dialog = startDialog(page, 'Resume The Left Hand of Darkness?')
     await expect(dialog).toBeVisible()
+    await expect(dialog.getByRole('textbox', { name: 'Purpose (optional)', exact: true })).toHaveValue(
+      LEFT_HAND_PURPOSE,
+    )
     await expect(dialog).not.toContainText('This pauses')
     await dialog.getByRole('button', { name: 'Cancel', exact: true }).click()
     await expect(resume).toBeFocused()
@@ -409,6 +417,75 @@ test.describe('Story 4.1 Keep the interrupted book as Up next (green-phase follo
     await expect(start).toHaveText('Start reading')
     await start.click()
     await expect(startDialog(page, 'Start Fahrenheit 451?')).toBeVisible()
+  })
+
+  test('[P1] AC-4/AC-5 an Up next Book with a stored cover shows it as a 44×64 thumbnail in the pane and in the empty card', async ({
+    page,
+  }) => {
+    const covered = { ...LEFT_HAND_PAUSED, coverFile: LEFT_HAND_COVER }
+    const withMain = await startSeededServer(
+      test.info(),
+      'up-next-cover-pane',
+      { mainBookId: DUNE_ID, upNextBookId: LEFT_HAND_ID, books: [DUNE_MAIN, covered] },
+      { [LEFT_HAND_COVER]: COVER_PNG },
+    )
+    try {
+      await page.goto(`${withMain.url}/`)
+      const cover = upNextPane(page).getByRole('img', { name: 'Cover of The Left Hand of Darkness', exact: true })
+      await expect(cover).toHaveAttribute('src', `/media/${LEFT_HAND_COVER}`)
+      expect(await sizeOf(cover)).toEqual({ width: 44, height: 64 })
+    } finally {
+      await stopAndRemove(withMain)
+    }
+
+    const noMain = await startSeededServer(
+      test.info(),
+      'up-next-cover-card',
+      { upNextBookId: LEFT_HAND_ID, books: [covered, DUNE] },
+      { [LEFT_HAND_COVER]: COVER_PNG },
+    )
+    try {
+      await page.goto(`${noMain.url}/`)
+      const cover = mainBookCard(page).getByRole('img', { name: 'Cover of The Left Hand of Darkness', exact: true })
+      await expect(cover).toHaveAttribute('src', `/media/${LEFT_HAND_COVER}`)
+      expect(await sizeOf(cover)).toEqual({ width: 44, height: 64 })
+    } finally {
+      await stopAndRemove(noMain)
+    }
+  })
+
+  test("[P1] AC-4 the pane's Start dialog survives a refetch that empties the Main book; Cancel then focuses the card's suggestion", async ({
+    page,
+    seededServer,
+  }) => {
+    // Main: Dune at p.100; Up next: The Left Hand of Darkness, paused at p.212.
+    const server = await seededServer({
+      mainBookId: DUNE_ID,
+      upNextBookId: LEFT_HAND_ID,
+      books: [DUNE_MAIN, LEFT_HAND_PAUSED],
+    })
+    await page.goto(`${server.url}/`)
+    await upNextPane(page).getByRole('button', { name: RESUME_LEFT_HAND, exact: true }).click()
+    const dialog = startDialog(page, 'Resume The Left Hand of Darkness?')
+    const purpose = dialog.getByRole('textbox', { name: 'Purpose (optional)', exact: true })
+    await purpose.fill('A new purpose')
+
+    // Another tab deletes the Main book; this one regains focus and refetches.
+    const deleted = await page.request.post(`${server.url}${DELETE_BOOK}`, {
+      multipart: { intent: JSON.stringify({ bookId: DUNE_ID }) },
+    })
+    expect(deleted.status()).toBe(200)
+    await page.evaluate(() => window.dispatchEvent(new Event('focus')))
+
+    // The pane is gone and the card suggests the Up next Book; the dialog and its answer stay.
+    const suggestion = mainBookCard(page).getByRole('button', { name: RESUME_LEFT_HAND, exact: true })
+    await expect(suggestion).toBeAttached()
+    await expect(upNextPane(page)).toHaveCount(0)
+    await expect(dialog).toBeVisible()
+    await expect(purpose).toHaveValue('A new purpose')
+    await dialog.getByRole('button', { name: 'Cancel', exact: true }).click()
+    await expect(dialog).toHaveCount(0)
+    await expect(suggestion).toBeFocused()
   })
 
   test('[P1] axe finds no WCAG 2.2 AA violations on Home with the Up next pane and with the card suggestion, in both themes', async ({
