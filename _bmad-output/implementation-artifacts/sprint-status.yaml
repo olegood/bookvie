@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-29-2026 17:21
-last_updated: 11-06-2026 17:45
+last_updated: 11-07-2026 11:01
 project: bookvie
 project_key: NOKEY
 tracking_system: file-system
@@ -232,7 +232,7 @@ action_items:
     action: "Settle ruff: add config and run ruff check in check:py, or record in
       AGENTS.md that ruff is not used (PL-3)"
     owner: "Amelia (Dev), decided by Oleg"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-2-retro-2026-11-04.md"
   - id: "epic-3-retro-item-20-before-epic-4-run-the-epic-3-trace-and-g"
     epic: 3
@@ -301,7 +301,7 @@ action_items:
     action: "Record in AGENTS.md which formatters (ruff, Prettier) are enforced and
       the exact commands, or that none are (PL-4, with epic-2 item 19)"
     owner: "Amelia (Dev), decided by Oleg"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-3-retro-2026-11-06.md"
   - id: "epic-3-retro-item-29-record-the-load-sensitive-specs-spine-po"
     epic: 3
