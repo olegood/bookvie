@@ -22,7 +22,7 @@ from dataclasses import dataclass
 from PIL import Image, ImageOps
 
 from bookvie.domain import spine_color_from_pixels
-from bookvie.domain.book_fields import COVER_FORMAT_MESSAGE, COVER_IMAGE_MESSAGE
+from bookvie.domain.labels import COVER_FORMAT_MESSAGE, COVER_IMAGE_MESSAGE
 from bookvie.store import COVERS_DIR
 
 # The decoders Pillow may use (JPEG also opens the MPO files many phones write).

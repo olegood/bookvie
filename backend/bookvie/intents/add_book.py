@@ -1,10 +1,11 @@
 """The ``add-book`` intent (FR-1): save a new Book only when it is complete.
 
 The request carries the New book form's raw strings. Every field is trimmed
-and validated before the store is touched (:mod:`bookvie.domain.book_fields`);
-any failure is one 422 ``invalid_fields`` listing every failing field in form
-order. A valid intent that matches a Book already in the catalog is refused
-with 409 ``duplicate_book`` (FR-3, AD-10) unless it carries
+and validated before the store is touched
+(:func:`~bookvie.domain.book_fields.parse_book_fields`); any failure is one
+422 ``invalid_fields`` listing every failing field in form order. A valid
+intent that matches a Book already in the catalog is refused with 409
+``duplicate_book`` (FR-3, AD-10) unless it carries
 ``confirmDuplicate: true``. Otherwise the Book is appended through
 :func:`commit`, which commits once or changes nothing.
 
@@ -18,8 +19,8 @@ color is stored as ``spineColorFromCover``.
 import uuid
 
 from bookvie.domain import Book, Clock, Library
-from bookvie.domain.book_fields import curated_spine_color, resolve_spine_color
 from bookvie.domain.duplicates import find_duplicates
+from bookvie.domain.spine_color import curated_spine_color, resolve_spine_color
 from bookvie.store import Store
 
 from .book_form import (

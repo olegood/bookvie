@@ -25,7 +25,7 @@ from typing import Any
 import pytest
 from fastapi.testclient import TestClient
 
-from bookvie.domain.book_fields import long_date
+from bookvie.domain.finished_on import long_date
 from bookvie.http.app import create_app
 from tests.builder import CURATED, LibraryBuilder
 from tests.helpers import (

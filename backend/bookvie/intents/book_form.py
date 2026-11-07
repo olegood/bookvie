@@ -10,13 +10,9 @@ from collections.abc import Iterable
 from datetime import date
 
 from bookvie.domain import Book, Reading
-from bookvie.domain.book_fields import (
-    BookFields,
-    FieldFailure,
-    FinishedOnRule,
-    in_form_order,
-    parse_book_fields,
-)
+from bookvie.domain.book_fields import BookFields, parse_book_fields
+from bookvie.domain.finished_on import FinishedOnRule
+from bookvie.domain.labels import FieldFailure, in_form_order
 
 from .contract import COVER_FIELD, DuplicateMatch, duplicate_book
 from .cover import RefusedCover, UploadedCover
@@ -69,7 +65,9 @@ def valid_fields(
     """The parsed fields, or 422 listing every failing field (``extra`` too) in form order.
 
     ``finished_on_rule`` adds a caller's Finished on check (see
-    :func:`parse_book_fields`); ``edit-book`` passes its latest-finished rule.
+    :func:`~bookvie.domain.book_fields.parse_book_fields` and
+    :data:`~bookvie.domain.finished_on.FinishedOnRule`); ``edit-book`` passes
+    its latest-finished rule.
     """
     parsed = parse_book_fields(intent.form(), today, finished_on_rule)
     failures = in_form_order([*(parsed if isinstance(parsed, list) else []), *extra])

@@ -3,48 +3,23 @@
 Pure: no store, no clock (``today`` is passed in). :func:`parse_book_fields`
 trims every value first, then returns either the normalized
 :class:`BookFields` or every failure as ``(key, message)`` in form order, one
-per field. Keys are the camelCase intent keys; :data:`LABELS` maps them to the
-form's labels. ``edit-book`` (Story 1.11) and duplicate detection (Story 1.9)
-reuse this module.
+per field. Keys are the camelCase intent keys; :data:`~.labels.LABELS` maps
+them to the form's labels. This module holds the parser and its own rules
+(Pages, Edition, Type, ISBN, Year, Authors and Tags); the labels and shared
+failures are in :mod:`.labels`, Finished on in :mod:`.finished_on`, and the
+Spine color rules in :mod:`.spine_color`. ``edit-book`` (Story 1.11) and
+duplicate detection (Story 1.9) reuse this module.
 """
 
 import re
-from collections.abc import Callable, Iterable, Mapping
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from datetime import date
 
+from .finished_on import FinishedOnRule, parse_finished_on
+from .labels import LABELS, FieldFailure, required_message
 from .model import BookType
-
-# Form order (Title … Spine color), key -> visible label. Cover is a file
-# part, not a text field, but it has its place in the order.
-LABELS: dict[str, str] = {
-    "title": "Title",
-    "subtitle": "Subtitle",
-    "pages": "Pages",
-    "authors": "Author(s)",
-    "edition": "Edition",
-    "language": "Language",
-    "publisher": "Publisher",
-    "type": "Type",
-    "isbn": "ISBN",
-    "year": "Year",
-    "finishedOn": "Finished on",
-    "tags": "Tags",
-    "cover": "Cover",
-    "spineColor": "Spine color",
-}
-
-# Sage, Slate, Clay, Ochre, Plum, Teal, Moss, Stone (DESIGN.md, Spine colors).
-CURATED_SPINE_COLORS: tuple[str, ...] = (
-    "#749076",
-    "#5B7590",
-    "#9B6753",
-    "#B48A45",
-    "#7A6283",
-    "#4B7C7B",
-    "#6C7650",
-    "#6F7375",
-)
+from .spine_color import SPINE_COLOR_MESSAGE, is_hex_color
 
 BOOK_TYPES: tuple[BookType, ...] = ("paperback", "hardcover", "ebook")
 
@@ -52,52 +27,14 @@ DEFAULT_EDITION = 1
 
 _WHOLE = re.compile(r"[0-9]+")
 _YEAR = re.compile(r"[0-9]{4}")
-_DATE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
 _ISBN10 = re.compile(r"[0-9]{9}[0-9Xx]")
 _ISBN13 = re.compile(r"[0-9]{13}")
-_HEX_COLOR = re.compile(r"#[0-9A-Fa-f]{6}")
 
 PAGES_MESSAGE = "Pages must be a whole number, 1 or more."
 EDITION_MESSAGE = "Edition must be a whole number, 1 or more."
 TYPE_MESSAGE = "Type must be Paperback, Hardcover or Ebook."
 ISBN_MESSAGE = "ISBN must have 10 or 13 digits."
 YEAR_MESSAGE = "Year must be a year, like 1965."
-FINISHED_ON_FORMAT_MESSAGE = "Finished on must be a date, like 2026-03-14."
-FINISHED_ON_FUTURE_MESSAGE = "Finished on can't be in the future."
-SPINE_COLOR_MESSAGE = "Spine color must be #RRGGBB or empty."
-COVER_IMAGE_MESSAGE = "Cover must be an image file."
-COVER_FORMAT_MESSAGE = "Cover must be a JPEG, PNG or WebP image."
-COVER_TOO_LARGE_MESSAGE = "Cover must be 20 MB or smaller."
-# Edit mode only (Story 1.11).
-FINISH_DATE_REMOVED_MESSAGE = "A finish date can't be removed here."
-
-_MONTHS = (
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-)
-
-
-def long_date(day: date) -> str:
-    """The date as "12 March 2026": day, full English month name, year (locale-free)."""
-    return f"{day.day} {_MONTHS[day.month - 1]} {day.year}"
-
-
-def finished_before_start_message(start: date) -> str:
-    return f"Finished on can't be before {long_date(start)}, when this reading started."
-
-
-def finished_after_current_start_message(start: date) -> str:
-    return f"Finished on can't be after {long_date(start)}, when the current reading started."
 
 
 def pages_below_current_page_message(page: int) -> str:
@@ -106,10 +43,6 @@ def pages_below_current_page_message(page: int) -> str:
 
 def pages_below_card_note_message(page: int) -> str:
     return f"Pages can't be less than {page}, where a card note is."
-
-
-def required_message(key: str) -> str:
-    return f"{LABELS[key]} is required."
 
 
 @dataclass(frozen=True)
@@ -127,12 +60,6 @@ class BookFields:
     finished_on: date | None
     tags: list[str]
     spine_color: str | None
-
-
-FieldFailure = tuple[str, str]
-
-FinishedOnRule = Callable[[date | None], str | None]
-"""An extra Finished on check: the parsed date (``None`` when empty) to a failure message."""
 
 
 def split_authors(raw: str) -> list[str]:
@@ -177,34 +104,6 @@ def _year(value: str, today: date) -> int | None:
         return None
     year = int(value)
     return year if year <= today.year + 1 else None
-
-
-def _date(value: str) -> date | None:
-    if not _DATE.fullmatch(value):
-        return None
-    try:
-        return date.fromisoformat(value)
-    except ValueError:
-        return None
-
-
-def parse_finished_on(raw: str | None, today: date) -> tuple[date | None, str | None]:
-    """Finished on as ``(date or None when empty, failure message or None)``."""
-    text = (raw or "").strip()
-    if not text:
-        return None, None
-    finished_on = _date(text)
-    if finished_on is None:
-        return None, FINISHED_ON_FORMAT_MESSAGE
-    if finished_on > today:
-        return None, FINISHED_ON_FUTURE_MESSAGE
-    return finished_on, None
-
-
-def in_form_order(failures: Iterable[FieldFailure]) -> list[FieldFailure]:
-    """``failures`` sorted by the form order of their keys (stable)."""
-    order = {key: index for index, key in enumerate(LABELS)}
-    return sorted(failures, key=lambda failure: order.get(failure[0], len(order)))
 
 
 def parse_book_fields(
@@ -299,18 +198,3 @@ def parse_book_fields(
         tags=tags,
         spine_color=spine_color,
     )
-
-
-def is_hex_color(value: str) -> bool:
-    """``#RRGGBB`` in either case, nothing around it (the Spine color rule)."""
-    return _HEX_COLOR.fullmatch(value) is not None
-
-
-def curated_spine_color(book_count: int) -> str:
-    """The curated color of the next Book, in rotation by the Book count."""
-    return CURATED_SPINE_COLORS[book_count % len(CURATED_SPINE_COLORS)]
-
-
-def resolve_spine_color(user: str | None, from_cover: str | None, curated: str) -> str:
-    """User, else cover, else curated (AD-11)."""
-    return user or from_cover or curated

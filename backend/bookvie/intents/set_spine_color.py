@@ -13,7 +13,7 @@ commits.
 """
 
 from bookvie.domain import Library
-from bookvie.domain.book_fields import (
+from bookvie.domain.spine_color import (
     SPINE_COLOR_MESSAGE,
     is_hex_color,
     resolve_spine_color,

@@ -1,6 +1,4 @@
 import {
-  useCallback,
-  useEffect,
   useId,
   useLayoutEffect,
   useMemo,
@@ -15,9 +13,13 @@ import type { LibraryMeter, ShelfBook } from '../api/index.ts'
 import SpinePopover from '../components/SpinePopover.tsx'
 import StartDialog from '../components/StartDialog.tsx'
 import { bookcaseName, finishLine, matchesTitle, noMatchCopy, sliceName, spineName } from '../lib/catalog.ts'
-import { rowCapacity, sliceRows } from '../lib/slice.ts'
 import { nearestVisible, spineHeight } from '../lib/spine.ts'
+import { useFinishMoment, type FinishMoment } from '../lib/useFinishMoment.ts'
+import { useSliceRows } from '../lib/useSliceRows.ts'
+import { useSpinePopover } from '../lib/useSpinePopover.ts'
 import styles from './Bookcase.module.css'
+
+export type { FinishMoment }
 
 type Shared = {
   /** Already in display order (the bookcase order). */
@@ -37,13 +39,6 @@ type CatalogProps = Shared & {
   searchRef: RefObject<HTMLInputElement | null>
 }
 
-/**
- * Home's finish moment (Story 3.7), from this tab's successful
- * `finish-reading` hand-off: the finished Book, its title, whether it was a
- * re-read, and the Main fill's percentage when the Finish dialog opened.
- */
-export type FinishMoment = { id: string; title: string; reread: boolean; fromPercent: number }
-
 /** Home's slice: up to 3 rows of the full bookcase, chosen by the server's priority (AD-6). */
 type SliceProps = Shared & {
   slice: { priority: readonly string[] }
@@ -51,40 +46,9 @@ type SliceProps = Shared & {
   finishing?: FinishMoment | null
 }
 
-/**
- * Where a finish moment stands: `from` (the Main-style fill at its old
- * percentage, one frame), `to` (filling to the whole spine), `done` (the solid
- * read spine); `ring` while the highlight ring is on.
- */
-type MomentPhase = { moment: FinishMoment; fill: 'from' | 'to' | 'done'; ring: boolean }
-
-/** How long the ring holds after the fill (or at once) before it fades. */
-const RING_HOLD_MS = 600
-/** Fallbacks when `scrollend` or `transitionend` never comes (a hidden tab, an interrupted scroll). */
-const SCROLL_FALLBACK_MS = 800
-const FILL_FALLBACK_MS = 1000
-
-function prefersReducedMotion(): boolean {
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches
-}
-
-function fullyInViewport(element: Element): boolean {
-  const rect = element.getBoundingClientRect()
-  return rect.top >= 0 && rect.left >= 0 && rect.bottom <= window.innerHeight && rect.right <= window.innerWidth
-}
-
 type Props = CatalogProps | SliceProps
 
 type Measured = Record<string, { title: string; height: number }>
-
-/**
- * The controls an outside click may land on and keep focus (a `label` focuses
- * its control, as Search titles' does). Containers with
- * `tabindex="-1"` (`main`, the page `h1`) are not controls: a click there
- * returns focus to the spine.
- */
-const FOCUSABLE =
-  'a[href], button, input, select, textarea, summary, label, [tabindex]:not([tabindex^="-"]), [contenteditable="true"]'
 
 const MOVES = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'])
 
@@ -135,11 +99,6 @@ function MeterBar({ meter }: { meter: LibraryMeter }) {
   )
 }
 
-/** A px length from a custom property on `element` (0 when unset). */
-function cssLength(element: Element, property: string): number {
-  return parseFloat(getComputedStyle(element).getPropertyValue(property)) || 0
-}
-
 /**
  * The Bookcase view (DESIGN.md → Bookcase, Spine): every Book as a spine on
  * birch planks, read in its exact color, unread outlined, the Main book
@@ -153,14 +112,9 @@ function cssLength(element: Element, property: string): number {
  * displayed.
  *
  * With `finishing` (Home, after this tab's finish), the slice plays the
- * finish moment once per moment: once the spine is in a row and Home has
- * moved focus, it is scrolled into view (`nearest`; `smooth`, or `auto` under
- * reduced motion), then fills from its old percentage to the whole spine with
- * the `.fill` height transition and becomes the solid read spine, while the
- * highlight ring is on. A re-read, or reduced motion, skips the fill: the
- * ring only (instant under reduced motion), on the already solid spine. The
- * header shows "Finished *X*." ("Finished *X* again." for a re-read) while
- * `finishing` is passed. A refetch or a repack never replays it.
+ * finish moment once (see `useFinishMoment`), and the header shows
+ * "Finished *X*." ("Finished *X* again." for a re-read) while `finishing` is
+ * passed.
  */
 export default function Bookcase(props: Props) {
   const { books, meter } = props
@@ -178,121 +132,20 @@ export default function Bookcase(props: Props) {
   const labels = useRef(new Map<string, HTMLElement>())
   const [measured, setMeasured] = useState<Measured>({})
   const [stopId, setStopId] = useState<string | null>(null)
-  // The Book whose Spine popover is open: at most one.
-  const [openId, setOpenId] = useState<string | null>(null)
-  const popoverRef = useRef<HTMLDivElement>(null)
-  // The Book whose Start dialog is open (from its popover's start action).
-  const [startingId, setStartingId] = useState<string | null>(null)
-  // A press on the open spine closes its popover; the click that follows must not reopen it.
-  const closedByPress = useRef<{ id: string; at: number } | null>(null)
   const shelfRef = useRef<HTMLUListElement>(null)
-  const shelf = useCallback(() => shelfRef.current, [])
 
-  // Slice mode: spines per row, measured from the list before paint.
-  const [capacity, setCapacity] = useState<number | null>(null)
-  const allIds = useMemo(() => books.map((book) => book.id), [books])
-  const mainId = useMemo(() => books.find((book) => book.role === 'main')?.id ?? null, [books])
-  const rows = useMemo(
-    () => (priority === undefined || capacity === null ? [] : sliceRows(allIds, capacity, priority, mainId)),
-    [allIds, capacity, priority, mainId],
-  )
-  // The order the keys and the Tab stop follow: the bookcase, or the slice as displayed.
-  const ids = useMemo(() => (sliceMode ? rows.flat() : allIds), [sliceMode, rows, allIds])
-  const byId = useMemo(() => new Map(books.map((book) => [book.id, book])), [books])
+  const { rows, ids, byId } = useSliceRows({ books, priority, sliceMode, shelfRef })
   const visibleIds = useMemo(
     () => (sliceMode ? ids : books.filter((book) => matchesTitle(book.title, query)).map((book) => book.id)),
     [sliceMode, ids, books, query],
   )
-
-  useLayoutEffect(() => {
-    const list = shelfRef.current
-    if (!sliceMode || list === null) return
-    const measure = () => {
-      const style = getComputedStyle(list)
-      const width = list.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight)
-      setCapacity(rowCapacity(width, cssLength(list, '--space-spine-width'), cssLength(list, '--space-spine-gap')))
-    }
-    measure()
-    const observer = new ResizeObserver(measure)
-    observer.observe(list)
-    return () => observer.disconnect()
-  }, [sliceMode])
   const visible = useMemo(() => new Set(visibleIds), [visibleIds])
 
-  // The finish moment: a new one (a new object) starts its own phase; the same
-  // one through refetches and repacks keeps it, so it never replays.
-  const [phase, setPhase] = useState<MomentPhase | null>(null)
-  if (finishing !== null && phase?.moment !== finishing) {
-    const instant = finishing.reread || prefersReducedMotion()
-    setPhase({ moment: finishing, fill: instant ? 'done' : 'from', ring: false })
-  }
-  // A moment Home has dropped (another history entry) never starts.
-  const moment = finishing !== null && phase?.moment === finishing ? finishing : null
-  const momentInSlice = moment !== null && rows.some((row) => row.includes(moment.id))
-  const momentStarted = useRef<FinishMoment | null>(null)
-
-  // Scroll, then fill and ring. Runs a frame after the spine is in a row, so
-  // Home's focus on "No Main book." has happened and the old fill is computed.
-  useEffect(() => {
-    if (moment === null || !momentInSlice || momentStarted.current === moment) return
-    momentStarted.current = moment
-    const reduced = prefersReducedMotion()
-    let frame = 0
-    let fallback: ReturnType<typeof setTimeout> | undefined
-    let begun = false
-    const begin = () => {
-      if (begun) return
-      begun = true
-      window.removeEventListener('scrollend', begin)
-      clearTimeout(fallback)
-      setPhase((current) =>
-        current?.moment === moment
-          ? { ...current, fill: current.fill === 'from' ? 'to' : current.fill, ring: true }
-          : current,
-      )
-    }
-    frame = requestAnimationFrame(() => {
-      const spine = buttons.current.get(moment.id)
-      if (spine === undefined) return begin()
-      const inView = fullyInViewport(spine)
-      spine.scrollIntoView({ block: 'nearest', behavior: reduced ? 'auto' : 'smooth' })
-      if (inView || reduced) {
-        frame = requestAnimationFrame(begin)
-        return
-      }
-      window.addEventListener('scrollend', begin)
-      fallback = setTimeout(begin, SCROLL_FALLBACK_MS)
-    })
-    return () => {
-      cancelAnimationFrame(frame)
-      clearTimeout(fallback)
-      window.removeEventListener('scrollend', begin)
-      // Cut short before it began (a remount): the next run may start it again.
-      if (!begun && momentStarted.current === moment) momentStarted.current = null
-    }
-  }, [moment, momentInSlice])
-
-  // The fill ends on its `transitionend`, or here if that never comes.
-  const fillRunning = phase?.fill === 'to'
-  useEffect(() => {
-    if (!fillRunning) return
-    const timer = setTimeout(
-      () => setPhase((current) => (current?.fill === 'to' ? { ...current, fill: 'done' } : current)),
-      FILL_FALLBACK_MS,
-    )
-    return () => clearTimeout(timer)
-  }, [fillRunning])
-
-  // Once the spine is solid, the ring holds, then fades (the `box-shadow` transition).
-  const ringHolding = phase?.fill === 'done' && phase.ring
-  useEffect(() => {
-    if (!ringHolding) return
-    const timer = setTimeout(
-      () => setPhase((current) => (current === null ? current : { ...current, ring: false })),
-      RING_HOLD_MS,
-    )
-    return () => clearTimeout(timer)
-  }, [ringHolding])
+  const { spineMoment } = useFinishMoment({
+    finishing,
+    inSlice: (id) => rows.some((row) => row.includes(id)),
+    buttons,
+  })
 
   // The Tab stop: the last focused spine, else the nearest visible one in
   // sort order (the previous on a tie), else the first.
@@ -303,84 +156,8 @@ export default function Bookcase(props: Props) {
   // no spine focused yet, the stop starts on the first spine.
   if (stop !== null && stop !== (stopId ?? ids[0])) setStopId(stop)
 
-  // A search that hides the open spine (or a delete) closes its popover.
-  if (openId !== null && !visible.has(openId)) setOpenId(null)
-  const openBook = openId === null ? undefined : books.find((book) => book.id === openId)
-
-  // A slice repack remounts the spines: `rows` renews `anchor`, so an open
-  // popover places itself again against the new spine.
-  // oxlint-disable-next-line react-hooks/exhaustive-deps
-  const anchor = useCallback(() => (openId === null ? null : (buttons.current.get(openId) ?? null)), [openId, rows])
-
-  // Closing returns focus to the spine, unless the user put it somewhere else.
-  const closePopover = useCallback(
-    (refocus: boolean) => {
-      const spine = anchor()
-      setOpenId(null)
-      if (refocus) spine?.focus()
-    },
-    [anchor],
-  )
-
-  // The popover closes (focus back on its spine), then the Start dialog opens.
-  const openStart = useCallback(() => {
-    if (openId === null) return
-    closePopover(true)
-    setStartingId(openId)
-  }, [openId, closePopover])
-
-  // Cancel or Esc: the popover has closed, so focus returns to the spine,
-  // once the modal dialog (which makes the shelf inert) has unmounted.
-  const [refocusId, setRefocusId] = useState<{ id: string } | null>(null)
-  const cancelStart = useCallback(() => {
-    if (startingId !== null) setRefocusId({ id: startingId })
-    setStartingId(null)
-  }, [startingId])
-
-  // The spine is gone (deleted or hidden by a refetch): the shelf if it takes focus, else `main`.
-  const fallbackTarget = useCallback(() => {
-    const shelfList = shelfRef.current
-    return (
-      (shelfList !== null && !shelfList.hidden && shelfList.hasAttribute('tabindex') ? shelfList : null) ??
-      document.getElementById('main')
-    )
-  }, [])
-
-  useEffect(() => {
-    if (refocusId === null) return
-    ;(buttons.current.get(refocusId.id) ?? fallbackTarget())?.focus()
-  }, [refocusId, fallbackTarget])
-
-  // The Book was deleted elsewhere: its `book` view went missing first, so
-  // focus went back to the spine, and the catalog refetch then removed it.
-  useEffect(() => {
-    if (refocusId === null || buttons.current.has(refocusId.id)) return
-    if (document.activeElement === null || document.activeElement === document.body) fallbackTarget()?.focus()
-  }, [ids, refocusId, fallbackTarget])
-
-  // An outside click closes the popover. A click on the open spine is left to
-  // its own toggle. Focus stays on a control the click landed on (Search
-  // titles, another spine); otherwise it returns to the spine once the
-  // click's own focus change has happened.
-  useEffect(() => {
-    if (openId === null) return
-    const down = (event: PointerEvent) => {
-      const target = event.target
-      if (!(target instanceof Element)) return
-      if (popoverRef.current?.contains(target)) return
-      const spine = anchor()
-      setOpenId(null)
-      if (spine?.contains(target)) {
-        // Pressing the open spine toggles it shut; it keeps the focus the press gives it.
-        closedByPress.current = { id: openId, at: event.timeStamp }
-        return
-      }
-      if (target.closest(FOCUSABLE)) return
-      setTimeout(() => spine?.focus(), 0)
-    }
-    document.addEventListener('pointerdown', down, true)
-    return () => document.removeEventListener('pointerdown', down, true)
-  }, [openId, anchor])
+  const { openId, openBook, popoverRef, anchor, shelf, closePopover, openStart, startingId, cancelStart, clickSpine } =
+    useSpinePopover({ books, visible, ids, rows, buttons, shelfRef })
 
   // Real focus follows only when a spine that had it is now hidden; with no
   // spine left it goes to Search titles. Runs before the measuring below
@@ -441,23 +218,17 @@ export default function Bookcase(props: Props) {
 
   const spineButton = (book: ShelfBook) => {
     const main = book.role === 'main'
-    // Only the moment still passed: a dropped one draws the solid read spine and never starts.
-    const own = finishing !== null && phase?.moment === finishing && finishing.id === book.id ? phase : null
-    // The finish moment draws the finished spine as a filling Main spine until it is solid.
-    const momentFill = own !== null && own.fill !== 'done' && book.finished
-    const filling = (main && !book.finished) || momentFill
     const height = measured[book.id]?.height ?? spineHeight(0)
+    const moment = spineMoment(book, height)
+    // The finish moment draws the finished spine as a filling Main spine until it is solid.
+    const momentFill = moment.fill !== null
+    const filling = (main && !book.finished) || momentFill
     const classes = [styles.spine, filling ? styles.main : book.finished ? styles.read : styles.unread]
     if (main) classes.push(styles.marked)
     if (momentFill) classes.push(styles.finishing)
-    if (book.id === highlightId || own?.ring === true) classes.push(styles.highlight)
+    if (book.id === highlightId || moment.ring) classes.push(styles.highlight)
     if (book.id === openId) classes.push(styles.open)
-    // From the old percentage of the body to the whole spine's height (the line goes past its top).
-    const percent = momentFill
-      ? own.fill === 'from'
-        ? `${own.moment.fromPercent}%`
-        : `${height}px`
-      : `${book.percent ?? 0}%`
+    const percent = moment.fill ?? `${book.percent ?? 0}%`
     const style: CSSProperties & Record<'--spine-color' | '--percent', string | undefined> = {
       height,
       '--spine-color': book.finished || filling ? book.spineColor : undefined,
@@ -485,20 +256,8 @@ export default function Bookcase(props: Props) {
             sliceFocused.current = false
           }
         }}
-        onTransitionEnd={
-          momentFill && own.fill === 'to'
-            ? (event) => {
-                if (event.propertyName !== 'height') return
-                setPhase((current) => (current?.fill === 'to' ? { ...current, fill: 'done' } : current))
-              }
-            : undefined
-        }
-        onClick={(event) => {
-          const pressed = closedByPress.current
-          closedByPress.current = null
-          if (pressed?.id === book.id && event.timeStamp - pressed.at < 1000) return
-          setOpenId((open) => (open === book.id ? null : book.id))
-        }}
+        onTransitionEnd={moment.onTransitionEnd}
+        onClick={(event) => clickSpine(book.id, event)}
         ref={(button) => {
           const targets = focusTargets.current
           const spines = buttons.current

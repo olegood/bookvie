@@ -12,7 +12,7 @@ import type { IntentResult } from './envelope.ts'
 import type { components } from './generated/schema.d.ts'
 import { sendIntent } from './intents.ts'
 
-/** The intent keys, in form order (backend `book_fields.LABELS`). */
+/** The intent keys, in form order (backend `domain/labels.LABELS`). */
 export const BOOK_FIELD_KEYS = [
   'title',
   'subtitle',

@@ -21,7 +21,7 @@ from pydantic import (
 )
 from pydantic.alias_generators import to_camel
 
-from bookvie.domain.book_fields import LABELS, FieldFailure
+from bookvie.domain.labels import LABELS, FieldFailure
 
 from .contract import FieldError, IntentError, invalid_fields
 

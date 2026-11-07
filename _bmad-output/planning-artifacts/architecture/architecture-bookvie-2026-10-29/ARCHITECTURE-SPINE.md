@@ -7,7 +7,7 @@ paradigm: 'server-owned domain behind an intent (command) API with server-comput
 scope: 'bookvie MVP: whole system (CLI launcher, Python server, data folder, React client)'
 status: final
 created: '2026-10-29'
-updated: '2026-11-06'
+updated: '2026-11-07'
 binds: [FR-1, FR-2, FR-3, FR-4, FR-5, FR-6, FR-7, FR-8, FR-9, FR-10, FR-11, FR-14, FR-15, FR-16, FR-17, FR-18, FR-19, FR-20, FR-21, FR-22, FR-23, FR-24, A1, A2, A3, A4, A5, A6]
 sources:
   - _bmad-output/planning-artifacts/prds/prd-bookvie-2026-10-28/prd.md
@@ -337,7 +337,7 @@ bookvie/
       http/                 # FastAPI app, routes, Host/Origin guard, error handler, static/
       intents/              # one module per intent (add_book, edit_book, delete_book, set_spine_color, start_reading, edit_purpose, update_page, finish_reading, restore), export; shared: book_form, intent_model, commit, cover (decode, downscale), contract (error enum)
       views/                # read models: shelf (home, catalog, book detail), backup; models (view shapes)
-      domain/               # model (entities), invariants (check_invariants), book_fields, duplicates (ISBN), cover_color, clock, progress (percent, current_reading, reading_status), pace (Measured pace, days left), purpose, ordering (title key)
+      domain/               # model (entities), invariants (check_invariants), book_fields (form parser), labels (form order, shared failures), finished_on (Finished on parser, long date), spine_color (curated rotation, AD-11 resolve), duplicates (ISBN), cover_color, clock, progress (percent, current_reading, reading_status), pace (Measured pace, days left), purpose, ordering (title key)
       store/                # store.py (serialize, load/commit, covers, AD-4 lock, staging); fs.py (filesystem seam); restore.py (unpack); local_state.py; migrations/
     tests/
   frontend/

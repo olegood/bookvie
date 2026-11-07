@@ -40,15 +40,17 @@ from functools import partial
 
 from bookvie.domain import Book, Clock, Library, Reading, current_reading
 from bookvie.domain.book_fields import (
-    FINISH_DATE_REMOVED_MESSAGE,
     BookFields,
-    finished_after_current_start_message,
-    finished_before_start_message,
     pages_below_card_note_message,
     pages_below_current_page_message,
-    resolve_spine_color,
 )
 from bookvie.domain.duplicates import find_duplicates
+from bookvie.domain.finished_on import (
+    FINISH_DATE_REMOVED_MESSAGE,
+    finished_after_current_start_message,
+    finished_before_start_message,
+)
+from bookvie.domain.spine_color import resolve_spine_color
 from bookvie.store import Store
 
 from .book_form import (

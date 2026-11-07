@@ -26,12 +26,12 @@ from typing import get_args
 from pydantic import JsonValue
 
 from bookvie.domain import Clock, Library, current_reading
-from bookvie.domain.book_fields import (
+from bookvie.domain.finished_on import (
     FINISHED_ON_FORMAT_MESSAGE,
-    LABELS,
     finished_before_start_message,
     parse_finished_on,
 )
+from bookvie.domain.labels import LABELS
 from bookvie.domain.model import PurposeFulfilled, Reading
 from bookvie.store import Store
 

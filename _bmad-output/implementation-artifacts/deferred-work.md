@@ -352,3 +352,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/epic-3-retro-2026-11-06.md` (PL-5)
   summary: `spine-popover.spec.ts` "[P1] AC-1 at 1024px every popover is inside the viewport …" was reported as failing once under load in story 3.5. It did not reproduce: 30 of 30 at load about 65, 50 of 50 at about 45, and every run of the 5-times file burn-in passed. No race was found in it, so it is unchanged. If it fails again, keep the trace (`test-results/…/trace.zip`) and reopen this entry.
   evidence: Burn-ins on 2026-11-06 at commit `614887c` plus the home-slice fix, `--workers=4 --retries=0`.
+
+## Deferred from: review of spec-epic-3-retro-item-26-split-bookcase-and-book-fields (2026-11-07)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-epic-3-retro-item-26-split-bookcase-and-book-fields.md`
+  summary: No test proves the finish moment's fill ends on the spine's `height` `transitionend` rather than `FILL_FALLBACK_MS` (1000 ms). If `useFinishMoment`'s `onTransitionEnd` broke, the finished spine would stay "filling" about 400 ms too long and the ring hold would start late, and every check would still pass.
+  evidence: Verification-gap review of item 26. `frontend/e2e/finish-moment.spec.ts` checks the fill motion's duration and easing, and polls that the ring comes on and goes off within 4 s. None of its checks measures when the fill ends. The gap predates the refactor, which only moved the handler; a timing assertion (`finishing` class gone well before 1000 ms) fits Story 4.6's `spineButton` work.

@@ -15,7 +15,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
 
-from bookvie.domain.book_fields import COVER_TOO_LARGE_MESSAGE, LABELS
+from bookvie.domain.labels import COVER_TOO_LARGE_MESSAGE, LABELS
 
 COULDNT_SAVE_MESSAGE = "Couldn't save. Your data wasn't changed."
 COULDNT_EXPORT_MESSAGE = "Couldn't export. Your data wasn't changed."
