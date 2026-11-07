@@ -1,0 +1,8 @@
+# Team overrides for bmad-testarch-trace. Committed; applies to every developer.
+# Merges over .claude/skills/bmad-testarch-trace/customize.toml (lists append).
+
+[workflow]
+
+persistent_facts = [
+  """ATDD checklists in an epic trace (Epic 2 retro item 18, F-S3). When tracing an epic, for each of its stories' `_bmad-output/test-artifacts/atdd-checklist-{epic}-*.md`: tick each `- [ ]` line that a test this trace mapped as passing proves (`- [x]` plus ` (done: <test file>:<line or test name>)`), and retire each line the trace found moot or deliberately unautomated (`- ~~<original text>~~ **Retired:** <reason>` with a `deferred-work.md`, spec or file:line pointer; the convention in `atdd-checklist-1-10-see-the-library-as-a-bookcase.md:185-188`). In the traceability matrix, record each checklist's `[ ]` count before and after (`grep -cF '[ ]'`). A line still `[ ]` after the trace is a coverage gap: list it in the gate's gaps, so stale lines can't pass silently.""",
+]

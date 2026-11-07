@@ -364,50 +364,50 @@ Activate one test at a time: delete its `@pytest.mark.skip(reason=RED)` line, or
 - **E2E:** `npm run build && TZ=Europe/Madrid npm --prefix frontend run e2e -- e2e/restore-refusals.spec.ts`
 
 ### First: activate the guards (AC-1, AC-4)
-- [ ] Activate AC-1 and AC-4. They pass on today's code; keep them green through every step below.
+- [x] Activate AC-1 and AC-4. They pass on today's code; keep them green through every step below. (done: `backend/tests/test_restore_refusals.py:224` `test_ac1_p0_…` and `backend/tests/test_restore_refusals.py:495` `test_ac4_p0_…`, no skip marker)
 
 ### AC-2: the newer version
-- [ ] `intents/contract.py`: add `ErrorCode.RESTORE_NEWER_VERSION`, `RESTORE_NEWER_VERSION_MESSAGE` and `restore_newer_version()` (422, refusal).
-- [ ] `store/store.py`: `load_library` raises a distinct refusal (for example `LibraryNewer`) when `version > migrations.CURRENT_VERSION`, after `parse_document` (bool excluded) and before `validate_document`. Startup keeps its own `StartupError` copy.
-- [ ] `intents/restore.py`: map it to `restore_newer_version()`, with a stderr line such as `couldn't restore: library.json is schemaVersion N, newer than M`.
-- [ ] Delete `test_a_newer_schema_version_is_422_restore_invalid_until_story_2_3`.
-- [ ] `npm run check:api`, then activate AC-2.
+- [x] `intents/contract.py`: add `ErrorCode.RESTORE_NEWER_VERSION`, `RESTORE_NEWER_VERSION_MESSAGE` and `restore_newer_version()` (422, refusal). (done: `backend/bookvie/intents/contract.py:23`, `:48`, `:313`)
+- [x] `store/store.py`: `load_library` raises a distinct refusal (for example `LibraryNewer`) when `version > migrations.CURRENT_VERSION`, after `parse_document` (bool excluded) and before `validate_document`. Startup keeps its own `StartupError` copy. (done: `backend/bookvie/store/store.py:151` `LibraryNewer`, raised inside `parse_document` at `:188` after the bool check (`:185`) and before `validate_document`; startup's `StartupError` at `:361-363`)
+- [x] `intents/restore.py`: map it to `restore_newer_version()`, with a stderr line such as `couldn't restore: library.json is schemaVersion N, newer than M`. (done: `backend/bookvie/intents/restore.py:100-105`)
+- [x] Delete `test_a_newer_schema_version_is_422_restore_invalid_until_story_2_3`. (done: no longer in `backend/tests/`; `backend/tests/test_restore.py:465` points at `test_restore_refusals.py`)
+- [x] `npm run check:api`, then activate AC-2. (done: `backend/tests/test_restore_refusals.py:284` `test_ac2_p0_…`, no skip marker)
 
 ### AC-3: the archive-safety rules and limits
-- [ ] `intents/contract.py`: add `ErrorCode.RESTORE_UNSAFE` and `restore_unsafe()` (422, refusal, `RESTORE_INVALID_MESSAGE`).
-- [ ] `store/restore.py`: an `ArchiveUnsafe(ArchiveRefused)` (or a sibling), with `MAX_UPLOAD_BYTES`, `MAX_ENTRIES` and `MAX_EXTRACTED_BYTES` read through the module.
-- [ ] Before writing anything (still under the lock, after `.staging/` is emptied), walk `infolist()` and refuse when there are:
-  - [ ] more than `MAX_ENTRIES` entries;
-  - [ ] an absolute name or a `..` part;
-  - [ ] `S_IFLNK` in `external_attr >> 16`;
-  - [ ] a casefolded duplicate;
-  - [ ] anything other than `library.json`, `covers/` or `covers/<plain name>`.
-- [ ] `_copy_entry`: add each chunk's length to a running total, and raise `ArchiveUnsafe` once it passes `MAX_EXTRACTED_BYTES`, before writing that chunk.
-- [ ] The upload cap: the streaming body counter on the restore route (see Assumptions), plus a defensive size check on the spooled file in `stage_archive`. Both read `MAX_UPLOAD_BYTES` at call time.
-- [ ] `intents/restore.py`: map `ArchiveUnsafe` to `restore_unsafe()` and log the reason.
-- [ ] Delete `test_a_zip_with_an_extra_entry_is_422_restore_invalid`.
-- [ ] `npm run check:api`, then activate AC-3.
+- [x] `intents/contract.py`: add `ErrorCode.RESTORE_UNSAFE` and `restore_unsafe()` (422, refusal, `RESTORE_INVALID_MESSAGE`). (done: `backend/bookvie/intents/contract.py:49`, `:325`)
+- [x] `store/restore.py`: an `ArchiveUnsafe(ArchiveRefused)` (or a sibling), with `MAX_UPLOAD_BYTES`, `MAX_ENTRIES` and `MAX_EXTRACTED_BYTES` read through the module. (done: `backend/bookvie/store/restore.py:88` `ArchiveUnsafe(ArchiveRefused)`, limits at `:49-53`, read through `unpack.` in `intents/restore.py:60`)
+- [x] Before writing anything (still under the lock, after `.staging/` is emptied), walk `infolist()` and refuse when there are: (done: `backend/bookvie/store/restore.py:288-302` `stage_archive`, `_check_entries` at `:231`)
+  - [x] more than `MAX_ENTRIES` entries; (done: `backend/bookvie/store/restore.py:242`, plus the central-directory pre-check at `:181`)
+  - [x] an absolute name or a `..` part; (done: `backend/bookvie/store/restore.py:201` `_unsafe_name`)
+  - [x] `S_IFLNK` in `external_attr >> 16`; (done: `backend/bookvie/store/restore.py:227` `_is_symlink`)
+  - [x] a casefolded duplicate; (done: `backend/bookvie/store/restore.py:253-256`; since hardened to NFC + casefold, `_name_key` at `:210`)
+  - [x] anything other than `library.json`, `covers/` or `covers/<plain name>`. (done: `backend/bookvie/store/restore.py:257-268`)
+- [x] `_copy_entry`: add each chunk's length to a running total, and raise `ArchiveUnsafe` once it passes `MAX_EXTRACTED_BYTES`, before writing that chunk. (done: `backend/bookvie/store/restore.py:151-154` (a `_Budget` running total))
+- [x] The upload cap: the streaming body counter on the restore route (see Assumptions), plus a defensive size check on the spooled file in `stage_archive`. Both read `MAX_UPLOAD_BYTES` at call time. (done: streaming counter `backend/bookvie/http/api.py:129` `RESTORE_CAP`; spooled-file check `backend/bookvie/store/restore.py:300`; both read `MAX_UPLOAD_BYTES` at call time)
+- [x] `intents/restore.py`: map `ArchiveUnsafe` to `restore_unsafe()` and log the reason. (done: `backend/bookvie/intents/restore.py:94-96`)
+- [x] Delete `test_a_zip_with_an_extra_entry_is_422_restore_invalid`. (done: no longer in `backend/tests/`)
+- [x] `npm run check:api`, then activate AC-3. (done: `backend/tests/test_restore_refusals.py:309` `test_ac3_p0_…`, no skip marker)
 
 ### AC-5: the Backup page
-- [ ] No production change is expected; the server sends the copy. Activate AC-5 after AC-2 and AC-3 are green, with `npm run build` first.
+- [x] No production change is expected; the server sends the copy. Activate AC-5 after AC-2 and AC-3 are green, with `npm run build` first. (done: `frontend/e2e/restore-refusals.spec.ts:56` `[P1] AC-5 …`, not skipped)
 
 ### Green-phase follow-ups (secondary branches, not separate red leaves)
-- [ ] **AC-5, the enum half:** in `test_contract.py`, check that `ErrorCode` and the OpenAPI `ErrorBody.code` enum hold all four restore codes (`restore_invalid`, `restore_newer_version`, `restore_unsafe`, `couldnt_save`), and that `schema.d.ts` does too, through `check:api`.
-- [ ] **AC-3, boundaries:**
-  - [ ] exactly 5,000 entries restores;
-  - [ ] an upload of exactly `MAX_UPLOAD_BYTES`, and an extraction of exactly `MAX_EXTRACTED_BYTES`, restore.
-- [ ] **AC-3, the order:**
-  - [ ] a hostile archive whose `library.json` is also broken (or newer) is `restore_unsafe`;
-  - [ ] a symlink plus a newer version is `restore_unsafe`.
-- [ ] **AC-3, stop early:**
-  - [ ] Over the extraction cap, staging never holds more than the cap. Spy on `_copy_entry`'s writes, or check the staged sizes from a `RecordingFs`-style hook.
-  - [ ] The over-limit entry count is refused without staging any entry.
-- [ ] **AC-3, the upload cap end to end:** the streaming counter refuses a body over a lowered cap without taking the store lock (`RecordingLock` logs nothing).
-- [ ] **AC-3, the E2E twin:** an unsafe archive leaves `<data dir>/../evil.jpg` absent. The API leaf covers it; this is optional.
-- [ ] **AC-2:** a newer export whose covers are missing is still `restore_newer_version` (the version wins over the cover checks).
-- [ ] **AC-4, `.staging/`:** a fault while unpacking into `.staging/` (for example a read-only `.staging/` via `chmod`, skipped as root) is 503 `couldnt_save` with nothing changed. This closes the automation-summary gap (`store/restore.py` staging writes).
-- [ ] **AC-4, the undo fails too:** a failure removing the already-written cover is logged. The old `library.json` still references only covers that exist, since the leftover is unreferenced and the next startup sweeps it.
-- [ ] **AC-5, dark theme:** the line is `--color-ink` dark (`#ECEAE3`), and axe finds nothing with a refusal line shown, in both themes.
+- [x] **AC-5, the enum half:** in `test_contract.py`, check that `ErrorCode` and the OpenAPI `ErrorBody.code` enum hold all four restore codes (`restore_invalid`, `restore_newer_version`, `restore_unsafe`, `couldnt_save`), and that `schema.d.ts` does too, through `check:api`. (done: `backend/tests/test_contract.py:314` `test_every_restore_refusal_code_is_in_the_ad9_enum`; `frontend/src/api/generated/schema.d.ts:524`)
+- [x] **AC-3, boundaries:** (done: `backend/tests/test_restore_refusals.py:525` `test_ac3_the_limits_themselves_are_allowed`)
+  - [x] exactly 5,000 entries restores; (done: `backend/tests/test_restore_refusals.py:525` "exactly 5,000 entries")
+  - [x] an upload of exactly `MAX_UPLOAD_BYTES`, and an extraction of exactly `MAX_EXTRACTED_BYTES`, restore. (done: `backend/tests/test_restore_refusals.py:525` "an upload exactly at the limit", "an extraction exactly at the limit")
+- [x] **AC-3, the order:** (done: `backend/tests/test_restore_refusals.py:563` `test_ac3_an_unsafe_archive_is_unsafe_even_when_library_json_is_broken_or_newer`)
+  - [x] a hostile archive whose `library.json` is also broken (or newer) is `restore_unsafe`; (done: `backend/tests/test_restore_refusals.py:563` ("a .. entry and a library.json that isn't JSON", "… and a newer library.json"))
+  - [x] a symlink plus a newer version is `restore_unsafe`. (done: `backend/tests/test_restore_refusals.py:563` "a symlink and a newer library.json")
+- [x] **AC-3, stop early:** (done: `backend/tests/test_restore_refusals.py:598`, `:638`)
+  - [x] Over the extraction cap, staging never holds more than the cap. Spy on `_copy_entry`'s writes, or check the staged sizes from a `RecordingFs`-style hook. (done: `backend/tests/test_restore_refusals.py:598` `test_ac3_extraction_stops_before_staging_passes_the_cap`)
+  - [x] The over-limit entry count is refused without staging any entry. (done: `backend/tests/test_restore_refusals.py:638` `test_ac3_an_archive_over_the_entry_count_stages_nothing`)
+- [x] **AC-3, the upload cap end to end:** the streaming counter refuses a body over a lowered cap without taking the store lock (`RecordingLock` logs nothing). (done: `backend/tests/test_restore_refusals.py:704` `test_ac3_a_body_over_the_streaming_cap_is_refused_without_the_lock`)
+- ~~**AC-3, the E2E twin:** an unsafe archive leaves `<data dir>/../evil.jpg` absent. The API leaf covers it; this is optional.~~ **Retired:** optional, and not automated in the browser: `frontend/e2e/restore-refusals.spec.ts:76` posts `../evil.jpg` but checks only the page and the catalog; the API leaf pins it (`backend/tests/test_restore_refusals.py:337` with the beside-the-data-dir check at `backend/tests/test_restore_refusals.py:208`)
+- [x] **AC-2:** a newer export whose covers are missing is still `restore_newer_version` (the version wins over the cover checks). (done: `backend/tests/test_restore_refusals.py:853` `test_ac2_a_newer_export_missing_its_covers_is_still_restore_newer_version`)
+- [x] **AC-4, `.staging/`:** a fault while unpacking into `.staging/` (for example a read-only `.staging/` via `chmod`, skipped as root) is 503 `couldnt_save` with nothing changed. This closes the automation-summary gap (`store/restore.py` staging writes). (done: `backend/tests/test_restore_refusals.py:898` `test_ac4_a_fault_unpacking_into_staging_is_503_with_nothing_changed`)
+- ~~**AC-4, the undo fails too:** a failure removing the already-written cover is logged. The old `library.json` still references only covers that exist, since the leftover is unreferenced and the next startup sweeps it.~~ **Retired:** not automated: the undo logs each failed removal (`backend/bookvie/store/store.py:343-351` `_remove_covers`), but no test fails both a cover copy-in and the removal; `backend/tests/test_restore.py:433` covers only a failed cleanup after the commit; deferred to `_bmad-output/implementation-artifacts/deferred-work.md:365`
+- [x] **AC-5, dark theme:** the line is `--color-ink` dark (`#ECEAE3`), and axe finds nothing with a refusal line shown, in both themes. (done: `frontend/e2e/restore-refusals.spec.ts:106` `[P2] AC-5 the refusal line is ink in the dark theme too …`)
 
 ---
 

@@ -1,0 +1,8 @@
+# Team overrides for bmad-testarch-automate. Committed; applies to every developer.
+# Merges over .claude/skills/bmad-testarch-automate/customize.toml (lists append).
+
+[workflow]
+
+persistent_facts = [
+  """Tick the ATDD checklist as tests go green (Epic 2 retro item 18, F-S3). When this run covers a story that has `_bmad-output/test-artifacts/atdd-checklist-{epic}-{story}-*.md`, finish by resolving that checklist's `- [ ]` lines (nested ones too, and the "Green-phase follow-ups" section) against the tests this run added or ran green. A line a passing test now proves: change it to `- [x]` and append ` (done: <test file>:<line or test name>)`. A line this run decided not to automate, or one a later change made moot: rewrite it as `- ~~<original text>~~ **Retired:** <reason>`, pointing at the `deferred-work.md` entry, spec or file:line that carries it (the convention in `atdd-checklist-1-10-see-the-library-as-a-bookcase.md:185-188`). Leave a line `[ ]` only while it is still planned for later work, and name that work in the run summary. Tick only with evidence from this run or the code you read, never on the scaffold's word. Report the checklist's remaining `[ ]` count (`grep -cF '[ ]'`) in the automation summary.""",
+]

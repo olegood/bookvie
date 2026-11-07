@@ -369,52 +369,52 @@ Activate one test at a time: delete its `@pytest.mark.skip(reason=RED)` line, or
 - **E2E:** `npm run build && TZ=Europe/Madrid npm --prefix frontend run e2e -- e2e/restore.spec.ts -g "AC-1 "`
 
 ### AC-3 / AC-9 / AC-6 the restore intent (do first)
-- [ ] `store/store.py`: a locked AD-12 sequence for a whole new library (see Assumptions). Covers go in with `_write_atomic` (or `fs.replace` from `.staging/`), then the commit, then `_remove_covers` for the unreferenced ones.
-- [ ] `intents/restore.py`, all under `store.lock`:
-  - [ ] Empty `.staging/`, then unpack only `library.json` and `covers/<name>` into it. A missing `covers/` counts as empty.
-  - [ ] Parse and validate `library.json`: JSON, `schemaVersion`, migrate if older, model, `check_invariants`.
-  - [ ] Check that every referenced cover is in staging and decodes.
-  - [ ] Apply the AD-12 sequence; empty `.staging/` in `finally`.
-- [ ] `http/api.py`: `POST /intents/restore` with `intent` (Form, optional `{}`) and `archive` (`UploadFile`). Plain `def`, so it runs in the threadpool like export. It returns `OkResponse(ok=True)`.
-- [ ] `npm run check:api` to regenerate `schema.d.ts`.
-- [ ] Activate AC-3, then AC-9, then AC-6.
+- [x] `store/store.py`: a locked AD-12 sequence for a whole new library (see Assumptions). Covers go in with `_write_atomic` (or `fs.replace` from `.staging/`), then the commit, then `_remove_covers` for the unreferenced ones. (done: `backend/bookvie/store/store.py:477` `Store.replace_all`: covers via `_write_atomic` (l.521), commit (l.526), `_sweep_covers` → `_remove_covers` (l.527))
+- [x] `intents/restore.py`, all under `store.lock`: (done: `backend/bookvie/intents/restore.py:71`)
+  - [x] Empty `.staging/`, then unpack only `library.json` and `covers/<name>` into it. A missing `covers/` counts as empty. (done: `backend/bookvie/store/restore.py:286` `stage_archive`; since Story 2.3 any other entry is refused as `restore_unsafe` (l.268) rather than ignored; missing `covers/`: `test_ac9_p1_an_archive_without_covers_restores_and_empties_covers`)
+  - [x] Parse and validate `library.json`: JSON, `schemaVersion`, migrate if older, model, `check_invariants`. (done: `backend/bookvie/intents/restore.py:82` → `backend/bookvie/store/store.py:225` `load_library` (migrate l.232, `check_invariants` l.207))
+  - [x] Check that every referenced cover is in staging and decodes. (done: `backend/bookvie/intents/restore.py:87`)
+  - [x] Apply the AD-12 sequence; empty `.staging/` in `finally`. (done: `backend/bookvie/intents/restore.py:93` (`replace_all`) and l.74 (`empty_staging` in `finally`))
+- [x] `http/api.py`: `POST /intents/restore` with `intent` (Form, optional `{}`) and `archive` (`UploadFile`). Plain `def`, so it runs in the threadpool like export. It returns `OkResponse(ok=True)`. (done: `backend/bookvie/http/api.py:522` `restore_intent`)
+- [x] `npm run check:api` to regenerate `schema.d.ts`. (done: `frontend/src/api/generated/schema.d.ts:276`)
+- [x] Activate AC-3, then AC-9, then AC-6. (done: `backend/tests/test_restore.py` `test_ac3_p0_a_valid_export_replaces_the_library_in_ad12_order_under_one_lock`, `test_ac9_p1_an_archive_without_covers_restores_and_empties_covers`, `test_ac6_p0_export_then_restore_reproduces_library_json_and_every_cover_byte_for_byte`, none skipped)
 
 ### AC-5 the older schemaVersion
-- [ ] Run `migrations.migrate(doc)` when `schemaVersion < migrations.CURRENT_VERSION`, before model validation (the module attribute, not an import-time copy).
-- [ ] Activate AC-5.
+- [x] Run `migrations.migrate(doc)` when `schemaVersion < migrations.CURRENT_VERSION`, before model validation (the module attribute, not an import-time copy). (done: `backend/bookvie/store/store.py:232`)
+- [x] Activate AC-5. (done: `backend/tests/test_restore.py` `test_ac5_p1_an_older_schema_version_is_migrated_through_the_chain_then_restored`, not skipped)
 
 ### AC-8 / AC-10 cleanup
-- [ ] `.staging/` is emptied in `finally` after a refused restore too. A garbage upload must not leave anything.
-- [ ] After the commit, every cleanup failure is logged and swallowed, and the response stays 200.
-- [ ] Activate AC-8, then AC-10.
+- [x] `.staging/` is emptied in `finally` after a refused restore too. A garbage upload must not leave anything. (done: `backend/bookvie/intents/restore.py:74`; `backend/tests/test_restore.py` `test_ac8_p1_staging_is_emptied_after_a_restore_whether_it_succeeded_or_was_refused`)
+- [x] After the commit, every cleanup failure is logged and swallowed, and the response stays 200. (done: `backend/bookvie/store/store.py:343` `_remove_covers` and `empty_staging(quiet=True)` (l.540))
+- [x] Activate AC-8, then AC-10. (done: `backend/tests/test_restore.py` `test_ac8_p1_staging_is_emptied_after_a_restore_whether_it_succeeded_or_was_refused`, `test_ac10_p1_a_failed_cleanup_after_the_commit_still_succeeds_and_startup_sweeps_it`, none skipped)
 
 ### AC-1 / AC-2 / AC-4 / AC-7 the Backup page
-- [ ] **Change the existing test:** `frontend/e2e/backup.spec.ts`, the test titled "[P2] AC-2 the Restore card explains itself, and its button is unavailable until restore arrives", asserts `aria-disabled` and "Restore arrives in the next update.". In the same change that enables the button, keep its explanation-line check and drop the `aria-disabled`, description and `:disabled` assertions.
-- [ ] `BackupPage.tsx`:
-  - [ ] Remove `RESTORE_NOT_YET`.
-  - [ ] **Restore from file…** clicks a visually hidden `<input type="file" accept=".zip,application/zip">`, whose value is reset after each pick.
-  - [ ] Picking a file opens `ConfirmDialog` with `heading="Replace all data with this file?"`, `lines={['Your current books, readings and card notes will be replaced.']}` and `confirmLabel="Replace all data"`.
-- [ ] Cancel and Esc unmount the dialog and focus Restore from file….
-- [ ] Replace all data:
-  - [ ] Close the dialog and call `restore(file)` in `api/`.
-  - [ ] After `BUSY_DELAY_MS`, label the button "Restoring…" with `busy` (native `disabled`, 60% opacity, as Export does).
-  - [ ] On 200, `queryClient.invalidateQueries()`, navigate to `/`, then announce `status` "Restored." after focus settles.
-- [ ] `api/intents.ts` (or a new `api/restore.ts`): a multipart POST with `intent` `{}` and `archive`. Refusals surface as Story 2.3's failure line, not here.
-- [ ] Activate AC-1, AC-2, AC-4, then AC-7.
+- [x] **Change the existing test:** `frontend/e2e/backup.spec.ts`, the test titled "[P2] AC-2 the Restore card explains itself, and its button is unavailable until restore arrives", asserts `aria-disabled` and "Restore arrives in the next update.". In the same change that enables the button, keep its explanation-line check and drop the `aria-disabled`, description and `:disabled` assertions. (done: `frontend/e2e/backup.spec.ts:172` "[P2] AC-2 the Restore card explains itself", which now asserts the button is enabled and has neither `aria-disabled` nor the old description)
+- [x] `BackupPage.tsx`: (done: `frontend/src/pages/BackupPage.tsx`)
+  - [x] Remove `RESTORE_NOT_YET`. (done: no `RESTORE_NOT_YET` left in `frontend/src`)
+  - [x] **Restore from file…** clicks a visually hidden `<input type="file" accept=".zip,application/zip">`, whose value is reset after each pick. (done: `frontend/src/pages/BackupPage.tsx:178` (the `hidden` input), reset at l.131)
+  - [x] Picking a file opens `ConfirmDialog` with `heading="Replace all data with this file?"`, `lines={['Your current books, readings and card notes will be replaced.']}` and `confirmLabel="Replace all data"`. (done: `frontend/src/pages/BackupPage.tsx:183`, copy at l.30-32)
+- [x] Cancel and Esc unmount the dialog and focus Restore from file…. (done: `frontend/src/pages/BackupPage.tsx:135` `cancelRestore`; `frontend/e2e/restore.spec.ts:77` "[P1] AC-2 Cancel or Esc in the Confirm dialog changes nothing…")
+- [x] Replace all data: (done: `frontend/src/pages/BackupPage.tsx:141` `runRestore`)
+  - [x] Close the dialog and call `restore(file)` in `api/`. (done: `frontend/src/pages/BackupPage.tsx:145` (`setPicked(null)`) and l.149)
+  - [x] After `BUSY_DELAY_MS`, label the button "Restoring…" with `busy` (native `disabled`, 60% opacity, as Export does). (done: `frontend/src/pages/BackupPage.tsx:148` and l.175; native `disabled` at 60% in `frontend/src/components/Button.tsx:14`)
+  - [x] On 200, `queryClient.invalidateQueries()`, navigate to `/`, then announce `status` "Restored." after focus settles. (done: `frontend/src/api/intents.ts:49` invalidates every view, then `frontend/src/pages/BackupPage.tsx:155` (`navigate('/')`) and l.156 (`announce('status', RESTORED)`))
+- [x] `api/intents.ts` (or a new `api/restore.ts`): a multipart POST with `intent` `{}` and `archive`. Refusals surface as Story 2.3's failure line, not here. (done: `frontend/src/api/restore.ts:10` (`api/restore.ts`))
+- [x] Activate AC-1, AC-2, AC-4, then AC-7. (done: `frontend/e2e/restore.spec.ts:60`, `:77`, `:104`, `:150`, none skipped)
 
 ### Green-phase follow-ups (secondary branches, not separate red leaves)
-- [ ] **AC-1:** Replace all data is `button-primary` (computed background `rgb(85, 112, 89)` in light), and there is no red in the dialog. Axe AA on `/backup` with the dialog open, in both themes.
-- [ ] **AC-2:** pressing Esc after Cancel has already closed the dialog doesn't move focus. A dismissed dialog announces nothing.
-- [ ] **AC-3:**
-  - [ ] Validation runs before anything changes (the 2.3 refusals prove it).
-  - [ ] A concurrent intent sent during a slow restore waits for the lock, then applies to the restored library (no lost update).
-- [ ] **AC-4:**
-  - [ ] Restoring on the Catalog route with a preference set to `bookcase` keeps it.
-  - [ ] After Home exists (Epic 3), the launch page `/` is Home and its `h1` is focused. The leaf asserts only "the `h1` at `/`", so it survives that change.
-- [ ] **AC-6:** the round trip goes through the browser (export download → restore file chooser) on the rich fixture, then Book detail for Dune matches (BKP-E2E-001's full form).
-- [ ] **AC-7:** a fast restore never shows "Restoring…" (watch the button names, as 2.1's fast-export test does). A double-click on Replace all data sends one request.
-- [ ] **AC-10, E2E:** with a faulty cleanup (not reachable from the browser), "Restored." still shows. The API leaf covers it; the browser half needs a test hook, so it's not automated.
-- [ ] **AC-10, `.staging/` half:** a fault while emptying `.staging/` after the commit, through the seam, logs and returns 200. The `FaultyFs("remove")` leaf covers it only if staging cleanup goes through `fs.remove`. If the implementation uses `shutil.rmtree`, add a monkeypatched-`rmtree` test.
+- [x] **AC-1:** Replace all data is `button-primary` (computed background `rgb(85, 112, 89)` in light), and there is no red in the dialog. Axe AA on `/backup` with the dialog open, in both themes. (done: `frontend/e2e/restore.spec.ts:183` "[P2] AC-1 Replace all data is button-primary and axe finds nothing with the dialog open, in both themes"; the dialog's only filled button is the primary one (`frontend/src/components/ConfirmDialog.tsx:79`))
+- [x] **AC-2:** pressing Esc after Cancel has already closed the dialog doesn't move focus. A dismissed dialog announces nothing. (done: `frontend/e2e/restore.spec.ts:205` "[P2] AC-2 Esc after Cancel has closed the dialog keeps focus on Restore from file… and announces nothing")
+- [x] **AC-3:** (done: sub-items below)
+  - [x] Validation runs before anything changes (the 2.3 refusals prove it). (done: `backend/tests/test_restore_refusals.py` `test_ac1_p0_a_damaged_or_invalid_file_is_422_restore_invalid_and_changes_nothing`, `test_ac3_p0_a_hostile_archive_is_422_restore_unsafe_before_anything_outside_staging_changes`)
+  - [x] A concurrent intent sent during a slow restore waits for the lock, then applies to the restored library (no lost update). (done: `backend/tests/test_restore.py` `test_an_intent_sent_during_a_slow_restore_waits_then_applies_to_the_restored_library`)
+- [x] **AC-4:** (done: sub-items below)
+  - [x] Restoring on the Catalog route with a preference set to `bookcase` keeps it. (done: `frontend/e2e/restore.spec.ts:104` "[P1] AC-4 a restore says "Restored." …keeping Last export and preferences" sets `bookvie.catalogView` (to `list`) and asserts it is unchanged after the restore)
+  - [x] After Home exists (Epic 3), the launch page `/` is Home and its `h1` is focused. The leaf asserts only "the `h1` at `/`", so it survives that change. (done: `frontend/e2e/restore.spec.ts:134` (the `h1` "Home" at `/` is focused))
+- ~~**AC-6:** the round trip goes through the browser (export download → restore file chooser) on the rich fixture, then Book detail for Dune matches (BKP-E2E-001's full form).~~ **Retired:** not automated; the round trip is checked at the API level (`backend/tests/test_restore.py` `test_ac6_p0_export_then_restore_reproduces_library_json_and_every_cover_byte_for_byte`), the browser form is deferred (`_bmad-output/implementation-artifacts/deferred-work.md:202`)
+- [x] **AC-7:** a fast restore never shows "Restoring…" (watch the button names, as 2.1's fast-export test does). A double-click on Replace all data sends one request. (done: `frontend/e2e/restore.spec.ts:220` "[P2] AC-7 a fast restore never shows "Restoring…"" and `:243` "[P2] AC-7 a double click on Replace all data sends one restore")
+- ~~**AC-10, E2E:** with a faulty cleanup (not reachable from the browser), "Restored." still shows. The API leaf covers it; the browser half needs a test hook, so it's not automated.~~ **Retired:** not automated (needs a fault seam under the e2e server); the API leaf is `backend/tests/test_restore.py` `test_ac10_p1_a_failed_cleanup_after_the_commit_still_succeeds_and_startup_sweeps_it`, the browser half is deferred (`_bmad-output/implementation-artifacts/deferred-work.md:202`)
+- [x] **AC-10, `.staging/` half:** a fault while emptying `.staging/` after the commit, through the seam, logs and returns 200. The `FaultyFs("remove")` leaf covers it only if staging cleanup goes through `fs.remove`. If the implementation uses `shutil.rmtree`, add a monkeypatched-`rmtree` test. (done: staging files are deleted through `fs.remove` (`backend/bookvie/store/store.py` `_remove_tree`), so `backend/tests/test_restore.py` `test_ac10_p1_a_failed_cleanup_after_the_commit_still_succeeds_and_startup_sweeps_it` covers it (asserts `couldn't delete .staging/library.json` and 200))
 
 ---
 

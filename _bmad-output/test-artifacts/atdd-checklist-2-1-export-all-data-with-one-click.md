@@ -257,43 +257,43 @@ Activate one test at a time: delete its `@pytest.mark.skip(reason=RED)` line, or
 - **E2E:** `npm run build && TZ=Europe/Madrid npm --prefix frontend run e2e -- e2e/backup.spec.ts -g "AC-1 "`
 
 ### AC-3 / AC-6 the export route (do first)
-- [ ] `intents/contract.py`: `ErrorKind.COULDNT_EXPORT`, `ErrorCode.COULDNT_EXPORT`, `COULDNT_EXPORT_MESSAGE`, and a `couldnt_export()` error (status 503).
-- [ ] `intents/export.py`:
-  - [ ] Under `store.lock`, write `library.json` (as stored), the `covers/` directory entry and the covers into a `tempfile.SpooledTemporaryFile(max_size=10 * 1024 * 1024)`.
-  - [ ] Turn any `OSError` into `couldnt_export`.
-  - [ ] Release the lock, then return the spooled file.
-- [ ] `http/api.py`: `GET /export` (outside `/api/intents/`, AD-1 layering), with the 503 in its documented responses. Stream the file in chunks.
-- [ ] Activate AC-3, then AC-6.
+- [x] `intents/contract.py`: `ErrorKind.COULDNT_EXPORT`, `ErrorCode.COULDNT_EXPORT`, `COULDNT_EXPORT_MESSAGE`, and a `couldnt_export()` error (status 503). (done: backend/bookvie/intents/contract.py:21, :35, :46, :289 (`couldnt_export()` is 503))
+- [x] `intents/export.py`: (done: backend/bookvie/intents/export.py:71 `build_export`)
+  - [x] Under `store.lock`, write `library.json` (as stored), the `covers/` directory entry and the covers into a `tempfile.SpooledTemporaryFile(max_size=10 * 1024 * 1024)`. (done: backend/bookvie/intents/export.py:51-80, `SPOOL_MEMORY_LIMIT` at :30)
+  - [x] Turn any `OSError` into `couldnt_export`. (done: backend/bookvie/intents/export.py:35, :82-85)
+  - [x] Release the lock, then return the spooled file. (done: backend/bookvie/intents/export.py:79-89)
+- [x] `http/api.py`: `GET /export` (outside `/api/intents/`, AD-1 layering), with the 503 in its documented responses. Stream the file in chunks. (done: backend/bookvie/http/api.py:305 (router prefix `/api` at :103), 503 at :301, 64 KiB chunks at :268-272)
+- [x] Activate AC-3, then AC-6. (done: backend/tests/test_export.py:199 `test_ac3_p0_…` and :301 `test_ac6_p1_…`, both unskipped (only a root `skipif` on AC-6))
 
 ### AC-5 "Last export"
-- [ ] Write `local-state.json` atomically through the store's filesystem seam (temp, fsync, rename, `fsync_dir`).
-- [ ] Record only after the last chunk has gone out with no disconnect:
-  - [ ] **Not** in a Starlette `BackgroundTask`. It runs even after an abort; see "The ASGI harness".
-  - [ ] Record after the streaming generator's last `yield`, or check for a disconnect explicitly.
-- [ ] A HEAD request records nothing.
-- [ ] If the record itself can't be written after a complete download, the response is already sent: log it to stderr. A spec decision; there is no red leaf for it.
-- [ ] Activate AC-5.
+- [x] Write `local-state.json` atomically through the store's filesystem seam (temp, fsync, rename, `fsync_dir`). (done: backend/bookvie/store/store.py:576 `record_export` through `_write_atomic` at :592)
+- [x] Record only after the last chunk has gone out with no disconnect: (done: backend/bookvie/http/api.py:213 `ExportResponse`; aborted download in backend/tests/test_export.py `test_ac5_p1_only_a_complete_download_records_last_export_in_local_state`)
+  - [x] **Not** in a Starlette `BackgroundTask`. It runs even after an abort; see "The ASGI harness". (done: backend/bookvie/http/api.py:281-282, `on_complete` runs after the task group, not as a `BackgroundTask`)
+  - [x] Record after the streaming generator's last `yield`, or check for a disconnect explicitly. (done: backend/bookvie/http/api.py:252-256 disconnect watcher, :277 `complete = not gone`)
+- [x] A HEAD request records nothing. (done: backend/tests/test_export.py:280-294 in `test_ac5_p1_…`)
+- [x] If the record itself can't be written after a complete download, the response is already sent: log it to stderr. A spec decision; there is no red leaf for it. (done: backend/bookvie/intents/export.py:92-97; backend/tests/test_export.py `test_a_failed_record_is_logged_and_the_download_still_succeeds`)
+- [x] Activate AC-5. (done: backend/tests/test_export.py:254 `test_ac5_p1_…`, unskipped)
 
 ### AC-1 / AC-2 / AC-4 the Backup page
-- [ ] **Change the existing test:** `frontend/e2e/app-shell.spec.ts:120` asserts there is no `Backup` link. Drop `'Backup'` from that list in the same change that adds the nav item, or AC-2 of Story 1.6 goes red.
-- [ ] `AppShell.tsx`: a `NavLink` "Backup" to `/backup` after Catalog. `main.tsx`: the `/backup` route.
-- [ ] `pages/BackupPage.tsx`: `PageHeading` "Backup", the title, and two surface cards.
-  - [ ] **Export card:** `Button` primary "Export all data", with the "Last export" line in `meta` / `ink-tertiary` below.
-  - [ ] **Restore card:** `Button` secondary "Restore from file…" and the explanation line.
-- [ ] A view for "Last export" (see Assumptions); regenerate `schema.d.ts`.
-- [ ] Export: `fetch('/api/export')`.
-  - [ ] After ~300 ms with no answer, set the label to "Exporting…" with native `disabled` and opacity 0.6 (DESIGN.md Busy button).
-  - [ ] On 200: blob, object URL, `<a download>` click. Then refetch the "Last export" view.
-  - [ ] On a 503: show `FailureMessage` with the server's message under Export, and announce it in `alert`.
-- [ ] Activate AC-1, AC-2, then AC-4.
+- [x] **Change the existing test:** `frontend/e2e/app-shell.spec.ts:120` asserts there is no `Backup` link. Drop `'Backup'` from that list in the same change that adds the nav item, or AC-2 of Story 1.6 goes red. (done: frontend/e2e/app-shell.spec.ts:122 now expects `['Home', 'Catalog', 'Backup']`)
+- [x] `AppShell.tsx`: a `NavLink` "Backup" to `/backup` after Catalog. `main.tsx`: the `/backup` route. (done: frontend/src/components/AppShell.tsx:45, frontend/src/main.tsx:37)
+- [x] `pages/BackupPage.tsx`: `PageHeading` "Backup", the title, and two surface cards. (done: frontend/src/pages/BackupPage.tsx:166-181)
+  - [x] **Export card:** `Button` primary "Export all data", with the "Last export" line in `meta` / `ink-tertiary` below. (done: frontend/src/pages/BackupPage.tsx:168-171, frontend/src/pages/BackupPage.module.css:40-47)
+  - [x] **Restore card:** `Button` secondary "Restore from file…" and the explanation line. (done: frontend/src/pages/BackupPage.tsx:175-179 (`Button` defaults to `secondary`))
+- [x] A view for "Last export" (see Assumptions); regenerate `schema.d.ts`. (done: backend/bookvie/http/api.py:322 `GET /api/views/backup`, backend/bookvie/views/backup.py:8; frontend/src/api/generated/schema.d.ts:45)
+- [x] Export: `fetch('/api/export')`. (done: frontend/src/api/export.ts:52 (with the `X-Bookvie-Export` header))
+  - [x] After ~300 ms with no answer, set the label to "Exporting…" with native `disabled` and opacity 0.6 (DESIGN.md Busy button). (done: frontend/src/pages/BackupPage.tsx:103-106, :169; frontend/src/components/Button.tsx:50; frontend/src/components/Button.module.css:34-35)
+  - [x] On 200: blob, object URL, `<a download>` click. Then refetch the "Last export" view. (done: frontend/src/api/export.ts:54-66; frontend/src/pages/BackupPage.tsx:120 `refreshLastExport`)
+  - [x] On a 503: show `FailureMessage` with the server's message under Export, and announce it in `alert`. (done: frontend/src/pages/BackupPage.tsx:111-114, :172)
+- [x] Activate AC-1, AC-2, then AC-4. (done: frontend/e2e/backup.spec.ts:70 `[P1] AC-1`, :87 `[P2] AC-2`, :111 `[P2] AC-4`, none skipped)
 
 ### Green-phase follow-ups (secondary branches, not separate red leaves)
-- [ ] **AC-2:** the Restore explanation line, once the spec fixes its copy. The Export button has `button-primary` and the Restore button `button-secondary` (computed background against the tokens, as Story 1.6 AC-9 does). The "Last export" line color is `ink-tertiary`. Axe AA on `/backup` in both themes.
-- [ ] **AC-3, E2E:** the download is named `bookvie-export-<today>.zip`, using the local date the browser sees, and starts with `PK\x03\x04`.
-- [ ] **AC-4:** an export faster than ~300 ms never shows "Exporting…" (watch the button name through a fast real export). The busy state is the only native-disabled control (copy and interaction guard, Story 1.6 AC-14).
-- [ ] **AC-5, E2E:** after a real download, "Last export: today". A second browser context (fresh `localStorage`) on the same server also reads "Last export: today".
-- [ ] **AC-6, E2E:** on a seeded server with an earlier `local-state.json`, set a referenced cover to `chmod 000`, then press Export. "Couldn't export. Your data wasn't changed." appears under Export and in `alert`, `status` stays empty, "Last export: 3 days ago" is unchanged, and the button is back to "Export all data".
-- [ ] **AC-3, not automated:** the spooled temp file and its ~10 MB in-memory threshold. Check in code review.
+- [x] **AC-2:** the Restore explanation line, once the spec fixes its copy. The Export button has `button-primary` and the Restore button `button-secondary` (computed background against the tokens, as Story 1.6 AC-9 does). The "Last export" line color is `ink-tertiary`. Axe AA on `/backup` in both themes. (done: frontend/e2e/backup.spec.ts:172 `AC-2 the Restore card explains itself`, :184 `AC-2 … use their tokens`, :309 `AC-2 axe finds nothing on /backup in both themes`)
+- [x] **AC-3, E2E:** the download is named `bookvie-export-<today>.zip`, using the local date the browser sees, and starts with `PK\x03\x04`. (done: frontend/e2e/backup.spec.ts:196 `[P1] AC-3 AC-5 a real export downloads bookvie-export-<today>.zip…`)
+- ~~**AC-4:** an export faster than ~300 ms never shows "Exporting…" (watch the button name through a fast real export). The busy state is the only native-disabled control (copy and interaction guard, Story 1.6 AC-14).~~ **Retired:** the fast-export half is done (`frontend/e2e/backup.spec.ts:228` `[P2] AC-4 a fast export never shows "Exporting…"`); the guard that the busy state is the only native-disabled control is not automated: `frontend/scripts/copy.test.mjs` doesn't scan for `disabled`, and the rule lives only in `frontend/src/components/Button.tsx:14-18,50`; deferred to `_bmad-output/implementation-artifacts/deferred-work.md:368`
+- [x] **AC-5, E2E:** after a real download, "Last export: today". A second browser context (fresh `localStorage`) on the same server also reads "Last export: today". (done: frontend/e2e/backup.spec.ts:196 `[P1] AC-3 AC-5 …` (second browser context at :216-223))
+- [x] **AC-6, E2E:** on a seeded server with an earlier `local-state.json`, set a referenced cover to `chmod 000`, then press Export. "Couldn't export. Your data wasn't changed." appears under Export and in `alert`, `status` stays empty, "Last export: 3 days ago" is unchanged, and the button is back to "Export all data". (done: frontend/e2e/backup.spec.ts:251 `[P1] AC-6 an export that fails shows the couldn't-export line and keeps Last export`)
+- ~~**AC-3, not automated:** the spooled temp file and its ~10 MB in-memory threshold. Check in code review.~~ **Retired:** a "check in code review" line, never automated; the code is `backend/bookvie/intents/export.py:30` (`SPOOL_MEMORY_LIMIT = 10 * 1024 * 1024`) and :77 (`SpooledTemporaryFile(max_size=SPOOL_MEMORY_LIMIT)`)
 
 ---
 

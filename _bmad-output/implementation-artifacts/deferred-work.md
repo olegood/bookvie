@@ -358,3 +358,12 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-epic-3-retro-item-26-split-bookcase-and-book-fields.md`
   summary: No test proves the finish moment's fill ends on the spine's `height` `transitionend` rather than `FILL_FALLBACK_MS` (1000 ms). If `useFinishMoment`'s `onTransitionEnd` broke, the finished spine would stay "filling" about 400 ms too long and the ring hold would start late, and every check would still pass.
   evidence: Verification-gap review of item 26. `frontend/e2e/finish-moment.spec.ts` checks the fill motion's duration and easing, and polls that the ring comes on and goes off within 4 s. None of its checks measures when the fill ends. The gap predates the refactor, which only moved the handler; a timing assertion (`finishing` class gone well before 1000 ms) fits Story 4.6's `spineButton` work.
+
+## Deferred from: Epic 2 retro item 18, the stale Epic 2 ATDD checklists (2026-11-07)
+
+- source_spec: `_bmad-output/test-artifacts/atdd-checklist-2-3-refuse-damaged-hostile-or-newer-files.md` (AC-4 follow-up)
+  summary: No test covers a restore whose cover copy-in fails and whose undo then fails to remove the cover it already wrote.
+  evidence: `backend/bookvie/store/store.py:343-351` (`_remove_covers`) logs each failed removal, but `backend/tests/test_restore.py:433` covers only a cleanup that fails after the commit. Low: the leftover cover is unreferenced and the next startup sweeps it.
+- source_spec: `_bmad-output/test-artifacts/atdd-checklist-2-1-export-all-data-with-one-click.md` (AC-4 follow-up)
+  summary: Nothing checks that the Busy button is the only native-`disabled` control (Story 1.6 AC-14's interaction guard).
+  evidence: The rule lives only in `frontend/src/components/Button.tsx:14-18,50`; `frontend/scripts/copy.test.mjs` doesn't look for `disabled`, so a new `disabled` control would pass every check. Low.
