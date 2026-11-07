@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-29-2026 17:21
-last_updated: 11-07-2026 20:41
+last_updated: 11-07-2026 22:11
 project: bookvie
 project_key: NOKEY
 tracking_system: file-system
@@ -225,7 +225,7 @@ action_items:
     action: "Tick or retire the 105 stale Epic 2 ATDD checklist lines and have automate/trace
       tick lines as they go green (F-S3)"
     owner: "Murat (TEA)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-2-retro-2026-11-04.md"
   - id: "epic-2-retro-item-19-settle-ruff-add-config-and-run-ruff-chec"
     epic: 2
