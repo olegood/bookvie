@@ -1,0 +1,9 @@
+# Team overrides for bmad-sprint-planning. Committed; applies to every developer.
+# Merges over .claude/skills/bmad-sprint-planning/customize.toml (lists append,
+# arrays of tables merge by `code`/`id`).
+
+[workflow]
+
+persistent_facts = [
+  """Open action items with owners (Epic 3 retro item 31). In the sprint-planning intent (the full flow and its refresh), after tracking is generated and validated and before the close-out, run the status view's script and list every open action item from `open_action_items` (status `open` or `in-progress`) in one table: epic, action, owner, status. Group them by owner. Flag the items due before or at the epic about to start, or before one of its stories (an action that says "before Epic N", "before story N.M", "at Epic N planning" or "now", where N is that epic), and put them first. Ask the owner of each flagged item whether it is done, still open, or re-scoped to a new trigger, and apply only confirmed changes, using `bmad-retrospective`'s `sprint_status.py update --set-action-status` for done or in-progress. In the status-view intent, render the same table with the owner column. Headless: list the table and the flagged items in the JSON response, and change no statuses.""",
+]
