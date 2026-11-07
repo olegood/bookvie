@@ -1,0 +1,9 @@
+# Team overrides for bmad-retrospective. Committed; applies to every developer.
+# Merges over .claude/skills/bmad-retrospective/customize.toml (lists append,
+# arrays of tables merge by `code`/`id`).
+
+[workflow]
+
+persistent_facts = [
+  """Spine policy (AGENTS.md "Architecture spine"; Epic 3 retro item 24). The spine is reconciled once per epic. In Phase 4, always propose one action item, due before the next epic, to reconcile ARCHITECTURE-SPINE.md with this epic: list each `deferred-work.md` entry from this epic's stories that carries the marker "spine drift" and has no `resolved:` line, with the AD it names. Also scan this epic's spine-check findings for drift deferred without the marker, and list those too. If there are none, still record in the document that the spine was checked and needs no reconciliation, and propose no item. Story-level deferral of spine drift is the policy, not a finding; a finding is drift that never reached `deferred-work.md`, or a spine-check finding where the code breaks a decision.""",
+]

@@ -29,3 +29,12 @@ Two formatters are enforced. `npm run check` fails on unformatted code, and so d
 **Lint.** oxlint (`frontend/.oxlintrc.json`) and `tsc -b` run in `check:api`. ruff's lint runs in `check:py`.
 
 **Blame.** The one-time reformat is listed in `.git-blame-ignore-revs`. To have `git blame` skip it, run `git config blame.ignoreRevsFile .git-blame-ignore-revs`.
+
+## Architecture spine
+
+The spine is `_bmad-output/planning-artifacts/architecture/architecture-bookvie-2026-10-29/ARCHITECTURE-SPINE.md`. It is reconciled once per epic, not per story (Epic 3 retro item 24, which supersedes Epic 2 item 16):
+
+- **During a story,** the spine-check review layer still runs. A finding where the code is right and the spine is out of date is spine drift: defer it to `_bmad-output/implementation-artifacts/deferred-work.md` with the words "spine drift" and the AD it names, and close the story. The marker is what the retro and the next-epic gate look for, since "spine" alone also means a Book's spine. Drift doesn't block a story. Don't edit the spine inside a story.
+- **A finding where the code breaks a decision it should follow** is not drift. Fix it in the story like any other review finding.
+- **The retrospective** always proposes an action item to reconcile the spine with the epic, listing that epic's unresolved "spine drift" entries in `deferred-work.md`.
+- **Before the next epic's first story,** that reconciliation lands: one pass edits the spine and adds a `resolved:` line to each drift entry it closes. `bmad-build` stops at the first story of an epic while the previous epic has unresolved "spine drift" entries, unless you tell it to proceed.
