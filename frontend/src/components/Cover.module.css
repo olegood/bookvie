@@ -34,6 +34,26 @@
   width: 60px;
 }
 
+/* The 44×64 thumbnail (DESIGN.md → Section pane, Main book card — empty). */
+.thumb {
+  flex: none;
+  width: 44px;
+  height: 64px;
+}
+
+.noCoverThumb {
+  gap: 5px;
+}
+
+.noCoverThumb .titleBar {
+  width: 24px;
+  height: 3px;
+}
+
+.noCoverThumb .titleBarShort {
+  width: 16px;
+}
+
 @media (forced-colors: active) {
   .noCover {
     border-color: CanvasText;

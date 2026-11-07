@@ -16,7 +16,13 @@ from tests.helpers import (
 )
 
 SHELF_EMPTY = {"meter": {"finished": 0, "total": 0}, "books": []}
-HOME_EMPTY = {**SHELF_EMPTY, "mainBook": None, "lastExportAt": None, "slicePriority": []}
+HOME_EMPTY = {
+    **SHELF_EMPTY,
+    "mainBook": None,
+    "upNext": None,
+    "lastExportAt": None,
+    "slicePriority": [],
+}
 CATALOG_EMPTY = {**SHELF_EMPTY, "tags": []}
 EMPTY = {"home": HOME_EMPTY, "catalog": CATALOG_EMPTY}
 
@@ -184,7 +190,7 @@ def test_book_view_role_names_main_up_next_and_waiting(
         return body["role"], body["waitingPage"]
 
     assert role(dune) == ("main", None)
-    # Up next wins over its paused Reading.
+    # Up next wins over its paused Reading; waitingPage stays waiting-only.
     assert role(neuromancer) == ("upNext", None)
     assert role(dispossessed) == ("waiting", 120)
     # Unfinished and not Main is paused (AD-19), whether or not pausedAt is set,
@@ -493,5 +499,20 @@ def test_book_view_current_reading_main_paused_and_none(
         "percent": 29,
         "purpose": None,
     }
-    assert current(neuromancer) is None
+    # A paused Up next carries its Reading, so the Start dialog resumes it (Story 4.1).
+    assert current(neuromancer) == {
+        "status": "upNext",
+        "startDate": "2026-01-01",
+        "currentPage": 80,
+        "percent": 29,
+        "purpose": None,
+    }
     assert current(finished) is None
+    # A never-started Up next has none, and neither has a finished one with no
+    # Reading in progress.
+    plain = library_builder.book(title="Piranesi", pages=245)
+    for up_next in (plain, finished):
+        library_builder.up_next(up_next)
+        library_builder.write(tmp_path)
+        body = api_client(tmp_path).get("/api/views/book", params={"id": up_next}).json()
+        assert (body["role"], body["currentReading"]) == ("upNext", None)

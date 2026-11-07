@@ -249,10 +249,12 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-1-see-my-main-book-on-home.md`
   summary: Decide Book detail's Current reading block for an Up-next Book with a paused Reading (today it gets none, while ShelfBook still carries its percent and currentPage).
   evidence: `views/shelf.py` `_role_reading` returns ("upNext", None) before it looks at the Reading. AD-19 still counts that Reading as paused, and FR-7 shows a paused Up next only in Up next with Resume. Up next can't be set until Story 4.1.
+  resolved: `spec-4-1-keep-the-interrupted-book-as-up-next.md` (2026-11-07); `_role_reading` returns the Up next Book's current Reading, and `CurrentReading.status` is `upNext` ("Up next, paused at page N").
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-2-start-reading-a-book.md`
   summary: `start-reading` for an Up next or Side-read Book fails `main_not_up_next`/`main_not_side_read` with 500, and for an Up next Book with a paused Reading the dialog says "Start" (views give no `currentReading` for `upNext`) while the server resumes and overwrites the Purpose with the empty field.
   evidence: Unreachable in Epic 3 (no intent sets Up next or Side read; seeds only). Story 4.1 must clear `upNextBookId` (and side reads) in the same commit, make `book_detail` expose the Up next Book's paused Reading, and derive the opener label and dialog mode from one source (`lib/startReading.ts` vs `StartDialog`).
+  resolved: `spec-4-1-keep-the-interrupted-book-as-up-next.md` (2026-11-07), for Up next: `start-reading` moves `upNextBookId` in the same commit (FR-7), and `lib/startReading.ts` decides Start or Resume for every opener and the Start dialog. The Side-read half (`main_not_side_read`) stays open for Story 4.7, which owns starting a Side read ("Which page?").
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-2-start-reading-a-book.md`
   summary: ARCHITECTURE-SPINE.md drift from story 3.2: the Structural Seed's `intents/` and `domain/` lines miss `start_reading`, `edit_purpose` and `domain/purpose`; the IDs convention says server-minted UUIDs come back in success `ids`, but `start-reading` mints a Reading id and returns `{ok: true}`.
   evidence: Spine Check pass 1 (SC2, SC3). No consumer needs a Reading id; reconcile the spine wording at the next spine reconciliation.
@@ -367,3 +369,24 @@
 - source_spec: `_bmad-output/test-artifacts/atdd-checklist-2-1-export-all-data-with-one-click.md` (AC-4 follow-up)
   summary: Nothing checks that the Busy button is the only native-`disabled` control (Story 1.6 AC-14's interaction guard).
   evidence: The rule lives only in `frontend/src/components/Button.tsx:14-18,50`; `frontend/scripts/copy.test.mjs` doesn't look for `disabled`, so a new `disabled` control would pass every check. Low.
+
+## Deferred from: implementation of spec-4-1-keep-the-interrupted-book-as-up-next (2026-11-07)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-1-keep-the-interrupted-book-as-up-next.md`
+  summary: Story 4.7 must make `start-reading` for a Side-read Book remove it from `sideReadBookIds` in the same commit (today the commit fails `main_not_side_read` with 500), with the required "Which page?".
+  evidence: Split from the spec-3-2 entry above, whose Up next half Story 4.1 closed. No UI reaches a Side read before Story 4.7 (seeds only).
+
+## Deferred from: code review of spec-4-1-keep-the-interrupted-book-as-up-next (2026-11-07)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-1-keep-the-interrupted-book-as-up-next.md`
+  summary: Story 4.6 must name a paused Up next spine "Up next, paused at page N" (and "not read yet, Up next" / "finished, Up next"); since 4.1 the interrupted Main book is Up next and its spine reads "…, not read yet" though its page is kept, where Epic 3 said "waiting for you, page N".
+  evidence: Blind-hunter review of 4.1 (BH1). `frontend/src/lib/catalog.ts` `spineStatus` handles only `main` and `waiting`; 4.1's intent puts spine names in Story 4.6, and `start-reading.spec.ts`/`stale-hand-offs.spec.ts` dropped or widened their spine-name asserts with "Story 4.6's" comments.
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-1-keep-the-interrupted-book-as-up-next.md`
+  summary: Spine drift (AD-19), reconciled before the next epic: the Starting bullet should state the FR-7 pointer move (the interrupted Main book becomes `upNextBookId`; with no Main book it stays unless it was the started Book, then `null`; a displaced Up next only loses the pointer).
+  evidence: Spine-check review of 4.1 (SC1); `intents/start_reading.py` applies it in the same commit, and the spine names only the pause.
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-1-keep-the-interrupted-book-as-up-next.md`
+  summary: Spine drift (AD-7), reconciled before the next epic: the known-gap sentence and the Deferred "Stale confirmation guard" should say the Start dialog's displacement line also reads the cached home view (`upNext.id`, `upNext.paused`), so a stale dialog can name the wrong Up next.
+  evidence: Spine-check review of 4.1 (SC2); `StartDialog.tsx` reads `home.data.upNext`, as the spec's Design Notes accept.
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-1-keep-the-interrupted-book-as-up-next.md`
+  summary: Spine drift (Capability → Architecture Map, AD-6), reconciled before the next epic: the "FR-5 to FR-9" row should list `views/shelf` (home `upNext` with its server-decided `paused`) and Home's Up next pane, and cite AD-6.
+  evidence: Spine-check review of 4.1 (SC3); the row's "Lives in" names only the intents.

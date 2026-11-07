@@ -29,7 +29,7 @@ The tests pin these names:
   ``purposeFulfilled`` and ``rating`` as sent; every other Reading field
   (``currentPage``, ``lastProgressUpdate``, ``purpose`` …) is kept. When the
   Book is the Main book, ``mainBookId`` becomes ``null``. ``upNextBookId`` is
-  not asserted (Story 4.1).
+  left alone, so Home then suggests the Up next Book (Story 4.1).
 - Refusals, checked inside the commit in this order: 409 ``book_not_found``
   when the Book is gone, 409 ``reading_already_finished`` when it has no
   unfinished Reading, then 422 ``invalid_fields`` on ``finishedOn``: "Finished
@@ -388,6 +388,27 @@ def test_only_the_current_reading_of_a_re_read_is_finished(tmp_path: Path) -> No
         "purposeFulfilled": "yes",
         "rating": 2,
     }
+    assert_invariants(tmp_path)
+
+
+def test_finishing_the_main_book_leaves_up_next_alone(tmp_path: Path) -> None:
+    # EXPERIENCE.md: "No Main book.", with Up next suggested (Story 4.1).
+    builder = LibraryBuilder()
+    left_hand = builder.book(title="The Left Hand of Darkness", pages=330)
+    builder.reading(left_hand, current_page=212)
+    builder.main(left_hand)
+    dune = builder.book(title="Dune", pages=412)
+    builder.reading(dune, current_page=120, paused_at="2026-10-20")
+    builder.up_next(dune)
+    builder.write(tmp_path)
+    dune_before = stored_book(tmp_path, dune)
+
+    response = _finish(api_client(tmp_path), left_hand)
+
+    assert response.status_code == 200
+    library = _stored(tmp_path)
+    assert (library["mainBookId"], library["upNextBookId"]) == (None, dune)
+    assert stored_book(tmp_path, dune) == dune_before
     assert_invariants(tmp_path)
 
 

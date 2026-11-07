@@ -290,5 +290,9 @@ describe('currentReadingStatus', () => {
       currentReadingStatus({ status: 'waiting', currentPage: 120, startDate: null }),
       'Waiting for you, page 120',
     )
+    assert.equal(
+      currentReadingStatus({ status: 'upNext', currentPage: 120, startDate: '2026-09-02' }),
+      'Up next, paused at page 120 · started 2 Sep 2026',
+    )
   })
 })

@@ -26,6 +26,7 @@ from .models import (
     CatalogView,
     CurrentReading,
     HomeMainBook,
+    HomeUpNext,
     HomeView,
     LibraryMeter,
     Role,
@@ -113,6 +114,24 @@ def _main_book(library: Library) -> HomeMainBook | None:
     )
 
 
+def _up_next(library: Library) -> HomeUpNext | None:
+    """The Up next Book for Home; ``None`` without one, when missing, or when it is Main."""
+    up_next_id = library.up_next_book_id
+    if up_next_id is None or up_next_id == library.main_book_id:
+        return None
+    book = library.book(up_next_id)
+    if book is None:
+        return None
+    return HomeUpNext(
+        id=book.id,
+        title=book.title,
+        authors=list(book.authors),
+        cover_file=book.cover_file,
+        has_cover=_has_cover(book),
+        paused=current_reading(book) is not None,
+    )
+
+
 def _slice_priority(library: Library) -> list[str]:
     """Book ids in slice priority order: Main, Up next, then finishes newest first (AD-6).
 
@@ -136,7 +155,7 @@ def _slice_priority(library: Library) -> list[str]:
 
 
 def home(library: Library, last_export_at: datetime | None = None) -> HomeView:
-    """The Main book, "Last export", the Catalog's books and meter, and the slice priority.
+    """The Main book, Up next, "Last export", the Catalog's books and meter, and the slice priority.
 
     The client packs ``books`` into the bookcase slice's rows; ``slice_priority``
     chooses them.
@@ -146,6 +165,7 @@ def home(library: Library, last_export_at: datetime | None = None) -> HomeView:
         meter=view.meter,
         books=view.books,
         main_book=_main_book(library),
+        up_next=_up_next(library),
         last_export_at=last_export_at,
         slice_priority=_slice_priority(library),
     )
@@ -157,11 +177,12 @@ def home_for(store: Store) -> HomeView:
 
 
 def _role_reading(library: Library, book: Book) -> tuple[Role, Reading | None]:
-    """The Book's role and, for ``main`` and ``waiting``, the Reading it is about."""
+    """The Book's role and the Reading it is about: for ``main`` and ``waiting``, and for
+    ``upNext`` its paused (current) Reading, ``None`` when it has none."""
     if library.main_book_id == book.id:
         return "main", current_reading(book)
     if library.up_next_book_id == book.id:
-        return "upNext", None
+        return "upNext", current_reading(book)
     reading = current_reading(book)
     if reading is not None and reading_status(library, book, reading) == "paused":
         return "waiting", reading
@@ -180,11 +201,11 @@ def _role(library: Library, book: Book) -> tuple[Role, int | None]:
 
 
 def _current_reading(book: Book, role: Role, reading: Reading | None) -> CurrentReading | None:
-    """Book detail's Current reading block; only ``main`` and ``waiting`` carry a Reading."""
-    if reading is None:
+    """Book detail's Current reading block; ``None`` for a Book with no Reading in progress."""
+    if reading is None or role is None:
         return None
     return CurrentReading(
-        status="main" if role == "main" else "waiting",
+        status=role,
         start_date=reading.start_date,
         current_page=reading.current_page,
         percent=percent(reading.current_page, book.pages),

@@ -1,7 +1,15 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router'
-import { useFreshBookView, useHomeView, useStartReading, type BookDetailView, type HomeMainBook } from '../api/index.ts'
+import {
+  useFreshBookView,
+  useHomeView,
+  useStartReading,
+  type BookDetailView,
+  type HomeMainBook,
+  type HomeUpNext,
+} from '../api/index.ts'
 import { announce, clearAnnouncements } from '../lib/announce.ts'
+import { detailPrimary } from '../lib/startReading.ts'
 import { useAlertDialog } from '../lib/useAlertDialog.ts'
 import Button from './Button.tsx'
 import TextField from './TextField.tsx'
@@ -24,17 +32,22 @@ type OpenProps = {
   opened: BookDetailView
   /** The home view's Main book: the trade-off line's title, page and percent (AD-6). */
   mainBook: HomeMainBook | null
+  /** The home view's Up next: the displacement line's *Z*, and whether it is paused. */
+  upNext: HomeUpNext | null
   onCancel: () => void
 }
 
-function OpenStartDialog({ book, opened, mainBook, onCancel }: OpenProps) {
+function OpenStartDialog({ book, opened, mainBook, upNext, onCancel }: OpenProps) {
   const headingId = useId()
   const tradeOffId = useId()
+  const displacedId = useId()
   const navigate = useNavigate()
   const sendStart = useStartReading()
   // Fixed at open: a later refetch (another tab made it Main meanwhile)
   // never flips Start to Resume.
-  const [resume] = useState(opened.currentReading !== null)
+  // From the opener's one source (`lib/startReading.ts`); a Book already Main
+  // when it opened (a stale opener) has a Reading in progress, so it resumes.
+  const [resume] = useState(detailPrimary(opened) !== 'Start reading')
   const [purpose, setPurpose] = useState(opened.currentReading?.purpose ?? '')
   const [busy, setBusy] = useState(false)
   const [showAlert, setShowAlert] = useState(false)
@@ -90,6 +103,9 @@ function OpenStartDialog({ book, opened, mainBook, onCancel }: OpenProps) {
 
   const verb = resume ? 'Resume' : 'Start'
   const pauses = mainBook !== null && mainBook.id !== book.id ? mainBook : null
+  // Only a pause displaces Up next, and never when *X* is itself Up next (FR-7).
+  const displaced = pauses !== null && upNext !== null && upNext.id !== book.id ? upNext : null
+  const describedBy = [pauses && tradeOffId, displaced && displacedId].filter(Boolean).join(' ')
   const reason = busy ? SAVING : undefined
 
   return (
@@ -98,7 +114,7 @@ function OpenStartDialog({ book, opened, mainBook, onCancel }: OpenProps) {
       {...dialogProps}
       className={styles.dialog}
       aria-labelledby={headingId}
-      aria-describedby={pauses ? tradeOffId : undefined}
+      aria-describedby={describedBy || undefined}
     >
       <form onSubmit={submit}>
         <h2 id={headingId} className={styles.heading}>
@@ -108,6 +124,12 @@ function OpenStartDialog({ book, opened, mainBook, onCancel }: OpenProps) {
           <p id={tradeOffId} className={styles.tradeOff}>
             This pauses <span className={styles.bookTitle}>{pauses.title}</span>
             {` at p.${pauses.currentPage} (${pauses.percent}%).`}
+          </p>
+        )}
+        {displaced && (
+          <p id={displacedId} className={styles.tradeOff}>
+            <span className={styles.bookTitle}>{displaced.title}</span>
+            {displaced.paused ? ' moves to Waiting for you.' : ' returns to the catalog.'}
           </p>
         )}
         <TextField
@@ -137,7 +159,10 @@ function OpenStartDialog({ book, opened, mainBook, onCancel }: OpenProps) {
  * `dialog` headed "Start *X*?" (no current Reading, a re-read included) or
  * "Resume *X*?" (a paused one, its Purpose prefilled), *X* in the
  * book-title face. With another Main book *Y*, "This pauses *Y* at p.N
- * (P%)." from the home view's numbers. Then "Purpose (optional)", focused on
+ * (P%)." from the home view's numbers; and when that pause displaces an Up
+ * next *Z* that isn't *X*, "*Z* moves to Waiting for you." (*Z* has a paused
+ * Reading) or "*Z* returns to the catalog." (it has none), both named by
+ * `aria-describedby`. Then "Purpose (optional)", focused on
  * open; **Start reading** or **Resume**, and **Cancel**. Enter in the field
  * confirms.
  *
@@ -147,7 +172,8 @@ function OpenStartDialog({ book, opened, mainBook, onCancel }: OpenProps) {
  * `alert` line above the buttons. Cancel or Esc sends nothing.
  *
  * It reads the `book` and `home` views itself, so any opener (Book detail,
- * the spine popover) passes only the Book's id; it shows once both are in.
+ * the spine popover, Home's Up next pane and empty Main book card) passes
+ * only the Book's id; it shows once both are in.
  */
 export default function StartDialog({ bookId, onCancel }: Props) {
   // Fetched after opening, never a cached view of an earlier visit: another
@@ -166,6 +192,12 @@ export default function StartDialog({ bookId, onCancel }: Props) {
 
   if (book.status !== 'ready' || home.status !== 'ready') return null
   return (
-    <OpenStartDialog book={book.data} opened={atOpen ?? book.data} mainBook={home.data.mainBook} onCancel={onCancel} />
+    <OpenStartDialog
+      book={book.data}
+      opened={atOpen ?? book.data}
+      mainBook={home.data.mainBook}
+      upNext={home.data.upNext}
+      onCancel={onCancel}
+    />
   )
 }

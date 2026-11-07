@@ -1,6 +1,9 @@
 import { useId, type Ref } from 'react'
 import { Link } from 'react-router'
-import type { HomeMainBook } from '../api/index.ts'
+import type { HomeMainBook, HomeUpNext } from '../api/index.ts'
+import { CHOOSE_A_BOOK } from '../lib/copy.ts'
+import { upNextStart } from '../lib/startReading.ts'
+import Button from './Button.tsx'
 import Cover from './Cover.tsx'
 import Gauge from './Gauge.tsx'
 import PageField from './PageField.tsx'
@@ -8,7 +11,6 @@ import ReentryLine from './ReentryLine.tsx'
 import styles from './MainBookCard.module.css'
 
 const NO_MAIN_BOOK = 'No Main book.'
-const CHOOSE_A_BOOK = 'Choose a book in the Catalog'
 
 /**
  * Home's Main book card (EXPERIENCE.md → Main book card): a `region` "Main
@@ -18,10 +20,16 @@ const CHOOSE_A_BOOK = 'Choose a book in the Catalog'
  * page field and, last, the re-entry line ("Last updated …" · "~N days left"
  * · "Last export …"), fed by Home's `lastExportAt` and `now` so it recomputes
  * with the date header on focus and visibility.
- * Without a Main book the same frame and name hold "No Main book." and a
- * link to the Catalog. `titleRef` is the title link, which Home focuses after
- * a confirmed start; `emptyHeadingRef` is the "No Main book." heading
- * (focusable by script only), which Home focuses after a finish.
+ * Without a Main book the same frame and name hold "No Main book." and,
+ * below it, the Up next suggestion when there is an Up next (EXPERIENCE.md →
+ * State Patterns): the 44×64 thumbnail, the serif title (text, not a link),
+ * the author and a `button-primary` **Start reading** or **Resume**
+ * (`lib/startReading.ts`) named with the title, which calls `onStartUpNext`
+ * (Home hosts the Start dialog); else a link to the Catalog. `titleRef` is
+ * the title link, which Home focuses after a confirmed start;
+ * `emptyHeadingRef` is the "No Main book." heading (focusable by script only)
+ * and `suggestRef` the suggestion's button: after a finish Home focuses the
+ * button, else the heading.
  * `onReachedLastPage` and `pageFieldRef` pass through to the page field, so
  * Home can host the Finish dialog and return focus to the field.
  */
@@ -31,10 +39,16 @@ export default function MainBookCard({
   now,
   titleRef,
   emptyHeadingRef,
+  upNext = null,
+  onStartUpNext,
+  suggestRef,
   onReachedLastPage,
   pageFieldRef,
 }: {
   book: HomeMainBook | null
+  upNext?: HomeUpNext | null
+  onStartUpNext?: (bookId: string) => void
+  suggestRef?: Ref<HTMLButtonElement>
   lastExportAt: string | null
   now: Date
   titleRef?: Ref<HTMLAnchorElement>
@@ -49,9 +63,28 @@ export default function MainBookCard({
         <h2 ref={emptyHeadingRef} className={styles.emptyHeading} tabIndex={-1}>
           {NO_MAIN_BOOK}
         </h2>
-        <p className={styles.emptyBody}>
-          <Link to="/catalog">{CHOOSE_A_BOOK}</Link>
-        </p>
+        {upNext !== null ? (
+          <div className={styles.suggestion}>
+            <Cover coverFile={upNext.coverFile} title={upNext.title} size="thumb" />
+            <div className={styles.suggestionInfo}>
+              <p className={styles.suggestionTitle}>{upNext.title}</p>
+              <p className={styles.suggestionAuthors}>{upNext.authors.join('; ')}</p>
+              <Button
+                ref={suggestRef}
+                variant="primary"
+                className={styles.suggestionButton}
+                aria-label={`${upNextStart(upNext)} ${upNext.title}`}
+                onClick={() => onStartUpNext?.(upNext.id)}
+              >
+                {upNextStart(upNext)}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <p className={styles.emptyBody}>
+            <Link to="/catalog">{CHOOSE_A_BOOK}</Link>
+          </p>
+        )}
       </section>
     )
   }

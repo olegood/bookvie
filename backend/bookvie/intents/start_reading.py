@@ -12,11 +12,16 @@ when empty). In one commit:
   sent Purpose; or, with no current Reading (never started, or every Reading
   finished), a new Reading is appended: ``startDate`` = today, page 0,
   ``lastProgressUpdate`` = now, every other field ``null``;
-- ``mainBookId`` becomes the Book.
+- ``mainBookId`` becomes the Book;
+- ``upNextBookId`` follows FR-7: with a Main book *Y* (another Book), it
+  becomes *Y*, the interrupted Book. An earlier Up next *Z* is displaced,
+  which only means it is no longer ``upNextBookId``: its Readings are not
+  touched, so a paused *Z* is in Waiting for you and any other *Z* is back in
+  the catalog. With no Main book it stays as it is, except that it becomes
+  ``null`` when it was the Book, which is never both Main and Up next.
 
-``upNextBookId`` is untouched (Story 4.1). 409 ``book_not_found`` when the
-Book is gone and 409 ``already_main`` for the Main book, both checked inside
-the commit.
+409 ``book_not_found`` when the Book is gone and 409 ``already_main`` for
+the Main book, both checked inside the commit.
 """
 
 import uuid
@@ -70,6 +75,14 @@ def start_reading(store: Store, clock: Clock, intent: StartReadingIntent) -> Non
             raise book_not_found()
         if library.main_book_id == book_id:
             raise already_main()
+        # The pointer moves before ``mainBookId`` does: the interrupted Main
+        # book (another Book) becomes Up next (FR-7).
+        if library.main_book_id is not None:
+            up_next = library.main_book_id
+        elif library.up_next_book_id == book_id:
+            up_next = None
+        else:
+            up_next = library.up_next_book_id
         # The Main book is another Book, so ``book`` stays current.
         _pause_main(library, clock)
         now = clock.now()
@@ -93,5 +106,6 @@ def start_reading(store: Store, clock: Clock, intent: StartReadingIntent) -> Non
             readings = [*book.readings, started]
         library.replace_book(book.model_copy(update={"readings": readings}))
         library.main_book_id = book_id
+        library.up_next_book_id = up_next
 
     commit(store, change)

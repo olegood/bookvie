@@ -296,6 +296,34 @@ test.describe('Story 3.6 Finish my Main book (ATDD)', () => {
       await stopAndRemove(server)
     }
   })
+
+  test("[P1] AC-6 with an Up next, Done goes to Home with the card's Up next suggestion focused (Story 4.1)", async ({
+    page,
+  }) => {
+    // Dune is Up next, paused at p.120: the card suggests it with Resume.
+    const server = await serverAtFakeToday(page, 'finish-up-next', {
+      ...mainAt(300, {
+        reading: { startDate: '2026-10-01', purpose: PURPOSE, lastProgressUpdate: EARLIER },
+        others: [{ ...DUNE, readings: [{ startDate: '2026-10-01', currentPage: 120, pausedAt: '2026-10-20' }] }],
+      }),
+      upNextBookId: DUNE_ID,
+    })
+    try {
+      await page.goto(server.url)
+      await reachLastPage(page)
+      await dialogButton(finishDialog(page), 'Done').click()
+
+      const card = mainBookCard(page)
+      await expect(card.getByRole('button', { name: 'Resume Dune', exact: true })).toBeFocused()
+      await expect(card.getByRole('heading', { name: 'No Main book.', exact: true })).toBeVisible()
+      // Finishing the Main book leaves Up next alone.
+      const library = storedLibrary(server)
+      expect(library.mainBookId).toBeNull()
+      expect(library.upNextBookId).toBe(DUNE_ID)
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
 })
 
 /** The Main book at p.300 with no Purpose. */
@@ -577,6 +605,26 @@ test.describe('Story 3.6 Finish my Main book (review follow-ups)', () => {
     } finally {
       await stopAndRemove(server)
     }
+
+    // From Home with an Up next (Story 4.1): Cancel focuses the card's suggestion.
+    server = await serverAtFakeToday(page, 'finish-stale-home-up-next', { ...MAIN_AT_300, upNextBookId: DUNE_ID })
+    try {
+      await page.goto(server.url)
+      await reachLastPage(page)
+      const dialog = finishDialog(page)
+      await finishElsewhere(page, server.url)
+
+      await dialogButton(dialog, 'Done').click()
+
+      await expect(dialog.getByText(ALREADY_FINISHED, { exact: true })).toBeVisible()
+      const suggestion = mainBookCard(page).getByRole('button', { name: 'Start reading Dune', exact: true })
+      await expect(suggestion).toBeAttached()
+      await dialogButton(dialog, 'Cancel').click()
+      await expect(dialog).toBeHidden()
+      await expect(suggestion).toBeFocused()
+    } finally {
+      await stopAndRemove(server)
+    }
   })
 
   test('[P1] AC-8 a Book deleted in another tab: Done from Book detail shows "This book isn\'t in your catalog anymore." in the dialog with the answers kept', async ({
@@ -636,6 +684,27 @@ test.describe('Story 3.6 Finish my Main book (review follow-ups)', () => {
       await expect(page).toHaveURL(`${server.url}/`)
       await expect(home).toBeFocused()
       await expect(empty).not.toBeFocused()
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+
+  test('[P1] AC-6 with an Up next, the finished hand-off focuses its Start reading once: not after a reload (Story 4.1)', async ({
+    page,
+  }) => {
+    // Dune, never started, is Up next: the card suggests it with Start reading.
+    const server = await serverAtFakeToday(page, 'finish-hand-off-up-next', { ...MAIN_AT_300, upNextBookId: DUNE_ID })
+    try {
+      await page.goto(`${server.url}/book/${LEFT_HAND_ID}`)
+      await markFinished(page).click()
+      await dialogButton(finishDialog(page), 'Done').click()
+      const suggestion = mainBookCard(page).getByRole('button', { name: 'Start reading Dune', exact: true })
+      await expect(suggestion).toBeFocused()
+
+      await page.reload()
+      await expect(page.getByRole('heading', { level: 1, name: 'Home', exact: true })).toBeAttached()
+      await expect(suggestion).toBeVisible()
+      await expect(suggestion).not.toBeFocused()
     } finally {
       await stopAndRemove(server)
     }

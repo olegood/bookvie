@@ -53,6 +53,7 @@ export {
   type CatalogView,
   type CurrentReading,
   type HomeMainBook,
+  type HomeUpNext,
   type HomeView,
   type LibraryMeter,
   type ShelfBook,

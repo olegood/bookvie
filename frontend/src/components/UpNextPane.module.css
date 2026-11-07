@@ -1,0 +1,93 @@
+/* DESIGN.md → Section pane: a surface pane under a section label. */
+.pane {
+  min-width: 0;
+  padding: 20px 22px;
+  border: var(--hairline) solid var(--color-line);
+  border-radius: var(--radius-xl);
+  background: var(--color-surface);
+}
+
+.heading {
+  margin: 0 0 var(--space-3);
+  font-family: var(--font-section-label-family);
+  font-size: var(--font-section-label-size);
+  font-weight: var(--font-section-label-weight);
+  letter-spacing: var(--font-section-label-letter-spacing);
+  line-height: 1.3;
+  text-transform: uppercase;
+  color: var(--color-ink-tertiary);
+}
+
+/* The Up next row: the 44×64 thumbnail at left, then the title and line 2. */
+.row {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+}
+
+.body {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Line 1: the serif title in ink, clamped to 2 lines. */
+.title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  font-family: var(--font-book-title-sm-family);
+  font-size: var(--font-book-title-sm-size);
+  font-weight: var(--font-book-title-sm-weight);
+  line-height: var(--font-book-title-sm-line-height);
+  color: var(--color-ink);
+  text-decoration-line: none;
+  overflow-wrap: anywhere;
+}
+
+.title:hover,
+.title:focus-visible {
+  text-decoration-line: underline;
+}
+
+/* Line 2: the author, and the compact button right-aligned. */
+.line {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 6px;
+}
+
+.authors {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-family: var(--font-meta-family);
+  font-size: var(--font-meta-size);
+  line-height: var(--font-meta-line-height);
+  color: var(--color-ink-secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The compact button-secondary (30px). */
+.compact {
+  flex: none;
+  height: 30px;
+  padding: 0 var(--space-3);
+}
+
+.empty,
+.emptyLink {
+  margin: 0;
+  font-family: var(--font-body-sm-family);
+  font-size: var(--font-body-sm-size);
+  line-height: var(--font-body-sm-line-height);
+  color: var(--color-ink-secondary);
+}
+
+.emptyLink {
+  margin-top: var(--space-1);
+}

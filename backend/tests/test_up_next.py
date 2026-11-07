@@ -29,11 +29,11 @@ The tests pin these names (``start-reading``'s request and answer are Story
 import json
 from pathlib import Path
 
-import pytest
 from fastapi.testclient import TestClient
 
 from bookvie.domain.clock import FakeClock
 from bookvie.http.app import create_app
+from bookvie.views import home
 from tests.builder import LibraryBuilder
 from tests.helpers import (
     COULDNT_SAVE_BODY,
@@ -46,7 +46,6 @@ from tests.helpers import (
     stored_book,
 )
 
-RED = "Story 4.1 red phase: start-reading doesn't move Up next yet"
 GONE_ID = "00000000-0000-4000-8000-000000000000"
 NOW = FakeClock(TODAY).now()
 """What ``api_client``'s clock says "now" is: local noon on :data:`TODAY`."""
@@ -89,7 +88,6 @@ def _paused_dune(builder: LibraryBuilder) -> str:
 # --- AC-1: the interrupted Main book becomes Up next -----------------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_ac1_p0_starting_another_book_makes_the_interrupted_main_book_up_next_in_the_same_commit(
     tmp_path: Path,
 ) -> None:
@@ -121,7 +119,6 @@ def test_ac1_p0_starting_another_book_makes_the_interrupted_main_book_up_next_in
 # --- AC-3: the Up next Book leaves Up next as it becomes Main ---------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_ac3_p0_starting_or_resuming_the_up_next_book_takes_it_out_of_up_next(
     tmp_path: Path,
 ) -> None:
@@ -188,7 +185,6 @@ def _main_and_up_next(data_dir: Path, up_next: str) -> tuple[str, str, str]:
     return fahrenheit, dune, emma
 
 
-@pytest.mark.skip(reason=RED)
 def test_ac7_p0_the_extended_start_reading_keeps_the_standard_intent_guarantees(
     tmp_path: Path,
 ) -> None:
@@ -249,3 +245,63 @@ def test_ac7_p0_the_extended_start_reading_keeps_the_standard_intent_guarantees(
 
     # No new error code; the intent is still in the contract (AD-8).
     assert START_READING in create_app().openapi()["paths"]
+
+
+def test_ac2_p0_with_no_main_book_starting_another_book_leaves_up_next_in_place(
+    tmp_path: Path,
+) -> None:
+    # No Main book; Dune, paused, is Up next. Starting Emma interrupts nothing.
+    builder = LibraryBuilder()
+    dune = _paused_dune(builder)
+    builder.up_next(dune)
+    emma = builder.book(title="Emma", authors=["Jane Austen"], pages=400)
+    builder.write(tmp_path)
+    dune_before = stored_book(tmp_path, dune)
+
+    response = _start(api_client(tmp_path), emma, None)
+
+    assert response.status_code == 200
+    library = _stored(tmp_path)
+    assert (library["mainBookId"], library["upNextBookId"]) == (emma, dune)
+    assert stored_book(tmp_path, dune) == dune_before
+    assert_invariants(tmp_path)
+
+
+# --- The home view's upNext (the pane, the card and the Start dialog read it) ------
+
+
+def test_ac7_p1_the_home_view_carries_up_next_with_whether_it_is_paused(
+    tmp_path: Path,
+) -> None:
+    # No Up next: null.
+    builder = LibraryBuilder()
+    fahrenheit = _fahrenheit(builder)
+    builder.main(fahrenheit)
+    assert home(builder.build()).up_next is None
+
+    # A paused Up next: paused true, with the fields as stored.
+    dune = _paused_dune(builder)
+    builder.up_next(dune)
+    builder.write(tmp_path)
+    body = api_client(tmp_path).get("/api/views/home").json()
+    assert body["upNext"] == {
+        "id": dune,
+        "title": "Dune",
+        "authors": ["Frank Herbert"],
+        "coverFile": None,
+        "hasCover": False,
+        "paused": True,
+    }
+
+    # A never-started Up next, and a finished one with no Reading in progress:
+    # paused false (each "returns to the catalog." when displaced).
+    emma = builder.book(title="Emma", authors=["Jane Austen"], pages=400)
+    view = home(builder.up_next(emma).build()).up_next
+    assert view is not None and (view.id, view.paused) == (emma, False)
+    builder.reading(emma, current_page=400, finish_date="2026-04-10", finished_pages=400)
+    view = home(builder.build()).up_next
+    assert view is not None and (view.id, view.paused) == (emma, False)
+
+    # An Up next naming no Book, or the Main book, gives none.
+    assert home(builder.up_next("gone").build()).up_next is None
+    assert home(builder.up_next(fahrenheit).build()).up_next is None

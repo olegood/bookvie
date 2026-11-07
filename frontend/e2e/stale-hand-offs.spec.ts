@@ -77,14 +77,15 @@ test.describe('Epic 3 retro: stale client hand-offs', () => {
       // Book detail caches The Left Hand of Darkness as never started.
       await page.goto(`${server.url}/book/${LEFT_HAND_ID}`)
       await expect(page.getByRole('main').getByRole('button', { name: 'Start reading', exact: true })).toBeVisible()
-      // Another tab starts it with a Purpose, then starts Dune, which pauses it.
+      // Another tab starts it with a Purpose, then starts Dune, which pauses it
+      // and makes it Up next (Story 4.1).
       await elsewhere(page, server, START_READING, { bookId: LEFT_HAND_ID, purpose: PURPOSE })
       await elsewhere(page, server, START_READING, { bookId: DUNE_ID, purpose: null })
 
       await nav(page, 'Catalog').click()
-      await page
-        .getByRole('button', { name: /^The Left Hand of Darkness by Ursula K\. Le Guin, waiting for you/ })
-        .click()
+      // Its spine's status words are Story 4.6's; the popover's Resume comes
+      // from `popoverStart`, which offers it for a paused Up next.
+      await page.getByRole('button', { name: /^The Left Hand of Darkness by Ursula K\. Le Guin, / }).click()
       await page
         .getByRole('dialog', { name: 'The Left Hand of Darkness', exact: true })
         .getByRole('button', { name: 'Resume', exact: true })

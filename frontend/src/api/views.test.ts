@@ -29,6 +29,7 @@ describe('the home view', () => {
     meter: { finished: 0, total: 0 },
     books: [],
     mainBook: null,
+    upNext: null,
     lastExportAt: null,
     slicePriority: [],
   }

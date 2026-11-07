@@ -6,7 +6,8 @@ import FailureMessage from '../components/FailureMessage.tsx'
 import FinishDialog, { type FinishedState } from '../components/FinishDialog.tsx'
 import MainBookCard from '../components/MainBookCard.tsx'
 import PageHeading from '../components/PageHeading.tsx'
-import type { StartedState } from '../components/StartDialog.tsx'
+import StartDialog, { type StartedState } from '../components/StartDialog.tsx'
+import UpNextPane from '../components/UpNextPane.tsx'
 import { announce, clearAnnouncements } from '../lib/announce.ts'
 import { finishStatus, sortBooks } from '../lib/catalog.ts'
 import { COULDNT_LOAD } from '../lib/copy.ts'
@@ -62,27 +63,31 @@ function HomeSlice({ view, finishing }: { view: HomeView; finishing: FinishMomen
  * Home, the launch page at `/` (EXPERIENCE.md → Home): a visually hidden
  * `h1` "Home", the date header (the browser's local date, recomputed on
  * focus and visibility), then either the empty shelf (no Books) or a grid of
- * the Main book card beside the 320px side column (empty until Epic 4) with
- * the bookcase slice below: the full bookcase in Catalog's order, up to 3
- * rows chosen by the view's `slicePriority`. "Last export" sits at the
+ * the Main book card beside the 320px side column (the Up next pane, shown
+ * only while there is a Main book; without one the empty card suggests the
+ * Up next Book; Home hosts the Start dialog that the pane's and the card's
+ * buttons open) with the bookcase slice below: the full bookcase in Catalog's
+ * order, up to 3 rows chosen by the view's `slicePriority`. "Last export" sits at the
  * right end of the header line only while there is no Main book; with one it
  * sits in the card's re-entry line, which reads the same `now`.
  *
  * Arriving from a confirmed Start dialog (router state `{started: true}`),
  * focus goes to the Main book card's title link, winning over the `h1`.
- * Arriving from a finish (`{finished: true}`), it goes to the "No Main
- * book." heading the same way, and when the refetched view shows that Book
- * finished, the finish moment of this visit (Story 3.7): the slice plays it
- * once, the bookcase header keeps "Finished *X*." until Home unmounts, and
- * `status` reads "Finished *X*. N of M finished." once focus has moved. The
- * hand-off is cleared from the history entry, so a reload, Back, Forward, a
- * revisit or another tab never sees it.
+ * Arriving from a finish (`{finished: true}`), it goes to the empty card's
+ * Up next suggestion button (**Start reading** or **Resume**) when there is
+ * an Up next, else to the "No Main book." heading, the same way; and when
+ * the refetched view shows that Book finished, the finish moment of this
+ * visit (Story 3.7): the slice plays it once, the bookcase header keeps
+ * "Finished *X*." until Home unmounts, and `status` reads "Finished *X*. N
+ * of M finished." once focus has moved. The hand-off is cleared from the
+ * history entry, so a reload, Back, Forward, a revisit or another tab never
+ * sees it.
  *
  * Home hosts the Finish dialog the page field opens on `reachedLastPage`,
  * so a refetch that empties the card (a finish or delete in another tab)
  * leaves the dialog, its answers and its alert line in place. Cancel or Esc
- * returns focus to the page field, or to the "No Main book." heading once
- * the card is empty.
+ * returns focus to the page field, or, once the card is empty, to its
+ * suggestion button, else the "No Main book." heading.
  */
 export default function HomePage() {
   usePageTitle('Home')
@@ -95,6 +100,15 @@ export default function HomePage() {
   const finished = wantsFinished(location.state)
   const titleLink = useRef<HTMLAnchorElement>(null)
   const emptyHeading = useRef<HTMLHeadingElement>(null)
+  const suggestButton = useRef<HTMLButtonElement>(null)
+  const paneButton = useRef<HTMLButtonElement>(null)
+  // The Up next Book whose Start dialog the pane or the empty card opened,
+  // and the history entry it opened on: a confirmed start navigates to `/`
+  // again, a new entry, which closes it.
+  const [startingUpNext, setStartingUpNext] = useState<{ bookId: string; key: string } | null>(null)
+  if (startingUpNext !== null && startingUpNext.key !== location.key) setStartingUpNext(null)
+  // Set when that dialog is cancelled, so focus returns to its opener once it has unmounted.
+  const [startRefocus, setStartRefocus] = useState(0)
   const handledStart = useRef<string | null>(null)
   const handledFinish = useRef<string | null>(null)
   // This visit's finish moment: taken from the hand-off of one history entry,
@@ -155,9 +169,26 @@ export default function HomePage() {
 
   useEffect(() => {
     if (finishRefocus === 0) return
-    const target = pageField.current ?? emptyHeading.current ?? document.getElementById('main')
+    const target = pageField.current ?? suggestButton.current ?? emptyHeading.current ?? document.getElementById('main')
     target?.focus()
   }, [finishRefocus])
+
+  const openStartUpNext = useCallback(
+    (bookId: string) => setStartingUpNext({ bookId, key: location.key }),
+    [location.key],
+  )
+  const cancelStartUpNext = useCallback(() => {
+    setStartingUpNext(null)
+    setStartRefocus((count) => count + 1)
+  }, [])
+
+  useEffect(() => {
+    if (startRefocus === 0) return
+    // The opener is gone when a refetch changed Home meanwhile.
+    const target =
+      paneButton.current ?? suggestButton.current ?? emptyHeading.current ?? document.getElementById('main')
+    target?.focus()
+  }, [startRefocus])
 
   // Runs after PageHeading's own focus effect (a child's), so it wins over the `h1`.
   useEffect(() => {
@@ -171,11 +202,12 @@ export default function HomePage() {
     if (dropped === location.key) clearHandOffState()
   }, [dropped, location.key])
 
-  // After a finish: the empty card's heading, as after a start the title link.
+  // After a finish: the empty card's Up next suggestion, else its heading, as
+  // after a start the title link.
   useEffect(() => {
     if (!keepsHandOff || !noMain || handledFinish.current === location.key) return
     handledFinish.current = location.key
-    emptyHeading.current?.focus()
+    ;(suggestButton.current ?? emptyHeading.current)?.focus()
     clearHandOffState()
     // Once focus has settled, with the refetched view's meter.
     if (moment?.key === location.key && homeMeter !== null) {
@@ -211,7 +243,7 @@ export default function HomePage() {
     )
   }
 
-  const { mainBook, lastExportAt, meter } = view.data
+  const { mainBook, upNext, lastExportAt, meter } = view.data
   const empty = meter.total === 0
   const newBook = () => {
     const state: NewBookState = { newBook: true }
@@ -241,13 +273,21 @@ export default function HomePage() {
               now={now}
               titleRef={titleLink}
               emptyHeadingRef={emptyHeading}
+              upNext={upNext}
+              onStartUpNext={openStartUpNext}
+              suggestRef={suggestButton}
               onReachedLastPage={openFinish}
               pageFieldRef={pageField}
             />
-            <div className={styles.side} />
+            <div className={styles.side}>
+              {mainBook !== null && <UpNextPane upNext={upNext} onStart={openStartUpNext} buttonRef={paneButton} />}
+            </div>
           </div>
           <HomeSlice view={view.data} finishing={moment?.finishing ?? null} />
         </>
+      )}
+      {startingUpNext !== null && startingUpNext.key === location.key && (
+        <StartDialog bookId={startingUpNext.bookId} onCancel={cancelStartUpNext} />
       )}
       {finishing !== null && finishing.key === location.key && (
         <FinishDialog

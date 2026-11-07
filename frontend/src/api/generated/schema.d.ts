@@ -477,14 +477,15 @@ export interface components {
         };
         /**
          * CurrentReading
-         * @description The Main book's or a paused Book's unfinished Reading (Book detail's Current reading).
+         * @description The Main book's, the Up next Book's or a paused Book's unfinished Reading
+         *     (Book detail's Current reading).
          */
         CurrentReading: {
             /**
              * Status
              * @enum {string}
              */
-            status: "main" | "waiting";
+            status: "main" | "upNext" | "waiting";
             /** Startdate */
             startDate: string | null;
             /** Currentpage */
@@ -566,12 +567,31 @@ export interface components {
             /** Lastprogressupdate */
             lastProgressUpdate: string | null;
         };
+        /**
+         * HomeUpNext
+         * @description The Up next Book as Home's Up next pane, the empty Main book card and the Start dialog show it.
+         */
+        HomeUpNext: {
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
+            /** Authors */
+            authors: string[];
+            /** Coverfile */
+            coverFile: string | null;
+            /** Hascover */
+            hasCover: boolean;
+            /** Paused */
+            paused: boolean;
+        };
         /** HomeView */
         HomeView: {
             meter: components["schemas"]["LibraryMeter"];
             /** Books */
             books: components["schemas"]["ShelfBook"][];
             mainBook: components["schemas"]["HomeMainBook"] | null;
+            upNext: components["schemas"]["HomeUpNext"] | null;
             /** Lastexportat */
             lastExportAt: string | null;
             /** Slicepriority */

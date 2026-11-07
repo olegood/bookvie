@@ -69,11 +69,28 @@ class HomeMainBook(_View):
     """The current Reading's ``lastProgressUpdate``, as stored ("Last updated …")."""
 
 
+class HomeUpNext(_View):
+    """The Up next Book as Home's Up next pane, the empty Main book card and the Start dialog show it."""
+
+    id: str
+    title: str
+    authors: list[str]
+    cover_file: str | None
+    """``covers/<name>``, served at ``/media/<coverFile>``; ``None`` without a cover."""
+    has_cover: bool
+    paused: bool
+    """Whether the Book has a current (unfinished) Reading: **Resume** and "moves to
+    Waiting for you." when true, **Start reading** and "returns to the catalog." when
+    false (a finished Book with no Reading in progress counts as never started)."""
+
+
 class HomeView(_View):
     meter: LibraryMeter
     books: list[ShelfBook]
     main_book: HomeMainBook | None
     """The Main book and its current Reading; ``None`` when there is no Main book."""
+    up_next: HomeUpNext | None
+    """The Up next Book; ``None`` when there is none (or it names the Main book)."""
     last_export_at: AwareDatetime | None
     """When the last complete export finished (``local-state.json``); ``None`` before the first."""
     slice_priority: list[str]
@@ -105,9 +122,10 @@ class BookReading(_View):
 
 
 class CurrentReading(_View):
-    """The Main book's or a paused Book's unfinished Reading (Book detail's Current reading)."""
+    """The Main book's, the Up next Book's or a paused Book's unfinished Reading
+    (Book detail's Current reading)."""
 
-    status: Literal["main", "waiting"]
+    status: Literal["main", "upNext", "waiting"]
     start_date: date | None
     current_page: int
     percent: int
@@ -157,7 +175,8 @@ class BookDetailView(_View):
     waiting_page: int | None
     """The paused Reading's current page; set only when ``role`` is ``waiting``."""
     current_reading: CurrentReading | None
-    """Set when ``role`` is ``main`` or ``waiting``: the Reading the role is about."""
+    """Set when ``role`` is ``main`` or ``waiting``, or ``upNext`` with a paused Reading:
+    the Reading the role is about."""
 
 
 class BackupView(_View):

@@ -14,15 +14,18 @@ After every step:
 - an accepted intent changed exactly what its contract says and nothing else
   (the paused Main book, the resumed or appended Reading, the one Purpose,
   the Main book's page and ``lastProgressUpdate``, the finished Reading and
-  the cleared Main book);
+  the cleared Main book), and Up next moved as a model of FR-7 predicts: after
+  a start it is the interrupted Main book, ``None`` when the started Book was
+  Up next with no Main book, and unchanged otherwise; a finish leaves it
+  alone, and a delete of the Up next Book clears it (Story 4.1);
 - ``check_invariants()`` holds, each Book has at most one unfinished Reading,
   and the file on disk reads back as the committed library;
-- the views agree: only ``mainBookId`` is ``main``, ``waiting`` is exactly the
-  paused Books (Up next is Epic 4, so none here), and Home's Main book is the
-  Main book's current Reading.
+- the views agree: only ``mainBookId`` is ``main``, only ``upNextBookId`` is
+  ``upNext``, ``waiting`` is exactly the paused Books minus Up next, Home's
+  Main book is the Main book's current Reading, and Home's Up next is the Up
+  next Book, ``paused`` when it has a current Reading.
 
-Later intents (pause, Up next, Side reads) join the
-machine as they land.
+Later intents (pause, set-up-next, Side reads) join the machine as they land.
 """
 
 import json
@@ -102,6 +105,8 @@ class ReadingPlan(RuleBasedStateMachine):
         self.ids = _seed(self.data_dir)
         self.store = Store.open(self.data_dir)
         self.today = TODAY
+        self.up_next: str | None = None
+        """The model's Up next: what ``upNextBookId`` must be after every step."""
 
     def teardown(self) -> None:
         tmp = getattr(self, "_tmp", None)
@@ -147,6 +152,12 @@ class ReadingPlan(RuleBasedStateMachine):
         if not self._send(lambda: start_reading(self.store, clock, intent), expected):
             return
 
+        # FR-7: the interrupted Main book becomes Up next; with none, Up next
+        # stays, except that the started Book leaves it.
+        if old_main is not None:
+            self.up_next = old_main
+        elif self.up_next == book_id:
+            self.up_next = None
         after = _books(self.store.library)
         assert self.store.library.main_book_id == book_id
         assert after.keys() == before.keys()
@@ -324,6 +335,8 @@ class ReadingPlan(RuleBasedStateMachine):
 
         after = _books(self.store.library)
         assert after == {k: v for k, v in before.items() if k != book_id}
+        if self.up_next == book_id:
+            self.up_next = None
         # Nothing is promoted into a vacated Main book (CAT-API-007).
         assert self.store.library.main_book_id == (None if old_main == book_id else old_main)
 
@@ -345,20 +358,32 @@ class ReadingPlan(RuleBasedStateMachine):
     @invariant()
     def views_agree_with_the_pointers(self) -> None:
         library = self.store.library
-        assert library.up_next_book_id is None and library.side_read_book_ids == []
+        assert library.up_next_book_id == self.up_next
+        assert library.side_read_book_ids == []
         stored = _books(library)
         main = library.main_book_id
+        up_next = library.up_next_book_id
         for shelf in catalog(library).books:
             current = _current(stored[shelf.id])
             if shelf.id == main:
                 assert shelf.role == "main"
+            elif shelf.id == up_next:
+                assert shelf.role == "upNext", shelf.title
+                assert shelf.waiting_page is None
             elif current is not None:
-                # Waiting = paused minus Up next (AD-19); Up next is Epic 4's.
+                # Waiting = paused minus Up next (AD-19).
                 assert shelf.role == "waiting", shelf.title
                 assert shelf.waiting_page == current["currentPage"]
             else:
                 assert shelf.role is None, shelf.title
-        card = home(library).main_book
+        view = home(library)
+        if up_next is None:
+            assert view.up_next is None
+        else:
+            assert view.up_next is not None
+            assert view.up_next.id == up_next
+            assert view.up_next.paused == (_current(stored[up_next]) is not None)
+        card = view.main_book
         if main is None:
             assert card is None
         else:

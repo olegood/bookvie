@@ -217,11 +217,17 @@ export function markDeleteHandled(key: string): void {
 }
 
 /**
- * The Current reading block's status line: "Main book · started 2 Sep 2026"
- * or "Waiting for you, page 120 · started 2 Sep 2026"; no "· started" part
- * without a start date.
+ * The Current reading block's status line: "Main book · started 2 Sep 2026",
+ * "Up next, paused at page 120 · started 2 Sep 2026" (EXPERIENCE.md → Book
+ * states) or "Waiting for you, page 120 · started 2 Sep 2026"; no "· started"
+ * part without a start date.
  */
 export function currentReadingStatus(reading: Pick<CurrentReading, 'status' | 'currentPage' | 'startDate'>): string {
-  const status = reading.status === 'main' ? 'Main book' : `Waiting for you, page ${reading.currentPage}`
+  const status =
+    reading.status === 'main'
+      ? 'Main book'
+      : reading.status === 'upNext'
+        ? `Up next, paused at page ${reading.currentPage}`
+        : `Waiting for you, page ${reading.currentPage}`
   return reading.startDate === null ? status : `${status} · started ${shortDate(reading.startDate)}`
 }

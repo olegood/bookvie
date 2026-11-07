@@ -29,7 +29,9 @@ The tests pin these names:
 - A new Reading: ``startDate`` = today, ``currentPage`` 0, the Purpose,
   ``lastProgressUpdate`` = now, every other field ``null``. With a Main book,
   the same commit pauses its Reading at its page with ``pausedAt`` = today.
-- These tests never assert ``upNextBookId``: Story 4.1 decides it (FR-7).
+- ``upNextBookId`` follows FR-7 (Story 4.1): the interrupted Main book becomes
+  Up next; with no Main book it stays, except that the started Book leaves it.
+  The state matrix covers it; ``test_up_next.py`` holds the Story 4.1 criteria.
 """
 
 import json
@@ -232,8 +234,14 @@ FINISHED = {
 }
 
 
-def _seed(data_dir: Path, state: str, with_main: bool) -> tuple[str, str | None]:
-    """Dune in ``state`` (never, finished, paused, main), plus Fahrenheit 451 as Main."""
+def _seed(
+    data_dir: Path, state: str, with_main: bool, up_next: str = "none"
+) -> tuple[str, str | None]:
+    """Dune in ``state`` (never, finished, paused, main), plus Fahrenheit 451 as Main.
+
+    ``up_next`` is ``none``, ``dune`` (Dune is Up next) or ``other`` (Emma, never
+    started, is Up next).
+    """
     builder = LibraryBuilder()
     dune = builder.book(title="Dune", authors=["Frank Herbert"], pages=412)
     if state in ("finished", "paused", "main"):
@@ -254,14 +262,22 @@ def _seed(data_dir: Path, state: str, with_main: bool) -> tuple[str, str | None]
         builder.main(fahrenheit)
     if state == "main":
         builder.main(dune)
+    if up_next == "dune":
+        builder.up_next(dune)
+    elif up_next == "other":
+        builder.up_next(builder.book(title="Emma", authors=["Jane Austen"], pages=400))
     builder.write(data_dir)
     return dune, fahrenheit
 
 
+@pytest.mark.parametrize("up_next", ["none", "dune", "other"], ids=lambda u: f"up-next-{u}")
 @pytest.mark.parametrize("with_main", [False, True], ids=["no-main", "with-main"])
 @pytest.mark.parametrize("state", ["never", "finished", "paused"])
-def test_start_reading_across_the_state_matrix(tmp_path: Path, state: str, with_main: bool) -> None:
-    dune, fahrenheit = _seed(tmp_path, state, with_main)
+def test_start_reading_across_the_state_matrix(
+    tmp_path: Path, state: str, with_main: bool, up_next: str
+) -> None:
+    dune, fahrenheit = _seed(tmp_path, state, with_main, up_next)
+    up_next_before = _stored(tmp_path)["upNextBookId"]
     before = stored_book(tmp_path, dune)["readings"]
     fahrenheit_before = stored_book(tmp_path, fahrenheit)["readings"] if fahrenheit else None
 
@@ -295,6 +311,14 @@ def test_start_reading_across_the_state_matrix(tmp_path: Path, state: str, with_
     if fahrenheit is not None:
         (paused,) = stored_book(tmp_path, fahrenheit)["readings"]
         assert paused == {**fahrenheit_before[0], "pausedAt": TODAY.isoformat()}
+    # FR-7: the interrupted Main book is Up next; with none, Dune leaves Up
+    # next and any other Up next stays.
+    if fahrenheit is not None:
+        assert library["upNextBookId"] == fahrenheit
+    elif up_next == "dune":
+        assert library["upNextBookId"] is None
+    else:
+        assert library["upNextBookId"] == up_next_before
     assert_invariants(tmp_path)
 
 

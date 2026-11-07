@@ -91,3 +91,38 @@
   font-size: var(--font-body-size);
   line-height: var(--font-body-line-height);
 }
+
+/* The Up next suggestion (DESIGN.md → Main book card — empty): the 44×64
+   thumbnail, then the serif title, the author and the button. */
+.suggestion {
+  display: flex;
+  gap: var(--space-4);
+  align-items: flex-start;
+  margin-top: var(--space-4);
+}
+
+.suggestionInfo {
+  min-width: 0;
+}
+
+.suggestionTitle {
+  margin: 0;
+  font-family: var(--font-book-title-md-family);
+  font-size: var(--font-book-title-md-size);
+  font-weight: var(--font-book-title-md-weight);
+  line-height: var(--font-book-title-md-line-height);
+  color: var(--color-ink);
+  overflow-wrap: anywhere;
+}
+
+.suggestionAuthors {
+  margin: var(--space-1) 0 0;
+  font-family: var(--font-body-sm-family);
+  font-size: var(--font-body-sm-size);
+  line-height: var(--font-body-sm-line-height);
+  color: var(--color-ink-secondary);
+}
+
+.suggestionButton {
+  margin-top: var(--space-3);
+}

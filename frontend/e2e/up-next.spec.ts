@@ -12,6 +12,7 @@
 // clock to the same day in Europe/Madrid (TC-2, AD-20), so the stored
 // `pausedAt` is the fake today.
 
+import AxeBuilder from '@axe-core/playwright'
 import type { Locator, Page } from '@playwright/test'
 import { expect, test } from './fixtures.ts'
 import {
@@ -33,6 +34,7 @@ const FAHRENHEIT = { id: FAHRENHEIT_ID, title: 'Fahrenheit 451', authors: ['Ray 
 const LEFT_HAND_READING_ID = '5a4b3c2d-1e0f-4a9b-8c7d-6e5f4a3b2c1d'
 const DUNE_READING_ID = '0f9e8d7c-6b5a-4493-8271-605f4e3d2c1b'
 const RESUME_LEFT_HAND = 'Resume The Left Hand of Darkness'
+const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']
 
 /** Dune paused at p.120 since 20 October, with a Purpose. */
 const DUNE_PAUSED = {
@@ -92,7 +94,7 @@ async function sizeOf(locator: Locator): Promise<{ width: number; height: number
 }
 
 test.describe('Story 4.1 Keep the interrupted book as Up next (ATDD)', () => {
-  test.skip('[P0] AC-2 with a Main book and another Up next, the Start dialog says Z moves to Waiting for you., and confirming makes Y Up next', async ({
+  test('[P0] AC-2 with a Main book and another Up next, the Start dialog says Z moves to Waiting for you., and confirming makes Y Up next', async ({
     page,
   }) => {
     // Main: The Left Hand of Darkness at p.212; Up next: Dune, paused; Fahrenheit 451 never started.
@@ -117,6 +119,10 @@ test.describe('Story 4.1 Keep the interrupted book as Up next (ATDD)', () => {
       expect(text.indexOf('Dune moves to Waiting for you.')).toBeGreaterThan(pauses)
       await expect(dialog).not.toContainText('returns to the catalog')
       expect(await fontFamily(dialog.getByText('Dune', { exact: true }))).toMatch(/^ui-serif/)
+      // aria-describedby names both trade-off lines.
+      await expect(dialog).toHaveAccessibleDescription(
+        'This pauses The Left Hand of Darkness at p.212 (64%). Dune moves to Waiting for you.',
+      )
 
       await dialog.getByRole('button', { name: 'Start reading', exact: true }).click()
       await expect(mainBookCard(page).getByRole('link', { name: 'Fahrenheit 451', exact: true })).toBeFocused()
@@ -137,7 +143,7 @@ test.describe('Story 4.1 Keep the interrupted book as Up next (ATDD)', () => {
     }
   })
 
-  test.skip('[P1] AC-4 Home shows the Up next pane with a thumbnail, the title link, the author and Resume named with the title; with no Up next it reads Nothing up next.', async ({
+  test('[P1] AC-4 Home shows the Up next pane with a thumbnail, the title link, the author and Resume named with the title; with no Up next it reads Nothing up next.', async ({
     page,
     seededServer,
   }) => {
@@ -185,7 +191,7 @@ test.describe('Story 4.1 Keep the interrupted book as Up next (ATDD)', () => {
     await expect(emptyPane.getByRole('button')).toHaveCount(0)
   })
 
-  test.skip('[P1] AC-5 with no Main book and an Up next, the empty Main book card suggests it with Resume, and the Up next pane is hidden', async ({
+  test('[P1] AC-5 with no Main book and an Up next, the empty Main book card suggests it with Resume, and the Up next pane is hidden', async ({
     page,
     seededServer,
   }) => {
@@ -217,7 +223,7 @@ test.describe('Story 4.1 Keep the interrupted book as Up next (ATDD)', () => {
     await expect(resume).toBeFocused()
   })
 
-  test.skip('[P1] AC-6 a start in one browser context shows in the other after it regains focus: Up next moved, the last write wins, no warning', async ({
+  test('[P1] AC-6 a start in one browser context shows in the other after it regains focus: Up next moved, the last write wins, no warning', async ({
     page,
     browser,
     seededServer,
@@ -273,6 +279,157 @@ test.describe('Story 4.1 Keep the interrupted book as Up next (ATDD)', () => {
       await expect(page.getByRole('alert')).toHaveText('')
     } finally {
       await otherContext.close()
+    }
+  })
+})
+
+test.describe('Story 4.1 Keep the interrupted book as Up next (green-phase follow-ups)', () => {
+  test('[P0] AC-2 a never-started Up next returns to the catalog., and confirming leaves it with no role and no Reading', async ({
+    page,
+  }) => {
+    // Main: The Left Hand of Darkness at p.212; Up next: Dune, never started.
+    const server = await serverAtFakeToday(page, 'up-next-to-catalog', {
+      mainBookId: LEFT_HAND_ID,
+      upNextBookId: DUNE_ID,
+      books: [LEFT_HAND_MAIN, DUNE, FAHRENHEIT],
+    })
+    try {
+      await page.goto(`${server.url}/book/${FAHRENHEIT_ID}`)
+      await page.getByRole('main').getByRole('button', { name: 'Start reading', exact: true }).click()
+      const dialog = startDialog(page, 'Start Fahrenheit 451?')
+      await expect(dialog).toContainText('Dune returns to the catalog.')
+      await expect(dialog).not.toContainText('moves to Waiting for you')
+      await expect(dialog).toHaveAccessibleDescription(
+        'This pauses The Left Hand of Darkness at p.212 (64%). Dune returns to the catalog.',
+      )
+      const text = (await dialog.textContent()) ?? ''
+      expect(text.indexOf('Dune returns to the catalog.')).toBeGreaterThan(
+        text.indexOf('This pauses The Left Hand of Darkness at p.212 (64%).'),
+      )
+
+      await dialog.getByRole('button', { name: 'Start reading', exact: true }).click()
+      await expect(mainBookCard(page).getByRole('link', { name: 'Fahrenheit 451', exact: true })).toBeFocused()
+      // Home's Up next pane shows the interrupted Book with Resume; Dune is gone from it.
+      const pane = upNextPane(page)
+      await expect(pane.getByRole('button', { name: RESUME_LEFT_HAND, exact: true })).toBeVisible()
+      await expect(pane.getByText('Dune', { exact: true })).toHaveCount(0)
+      const library = storedLibrary(server)
+      expect(library.upNextBookId).toBe(LEFT_HAND_ID)
+      expect(storedBook(server, DUNE_ID).readings).toEqual([])
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+
+  test('[P1] AC-2 with an Up next but no Main book, the Start dialog has no trade-off line, and Up next stays', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ upNextBookId: DUNE_ID, books: [DUNE_PAUSED, FAHRENHEIT] })
+    await page.goto(`${server.url}/book/${FAHRENHEIT_ID}`)
+    await page.getByRole('main').getByRole('button', { name: 'Start reading', exact: true }).click()
+    const dialog = startDialog(page, 'Start Fahrenheit 451?')
+    await expect(dialog).toBeVisible()
+    await expect(dialog).not.toContainText('This pauses')
+    await expect(dialog).not.toContainText('moves to Waiting for you')
+    await expect(dialog).not.toContainText('returns to the catalog')
+    await dialog.getByRole('button', { name: 'Start reading', exact: true }).click()
+    await expect(mainBookCard(page).getByRole('link', { name: 'Fahrenheit 451', exact: true })).toBeFocused()
+    await expect(upNextPane(page).getByRole('button', { name: 'Resume Dune', exact: true })).toBeVisible()
+    const library = storedLibrary(server)
+    expect(library.mainBookId).toBe(FAHRENHEIT_ID)
+    expect(library.upNextBookId).toBe(DUNE_ID)
+  })
+
+  test('[P1] AC-3 Book detail offers Resume for a paused Up next, with its Purpose prefilled and no displacement line', async ({
+    page,
+    seededServer,
+  }) => {
+    // Main: The Left Hand of Darkness; Up next: Dune, paused at p.120.
+    const server = await seededServer({
+      mainBookId: LEFT_HAND_ID,
+      upNextBookId: DUNE_ID,
+      books: [LEFT_HAND_MAIN, DUNE_PAUSED],
+    })
+    await page.goto(`${server.url}/book/${DUNE_ID}`)
+    const main = page.getByRole('main')
+    await expect(main.getByText(/^Up next, paused at page 120\b/)).toBeVisible()
+    await expect(main.getByRole('button', { name: 'Start reading', exact: true })).toHaveCount(0)
+    await main.getByRole('button', { name: 'Resume', exact: true }).click()
+    const dialog = startDialog(page, 'Resume Dune?')
+    await expect(dialog.getByRole('textbox', { name: 'Purpose (optional)', exact: true })).toHaveValue(
+      'Reread for the ecology of Arrakis',
+    )
+    await expect(dialog).toContainText('This pauses The Left Hand of Darkness at p.212 (64%).')
+    await expect(dialog).not.toContainText('moves to Waiting for you')
+    await expect(dialog).not.toContainText('returns to the catalog')
+    await dialog.getByRole('button', { name: 'Resume', exact: true }).click()
+    await expect(mainBookCard(page).getByRole('link', { name: 'Dune', exact: true })).toBeFocused()
+    const library = storedLibrary(server)
+    expect(library.mainBookId).toBe(DUNE_ID)
+    expect(library.upNextBookId).toBe(LEFT_HAND_ID)
+    // The same Reading resumed, its Purpose kept.
+    expect(storedBook(server, DUNE_ID).readings).toEqual([
+      expect.objectContaining({ id: DUNE_READING_ID, currentPage: 120, purpose: 'Reread for the ecology of Arrakis' }),
+    ])
+  })
+
+  test('[P1] AC-4 a never-started Up next gets Start reading in the pane, which opens Start X?; Cancel returns focus to it', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({
+      mainBookId: DUNE_ID,
+      upNextBookId: FAHRENHEIT_ID,
+      books: [DUNE_MAIN, FAHRENHEIT],
+    })
+    await page.goto(`${server.url}/`)
+    const start = upNextPane(page).getByRole('button', { name: 'Start reading Fahrenheit 451', exact: true })
+    await expect(start).toHaveText('Start reading')
+    await start.click()
+    const dialog = startDialog(page, 'Start Fahrenheit 451?')
+    await expect(dialog).toContainText('This pauses Dune at p.100 (24%).')
+    await expect(dialog).not.toContainText('returns to the catalog')
+    await dialog.getByRole('button', { name: 'Cancel', exact: true }).click()
+    await expect(dialog).toHaveCount(0)
+    await expect(start).toBeFocused()
+
+    // Book detail agrees: Start reading.
+    await page.goto(`${server.url}/book/${FAHRENHEIT_ID}`)
+    await expect(page.getByRole('main').getByRole('button', { name: 'Start reading', exact: true })).toBeVisible()
+  })
+
+  test('[P1] AC-5 the empty card suggests a never-started Up next with Start reading', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ upNextBookId: FAHRENHEIT_ID, books: [FAHRENHEIT, DUNE] })
+    await page.goto(`${server.url}/`)
+    const start = mainBookCard(page).getByRole('button', { name: 'Start reading Fahrenheit 451', exact: true })
+    await expect(start).toHaveText('Start reading')
+    await start.click()
+    await expect(startDialog(page, 'Start Fahrenheit 451?')).toBeVisible()
+  })
+
+  test('[P1] axe finds no WCAG 2.2 AA violations on Home with the Up next pane and with the card suggestion, in both themes', async ({
+    page,
+    seededServer,
+  }) => {
+    const withPane = await seededServer({
+      mainBookId: DUNE_ID,
+      upNextBookId: LEFT_HAND_ID,
+      books: [DUNE_MAIN, LEFT_HAND_PAUSED],
+    })
+    const emptyPane = await seededServer({ mainBookId: DUNE_ID, books: [DUNE_MAIN, LEFT_HAND] })
+    const suggestion = await seededServer({ upNextBookId: LEFT_HAND_ID, books: [LEFT_HAND_PAUSED, DUNE] })
+    for (const server of [withPane, emptyPane, suggestion]) {
+      for (const colorScheme of ['light', 'dark'] as const) {
+        await page.emulateMedia({ colorScheme })
+        await page.goto(`${server.url}/`)
+        await expect(page.getByRole('main').getByRole('region', { name: 'Main book', exact: true })).toBeVisible()
+        const { violations } = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze()
+        expect(violations.map(({ id, nodes }) => `${server.url} ${colorScheme}: ${id} (${nodes.length})`)).toEqual([])
+      }
     }
   })
 })
