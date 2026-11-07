@@ -309,39 +309,39 @@ Activate one test at a time: delete its `@pytest.mark.skip(reason=RED)` line, or
 - **E2E:** `TZ=Europe/Madrid npm --prefix frontend run e2e -- e2e/up-next.spec.ts -g "AC-2"` (the e2e entry builds the SPA, Epic 3 retro item 27)
 
 ### AC-1, AC-3, AC-7: the intent
-- [ ] `intents/start_reading.py`: in the same `change`, set `library.up_next_book_id`: *Y* when a Main book was paused, else `None` if it was *X*, else unchanged. Update the module docstring ("`upNextBookId` is untouched (Story 4.1)").
-- [ ] Update `test_reading_state_machine.py` (table above) and run it.
-- [ ] Activate AC-1, AC-3, AC-7.
+- [x] `intents/start_reading.py`: in the same `change`, set `library.up_next_book_id`: *Y* when a Main book was paused, else `None` if it was *X*, else unchanged. Update the module docstring ("`upNextBookId` is untouched (Story 4.1)"). (done: backend/tests/test_up_next.py:test_ac1_p0_…, test_ac3_p0_…; backend/bookvie/intents/start_reading.py:82-109)
+- [x] Update `test_reading_state_machine.py` (table above) and run it. (done: backend/tests/test_reading_state_machine.py:108,158-160)
+- [x] Activate AC-1, AC-3, AC-7. (done: backend/tests/test_up_next.py:91,122,188, unskipped and passing)
 
 ### AC-2: the displacement line
-- [ ] `views/models.py` and `views/shelf.py`: `HomeView.up_next` (`HomeUpNext`: `id`, `title`, `authors`, `cover_file`, `has_cover`, `paused`). Then `npm --prefix frontend run api:gen`.
-- [ ] `BookDetailView.current_reading` for a paused Up next Book (`_role_reading`).
-- [ ] `StartDialog`: the second trade-off line from `home.data.upNext`, *Z* in the book-title face, and `aria-describedby` covering both lines.
-- [ ] Activate AC-2.
+- [x] `views/models.py` and `views/shelf.py`: `HomeView.up_next` (`HomeUpNext`: `id`, `title`, `authors`, `cover_file`, `has_cover`, `paused`). Then `npm --prefix frontend run api:gen`. (done: backend/tests/test_up_next.py:test_ac7_p1_the_home_view_carries_up_next_with_whether_it_is_paused; schema.d.ts in sync per check:api)
+- [x] `BookDetailView.current_reading` for a paused Up next Book (`_role_reading`). (done: frontend/e2e/up-next.spec.ts:352 (Up next, paused at page 120; Resume with the Purpose prefilled))
+- [x] `StartDialog`: the second trade-off line from `home.data.upNext`, *Z* in the book-title face, and `aria-describedby` covering both lines. (done: frontend/e2e/up-next.spec.ts:99 (serif Z, toHaveAccessibleDescription with both lines))
+- [x] Activate AC-2. (done: frontend/e2e/up-next.spec.ts:99)
 
 ### AC-4, AC-5: Home
-- [ ] An `UpNextPane` (section pane) in Home's side column: a `region` "Up next", the row (thumbnail, title link, author, the compact button named with the title), or "Nothing up next." with a Catalog link. Shown only with a Main book.
-- [ ] `MainBookCard` without a Main book: the Up next suggestion instead of the Catalog link, its button a `button-primary`.
-- [ ] Both buttons open the `StartDialog`, and Cancel returns focus to the opener.
-- [ ] After a finish hand-off with an Up next, focus goes to the card's button. Update `finish-reading.spec.ts` AC-6.
-- [ ] `lib/startReading.ts`: one source for **Start reading** versus **Resume** for an Up next Book (table above). Update `stale-hand-offs.spec.ts` and `start-reading.spec.ts` as listed.
-- [ ] Activate AC-4, AC-5.
+- [x] An `UpNextPane` (section pane) in Home's side column: a `region` "Up next", the row (thumbnail, title link, author, the compact button named with the title), or "Nothing up next." with a Catalog link. Shown only with a Main book. (done: frontend/e2e/up-next.spec.ts:148)
+- [x] `MainBookCard` without a Main book: the Up next suggestion instead of the Catalog link, its button a `button-primary`. (done: frontend/e2e/up-next.spec.ts:199)
+- [x] Both buttons open the `StartDialog`, and Cancel returns focus to the opener. (done: frontend/e2e/up-next.spec.ts:199 (card), frontend/e2e/up-next.spec.ts:385 (pane))
+- [x] After a finish hand-off with an Up next, focus goes to the card's button. Update `finish-reading.spec.ts` AC-6. (done: frontend/e2e/finish-reading.spec.ts:300,692)
+- [x] `lib/startReading.ts`: one source for **Start reading** versus **Resume** for an Up next Book (table above). Update `stale-hand-offs.spec.ts` and `start-reading.spec.ts` as listed. (done: frontend/src/lib/startReading.test.ts:15-27; frontend/e2e/stale-hand-offs.spec.ts:72; frontend/e2e/start-reading.spec.ts:485)
+- [x] Activate AC-4, AC-5. (done: frontend/e2e/up-next.spec.ts:148,199)
 
 ### AC-6: two contexts
-- [ ] Nothing new beyond AC-4: the views already refetch on focus (AD-7). Activate AC-6.
+- [x] Nothing new beyond AC-4: the views already refetch on focus (AD-7). Activate AC-6. (done: frontend/e2e/up-next.spec.ts:234)
 
 ### Green-phase follow-ups (secondary branches, not separate red leaves)
-- [ ] **AC-3 from Book detail:** a paused Up next Book shows **Resume**, its dialog reads "Resume *X*?" with the Purpose prefilled, and there is no displacement line with a Main book present. A never-started Up next shows **Start reading** and "Start *X*?".
-- [ ] **AC-2, "*Z* returns to the catalog."** for a never-started Up next (and for a finished one with no Reading in progress). After confirming, *Z* has no role and no Reading changed.
-- [ ] **AC-2, no displacement line** with an Up next but no Main book. After confirming, that Up next stays (API: `upNextBookId` unchanged).
-- [ ] **AC-2, after confirming,** Home's Up next pane shows *Y* with **Resume**, and *Z* is no longer in it.
-- [ ] **AC-4, Start reading** in the pane for a never-started Up next, named "Start reading *X*", whose dialog reads "Start *X*?".
-- [ ] **AC-4, the cover thumbnail:** with a cover, an `img` "Cover of *X*" at 44×64 (`attachCover` in `intents.ts`).
-- [ ] **AC-4, a long title** clamps to 2 lines in the pane (DESIGN.md → Section pane).
-- [ ] **AC-5, Start reading** in the card for a never-started Up next.
-- [ ] **AC-5, the 3.6 amendment:** finish the Main book with an Up next, and the card's button is focused. Without one, "No Main book." is focused. This is in `finish-reading.spec.ts` (table above).
-- [ ] **AC-6, a stale open dialog:** context B opens "Start Fahrenheit 451?" while The Left Hand of Darkness is Main. Context A then starts Dune, and B confirms. The server pauses Dune, makes Dune Up next, and displaces The Left Hand of Darkness to Waiting for you, with no warning (A2).
-- [ ] **AC-7, the home view's `upNext`** in an API test: `null` without Up next, `paused` true or false, and the fields as stored.
-- [ ] **RDG-API-001's Up next rows** in `test_start_reading.py`'s state matrix (Open items).
+- [x] **AC-3 from Book detail:** a paused Up next Book shows **Resume**, its dialog reads "Resume *X*?" with the Purpose prefilled, and there is no displacement line with a Main book present. A never-started Up next shows **Start reading** and "Start *X*?". (done: frontend/e2e/up-next.spec.ts:352 (paused: Resume) and frontend/e2e/up-next.spec.ts:567 (never-started: Start reading, "Start Dune?", automate))
+- [x] **AC-2, "*Z* returns to the catalog."** for a never-started Up next (and for a finished one with no Reading in progress). After confirming, *Z* has no role and no Reading changed. (done: frontend/e2e/up-next.spec.ts:295 (never started) and frontend/e2e/up-next.spec.ts:529 (finished, Readings byte-identical, automate))
+- [x] **AC-2, no displacement line** with an Up next but no Main book. After confirming, that Up next stays (API: `upNextBookId` unchanged). (done: frontend/e2e/up-next.spec.ts:332; backend/tests/test_up_next.py:250)
+- [x] **AC-2, after confirming,** Home's Up next pane shows *Y* with **Resume**, and *Z* is no longer in it. (done: frontend/e2e/up-next.spec.ts:295 (Resume The Left Hand of Darkness, Dune gone from the pane))
+- [x] **AC-4, Start reading** in the pane for a never-started Up next, named "Start reading *X*", whose dialog reads "Start *X*?". (done: frontend/e2e/up-next.spec.ts:385)
+- [x] **AC-4, the cover thumbnail:** with a cover, an `img` "Cover of *X*" at 44×64 (`attachCover` in `intents.ts`). (done: frontend/e2e/up-next.spec.ts:422)
+- [x] **AC-4, a long title** clamps to 2 lines in the pane (DESIGN.md → Section pane). (done: frontend/e2e/up-next.spec.ts:602 (automate))
+- [x] **AC-5, Start reading** in the card for a never-started Up next. (done: frontend/e2e/up-next.spec.ts:410)
+- [x] **AC-5, the 3.6 amendment:** finish the Main book with an Up next, and the card's button is focused. Without one, "No Main book." is focused. This is in `finish-reading.spec.ts` (table above). (done: frontend/e2e/finish-reading.spec.ts:300 (Up next focused), :692; the no-Up-next case is the existing AC-6 leaf)
+- [x] **AC-6, a stale open dialog:** context B opens "Start Fahrenheit 451?" while The Left Hand of Darkness is Main. Context A then starts Dune, and B confirms. The server pauses Dune, makes Dune Up next, and displaces The Left Hand of Darkness to Waiting for you, with no warning (A2). (done: frontend/e2e/up-next.spec.ts:634 (automate; the other tab's start is sent through page.request))
+- [x] **AC-7, the home view's `upNext`** in an API test: `null` without Up next, `paused` true or false, and the fields as stored. (done: backend/tests/test_up_next.py:test_ac7_p1_the_home_view_carries_up_next_with_whether_it_is_paused)
+- [x] **RDG-API-001's Up next rows** in `test_start_reading.py`'s state matrix (Open items). (done: backend/tests/test_start_reading.py:273-276 (up_next axis none/dune/other))
 - [ ] **RDG-E2E-001** (UJ-3: trade-off and displacement copy → confirm → Home state): tick it in the trace once AC-2 and the "returns to the catalog." follow-up are green.
-- [ ] **axe** on Home with the Up next pane, and on the empty card with its suggestion, in both themes.
+- [x] **axe** on Home with the Up next pane, and on the empty card with its suggestion, in both themes. (done: frontend/e2e/up-next.spec.ts:491)

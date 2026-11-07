@@ -510,3 +510,167 @@ test.describe('Story 4.1 Keep the interrupted book as Up next (green-phase follo
     }
   })
 })
+
+test.describe('Story 4.1 Keep the interrupted book as Up next (automate)', () => {
+  /** Dune read to the end in April, with no Reading in progress. */
+  const DUNE_FINISHED = {
+    ...DUNE,
+    readings: [
+      {
+        id: DUNE_READING_ID,
+        startDate: '2026-03-01',
+        currentPage: 412,
+        finishDate: '2026-04-10',
+        finishedPages: 412,
+      },
+    ],
+  }
+
+  test('[P1] AC-2/AC-4 a finished Up next with no Reading in progress gets Start reading, returns to the catalog., and keeps its Readings', async ({
+    page,
+  }) => {
+    // Main: The Left Hand of Darkness at p.212; Up next: Dune, finished; Fahrenheit 451 never started.
+    const server = await serverAtFakeToday(page, 'up-next-finished', {
+      mainBookId: LEFT_HAND_ID,
+      upNextBookId: DUNE_ID,
+      books: [LEFT_HAND_MAIN, DUNE_FINISHED, FAHRENHEIT],
+    })
+    try {
+      const duneBefore = storedBook(server, DUNE_ID)
+      // Book states "Finished, Up next": the pane offers Start reading, not Resume.
+      await page.goto(`${server.url}/`)
+      const pane = upNextPane(page)
+      await expect(pane.getByRole('button', { name: 'Start reading Dune', exact: true })).toHaveText('Start reading')
+      await expect(pane.getByRole('button', { name: 'Resume Dune', exact: true })).toHaveCount(0)
+
+      // "Never started" means no Reading in progress, so Dune returns to the catalog.
+      await page.goto(`${server.url}/book/${FAHRENHEIT_ID}`)
+      await page.getByRole('main').getByRole('button', { name: 'Start reading', exact: true }).click()
+      const dialog = startDialog(page, 'Start Fahrenheit 451?')
+      await expect(dialog).toHaveAccessibleDescription(
+        'This pauses The Left Hand of Darkness at p.212 (64%). Dune returns to the catalog.',
+      )
+      await expect(dialog).not.toContainText('moves to Waiting for you')
+
+      await dialog.getByRole('button', { name: 'Start reading', exact: true }).click()
+      await expect(mainBookCard(page).getByRole('link', { name: 'Fahrenheit 451', exact: true })).toBeFocused()
+      const library = storedLibrary(server)
+      expect(library.mainBookId).toBe(FAHRENHEIT_ID)
+      expect(library.upNextBookId).toBe(LEFT_HAND_ID)
+      // Displaced only: Dune's stored Book is exactly as it was.
+      expect(storedBook(server, DUNE_ID)).toEqual(duneBefore)
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+
+  test('[P1] AC-3 Book detail offers Start reading for a never-started Up next: Start X? with the pause line and no displacement line', async ({
+    page,
+  }) => {
+    // Main: The Left Hand of Darkness at p.212; Up next: Dune, never started.
+    const server = await serverAtFakeToday(page, 'up-next-detail-start', {
+      mainBookId: LEFT_HAND_ID,
+      upNextBookId: DUNE_ID,
+      books: [LEFT_HAND_MAIN, DUNE],
+    })
+    try {
+      await page.goto(`${server.url}/book/${DUNE_ID}`)
+      const main = page.getByRole('main')
+      await expect(main.getByRole('button', { name: 'Resume', exact: true })).toHaveCount(0)
+      await main.getByRole('button', { name: 'Start reading', exact: true }).click()
+      const dialog = startDialog(page, 'Start Dune?')
+      await expect(dialog.getByRole('textbox', { name: 'Purpose (optional)', exact: true })).toHaveValue('')
+      // X is the Up next Book: only the pause line describes the dialog.
+      await expect(dialog).toHaveAccessibleDescription('This pauses The Left Hand of Darkness at p.212 (64%).')
+      await expect(dialog).not.toContainText('returns to the catalog')
+      await expect(dialog).not.toContainText('moves to Waiting for you')
+
+      await dialog.getByRole('button', { name: 'Start reading', exact: true }).click()
+      await expect(mainBookCard(page).getByRole('link', { name: 'Dune', exact: true })).toBeFocused()
+      const library = storedLibrary(server)
+      expect(library.mainBookId).toBe(DUNE_ID)
+      expect(library.upNextBookId).toBe(LEFT_HAND_ID)
+      expect(storedBook(server, DUNE_ID).readings).toEqual([
+        expect.objectContaining({ startDate: FAKE_TODAY, currentPage: 0, pausedAt: null, finishDate: null }),
+      ])
+      await expect(upNextPane(page).getByRole('button', { name: RESUME_LEFT_HAND, exact: true })).toBeVisible()
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+
+  test('[P2] AC-4 a long Up next title clamps to 2 lines in the pane, and the row stays inside it', async ({
+    page,
+    seededServer,
+  }) => {
+    const longTitle =
+      'The Long and Winding Account of a Very Patient Reader Who Kept Every Book She Ever Paused Within Reach'
+    const long = { ...LEFT_HAND_PAUSED, title: longTitle }
+    const server = await seededServer({ mainBookId: DUNE_ID, upNextBookId: LEFT_HAND_ID, books: [DUNE_MAIN, long] })
+    await page.setViewportSize({ width: 1280, height: 800 })
+    await page.goto(`${server.url}/`)
+    const pane = upNextPane(page)
+    const title = pane.getByRole('link', { name: longTitle, exact: true })
+    await expect(title).toBeVisible()
+
+    const lines = await title.evaluate((element) => {
+      const style = getComputedStyle(element)
+      return {
+        lineHeight: parseFloat(style.lineHeight),
+        height: element.getBoundingClientRect().height,
+        clipped: element.scrollHeight > element.clientHeight,
+      }
+    })
+    // Exactly 2 lines shown, and the rest is clipped.
+    expect(Math.round(lines.height / lines.lineHeight)).toBe(2)
+    expect(lines.clipped).toBe(true)
+    // The button stays on its line, inside the pane.
+    const paneBox = await pane.boundingBox()
+    const buttonBox = await pane.getByRole('button', { name: `Resume ${longTitle}`, exact: true }).boundingBox()
+    if (paneBox === null || buttonBox === null) throw new Error('not rendered')
+    expect(buttonBox.x + buttonBox.width).toBeLessThanOrEqual(paneBox.x + paneBox.width)
+  })
+
+  test('[P1] AC-6 a Start dialog left open while another tab starts a Book applies to the current state on confirm, with no warning (A2)', async ({
+    page,
+  }) => {
+    // Main: The Left Hand of Darkness at p.212; Dune and Fahrenheit 451 never started; no Up next.
+    const server = await serverAtFakeToday(page, 'up-next-stale-dialog', {
+      mainBookId: LEFT_HAND_ID,
+      books: [LEFT_HAND_MAIN, DUNE, FAHRENHEIT],
+    })
+    try {
+      // This tab opens "Start Fahrenheit 451?" while The Left Hand of Darkness is Main.
+      await page.goto(`${server.url}/book/${FAHRENHEIT_ID}`)
+      await page.getByRole('main').getByRole('button', { name: 'Start reading', exact: true }).click()
+      const dialog = startDialog(page, 'Start Fahrenheit 451?')
+      await expect(dialog).toHaveAccessibleDescription('This pauses The Left Hand of Darkness at p.212 (64%).')
+
+      // Another tab starts Dune: Dune is Main and The Left Hand of Darkness Up next.
+      const started = await page.request.post(`${server.url}${START_READING}`, {
+        multipart: { intent: JSON.stringify({ bookId: DUNE_ID, purpose: null }) },
+      })
+      expect(started.status()).toBe(200)
+
+      // Confirming the stale dialog: last write wins, against the server's current state.
+      await dialog.getByRole('button', { name: 'Start reading', exact: true }).click()
+      await expect(mainBookCard(page).getByRole('link', { name: 'Fahrenheit 451', exact: true })).toBeFocused()
+      await expect(page.getByRole('alert')).toHaveText('')
+      await expect(page.getByRole('dialog')).toHaveCount(0)
+
+      const library = storedLibrary(server)
+      expect(library.mainBookId).toBe(FAHRENHEIT_ID)
+      // Dune was interrupted, so it is Up next; The Left Hand of Darkness is displaced to Waiting for you.
+      expect(library.upNextBookId).toBe(DUNE_ID)
+      expect(storedBook(server, DUNE_ID).readings).toEqual([
+        expect.objectContaining({ currentPage: 0, pausedAt: FAKE_TODAY, finishDate: null }),
+      ])
+      expect(storedBook(server, LEFT_HAND_ID).readings).toEqual([
+        expect.objectContaining({ id: LEFT_HAND_READING_ID, currentPage: 212, pausedAt: FAKE_TODAY, finishDate: null }),
+      ])
+      await expect(upNextPane(page).getByRole('button', { name: 'Resume Dune', exact: true })).toBeVisible()
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+})
