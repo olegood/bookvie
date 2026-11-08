@@ -20,6 +20,7 @@ browser (``frontend/e2e/pause.spec.ts``).
 """
 
 import json
+from datetime import timedelta
 from pathlib import Path
 
 import pytest
@@ -246,19 +247,22 @@ def test_p1_paused_at_survives_a_resume_and_a_finish(tmp_path: Path) -> None:
     builder = LibraryBuilder()
     dune = _main_at_150(builder)
     builder.write(tmp_path)
-    client = api_client(tmp_path)
 
-    assert _pause(client, dune).status_code == 200
+    assert _pause(api_client(tmp_path), dune).status_code == 200
     assert stored_book(tmp_path, dune)["readings"][0]["pausedAt"] == TODAY.isoformat()
 
-    assert _start(client, dune, "Arrakis").status_code == 200
+    # Resumed and finished on later days, so an overwrite with today would show.
+    resumed_on = TODAY + timedelta(days=3)
+    assert _start(api_client(tmp_path, today=resumed_on), dune, "Arrakis").status_code == 200
     assert _stored(tmp_path)["mainBookId"] == dune
     assert stored_book(tmp_path, dune)["readings"][0]["pausedAt"] == TODAY.isoformat()
     assert_invariants(tmp_path)
 
-    assert _finish(client, dune, TODAY.isoformat()).status_code == 200
+    finished_on = TODAY + timedelta(days=7)
+    later = api_client(tmp_path, today=finished_on)
+    assert _finish(later, dune, finished_on.isoformat()).status_code == 200
     (reading,) = stored_book(tmp_path, dune)["readings"]
-    assert reading["finishDate"] == TODAY.isoformat()
+    assert reading["finishDate"] == finished_on.isoformat()
     assert reading["pausedAt"] == TODAY.isoformat()
     assert_invariants(tmp_path)
 

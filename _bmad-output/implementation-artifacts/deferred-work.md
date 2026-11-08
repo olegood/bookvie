@@ -402,3 +402,24 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-2-see-every-paused-book-in-waiting-for-you.md`
   summary: Spine drift (Capability → Architecture Map, AD-6), reconciled before the next epic: the "FR-5 to FR-9" row (it holds FR-7) should name `views/shelf` (home `waiting`, the server-ordered Waiting for you list: `pausedAt` ascending, then title key, then Book id, never sending `pausedAt`) and Home's Waiting for you pane (`WaitingPane`), and its "Governed by" should add AD-6. Wording tightened by the code review of spec-4-2 (2026-11-08).
   evidence: Story 4.2 adds `HomeView.waiting` (`backend/bookvie/views/shelf.py` `_waiting`) and `frontend/src/components/WaitingPane.tsx`; the map's "FR-5 to FR-9" row names neither.
+
+## Deferred from: implementation of spec-4-3-pause-my-main-book (2026-11-08)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-3-pause-my-main-book.md`
+  summary: Check in Safari and Firefox on macOS that a mouse click on a "⋯" menu item (Pause, Open book) and on "⋯" itself lands. Unverified; high if it fails. There a press doesn't focus the button, so the menu's blur has a null `relatedTarget`. The code review of 4.3 holds the blur off during a pointer press on an item or "⋯" (`pressing` in `MoreActionsMenu.tsx`), which should remove the race, but the e2e suite runs Chromium only.
+  evidence: Spec 4.3 frontmatter `deferred`, item 1. Settle it with a manual check, or a Playwright webkit/firefox project run of `pause.spec.ts`.
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-3-pause-my-main-book.md`
+  summary: No test covers a pause that fails after the page has unmounted (the late `alert` announcement in `usePauseFlow`). Low.
+  evidence: Spec 4.3 frontmatter `deferred`, item 2. Cover it with the app's other unmount-after-request cases (`PageField`, `EditPurpose`).
+
+## Deferred from: code review of spec-4-3-pause-my-main-book (2026-11-08)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-3-pause-my-main-book.md`
+  summary: Spine drift (AD-19), reconciled before the next epic: AD-19 describes only how `start-reading` pauses a Book; it should also state the standalone `pause` intent (pauses the current Reading, overwriting `pausedAt`, clears `mainBookId`, makes the Book `upNextBookId`, a displaced Up next only loses the pointer). Extends the 4.1 AD-19 entry above.
+  evidence: Spine-check review of 4.3; `backend/bookvie/intents/pause.py`, and `start_reading.py` now imports `pause_main` from it.
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-3-pause-my-main-book.md`
+  summary: Spine drift (AD-7), reconciled before the next epic: the known-gap sentence should name the Pause Confirm dialog too; its displacement line, and whether the dialog shows at all, read `useHomeView()` as cached when Pause is pressed. Extends the 4.1 AD-7 entry above.
+  evidence: Spine-check review of 4.3; `frontend/src/lib/usePauseFlow.tsx` `request()` reads `home.data.upNext`, as the spec's Design Notes accept.
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-3-pause-my-main-book.md`
+  summary: Spine drift (Structural Seed, Capability → Architecture Map preface), reconciled before the next epic: the seed's `intents/` module list should add `pause`, and the map's preface should stop giving `intents/pause` as an example of a module not built yet.
+  evidence: Spine-check review of 4.3; `backend/bookvie/intents/pause.py` and `POST /intents/pause` in `backend/bookvie/http/api.py`.

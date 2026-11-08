@@ -183,6 +183,14 @@ test.describe('Story 4.3 Pause my Main book', () => {
     await expect(item(page, 'Pause')).toBeFocused()
     await page.keyboard.press('Tab')
     await expect(menu(page)).toHaveCount(0)
+
+    // Shift+Tab moves focus back onto "⋯", which closes the menu too.
+    await more.click()
+    await expect(item(page, 'Pause')).toBeFocused()
+    await page.keyboard.press('Shift+Tab')
+    await expect(more).toBeFocused()
+    await expect(menu(page)).toHaveCount(0)
+    await expect(more).toHaveAttribute('aria-expanded', 'false')
   })
 
   test("[P1] Open book goes to the Main book's Book detail", async ({ page, seededServer }) => {
@@ -368,6 +376,33 @@ test.describe('Story 4.3 Pause my Main book', () => {
     await expect(more).toBeFocused()
     await expect(mainBookCard(page).getByRole('link', { name: LEFT_HAND.title, exact: true })).toBeVisible()
     expect(libraryBytes(server)).toBe(before)
+  })
+
+  test("[P1] after a couldn't-save on Home, finishing the Book (the card goes) still announces in the live regions", async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer(NO_UP_NEXT)
+    await routeCouldntSave(page)
+    await page.goto(`${server.url}/`)
+    await moreButton(page).click()
+    await item(page, 'Pause').click()
+    await expect(page.getByRole('alert')).toHaveText(COULDNT_SAVE)
+    await page.unroute(`**${PAUSE}`)
+
+    // The last page opens the Finish dialog; Done ends the Book's Main status, so the slot below "⋯" goes.
+    const card = mainBookCard(page)
+    await card.getByRole('spinbutton', { name: 'Page', exact: true }).fill('330')
+    await card.getByRole('button', { name: 'Update', exact: true }).click()
+    await page
+      .getByRole('dialog', { name: `Finished ${LEFT_HAND.title}`, exact: true })
+      .getByRole('button', { name: 'Done', exact: true })
+      .click()
+
+    await expect(card.getByRole('button', { name: 'More actions', exact: true })).toHaveCount(0)
+    await expect(page.getByRole('status')).toContainText(`Finished ${LEFT_HAND.title}.`)
+    await expect(page.getByRole('alert')).toHaveText('')
+    await expect(card.locator('[role="status"], [role="alert"]')).toHaveCount(0)
   })
 
   test("[P1] a couldn't-save on Book detail without the dialog shows the line below Pause, keeps focus there, and nothing changes", async ({

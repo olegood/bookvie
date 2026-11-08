@@ -26,7 +26,7 @@ import { COULDNT_LOAD } from '../lib/copy.ts'
 import { usePageTitle } from '../lib/page.ts'
 import { pausedStatus } from '../lib/pause.ts'
 import { detailPrimary } from '../lib/startReading.ts'
-import { PAUSING, usePauseFlow } from '../lib/usePauseFlow.tsx'
+import { PAUSING, usePauseFlow, type PauseBook } from '../lib/usePauseFlow.tsx'
 import NewBookPanel from './NewBookPanel.tsx'
 import NotFoundPage from './NotFoundPage.tsx'
 import styles from './BookDetailPage.module.css'
@@ -138,14 +138,16 @@ function BookDetail({ book, onDelete, onFinish, finishButton }: BookDetailProps)
 
   // Mark finished: the Main book only (a non-Main finish is Story 4.5's).
   const canFinish = book.role === 'main'
+  // Pause: the Main book only, whatever Story 4.5 does to `canFinish`.
+  const canPause = book.role === 'main'
 
   // Pause: the Main book only. Once the refetched view makes it a paused Up
   // next, focus goes to its Resume and then `status` says where it went.
   const pauseButton = useRef<HTMLButtonElement>(null)
   const pausedLine = useRef<string | null>(null)
   const [pauses, setPauses] = useState(0)
-  const onPaused = useCallback((title: string, page: number) => {
-    pausedLine.current = pausedStatus(title, page)
+  const onPaused = useCallback((paused: PauseBook) => {
+    pausedLine.current = pausedStatus(paused.title, paused.currentPage)
     setPauses((count) => count + 1)
   }, [])
   const {
@@ -156,20 +158,23 @@ function BookDetail({ book, onDelete, onFinish, finishButton }: BookDetailProps)
     dialog: pauseDialog,
   } = usePauseFlow({
     book:
-      book.role === 'main' && current !== null
+      canPause && current !== null
         ? { id: book.id, title: book.title, currentPage: current.currentPage, percent: current.percent }
         : null,
     opener: pauseButton,
     onPaused,
   })
 
+  // While the view still shows the Book as Main, the refetch hasn't rendered;
+  // any other view settles the line, said only if it made the Book resumable.
   useEffect(() => {
     const line = pausedLine.current
-    if (line === null || primary !== 'Resume') return
+    if (line === null || book.role === 'main') return
     pausedLine.current = null
+    if (primary !== 'Resume') return
     startButton.current?.focus()
     announce('status', line)
-  }, [pauses, primary])
+  }, [pauses, book.role, primary])
 
   const openConfirm = () => {
     setShowAlert(false)
@@ -216,7 +221,7 @@ function BookDetail({ book, onDelete, onFinish, finishButton }: BookDetailProps)
                 {primary}
               </Button>
             )}
-            {canFinish && (
+            {canPause && (
               <>
                 <Button ref={pauseButton} disabledReason={pausing ? PAUSING : undefined} onClick={requestPause}>
                   Pause

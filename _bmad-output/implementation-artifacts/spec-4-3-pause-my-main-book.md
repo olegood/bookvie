@@ -116,6 +116,35 @@ deferred:
 - Given a server answering 503, when Pause is sent, then "Couldn't save. Your data wasn't changed." shows in the dialog above its buttons, or below **Pause** or "⋯" with focus kept there, and the library is unchanged.
 - Given a paused Reading, when it is resumed and later finished, then `pausedAt` still equals its last pause date.
 
+### Review Findings
+
+Code review of 2026-11-08 (layers: blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor, spine-check).
+
+- [x] [Review][Patch] Menu `onBlur` treats every focus move onto "⋯" as a pointer toggle: Shift+Tab from an item leaves the menu open (`aria-expanded="true"`) with focus on "⋯", where Esc does nothing; in a browser where a press doesn't focus the button (Safari/Firefox macOS), `relatedTarget` is null, so a press on "⋯" closes then reopens the menu, and a press on an item may unmount it before `click` (the deferred high-unverified item). Track a pointer press inside the menu or on "⋯" (set in the capture `pointerdown`), skip `onBlur` while it is set, and otherwise close on any focus move out, including onto "⋯" (acceptance-auditor+edge-case-hunter+blind-hunter) [frontend/src/components/MoreActionsMenu.tsx:104]
+- [x] [Review][Patch] No test covers the EC1 fix that releases the live regions when the Book stops being Main after a failed immediate-path pause; reverting `holdsRegions` to `failed` passes every test while later `status` lines go to a detached slot. Add an e2e: 503 once, press Pause, unroute, finish the Book, assert the finish `status` line and that the regions are no longer inside `main` (verification-gap+blind-hunter) [frontend/e2e/pause.spec.ts]
+- [x] [Review][Patch] AC5's test pauses, resumes and finishes all on `TODAY`, so it can't tell `pausedAt` kept from `pausedAt` overwritten with today; resume and finish on a later `FakeClock` date (acceptance-auditor) [backend/tests/test_pause.py:245]
+- [x] [Review][Patch] A landed pause whose refetched view doesn't reach the expected state (another tab started a Book) leaves `pausedLine` pending, so a later unrelated finish or resume steals focus and announces a stale "Paused X" line; consume the line on the first render after `onPaused`, announcing only when the state matches (blind-hunter+edge-case-hunter) [frontend/src/pages/HomePage.tsx:196, frontend/src/pages/BookDetailPage.tsx:166]
+- [x] [Review][Patch] Book detail renders **Pause** under `canFinish`, Mark finished's flag, which Story 4.5 widens to non-Main Books; give Pause its own `canPause = book.role === 'main'` (acceptance-auditor+blind-hunter) [frontend/src/pages/BookDetailPage.tsx:219]
+- [x] [Review][Patch] The story's deferrals live only in the spec frontmatter; nothing reaches `deferred-work.md`, where the retro and the next-epic gate look (blind-hunter) [_bmad-output/implementation-artifacts/deferred-work.md]
+- [x] [Review][Patch] README's Status line, edited by this diff, still says "with Story 4.1 done" and "26 of 41 stories done" (acceptance-auditor+blind-hunter) [README.md:8]
+- [x] [Review][Defer] Spine drift (AD-19): the spine describes only `start-reading`'s pause, not the standalone `pause` intent (clears `mainBookId`, makes the Book `upNextBookId`) [backend/bookvie/intents/pause.py] — deferred: spine drift, reconciled before the next epic
+- [x] [Review][Defer] Spine drift (AD-7): the known-gap sentence names only the Start dialog; the Pause Confirm's displacement line, and whether it shows at all, also read the cached home view, as Design Notes accept [frontend/src/lib/usePauseFlow.tsx:114] — deferred: spine drift, reconciled before the next epic
+- [x] [Review][Defer] Spine drift (Structural Seed, Capability → Architecture Map preface): the `intents/` module list omits `pause`, and the preface still gives `intents/pause` as not built yet [backend/bookvie/intents/pause.py] — deferred: spine drift, reconciled before the next epic
+
+**Rejected:**
+- `low`/spec edit: an outside press on another control keeps focus there, not on "⋯" as AC1 reads. The Design Notes chose it (as the spine popover does); the fix is a spec edit.
+- spec edit: the Code Map and Tasks name `lib/usePauseFlow.ts` (the file is `.tsx`), and the Boundaries' outside-press rule has no exception.
+- `false`: a successful pause after the page unmounts isn't announced. That is the app's convention (`PageField.tsx:133`, `EditPurpose.tsx:93` announce only failures); the success shows in the refetched views.
+- `low`: a refetch that empties the card while the menu is open drops focus to body. Needs a cross-tab change mid-menu, and the fix is a new unmount guard.
+- `low`: the double-click tests may pass for the wrong reason. `inFlight` is set synchronously on the first click, and the fetch and refetch can't finish between Playwright's back-to-back clicks.
+- `low`: raw px in `MoreActionsMenu.module.css`. They're the mockup's values and match the codebase (`FinishDialog.module.css:167`, `MainBookCard.module.css:14`); no named harm.
+- `low`: the "⋯" overhang of the title margin isn't visually checked. It's a residual the spec records, with no defect shown.
+- `low`: axe doesn't run on Book detail's Pause or the visible couldn't-save lines. The spec scopes axe to the menu and the dialog, and the line reuses the existing alert styles.
+- `low`: Book detail fetches the home view on every mount. It's one local request, and the fix adds an `enabled` parameter.
+- `low`: the Pause item does nothing without `onPause`. Home, its only caller, always passes it.
+- `false`: `pause_main` is a silent no-op without a current Reading. `pause` refuses `not_main_book` first, and the invariant `main_has_unfinished_reading` guarantees a current Reading.
+- `false`: the spec's `status: done` vs sprint `review`. This review's status write sets both to the same value.
+
 ## Spec Change Log
 
 ## Review Triage Log

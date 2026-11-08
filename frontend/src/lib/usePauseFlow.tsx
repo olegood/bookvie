@@ -20,8 +20,8 @@ type Options = {
   book: PauseBook | null
   /** The button the press came from: Cancel, Esc and a failure keep focus there. */
   opener: RefObject<HTMLElement | null>
-  /** The pause landed and the views have refetched: the owner focuses, then announces. */
-  onPaused: (title: string, page: number) => void
+  /** The pause of `paused` landed and the views have refetched: the owner focuses, then announces. */
+  onPaused: (paused: PauseBook) => void
 }
 
 type PauseFlow = {
@@ -95,7 +95,7 @@ export function usePauseFlow({ book, opener, onPaused }: Options): PauseFlow {
     setDialogBusy(false)
     if (result.kind === 'ok') {
       setConfirming(null)
-      onPaused(target.title, target.currentPage)
+      onPaused(target)
       return
     }
     // Couldn't save, or a refusal (a stale tab): nothing changed; say so in

@@ -184,22 +184,26 @@ export default function HomePage() {
       ? null
       : { id: homeMain.id, title: homeMain.title, currentPage: homeMain.currentPage, percent: homeMain.percent }
   // The `status` line of a pause that landed, waiting for the empty card to render.
-  const pausedLine = useRef<string | null>(null)
+  const pausedLine = useRef<{ bookId: string; line: string } | null>(null)
   const [pauses, setPauses] = useState(0)
-  const onPaused = useCallback((title: string, page: number) => {
-    pausedLine.current = pausedStatus(title, page)
+  const onPaused = useCallback((paused: PauseBook) => {
+    pausedLine.current = { bookId: paused.id, line: pausedStatus(paused.title, paused.currentPage) }
     setPauses((count) => count + 1)
   }, [])
   const pauseFlow = usePauseFlow({ book: pauseBook, opener: moreButton, onPaused })
 
-  // After a pause: focus first (the empty card's Resume), then the line.
+  // After a pause: focus first (the empty card's Resume), then the line. While
+  // the view still shows the paused Book as Main, the refetch hasn't rendered;
+  // any other view settles the line, which is said only when there is no Main
+  // book (another tab may have started one), so it never fires on a later change.
   useEffect(() => {
-    const line = pausedLine.current
-    if (line === null || !noMain) return
+    const pending = pausedLine.current
+    if (pending === null || view.status !== 'ready' || view.data.mainBook?.id === pending.bookId) return
     pausedLine.current = null
+    if (!noMain) return
     ;(suggestButton.current ?? emptyHeading.current)?.focus()
-    announce('status', line)
-  }, [pauses, noMain])
+    announce('status', pending.line)
+  }, [pauses, view, noMain])
   const openFinish = useCallback(
     (savedLine: string) => {
       if (mainId !== null) setFinishing({ bookId: mainId, key: location.key, savedLine })

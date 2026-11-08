@@ -30,7 +30,8 @@ type Props = {
  * focuses the first item; ArrowDown and ArrowUp move with wrap, Home and End
  * jump to the first and last item. Esc, or a press outside the menu, closes
  * it and returns focus to "⋯" (a press on another control keeps the focus
- * there, as the spine popover does); Tab closes it as focus moves on.
+ * there, as the spine popover does); Tab, or Shift+Tab back onto "⋯", closes
+ * it as focus moves on.
  * Choosing an item closes the menu, focus back on "⋯", before its `onSelect`
  * runs, so a dialog it opens is the only overlay.
  */
@@ -46,19 +47,37 @@ export default function MoreActionsMenu({ items, buttonRef }: Props) {
     if (open) itemButtons.current[0]?.focus()
   }, [open])
 
-  // A press outside closes the menu. A press on "⋯" is left to its own toggle.
+  // A press outside closes the menu. A press on an item or on "⋯" is left to
+  // its click (choose, or the toggle): `pressing` holds the blur off until
+  // then, since Safari and Firefox don't focus a pressed button, so the blur
+  // they fire has no `relatedTarget`.
+  const pressing = useRef(false)
   useEffect(() => {
     if (!open) return
+    pressing.current = false
     const down = (event: PointerEvent) => {
       const target = event.target
       if (!(target instanceof Element)) return
-      if (menu.current?.contains(target) || button.current?.contains(target)) return
+      if (button.current?.contains(target) || (menu.current?.contains(target) && target.closest('[role="menuitem"]'))) {
+        pressing.current = true
+        return
+      }
+      if (menu.current?.contains(target)) return
       setOpen(false)
       if (target.closest(FOCUSABLE)) return
       setTimeout(() => button.current?.focus(), 0)
     }
+    const up = () => {
+      pressing.current = false
+    }
     document.addEventListener('pointerdown', down, true)
-    return () => document.removeEventListener('pointerdown', down, true)
+    document.addEventListener('pointerup', up, true)
+    document.addEventListener('pointercancel', up, true)
+    return () => {
+      document.removeEventListener('pointerdown', down, true)
+      document.removeEventListener('pointerup', up, true)
+      document.removeEventListener('pointercancel', up, true)
+    }
   }, [open])
 
   const close = () => {
@@ -100,12 +119,12 @@ export default function MoreActionsMenu({ items, buttonRef }: Props) {
     buttons[next]?.focus()
   }
 
-  // Tab (or any focus move) out of the menu closes it, wherever focus went.
+  // Tab, Shift+Tab (onto "⋯") or any other focus move out of the menu closes
+  // it, wherever focus went. A pointer press on an item or "⋯" is left to its click.
   const onBlur = (event: FocusEvent<HTMLUListElement>) => {
+    if (pressing.current) return
     const to = event.relatedTarget
     if (to instanceof Node && menu.current?.contains(to)) return
-    // A press on "⋯" is left to its own toggle, which closes the menu.
-    if (to === button.current) return
     setOpen(false)
   }
 

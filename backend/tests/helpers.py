@@ -171,9 +171,13 @@ class RecordingLock:
 
 
 def api_client(
-    data_dir: Path, fs: FaultyFs | None = None, *, raise_server_exceptions: bool = False
+    data_dir: Path,
+    fs: FaultyFs | None = None,
+    *,
+    raise_server_exceptions: bool = False,
+    today: date = TODAY,
 ) -> TestClient:
-    """The app on the library in ``data_dir``, today pinned to :data:`TODAY`.
+    """The app on the library in ``data_dir``, today pinned to ``today`` (:data:`TODAY`).
 
     ``fs`` injects faults into intents, not startup. By default an unexpected
     exception becomes the app's 500, as a browser would see it; view tests
@@ -182,7 +186,7 @@ def api_client(
     store = Store.open(data_dir)
     if fs is not None:
         store.fs = fs
-    app = create_app(data_dir / "no-static", data_dir=data_dir, store=store, clock=FakeClock(TODAY))
+    app = create_app(data_dir / "no-static", data_dir=data_dir, store=store, clock=FakeClock(today))
     return TestClient(app, base_url=BASE_URL, raise_server_exceptions=raise_server_exceptions)
 
 
