@@ -323,30 +323,30 @@ Activate one test at a time: delete its `@pytest.mark.skip(reason=RED)` line, or
 - **E2E:** `TZ=Europe/Madrid npm --prefix frontend run e2e -- e2e/waiting-for-you.spec.ts -g "AC-2"` (the e2e entry builds the SPA, Epic 3 retro item 27)
 
 ### AC-1, AC-4: the view
-- [ ] `views/models.py`: `HomeWaiting` (`id`, `title`, `pages`, `current_page`, `percent`) and `HomeView.waiting: list[HomeWaiting]`.
-- [ ] `views/shelf.py`: `_waiting(library)`. It takes every Book whose role is `waiting` (reuse `_role_reading`, so Up next wins as it does everywhere) and sorts by (`pausedAt`, `title_key`, id). Then run `npm --prefix frontend run api:gen`.
-- [ ] Update `test_reading_state_machine.py` (table above) and run it.
-- [ ] Activate AC-1 and AC-4.
+- [x] `views/models.py`: `HomeWaiting` (`id`, `title`, `pages`, `current_page`, `percent`) and `HomeView.waiting: list[HomeWaiting]`. (done: backend/bookvie/views/models.py:87, :110; `test_waiting_for_you.py` AC-1 and AC-4 pass)
+- [x] `views/shelf.py`: `_waiting(library)`. It takes every Book whose role is `waiting` (reuse `_role_reading`, so Up next wins as it does everywhere) and sorts by (`pausedAt`, `title_key`, id). Then run `npm --prefix frontend run api:gen`. (done: backend/bookvie/views/shelf.py:158, :203; `schema.d.ts` in sync under `npm run check`)
+- [x] Update `test_reading_state_machine.py` (table above) and run it. (done: backend/tests/test_reading_state_machine.py:389 `views_agree_with_the_pointers`)
+- [x] Activate AC-1 and AC-4. (done: backend/tests/test_waiting_for_you.py:63, :133)
 
 ### AC-2, AC-3, AC-5, AC-7: the pane
-- [ ] A `WaitingPane` (section pane) in Home's side column, after the Up next pane: the `region` and heading "Waiting for you (N)", and one row per entry. Each row has the title link, the bar (a new `aria-valuetext` formatter in `lib/gauge.ts`), "p.N of M" and the compact **Resume** named with the title. Render nothing when the list is empty.
-- [ ] The side column grows with its content: no cap, no inner scroll, no `max-height`.
-- [ ] Activate AC-2, AC-3, AC-5 and AC-7.
+- [x] A `WaitingPane` (section pane) in Home's side column, after the Up next pane: the `region` and heading "Waiting for you (N)", and one row per entry. Each row has the title link, the bar (a new `aria-valuetext` formatter in `lib/gauge.ts`), "p.N of M" and the compact **Resume** named with the title. Render nothing when the list is empty. (done: frontend/src/components/WaitingPane.tsx, frontend/src/lib/gauge.test.ts:12; frontend/e2e/waiting-for-you.spec.ts:95)
+- [x] The side column grows with its content: no cap, no inner scroll, no `max-height`. (done: frontend/src/pages/HomePage.module.css:43; frontend/e2e/waiting-for-you.spec.ts:168)
+- [x] Activate AC-2, AC-3, AC-5 and AC-7. (done: frontend/e2e/waiting-for-you.spec.ts:95, :143, :168, :262)
 
 ### AC-6: Resume from a row
-- [ ] Home opens the Start dialog for a row's Book, through the same hosting as Up next. Cancel focuses that row's **Resume**, and confirming hands off to the card's title link (Story 3.2).
-- [ ] Activate AC-6.
+- [x] Home opens the Start dialog for a row's Book, through the same hosting as Up next. Cancel focuses that row's **Resume**, and confirming hands off to the card's title link (Story 3.2). (done: frontend/e2e/waiting-for-you.spec.ts:205 (confirm hands off to the title link), :290 (Cancel))
+- [x] Activate AC-6. (done: frontend/e2e/waiting-for-you.spec.ts:205)
 
 ### Green-phase follow-ups (secondary branches, not separate red leaves)
-- [ ] **AC-1, `pausedAt: null`:** the order the spec chooses (Assumptions), in a unit case.
-- [ ] **AC-1, every Book-states row with a paused Reading** in RDG-UNIT-002's random sequences (above).
-- [ ] **AC-2, a long title** clamps to 2 lines in the row, and the row stays inside the pane.
-- [ ] **AC-2, the pane's place:** after the Up next pane in the side column. With no Main book (Up next pane hidden), it sits beside the empty card's suggestion.
-- [ ] **AC-2, one row:** the heading "Waiting for you (1)" (EXPERIENCE.md → State Patterns).
-- [ ] **AC-3, static seeds:** no paused Reading at all, and only a paused Up next. In both, there is no Waiting region, with and without a Main book.
-- [ ] **AC-6, Cancel** returns focus to the row's **Resume**, and nothing is sent.
-- [ ] **AC-6, the Main book has an Up next with a paused Reading:** the dialog says "*Z* moves to Waiting for you.". After confirming, *Z* is a row in the pane, placed by its own `pausedAt`.
-- [ ] **AC-6, after confirming,** the paused Main book is Up next (FR-7). It doesn't appear in Waiting for you, and the count drops by one.
-- [ ] **AC-7, no Main book:** the paused Up next is only in the empty card's suggestion, and the count still leaves it out.
-- [ ] **Refetch on focus** (AD-7): a pause or resume in another tab updates the pane and its count with no warning.
-- [ ] **axe** on Home with the Waiting pane, in both themes.
+- [x] **AC-1, `pausedAt: null`:** the order the spec chooses (Assumptions), in a unit case. (done: backend/tests/test_waiting_for_you.py:183)
+- [x] **AC-1, every Book-states row with a paused Reading** in RDG-UNIT-002's random sequences (above). (done: backend/tests/test_reading_state_machine.py:389, over the paused and finished-then-re-read-paused rows the machine reaches; the paused Side read is the AC-1 unit case, `test_waiting_for_you.py:63`, until Story 4.7 adds a side-read intent)
+- [x] **AC-2, a long title** clamps to 2 lines in the row, and the row stays inside the pane. (done: frontend/e2e/waiting-for-you.spec.ts:498)
+- [x] **AC-2, the pane's place:** after the Up next pane in the side column. With no Main book (Up next pane hidden), it sits beside the empty card's suggestion. (done: frontend/e2e/waiting-for-you.spec.ts:377)
+- [x] **AC-2, one row:** the heading "Waiting for you (1)" (EXPERIENCE.md → State Patterns). (done: frontend/e2e/waiting-for-you.spec.ts:377)
+- [x] **AC-3, static seeds:** no paused Reading at all, and only a paused Up next. In both, there is no Waiting region, with and without a Main book. (done: frontend/e2e/waiting-for-you.spec.ts:355)
+- [x] **AC-6, Cancel** returns focus to the row's **Resume**, and nothing is sent. (done: frontend/e2e/waiting-for-you.spec.ts:290, and with no Main book :566)
+- [x] **AC-6, the Main book has an Up next with a paused Reading:** the dialog says "*Z* moves to Waiting for you.". After confirming, *Z* is a row in the pane, placed by its own `pausedAt`. (done: frontend/e2e/waiting-for-you.spec.ts:322)
+- [x] **AC-6, after confirming,** the paused Main book is Up next (FR-7). It doesn't appear in Waiting for you, and the count drops by one. (done: frontend/e2e/waiting-for-you.spec.ts:205 (Dune is Up next and the pane goes from 1 row to none))
+- [x] **AC-7, no Main book:** the paused Up next is only in the empty card's suggestion, and the count still leaves it out. (done: frontend/e2e/waiting-for-you.spec.ts:566)
+- [x] **Refetch on focus** (AD-7): a pause or resume in another tab updates the pane and its count with no warning. (done: frontend/e2e/waiting-for-you.spec.ts:410 (a resume; Pause arrives in Story 4.3))
+- [x] **axe** on Home with the Waiting pane, in both themes. (done: frontend/e2e/waiting-for-you.spec.ts:447)

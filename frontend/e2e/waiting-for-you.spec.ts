@@ -493,3 +493,108 @@ test.describe('Story 4.2 See every paused book in Waiting for you (ATDD)', () =>
     expect(JSON.stringify(storedLibrary(server))).toBe(before)
   })
 })
+
+test.describe('Story 4.2 See every paused book in Waiting for you (automate)', () => {
+  test('[P2] AC-2 a long title clamps to 2 lines in its row, and the row stays inside the pane', async ({
+    page,
+    seededServer,
+  }) => {
+    const longTitle =
+      'The Long and Winding Account of a Very Patient Reader Who Kept Every Book She Ever Paused Within Reach'
+    // Paused 5 October, so it is the first row and Fahrenheit 451 (10 October) the row below it.
+    const long = { ...LEFT_HAND_PAUSED_EARLY, title: longTitle }
+    const server = await seededServer({ mainBookId: DUNE_ID, books: [DUNE_MAIN, long, FAHRENHEIT_WAITING] })
+    await page.setViewportSize({ width: 1280, height: 800 })
+    await page.goto(`${server.url}/`)
+    const pane = waitingPane(page)
+    const title = pane.getByRole('link', { name: longTitle, exact: true })
+    await expect(title).toBeVisible()
+    expect(await rowTitles(pane)).toEqual([longTitle, 'Fahrenheit 451'])
+
+    const lines = await title.evaluate((element) => {
+      const style = getComputedStyle(element)
+      return {
+        lineHeight: parseFloat(style.lineHeight),
+        height: element.getBoundingClientRect().height,
+        clipped: element.scrollHeight > element.clientHeight,
+      }
+    })
+    // Exactly 2 lines shown, and the rest is clipped.
+    expect(Math.round(lines.height / lines.lineHeight)).toBe(2)
+    expect(lines.clipped).toBe(true)
+    // The row's bar, page line and Resume stay inside the pane, on one line.
+    const paneBox = await pane.boundingBox()
+    const barBox = await pane.getByRole('progressbar', { name: longTitle, exact: true }).boundingBox()
+    const buttonBox = await pane.getByRole('button', { name: `Resume ${longTitle}`, exact: true }).boundingBox()
+    if (paneBox === null || barBox === null || buttonBox === null) throw new Error('not rendered')
+    expect(buttonBox.x + buttonBox.width).toBeLessThanOrEqual(paneBox.x + paneBox.width)
+    expect(Math.abs(buttonBox.y + buttonBox.height / 2 - (barBox.y + barBox.height / 2))).toBeLessThanOrEqual(1)
+    // The next row's title starts below this row's button.
+    const nextBox = await pane.getByRole('link', { name: 'Fahrenheit 451', exact: true }).boundingBox()
+    if (nextBox === null) throw new Error('not rendered')
+    expect(nextBox.y).toBeGreaterThanOrEqual(buttonBox.y + buttonBox.height)
+  })
+
+  test('[P2] AC-2 under forced colors the mini bar keeps a visible track and a fill distinct from it', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ mainBookId: DUNE_ID, books: [DUNE_MAIN, LEFT_HAND_WAITING] })
+    const bar = waitingPane(page).getByRole('progressbar', { name: 'The Left Hand of Darkness', exact: true })
+    const colors = () =>
+      bar.evaluate((element) => {
+        const track = getComputedStyle(element)
+        const fill = getComputedStyle(element.querySelector('span')!)
+        return { track: track.backgroundColor, border: track.borderTopColor, fill: fill.backgroundColor }
+      })
+
+    // Normal colors: the accent fill on the accent-soft track.
+    await page.emulateMedia({ colorScheme: 'light', forcedColors: 'none' })
+    await page.goto(`${server.url}/`)
+    const normal = await colors()
+    expect(normal.fill).not.toBe(normal.track)
+
+    // Forced colors: a CanvasText outline and fill on a Canvas track, so the value still reads.
+    await page.emulateMedia({ colorScheme: 'light', forcedColors: 'active' })
+    const forced = await colors()
+    expect(forced.fill).not.toBe(forced.track)
+    expect(forced.border).toBe(forced.fill)
+    expect(forced.fill).not.toBe(normal.fill)
+    await expectFill(bar, 0.36)
+  })
+
+  test("[P1] AC-7 with no Main book a paused Up next is only the empty card's suggestion, and a row's Cancel still returns to that row", async ({
+    page,
+    seededServer,
+  }) => {
+    // No Main book. Up next: The Left Hand of Darkness, paused 5 October (the oldest pause). Waiting: Fahrenheit 451.
+    const server = await seededServer({
+      upNextBookId: LEFT_HAND_ID,
+      books: [DUNE, LEFT_HAND_PAUSED_EARLY, FAHRENHEIT_WAITING],
+    })
+    const starts = requestsTo(page, START_READING)
+    await page.goto(`${server.url}/`)
+    const card = mainBookCard(page)
+    const suggestion = card.getByRole('button', { name: RESUME_LEFT_HAND, exact: true })
+
+    // The Up next Book is the card's suggestion, and the pane counts only the other paused Book.
+    await expect(card.getByRole('heading', { name: 'No Main book.', exact: true })).toBeVisible()
+    await expect(suggestion).toBeVisible()
+    await expect(upNextPane(page)).toHaveCount(0)
+    await expect(waitingHeading(page, 1)).toBeVisible()
+    const pane = waitingPane(page)
+    expect(await rowTitles(pane)).toEqual(['Fahrenheit 451'])
+    await expect(pane.getByRole('button', { name: RESUME_LEFT_HAND, exact: true })).toHaveCount(0)
+
+    // The row's dialog has no trade-off line, and Cancel returns to the row, not to the card's suggestion.
+    const resume = pane.getByRole('button', { name: 'Resume Fahrenheit 451', exact: true })
+    await resume.click()
+    const dialog = startDialog(page, 'Resume Fahrenheit 451?')
+    await expect(dialog).not.toContainText('This pauses')
+    await dialog.getByRole('button', { name: 'Cancel', exact: true }).click()
+    await expect(dialog).toHaveCount(0)
+    await expect(resume).toBeFocused()
+    expect(starts).toHaveLength(0)
+    expect(storedLibrary(server).upNextBookId).toBe(LEFT_HAND_ID)
+  })
+})
