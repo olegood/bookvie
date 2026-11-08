@@ -1,12 +1,13 @@
 """RDG-UNIT-002 (R-01): random intent sequences keep the reading plan sound.
 
-A Hypothesis state machine drives ``start-reading``, ``edit-purpose``,
+A Hypothesis state machine drives ``start-reading``, ``pause``, ``edit-purpose``,
 ``update-page``, ``finish-reading`` and ``delete-book`` (with days passing in between) over a small library that
 starts with a Book in each state: never started, finished, paused, and Main.
 After every step:
 
 - a refusal is the one a simple model predicts (``book_not_found``,
-  ``already_main``, ``reading_already_finished``, ``not_main_book``,
+  ``already_main``, ``reading_already_finished``, ``not_main_book`` (for
+  ``update-page`` and ``pause``),
   ``invalid_fields`` for a page out of range, a Finished on date in the
   future or before the start, or Purpose fulfilled sent for a Reading with no
   Purpose) and leaves ``library.json``
@@ -14,10 +15,11 @@ After every step:
 - an accepted intent changed exactly what its contract says and nothing else
   (the paused Main book, the resumed or appended Reading, the one Purpose,
   the Main book's page and ``lastProgressUpdate``, the finished Reading and
-  the cleared Main book), and Up next moved as a model of FR-7 predicts: after
-  a start it is the interrupted Main book, ``None`` when the started Book was
-  Up next with no Main book, and unchanged otherwise; a finish leaves it
-  alone, and a delete of the Up next Book clears it (Story 4.1);
+  the cleared Main book, the paused Main book's ``pausedAt``), and Up next
+  moved as a model of FR-7 predicts: after a start it is the interrupted Main
+  book, ``None`` when the started Book was Up next with no Main book, and
+  unchanged otherwise; after a pause it is the paused Book; a finish leaves it
+  alone, and a delete of the Up next Book clears it (Stories 4.1, 4.3);
 - ``check_invariants()`` holds, each Book has at most one unfinished Reading,
   and the file on disk reads back as the committed library;
 - the views agree: only ``mainBookId`` is ``main``, only ``upNextBookId`` is
@@ -27,7 +29,7 @@ After every step:
   and Home's Up next is the Up next Book, ``paused`` when it has a current
   Reading.
 
-Later intents (pause, set-up-next, Side reads) join the machine as they land.
+Later intents (set-up-next, Side reads) join the machine as they land.
 """
 
 import json
@@ -45,6 +47,7 @@ from bookvie.intents import IntentError
 from bookvie.intents.delete_book import delete_book, parse_delete_book_intent
 from bookvie.intents.edit_purpose import edit_purpose, parse_edit_purpose_intent
 from bookvie.intents.finish_reading import finish_reading, parse_finish_reading_intent
+from bookvie.intents.pause import parse_pause_intent, pause
 from bookvie.intents.start_reading import parse_start_reading_intent, start_reading
 from bookvie.intents.update_page import parse_update_page_intent, update_page
 from bookvie.store import Store
@@ -204,6 +207,38 @@ class ReadingPlan(RuleBasedStateMachine):
             }
         for other in before.keys() - {book_id, old_main}:
             assert after[other] == before[other], other
+
+    @rule(slot=_slots)
+    def pause_main(self, slot: int) -> None:
+        book_id = self._book_id(slot)
+        library = self.store.library
+        before = _books(library)
+        if book_id not in before:
+            expected = "book_not_found"
+        elif book_id != library.main_book_id:
+            expected = "not_main_book"
+        else:
+            expected = None
+        clock = FakeClock(self.today)
+        intent = parse_pause_intent(_intent(book_id, with_purpose=False))
+        if not self._send(lambda: pause(self.store, clock, intent), expected):
+            return
+
+        # FR-7: the paused Book becomes Up next; a displaced Up next keeps its Readings.
+        self.up_next = book_id
+        assert self.store.library.main_book_id is None
+        after = _books(self.store.library)
+        current = _current(before[book_id])
+        assert current is not None
+        expected_book = {
+            **before[book_id],
+            "readings": [
+                {**r, "pausedAt": self.today.isoformat()} if r["id"] == current["id"] else r
+                for r in before[book_id]["readings"]
+            ],
+        }
+        # Only the current Reading's pausedAt moves; every other Book stays.
+        assert after == {**before, book_id: expected_book}
 
     @rule(slot=_slots, purpose=_purposes)
     def edit(self, slot: int, purpose: str | None) -> None:

@@ -1,0 +1,63 @@
+/* The "⋯" menu (key-home mockup → .more, .menu): pushed to the right end of
+   its row, the menu hanging below it, right-aligned. The wrap takes no
+   height, so the 32px button is centred on the row's line and the row keeps
+   the eyebrow's own height (the card's layout doesn't move). */
+.wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 0;
+  margin-left: auto;
+}
+
+/* A button-secondary 32×32 icon button. */
+.wrap .more {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  color: var(--color-ink-secondary);
+  font-size: var(--font-body-size);
+  letter-spacing: 1px;
+}
+
+.wrap .more[aria-expanded='true'] {
+  outline: var(--focus-ring-width) solid var(--color-accent);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.menu {
+  position: absolute;
+  top: calc(16px + var(--space-1));
+  right: 0;
+  z-index: 20;
+  box-sizing: border-box;
+  width: 170px;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  border: var(--hairline) solid var(--color-line);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-overlay);
+}
+
+.item {
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--color-ink);
+  font-family: var(--font-body-family);
+  font-size: var(--font-body-size);
+  line-height: var(--font-body-line-height);
+  text-align: left;
+  cursor: pointer;
+}
+
+.item:focus {
+  outline: var(--focus-ring-width) solid var(--color-accent);
+  outline-offset: calc(-1 * var(--focus-ring-width));
+}

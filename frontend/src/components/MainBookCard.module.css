@@ -18,6 +18,13 @@
   min-width: 0;
 }
 
+/* The eyebrow with the "⋯" menu at the right end of its row. */
+.eyebrowRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
 .eyebrow {
   margin: 0;
   font-family: var(--font-section-label-family);
@@ -125,4 +132,21 @@
 
 .suggestionButton {
   margin-top: var(--space-3);
+}
+
+/* The live regions' host sits here, directly below "⋯", after a failed
+   pause: one calm line in ink, right-aligned under the button. */
+.regions[data-show-alert='true'] [role='alert'] {
+  position: static;
+  width: auto;
+  height: auto;
+  margin: var(--space-2) 0 0;
+  overflow: visible;
+  clip-path: none;
+  white-space: normal;
+  text-align: right;
+  font-family: var(--font-body-sm-family);
+  font-size: var(--font-body-sm-size);
+  line-height: var(--font-body-sm-line-height);
+  color: var(--color-ink);
 }

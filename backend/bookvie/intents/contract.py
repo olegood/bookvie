@@ -211,7 +211,7 @@ NOT_MAIN_BOOK_MESSAGE = "This book isn't your Main book anymore."
 
 
 def not_main_book() -> IntentError:
-    """409 ``not_main_book``: ``update-page`` for a Book that isn't Main, e.g. a stale tab (AD-9)."""
+    """409 ``not_main_book``: ``update-page`` or ``pause`` for a Book that isn't Main, e.g. a stale tab (AD-9)."""
     return IntentError(
         409,
         ErrorBody(

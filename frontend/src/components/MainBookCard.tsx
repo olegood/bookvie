@@ -1,11 +1,12 @@
 import { useId, type Ref } from 'react'
-import { Link } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import type { HomeMainBook, HomeUpNext } from '../api/index.ts'
 import { CHOOSE_A_BOOK } from '../lib/copy.ts'
 import { upNextStart } from '../lib/startReading.ts'
 import Button from './Button.tsx'
 import Cover from './Cover.tsx'
 import Gauge from './Gauge.tsx'
+import MoreActionsMenu from './MoreActionsMenu.tsx'
 import PageField from './PageField.tsx'
 import ReentryLine from './ReentryLine.tsx'
 import styles from './MainBookCard.module.css'
@@ -32,6 +33,12 @@ const NO_MAIN_BOOK = 'No Main book.'
  * button, else the heading.
  * `onReachedLastPage` and `pageFieldRef` pass through to the page field, so
  * Home can host the Finish dialog and return focus to the field.
+ *
+ * The eyebrow shares its row with the "⋯" menu ("More actions": **Pause**,
+ * which calls `onPause`, and **Open book**, which goes to Book detail).
+ * `moreRef` is the "⋯" button, where focus stays after a Cancel or a failed
+ * pause. Below the row, `pauseSlot` takes the live regions while
+ * `pauseFailed`, so a couldn't-save line shows directly below "⋯".
  */
 export default function MainBookCard({
   book,
@@ -44,6 +51,10 @@ export default function MainBookCard({
   suggestRef,
   onReachedLastPage,
   pageFieldRef,
+  onPause,
+  moreRef,
+  pauseSlot,
+  pauseFailed = false,
 }: {
   book: HomeMainBook | null
   upNext?: HomeUpNext | null
@@ -55,8 +66,13 @@ export default function MainBookCard({
   emptyHeadingRef?: Ref<HTMLHeadingElement>
   onReachedLastPage?: (savedLine: string) => void
   pageFieldRef?: Ref<HTMLInputElement>
+  onPause?: () => void
+  moreRef?: Ref<HTMLButtonElement>
+  pauseSlot?: Ref<HTMLDivElement>
+  pauseFailed?: boolean
 }) {
   const eyebrowId = useId()
+  const navigate = useNavigate()
   if (book === null) {
     return (
       <section className={`${styles.card} ${styles.empty}`} aria-label="Main book">
@@ -92,9 +108,19 @@ export default function MainBookCard({
     <section className={`${styles.card} ${styles.main}`} aria-labelledby={eyebrowId}>
       <Cover coverFile={book.coverFile} title={book.title} />
       <div className={styles.info}>
-        <p id={eyebrowId} className={styles.eyebrow}>
-          Main book
-        </p>
+        <div className={styles.eyebrowRow}>
+          <p id={eyebrowId} className={styles.eyebrow}>
+            Main book
+          </p>
+          <MoreActionsMenu
+            buttonRef={moreRef}
+            items={[
+              { label: 'Pause', onSelect: () => onPause?.() },
+              { label: 'Open book', onSelect: () => void navigate(`/book/${book.id}`) },
+            ]}
+          />
+        </div>
+        <div ref={pauseSlot} className={styles.regions} data-show-alert={pauseFailed ? 'true' : undefined} />
         <h2 className={styles.titleHeading}>
           <Link ref={titleRef} to={`/book/${book.id}`} className={styles.title}>
             {book.title}

@@ -273,6 +273,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/intents/pause": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Pause Intent
+         * @description Pause the Main book at its page and make it Up next, clearing the Main book (FR-6).
+         */
+        post: operations["pause_intent_api_intents_pause_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/intents/restore": {
         parameters: {
             query?: never;
@@ -360,6 +380,14 @@ export interface components {
             /**
              * Intent
              * @description JSON object {"bookId": ..., "finishedOn": "YYYY-MM-DD", "purposeFulfilled": "yes" | "partly" | "notYet" | null, "rating": 1..5 | null}: the Finish dialog's answers, null when skipped.
+             */
+            intent?: string | null;
+        };
+        /** Body_pause_intent_api_intents_pause_post */
+        Body_pause_intent_api_intents_pause_post: {
+            /**
+             * Intent
+             * @description JSON object {"bookId": ...}: the Main book to pause.
              */
             intent?: string | null;
         };
@@ -1454,6 +1482,66 @@ export interface operations {
         requestBody?: {
             content: {
                 "multipart/form-data": components["schemas"]["Body_finish_reading_intent_api_intents_finish_reading_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkResponse"];
+                };
+            };
+            /** @description Refused by a library rule */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Invalid fields */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Couldn't save */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Couldn't save */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    pause_intent_api_intents_pause_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_pause_intent_api_intents_pause_post"];
             };
         };
         responses: {

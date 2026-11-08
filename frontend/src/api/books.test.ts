@@ -12,6 +12,8 @@ import {
   editPurpose,
   finishReading,
   finishReadingForm,
+  pause,
+  pauseForm,
   purposeForm,
   setSpineColor,
   startReading,
@@ -341,5 +343,46 @@ describe('finishReading', () => {
     const result = await finishReading(client, 'b1', { finishedOn: '2026-10-28', purposeFulfilled: null, rating: null })
     assert.equal(result.kind === 'refusal' && result.code, 'reading_already_finished')
     client.clear()
+  })
+})
+
+describe('pause', () => {
+  afterEach(() => mock.restoreAll())
+
+  it('posts only the bookId as the intent part of a multipart form', async () => {
+    const fetch = mock.method(globalThis, 'fetch', async (..._args: [string, RequestInit]) =>
+      Response.json({ ok: true }),
+    )
+    const client = new QueryClient()
+    const result = await pause(client, 'b1')
+
+    assert.deepEqual(result, { kind: 'ok', ids: {}, reachedLastPage: false })
+    const [url, init] = fetch.mock.calls[0].arguments
+    assert.equal(url, '/api/intents/pause')
+    assert.equal(init!.method, 'POST')
+    const body = init!.body as FormData
+    assert.deepEqual(
+      [...(body as unknown as Iterable<[string, unknown]>)].map(([key]) => key),
+      ['intent'],
+    )
+    assert.deepEqual(JSON.parse(body.get('intent') as string), { bookId: 'b1' })
+    client.clear()
+  })
+
+  it('passes a not_main_book refusal through', async () => {
+    mock.method(globalThis, 'fetch', async () =>
+      Response.json(
+        { error: { kind: 'refusal', code: 'not_main_book', message: "This book isn't your Main book anymore." } },
+        { status: 409 },
+      ),
+    )
+    const client = new QueryClient()
+    const result = await pause(client, 'b1')
+    assert.equal(result.kind === 'refusal' && result.code, 'not_main_book')
+    client.clear()
+  })
+
+  it('builds the same form on its own', () => {
+    assert.equal(pauseForm('b2').get('intent'), '{"bookId":"b2"}')
   })
 })

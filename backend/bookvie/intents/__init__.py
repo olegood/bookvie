@@ -43,6 +43,7 @@ from .finish_reading import (
     parse_finish_reading_intent,
 )
 from .intent_model import malformed as malformed_intent
+from .pause import PauseIntent, parse_pause_intent, pause
 from .restore import RestoreIntent, max_upload_bytes, parse_restore_intent, restore
 from .set_spine_color import (
     SetSpineColorIntent,
@@ -74,6 +75,7 @@ __all__ = [
     "FinishReadingIntent",
     "IntentError",
     "OkResponse",
+    "PauseIntent",
     "PreparedCover",
     "RefusedCover",
     "RestoreIntent",
@@ -106,10 +108,12 @@ __all__ = [
     "parse_edit_book_intent",
     "parse_edit_purpose_intent",
     "parse_finish_reading_intent",
+    "parse_pause_intent",
     "parse_restore_intent",
     "parse_set_spine_color_intent",
     "parse_start_reading_intent",
     "parse_update_page_intent",
+    "pause",
     "prepare_cover",
     "reading_already_finished",
     "record_export",

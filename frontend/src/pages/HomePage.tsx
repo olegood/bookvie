@@ -13,8 +13,10 @@ import { announce, clearAnnouncements } from '../lib/announce.ts'
 import { finishStatus, sortBooks } from '../lib/catalog.ts'
 import { COULDNT_LOAD } from '../lib/copy.ts'
 import { usePageTitle } from '../lib/page.ts'
+import { pausedStatus } from '../lib/pause.ts'
 import { lastExportLine, useNow } from '../lib/relativeDay.ts'
 import { formatToday } from '../lib/today.ts'
+import { usePauseFlow, type PauseBook } from '../lib/usePauseFlow.tsx'
 import Bookcase, { type FinishMoment } from './Bookcase.tsx'
 import { EmptyShelf, type NewBookState } from './CatalogPage.tsx'
 import styles from './HomePage.module.css'
@@ -96,6 +98,14 @@ function HomeSlice({ view, finishing }: { view: HomeView; finishing: FinishMomen
  * leaves the dialog, its answers and its alert line in place. Cancel or Esc
  * returns focus to the page field, or, once the card is empty, to its
  * suggestion button, else the "No Main book." heading.
+ *
+ * Home hosts the pause flow (`lib/usePauseFlow.tsx`) for the Main book card's
+ * "⋯" menu: **Pause** sends `pause` at once with no Up next, else opens the
+ * Confirm dialog naming where the Up next goes. Cancel or Esc returns focus
+ * to "⋯"; a failure without the dialog shows its line below "⋯" and keeps
+ * focus there. Once the refetched view has no Main book, focus goes to the
+ * empty card's **Resume** (the paused Book is Up next) and then `status`
+ * reads "Paused *X* at p.N. It's Up next."
  */
 export default function HomePage() {
   usePageTitle('Home')
@@ -110,6 +120,7 @@ export default function HomePage() {
   const emptyHeading = useRef<HTMLHeadingElement>(null)
   const suggestButton = useRef<HTMLButtonElement>(null)
   const upNextButton = useRef<HTMLButtonElement>(null)
+  const moreButton = useRef<HTMLButtonElement>(null)
   // The element whose press opened the Start dialog: Cancel returns focus to
   // it while it is still connected (a refetch can remove a Waiting row).
   const opener = useRef<HTMLElement | null>(null)
@@ -167,6 +178,28 @@ export default function HomePage() {
   // Another history entry (a start, a later finish) is another visit: the line goes.
   else if (moment !== null && moment.key !== location.key) setMoment(null)
   const homeMeter = view.status === 'ready' ? view.data.meter : null
+  const homeMain = view.status === 'ready' ? view.data.mainBook : null
+  const pauseBook: PauseBook | null =
+    homeMain === null
+      ? null
+      : { id: homeMain.id, title: homeMain.title, currentPage: homeMain.currentPage, percent: homeMain.percent }
+  // The `status` line of a pause that landed, waiting for the empty card to render.
+  const pausedLine = useRef<string | null>(null)
+  const [pauses, setPauses] = useState(0)
+  const onPaused = useCallback((title: string, page: number) => {
+    pausedLine.current = pausedStatus(title, page)
+    setPauses((count) => count + 1)
+  }, [])
+  const pauseFlow = usePauseFlow({ book: pauseBook, opener: moreButton, onPaused })
+
+  // After a pause: focus first (the empty card's Resume), then the line.
+  useEffect(() => {
+    const line = pausedLine.current
+    if (line === null || !noMain) return
+    pausedLine.current = null
+    ;(suggestButton.current ?? emptyHeading.current)?.focus()
+    announce('status', line)
+  }, [pauses, noMain])
   const openFinish = useCallback(
     (savedLine: string) => {
       if (mainId !== null) setFinishing({ bookId: mainId, key: location.key, savedLine })
@@ -295,6 +328,10 @@ export default function HomePage() {
               suggestRef={suggestButton}
               onReachedLastPage={openFinish}
               pageFieldRef={pageField}
+              onPause={pauseFlow.request}
+              moreRef={moreButton}
+              pauseSlot={pauseFlow.regionSlot}
+              pauseFailed={pauseFlow.failed}
             />
             <div className={styles.side}>
               {mainBook !== null && <UpNextPane upNext={upNext} onStart={openStartFromPane} buttonRef={upNextButton} />}
@@ -307,6 +344,7 @@ export default function HomePage() {
       {starting !== null && starting.key === location.key && (
         <StartDialog bookId={starting.bookId} onCancel={cancelStart} />
       )}
+      {pauseFlow.dialog}
       {finishing !== null && finishing.key === location.key && (
         <FinishDialog
           bookId={finishing.bookId}

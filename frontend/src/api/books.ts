@@ -115,6 +115,23 @@ export function useDeleteBook(): (bookId: string) => Promise<IntentResult> {
   return (bookId) => deleteBook(client, bookId)
 }
 
+export function pauseForm(bookId: string): FormData {
+  const form = new FormData()
+  form.set('intent', JSON.stringify({ bookId }))
+  return form
+}
+
+/** Sends `pause` for the Main book; resolves after the views have refetched. */
+export function pause(client: QueryClient, bookId: string): Promise<IntentResult> {
+  return sendIntent(client, 'pause', pauseForm(bookId))
+}
+
+/** `pause` bound to the app's QueryClient. */
+export function usePause(): (bookId: string) => Promise<IntentResult> {
+  const client = useQueryClient()
+  return (bookId) => pause(client, bookId)
+}
+
 export function setSpineColorForm(bookId: string, spineColor: string | null): FormData {
   const form = new FormData()
   form.set('intent', JSON.stringify({ bookId, spineColor }))

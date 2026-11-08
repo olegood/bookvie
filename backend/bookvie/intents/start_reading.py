@@ -32,6 +32,7 @@ from bookvie.store import Store
 from .commit import commit
 from .contract import already_main, book_not_found
 from .intent_model import IntentModel, parse_form_intent
+from .pause import pause_main
 
 
 class StartReadingIntent(IntentModel):
@@ -46,22 +47,6 @@ class StartReadingIntent(IntentModel):
 def parse_start_reading_intent(raw: str | None) -> StartReadingIntent:
     """The ``intent`` form part as a :class:`StartReadingIntent`, or 422 on ``intent``."""
     return parse_form_intent(StartReadingIntent, raw)
-
-
-def _pause_main(library: Library, clock: Clock) -> None:
-    """Pause the Main book's current Reading at its page, ``pausedAt`` = today."""
-    if library.main_book_id is None:
-        return
-    main = library.book(library.main_book_id)
-    reading = current_reading(main) if main is not None else None
-    if main is None or reading is None:
-        return
-    paused = reading.model_copy(update={"paused_at": clock.today()})
-    library.replace_book(
-        main.model_copy(
-            update={"readings": [paused if r.id == reading.id else r for r in main.readings]}
-        )
-    )
 
 
 def start_reading(store: Store, clock: Clock, intent: StartReadingIntent) -> None:
@@ -84,7 +69,7 @@ def start_reading(store: Store, clock: Clock, intent: StartReadingIntent) -> Non
         else:
             up_next = library.up_next_book_id
         # The Main book is another Book, so ``book`` stays current.
-        _pause_main(library, clock)
+        pause_main(library, clock)
         now = clock.now()
         reading = current_reading(book)
         if reading is not None:

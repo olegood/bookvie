@@ -24,7 +24,9 @@ import {
 } from '../lib/bookDetail.ts'
 import { COULDNT_LOAD } from '../lib/copy.ts'
 import { usePageTitle } from '../lib/page.ts'
+import { pausedStatus } from '../lib/pause.ts'
 import { detailPrimary } from '../lib/startReading.ts'
+import { PAUSING, usePauseFlow } from '../lib/usePauseFlow.tsx'
 import NewBookPanel from './NewBookPanel.tsx'
 import NotFoundPage from './NotFoundPage.tsx'
 import styles from './BookDetailPage.module.css'
@@ -137,6 +139,38 @@ function BookDetail({ book, onDelete, onFinish, finishButton }: BookDetailProps)
   // Mark finished: the Main book only (a non-Main finish is Story 4.5's).
   const canFinish = book.role === 'main'
 
+  // Pause: the Main book only. Once the refetched view makes it a paused Up
+  // next, focus goes to its Resume and then `status` says where it went.
+  const pauseButton = useRef<HTMLButtonElement>(null)
+  const pausedLine = useRef<string | null>(null)
+  const [pauses, setPauses] = useState(0)
+  const onPaused = useCallback((title: string, page: number) => {
+    pausedLine.current = pausedStatus(title, page)
+    setPauses((count) => count + 1)
+  }, [])
+  const {
+    request: requestPause,
+    busy: pausing,
+    failed: pauseFailed,
+    regionSlot: pauseSlot,
+    dialog: pauseDialog,
+  } = usePauseFlow({
+    book:
+      book.role === 'main' && current !== null
+        ? { id: book.id, title: book.title, currentPage: current.currentPage, percent: current.percent }
+        : null,
+    opener: pauseButton,
+    onPaused,
+  })
+
+  useEffect(() => {
+    const line = pausedLine.current
+    if (line === null || primary !== 'Resume') return
+    pausedLine.current = null
+    startButton.current?.focus()
+    announce('status', line)
+  }, [pauses, primary])
+
   const openConfirm = () => {
     setShowAlert(false)
     setConfirming(true)
@@ -181,6 +215,14 @@ function BookDetail({ book, onDelete, onFinish, finishButton }: BookDetailProps)
               <Button ref={startButton} variant="primary" onClick={() => setStarting(true)}>
                 {primary}
               </Button>
+            )}
+            {canFinish && (
+              <>
+                <Button ref={pauseButton} disabledReason={pausing ? PAUSING : undefined} onClick={requestPause}>
+                  Pause
+                </Button>
+                <div ref={pauseSlot} className={styles.regions} data-show-alert={pauseFailed ? 'true' : undefined} />
+              </>
             )}
             {canFinish && (
               <Button ref={finishButton} onClick={onFinish}>
@@ -256,6 +298,7 @@ function BookDetail({ book, onDelete, onFinish, finishButton }: BookDetailProps)
         />
       )}
       {starting && <StartDialog bookId={book.id} onCancel={cancelStart} />}
+      {pauseDialog}
       {confirming && (
         <ConfirmDialog
           heading={`Delete ${book.title}?`}
@@ -277,8 +320,8 @@ function BookDetail({ book, onDelete, onFinish, finishButton }: BookDetailProps)
  * card; on the left the cover (an `img` "Cover of *Title*") or the no-cover
  * placeholder (`role="img"` "No cover"), 200×300, then the action stack
  * (the state-aware primary — **Start reading** or **Resume**, none for the
- * Main book — then **Mark finished** for the Main book, then **Edit**, then
- * **Delete**); the Book on the right. An unknown id shows
+ * Main book — then **Pause** and **Mark finished** for the Main book, then
+ * **Edit**, then **Delete**); the Book on the right. An unknown id shows
  * the not-found page. The title is set by the child that renders, never
  * here: child effects run first, so a title set here would overwrite the
  * not-found page's.
@@ -289,6 +332,13 @@ function BookDetail({ book, onDelete, onFinish, finishButton }: BookDetailProps)
  * finished** the Finish dialog; Cancel or Esc returns focus to the opener.
  * The Readings block lists each Reading newest first: "Started … · Finished
  * …", its stars when rated, and "Purpose fulfilled: …" when answered.
+ *
+ * **Pause** (`lib/usePauseFlow.tsx`) sends `pause` at once with no Up next,
+ * else opens the Confirm dialog naming where the Up next goes; Cancel or Esc
+ * returns focus to **Pause**. A failure without the dialog shows its line
+ * directly below **Pause**, focus kept there. Once the refetched view shows
+ * the Book as a paused Up next, focus goes to its **Resume** and then
+ * `status` reads "Paused *X* at p.N. It's Up next."
  *
  * Delete: once `delete-book` is sent, the refetched view may already say the
  * Book is gone before the request resolves. Until the outcome is known the

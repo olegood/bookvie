@@ -67,10 +67,12 @@ from bookvie.intents import (
     parse_edit_book_intent,
     parse_edit_purpose_intent,
     parse_finish_reading_intent,
+    parse_pause_intent,
     parse_restore_intent,
     parse_set_spine_color_intent,
     parse_start_reading_intent,
     parse_update_page_intent,
+    pause,
     prepare_cover,
     record_export,
     restore,
@@ -516,6 +518,23 @@ def finish_reading_intent(
     """Finish a Book's current Reading and clear it as the Main book (FR-14)."""
     parsed = parse_finish_reading_intent(intent)
     finish_reading(request.app.state.store, request.app.state.clock, parsed)
+    return OkResponse(ok=True)
+
+
+@router.post("/intents/pause", response_model=OkResponse, response_model_exclude_none=True)
+def pause_intent(
+    request: Request,
+    intent: Annotated[
+        str | None,
+        Form(
+            media_type="multipart/form-data",
+            description='JSON object {"bookId": ...}: the Main book to pause.',
+        ),
+    ] = None,
+) -> OkResponse:
+    """Pause the Main book at its page and make it Up next, clearing the Main book (FR-6)."""
+    parsed = parse_pause_intent(intent)
+    pause(request.app.state.store, request.app.state.clock, parsed)
     return OkResponse(ok=True)
 
 

@@ -16,7 +16,7 @@ import type { ShelfBook } from '../api/index.ts'
  * `tabindex="-1"` (`main`, the page `h1`) are not controls: a click there
  * returns focus to the spine.
  */
-const FOCUSABLE =
+export const FOCUSABLE =
   'a[href], button, input, select, textarea, summary, label, [tabindex]:not([tabindex^="-"]), [contenteditable="true"]'
 
 type Options = {
