@@ -423,3 +423,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-3-pause-my-main-book.md`
   summary: Spine drift (Structural Seed, Capability → Architecture Map preface), reconciled before the next epic: the seed's `intents/` module list should add `pause`, and the map's preface should stop giving `intents/pause` as an example of a module not built yet.
   evidence: Spine-check review of 4.3; `backend/bookvie/intents/pause.py` and `POST /intents/pause` in `backend/bookvie/http/api.py`.
+
+## Deferred from: test automation of spec-4-3-pause-my-main-book (2026-11-08)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-3-pause-my-main-book.md`
+  summary: After a stale-tab refusal (`not_main_book`) of Pause on Book detail, the refusal is invisible and focus is lost. The refusal's refetch makes the Book Up next, so Pause and its slot unmount before `usePauseFlow` sets `failed` and focuses the opener (`opener.current` is null). Focus falls to `body`, and "This book isn't your Main book anymore." lives only in the shell's visually hidden `alert` region, where the spec has the line below Pause with focus kept there. Home is likely the same once the card empties. Medium: a screen reader hears it, but a sighted user sees Pause turn into Resume with no message. A fix should move focus to Book detail's Resume (or the empty card's) and show the line near it.
+  evidence: A probe during `bmad-testarch-automate` for 4.3 found `document.activeElement` = `BODY` and the alert's box 1×1 at x=-1. `frontend/e2e/pause.spec.ts` "[P1] a Book paused in another tab: …" asserts only the announcement and the swap.

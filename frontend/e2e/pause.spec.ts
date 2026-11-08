@@ -18,8 +18,12 @@ import {
   mainBookCard,
   serverAtFakeToday,
   stopAndRemove,
+  startDialog,
   storedBook,
   storedLibrary,
+  upNextPane,
+  waitingHeading,
+  waitingPane,
 } from './home.ts'
 import { PAUSE, requestsTo } from './intents.ts'
 
@@ -31,6 +35,8 @@ const COULDNT_SAVE = "Couldn't save. Your data wasn't changed."
 const HEADING = 'Pause The Left Hand of Darkness at p.212 (64%)?'
 const PAUSED_LINE = "Paused The Left Hand of Darkness at p.212. It's Up next."
 const RESUME_LEFT_HAND = 'Resume The Left Hand of Darkness'
+const NOT_MAIN = "This book isn't your Main book anymore."
+const DUNE_PURPOSE = 'Reread for the ecology of Arrakis'
 
 /** The Left Hand of Darkness as the Main book at p.212 of 330 (64%). */
 const LEFT_HAND_MAIN = {
@@ -467,5 +473,180 @@ test.describe('Story 4.3 Pause my Main book', () => {
       expect(violations.map(({ id, nodes }) => `${colorScheme} dialog: ${id} (${nodes.length})`)).toEqual([])
       await page.keyboard.press('Escape')
     }
+  })
+})
+
+test.describe('Story 4.3 Pause my Main book (automate)', () => {
+  test('[P1] RDG-E2E-002 Flow 10: Pause via "⋯" moves the Up next to Waiting for you; Resume there opens Resume X? with its Purpose and no trade-off, and the paused Book is back as Up next, page kept', async ({
+    page,
+  }) => {
+    // Flow 10: the Main book at p.212, Dune Up next and paused at p.120 with a Purpose.
+    const server = await serverAtFakeToday(page, 'pause-flow-10', {
+      mainBookId: LEFT_HAND_ID,
+      upNextBookId: DUNE_ID,
+      books: [
+        LEFT_HAND_MAIN,
+        { ...DUNE, readings: [{ ...DUNE_PAUSED.readings[0], purpose: DUNE_PURPOSE }] },
+        FAHRENHEIT,
+      ],
+    })
+    try {
+      await page.goto(`${server.url}/`)
+      await moreButton(page).click()
+      await item(page, 'Pause').click()
+      await expect(pauseDialog(page)).toHaveAccessibleDescription('Dune moves to Waiting for you.')
+      await pauseDialog(page).getByRole('button', { name: 'Pause', exact: true }).click()
+
+      // No Main book: the paused Book is the card's suggestion, the Up next pane is hidden, Dune waits at its page.
+      const card = mainBookCard(page)
+      await expect(card.getByRole('heading', { name: 'No Main book.', exact: true })).toBeVisible()
+      await expect(card.getByRole('button', { name: RESUME_LEFT_HAND, exact: true })).toBeFocused()
+      await expect(upNextPane(page)).toHaveCount(0)
+      await expect(waitingHeading(page, 1)).toBeVisible()
+      const waiting = waitingPane(page)
+      await expect(waiting.getByRole('link')).toHaveText(['Dune'])
+      await expect(waiting).toContainText('p.120 of 412')
+
+      // Resume Dune from Waiting for you: its Purpose prefilled, and no trade-off with no Main book.
+      await waiting.getByRole('button', { name: 'Resume Dune', exact: true }).click()
+      const dialog = startDialog(page, 'Resume Dune?')
+      await expect(dialog.getByRole('textbox', { name: 'Purpose (optional)', exact: true })).toHaveValue(DUNE_PURPOSE)
+      await expect(dialog).not.toContainText('This pauses')
+      await expect(dialog).not.toContainText('Waiting for you')
+      await expect(dialog).not.toContainText('returns to the catalog')
+      await dialog.getByRole('button', { name: 'Resume', exact: true }).click()
+
+      // Dune is Main at its page; the paused Book is back in the Up next pane with its page; nothing waits.
+      await expect(card.getByRole('link', { name: 'Dune', exact: true })).toBeFocused()
+      await expect(card.getByRole('progressbar')).toHaveAttribute('aria-valuetext', '29%, page 120 of 412')
+      // The pane names no page; the kept p.212 is asserted on the stored Reading below.
+      await expect(upNextPane(page).getByRole('button', { name: RESUME_LEFT_HAND, exact: true })).toBeVisible()
+      await expect(waitingPane(page)).toHaveCount(0)
+
+      const library = storedLibrary(server)
+      expect(library.mainBookId).toBe(DUNE_ID)
+      expect(library.upNextBookId).toBe(LEFT_HAND_ID)
+      expect(storedBook(server, LEFT_HAND_ID).readings).toEqual([
+        expect.objectContaining({ id: LEFT_HAND_READING_ID, currentPage: 212, pausedAt: FAKE_TODAY, finishDate: null }),
+      ])
+      // Nothing started on its own: Dune resumed its one Reading, which keeps its last pause date.
+      expect(storedBook(server, DUNE_ID).readings).toEqual([
+        expect.objectContaining({ currentPage: 120, pausedAt: '2026-10-20', purpose: DUNE_PURPOSE, finishDate: null }),
+      ])
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+
+  test("[P1] a Book paused in another tab: Pause on its stale Book detail says it isn't the Main book anymore, the refetch swaps Pause for Resume, and the live regions go back to the shell", async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer(NO_UP_NEXT)
+    const pauses = requestsTo(page, PAUSE)
+    await page.goto(`${server.url}/book/${LEFT_HAND_ID}`)
+    const pause = detailButton(page, 'Pause')
+    await expect(pause).toBeVisible()
+
+    // Another tab pauses it behind this page's back (no reload, no focus change: the view stays stale).
+    const elsewhere = await page.request.post(`${server.url}${PAUSE}`, {
+      multipart: { intent: JSON.stringify({ bookId: LEFT_HAND_ID }) },
+    })
+    expect(elsewhere.status()).toBe(200)
+    const after = libraryBytes(server)
+
+    await pause.click()
+    await expect(page.getByRole('alert')).toHaveText(NOT_MAIN)
+    expect(pauses).toHaveLength(1)
+    // The refusal's refetch shows the Book as the paused Up next: Resume, and no Pause slot to hold the regions.
+    await expect(detailButton(page, 'Resume')).toBeVisible()
+    await expect(detailButton(page, 'Pause')).toHaveCount(0)
+    await expect(page.getByRole('main').locator('[role="status"], [role="alert"]')).toHaveCount(0)
+    await expect(page.getByRole('alert')).toHaveText(NOT_MAIN)
+    expect(libraryBytes(server)).toBe(after)
+  })
+
+  test('[P2] while a pause from Book detail is in flight, Pause is aria-disabled with "Pausing the book." and a second press sends nothing', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer(NO_UP_NEXT)
+    const pauses = requestsTo(page, PAUSE)
+    let release = () => {}
+    const held = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    await page.route(`**${PAUSE}`, async (route) => {
+      await held
+      await route.continue()
+    })
+    await page.goto(`${server.url}/book/${LEFT_HAND_ID}`)
+    const pause = detailButton(page, 'Pause')
+    await pause.click()
+
+    await expect(pause).toHaveAttribute('aria-disabled', 'true')
+    await expect(pause).toHaveAccessibleDescription('Pausing the book.')
+    // Playwright waits on aria-disabled; force the press a user can still make.
+    await pause.click({ force: true })
+    expect(pauses).toHaveLength(1)
+
+    release()
+    await expect(detailButton(page, 'Resume')).toBeFocused()
+    await expect(page.getByRole('status')).toHaveText(PAUSED_LINE)
+    expect(pauses).toHaveLength(1)
+    expect(storedLibrary(server).upNextBookId).toBe(LEFT_HAND_ID)
+  })
+
+  test('[P2] axe finds nothing on the visible couldn\'t-save line below "⋯" on Home and below Pause on Book detail, in both themes', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer(NO_UP_NEXT)
+    await routeCouldntSave(page)
+    for (const colorScheme of ['light', 'dark'] as const) {
+      await page.emulateMedia({ colorScheme })
+      await page.goto(`${server.url}/`)
+      await moreButton(page).click()
+      await item(page, 'Pause').click()
+      await expect(mainBookCard(page).getByText(COULDNT_SAVE, { exact: true })).toBeVisible()
+      let { violations } = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze()
+      expect(violations.map(({ id, nodes }) => `${colorScheme} Home line: ${id} (${nodes.length})`)).toEqual([])
+
+      await page.goto(`${server.url}/book/${LEFT_HAND_ID}`)
+      await detailButton(page, 'Pause').click()
+      await expect(page.getByRole('main').getByText(COULDNT_SAVE, { exact: true })).toBeVisible()
+      ;({ violations } = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze())
+      expect(violations.map(({ id, nodes }) => `${colorScheme} Book detail line: ${id} (${nodes.length})`)).toEqual([])
+    }
+  })
+
+  test('[P2] the "⋯" button sits at the right end of the MAIN BOOK row, inside the card, clear of the title', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer(NO_UP_NEXT)
+    await page.goto(`${server.url}/`)
+    const card = mainBookCard(page)
+    const more = await moreButton(page).boundingBox()
+    const eyebrow = await card.getByText('Main book', { exact: true }).boundingBox()
+    const title = await card.getByRole('link', { name: LEFT_HAND.title, exact: true }).boundingBox()
+    const box = await card.boundingBox()
+    if (more === null || eyebrow === null || title === null || box === null) throw new Error('not rendered')
+
+    expect(more.width).toBe(32)
+    expect(more.height).toBe(32)
+    // On the eyebrow's line, to its right, and inside the card.
+    expect(more.x).toBeGreaterThan(eyebrow.x + eyebrow.width)
+    expect(more.y).toBeLessThan(eyebrow.y + eyebrow.height)
+    expect(more.y + more.height).toBeGreaterThan(eyebrow.y)
+    expect(more.x + more.width).toBeLessThanOrEqual(box.x + box.width)
+    expect(more.y).toBeGreaterThanOrEqual(box.y)
+    // Clear of the title: the boxes don't intersect.
+    const overlaps =
+      more.x < title.x + title.width &&
+      title.x < more.x + more.width &&
+      more.y < title.y + title.height &&
+      title.y < more.y + more.height
+    expect(overlaps).toBe(false)
   })
 })

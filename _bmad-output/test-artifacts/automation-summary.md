@@ -2,14 +2,16 @@
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03c-aggregate', 'step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
 lastSaved: '2026-11-08'
-storyId: '4.2'
+storyId: '4.3'
 inputDocuments:
-  - _bmad-output/implementation-artifacts/spec-4-2-see-every-paused-book-in-waiting-for-you.md (I/O matrix, Implementation Notes, Review Triage Log, Review Findings)
-  - _bmad-output/test-artifacts/atdd-checklist-4-2-see-every-paused-book-in-waiting-for-you.md (Implementation Checklist, Green-phase follow-ups)
+  - _bmad-output/implementation-artifacts/spec-4-3-pause-my-main-book.md (Boundaries, I/O matrix, Code Map, Review Triage Log, Review Findings, Auto Run Result residual risks)
+  - _bmad-output/planning-artifacts/ux-designs/ux-bookvie-2026-10-28/EXPERIENCE.md (Flow 10, Pause and resume)
+  - _bmad-output/test-artifacts/test-design-qa.md (RDG-E2E-002, RDG-API-002, RDG-E2E-003, XUI-E2E-001)
+  - _bmad-output/test-artifacts/atdd-checklist-4-2-see-every-paused-book-in-waiting-for-you.md (the Waiting helpers to move for 4.3)
   - _bmad/tea/config.yaml
-  - frontend/src/components/WaitingPane.tsx, WaitingPane.module.css, frontend/src/pages/HomePage.tsx
-  - frontend/e2e/waiting-for-you.spec.ts, up-next.spec.ts, home-slice.spec.ts, home.ts, intents.ts
-  - backend/tests/test_waiting_for_you.py, test_reading_state_machine.py
+  - frontend/src/components/MoreActionsMenu.tsx, MainBookCard.tsx, frontend/src/lib/usePauseFlow.tsx, frontend/src/pages/HomePage.tsx, BookDetailPage.tsx, frontend/src/components/Button.tsx
+  - frontend/e2e/pause.spec.ts, waiting-for-you.spec.ts, finish-reading.spec.ts, stale-hand-offs.spec.ts, home.ts, intents.ts
+  - backend/tests/test_pause.py, test_reading_state_machine.py
   - knowledge/test-levels-framework.md
   - knowledge/test-priorities-matrix.md
   - knowledge/data-factories.md
@@ -21,85 +23,103 @@ inputDocuments:
   - knowledge/playwright-cli.md
 ---
 
-# Automation Summary: Story 4.2, See every paused book in Waiting for you
+# Automation Summary: Story 4.3, Pause my Main book
 
-This file used to hold the Story 4.1 summary, which is in git history (`56ce9c8`).
+This file used to hold the Story 4.2 summary, which is in git history (`70e3e71`).
 
-**Execution mode:** BMad-Integrated. Inputs: the story spec (I/O matrix, Implementation Notes, triage log, review findings) and the ATDD checklist. The spec's deferred-work intake names nothing for 4.2.
+**Execution mode:** BMad-Integrated. Inputs: the story spec (matrix, Code Map, triage log, review findings, residual risks), EXPERIENCE.md's Flow 10, and the QA test design. Story 4.3 has no ATDD checklist (it was built without an ATDD pass), so the checklist-ticking fact has nothing to tick.
 **Detected stack:** fullstack (`backend/pyproject.toml` + `frontend/playwright.config.ts`).
 **Playwright Utils mandate:** off (`tea_use_playwright_utils: false`).
 **Pact.js Utils mandate:** not applicable (the repo has no contract testing).
-**Subagent execution:** SEQUENTIAL. There were three small e2e targets, all in one spec, written inline.
-**Total tests added:** 3 Playwright tests.
-**Browser exploration:** skipped. The ATDD contract pins the roles and names, so I worked from the source and from mutation probes.
+**Subagent execution:** SEQUENTIAL. There were five small e2e targets, all in one spec, written inline.
+**Total tests added:** 5 Playwright tests.
+**Browser exploration:** skipped. The spec pins the roles and names, so I worked from the source and from one throwaway probe spec (deleted).
 
 ## Coverage Plan by Test Level and Priority
 
-Scope: **selective**. Story 4.2 shipped with broad coverage:
-- **Unit and API:** 4 tests in `test_waiting_for_you.py` (AC-1 order and ties, AC-4 the Epic 3 library, `pausedAt: null`, the empty list), and the list asserted in `test_reading_state_machine.py:389` (RDG-UNIT-002).
-- **E2E:** 12 tests in `waiting-for-you.spec.ts` (5 ATDD leaves, 6 follow-ups, 1 for the 503 row of the matrix).
-- **Unit (frontend):** `gauge.test.ts` covers `miniBarValueText`.
+Scope: **selective**. Story 4.3 shipped with broad coverage:
+- **API:** 12 tests in `test_pause.py` cover every matrix row, the 503 faults and `check_invariants`. The code review made AC5 (`pausedAt` kept after a resume and a finish) run on later fake-clock days.
+- **Unit:** the `pause` rule in `test_reading_state_machine.py` (RDG-UNIT-002), plus `pause.test.ts` and `books.test.ts`.
+- **E2E:** 15 tests in `pause.spec.ts`: the menu's keyboard and presses, both paths from both pages, Cancel and Esc, focus then `status`, 503 on all three paths, the region release after a failure, double presses, and axe on the menu and dialog.
 
-I checked the checklist's 21 open lines against these tests. Three had no test:
+Gaps found against the ACs, Flow 10, the test design and the spec's residual risks:
 
 | # | Gap | Evidence | Level | Priority |
 |---|---|---|---|---|
-| G1 | **A long title clamps to 2 lines in a row**, and the row stays inside the pane (DESIGN.md → Section pane). | The spec's Implementation Notes list it as not covered. The Up next pane has this test (`up-next.spec.ts:584`), the Waiting pane didn't. | E2E | P2 (AC-2) |
-| G2 | **The mini bar under forced colors** keeps a visible track and a fill distinct from it. | Implementation Notes: "the forced-colors look of the mini bar … was not checked". The bar sets `forced-color-adjust: none`, so without its `@media (forced-colors)` block the accent colors pass through unchanged. | E2E | P2 (AC-2) |
-| G3 | **No Main book with a paused Up next:** it is only the empty card's suggestion, and the count leaves it out. | The checklist follow-up for AC-7. The static seeds at `:355` cover a paused Up next alone, which shows no pane at all, so the count was never read beside the suggestion. | E2E | P1 (AC-7) |
+| G1 | **Flow 10 end to end (RDG-E2E-002):** Pause via "⋯", the Up next moves to Waiting for you, Resume it there with its Purpose prefilled and no trade-off, and the paused Book comes back as Up next with its page. | The test design's RDG-E2E-002 had no test. The 4.2 summary left it to 4.3, and no 4.3 test resumes from Waiting after a pause. | E2E | P1 |
+| G2 | **A real stale-tab refusal (409 `not_main_book`)** on Book detail, not a routed 503. | Every failure test routed a 503. The spec's follow-up risk names "the region-release fix after a refusal refetch, which no test exercises". | E2E | P1 |
+| G3 | **The busy state:** Book detail's Pause is `aria-disabled` with "Pausing the book." while the request is out. | It's in the Code Map. The double-click tests can't see it, because the in-flight ref swallows the second press before `busy` renders. | E2E | P2 |
+| G4 | **axe on the visible couldn't-save lines** below "⋯" and below Pause. Both are restyled out of their visually-hidden state, in both themes. | Review finding (rejected as low for the review, but cheap here). axe ran only on the menu and the dialog. | E2E | P2 |
+| G5 | **The "⋯" layout:** 32×32, on the eyebrow's line and to its right, inside the card, clear of the title. | A residual risk in the Auto Run Result ("overhangs the title margin by about 8px; not visually checked"). | E2E | P2 |
 
 **Not selected:**
-- **Cancel after a refetch removed the row while the dialog was open.** Review finding BH (rejected) and triage row 12: the `isConnected` fallback is the same code path, and `up-next.spec.ts:439` fails without it.
-- **A paused Side read as a row in the browser.** Side reads have no UI or intent until Story 4.7. The server half is the AC-1 unit case.
-- **RDG-API-006** and **RDG-E2E-002** are ticked by `bmad-testarch-trace`, not here. RDG-E2E-002 also needs Story 4.3's Pause.
+- **Safari and Firefox mouse clicks on the menu.** WebKit and Firefox aren't installed (`~/Library/Caches/ms-playwright` has Chromium only), so this stays deferred. The code review changed the blur logic (`pressing`), which should remove the race. It is still unverified.
+- **A failure after the page unmounts.** Deferred, low. Cover it with the app's other unmount-after-request cases.
+- **Re-pause, gone, and the faults from the UI.** These are API-level matrix rows, already covered in `test_pause.py`. In the UI they reuse the same refusal path G2 exercises.
 
 ## Tests Added
 
-The three tests are in a new `Story 4.2 See every paused book in Waiting for you (automate)` block at the end of `frontend/e2e/waiting-for-you.spec.ts`:
+The five tests are in a new `Story 4.3 Pause my Main book (automate)` block at the end of `frontend/e2e/pause.spec.ts`:
 
-1. **`[P2] AC-2 a long title clamps to 2 lines in its row, and the row stays inside the pane`** (G1, `:498`).
-   - **Seed:** Dune is Main. A Book with a 100-character title is paused on 5 October, and Fahrenheit 451 on 10 October. The test asserts that row order first.
-   - The title link's height divided by its line height is 2, and its content is clipped.
-   - The compact **Resume** stays inside the pane, on the bar's line, and the next row's title starts below it.
-2. **`[P2] AC-2 under forced colors the mini bar keeps a visible track and a fill distinct from it`** (G2, `:538`).
-   - With normal colors, the fill differs from the track.
-   - With `forcedColors: 'active'`, the fill still differs from the track, the track's border is the fill's color (CanvasText), the fill is no longer the accent, and the fill still covers 36% of the track.
-3. **`[P1] AC-7 with no Main book a paused Up next is only the empty card's suggestion, and a row's Cancel still returns to that row`** (G3, `:566`).
-   - **Seed:** no Main book. The Left Hand of Darkness is the Up next, paused on 5 October (the oldest pause). Fahrenheit 451 is waiting.
-   - The empty card offers "Resume The Left Hand of Darkness", the Up next pane is hidden, and the Waiting pane reads "(1)" with only Fahrenheit 451.
-   - The row's dialog has no trade-off line. On Cancel, focus returns to the row's **Resume**, not to the card's suggestion button, which is the next fallback. Nothing is sent, and Up next is unchanged.
+1. **`[P1] RDG-E2E-002 Flow 10: …`** (G1, `:480`). The seed follows the flow: The Left Hand of Darkness is Main at p.212, and Dune is Up next, paused at p.120 with a Purpose.
+   - Pause via "⋯" shows "Dune moves to Waiting for you."
+   - The empty card's **Resume** is focused, the Up next pane is hidden, and "Waiting for you (1)" lists Dune at "p.120 of 412".
+   - Resuming Dune opens "Resume Dune?" with its Purpose prefilled and no trade-off lines.
+   - Dune is then Main at "29%, page 120 of 412", the paused Book is back in the Up next pane, and nothing waits.
+   - **Stored state:** the paused Reading is kept at p.212 with `pausedAt` today. Dune keeps its single Reading and its 20 October `pausedAt`.
+2. **`[P1] a Book paused in another tab: …`** (G2, `:541`). Another tab pauses the Book with a direct `pause` request; then Pause on the stale Book detail is pressed.
+   - One request goes out, and `alert` reads "This book isn't your Main book anymore."
+   - The refetch swaps Pause for **Resume**, and no live region is left inside `main`.
+   - The library is unchanged from the other tab's state.
+3. **`[P2] while a pause from Book detail is in flight, …`** (G3, `:569`). The pause route is held open.
+   - Pause is `aria-disabled="true"`, described as "Pausing the book.", and a forced second press sends nothing.
+   - On release, focus lands on **Resume** and the `status` line follows.
+4. **`[P2] axe finds nothing on the visible couldn't-save line …`** (G4, `:600`). A routed 503, Home then Book detail, light then dark. There are no violations.
+5. **`[P2] the "⋯" button sits at the right end of the MAIN BOOK row, …`** (G5, `:623`). It checks the bounding boxes against the eyebrow, the card and the title link.
 
 ## Files Created/Updated
 
-- `frontend/e2e/waiting-for-you.spec.ts`: the automate block, 3 tests.
-- `_bmad-output/test-artifacts/atdd-checklist-4-2-see-every-paused-book-in-waiting-for-you.md`: all 21 `- [ ]` lines ticked with evidence (`file:line`). 0 remain.
+- `frontend/e2e/pause.spec.ts`: the automate block, 5 tests.
+- `frontend/e2e/home.ts`: now exports `waitingPane`, `waitingHeading` and `rowTitles`, moved from `waiting-for-you.spec.ts` as the 4.2 checklist planned.
+- `frontend/e2e/waiting-for-you.spec.ts`: imports the moved helpers, and its own copies are gone. Behaviour is unchanged.
+- `_bmad-output/implementation-artifacts/deferred-work.md`: the defect found in G2 (below).
 - `_bmad-output/test-artifacts/automation-summary.md`: this summary.
 
 ## Validation
 
 - **`TZ=Europe/Madrid npm run check` passes:**
-  - `ruff` is clean, and pytest gives 1056 passed. Backend coverage total is 98%.
+  - ruff is clean, and pytest gives 1079 passed.
   - `check:api` is clean (Prettier, oxlint, `tsc -b`, `schema.d.ts` in sync).
-  - e2e goes from 319 to 322 passed, and smoke is ok.
-- **Mutation check.** Each mutant was reverted after its run, and `git status` shows only the spec change.
-  - **M1** (`-webkit-line-clamp`/`line-clamp` removed from `WaitingPane.module.css` `.title`) is killed by test 1.
-  - **M2** (the `@media (forced-colors: active)` block removed from `WaitingPane.module.css`) is killed by test 2.
-  - **M3** (`HomePage.tsx` Cancel ignores `opener`, so focus takes the fallbacks) is killed by test 3: focus lands on the card's suggestion. The existing Cancel test at `:290` also kills it. Test 3 adds the no-Main-book case, where the fallback is a plausible button rather than `main`.
-- **Burn-in:** the 3 new tests passed `--repeat-each=10 --retries=0 --workers=4`, 30 of 30.
-- No CLI browser sessions were opened. The mutation backups and the checklist-tick script stayed in the session scratchpad, outside the repo.
+  - e2e goes from 336 to 341 passed, and smoke is ok.
+- **Mutation check.** Each mutant was reverted after its run, and `git status` shows only the test files.
+  - **M1** (`disabledReason` removed from Book detail's Pause) is killed by test 3.
+  - **M2** (`holdsRegions = failed`, the pre-EC1 code) **survives test 2.** On a refusal, `sendIntent` refetches before it returns, so the Pause slot has already unmounted when `failed` is set and the regions are never adopted. M2 stays covered by the review's test at `:381` (a 503, then a finish), which kills it.
+- **Burn-in:** the 5 new tests passed `--repeat-each=10 --retries=0 --workers=4`, 50 of 50.
+- No CLI browser sessions were opened. The mutation backups stayed in the session scratchpad, and the probe spec was deleted.
+
+## Defect Found
+
+**After a stale-tab refusal on Book detail, the refusal is invisible and focus is lost.**
+- **Seen in:** a probe of test 2's state. `document.activeElement` is `BODY`, and the only copy of "This book isn't your Main book anymore." is the shell's visually hidden 1×1 `alert` region.
+- **Why:** the refusal's refetch makes the Book Up next, so Pause and its slot unmount before `send()` sets `failed` and focuses the opener (`usePauseFlow.tsx:105-106`, where `opener.current` is null).
+- **Spec it breaks:** "on the immediate path the `alert` line shows directly below Pause … with focus kept on that button". A screen reader still hears the alert. A sighted user sees Pause turn into Resume with no message.
+- **Home:** the same is likely there, because the card empties and "⋯" goes.
+- **Status:** test 2 asserts only what holds today (the announcement and the swap), not the focus or visibility. Recorded in `deferred-work.md`.
 
 ## ATDD Checklist
 
-- **Remaining `[ ]` count:** 0 (`grep -cF '[ ]'`).
-- The checklist's Implementation Checklist lines (the build's tasks) were still unticked. Each is ticked now against the code and the tests that prove it.
-- **The RDG-UNIT-002 follow-up** is ticked for the rows the state machine reaches: paused, and a finished Book's paused re-read. A paused Side read can't occur in the machine until Story 4.7 adds a side-read intent (it asserts `side_read_book_ids == []`). Until then, the AC-1 unit case at `test_waiting_for_you.py:63` covers it.
+Not applicable: Story 4.3 has no `atdd-checklist-4-3-*.md`. Remaining `[ ]` count: n/a.
 
 ## Assumptions and Risks
 
-- **Test 1 uses a 1280px viewport,** as the Up next clamp test does. If the side column widens a lot, raise the title length rather than loosen the assertion.
-- **Test 2 compares computed colors, not named system colors.** Chromium resolves `Canvas` and `CanvasText` to the emulated forced-colors palette. The test asserts only that they differ and that border and fill agree, so a palette change in Chromium won't break it.
-- **The Waiting pane's CSS is a copy of the Up next pane's** (triage row 5 added a back-reference comment). Tests 1 and 2 pin the Waiting copy, so a change to one pane that skips the other now fails a test.
+- **Test 2 makes the other tab's change with `page.request`,** as `finish-reading.spec.ts:545` does. No focus or visibility change happens, so React Query doesn't refetch before the press.
+- **Test 3 holds the route with a promise,** with no timers. The forced click is needed because Playwright waits on `aria-disabled`, while a real user can still press the button.
+- **Test 5 pins a 32×32 button.** If DESIGN.md changes the icon-button size, update the expected size.
+- **WebKit and Firefox stay unverified for the menu** until a browser install or a manual check.
 
 ## Next Recommended Workflow
 
-Story 4.2 is not the last story of Epic 4 (4.3 to 4.7 are `backlog`), so there is no retrospective or gate yet. The next step is the next story, 4.3 (`bmad-build`). Its Pause spec should move `waitingPane`, `waitingHeading` and `rowTitles` to `home.ts` (checklist line 258) and finish RDG-E2E-002.
+Story 4.3 isn't the last story of Epic 4 (4.4 to 4.7 are `backlog`), so there is no retrospective or gate yet. The next steps are:
+1. Fix the G2 defect, as a small follow-up or inside Story 4.4.
+2. Optionally, run `npx playwright install webkit firefox` and run `pause.spec.ts` against them, to close the Safari/Firefox deferral.
+3. Start the next story, 4.4 (`bmad-build`).

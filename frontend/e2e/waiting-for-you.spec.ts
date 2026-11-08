@@ -13,7 +13,7 @@
 // stored `pausedAt` is the fake today. Every seeded `pausedAt` is earlier.
 
 import AxeBuilder from '@axe-core/playwright'
-import type { Locator, Page } from '@playwright/test'
+import type { Locator } from '@playwright/test'
 import { expect, test } from './fixtures.ts'
 import {
   DUNE,
@@ -29,7 +29,10 @@ import {
   stopAndRemove,
   storedBook,
   storedLibrary,
+  rowTitles,
   upNextPane,
+  waitingHeading,
+  waitingPane,
 } from './home.ts'
 import { START_READING, requestsTo } from './intents.ts'
 
@@ -68,27 +71,12 @@ const FAHRENHEIT_WAITING = {
 /** Dune as the Main book at p.100 of 412 (24%). */
 const DUNE_MAIN = { ...DUNE, readings: [{ id: DUNE_READING_ID, startDate: '2026-10-05', currentPage: 100 }] }
 
-/** Home's Waiting for you pane in the side column: a `region` named by its heading "Waiting for you (N)". */
-function waitingPane(page: Page): Locator {
-  return page.getByRole('main').getByRole('region', { name: /^Waiting for you \(\d+\)$/ })
-}
-
-/** The pane's heading with its count, exactly. */
-function waitingHeading(page: Page, count: number): Locator {
-  return page.getByRole('main').getByRole('heading', { name: `Waiting for you (${count})`, exact: true })
-}
-
 /** The bar's fill is `fraction` of its track, within 1px (as `expectFill` in home.spec.ts). */
 async function expectFill(bar: Locator, fraction: number): Promise<void> {
   const track = await bar.boundingBox()
   const fill = await bar.locator('span').boundingBox()
   if (track === null || fill === null) throw new Error('not rendered')
   expect(Math.abs(fill.width - track.width * fraction)).toBeLessThanOrEqual(1)
-}
-
-/** The row titles in the pane, in order: each row's one link. */
-function rowTitles(pane: Locator): Promise<string[]> {
-  return pane.getByRole('link').allTextContents()
 }
 
 test.describe('Story 4.2 See every paused book in Waiting for you (ATDD)', () => {

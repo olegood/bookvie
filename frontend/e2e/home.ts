@@ -45,6 +45,21 @@ export function upNextPane(page: Page): Locator {
   return page.getByRole('main').getByRole('region', { name: 'Up next', exact: true })
 }
 
+/** Home's Waiting for you pane in the side column: a `region` named by its heading "Waiting for you (N)". */
+export function waitingPane(page: Page): Locator {
+  return page.getByRole('main').getByRole('region', { name: /^Waiting for you \(\d+\)$/ })
+}
+
+/** The pane's heading with its count, exactly. */
+export function waitingHeading(page: Page, count: number): Locator {
+  return page.getByRole('main').getByRole('heading', { name: `Waiting for you (${count})`, exact: true })
+}
+
+/** The row titles in the pane, in order: each row's one link. */
+export function rowTitles(pane: Locator): Promise<string[]> {
+  return pane.getByRole('link').allTextContents()
+}
+
 /** The computed `font-family`, to tell the serif book-title face (`ui-serif…`) apart. */
 export function fontFamily(locator: Locator): Promise<string> {
   return locator.evaluate((element) => getComputedStyle(element).fontFamily)
