@@ -396,3 +396,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-1-keep-the-interrupted-book-as-up-next.md`
   summary: Book detail's Delete Confirm for a paused Up next reads "It is Up next." and no longer gives the page kept, where Epic 3's interrupted (`waiting`) Book read "It is waiting for you at p.120." Story 4.6, which owns the role lines, should carry the page for a paused Up next.
   evidence: `frontend/src/lib/bookDetail.ts:170` `roleLine` returns a fixed string for `upNext`; spec 4.1's Code Map froze `roleLine` ("Do not change").
+
+## Deferred from: implementation of spec-4-2-see-every-paused-book-in-waiting-for-you (2026-11-08)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-2-see-every-paused-book-in-waiting-for-you.md`
+  summary: Spine drift (Capability → Architecture Map, AD-6), reconciled before the next epic: the FR-7 row should name `views/shelf` (home `waiting`, the server-ordered Waiting for you list: `pausedAt` ascending, then title key, then Book id, never sending `pausedAt`) and Home's Waiting for you pane (`WaitingPane`).
+  evidence: Story 4.2 adds `HomeView.waiting` (`backend/bookvie/views/shelf.py` `_waiting`) and `frontend/src/components/WaitingPane.tsx`; the map's FR-7 entry names neither.

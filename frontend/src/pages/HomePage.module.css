@@ -39,7 +39,11 @@
   align-items: start;
 }
 
+/* The side column's panes, stacked; it grows with them (no max-height, no inner scroll). */
 .side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
   min-width: 0;
 }
 

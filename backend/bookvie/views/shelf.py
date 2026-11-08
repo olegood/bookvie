@@ -28,6 +28,7 @@ from .models import (
     HomeMainBook,
     HomeUpNext,
     HomeView,
+    HomeWaiting,
     LibraryMeter,
     Role,
     ShelfBook,
@@ -154,10 +155,43 @@ def _slice_priority(library: Library) -> list[str]:
     return priority + [book.id for _, book in finishes]
 
 
-def home(library: Library, last_export_at: datetime | None = None) -> HomeView:
-    """The Main book, Up next, "Last export", the Catalog's books and meter, and the slice priority.
+def _waiting(library: Library) -> list[HomeWaiting]:
+    """Waiting for you: every Book whose role is ``waiting`` (Up next wins), in order (AD-6).
 
-    The client packs ``books`` into the bookcase slice's rows; ``slice_priority``
+    By ``pausedAt``, oldest first, a Reading without one (only from a
+    hand-edited or restored file) first of all; then :func:`title_key`, then
+    Book id. No cap.
+    """
+    paused: list[tuple[Book, Reading]] = []
+    for book in library.books:
+        role, reading = _role_reading(library, book)
+        if role == "waiting" and reading is not None:
+            paused.append((book, reading))
+    paused.sort(
+        key=lambda item: (
+            item[1].paused_at is not None,
+            item[1].paused_at or date.min,
+            title_key(item[0].title),
+            item[0].id,
+        )
+    )
+    return [
+        HomeWaiting(
+            id=book.id,
+            title=book.title,
+            pages=book.pages,
+            current_page=reading.current_page,
+            percent=percent(reading.current_page, book.pages),
+        )
+        for book, reading in paused
+    ]
+
+
+def home(library: Library, last_export_at: datetime | None = None) -> HomeView:
+    """Home's view of the committed library.
+
+    The Main book, Up next, Waiting for you, "Last export", the Catalog's
+    books and meter, and the slice priority. The client packs ``books`` into the bookcase slice's rows; ``slice_priority``
     chooses them.
     """
     view = catalog(library)
@@ -166,6 +200,7 @@ def home(library: Library, last_export_at: datetime | None = None) -> HomeView:
         books=view.books,
         main_book=_main_book(library),
         up_next=_up_next(library),
+        waiting=_waiting(library),
         last_export_at=last_export_at,
         slice_priority=_slice_priority(library),
     )

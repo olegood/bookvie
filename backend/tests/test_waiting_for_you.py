@@ -28,13 +28,10 @@ The tests pin these names:
 
 from pathlib import Path
 
-import pytest
-
 from bookvie.views import home
 from tests.builder import LibraryBuilder
 from tests.helpers import TODAY, api_client, assert_invariants, library_bytes
 
-RED = "Story 4.2 red phase: the home view has no Waiting for you yet"
 SAME_DAY = TODAY.isoformat()
 """The one fake day the same-day pauses share (``api_client``'s today)."""
 
@@ -53,7 +50,7 @@ def _ids(entries: list[dict] | None) -> list[str] | None:
     return None if entries is None else [entry["id"] for entry in entries]
 
 
-def _paused(builder: LibraryBuilder, title: str, paused_at: str, **book: object) -> str:
+def _paused(builder: LibraryBuilder, title: str, paused_at: str | None, **book: object) -> str:
     """A Book whose current Reading is paused at p.40 since ``paused_at``."""
     book_id = builder.book(title=title, **book)
     builder.reading(book_id, current_page=40, paused_at=paused_at)
@@ -63,7 +60,6 @@ def _paused(builder: LibraryBuilder, title: str, paused_at: str, **book: object)
 # --- AC-1: every paused Reading but Up next's, oldest first, ties fixed --------
 
 
-@pytest.mark.skip(reason=RED)
 def test_ac1_p0_the_home_view_lists_every_paused_reading_except_up_next_oldest_first_with_fixed_ties() -> (
     None
 ):
@@ -134,7 +130,6 @@ def test_ac1_p0_the_home_view_lists_every_paused_reading_except_up_next_oldest_f
 # --- AC-4: a library written under the Epic 3 behavior -------------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_ac4_p0_a_book_paused_under_epic_3_is_listed_in_waiting_for_you_and_invariants_hold(
     tmp_path: Path,
 ) -> None:
@@ -180,3 +175,38 @@ def test_ac4_p0_a_book_paused_under_epic_3_is_listed_in_waiting_for_you_and_inva
     # Reading the view changed nothing, and the library still holds every invariant.
     assert library_bytes(tmp_path) == before
     assert_invariants(tmp_path)
+
+
+# --- AC-1 follow-ups: a paused Reading with no date, and nothing waiting -------
+
+
+def test_ac1_p1_a_paused_reading_without_paused_at_is_listed_first_then_by_title_key_and_id() -> (
+    None
+):
+    # `pausedAt: null` comes only from a hand-edited or restored file: listed, first.
+    builder = LibraryBuilder()
+    dated = _paused(builder, "Anathem", "2026-09-01")
+    zazie = _paused(builder, "Zazie dans le métro", None)
+    emile_plain = _paused(builder, "Emile", None, id=EMILE_PLAIN_ID)
+    emile_accented = _paused(builder, "Émile", None, id=EMILE_ACCENTED_ID)
+    library = builder.build()
+
+    assert _ids(_waiting(home(library))) == [emile_accented, emile_plain, zazie, dated]
+
+
+def test_ac1_p1_nothing_waiting_is_an_empty_list() -> None:
+    # No paused Reading at all.
+    builder = LibraryBuilder()
+    builder.book(title="Emma")
+    main = builder.book(title="Dune")
+    builder.reading(main, current_page=10)
+    builder.main(main)
+    assert _waiting(home(builder.build())) == []
+    # Only a paused Up next, with and without a Main book.
+    up_next = _paused(builder, "The Left Hand of Darkness", "2026-10-05")
+    builder.up_next(up_next)
+    assert _waiting(home(builder.build())) == []
+    alone = LibraryBuilder()
+    alone.up_next(_paused(alone, "Kindred", "2026-10-05"))
+    assert home(alone.build()).main_book is None
+    assert _waiting(home(alone.build())) == []

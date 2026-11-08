@@ -54,6 +54,7 @@ export {
   type CurrentReading,
   type HomeMainBook,
   type HomeUpNext,
+  type HomeWaiting,
   type HomeView,
   type LibraryMeter,
   type ShelfBook,

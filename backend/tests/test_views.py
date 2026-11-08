@@ -20,6 +20,7 @@ HOME_EMPTY = {
     **SHELF_EMPTY,
     "mainBook": None,
     "upNext": None,
+    "waiting": [],
     "lastExportAt": None,
     "slicePriority": [],
 }

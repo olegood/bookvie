@@ -592,10 +592,31 @@ export interface components {
             books: components["schemas"]["ShelfBook"][];
             mainBook: components["schemas"]["HomeMainBook"] | null;
             upNext: components["schemas"]["HomeUpNext"] | null;
+            /** Waiting */
+            waiting: components["schemas"]["HomeWaiting"][];
             /** Lastexportat */
             lastExportAt: string | null;
             /** Slicepriority */
             slicePriority: string[];
+        };
+        /**
+         * HomeWaiting
+         * @description One row of Home's Waiting for you pane: a paused Reading's Book.
+         *
+         *     Never carries ``pausedAt``: the date orders the list and is never shown
+         *     (UX-DR38, NFR6).
+         */
+        HomeWaiting: {
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
+            /** Pages */
+            pages: number;
+            /** Currentpage */
+            currentPage: number;
+            /** Percent */
+            percent: number;
         };
         /**
          * LibraryMeter

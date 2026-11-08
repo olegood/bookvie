@@ -11,6 +11,15 @@ export function gaugePageLine(page: number, pages: number): string {
   return `p.${page} of ${pages}`
 }
 
+/**
+ * A Waiting for you row's mini bar `aria-valuetext`: "page 120 of 330, 36%",
+ * page first as EXPERIENCE.md writes it (the row's visible line is
+ * {@link gaugePageLine}).
+ */
+export function miniBarValueText(page: number, pages: number, percent: number): string {
+  return `page ${page} of ${pages}, ${percent}%`
+}
+
 /** The ticks under the track: 0 · half · total, the half rounded and dropped under 4 pages. */
 export function gaugeTicks(pages: number): number[] {
   return pages < 4 ? [0, pages] : [0, Math.round(pages / 2), pages]

@@ -30,6 +30,7 @@ describe('the home view', () => {
     books: [],
     mainBook: null,
     upNext: null,
+    waiting: [],
     lastExportAt: null,
     slicePriority: [],
   }

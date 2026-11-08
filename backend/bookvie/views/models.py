@@ -84,6 +84,22 @@ class HomeUpNext(_View):
     false (a finished Book with no Reading in progress counts as never started)."""
 
 
+class HomeWaiting(_View):
+    """One row of Home's Waiting for you pane: a paused Reading's Book.
+
+    Never carries ``pausedAt``: the date orders the list and is never shown
+    (UX-DR38, NFR6).
+    """
+
+    id: str
+    title: str
+    pages: int
+    current_page: int
+    """The paused Reading's page."""
+    percent: int
+    """``floor(currentPage × 100 ÷ pages)``, computed only on the server (AD-6)."""
+
+
 class HomeView(_View):
     meter: LibraryMeter
     books: list[ShelfBook]
@@ -91,6 +107,15 @@ class HomeView(_View):
     """The Main book and its current Reading; ``None`` when there is no Main book."""
     up_next: HomeUpNext | None
     """The Up next Book; ``None`` when there is none (or it names the Main book)."""
+    waiting: list[HomeWaiting]
+    """Waiting for you: every paused Reading except the Up next Book's, with no cap (FR-7, AD-6).
+
+    A Book is listed when its shelf role is ``waiting`` (a Side read and a
+    finished Book's paused re-read included). Ordered by ``pausedAt``, oldest
+    first (a Reading without one first of all), then by the title key, then
+    by Book id; the client renders it in this order. Empty when nothing is
+    waiting. ``pausedAt`` itself is never sent.
+    """
     last_export_at: AwareDatetime | None
     """When the last complete export finished (``local-state.json``); ``None`` before the first."""
     slice_priority: list[str]

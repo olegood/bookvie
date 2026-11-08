@@ -1,4 +1,5 @@
-// Story 4.2 See every paused book in Waiting for you (ATDD). Home's side
+// Story 4.2 See every paused book in Waiting for you (ATDD, then the green
+// follow-ups at the end). Home's side
 // column lists every paused Reading except the Up next Book's, oldest pause
 // first, with no cap. This spec reads what the browser shows and what the
 // server stored: the pane's rows (AC-2), the pane hidden once nothing is
@@ -11,6 +12,7 @@
 // clock to the same day in Europe/Madrid (TC-2, AD-20), so the Main book's
 // stored `pausedAt` is the fake today. Every seeded `pausedAt` is earlier.
 
+import AxeBuilder from '@axe-core/playwright'
 import type { Locator, Page } from '@playwright/test'
 import { expect, test } from './fixtures.ts'
 import {
@@ -37,6 +39,7 @@ const LEFT_HAND_READING_ID = '5a4b3c2d-1e0f-4a9b-8c7d-6e5f4a3b2c1d'
 const DUNE_READING_ID = '0f9e8d7c-6b5a-4493-8271-605f4e3d2c1b'
 const RESUME_LEFT_HAND = 'Resume The Left Hand of Darkness'
 const LEFT_HAND_PURPOSE = 'To see how Le Guin builds a world'
+const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']
 
 /** The Left Hand of Darkness paused at p.120 of 330 (36%) since 22 October, with a Purpose. */
 const LEFT_HAND_WAITING = {
@@ -75,13 +78,21 @@ function waitingHeading(page: Page, count: number): Locator {
   return page.getByRole('main').getByRole('heading', { name: `Waiting for you (${count})`, exact: true })
 }
 
+/** The bar's fill is `fraction` of its track, within 1px (as `expectFill` in home.spec.ts). */
+async function expectFill(bar: Locator, fraction: number): Promise<void> {
+  const track = await bar.boundingBox()
+  const fill = await bar.locator('span').boundingBox()
+  if (track === null || fill === null) throw new Error('not rendered')
+  expect(Math.abs(fill.width - track.width * fraction)).toBeLessThanOrEqual(1)
+}
+
 /** The row titles in the pane, in order: each row's one link. */
 function rowTitles(pane: Locator): Promise<string[]> {
   return pane.getByRole('link').allTextContents()
 }
 
 test.describe('Story 4.2 See every paused book in Waiting for you (ATDD)', () => {
-  test.skip('[P1] AC-2 Home shows Waiting for you (N) with each row: serif title link, the 60×5 mini bar, p.120 of 330 and Resume named with the title, and never the paused-at date', async ({
+  test('[P1] AC-2 Home shows Waiting for you (N) with each row: serif title link, the 60×5 mini bar, p.120 of 330 and Resume named with the title, and never the paused-at date', async ({
     page,
     seededServer,
   }) => {
@@ -107,10 +118,12 @@ test.describe('Story 4.2 See every paused book in Waiting for you (ATDD)', () =>
     const bar = pane.getByRole('progressbar', { name: 'The Left Hand of Darkness', exact: true })
     await expect(bar).toHaveAttribute('aria-valuetext', 'page 120 of 330, 36%')
     expect(await sizeOf(bar)).toEqual({ width: 60, height: 5 })
-    await expect(pane.getByRole('progressbar', { name: 'Fahrenheit 451', exact: true })).toHaveAttribute(
-      'aria-valuetext',
-      'page 40 of 187, 21%',
-    )
+    await expect(bar).toHaveAttribute('aria-valuenow', '36')
+    await expectFill(bar, 0.36)
+    const fahrenheitBar = pane.getByRole('progressbar', { name: 'Fahrenheit 451', exact: true })
+    await expect(fahrenheitBar).toHaveAttribute('aria-valuetext', 'page 40 of 187, 21%')
+    await expect(fahrenheitBar).toHaveAttribute('aria-valuenow', '21')
+    await expectFill(fahrenheitBar, 0.21)
     // "p.120 of 330" in tabular figures.
     const pages = pane.getByText('p.120 of 330', { exact: true })
     await expect(pages).toBeVisible()
@@ -127,7 +140,7 @@ test.describe('Story 4.2 See every paused book in Waiting for you (ATDD)', () =>
     await expect(upNextPane(page).getByText('Nothing up next.', { exact: true })).toBeVisible()
   })
 
-  test.skip('[P2] AC-3 once no paused Reading is left outside Up next, the Waiting for you pane is hidden', async ({
+  test('[P2] AC-3 once no paused Reading is left outside Up next, the Waiting for you pane is hidden', async ({
     page,
     seededServer,
   }) => {
@@ -152,7 +165,7 @@ test.describe('Story 4.2 See every paused book in Waiting for you (ATDD)', () =>
     expect(storedLibrary(server).mainBookId).toBe(LEFT_HAND_ID)
   })
 
-  test.skip('[P2] AC-5 with many paused Readings every row is shown, the side column grows and the page scrolls', async ({
+  test('[P2] AC-5 with many paused Readings every row is shown, the side column grows and the page scrolls', async ({
     page,
     seededServer,
   }) => {
@@ -187,7 +200,7 @@ test.describe('Story 4.2 See every paused book in Waiting for you (ATDD)', () =>
     await expect(last).toBeInViewport()
   })
 
-  test.skip('[P1] AC-6 Resume on a row opens Resume X? with its Purpose prefilled and the trade-off lines, and confirming makes it Main at its page', async ({
+  test('[P1] AC-6 Resume on a row opens Resume X? with its Purpose prefilled and the trade-off lines, and confirming makes it Main at its page', async ({
     page,
   }) => {
     // Main: Dune at p.100; Up next: Fahrenheit 451, never started; Waiting: The Left Hand of Darkness at p.120.
@@ -244,7 +257,7 @@ test.describe('Story 4.2 See every paused book in Waiting for you (ATDD)', () =>
     }
   })
 
-  test.skip('[P1] AC-7 a paused Book that is also Up next appears only in Up next with Resume, and the count leaves it out', async ({
+  test('[P1] AC-7 a paused Book that is also Up next appears only in Up next with Resume, and the count leaves it out', async ({
     page,
     seededServer,
   }) => {
@@ -268,5 +281,212 @@ test.describe('Story 4.2 See every paused book in Waiting for you (ATDD)', () =>
     await expect(page.getByRole('main').getByRole('heading', { name: 'Waiting for you (2)', exact: true })).toHaveCount(
       0,
     )
+  })
+
+  // --- Green-phase follow-ups ------------------------------------------------
+
+  test("[P1] AC-6 Cancel on a row's Start dialog returns focus to that row's Resume, and nothing is sent", async ({
+    page,
+    seededServer,
+  }) => {
+    // Main: Dune. Waiting: Fahrenheit 451 (first row), The Left Hand of Darkness (second).
+    const server = await seededServer({
+      mainBookId: DUNE_ID,
+      books: [DUNE_MAIN, LEFT_HAND_WAITING, FAHRENHEIT_WAITING],
+    })
+    const starts = requestsTo(page, START_READING)
+    await page.goto(`${server.url}/`)
+    const pane = waitingPane(page)
+
+    // The first row, so focus can't land on the last row rendered by accident.
+    const resume = pane.getByRole('button', { name: 'Resume Fahrenheit 451', exact: true })
+    await resume.click()
+    const dialog = startDialog(page, 'Resume Fahrenheit 451?')
+    await dialog.getByRole('button', { name: 'Cancel', exact: true }).click()
+    await expect(dialog).toHaveCount(0)
+    await expect(resume).toBeFocused()
+
+    // Esc from the second row's dialog lands on the second row's button.
+    const second = pane.getByRole('button', { name: RESUME_LEFT_HAND, exact: true })
+    await second.click()
+    await expect(startDialog(page, 'Resume The Left Hand of Darkness?')).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(second).toBeFocused()
+    expect(starts).toHaveLength(0)
+    expect(storedLibrary(server).mainBookId).toBe(DUNE_ID)
+  })
+
+  test("[P1] AC-6 with a paused Up next, a row's dialog says it moves to Waiting for you, and after confirming it is a row", async ({
+    page,
+    seededServer,
+  }) => {
+    // Main: Dune at p.100. Up next: The Left Hand of Darkness, paused 5 October. Waiting: Fahrenheit 451.
+    const server = await seededServer({
+      mainBookId: DUNE_ID,
+      upNextBookId: LEFT_HAND_ID,
+      books: [DUNE_MAIN, LEFT_HAND_PAUSED_EARLY, FAHRENHEIT_WAITING],
+    })
+    await page.goto(`${server.url}/`)
+    await expect(waitingHeading(page, 1)).toBeVisible()
+
+    await waitingPane(page).getByRole('button', { name: 'Resume Fahrenheit 451', exact: true }).click()
+    const dialog = startDialog(page, 'Resume Fahrenheit 451?')
+    await expect(dialog).toHaveAccessibleDescription(
+      'This pauses Dune at p.100 (24%). The Left Hand of Darkness moves to Waiting for you.',
+    )
+    await dialog.getByRole('button', { name: 'Resume', exact: true }).click()
+    await expect(mainBookCard(page).getByRole('link', { name: 'Fahrenheit 451', exact: true })).toBeFocused()
+
+    // The interrupted Dune is Up next, so not waiting; the displaced Up next is the one row.
+    await expect(waitingHeading(page, 1)).toBeVisible()
+    expect(await rowTitles(waitingPane(page))).toEqual(['The Left Hand of Darkness'])
+    await expect(upNextPane(page).getByRole('link', { name: 'Dune', exact: true })).toBeVisible()
+    await expect(
+      waitingPane(page).getByRole('progressbar', { name: 'The Left Hand of Darkness', exact: true }),
+    ).toHaveAttribute('aria-valuetext', 'page 120 of 330, 36%')
+    const library = storedLibrary(server)
+    expect(library.mainBookId).toBe(FAHRENHEIT_ID)
+    expect(library.upNextBookId).toBe(DUNE_ID)
+  })
+
+  test('[P2] AC-3 with nothing paused, or only a paused Up next, there is no Waiting for you pane, with or without a Main book', async ({
+    page,
+    seededServer,
+  }) => {
+    const seeds: [string, Record<string, unknown>][] = [
+      ['nothing paused, a Main book', { mainBookId: DUNE_ID, books: [DUNE_MAIN, FAHRENHEIT] }],
+      ['nothing paused, no Main book', { books: [DUNE, FAHRENHEIT] }],
+      [
+        'only a paused Up next, a Main book',
+        { mainBookId: DUNE_ID, upNextBookId: LEFT_HAND_ID, books: [DUNE_MAIN, LEFT_HAND_WAITING] },
+      ],
+      ['only a paused Up next, no Main book', { upNextBookId: LEFT_HAND_ID, books: [DUNE, LEFT_HAND_WAITING] }],
+    ]
+    for (const [name, seed] of seeds) {
+      const server = await seededServer(seed)
+      await page.goto(`${server.url}/`)
+      await expect(mainBookCard(page), name).toBeVisible()
+      await expect(waitingPane(page), name).toHaveCount(0)
+      await expect(page.getByRole('main').getByRole('heading', { name: /^Waiting for you/ }), name).toHaveCount(0)
+    }
+  })
+
+  test('[P2] AC-2 the pane comes after Up next in the side column, reads (1) for one row, and shows beside the empty card with no Main book', async ({
+    page,
+    seededServer,
+  }) => {
+    // Main: Dune. Waiting: The Left Hand of Darkness alone.
+    const server = await seededServer({ mainBookId: DUNE_ID, books: [DUNE_MAIN, LEFT_HAND_WAITING] })
+    await page.goto(`${server.url}/`)
+    await expect(waitingHeading(page, 1)).toBeVisible()
+    // Up next first, then Waiting for you, in document order and on screen.
+    const waitingElement = await waitingPane(page).elementHandle()
+    const after = await upNextPane(page).evaluate(
+      (upNext, waiting) =>
+        waiting !== null && (upNext.compareDocumentPosition(waiting) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
+      waitingElement,
+    )
+    expect(after).toBe(true)
+    const upNextBox = await upNextPane(page).boundingBox()
+    const waitingBox = await waitingPane(page).boundingBox()
+    if (upNextBox === null || waitingBox === null) throw new Error('not rendered')
+    expect(waitingBox.y).toBeGreaterThanOrEqual(upNextBox.y + upNextBox.height)
+
+    // No Main book: the Up next pane is hidden, and the pane sits beside the empty card.
+    const noMain = await seededServer({ books: [DUNE, LEFT_HAND_WAITING] })
+    await page.goto(`${noMain.url}/`)
+    await expect(mainBookCard(page).getByText('No Main book.', { exact: true })).toBeVisible()
+    await expect(upNextPane(page)).toHaveCount(0)
+    await expect(waitingHeading(page, 1)).toBeVisible()
+    const cardBox = await mainBookCard(page).boundingBox()
+    const paneBox = await waitingPane(page).boundingBox()
+    if (cardBox === null || paneBox === null) throw new Error('not rendered')
+    expect(paneBox.x).toBeGreaterThanOrEqual(cardBox.x + cardBox.width)
+  })
+
+  test("[P1] AC-4 another context resumes a row: this one's pane and count follow once it regains focus, with no warning", async ({
+    page,
+    browser,
+    seededServer,
+  }) => {
+    // Main: Dune. Waiting: Fahrenheit 451, The Left Hand of Darkness.
+    const server = await seededServer({
+      mainBookId: DUNE_ID,
+      books: [DUNE_MAIN, LEFT_HAND_WAITING, FAHRENHEIT_WAITING],
+    })
+    await page.goto(`${server.url}/`)
+    await expect(waitingHeading(page, 2)).toBeVisible()
+    const otherContext = await browser.newContext()
+    try {
+      const other = await otherContext.newPage()
+      await other.goto(`${server.url}/`)
+      await waitingPane(other).getByRole('button', { name: RESUME_LEFT_HAND, exact: true }).click()
+      await startDialog(other, 'Resume The Left Hand of Darkness?')
+        .getByRole('button', { name: 'Resume', exact: true })
+        .click()
+      await expect(
+        mainBookCard(other).getByRole('link', { name: 'The Left Hand of Darkness', exact: true }),
+      ).toBeFocused()
+
+      // This context regains focus, and its views refetch.
+      await page.bringToFront()
+      await page.evaluate(() => window.dispatchEvent(new Event('focus')))
+      // Dune is Up next now; only Fahrenheit 451 is still waiting.
+      await expect(waitingHeading(page, 1)).toBeVisible()
+      expect(await rowTitles(waitingPane(page))).toEqual(['Fahrenheit 451'])
+      await expect(page.getByRole('alert')).toHaveText('')
+      await expect(page.getByRole('dialog')).toHaveCount(0)
+    } finally {
+      await otherContext.close()
+    }
+  })
+
+  test('[P2] AC-2 axe finds nothing on Home with the Waiting for you pane, in both themes', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({
+      mainBookId: DUNE_ID,
+      books: [DUNE_MAIN, LEFT_HAND_WAITING, FAHRENHEIT_WAITING],
+    })
+    for (const colorScheme of ['light', 'dark'] as const) {
+      await page.emulateMedia({ colorScheme })
+      await page.goto(`${server.url}/`)
+      await expect(waitingHeading(page, 2)).toBeVisible()
+      const { violations } = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze()
+      expect(violations.map(({ id, nodes }) => `${colorScheme}: ${id} (${nodes.length})`)).toEqual([])
+    }
+  })
+
+  test("[P1] AC-6 a couldn't-save on Resume from a row keeps the dialog open with its alert line, and nothing changes", async ({
+    page,
+    seededServer,
+  }) => {
+    const couldntSave = "Couldn't save. Your data wasn't changed."
+    const server = await seededServer({
+      mainBookId: DUNE_ID,
+      books: [DUNE_MAIN, LEFT_HAND_WAITING],
+    })
+    await page.route(`**${START_READING}`, (route) =>
+      route.fulfill({
+        status: 503,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: { kind: 'couldnt_save', code: 'couldnt_save', message: couldntSave } }),
+      }),
+    )
+    const before = JSON.stringify(storedLibrary(server))
+    await page.goto(`${server.url}/`)
+    const pane = waitingPane(page)
+
+    await pane.getByRole('button', { name: RESUME_LEFT_HAND, exact: true }).click()
+    const dialog = startDialog(page, 'Resume The Left Hand of Darkness?')
+    const confirm = dialog.getByRole('button', { name: 'Resume', exact: true })
+    await confirm.click()
+
+    await expect(page.getByRole('alert')).toHaveText(couldntSave)
+    await expect(dialog.getByText(couldntSave, { exact: true })).toBeVisible()
+    await expect(confirm).toBeFocused()
+    await expect(waitingHeading(page, 1)).toBeVisible()
+    expect(JSON.stringify(storedLibrary(server))).toBe(before)
   })
 })

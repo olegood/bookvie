@@ -21,8 +21,9 @@ After every step:
 - ``check_invariants()`` holds, each Book has at most one unfinished Reading,
   and the file on disk reads back as the committed library;
 - the views agree: only ``mainBookId`` is ``main``, only ``upNextBookId`` is
-  ``upNext``, ``waiting`` is exactly the paused Books minus Up next, Home's
-  Main book is the Main book's current Reading, and Home's Up next is the Up
+  ``upNext``, ``waiting`` is exactly the paused Books minus Up next (on each
+  spine and as Home's Waiting for you list, ordered by ``pausedAt``, then
+  title key, then id), Home's Main book is the Main book's current Reading, and Home's Up next is the Up
   next Book, ``paused`` when it has a current Reading.
 
 Later intents (pause, set-up-next, Side reads) join the machine as they land.
@@ -38,7 +39,7 @@ from hypothesis import HealthCheck, settings
 from hypothesis import strategies as st
 from hypothesis.stateful import RuleBasedStateMachine, initialize, invariant, rule
 
-from bookvie.domain import FakeClock, Library, check_invariants, normalize_purpose
+from bookvie.domain import FakeClock, Library, check_invariants, normalize_purpose, title_key
 from bookvie.intents import IntentError
 from bookvie.intents.delete_book import delete_book, parse_delete_book_intent
 from bookvie.intents.edit_purpose import edit_purpose, parse_edit_purpose_intent
@@ -377,6 +378,14 @@ class ReadingPlan(RuleBasedStateMachine):
             else:
                 assert shelf.role is None, shelf.title
         view = home(library)
+        # Home's Waiting for you: the paused Books minus Up next, oldest pause
+        # first, then title key, then id (AD-6).
+        paused = [
+            (current.get("pausedAt") or "", title_key(book["title"]), book["id"])
+            for book in stored.values()
+            if book["id"] not in (main, up_next) and (current := _current(book)) is not None
+        ]
+        assert [w.id for w in view.waiting] == [book_id for *_, book_id in sorted(paused)]
         if up_next is None:
             assert view.up_next is None
         else:

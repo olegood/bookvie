@@ -1,0 +1,120 @@
+/* DESIGN.md → Section pane: a surface pane under a section label. The .pane, .heading,
+   .title and .compact rules are kept in step with UpNextPane.module.css. */
+.pane {
+  min-width: 0;
+  padding: 20px 22px;
+  border: var(--hairline) solid var(--color-line);
+  border-radius: var(--radius-xl);
+  background: var(--color-surface);
+}
+
+.heading {
+  margin: 0 0 var(--space-3);
+  font-family: var(--font-section-label-family);
+  font-size: var(--font-section-label-size);
+  font-weight: var(--font-section-label-weight);
+  letter-spacing: var(--font-section-label-letter-spacing);
+  line-height: 1.3;
+  text-transform: uppercase;
+  color: var(--color-ink-tertiary);
+}
+
+/* Every row, with no cap: no inner scroll and no max-height; the side column grows. */
+.rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Each row under a hairline (the key-home mock's rows). */
+.row {
+  min-width: 0;
+  padding: 10px 0;
+  border-top: var(--hairline) solid var(--color-line);
+}
+
+.row:first-child {
+  padding-top: 0;
+  border-top: none;
+}
+
+.row:last-child {
+  padding-bottom: 0;
+}
+
+/* Line 1: the serif title in ink, clamped to 2 lines. */
+.title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  font-family: var(--font-book-title-sm-family);
+  font-size: var(--font-book-title-sm-size);
+  font-weight: var(--font-book-title-sm-weight);
+  line-height: var(--font-book-title-sm-line-height);
+  color: var(--color-ink);
+  text-decoration-line: none;
+  overflow-wrap: anywhere;
+}
+
+.title:hover,
+.title:focus-visible {
+  text-decoration-line: underline;
+}
+
+/* Line 2: the mini bar, "p.N of M", and the compact button right-aligned. */
+.line {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 6px;
+}
+
+/* The 60×5 mini bar. */
+.bar {
+  flex: none;
+  box-sizing: border-box;
+  width: 60px;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--color-accent-soft);
+  forced-color-adjust: none;
+}
+
+.fill {
+  display: block;
+  height: 100%;
+  background: var(--color-accent);
+}
+
+.pages {
+  min-width: 0;
+  margin: 0;
+  font-family: var(--font-meta-family);
+  font-size: var(--font-meta-size);
+  line-height: var(--font-meta-line-height);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-ink-secondary);
+  white-space: nowrap;
+}
+
+/* The compact button-secondary (30px). */
+.compact {
+  flex: none;
+  height: 30px;
+  margin-left: auto;
+  padding: 0 var(--space-3);
+}
+
+@media (forced-colors: active) {
+  .bar {
+    border: 1px solid CanvasText;
+    background: Canvas;
+  }
+
+  .fill {
+    background: CanvasText;
+  }
+}

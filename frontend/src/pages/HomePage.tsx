@@ -8,6 +8,7 @@ import MainBookCard from '../components/MainBookCard.tsx'
 import PageHeading from '../components/PageHeading.tsx'
 import StartDialog, { type StartedState } from '../components/StartDialog.tsx'
 import UpNextPane from '../components/UpNextPane.tsx'
+import WaitingPane from '../components/WaitingPane.tsx'
 import { announce, clearAnnouncements } from '../lib/announce.ts'
 import { finishStatus, sortBooks } from '../lib/catalog.ts'
 import { COULDNT_LOAD } from '../lib/copy.ts'
@@ -63,13 +64,20 @@ function HomeSlice({ view, finishing }: { view: HomeView; finishing: FinishMomen
  * Home, the launch page at `/` (EXPERIENCE.md → Home): a visually hidden
  * `h1` "Home", the date header (the browser's local date, recomputed on
  * focus and visibility), then either the empty shelf (no Books) or a grid of
- * the Main book card beside the 320px side column (the Up next pane, shown
- * only while there is a Main book; without one the empty card suggests the
- * Up next Book; Home hosts the Start dialog that the pane's and the card's
- * buttons open) with the bookcase slice below: the full bookcase in Catalog's
- * order, up to 3 rows chosen by the view's `slicePriority`. "Last export"
- * sits at the right end of the header line only while there is no Main book;
- * with one it sits in the card's re-entry line, which reads the same `now`.
+ * the Main book card beside the 320px side column with the bookcase slice
+ * below. The side column holds the Up next pane, shown only while there is a
+ * Main book (without one the empty card suggests the Up next Book), then the
+ * Waiting for you pane, shown whenever the view's `waiting` isn't empty, with
+ * every row in the server's order and no cap (the column grows and the page
+ * scrolls). Home hosts the Start dialog that the Up next pane's button, the
+ * empty card's suggestion and each Waiting row's **Resume** open; Cancel or
+ * Esc returns focus to the button that opened it while it is still on the
+ * page, else to the Up next pane's or the suggestion's button, the "No Main
+ * book." heading or `main`. The bookcase slice below is the full bookcase
+ * in Catalog's order, up to 3 rows chosen by the view's `slicePriority`.
+ * "Last export" sits at the right end of the header line only while there is
+ * no Main book; with one it sits in the card's re-entry line, which reads the
+ * same `now`.
  *
  * Arriving from a confirmed Start dialog (router state `{started: true}`),
  * focus goes to the Main book card's title link, winning over the `h1`.
@@ -101,12 +109,15 @@ export default function HomePage() {
   const titleLink = useRef<HTMLAnchorElement>(null)
   const emptyHeading = useRef<HTMLHeadingElement>(null)
   const suggestButton = useRef<HTMLButtonElement>(null)
-  const paneButton = useRef<HTMLButtonElement>(null)
-  // The Up next Book whose Start dialog the pane or the empty card opened,
-  // and the history entry it opened on: a confirmed start navigates to `/`
-  // again, a new entry, which closes it.
-  const [startingUpNext, setStartingUpNext] = useState<{ bookId: string; key: string } | null>(null)
-  if (startingUpNext !== null && startingUpNext.key !== location.key) setStartingUpNext(null)
+  const upNextButton = useRef<HTMLButtonElement>(null)
+  // The element whose press opened the Start dialog: Cancel returns focus to
+  // it while it is still connected (a refetch can remove a Waiting row).
+  const opener = useRef<HTMLElement | null>(null)
+  // The Book whose Start dialog a Home button opened (the Up next pane, the
+  // empty card's suggestion, a Waiting row), and the history entry it opened
+  // on: a confirmed start navigates to `/` again, a new entry, which closes it.
+  const [starting, setStarting] = useState<{ bookId: string; key: string } | null>(null)
+  if (starting !== null && starting.key !== location.key) setStarting(null)
   // Set when that dialog is cancelled, so focus returns to its opener once it has unmounted.
   const [startRefocus, setStartRefocus] = useState(0)
   const handledStart = useRef<string | null>(null)
@@ -173,20 +184,26 @@ export default function HomePage() {
     target?.focus()
   }, [finishRefocus])
 
-  const openStartUpNext = useCallback(
-    (bookId: string) => setStartingUpNext({ bookId, key: location.key }),
+  const openStart = useCallback(
+    (bookId: string, from: HTMLElement | null) => {
+      opener.current = from
+      setStarting({ bookId, key: location.key })
+    },
     [location.key],
   )
-  const cancelStartUpNext = useCallback(() => {
-    setStartingUpNext(null)
+  const openStartFromPane = useCallback((bookId: string) => openStart(bookId, upNextButton.current), [openStart])
+  const openStartFromSuggestion = useCallback((bookId: string) => openStart(bookId, suggestButton.current), [openStart])
+  const cancelStart = useCallback(() => {
+    setStarting(null)
     setStartRefocus((count) => count + 1)
   }, [])
 
   useEffect(() => {
     if (startRefocus === 0) return
     // The opener is gone when a refetch changed Home meanwhile.
+    const from = opener.current?.isConnected ? opener.current : null
     const target =
-      paneButton.current ?? suggestButton.current ?? emptyHeading.current ?? document.getElementById('main')
+      from ?? upNextButton.current ?? suggestButton.current ?? emptyHeading.current ?? document.getElementById('main')
     target?.focus()
   }, [startRefocus])
 
@@ -243,7 +260,7 @@ export default function HomePage() {
     )
   }
 
-  const { mainBook, upNext, lastExportAt, meter } = view.data
+  const { mainBook, upNext, waiting, lastExportAt, meter } = view.data
   const empty = meter.total === 0
   const newBook = () => {
     const state: NewBookState = { newBook: true }
@@ -274,20 +291,21 @@ export default function HomePage() {
               titleRef={titleLink}
               emptyHeadingRef={emptyHeading}
               upNext={upNext}
-              onStartUpNext={openStartUpNext}
+              onStartUpNext={openStartFromSuggestion}
               suggestRef={suggestButton}
               onReachedLastPage={openFinish}
               pageFieldRef={pageField}
             />
             <div className={styles.side}>
-              {mainBook !== null && <UpNextPane upNext={upNext} onStart={openStartUpNext} buttonRef={paneButton} />}
+              {mainBook !== null && <UpNextPane upNext={upNext} onStart={openStartFromPane} buttonRef={upNextButton} />}
+              <WaitingPane waiting={waiting} onStart={openStart} />
             </div>
           </div>
           <HomeSlice view={view.data} finishing={moment?.finishing ?? null} />
         </>
       )}
-      {startingUpNext !== null && startingUpNext.key === location.key && (
-        <StartDialog bookId={startingUpNext.bookId} onCancel={cancelStartUpNext} />
+      {starting !== null && starting.key === location.key && (
+        <StartDialog bookId={starting.bookId} onCancel={cancelStart} />
       )}
       {finishing !== null && finishing.key === location.key && (
         <FinishDialog
