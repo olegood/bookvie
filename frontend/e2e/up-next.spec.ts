@@ -13,7 +13,6 @@
 // `pausedAt` is the fake today.
 
 import AxeBuilder from '@axe-core/playwright'
-import type { Locator, Page } from '@playwright/test'
 import { expect, startSeededServer, test } from './fixtures.ts'
 import {
   DUNE,
@@ -21,11 +20,15 @@ import {
   FAKE_TODAY,
   LEFT_HAND,
   LEFT_HAND_ID,
+  fontFamily,
   mainBookCard,
   serverAtFakeToday,
+  sizeOf,
+  startDialog,
   stopAndRemove,
   storedBook,
   storedLibrary,
+  upNextPane,
 } from './home.ts'
 import { COVER_PNG, DELETE_BOOK, START_READING, requestsTo } from './intents.ts'
 
@@ -73,27 +76,6 @@ const LEFT_HAND_MAIN = {
 }
 /** Dune as the Main book at p.100 of 412. */
 const DUNE_MAIN = { ...DUNE, readings: [{ id: DUNE_READING_ID, startDate: '2026-10-05', currentPage: 100 }] }
-
-/** The Start dialog, by its heading: "Start *X*?" or "Resume *X*?". */
-function startDialog(page: Page, heading: string): Locator {
-  return page.getByRole('dialog', { name: heading, exact: true })
-}
-
-/** Home's Up next pane in the side column: a `region` named by its section label. */
-function upNextPane(page: Page): Locator {
-  return page.getByRole('main').getByRole('region', { name: 'Up next', exact: true })
-}
-
-function fontFamily(locator: Locator): Promise<string> {
-  return locator.evaluate((element) => getComputedStyle(element).fontFamily)
-}
-
-/** The rendered size of an element, rounded to whole pixels. */
-async function sizeOf(locator: Locator): Promise<{ width: number; height: number }> {
-  const box = await locator.boundingBox()
-  if (box === null) throw new Error('not rendered')
-  return { width: Math.round(box.width), height: Math.round(box.height) }
-}
 
 test.describe('Story 4.1 Keep the interrupted book as Up next (ATDD)', () => {
   test('[P0] AC-2 with a Main book and another Up next, the Start dialog says Z moves to Waiting for you., and confirming makes Y Up next', async ({

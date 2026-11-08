@@ -35,6 +35,28 @@ export function mainBookCard(page: Page): Locator {
   return page.getByRole('main').getByRole('region', { name: 'Main book', exact: true })
 }
 
+/** The Start dialog, by its heading: "Start *X*?" or "Resume *X*?". */
+export function startDialog(page: Page, heading: string): Locator {
+  return page.getByRole('dialog', { name: heading, exact: true })
+}
+
+/** Home's Up next pane in the side column: a `region` named by its section label. */
+export function upNextPane(page: Page): Locator {
+  return page.getByRole('main').getByRole('region', { name: 'Up next', exact: true })
+}
+
+/** The computed `font-family`, to tell the serif book-title face (`ui-serif…`) apart. */
+export function fontFamily(locator: Locator): Promise<string> {
+  return locator.evaluate((element) => getComputedStyle(element).fontFamily)
+}
+
+/** The rendered size of an element, rounded to whole pixels. */
+export async function sizeOf(locator: Locator): Promise<{ width: number; height: number }> {
+  const box = await locator.boundingBox()
+  if (box === null) throw new Error('not rendered')
+  return { width: Math.round(box.width), height: Math.round(box.height) }
+}
+
 /**
  * The re-entry line's facts, in order (Story 3.4): the children of the element
  * holding "Last updated …". The dots between them are drawn by CSS, not text.

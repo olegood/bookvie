@@ -24,6 +24,7 @@ import {
   mainAt,
   mainBookCard,
   serverAtFakeToday,
+  startDialog,
   stopAndRemove,
   storedBook,
   storedLibrary,
@@ -60,11 +61,6 @@ const DUNE_PAUSED = {
       pausedAt: '2026-10-20',
     },
   ],
-}
-
-/** The Start dialog, by its heading: "Start *X*?" or "Resume *X*?". */
-function startDialog(page: Page, heading: string): Locator {
-  return page.getByRole('dialog', { name: heading, exact: true })
 }
 
 /** Book detail's state-aware primary action (or any button), by exact name. */
