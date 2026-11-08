@@ -147,6 +147,8 @@ Code review of 2026-11-08 (layers: blind-hunter, edge-case-hunter, verification-
 
 ## Spec Change Log
 
+- **2026-11-08 (follow-up fix, after test automation).** Trigger: test automation found that a stale tab's refusal (409 `not_main_book`) on the immediate path refetches views in which the Book isn't Main, so the opener (**Pause** or "⋯") unmounts. Focus fell to `body`, and the `alert` line lived only in the shell's visually hidden region. The Always rule "the `alert` line shows directly below **Pause** … or below '⋯' … with focus kept on that button" didn't cover an opener that is gone. Amended (behaviour, not this spec's text): when a refusal's refetch has removed the opener, focus moves to the Resume that the refetch shows, and the line shows directly below it. On Book detail that is the Book's **Resume**. On Home it is the empty card's **Resume**, else "No Main book.". A couldn't-save line still goes when the Book stops being Main for another reason, and the moved line goes once there is a Main book again. Commit `5e2632d`, tests in `pause.spec.ts` ("a Book paused in another tab: …", Book detail and Home). KEEP: focus stays on the opener whenever it is still rendered, and the line sits directly below whichever button has focus.
+
 ## Review Triage Log
 
 ### 2026-11-08 — Review pass
