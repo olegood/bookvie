@@ -108,6 +108,14 @@ async function routeCouldntSave(page: Page): Promise<void> {
   )
 }
 
+/** Another tab pauses The Left Hand of Darkness behind this page's back (no reload, no focus change). */
+async function pauseElsewhere(page: Page, url: string): Promise<void> {
+  const response = await page.request.post(`${url}${PAUSE}`, {
+    multipart: { intent: JSON.stringify({ bookId: LEFT_HAND_ID }) },
+  })
+  expect(response.status()).toBe(200)
+}
+
 async function bottomOf(locator: Locator): Promise<number> {
   const box = await locator.boundingBox()
   if (box === null) throw new Error('not rendered')
@@ -538,7 +546,7 @@ test.describe('Story 4.3 Pause my Main book (automate)', () => {
     }
   })
 
-  test("[P1] a Book paused in another tab: Pause on its stale Book detail says it isn't the Main book anymore, the refetch swaps Pause for Resume, and the live regions go back to the shell", async ({
+  test("[P1] a Book paused in another tab: Pause on its stale Book detail says it isn't the Main book anymore, below the Resume the refetch shows, with focus moved there", async ({
     page,
     seededServer,
   }) => {
@@ -547,23 +555,52 @@ test.describe('Story 4.3 Pause my Main book (automate)', () => {
     await page.goto(`${server.url}/book/${LEFT_HAND_ID}`)
     const pause = detailButton(page, 'Pause')
     await expect(pause).toBeVisible()
-
-    // Another tab pauses it behind this page's back (no reload, no focus change: the view stays stale).
-    const elsewhere = await page.request.post(`${server.url}${PAUSE}`, {
-      multipart: { intent: JSON.stringify({ bookId: LEFT_HAND_ID }) },
-    })
-    expect(elsewhere.status()).toBe(200)
+    await pauseElsewhere(page, server.url)
     const after = libraryBytes(server)
 
     await pause.click()
     await expect(page.getByRole('alert')).toHaveText(NOT_MAIN)
     expect(pauses).toHaveLength(1)
-    // The refusal's refetch shows the Book as the paused Up next: Resume, and no Pause slot to hold the regions.
-    await expect(detailButton(page, 'Resume')).toBeVisible()
+    // The refusal's refetch shows the Book as the paused Up next: Pause is gone, focus is on Resume, the line below it.
+    const resume = detailButton(page, 'Resume')
+    await expect(resume).toBeFocused()
     await expect(detailButton(page, 'Pause')).toHaveCount(0)
-    await expect(page.getByRole('main').locator('[role="status"], [role="alert"]')).toHaveCount(0)
-    await expect(page.getByRole('alert')).toHaveText(NOT_MAIN)
+    const line = page.getByRole('main').getByText(NOT_MAIN, { exact: true })
+    await expect(line).toBeVisible()
+    expect(await topOf(line)).toBeGreaterThanOrEqual(await bottomOf(resume))
+    expect(await topOf(detailButton(page, 'Edit'))).toBeGreaterThanOrEqual(await bottomOf(line))
     expect(libraryBytes(server)).toBe(after)
+
+    // Resuming makes it Main again (and goes Home): the old line goes, and the regions go back to the shell.
+    await resume.click()
+    await startDialog(page, 'Resume The Left Hand of Darkness?')
+      .getByRole('button', { name: 'Resume', exact: true })
+      .click()
+    await expect(mainBookCard(page).getByRole('link', { name: LEFT_HAND.title, exact: true })).toBeVisible()
+    await expect(page.getByRole('main').getByText(NOT_MAIN, { exact: true })).toHaveCount(0)
+    await expect(page.getByRole('main').locator('[role="status"], [role="alert"]')).toHaveCount(0)
+  })
+
+  test("[P1] a Book paused in another tab: Pause from Home's stale card says it isn't the Main book anymore, below the empty card's Resume, with focus moved there", async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer(NO_UP_NEXT)
+    await page.goto(`${server.url}/`)
+    await moreButton(page).click()
+    await expect(menu(page)).toBeVisible()
+    await pauseElsewhere(page, server.url)
+
+    await item(page, 'Pause').click()
+    await expect(page.getByRole('alert')).toHaveText(NOT_MAIN)
+    const card = mainBookCard(page)
+    const resume = card.getByRole('button', { name: RESUME_LEFT_HAND, exact: true })
+    await expect(resume).toBeFocused()
+    await expect(moreButton(page)).toHaveCount(0)
+    const line = card.getByText(NOT_MAIN, { exact: true })
+    await expect(line).toBeVisible()
+    expect(await topOf(line)).toBeGreaterThanOrEqual(await bottomOf(resume))
+    expect(storedLibrary(server).upNextBookId).toBe(LEFT_HAND_ID)
   })
 
   test('[P2] while a pause from Book detail is in flight, Pause is aria-disabled with "Pausing the book." and a second press sends nothing', async ({

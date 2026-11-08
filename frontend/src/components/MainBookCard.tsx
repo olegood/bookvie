@@ -38,7 +38,9 @@ const NO_MAIN_BOOK = 'No Main book.'
  * which calls `onPause`, and **Open book**, which goes to Book detail).
  * `moreRef` is the "⋯" button, where focus stays after a Cancel or a failed
  * pause. Below the row, `pauseSlot` takes the live regions while
- * `pauseFailed`, so a couldn't-save line shows directly below "⋯".
+ * `pauseFailed`, so a couldn't-save line shows directly below "⋯". The empty
+ * card renders the slot last, below its suggestion, for a stale tab's
+ * refusal that emptied the card.
  */
 export default function MainBookCard({
   book,
@@ -101,6 +103,11 @@ export default function MainBookCard({
             <Link to="/catalog">{CHOOSE_A_BOOK}</Link>
           </p>
         )}
+        <div
+          ref={pauseSlot}
+          className={`${styles.regions} ${styles.regionsStart}`}
+          data-show-alert={pauseFailed ? 'true' : undefined}
+        />
       </section>
     )
   }

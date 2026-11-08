@@ -150,3 +150,10 @@
   line-height: var(--font-body-sm-line-height);
   color: var(--color-ink);
 }
+
+/* In the empty card, after a stale tab's refusal: the line sits below the
+   suggestion, left-aligned like it. */
+.regionsStart[data-show-alert='true'] [role='alert'] {
+  margin-top: var(--space-3);
+  text-align: left;
+}

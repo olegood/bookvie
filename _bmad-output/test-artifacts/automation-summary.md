@@ -105,6 +105,7 @@ The five tests are in a new `Story 4.3 Pause my Main book (automate)` block at t
 - **Spec it breaks:** "on the immediate path the `alert` line shows directly below Pause … with focus kept on that button". A screen reader still hears the alert. A sighted user sees Pause turn into Resume with no message.
 - **Home:** the same is likely there, because the card empties and "⋯" goes.
 - **Status:** test 2 asserts only what holds today (the announcement and the swap), not the focus or visibility. Recorded in `deferred-work.md`.
+- **Fixed (follow-up, 2026-11-08):** focus now moves to the Resume the refetch shows, and the line shows below it, on Book detail and on Home. Test 2 now asserts that, and a Home twin was added. Both fail on the old code. `deferred-work.md` has a `resolved:` line.
 
 ## ATDD Checklist
 

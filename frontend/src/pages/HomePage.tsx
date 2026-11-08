@@ -103,7 +103,8 @@ function HomeSlice({ view, finishing }: { view: HomeView; finishing: FinishMomen
  * "⋯" menu: **Pause** sends `pause` at once with no Up next, else opens the
  * Confirm dialog naming where the Up next goes. Cancel or Esc returns focus
  * to "⋯"; a failure without the dialog shows its line below "⋯" and keeps
- * focus there. Once the refetched view has no Main book, focus goes to the
+ * focus there. A stale tab's refusal empties the card: focus goes to its
+ * **Resume** (else "No Main book."), with the line below the suggestion. Once the refetched view has no Main book, focus goes to the
  * empty card's **Resume** (the paused Book is Up next) and then `status`
  * reads "Paused *X* at p.N. It's Up next."
  */
@@ -190,7 +191,12 @@ export default function HomePage() {
     pausedLine.current = { bookId: paused.id, line: pausedStatus(paused.title, paused.currentPage) }
     setPauses((count) => count + 1)
   }, [])
-  const pauseFlow = usePauseFlow({ book: pauseBook, opener: moreButton, onPaused })
+  const pauseFlow = usePauseFlow({
+    book: pauseBook,
+    opener: moreButton,
+    fallback: () => suggestButton.current ?? emptyHeading.current,
+    onPaused,
+  })
 
   // After a pause: focus first (the empty card's Resume), then the line. While
   // the view still shows the paused Book as Main, the refetch hasn't rendered;

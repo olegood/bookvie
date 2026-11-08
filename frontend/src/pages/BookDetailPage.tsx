@@ -162,6 +162,7 @@ function BookDetail({ book, onDelete, onFinish, finishButton }: BookDetailProps)
         ? { id: book.id, title: book.title, currentPage: current.currentPage, percent: current.percent }
         : null,
     opener: pauseButton,
+    fallback: () => startButton.current,
     onPaused,
   })
 
@@ -222,13 +223,12 @@ function BookDetail({ book, onDelete, onFinish, finishButton }: BookDetailProps)
               </Button>
             )}
             {canPause && (
-              <>
-                <Button ref={pauseButton} disabledReason={pausing ? PAUSING : undefined} onClick={requestPause}>
-                  Pause
-                </Button>
-                <div ref={pauseSlot} className={styles.regions} data-show-alert={pauseFailed ? 'true' : undefined} />
-              </>
+              <Button ref={pauseButton} disabledReason={pausing ? PAUSING : undefined} onClick={requestPause}>
+                Pause
+              </Button>
             )}
+            {/* Below Pause, or below Resume once a stale tab's refusal has made the Book Up next. */}
+            <div ref={pauseSlot} className={styles.regions} data-show-alert={pauseFailed ? 'true' : undefined} />
             {canFinish && (
               <Button ref={finishButton} onClick={onFinish}>
                 Mark finished
@@ -341,7 +341,9 @@ function BookDetail({ book, onDelete, onFinish, finishButton }: BookDetailProps)
  * **Pause** (`lib/usePauseFlow.tsx`) sends `pause` at once with no Up next,
  * else opens the Confirm dialog naming where the Up next goes; Cancel or Esc
  * returns focus to **Pause**. A failure without the dialog shows its line
- * directly below **Pause**, focus kept there. Once the refetched view shows
+ * directly below **Pause**, focus kept there; when it is a stale tab's
+ * refusal and the refetch makes the Book Up next, focus and the line move to
+ * its **Resume**. Once the refetched view shows
  * the Book as a paused Up next, focus goes to its **Resume** and then
  * `status` reads "Paused *X* at p.N. It's Up next."
  *
