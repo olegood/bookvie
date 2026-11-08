@@ -191,8 +191,8 @@ def home(library: Library, last_export_at: datetime | None = None) -> HomeView:
     """Home's view of the committed library.
 
     The Main book, Up next, Waiting for you, "Last export", the Catalog's
-    books and meter, and the slice priority. The client packs ``books`` into the bookcase slice's rows; ``slice_priority``
-    chooses them.
+    books and meter, and the slice priority. The client packs ``books`` into
+    the bookcase slice's rows; ``slice_priority`` chooses them.
     """
     view = catalog(library)
     return HomeView(

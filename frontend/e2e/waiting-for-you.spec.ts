@@ -169,14 +169,16 @@ test.describe('Story 4.2 See every paused book in Waiting for you (ATDD)', () =>
     page,
     seededServer,
   }) => {
-    // Main: Dune. Waiting: 20 Books paused on 1 to 20 October, seeded newest first.
+    // Main: Dune. Waiting: 20 Books, "Paused book 01" paused on 20 October down to "Paused book 20" on
+    // 1 October, so oldest-pause-first runs against title order: a client re-sort by title would fail.
     const titles = Array.from({ length: 20 }, (_, n) => `Paused book ${String(n + 1).padStart(2, '0')}`)
     const paused = titles.map((title, n) => ({
       title,
       authors: ['Ann Author'],
       pages: 300,
-      readings: [{ currentPage: 30, pausedAt: `2026-10-${String(n + 1).padStart(2, '0')}` }],
+      readings: [{ currentPage: 30, pausedAt: `2026-10-${String(20 - n).padStart(2, '0')}` }],
     }))
+    const oldestPauseFirst = [...titles].reverse()
     const server = await seededServer({ mainBookId: DUNE_ID, books: [DUNE_MAIN, ...paused.reverse()] })
     await page.goto(`${server.url}/`)
 
@@ -185,7 +187,7 @@ test.describe('Story 4.2 See every paused book in Waiting for you (ATDD)', () =>
 
     const pane = waitingPane(page)
     await expect(pane.getByRole('progressbar')).toHaveCount(20)
-    expect(await rowTitles(pane)).toEqual(titles)
+    expect(await rowTitles(pane)).toEqual(oldestPauseFirst)
     // No "show more": every link in the pane is a row title.
     await expect(pane.getByRole('link')).toHaveCount(20)
     // The side column grows past the Main book card, and the page scrolls to the last row.
@@ -194,7 +196,7 @@ test.describe('Story 4.2 See every paused book in Waiting for you (ATDD)', () =>
     if (paneBox === null || cardBox === null) throw new Error('not rendered')
     expect(paneBox.y + paneBox.height).toBeGreaterThan(cardBox.y + cardBox.height)
     expect(await page.evaluate(() => document.documentElement.scrollHeight > window.innerHeight)).toBe(true)
-    const last = pane.getByRole('button', { name: 'Resume Paused book 20', exact: true })
+    const last = pane.getByRole('button', { name: 'Resume Paused book 01', exact: true })
     await expect(last).not.toBeInViewport()
     await last.scrollIntoViewIfNeeded()
     await expect(last).toBeInViewport()
@@ -299,6 +301,7 @@ test.describe('Story 4.2 See every paused book in Waiting for you (ATDD)', () =>
     const pane = waitingPane(page)
 
     // The first row, so focus can't land on the last row rendered by accident.
+    expect(await rowTitles(pane)).toEqual(['Fahrenheit 451', 'The Left Hand of Darkness'])
     const resume = pane.getByRole('button', { name: 'Resume Fahrenheit 451', exact: true })
     await resume.click()
     const dialog = startDialog(page, 'Resume Fahrenheit 451?')

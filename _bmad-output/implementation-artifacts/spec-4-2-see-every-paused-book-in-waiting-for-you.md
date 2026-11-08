@@ -2,7 +2,7 @@
 title: 'Story 4.2: See every paused book in Waiting for you'
 type: 'feature'
 created: '2026-11-08'
-status: 'in-review'
+status: 'done'
 route: 'dispatch'
 review_loop_iteration: 0
 baseline_commit: '3e5b12ac77986b0c956d881b5eb961955bc5c8ab'
@@ -72,6 +72,29 @@ context:
 - Given a paused Book that is also Up next, when Home renders, then it appears only in Up next, and the "(N)" count excludes it.
 - Given many paused Readings, when Home renders, then all rows show, the side column grows and the page scrolls.
 - Given another tab pauses or resumes, when this tab regains focus, then the pane and its count update with no warning.
+
+### Review Findings
+
+Code review, 2026-11-08. Layers: blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor and spine-check. None failed.
+
+- [x] [Review][Patch] No e2e test shows that the pane keeps the server's order: in every multi-row seed, oldest-pause-first matches title order and author-then-title order, so a client re-sort would still pass (medium, verification-gap) [frontend/e2e/waiting-for-you.spec.ts:173]
+- [x] [Review][Patch] The Cancel-focus test depends on Fahrenheit 451 being the first row but never asserts the order, so a seed change could quietly turn it into a last-row test (low, blind-hunter) [frontend/e2e/waiting-for-you.spec.ts:300]
+- [x] [Review][Patch] Docstring lines over the 100-column limit, left behind when edits weren't rewrapped: `home()` at 122 columns and the state-machine "views agree" bullet at 104 (low, blind-hunter+acceptance-auditor+verification-gap) [backend/bookvie/views/shelf.py:194]
+- [x] [Review][Patch] README says the pane lists "every paused Book", but a paused Up next Book is left out (AC-7) (low, blind-hunter+acceptance-auditor+edge-case-hunter) [README.md:8]
+- [x] [Review][Defer] The spine-drift entry names "the FR-7 row", but the map has only a combined "FR-5 to FR-9" row, and the entry doesn't say to add AD-6 to that row's "Governed by" (spine-check) [_bmad-output/implementation-artifacts/deferred-work.md:403]. Deferred: spine drift, reconciled before the next epic; the entry's wording was tightened.
+
+**Rejected:**
+- BH: the state-machine invariant checks only ids, not each row's page and percent. Low: `percent` is the shared `domain.percent`, and AC-1/AC-4 check the fields. Fixing it means more invariant code.
+- BH: `_waiting` recomputes roles that `catalog()` already computed. False: both go through the same `_role_reading`, so no caller can diverge.
+- BH: the sort key is redundant. Low and cosmetic: both parts are correct, and the boolean makes the null-first rule explicit.
+- BH: the focus fallback skips the Waiting pane when the row is gone. Rejected because it needs a spec edit: the Code Map and Design Notes set the `isConnected` fallback "as it does today".
+- BH: the couldn't-save test's unchanged-library assertion can't fail. False: it fails if the `page.route` glob misses `start-reading`.
+- BH: AC-4 fires a synthetic `focus` event. Low: five other e2e specs use the same pattern, and a real refocus in headless Chromium isn't reliable.
+- BH: the long-title clamp and the forced-colors bar are untested. Low: the Implementation Notes record both, and covering them means new test setup.
+- BH: `review_loop_iteration: 0`. Rejected because it needs a spec edit.
+- BH: the spec doesn't say what Resume means for a Side read. Rejected because it needs a spec edit, and Side reads arrive in Story 4.7.
+- AA: AC-4 is tested only for a resume. False: pausing is Story 4.3, and the resume test also shows the Main book being paused.
+- AA: the drift entry's capital "Spine drift". False: earlier entries use the same case, and AGENTS.md's marker is matched by its words.
 
 ## Implementation Notes
 

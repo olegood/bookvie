@@ -23,8 +23,9 @@ After every step:
 - the views agree: only ``mainBookId`` is ``main``, only ``upNextBookId`` is
   ``upNext``, ``waiting`` is exactly the paused Books minus Up next (on each
   spine and as Home's Waiting for you list, ordered by ``pausedAt``, then
-  title key, then id), Home's Main book is the Main book's current Reading, and Home's Up next is the Up
-  next Book, ``paused`` when it has a current Reading.
+  title key, then id), Home's Main book is the Main book's current Reading,
+  and Home's Up next is the Up next Book, ``paused`` when it has a current
+  Reading.
 
 Later intents (pause, set-up-next, Side reads) join the machine as they land.
 """
