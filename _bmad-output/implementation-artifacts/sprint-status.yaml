@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-29-2026 17:21
-last_updated: 11-09-2026 18:45
+last_updated: 11-09-2026 21:45
 project: bookvie
 project_key: NOKEY
 tracking_system: file-system
@@ -68,7 +68,7 @@ development_status:
   3-7-see-the-finish-on-the-shelf: done
   epic-3-retrospective: done
 
-  epic-4: in-progress
+  epic-4: done
   4-1-keep-the-interrupted-book-as-up-next: done
   4-2-see-every-paused-book-in-waiting-for-you: done
   4-3-pause-my-main-book: done
@@ -76,7 +76,7 @@ development_status:
   4-5-mark-any-book-finished-from-its-page: done
   4-6-see-each-book-s-state-on-the-shelf-and-its-page: done
   4-7-keep-a-few-side-reads: done
-  epic-4-retrospective: optional
+  epic-4-retrospective: done
 
   epic-5: backlog
   5-1-add-a-card-note-while-reading: backlog
@@ -325,3 +325,125 @@ action_items:
     owner: "Oleg"
     status: done
     ref: "_bmad-output/implementation-artifacts/epic-3-retro-2026-11-06.md"
+  - id: "epic-4-retro-item-32-close-the-start-dialog-on-a-confirmed-st"
+    epic: 4
+    action: "Close the Start dialog on a confirmed start from a spine popover on Home's
+      slice (clear `startingId` on a new history entry, as HomePage does), and add
+      e2e for Start and Resume from the slice, including a Side read started at its
+      last page. Changes: `frontend/src/lib/useSpinePopover.ts`, `frontend/e2e/home-slice.spec.ts`.
+      Due: before Epic 5. (F-R1)"
+    owner: "Amelia (Dev)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-4-retro-2026-11-09.md"
+  - id: "epic-4-retro-item-33-state-the-truth-when-a-displaced-up-next"
+    epic: 4
+    action: "State the truth when a displaced Up next is also a Side read: decide
+      the copy, then have StartDialog use the shared `displacementLine`, with e2e.
+      Changes: `_bmad-output/planning-artifacts/ux-designs/ux-bookvie-2026-10-28/EXPERIENCE.md`,
+      `frontend/src/lib/pause.ts`, `frontend/src/components/StartDialog.tsx`, `frontend/e2e/up-next.spec.ts`.
+      Due: before Epic 5. (F-R3)"
+    owner: "Sally (UX) for copy, Amelia (Dev)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-4-retro-2026-11-09.md"
+  - id: "epic-4-retro-item-34-a-back-fill-through-edit-book-s-finished"
+    epic: 4
+    action: "A back-fill through edit-book's Finished on must drop the Book from the
+      Side reads (FR-8), with a test. Changes: `backend/bookvie/intents/edit_book.py`,
+      `backend/tests/test_edit_book.py`. Due: before Epic 5. (F-R4)"
+    owner: "Amelia (Dev)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-4-retro-2026-11-09.md"
+  - id: "epic-4-retro-item-35-count-only-tracked-pages-in-measured-pac"
+    epic: 4
+    action: "Count only tracked pages in Measured pace (Oleg's decision): store the
+      page a new Reading starts at, and count finished pages minus that page. A stored
+      Reading without it counts from 0, so older data and exports stay valid. Update
+      the PRD's definition, with tests. Changes: `_bmad-output/planning-artifacts/prds/prd-bookvie-2026-10-28/prd.md`,
+      `backend/bookvie/domain/model.py`, `backend/bookvie/domain/pace.py`, `backend/bookvie/intents/start_reading.py`,
+      `backend/tests/test_reentry.py`. Due: before Epic 5, because a Reading started
+      before this lands has no starting page to recover. (F-R2)"
+    owner: "Amelia (Dev)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-4-retro-2026-11-09.md"
+  - id: "epic-4-retro-item-36-run-test-automation-for-4-4-to-4-7-which"
+    epic: 4
+    action: "Run test automation for 4.4 to 4.7, which never had it: \"Which page?\"\
+      \ and `reachedLastPage` on every route, the F-R5 probe, and tick the 22 open
+      lines of 4.4's checklist. Changes: `frontend/e2e/side-reads.spec.ts`, `_bmad-output/test-artifacts/atdd-checklist-4-4-choose-what-to-read-next.md`,
+      `_bmad-output/test-artifacts/automation-summary.md`. Due: before the Epic 4
+      trace. (PL-1, PL-5, PL-7, F-R5, F-R7)"
+    owner: "Murat (TEA)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-4-retro-2026-11-09.md"
+  - id: "epic-4-retro-item-37-run-the-epic-4-trace-and-gate-against-tr"
+    epic: 4
+    action: "Run the Epic 4 trace and gate against TR7 (P0 100%, P1 ≥ 95%, every error
+      code has an API test), and confirm RDG-API-001..003 row by row. Changes: `_bmad-output/test-artifacts/traceability/epic-4-traceability-matrix.md`,
+      `_bmad-output/test-artifacts/traceability/epic-4-gate-decision.json`. Due: before
+      Epic 5. (F-S1)"
+    owner: "Murat (TEA)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-4-retro-2026-11-09.md"
+  - id: "epic-4-retro-item-38-reconcile-the-spine-with-epic-4-and-add"
+    epic: 4
+    action: "Reconcile the spine with Epic 4 and add a `resolved:` line to each entry
+      it closes. AD-19 (`deferred-work.md:388`, `:422`, `:450`), AD-7 (`:391`, `:425`,
+      `:450`), Capability Map \"FR-5 to FR-9\" and AD-6 (`:394`, `:407`, `:441`, `:462`),
+      Structural Seed (`:428`, `:441`), AD-9 and AD-2 (`:444`), AD-18 and AD-6 (`:462`).
+      Also compare 4.4, 4.5 and 4.7's diffs against the spine, since no spine check
+      ran on them, and close `deferred-work.md:413` as not needed (Oleg uses Chrome,
+      which the Chromium e2e run covers). Changes: `_bmad-output/planning-artifacts/architecture/architecture-bookvie-2026-10-29/ARCHITECTURE-SPINE.md`,
+      `_bmad-output/implementation-artifacts/deferred-work.md`. Due: before Epic 5.
+      (F-S2, F-S3)"
+    owner: "Winston (Architect), applied by Oleg"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-4-retro-2026-11-09.md"
+  - id: "epic-4-retro-item-39-make-the-spine-drift-marker-case-insensi"
+    epic: 4
+    action: "Make the spine-drift marker case-insensitive in the spine gate and the
+      policy text, so capitalized entries count. Changes: `_bmad/custom/bmad-build.toml`,
+      `_bmad/custom/bmad-retrospective.toml`, `AGENTS.md`. Due: before Epic 5. (PL-3)"
+    owner: "Oleg / bmad config"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-4-retro-2026-11-09.md"
+  - id: "epic-4-retro-item-40-record-oleg-s-story-pipeline-in-agents-m"
+    epic: 4
+    action: "Record Oleg's story pipeline in AGENTS.md: every story gets `bmad-testarch-atdd`,
+      then `bmad-build-auto`, then `bmad-code-review`, then `bmad-testarch-automate`,
+      which runs only after the story is marked `done`. Add a `bmad-build-auto` override
+      with the project's persistent facts and the spine-check layer. The override
+      must stop `bmad-build-auto` from marking a story `done` (`step-04-review.md:111`
+      does today): it leaves the story `in-review` for `bmad-code-review`, the only
+      step that marks it `done`. Changes: `_bmad/custom/bmad-build-auto.toml`, `AGENTS.md`.
+      Due: before Epic 5. (PL-1, PL-2, PL-4)"
+    owner: "Oleg / bmad config"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-4-retro-2026-11-09.md"
+  - id: "epic-4-retro-item-41-split-bookdetailpage-s-action-flows-into"
+    epic: 4
+    action: "Split BookDetailPage's action flows into hooks, and share the request
+      plumbing of `usePauseFlow` and `useOneClickFlow`. Changes: `frontend/src/pages/BookDetailPage.tsx`,
+      `frontend/src/lib/usePauseFlow.tsx`, `frontend/src/lib/useSetUpNextFlow.ts`.
+      Due: before story 5.1. (F-A1, F-A2)"
+    owner: "Amelia (Dev)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-4-retro-2026-11-09.md"
+  - id: "epic-4-retro-item-42-find-and-fix-the-cause-of-the-1-in-8-fai"
+    epic: 4
+    action: "Find and fix the cause of the 1-in-8 failure of `stale-hand-offs.spec.ts:185`,
+      and close its entry. Changes: `frontend/e2e/stale-hand-offs.spec.ts`, `_bmad-output/implementation-artifacts/deferred-work.md`.
+      Due: before the Epic 4 trace. (PL-6)"
+    owner: "Murat (TEA)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-4-retro-2026-11-09.md"
+  - id: "epic-4-retro-item-43-run-bmad-code-review-on-stories-4-4-4-5"
+    epic: 4
+    action: "Run `bmad-code-review` on stories 4.4, 4.5 and 4.7, which had no separate
+      review, and record its findings in their specs. ATDD is not backfilled, since
+      a red phase means nothing once the code exists. Changes: `_bmad-output/implementation-artifacts/spec-4-4-choose-what-to-read-next.md`,
+      `_bmad-output/implementation-artifacts/spec-4-5-mark-any-book-finished-from-its-page.md`,
+      `_bmad-output/implementation-artifacts/spec-4-7-keep-a-few-side-reads.md`. Due:
+      before action 36's automation run for those stories. (PL-1, PL-2)"
+    owner: "Amelia (Dev)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-4-retro-2026-11-09.md"
