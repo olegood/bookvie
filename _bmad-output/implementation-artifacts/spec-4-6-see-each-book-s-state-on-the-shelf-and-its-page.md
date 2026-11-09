@@ -2,7 +2,7 @@
 title: "Story 4.6: See each book's state on the shelf and its page"
 type: 'feature'
 created: '2026-11-09'
-status: 'in-review'
+status: 'done'
 baseline_commit: '4e388083b1c67f1bad283dddf3aee7c187620b33'
 route: 'dispatch'
 review_loop_iteration: 0
@@ -114,6 +114,31 @@ The rows of the Book states table. Seed each with `LibraryBuilder` or `e2e/libra
 - Given a Main book, an Up next and a waiting Book on the Catalog bookcase, when it renders, then each spine has exactly one dot of its kind, the others have none, and the legend reads "finished · not read yet · Main book, filled to its % · up next · waiting for you".
 - Given a paused Up next, when I open its Delete Confirm, then it reads "It is Up next, paused at p.120.".
 - Given a random sequence of the reading intents, when it runs against `domain/`, then no surviving Reading's page differs from the ledger and at most one Book is Main.
+
+### Review Findings
+
+Code review, 2026-11-09 (Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor, Spine Check). The Acceptance Auditor found no AC violations, and Spine Check found no spine findings.
+
+- [x] [Review][Patch] `[medium]` The forced-colors view of the new markers is untested. Nothing checks that the Up next and waiting spine dots, or the two legend dot swatches, keep their CanvasText ring under `forcedColors: 'active'`. Dropping `.swatchDot` from the forced-colors selector, or moving the color classes after the `@media` block, would pass every check (verification-gap). [frontend/e2e/book-states.spec.ts:240]
+- [x] [Review][Patch] `[low]` The README's "as the legend says" overclaims. The legend has dot swatches only for up next and waiting for you; its Main item is the filled-spine swatch, so nothing in the legend explains the Main dot (blind). [README.md:8]
+- [x] [Review][Patch] `[low]` A deferred-work entry still points at this story with no owner. The finish-fill `transitionend` entry says the timing check "fits Story 4.6's `spineButton` work". This spec declines it but left no note on the entry, so the gap has no owner once 4.6 is done (blind). [_bmad-output/implementation-artifacts/deferred-work.md:362]
+- [x] [Review][Defer] The F-R4 Edit Purpose refusal e2e is flaky: the alert sometimes stays empty [frontend/e2e/stale-hand-offs.spec.ts:185]. Deferred: pre-existing. It reproduces at `b6e10d8` without the review's patches (about 1 run in 8), and 4.6 doesn't touch that path. Found by the review's verification run, not by a reviewer layer.
+
+**Rejected**
+
+- `[false]` (blind) The README status line still says "Stories 4.1-4.5 done". That is intended: this review moves the story to `done` and updates the count (Implementation Notes).
+- `[false]` (blind, edge-case) The back-fill ledger entry is self-referential. The assertion just before it, `{**current, **answers}`, pins the back-filled Reading against the model before the ledger records it.
+- `[low]` (blind) `no_page_is_lost` repeats per-rule dict equality, and the one-Main check repeats `views_agree_with_the_pointers`. AC-3 asks for both explicitly, and the ledger also polices finished Readings across later steps.
+- `[low]` (blind) `test_book_states.py` doesn't check the page shown in Home's Up next or Waiting entries. Those fields predate this story and have their own tests; 4.6's ACs pin which pane holds the Book.
+- `[low]` (blind) `_views` doesn't assert HTTP 200. A non-200 still fails the test loudly (an unpack failure or a `KeyError`); the only cost is a less clear message.
+- `[false]` (blind) `panesOf` uses a non-retrying `count()`. All three panes render in the same pass from one `useHomeView` (`HomePage.tsx:306-348`), so once the Main card is visible, the side panes are too.
+- `[low]` (blind) There is no unit test for a paused Up next at page 0. `stale-hand-offs.spec.ts` pins "Up next, paused at page 0" end to end, and the copy follows the matrix's rule for any page.
+- `[low]` (blind) Three fields carry the paused page. Design Notes chose `currentPage` over a new wire field, and the spec forbids backend production changes.
+- `[low]` (blind) `spineMarker` only returns `role`. The Code Map asks for it as the marker seam (4.7 adds Side reads), and its doc says the server applies the priority.
+- `[low]` (blind) The legend locator's `hasText` is a substring match. No other legend item contains "up next" or "waiting for you" today, and a clash would fail loudly.
+- `[low]` (edge-case) The Up next and waiting dots look alike in forced colors. DESIGN.md decides this: markers never carry meaning alone, and its forced-colors rule is the Canvas dot in a CanvasText ring. This was already rejected in the build's review pass.
+- `[false]` (edge-case) An unmapped future role would render a colorless dot. `spineMarker` returns `book.role` typed as `SpineMarker | null`, so a new `Role` value fails `tsc` there.
+- `[false]` (edge-case) An Up next Reading might not be paused. The invariants keep Up next from being Main, so its unfinished Reading is paused (AD-19).
 
 ## Implementation Notes
 

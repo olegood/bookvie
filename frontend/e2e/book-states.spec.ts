@@ -165,6 +165,24 @@ function libraryOf(row: Row) {
   }
 }
 
+/** A Main book, an Up next, a waiting Book, a finished one and an unread one: three dots, two without. */
+const MARKED_LIBRARY = {
+  mainBookId: DUNE_ID,
+  upNextBookId: LEFT_HAND_ID,
+  books: [
+    DUNE_MAIN,
+    LEFT_HAND,
+    {
+      title: 'Neuromancer',
+      authors: ['William Gibson'],
+      pages: 271,
+      readings: [{ startDate: '2026-09-01', currentPage: 50, pausedAt: '2026-10-01' }],
+    },
+    { title: 'Emma', authors: ['Jane Austen'], pages: 400, readings: [FINISHED] },
+    { title: 'Kindred', authors: ['Octavia E. Butler'], pages: 264 },
+  ],
+}
+
 /** Book detail's action stack: the buttons beside Delete, in order. */
 function actionStack(page: Page): Locator {
   return page
@@ -241,22 +259,7 @@ test.describe('Story 4.6 See each book’s state on the shelf and its page', () 
     page,
     seededServer,
   }) => {
-    const server = await seededServer({
-      mainBookId: DUNE_ID,
-      upNextBookId: LEFT_HAND_ID,
-      books: [
-        DUNE_MAIN,
-        LEFT_HAND,
-        {
-          title: 'Neuromancer',
-          authors: ['William Gibson'],
-          pages: 271,
-          readings: [{ startDate: '2026-09-01', currentPage: 50, pausedAt: '2026-10-01' }],
-        },
-        { title: 'Emma', authors: ['Jane Austen'], pages: 400, readings: [FINISHED] },
-        { title: 'Kindred', authors: ['Octavia E. Butler'], pages: 264 },
-      ],
-    })
+    const server = await seededServer(MARKED_LIBRARY)
     await page.goto(`${server.url}/catalog`)
     await expect(spines(page)).toHaveCount(5)
 
@@ -294,6 +297,34 @@ test.describe('Story 4.6 See each book’s state on the shelf and its page', () 
       const swatch = legend.locator(':scope > span', { hasText: text }).locator('[aria-hidden="true"]')
       await expect(swatch).toHaveCSS('background-color', color)
       await expect(swatch).toHaveCSS('width', '7px')
+    }
+  })
+
+  test('[P2] AC-1 under forced colors every marker dot and legend dot swatch is a Canvas dot in a CanvasText ring', async ({
+    page,
+    seededServer,
+  }) => {
+    await page.emulateMedia({ colorScheme: 'light', forcedColors: 'active' })
+    const server = await seededServer(MARKED_LIBRARY)
+    await page.goto(`${server.url}/catalog`)
+    await expect(page.locator('[data-marker]')).toHaveCount(3)
+
+    // The body is Canvas with CanvasText text; DESIGN.md: "Markers get a CanvasText ring".
+    const [canvas, canvasText] = await page.evaluate(() => {
+      const style = getComputedStyle(document.body)
+      return [style.backgroundColor, style.color]
+    })
+    expect(canvas).not.toBe(canvasText)
+
+    const legend = page.getByRole('main').getByText('Main book, filled to its %', { exact: true }).locator('xpath=..')
+    const dots = [
+      ...(await page.locator('[data-marker]').all()),
+      legend.locator(':scope > span', { hasText: 'up next' }).locator('[aria-hidden="true"]'),
+      legend.locator(':scope > span', { hasText: 'waiting for you' }).locator('[aria-hidden="true"]'),
+    ]
+    for (const dot of dots) {
+      await expect(dot).toHaveCSS('background-color', canvas)
+      await expect(dot).toHaveCSS('box-shadow', `${canvasText} 0px 0px 0px 1.5px`)
     }
   })
 })

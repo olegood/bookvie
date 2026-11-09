@@ -360,6 +360,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-epic-3-retro-item-26-split-bookcase-and-book-fields.md`
   summary: No test proves the finish moment's fill ends on the spine's `height` `transitionend` rather than `FILL_FALLBACK_MS` (1000 ms). If `useFinishMoment`'s `onTransitionEnd` broke, the finished spine would stay "filling" about 400 ms too long and the ring hold would start late, and every check would still pass.
   evidence: Verification-gap review of item 26. `frontend/e2e/finish-moment.spec.ts` checks the fill motion's duration and easing, and polls that the ring comes on and goes off within 4 s. None of its checks measures when the fill ends. The gap predates the refactor, which only moved the handler; a timing assertion (`finishing` class gone well before 1000 ms) fits Story 4.6's `spineButton` work.
+  note: Story 4.6 declined it (spec Code Map, deferred-work intake). A wall-clock assertion under 1000 ms is load-sensitive (see the story 3.5 flake entry), and the marker work doesn't touch the fill path. Still open; the Epic 4 retrospective decides its owner.
 
 ## Deferred from: Epic 2 retro item 18, the stale Epic 2 ATDD checklists (2026-11-07)
 
@@ -447,3 +448,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-5-mark-any-book-finished-from-its-page.md`
   summary: Spine drift (AD-7, AD-19, FR-14 map row), reconciled before the next epic: AD-7 describes only the Main finish carried to Home as router state; it should say a finish of a Book that wasn't Main when the Finish dialog opened stays on Book detail (focus to the `h1`, then "Finished *X*.", no finish moment). AD-19's "Finishing" bullet should say `finish-reading` back-fills a Reading (`startDate` null) for a Book with no Readings, and clears `upNextBookId` and the Book's `sideReadBookIds` entry in the same commit.
   evidence: `backend/bookvie/intents/finish_reading.py` (back-fill, pointer clearing); `frontend/src/components/FinishDialog.tsx` `onFinishedHere`; `backend/tests/test_finish_any_book.py`.
+
+## Deferred from: code review of spec-4-6-see-each-book-s-state-on-the-shelf-and-its-page (2026-11-09)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-6-see-each-book-s-state-on-the-shelf-and-its-page.md`
+  summary: `stale-hand-offs.spec.ts` "[P1] F-R4 a refusal that removes Edit Purpose still reads in alert" is flaky. In about 1 run in 8, `getByRole('alert')` stays empty (`Received: ""`) for 10 s instead of reading "This reading is already finished.".
+  evidence: Seen in the review's `npm run check` (1 failure in 372), then reproduced at `b6e10d8` without the review's patches: 1 of 5 with `--repeat-each=5`, and 1 of 8 twice with `--repeat-each=8 --retries=0`. Story 4.6 doesn't touch Edit Purpose, the finish intent or the alert. Next step: keep the trace and check whether the refusal's alert renders before the Edit Purpose field unmounts, or whether a home or book refetch replaces it.
