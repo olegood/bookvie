@@ -44,6 +44,16 @@
   margin: 0 0 var(--space-6);
 }
 
+/* "Which page?" (a Side read): the page field's 110px input, tabular figures. */
+.pageField {
+  margin: 0 0 var(--space-4);
+}
+
+.pageField input {
+  width: 110px;
+  font-variant-numeric: tabular-nums;
+}
+
 /* The live regions' host sits here, above the buttons, while the dialog is
    open. A couldn't-save or refusal shows as one calm line in ink. */
 .regions[data-show-alert='true'] [role='alert'] {

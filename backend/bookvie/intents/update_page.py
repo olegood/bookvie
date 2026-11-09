@@ -47,7 +47,7 @@ def parse_update_page_intent(raw: str | None) -> UpdatePageIntent:
     return parse_form_intent(UpdatePageIntent, raw)
 
 
-def _valid_page(value: JsonValue, pages: int) -> int | None:
+def valid_page(value: JsonValue, pages: int) -> int | None:
     """``value`` as a page of a ``pages``-page Book, or ``None``: a JSON integer in 0..pages."""
     if isinstance(value, bool) or not isinstance(value, int):
         return None
@@ -66,7 +66,7 @@ def update_page(store: Store, clock: Clock, intent: UpdatePageIntent) -> bool:
             raise book_not_found()
         if library.main_book_id != book_id:
             raise not_main_book()
-        page = _valid_page(intent.page, book.pages)
+        page = valid_page(intent.page, book.pages)
         if page is None:
             raise invalid_fields(
                 [FieldError(field=PAGE_FIELD, message=page_message(book.pages))], PAGE_LABELS

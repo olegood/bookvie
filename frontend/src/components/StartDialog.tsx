@@ -9,16 +9,24 @@ import {
   type HomeUpNext,
 } from '../api/index.ts'
 import { announce, clearAnnouncements } from '../lib/announce.ts'
+import { pageRangeMessage, pageSavedCopy, parsePage } from '../lib/pageField.ts'
 import { detailPrimary } from '../lib/startReading.ts'
 import { useAlertDialog } from '../lib/useAlertDialog.ts'
 import Button from './Button.tsx'
 import TextField from './TextField.tsx'
 import styles from './StartDialog.module.css'
 
-/** Router state Home reads after a confirmed start: focus goes to the Main book's title link. */
-export type StartedState = { started: true }
+/**
+ * Router state Home reads after a confirmed start: focus goes to the Main
+ * book's title link. `reachedLastPage` (a Side read started at its last
+ * page) also opens the Finish dialog for it, described by `savedLine`.
+ */
+export type StartedState = { started: true; reachedLastPage?: true; savedLine?: string }
 
 const SAVING = 'Starting the book.'
+const PAGE_FIELD = 'page'
+/** The "Which page?" message when nothing is typed (the server's copy too). */
+export const PAGE_REQUIRED = 'Which page? is required.'
 
 type Props = {
   bookId: string
@@ -49,6 +57,12 @@ function OpenStartDialog({ book, opened, mainBook, upNext, onCancel }: OpenProps
   // when it opened (a stale opener) has a Reading in progress, so it resumes.
   const [resume] = useState(detailPrimary(opened) !== 'Start reading')
   const [purpose, setPurpose] = useState(opened.currentReading?.purpose ?? '')
+  // A Side read asks "Which page?" (FR-8), fixed at open like Start vs Resume;
+  // prefilled with the paused page, empty without one.
+  const [asksPage] = useState(opened.sideRead)
+  const [page, setPage] = useState(opened.currentReading !== null ? String(opened.currentReading.currentPage) : '')
+  const [pageInvalid, setPageInvalid] = useState<string | null>(null)
+  const pageField = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
   const [showAlert, setShowAlert] = useState(false)
   // A press while one is in flight is ignored even before `busy` renders.
@@ -61,7 +75,7 @@ function OpenStartDialog({ book, opened, mainBook, upNext, onCancel }: OpenProps
       const element = dialog.current
       if (element && !element.open) {
         element.showModal()
-        field.current?.focus()
+        ;(asksPage ? pageField : field).current?.focus()
       }
       return
     }
@@ -71,27 +85,54 @@ function OpenStartDialog({ book, opened, mainBook, upNext, onCancel }: OpenProps
   }
   const { dialog, regionSlot, dialogProps } = useAlertDialog({
     onDismiss: dismiss,
-    initialFocus: field,
+    initialFocus: asksPage ? pageField : field,
     role: 'dialog',
   })
 
+  const showPageInvalid = (message: string) => {
+    setPageInvalid(message)
+    announce('alert', message)
+  }
+
   const confirm = async () => {
     if (inFlight.current) return
-    inFlight.current = true
     clearAnnouncements()
     setShowAlert(false)
+    let sentPage: number | undefined
+    if (asksPage) {
+      // Checked here first; nothing is sent while the page is empty or out of range.
+      const parsed = parsePage(page, book.pages)
+      if (parsed === null) {
+        // A number input holding text it can't parse reports '' (`badInput`): that's out of range, not empty.
+        const empty = page.trim() === '' && !pageField.current?.validity.badInput
+        showPageInvalid(empty ? PAGE_REQUIRED : pageRangeMessage(book.pages))
+        return
+      }
+      sentPage = parsed
+    }
+    setPageInvalid(null)
+    inFlight.current = true
     setBusy(true)
     // Sent as typed: the server trims it, and stores null when nothing is left.
-    const result = await sendStart(book.id, purpose)
+    const result = await sendStart(book.id, purpose, sentPage)
     inFlight.current = false
     if (result.kind === 'ok') {
-      const state: StartedState = { started: true }
+      const state: StartedState =
+        result.reachedLastPage && sentPage !== undefined
+          ? { started: true, reachedLastPage: true, savedLine: pageSavedCopy(sentPage, book.pages, 100) }
+          : { started: true }
       void navigate('/', { state })
+      return
+    }
+    setBusy(false)
+    // A 422 on `page` (the page count changed meanwhile) shows on the field.
+    const pageError = result.kind === 'refusal' ? result.fields.find((f) => f.field === PAGE_FIELD) : undefined
+    if (pageError && asksPage) {
+      showPageInvalid(pageError.message)
       return
     }
     // Couldn't save, or a refusal (already Main from another tab): the dialog
     // stays open with the Purpose kept; the refetched views are already in.
-    setBusy(false)
     setShowAlert(true)
     announce('alert', result.message)
   }
@@ -116,7 +157,7 @@ function OpenStartDialog({ book, opened, mainBook, upNext, onCancel }: OpenProps
       aria-labelledby={headingId}
       aria-describedby={describedBy || undefined}
     >
-      <form onSubmit={submit}>
+      <form onSubmit={submit} noValidate>
         <h2 id={headingId} className={styles.heading}>
           {verb} <span className={styles.bookTitle}>{book.title}</span>?
         </h2>
@@ -131,6 +172,23 @@ function OpenStartDialog({ book, opened, mainBook, upNext, onCancel }: OpenProps
             <span className={styles.bookTitle}>{displaced.title}</span>
             {displaced.paused ? ' moves to Waiting for you.' : ' returns to the catalog.'}
           </p>
+        )}
+        {asksPage && (
+          <TextField
+            ref={pageField}
+            className={styles.pageField}
+            label="Which page?"
+            required
+            type="number"
+            inputMode="numeric"
+            step={1}
+            min={0}
+            max={book.pages}
+            value={page}
+            autoComplete="off"
+            error={pageInvalid ?? undefined}
+            onChange={(event) => setPage(event.target.value)}
+          />
         )}
         <TextField
           ref={field}
@@ -162,9 +220,18 @@ function OpenStartDialog({ book, opened, mainBook, upNext, onCancel }: OpenProps
  * (P%)." from the home view's numbers; and when that pause displaces an Up
  * next *Z* that isn't *X*, "*Z* moves to Waiting for you." (*Z* has a paused
  * Reading) or "*Z* returns to the catalog." (it has none), both named by
- * `aria-describedby`. Then "Purpose (optional)", focused on
- * open; **Start reading** or **Resume**, and **Cancel**. Enter in the field
- * confirms.
+ * `aria-describedby`. For a Side read (the opened view's `sideRead`), a
+ * required "Which page?" number field comes first, prefilled with the paused
+ * page (empty without one) and focused on open; else "Purpose (optional)" is
+ * focused on open. Then **Start reading** or **Resume**, and **Cancel**.
+ * Enter in a field confirms.
+ *
+ * "Which page?" is checked before anything is sent: empty gives "Which
+ * page? is required." and a value that isn't a whole number from 0 to the
+ * page count "Page must be between 0 and N.", on the field with
+ * `aria-invalid` and in `alert`, as a server 422 on `page` is shown. A start
+ * at the last page (`reachedLastPage`) hands Home `reachedLastPage`, and
+ * Home opens the Finish dialog for the new Main book.
  *
  * Confirming sends `start-reading` (the confirm button is `aria-disabled` in
  * flight) and goes to Home, which focuses the Main book's title link.

@@ -1,5 +1,5 @@
 // Story 4.6 See each book's state on the shelf and its page. One test per row
-// of EXPERIENCE.md's Book states table (the Side-read rows are Story 4.7's):
+// of EXPERIENCE.md's Book states table, plus one Side-read row (Story 4.7):
 // the spine's exact name and its marker (or none) on Catalog, the spine
 // popover's primary action (the control focus starts on), the Home pane the
 // Book shows in, and Book detail's action stack in order. Plus the legend and
@@ -20,7 +20,7 @@ const FINISHED = { startDate: null, finishDate: '2026-03-20', finishedPages: 330
 const DUNE_MAIN = { ...DUNE, readings: [{ startDate: '2026-10-01', currentPage: 100 }] }
 
 type Marker = 'main' | 'upNext' | 'waiting' | null
-type Pane = 'Main card' | 'Up next' | 'Waiting' | null
+type Pane = 'Main card' | 'Up next' | 'Waiting' | 'On the side' | null
 
 interface Row {
   name: string
@@ -28,6 +28,8 @@ interface Row {
   /** The unfinished Reading's page, or `null` for none. */
   page: number | null
   pointer: 'main' | 'upNext' | null
+  /** A Side read: ", on the side" on the spine, and the On the side pane too. */
+  sideRead?: true
   status: string
   marker: Marker
   /** The control the popover's focus starts on: its primary, else "Open book →" for none. */
@@ -46,7 +48,7 @@ const ROWS: Row[] = [
     marker: null,
     primary: 'Set as Up next',
     pane: null,
-    stack: ['Start reading', 'Set as Up next', 'Mark finished', 'Edit', 'Delete'],
+    stack: ['Start reading', 'Set as Up next', 'Mark finished', 'Mark as Side read', 'Edit', 'Delete'],
   },
   {
     name: 'Never read, Up next',
@@ -57,7 +59,7 @@ const ROWS: Row[] = [
     marker: 'upNext',
     primary: 'Start reading',
     pane: 'Up next',
-    stack: ['Start reading', 'Mark finished', 'Edit', 'Delete'],
+    stack: ['Start reading', 'Mark finished', 'Mark as Side read', 'Edit', 'Delete'],
   },
   {
     name: 'Never read, Main',
@@ -79,7 +81,7 @@ const ROWS: Row[] = [
     marker: 'waiting',
     primary: 'Resume',
     pane: 'Waiting',
-    stack: ['Resume', 'Set as Up next', 'Mark finished', 'Edit', 'Delete'],
+    stack: ['Resume', 'Set as Up next', 'Mark finished', 'Mark as Side read', 'Edit', 'Delete'],
   },
   {
     name: 'Never read, paused, Up next',
@@ -90,7 +92,19 @@ const ROWS: Row[] = [
     marker: 'upNext',
     primary: 'Resume',
     pane: 'Up next',
-    stack: ['Resume', 'Mark finished', 'Edit', 'Delete'],
+    stack: ['Resume', 'Mark finished', 'Mark as Side read', 'Edit', 'Delete'],
+  },
+  {
+    name: 'Never read, paused, Side read',
+    finished: false,
+    page: 120,
+    pointer: null,
+    sideRead: true,
+    status: 'waiting for you, page 120, on the side',
+    marker: 'waiting',
+    primary: 'Resume',
+    pane: 'Waiting',
+    stack: ['Resume', 'Set as Up next', 'Mark finished', 'Remove from side', 'Edit', 'Delete'],
   },
   {
     name: 'Finished, no Reading',
@@ -101,7 +115,7 @@ const ROWS: Row[] = [
     marker: null,
     primary: null,
     pane: null,
-    stack: ['Start reading', 'Set as Up next', 'Edit', 'Delete'],
+    stack: ['Start reading', 'Set as Up next', 'Mark as Side read', 'Edit', 'Delete'],
   },
   {
     name: 'Finished, Up next',
@@ -112,7 +126,7 @@ const ROWS: Row[] = [
     marker: 'upNext',
     primary: 'Start reading',
     pane: 'Up next',
-    stack: ['Start reading', 'Edit', 'Delete'],
+    stack: ['Start reading', 'Mark as Side read', 'Edit', 'Delete'],
   },
   {
     name: 'Finished, re-reading Main',
@@ -134,7 +148,7 @@ const ROWS: Row[] = [
     marker: 'waiting',
     primary: 'Resume',
     pane: 'Waiting',
-    stack: ['Resume', 'Set as Up next', 'Mark finished', 'Edit', 'Delete'],
+    stack: ['Resume', 'Set as Up next', 'Mark finished', 'Mark as Side read', 'Edit', 'Delete'],
   },
   {
     name: 'Finished, re-read paused, Up next',
@@ -145,7 +159,7 @@ const ROWS: Row[] = [
     marker: 'upNext',
     primary: 'Resume',
     pane: 'Up next',
-    stack: ['Resume', 'Mark finished', 'Edit', 'Delete'],
+    stack: ['Resume', 'Mark finished', 'Mark as Side read', 'Edit', 'Delete'],
   },
 ]
 
@@ -161,6 +175,7 @@ function libraryOf(row: Row) {
   return {
     mainBookId: DUNE_ID,
     upNextBookId: row.pointer === 'upNext' ? LEFT_HAND_ID : null,
+    sideReadBookIds: row.sideRead ? [LEFT_HAND_ID] : [],
     books: [book, DUNE_MAIN],
   }
 }
@@ -198,6 +213,7 @@ async function panesOf(page: Page): Promise<Pane[]> {
     ['Main card', mainBookCard(page)],
     ['Up next', upNextPane(page)],
     ['Waiting', waitingPane(page)],
+    ['On the side', page.getByRole('main').getByRole('region', { name: 'On the side', exact: true })],
   ]
   const found: Pane[] = []
   for (const [pane, region] of panes) {
@@ -246,7 +262,9 @@ test.describe('Story 4.6 See each book’s state on the shelf and its page', () 
       // Home: the one pane it shows in, if any.
       await page.goto(`${server.url}/`)
       await expect(mainBookCard(page)).toBeVisible()
-      expect(await panesOf(page)).toEqual(row.pane === null ? [] : [row.pane])
+      const expected: Pane[] = row.pane === null ? [] : [row.pane]
+      if (row.sideRead) expected.push('On the side')
+      expect(await panesOf(page)).toEqual(expected)
 
       // Book detail: the action stack, in order.
       await page.goto(`${server.url}/book/${LEFT_HAND_ID}`)

@@ -21,6 +21,7 @@ HOME_EMPTY = {
     "mainBook": None,
     "upNext": None,
     "waiting": [],
+    "sideReads": [],
     "lastExportAt": None,
     "slicePriority": [],
 }
@@ -83,6 +84,7 @@ def test_seeded_library(tmp_path: Path, library_builder: LibraryBuilder, view: s
             "currentPage": None,
             "percent": None,
             "waitingPage": None,
+            "sideRead": False,
         },
         {
             "id": ids["omens"],
@@ -103,6 +105,7 @@ def test_seeded_library(tmp_path: Path, library_builder: LibraryBuilder, view: s
             "currentPage": None,
             "percent": None,
             "waitingPage": None,
+            "sideRead": False,
         },
         {
             "id": ids["emma"],
@@ -124,6 +127,7 @@ def test_seeded_library(tmp_path: Path, library_builder: LibraryBuilder, view: s
             "currentPage": 10,
             "percent": 3,
             "waitingPage": 10,
+            "sideRead": False,
         },
     ]
     if view == "catalog":

@@ -51,6 +51,8 @@ class ErrorCode(StrEnum):
     READING_ALREADY_FINISHED = "reading_already_finished"
     NOT_MAIN_BOOK = "not_main_book"
     MAIN_CANNOT_BE_UP_NEXT = "main_cannot_be_up_next"
+    MAIN_CANNOT_BE_SIDE_READ = "main_cannot_be_side_read"
+    SIDE_READS_FULL = "side_reads_full"
 
 
 class FieldError(_Wire):
@@ -234,6 +236,36 @@ def main_cannot_be_up_next() -> IntentError:
             kind=ErrorKind.REFUSAL,
             code=ErrorCode.MAIN_CANNOT_BE_UP_NEXT,
             message=MAIN_CANNOT_BE_UP_NEXT_MESSAGE,
+        ),
+    )
+
+
+MAIN_CANNOT_BE_SIDE_READ_MESSAGE = "Your Main book can't be a Side read."
+
+
+def main_cannot_be_side_read() -> IntentError:
+    """409 ``main_cannot_be_side_read``: ``mark-side-read`` for the Main book, e.g. a stale tab (AD-9)."""
+    return IntentError(
+        409,
+        ErrorBody(
+            kind=ErrorKind.REFUSAL,
+            code=ErrorCode.MAIN_CANNOT_BE_SIDE_READ,
+            message=MAIN_CANNOT_BE_SIDE_READ_MESSAGE,
+        ),
+    )
+
+
+SIDE_READS_FULL_MESSAGE = "You already have 3 side reads. Remove one first."
+
+
+def side_reads_full() -> IntentError:
+    """409 ``side_reads_full``: ``mark-side-read`` with 3 Side reads already (AD-9)."""
+    return IntentError(
+        409,
+        ErrorBody(
+            kind=ErrorKind.REFUSAL,
+            code=ErrorCode.SIDE_READS_FULL,
+            message=SIDE_READS_FULL_MESSAGE,
         ),
     )
 

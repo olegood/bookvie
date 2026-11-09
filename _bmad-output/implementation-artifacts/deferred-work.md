@@ -376,6 +376,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-1-keep-the-interrupted-book-as-up-next.md`
   summary: Story 4.7 must make `start-reading` for a Side-read Book remove it from `sideReadBookIds` in the same commit (today the commit fails `main_not_side_read` with 500), with the required "Which page?".
   evidence: Split from the spec-3-2 entry above, whose Up next half Story 4.1 closed. No UI reaches a Side read before Story 4.7 (seeds only).
+  resolved: Story 4.7, `spec-4-7-keep-a-few-side-reads.md`; `intents/start_reading.py` drops the Book from `sideReadBookIds` in the same commit and requires `page` ("Which page?") for a Side read (`tests/test_side_reads.py`).
 
 ## Deferred from: code review of spec-4-1-keep-the-interrupted-book-as-up-next (2026-11-07)
 
@@ -454,3 +455,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-6-see-each-book-s-state-on-the-shelf-and-its-page.md`
   summary: `stale-hand-offs.spec.ts` "[P1] F-R4 a refusal that removes Edit Purpose still reads in alert" is flaky. In about 1 run in 8, `getByRole('alert')` stays empty (`Received: ""`) for 10 s instead of reading "This reading is already finished.".
   evidence: Seen in the review's `npm run check` (1 failure in 372), then reproduced at `b6e10d8` without the review's patches: 1 of 5 with `--repeat-each=5`, and 1 of 8 twice with `--repeat-each=8 --retries=0`. Story 4.6 doesn't touch Edit Purpose, the finish intent or the alert. Next step: keep the trace and check whether the refusal's alert renders before the Edit Purpose field unmounts, or whether a home or book refetch replaces it.
+
+## Deferred from: review of spec-4-7-keep-a-few-side-reads (2026-11-09)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-7-keep-a-few-side-reads.md`
+  summary: Spine drift (Capability → Architecture Map "FR-5 to FR-9" row, AD-18, AD-6), reconciled before the next epic: the "FR-5 to FR-9" row (FR-8 Side reads) names `mark_side_read`, but the code is `intents/side_reads.py` with `mark_side_read` and `unmark_side_read` (unmark isn't in the spine); AD-18/AD-6 don't name the views' Side-read fields `HomeView.sideReads`, `ShelfBook.sideRead`, `BookDetailView.sideRead` and `sideReadsFull`, nor `start-reading`'s `page` ("Which page?") and its `reachedLastPage`.
+  evidence: Review of 4.7; `ARCHITECTURE-SPINE.md:362` ("FR-5 to FR-9" row); `backend/bookvie/intents/side_reads.py`, `intents/start_reading.py`, `views/models.py`.

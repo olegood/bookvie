@@ -304,6 +304,8 @@ def test_openapi_error_enums(openapi: dict) -> None:
         "reading_already_finished",
         "not_main_book",
         "main_cannot_be_up_next",
+        "main_cannot_be_side_read",
+        "side_reads_full",
     ]
     kinds = ["refusal", "couldnt_save", "couldnt_export"]
     assert schemas["ErrorCode"]["enum"] == codes

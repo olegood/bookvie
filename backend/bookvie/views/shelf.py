@@ -7,6 +7,7 @@ from datetime import date, datetime
 from pathlib import Path
 
 from bookvie.domain import (
+    MAX_SIDE_READS,
     Book,
     Library,
     Reading,
@@ -26,6 +27,7 @@ from .models import (
     CatalogView,
     CurrentReading,
     HomeMainBook,
+    HomeSideRead,
     HomeUpNext,
     HomeView,
     HomeWaiting,
@@ -65,6 +67,7 @@ def _shelf_book(library: Library, book: Book) -> ShelfBook:
         current_page=reading.current_page if reading else None,
         percent=percent(reading.current_page, book.pages) if reading else None,
         waiting_page=waiting_page,
+        side_read=book.id in library.side_read_book_ids,
     )
 
 
@@ -187,10 +190,20 @@ def _waiting(library: Library) -> list[HomeWaiting]:
     ]
 
 
+def _side_reads(library: Library) -> list[HomeSideRead]:
+    """On the side: every Side read, in ``sideReadBookIds`` order; a missing Book is skipped."""
+    rows: list[HomeSideRead] = []
+    for book_id in library.side_read_book_ids:
+        book = library.book(book_id)
+        if book is not None:
+            rows.append(HomeSideRead(id=book.id, title=book.title, authors=list(book.authors)))
+    return rows
+
+
 def home(library: Library, last_export_at: datetime | None = None) -> HomeView:
     """Home's view of the committed library.
 
-    The Main book, Up next, Waiting for you, "Last export", the Catalog's
+    The Main book, Up next, Waiting for you, On the side, "Last export", the Catalog's
     books and meter, and the slice priority. The client packs ``books`` into
     the bookcase slice's rows; ``slice_priority`` chooses them.
     """
@@ -201,6 +214,7 @@ def home(library: Library, last_export_at: datetime | None = None) -> HomeView:
         main_book=_main_book(library),
         up_next=_up_next(library),
         waiting=_waiting(library),
+        side_reads=_side_reads(library),
         last_export_at=last_export_at,
         slice_priority=_slice_priority(library),
     )
@@ -255,6 +269,7 @@ def book_detail(library: Library, book_id: str) -> BookDetailView | None:
         return None
     latest = book.latest_finished()
     role, reading = _role_reading(library, book)
+    side_read = book.id in library.side_read_book_ids
     return BookDetailView(
         id=book.id,
         title=book.title,
@@ -288,6 +303,8 @@ def book_detail(library: Library, book_id: str) -> BookDetailView | None:
         role=role,
         waiting_page=_waiting_page(role, reading),
         current_reading=_current_reading(book, role, reading),
+        side_read=side_read,
+        side_reads_full=not side_read and len(library.side_read_book_ids) >= MAX_SIDE_READS,
     )
 
 

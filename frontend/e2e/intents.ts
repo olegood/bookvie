@@ -15,6 +15,8 @@ export const UPDATE_PAGE = '/api/intents/update-page'
 export const FINISH_READING = '/api/intents/finish-reading'
 export const PAUSE = '/api/intents/pause'
 export const SET_UP_NEXT = '/api/intents/set-up-next'
+export const MARK_SIDE_READ = '/api/intents/mark-side-read'
+export const UNMARK_SIDE_READ = '/api/intents/unmark-side-read'
 
 // A 40×60 solid red-orange PNG (rgb 200, 60, 40): a colored cover.
 export const COVER_PNG = Buffer.from(

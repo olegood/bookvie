@@ -205,6 +205,9 @@ export interface paths {
         /**
          * Start Reading Intent
          * @description Start, resume or re-read a Book as the Main book, pausing the previous one (FR-5).
+         *
+         *     The Book leaves the Side reads in the same commit; ``reachedLastPage``
+         *     when the sent page is its last page (FR-8).
          */
         post: operations["start_reading_intent_api_intents_start_reading_post"];
         delete?: never;
@@ -316,6 +319,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/intents/mark-side-read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark Side Read Intent
+         * @description Make a Book a Side read, at most 3 and never the Main book (FR-8); a no-op for a Side read.
+         */
+        post: operations["mark_side_read_intent_api_intents_mark_side_read_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/intents/unmark-side-read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Unmark Side Read Intent
+         * @description Take a Book out of the Side reads (FR-8); a no-op for a Book that isn't one.
+         */
+        post: operations["unmark_side_read_intent_api_intents_unmark_side_read_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/intents/restore": {
         parameters: {
             query?: never;
@@ -406,6 +449,14 @@ export interface components {
              */
             intent?: string | null;
         };
+        /** Body_mark_side_read_intent_api_intents_mark_side_read_post */
+        Body_mark_side_read_intent_api_intents_mark_side_read_post: {
+            /**
+             * Intent
+             * @description JSON object {"bookId": ...}: the Book to keep on the side.
+             */
+            intent?: string | null;
+        };
         /** Body_pause_intent_api_intents_pause_post */
         Body_pause_intent_api_intents_pause_post: {
             /**
@@ -447,7 +498,15 @@ export interface components {
         Body_start_reading_intent_api_intents_start_reading_post: {
             /**
              * Intent
-             * @description JSON object {"bookId": ..., "purpose": "..." | null}: the Start dialog's Purpose, trimmed, null when empty.
+             * @description JSON object {"bookId": ..., "purpose": "..." | null, "page"?: <integer> | null}: the Start dialog's Purpose, trimmed, null when empty, and its "Which page?", 0 to the page count: required for a Side read, and when sent the resumed or new Reading's page.
+             */
+            intent?: string | null;
+        };
+        /** Body_unmark_side_read_intent_api_intents_unmark_side_read_post */
+        Body_unmark_side_read_intent_api_intents_unmark_side_read_post: {
+            /**
+             * Intent
+             * @description JSON object {"bookId": ...}: the Book to take off the side.
              */
             intent?: string | null;
         };
@@ -512,6 +571,10 @@ export interface components {
             /** Waitingpage */
             waitingPage: number | null;
             currentReading: components["schemas"]["CurrentReading"] | null;
+            /** Sideread */
+            sideRead: boolean;
+            /** Sidereadsfull */
+            sideReadsFull: boolean;
         };
         /** BookReading */
         BookReading: {
@@ -581,7 +644,7 @@ export interface components {
          * ErrorCode
          * @enum {string}
          */
-        ErrorCode: "invalid_fields" | "couldnt_save" | "duplicate_book" | "book_not_found" | "pages_below_current_page" | "pages_below_card_note" | "cover_too_large" | "couldnt_export" | "restore_invalid" | "restore_newer_version" | "restore_unsafe" | "already_main" | "reading_already_finished" | "not_main_book" | "main_cannot_be_up_next";
+        ErrorCode: "invalid_fields" | "couldnt_save" | "duplicate_book" | "book_not_found" | "pages_below_current_page" | "pages_below_card_note" | "cover_too_large" | "couldnt_export" | "restore_invalid" | "restore_newer_version" | "restore_unsafe" | "already_main" | "reading_already_finished" | "not_main_book" | "main_cannot_be_up_next" | "main_cannot_be_side_read" | "side_reads_full";
         /**
          * ErrorKind
          * @enum {string}
@@ -627,6 +690,18 @@ export interface components {
             lastProgressUpdate: string | null;
         };
         /**
+         * HomeSideRead
+         * @description One row of Home's On the side pane: a Side read.
+         */
+        HomeSideRead: {
+            /** Id */
+            id: string;
+            /** Title */
+            title: string;
+            /** Authors */
+            authors: string[];
+        };
+        /**
          * HomeUpNext
          * @description The Up next Book as Home's Up next pane, the empty Main book card and the Start dialog show it.
          */
@@ -653,6 +728,8 @@ export interface components {
             upNext: components["schemas"]["HomeUpNext"] | null;
             /** Waiting */
             waiting: components["schemas"]["HomeWaiting"][];
+            /** Sidereads */
+            sideReads: components["schemas"]["HomeSideRead"][];
             /** Lastexportat */
             lastExportAt: string | null;
             /** Slicepriority */
@@ -742,6 +819,8 @@ export interface components {
             percent: number | null;
             /** Waitingpage */
             waitingPage: number | null;
+            /** Sideread */
+            sideRead: boolean;
         };
     };
     responses: never;
@@ -1633,6 +1712,126 @@ export interface operations {
         requestBody?: {
             content: {
                 "multipart/form-data": components["schemas"]["Body_set_up_next_intent_api_intents_set_up_next_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkResponse"];
+                };
+            };
+            /** @description Refused by a library rule */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Invalid fields */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Couldn't save */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Couldn't save */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    mark_side_read_intent_api_intents_mark_side_read_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_mark_side_read_intent_api_intents_mark_side_read_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkResponse"];
+                };
+            };
+            /** @description Refused by a library rule */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Invalid fields */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Couldn't save */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Couldn't save */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    unmark_side_read_intent_api_intents_unmark_side_read_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_unmark_side_read_intent_api_intents_unmark_side_read_post"];
             };
         };
         responses: {

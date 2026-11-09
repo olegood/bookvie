@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useId, useRef, useState, type RefObject } from 'react'
 import { useNavigate, useParams } from 'react-router'
-import { useBookView, useCatalogView, useDeleteBook, type BookDetailView } from '../api/index.ts'
+import {
+  useBookView,
+  useCatalogView,
+  useDeleteBook,
+  useMarkSideRead,
+  useUnmarkSideRead,
+  type BookDetailView,
+} from '../api/index.ts'
 import Button from '../components/Button.tsx'
 import ChangeColor from '../components/ChangeColor.tsx'
 import ConfirmDialog from '../components/ConfirmDialog.tsx'
@@ -27,9 +34,17 @@ import { detailOffersFinish, finishedStatus } from '../lib/markFinished.ts'
 import { usePageTitle } from '../lib/page.ts'
 import { pausedStatus } from '../lib/pause.ts'
 import { detailOffersSetUpNext, SETTING_UP_NEXT, upNextStatus } from '../lib/setUpNext.ts'
+import {
+  detailOffersSideRead,
+  MARKING_SIDE_READ,
+  REMOVING_FROM_SIDE,
+  SIDE_READS_FULL_HINT,
+  sideReadLabel,
+  sideReadStatus,
+} from '../lib/sideRead.ts'
 import { detailPrimary } from '../lib/startReading.ts'
 import { PAUSING, usePauseFlow, type PauseBook } from '../lib/usePauseFlow.tsx'
-import { useSetUpNextFlow } from '../lib/useSetUpNextFlow.ts'
+import { useOneClickFlow, useSetUpNextFlow } from '../lib/useSetUpNextFlow.ts'
 import NewBookPanel from './NewBookPanel.tsx'
 import NotFoundPage from './NotFoundPage.tsx'
 import styles from './BookDetailPage.module.css'
@@ -175,6 +190,50 @@ function BookDetail({ book, onDelete, onFinish, finishButton }: BookDetailProps)
     announce('status', pending.line)
   }, [setUpNexts, book.role])
 
+  // Mark as Side read / Remove from side: any Book but the Main book (Story
+  // 4.7), at once through the same one-click flow. Once the refetched view
+  // shows the flip, focus goes to the primary (the `h1` if none), then
+  // `status` says where the Book is.
+  const offersSideRead = detailOffersSideRead(book.role)
+  const sideReadButton = useRef<HTMLButtonElement>(null)
+  const markSideRead = useMarkSideRead()
+  const unmarkSideRead = useUnmarkSideRead()
+  const sideRead = book.sideRead
+  // The Book's `sideRead` when pressed: the view is waited on until it flips.
+  const sideReadFrom = useRef<boolean | null>(null)
+  const sideReadTitle = useRef('')
+  const [sideReadToggles, setSideReadToggles] = useState(0)
+  const onSideReadSet = useCallback(
+    (title: string) => {
+      sideReadFrom.current = sideRead
+      sideReadTitle.current = title
+      setSideReadToggles((count) => count + 1)
+    },
+    [sideRead],
+  )
+  const {
+    request: requestSideRead,
+    busy: togglingSideRead,
+    failed: sideReadFailed,
+    regionSlot: sideReadSlot,
+  } = useOneClickFlow({
+    opener: sideReadButton,
+    fallback: primaryOrHeading,
+    onSet: onSideReadSet,
+    send: sideRead ? unmarkSideRead : markSideRead,
+  })
+  let sideReadReason: string | undefined
+  if (togglingSideRead) sideReadReason = sideRead ? REMOVING_FROM_SIDE : MARKING_SIDE_READ
+  else if (book.sideReadsFull) sideReadReason = SIDE_READS_FULL_HINT
+
+  useEffect(() => {
+    const from = sideReadFrom.current
+    if (from === null || book.sideRead === from) return
+    sideReadFrom.current = null
+    primaryOrHeading()?.focus()
+    announce('status', sideReadStatus(sideReadTitle.current, book.sideRead))
+  }, [sideReadToggles, book.sideRead])
+
   // Mark finished: the Main book, a Reading in progress, or a Book never finished (Story 4.5).
   const canFinish = detailOffersFinish(book)
   // Pause: the Main book only.
@@ -288,6 +347,18 @@ function BookDetail({ book, onDelete, onFinish, finishButton }: BookDetailProps)
                 Mark finished
               </Button>
             )}
+            {offersSideRead && (
+              <Button
+                ref={sideReadButton}
+                disabledReason={sideReadReason}
+                reasonClassName={!togglingSideRead && book.sideReadsFull ? styles.hint : undefined}
+                onClick={() => requestSideRead({ id: book.id, title: book.title })}
+              >
+                {sideReadLabel(book.sideRead)}
+              </Button>
+            )}
+            {/* Below Mark as Side read / Remove from side, or where it was once a refetch has removed it. */}
+            <div ref={sideReadSlot} className={styles.regions} data-show-alert={sideReadFailed ? 'true' : undefined} />
             <Button onClick={() => setEditing(true)}>Edit</Button>
             <Button ref={deleteButton} onClick={openConfirm}>
               Delete
@@ -382,7 +453,8 @@ function BookDetail({ book, onDelete, onFinish, finishButton }: BookDetailProps)
  * Main book — then **Set as Up next** unless the Book is Main or Up next,
  * then **Pause** for the Main book, then **Mark finished** for the Main
  * book, a Book with a Reading in progress or a Book never finished
- * (`lib/markFinished.ts`), then **Edit**, then **Delete**); the Book on the
+ * (`lib/markFinished.ts`), then **Mark as Side read** or **Remove from
+ * side** unless the Book is Main, then **Edit**, then **Delete**); the Book on the
  * right. An unknown id shows
  * the not-found page. The title is set by the child that renders, never
  * here: child effects run first, so a title set here would overwrite the
@@ -415,6 +487,14 @@ function BookDetail({ book, onDelete, onFinish, finishButton }: BookDetailProps)
  * below the button, focus kept there; when a stale tab's refusal has removed
  * the button, focus goes to the primary (else the `h1`) and the line stays
  * where the button was.
+ *
+ * **Mark as Side read** / **Remove from side** (Story 4.7) work the same
+ * way through `useOneClickFlow`, sending `mark-side-read` or
+ * `unmark-side-read`: once the refetched view shows the flip, focus goes to
+ * the primary (the `h1` if none), then `status` reads "*X* is on the side."
+ * or "*X* is off the side.". At 3 Side reads (`sideReadsFull`) **Mark as
+ * Side read** stays focusable with `aria-disabled="true"` and the visible
+ * hint "Up to 3 side reads." as its description; a press does nothing.
  *
  * Delete: once `delete-book` is sent, the refetched view may already say the
  * Book is gone before the request resolves. Until the outcome is known the

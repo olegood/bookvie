@@ -152,6 +152,42 @@ export function useSetUpNext(): (bookId: string) => Promise<IntentResult> {
   return (bookId) => setUpNext(client, bookId)
 }
 
+// `mark-side-read` and `unmark-side-read` carry only `{ bookId }`.
+
+export function sideReadForm(bookId: string): FormData {
+  const form = new FormData()
+  form.set('intent', JSON.stringify({ bookId }))
+  return form
+}
+
+/**
+ * Sends `mark-side-read` (keep the Book on the side; a no-op for a Side
+ * read); resolves after the views have refetched.
+ */
+export function markSideRead(client: QueryClient, bookId: string): Promise<IntentResult> {
+  return sendIntent(client, 'mark-side-read', sideReadForm(bookId))
+}
+
+/** `markSideRead` bound to the app's QueryClient. */
+export function useMarkSideRead(): (bookId: string) => Promise<IntentResult> {
+  const client = useQueryClient()
+  return (bookId) => markSideRead(client, bookId)
+}
+
+/**
+ * Sends `unmark-side-read` (take the Book off the side; a no-op for a Book
+ * that isn't one); resolves after the views have refetched.
+ */
+export function unmarkSideRead(client: QueryClient, bookId: string): Promise<IntentResult> {
+  return sendIntent(client, 'unmark-side-read', sideReadForm(bookId))
+}
+
+/** `unmarkSideRead` bound to the app's QueryClient. */
+export function useUnmarkSideRead(): (bookId: string) => Promise<IntentResult> {
+  const client = useQueryClient()
+  return (bookId) => unmarkSideRead(client, bookId)
+}
+
 export function setSpineColorForm(bookId: string, spineColor: string | null): FormData {
   const form = new FormData()
   form.set('intent', JSON.stringify({ bookId, spineColor }))
@@ -171,22 +207,32 @@ export function useSetSpineColor(): (bookId: string, spineColor: string | null) 
 
 // `start-reading` and `edit-purpose` share one intent part, `{ bookId, purpose }`:
 // the Purpose as typed (the server trims it, and stores `null` when nothing is left).
+// `start-reading` adds `page`, the "Which page?" a Side read asks for, only when given.
 
-export function purposeForm(bookId: string, purpose: string | null): FormData {
+export function purposeForm(bookId: string, purpose: string | null, page?: number): FormData {
   const form = new FormData()
-  form.set('intent', JSON.stringify({ bookId, purpose }))
+  form.set('intent', JSON.stringify(page === undefined ? { bookId, purpose } : { bookId, purpose, page }))
   return form
 }
 
-/** Sends `start-reading` (start, resume or re-read as the Main book); resolves after the views have refetched. */
-export function startReading(client: QueryClient, bookId: string, purpose: string | null): Promise<IntentResult> {
-  return sendIntent(client, 'start-reading', purposeForm(bookId, purpose))
+/**
+ * Sends `start-reading` (start, resume or re-read as the Main book; `page`:
+ * the Side read's "Which page?"); resolves after the views have refetched.
+ * `reachedLastPage` is set when `page` is the Book's last page.
+ */
+export function startReading(
+  client: QueryClient,
+  bookId: string,
+  purpose: string | null,
+  page?: number,
+): Promise<IntentResult> {
+  return sendIntent(client, 'start-reading', purposeForm(bookId, purpose, page))
 }
 
 /** `startReading` bound to the app's QueryClient. */
-export function useStartReading(): (bookId: string, purpose: string | null) => Promise<IntentResult> {
+export function useStartReading(): (bookId: string, purpose: string | null, page?: number) => Promise<IntentResult> {
   const client = useQueryClient()
-  return (bookId, purpose) => startReading(client, bookId, purpose)
+  return (bookId, purpose, page) => startReading(client, bookId, purpose, page)
 }
 
 /** Sends `edit-purpose` for the Book's current Reading; resolves after the views have refetched. */

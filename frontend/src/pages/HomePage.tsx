@@ -6,6 +6,7 @@ import FailureMessage from '../components/FailureMessage.tsx'
 import FinishDialog, { type FinishedState } from '../components/FinishDialog.tsx'
 import MainBookCard from '../components/MainBookCard.tsx'
 import PageHeading from '../components/PageHeading.tsx'
+import SidePane from '../components/SidePane.tsx'
 import StartDialog, { type StartedState } from '../components/StartDialog.tsx'
 import UpNextPane from '../components/UpNextPane.tsx'
 import WaitingPane from '../components/WaitingPane.tsx'
@@ -23,6 +24,13 @@ import styles from './HomePage.module.css'
 
 function wantsStarted(state: unknown): boolean {
   return typeof state === 'object' && state !== null && (state as Partial<StartedState>).started === true
+}
+
+/** The Finish dialog's description when a start reached the last page (a Side read), else `null`. */
+function reachedLastPageLine(state: unknown): string | null {
+  if (!wantsStarted(state)) return null
+  const { reachedLastPage, savedLine } = state as Partial<StartedState>
+  return reachedLastPage === true ? (typeof savedLine === 'string' ? savedLine : '') : null
 }
 
 function wantsFinished(state: unknown): boolean {
@@ -71,8 +79,10 @@ function HomeSlice({ view, finishing }: { view: HomeView; finishing: FinishMomen
  * Main book (without one the empty card suggests the Up next Book), then the
  * Waiting for you pane, shown whenever the view's `waiting` isn't empty, with
  * every row in the server's order and no cap (the column grows and the page
- * scrolls). Home hosts the Start dialog that the Up next pane's button, the
- * empty card's suggestion and each Waiting row's **Resume** open; Cancel or
+ * scrolls), then the On the side pane, shown whenever the view's `sideReads`
+ * isn't empty, with or without a Main book. Home hosts the Start dialog that
+ * the Up next pane's button, the empty card's suggestion, each Waiting row's
+ * **Resume** and each On the side row's **Start reading** open; Cancel or
  * Esc returns focus to the button that opened it while it is still on the
  * page, else to the Up next pane's or the suggestion's button, the "No Main
  * book." heading or `main`. The bookcase slice below is the full bookcase
@@ -82,7 +92,9 @@ function HomeSlice({ view, finishing }: { view: HomeView; finishing: FinishMomen
  * same `now`.
  *
  * Arriving from a confirmed Start dialog (router state `{started: true}`),
- * focus goes to the Main book card's title link, winning over the `h1`.
+ * focus goes to the Main book card's title link, winning over the `h1`;
+ * with `reachedLastPage` (a Side read started at its last page) Home then
+ * opens the Finish dialog for the new Main book, as a last-page save does.
  * Arriving from a finish (`{finished: true}`), it goes to the empty card's
  * Up next suggestion button (**Start reading** or **Resume**) when there is
  * an Up next, else to the "No Main book." heading, the same way; and when
@@ -148,6 +160,14 @@ export default function HomePage() {
   // Set when the Finish dialog is cancelled, so focus moves once it has unmounted.
   const [finishRefocus, setFinishRefocus] = useState(0)
   const mainId = view.status === 'ready' ? (view.data.mainBook?.id ?? null) : null
+  // A start at the last page (a Side read) opens the Finish dialog for the new
+  // Main book, as a last-page save does, once per history entry.
+  const lastPageLine = reachedLastPageLine(location.state)
+  const [lastPageOpened, setLastPageOpened] = useState<string | null>(null)
+  if (lastPageLine !== null && mainId !== null && lastPageOpened !== location.key) {
+    setLastPageOpened(location.key)
+    setFinishing({ bookId: mainId, key: location.key, savedLine: lastPageLine })
+  }
   // The fill as the card shows it, read by Done (the render it was pressed in):
   // the refetched home view, not a `book` view cached from an earlier visit.
   const mainPercent = view.status === 'ready' ? (view.data.mainBook?.percent ?? null) : null
@@ -303,7 +323,7 @@ export default function HomePage() {
     )
   }
 
-  const { mainBook, upNext, waiting, lastExportAt, meter } = view.data
+  const { mainBook, upNext, waiting, sideReads, lastExportAt, meter } = view.data
   const empty = meter.total === 0
   const newBook = () => {
     const state: NewBookState = { newBook: true }
@@ -346,6 +366,7 @@ export default function HomePage() {
             <div className={styles.side}>
               {mainBook !== null && <UpNextPane upNext={upNext} onStart={openStartFromPane} buttonRef={upNextButton} />}
               <WaitingPane waiting={waiting} onStart={openStart} />
+              <SidePane sideReads={sideReads} onStart={openStart} />
             </div>
           </div>
           <HomeSlice view={view.data} finishing={moment?.finishing ?? null} />

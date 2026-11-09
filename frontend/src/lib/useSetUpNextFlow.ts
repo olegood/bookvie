@@ -4,24 +4,33 @@
 // stating first. On `ok` the owner moves focus and announces once the
 // refetched views have rendered (`onSet`).
 //
+// The same one-click flow serves Mark as Side read / Remove from side
+// (Story 4.7): `useOneClickFlow` takes the sender, and `useSetUpNextFlow`
+// is it bound to `set-up-next`.
+//
 // A failure (couldn't save, or a stale tab's refusal) keeps focus on the
 // button and shows the `alert` line in the slot the owner renders directly
 // below it. When a refusal's refetch has removed the button, focus goes to
 // the owner's `fallback` and the line stays in the slot where the button was.
 
 import { useEffect, useLayoutEffect, useRef, useState, type RefCallback, type RefObject } from 'react'
-import { useSetUpNext } from '../api/index.ts'
+import { useSetUpNext, type IntentResult } from '../api/index.ts'
 import { adoptRegions, announce, clearAnnouncements, releaseRegions } from './announce.ts'
 
 export type SetUpNextBook = { id: string; title: string }
 
 type Options = {
-  /** The Set as Up next button: a failure keeps focus there. */
+  /** The button: a failure keeps focus there. */
   opener: RefObject<HTMLElement | null>
   /** Where focus goes when a refusal's refetch has taken the button away. */
   fallback: () => HTMLElement | null
-  /** `set-up-next` landed and the views have refetched: the owner focuses, then announces. */
+  /** The intent landed and the views have refetched: the owner focuses, then announces. */
   onSet: (title: string) => void
+}
+
+type OneClickOptions = Options & {
+  /** Sends the intent for the Book; resolves after the views have refetched. */
+  send: (bookId: string) => Promise<IntentResult>
 }
 
 type SetUpNextFlow = {
@@ -35,8 +44,13 @@ type SetUpNextFlow = {
   regionSlot: RefCallback<HTMLDivElement>
 }
 
-export function useSetUpNextFlow({ opener, fallback, onSet }: Options): SetUpNextFlow {
-  const sendSetUpNext = useSetUpNext()
+export function useSetUpNextFlow(options: Options): SetUpNextFlow {
+  const send = useSetUpNext()
+  return useOneClickFlow({ ...options, send })
+}
+
+/** A one-click intent button's flow: in flight, failure focus and the `alert` slot. */
+export function useOneClickFlow({ opener, fallback, onSet, send: sendIntent }: OneClickOptions): SetUpNextFlow {
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
   const [slot, setSlot] = useState<HTMLDivElement | null>(null)
@@ -78,7 +92,7 @@ export function useSetUpNextFlow({ opener, fallback, onSet }: Options): SetUpNex
     clearAnnouncements()
     setFailed(false)
     setBusy(true)
-    const result = await sendSetUpNext(book.id)
+    const result = await sendIntent(book.id)
     inFlight.current = false
     if (!mounted.current) {
       if (result.kind !== 'ok') announce('alert', result.message)

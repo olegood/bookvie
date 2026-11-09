@@ -46,6 +46,8 @@ class ShelfBook(_View):
     """``floor(currentPage × 100 ÷ pages)`` of the current Reading; ``None`` without one (AD-6)."""
     waiting_page: int | None
     """The paused Reading's current page; set only when ``role`` is ``waiting``."""
+    side_read: bool
+    """Whether the Book is a Side read (``sideReadBookIds``): ", on the side" in its spine name."""
 
 
 class HomeMainBook(_View):
@@ -100,6 +102,14 @@ class HomeWaiting(_View):
     """``floor(currentPage × 100 ÷ pages)``, computed only on the server (AD-6)."""
 
 
+class HomeSideRead(_View):
+    """One row of Home's On the side pane: a Side read."""
+
+    id: str
+    title: str
+    authors: list[str]
+
+
 class HomeView(_View):
     meter: LibraryMeter
     books: list[ShelfBook]
@@ -115,6 +125,12 @@ class HomeView(_View):
     first (a Reading without one first of all), then by the title key, then
     by Book id; the client renders it in this order. Empty when nothing is
     waiting. ``pausedAt`` itself is never sent.
+    """
+    side_reads: list[HomeSideRead]
+    """On the side: every Side read, in ``sideReadBookIds`` order (FR-8, UX-DR38).
+
+    A Side read that is also Up next or Waiting for you is listed here too.
+    Empty when there are none.
     """
     last_export_at: AwareDatetime | None
     """When the last complete export finished (``local-state.json``); ``None`` before the first."""
@@ -202,6 +218,11 @@ class BookDetailView(_View):
     current_reading: CurrentReading | None
     """Set when ``role`` is ``main`` or ``waiting``, or ``upNext`` with a paused Reading:
     the Reading the role is about."""
+    side_read: bool
+    """Whether the Book is a Side read: **Remove from side** instead of **Mark as Side read**."""
+    side_reads_full: bool
+    """Whether there are 3 Side reads and this Book isn't one of them: **Mark as Side read**
+    is disabled with "Up to 3 side reads."."""
 
 
 class BackupView(_View):

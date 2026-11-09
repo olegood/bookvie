@@ -61,17 +61,20 @@ from bookvie.intents import (
     finish_reading,
     invalid_fields,
     malformed_intent,
+    mark_side_read,
     max_upload_bytes,
     parse_add_book_intent,
     parse_delete_book_intent,
     parse_edit_book_intent,
     parse_edit_purpose_intent,
     parse_finish_reading_intent,
+    parse_mark_side_read_intent,
     parse_pause_intent,
     parse_restore_intent,
     parse_set_spine_color_intent,
     parse_set_up_next_intent,
     parse_start_reading_intent,
+    parse_unmark_side_read_intent,
     parse_update_page_intent,
     pause,
     prepare_cover,
@@ -81,6 +84,7 @@ from bookvie.intents import (
     set_spine_color,
     set_up_next,
     start_reading,
+    unmark_side_read,
     update_page,
 )
 
@@ -450,16 +454,22 @@ def start_reading_intent(
         Form(
             media_type="multipart/form-data",
             description=(
-                'JSON object {"bookId": ..., "purpose": "..." | null}: the Start '
-                "dialog's Purpose, trimmed, null when empty."
+                'JSON object {"bookId": ..., "purpose": "..." | null, "page"?: <integer> | null}: '
+                "the Start dialog's Purpose, trimmed, null when empty, and its "
+                '"Which page?", 0 to the page count: required for a Side read, '
+                "and when sent the resumed or new Reading's page."
             ),
         ),
     ] = None,
 ) -> OkResponse:
-    """Start, resume or re-read a Book as the Main book, pausing the previous one (FR-5)."""
+    """Start, resume or re-read a Book as the Main book, pausing the previous one (FR-5).
+
+    The Book leaves the Side reads in the same commit; ``reachedLastPage``
+    when the sent page is its last page (FR-8).
+    """
     parsed = parse_start_reading_intent(intent)
-    start_reading(request.app.state.store, request.app.state.clock, parsed)
-    return OkResponse(ok=True)
+    reached = start_reading(request.app.state.store, request.app.state.clock, parsed)
+    return OkResponse(ok=True, reached_last_page=True if reached else None)
 
 
 @router.post("/intents/edit-purpose", response_model=OkResponse, response_model_exclude_none=True)
@@ -558,6 +568,42 @@ def set_up_next_intent(
     """Make a Book Up next, displacing any earlier one (FR-7); a no-op for the current Up next."""
     parsed = parse_set_up_next_intent(intent)
     set_up_next(request.app.state.store, parsed)
+    return OkResponse(ok=True)
+
+
+@router.post("/intents/mark-side-read", response_model=OkResponse, response_model_exclude_none=True)
+def mark_side_read_intent(
+    request: Request,
+    intent: Annotated[
+        str | None,
+        Form(
+            media_type="multipart/form-data",
+            description='JSON object {"bookId": ...}: the Book to keep on the side.',
+        ),
+    ] = None,
+) -> OkResponse:
+    """Make a Book a Side read, at most 3 and never the Main book (FR-8); a no-op for a Side read."""
+    parsed = parse_mark_side_read_intent(intent)
+    mark_side_read(request.app.state.store, parsed)
+    return OkResponse(ok=True)
+
+
+@router.post(
+    "/intents/unmark-side-read", response_model=OkResponse, response_model_exclude_none=True
+)
+def unmark_side_read_intent(
+    request: Request,
+    intent: Annotated[
+        str | None,
+        Form(
+            media_type="multipart/form-data",
+            description='JSON object {"bookId": ...}: the Book to take off the side.',
+        ),
+    ] = None,
+) -> OkResponse:
+    """Take a Book out of the Side reads (FR-8); a no-op for a Book that isn't one."""
+    parsed = parse_unmark_side_read_intent(intent)
+    unmark_side_read(request.app.state.store, parsed)
     return OkResponse(ok=True)
 
 

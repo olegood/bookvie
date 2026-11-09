@@ -1,5 +1,6 @@
 /* DESIGN.md → Section pane: a surface pane under a section label. The .pane, .heading,
-   .title and .compact rules are kept in step with UpNextPane.module.css. */
+   .title and .compact rules are kept in step with UpNextPane.module.css. SidePane.tsx
+   (On the side) shares this module. */
 .pane {
   min-width: 0;
   padding: 20px 22px;
@@ -97,6 +98,19 @@
   line-height: var(--font-meta-line-height);
   font-variant-numeric: tabular-nums;
   color: var(--color-ink-secondary);
+  white-space: nowrap;
+}
+
+/* On the side (SidePane.tsx): the author line beside the compact button. */
+.authors {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-family: var(--font-meta-family);
+  font-size: var(--font-meta-size);
+  line-height: var(--font-meta-line-height);
+  color: var(--color-ink-secondary);
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 

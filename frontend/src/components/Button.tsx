@@ -10,6 +10,11 @@ type Props = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'disabled'> & {
    */
   disabledReason?: string
   /**
+   * Shows `disabledReason` as a visible hint below the button (in this
+   * class) rather than visually hidden, still as its description.
+   */
+  reasonClassName?: string
+  /**
    * Busy: Export or Restore is running (DESIGN.md → Busy button). The button
    * is natively `disabled` at 60% opacity, with no spinner; the caller sets
    * the busy label ("Exporting…") and turns this on only after about 300 ms.
@@ -22,6 +27,7 @@ type Props = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'disabled'> & {
 export default function Button({
   variant = 'secondary',
   disabledReason,
+  reasonClassName,
   busy = false,
   className,
   type = 'button',
@@ -55,7 +61,7 @@ export default function Button({
         {children}
       </button>
       {unavailable && (
-        <span id={reasonId} className="visuallyHidden">
+        <span id={reasonId} className={reasonClassName ?? 'visuallyHidden'}>
           {disabledReason}
         </span>
       )}

@@ -25,6 +25,7 @@ from .contract import (
     cover_too_large,
     duplicate_book,
     invalid_fields,
+    main_cannot_be_side_read,
     main_cannot_be_up_next,
     not_main_book,
     pages_refusal,
@@ -32,6 +33,7 @@ from .contract import (
     restore_invalid,
     restore_newer_version,
     restore_unsafe,
+    side_reads_full,
 )
 from .cover import PreparedCover, RefusedCover, UploadedCover, prepare_cover
 from .delete_book import DeleteBookIntent, delete_book, parse_delete_book_intent
@@ -52,6 +54,14 @@ from .set_spine_color import (
     set_spine_color,
 )
 from .set_up_next import SetUpNextIntent, parse_set_up_next_intent, set_up_next
+from .side_reads import (
+    MarkSideReadIntent,
+    UnmarkSideReadIntent,
+    mark_side_read,
+    parse_mark_side_read_intent,
+    parse_unmark_side_read_intent,
+    unmark_side_read,
+)
 from .start_reading import StartReadingIntent, parse_start_reading_intent, start_reading
 from .update_page import UpdatePageIntent, parse_update_page_intent, update_page
 
@@ -76,6 +86,7 @@ __all__ = [
     "FieldError",
     "FinishReadingIntent",
     "IntentError",
+    "MarkSideReadIntent",
     "OkResponse",
     "PauseIntent",
     "PreparedCover",
@@ -85,6 +96,7 @@ __all__ = [
     "SetUpNextIntent",
     "StartReadingIntent",
     "SystemClock",
+    "UnmarkSideReadIntent",
     "UpdatePageIntent",
     "UploadedCover",
     "add_book",
@@ -102,8 +114,10 @@ __all__ = [
     "export_filename",
     "finish_reading",
     "invalid_fields",
+    "main_cannot_be_side_read",
     "main_cannot_be_up_next",
     "malformed_intent",
+    "mark_side_read",
     "max_upload_bytes",
     "not_main_book",
     "pages_refusal",
@@ -112,11 +126,13 @@ __all__ = [
     "parse_edit_book_intent",
     "parse_edit_purpose_intent",
     "parse_finish_reading_intent",
+    "parse_mark_side_read_intent",
     "parse_pause_intent",
     "parse_restore_intent",
     "parse_set_spine_color_intent",
     "parse_set_up_next_intent",
     "parse_start_reading_intent",
+    "parse_unmark_side_read_intent",
     "parse_update_page_intent",
     "pause",
     "prepare_cover",
@@ -128,6 +144,8 @@ __all__ = [
     "restore_unsafe",
     "set_spine_color",
     "set_up_next",
+    "side_reads_full",
     "start_reading",
+    "unmark_side_read",
     "update_page",
 ]

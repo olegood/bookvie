@@ -81,6 +81,7 @@ describe('spineName', () => {
     currentPage: null,
     percent: null,
     waitingPage: null,
+    sideRead: false,
   }
 
   it('names the title, first author and status', () => {
@@ -125,6 +126,18 @@ describe('spineName', () => {
     const upNext = { ...book, finished: false, role: 'upNext' } as const
     assert.equal(spineName(upNext), 'Dune by Frank Herbert, not read yet, Up next')
     assert.equal(spineName({ ...upNext, finished: true }), 'Dune by Frank Herbert, finished, Up next')
+  })
+
+  it('adds ", on the side" after the status for a Side read', () => {
+    assert.equal(
+      spineName({ ...book, finished: false, sideRead: true }),
+      'Dune by Frank Herbert, not read yet, on the side',
+    )
+    const waiting = { ...book, finished: false, role: 'waiting', waitingPage: 120, sideRead: true } as const
+    assert.equal(spineName(waiting), 'Dune by Frank Herbert, waiting for you, page 120, on the side')
+    const upNext = { ...book, finished: false, role: 'upNext', currentPage: 40, sideRead: true } as const
+    assert.equal(spineName(upNext), 'Dune by Frank Herbert, Up next, paused at page 40, on the side')
+    assert.equal(spineMarker(upNext), 'upNext')
   })
 
   it('names a paused Up next Book at its page, finished or not', () => {

@@ -31,6 +31,7 @@ describe('the home view', () => {
     mainBook: null,
     upNext: null,
     waiting: [],
+    sideReads: [],
     lastExportAt: null,
     slicePriority: [],
   }
@@ -144,6 +145,8 @@ const dune: BookDetailView = {
   role: null,
   waitingPage: null,
   currentReading: null,
+  sideRead: false,
+  sideReadsFull: false,
 }
 
 describe('the book view', () => {

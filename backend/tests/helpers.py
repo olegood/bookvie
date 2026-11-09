@@ -48,6 +48,8 @@ UPDATE_PAGE = "/api/intents/update-page"
 FINISH_READING = "/api/intents/finish-reading"
 PAUSE = "/api/intents/pause"
 SET_UP_NEXT = "/api/intents/set-up-next"
+MARK_SIDE_READ = "/api/intents/mark-side-read"
+UNMARK_SIDE_READ = "/api/intents/unmark-side-read"
 
 # The fake today. Year may be at most next year (2027); Finished on at most today.
 TODAY = date(2026, 10, 30)

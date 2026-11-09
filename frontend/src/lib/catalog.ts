@@ -29,6 +29,8 @@ export interface NamedSpine extends ListedBook {
   currentPage: number | null
   percent: number | null
   waitingPage: number | null
+  /** A Side read: ", on the side" after the status (no marker of its own). */
+  sideRead: boolean
 }
 
 /** The status part of a spine's name, from EXPERIENCE.md's Book states table. */
@@ -56,7 +58,7 @@ export type SpineMarker = 'main' | 'upNext' | 'waiting'
 /**
  * The spine's marker: the server's role, which already applies the priority
  * Main, then Up next (sky), then Waiting for you (sand). One dot at most;
- * `null` for a spine with none.
+ * `null` for a spine with none. A Side read gets no marker of its own.
  */
 export function spineMarker(book: Pick<NamedSpine, 'role'>): SpineMarker | null {
   return book.role
@@ -70,13 +72,15 @@ export function spineMarker(book: Pick<NamedSpine, 'role'>): SpineMarker | null 
  * Book "waiting for you, page 120" ("finished, waiting for you, page 40").
  * An Up next Book is "not read yet, Up next" ("finished, Up next") with no
  * Reading in progress, and "Up next, paused at page 120" ("finished, Up
- * next, paused at page 40") with a paused one.
+ * next, paused at page 40") with a paused one. A Side read adds ", on the
+ * side" after the status ("waiting for you, page 120, on the side").
  */
 export function spineName(book: NamedSpine): string {
   const others = book.authorCount - 1
   const more = others === 1 ? ' and 1 other' : others > 1 ? ` and ${others} others` : ''
   const by = book.firstAuthor === '' ? '' : ` by ${book.firstAuthor}${more}`
-  return `${book.title}${by}, ${spineStatus(book)}`
+  const side = book.sideRead ? ', on the side' : ''
+  return `${book.title}${by}, ${spineStatus(book)}${side}`
 }
 
 /**

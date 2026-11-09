@@ -12,6 +12,7 @@ import {
   editPurpose,
   finishReading,
   finishReadingForm,
+  markSideRead,
   pause,
   pauseForm,
   purposeForm,
@@ -20,6 +21,8 @@ import {
   setSpineColorForm,
   setUpNext,
   setUpNextForm,
+  sideReadForm,
+  unmarkSideRead,
   updatePage,
   updatePageForm,
   type BookFields,
@@ -257,6 +260,20 @@ describe('startReading and editPurpose', () => {
     assert.equal(purposeForm('b2', null).get('intent'), '{"bookId":"b2","purpose":null}')
   })
 
+  it('adds the "Which page?" page as a JSON number only when given', async () => {
+    const fetch = mock.method(globalThis, 'fetch', async (..._args: [string, RequestInit]) =>
+      Response.json({ ok: true, reachedLastPage: true }),
+    )
+    const client = new QueryClient()
+    const result = await startReading(client, 'b1', null, 330)
+
+    assert.deepEqual(result, { kind: 'ok', ids: {}, reachedLastPage: true })
+    const body = fetch.mock.calls[0].arguments[1]!.body as FormData
+    assert.equal(body.get('intent'), '{"bookId":"b1","purpose":null,"page":330}')
+    assert.equal(purposeForm('b2', 'x', 0).get('intent'), '{"bookId":"b2","purpose":"x","page":0}')
+    client.clear()
+  })
+
   it('passes already_main through as a refusal', async () => {
     mock.method(globalThis, 'fetch', async () =>
       Response.json(
@@ -427,5 +444,52 @@ describe('setUpNext', () => {
 
   it('builds the same form on its own', () => {
     assert.equal(setUpNextForm('b2').get('intent'), '{"bookId":"b2"}')
+  })
+})
+
+describe('markSideRead and unmarkSideRead', () => {
+  afterEach(() => mock.restoreAll())
+
+  for (const [send, verb] of [
+    [markSideRead, 'mark-side-read'],
+    [unmarkSideRead, 'unmark-side-read'],
+  ] as const) {
+    it(`posts only the bookId to ${verb}`, async () => {
+      const fetch = mock.method(globalThis, 'fetch', async (..._args: [string, RequestInit]) =>
+        Response.json({ ok: true }),
+      )
+      const client = new QueryClient()
+      const result = await send(client, 'b1')
+
+      assert.deepEqual(result, { kind: 'ok', ids: {}, reachedLastPage: false })
+      const [url, init] = fetch.mock.calls[0].arguments
+      assert.equal(url, `/api/intents/${verb}`)
+      assert.equal(init!.method, 'POST')
+      assert.equal((init!.body as FormData).get('intent'), '{"bookId":"b1"}')
+      client.clear()
+    })
+  }
+
+  it('passes side_reads_full through as a refusal', async () => {
+    mock.method(globalThis, 'fetch', async () =>
+      Response.json(
+        {
+          error: {
+            kind: 'refusal',
+            code: 'side_reads_full',
+            message: 'You already have 3 side reads. Remove one first.',
+          },
+        },
+        { status: 409 },
+      ),
+    )
+    const client = new QueryClient()
+    const result = await markSideRead(client, 'b1')
+    assert.equal(result.kind === 'refusal' && result.code, 'side_reads_full')
+    client.clear()
+  })
+
+  it('builds the same form on its own', () => {
+    assert.equal(sideReadForm('b2').get('intent'), '{"bookId":"b2"}')
   })
 })

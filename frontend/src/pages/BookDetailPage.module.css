@@ -66,6 +66,15 @@
   color: var(--color-ink);
 }
 
+/* The visible hint under Mark as Side read at 3 Side reads ("Up to 3 side reads."). */
+.hint {
+  margin: 0;
+  font-family: var(--font-meta-family);
+  font-size: var(--font-meta-size);
+  line-height: var(--font-meta-line-height);
+  color: var(--color-ink-secondary);
+}
+
 .info {
   min-width: 0;
 }

@@ -2,7 +2,7 @@
 
 from .clock import Clock, FakeClock, SystemClock
 from .cover_color import spine_color_from_pixels
-from .invariants import InvariantViolation, check_invariants
+from .invariants import MAX_SIDE_READS, InvariantViolation, check_invariants
 from .model import Book, CardNote, Library, Reading
 from .ordering import title_key
 from .pace import days_left, measured_pace
@@ -10,6 +10,7 @@ from .progress import ReadingStatus, current_reading, percent, reading_status
 from .purpose import normalize_purpose
 
 __all__ = [
+    "MAX_SIDE_READS",
     "Book",
     "CardNote",
     "Clock",

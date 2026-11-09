@@ -1,15 +1,18 @@
 """RDG-UNIT-002 (R-01): random intent sequences keep the reading plan sound.
 
 A Hypothesis state machine drives ``start-reading``, ``pause``, ``set-up-next``,
-``edit-purpose``, ``update-page``, ``finish-reading`` and ``delete-book`` (with
-days passing in between) over a small library that
-starts with a Book in each state: never started, finished, paused, and Main.
+``edit-purpose``, ``update-page``, ``finish-reading``, ``delete-book``,
+``mark-side-read`` and ``unmark-side-read`` (with days passing in between)
+over a small library that starts with a Book in each state: never started,
+finished, paused (and a Side read), and Main.
 After every step:
 
 - a refusal is the one a simple model predicts (``book_not_found``,
   ``already_main``, ``reading_already_finished``, ``not_main_book`` (for
   ``update-page`` and ``pause``), ``main_cannot_be_up_next``,
-  ``invalid_fields`` for a page out of range, a Finished on date in the
+  ``main_cannot_be_side_read``, ``side_reads_full``, ``invalid_fields`` for
+  a page out of range (update-page, or a start's "Which page?"), a start of
+  a Side read without a page, a Finished on date in the
   future or before the start, or Purpose fulfilled sent for a Reading with no
   Purpose) and leaves ``library.json``
   byte-for-byte unchanged;
@@ -24,12 +27,16 @@ After every step:
   nothing (AD-9); a finish clears it when it names the finished Book (and
   takes that Book out of the Side reads), a finish of a Book with no Readings
   back-fills one Reading with no start date and no Purpose, and a delete of
-  the Up next Book clears it (Stories 4.1, 4.3, 4.4, 4.5);
+  the Up next Book clears it (Stories 4.1, 4.3, 4.4, 4.5); a mark appends
+  the Book to the Side reads and an unmark removes it, changing no Book or
+  other pointer, and either writes nothing when it is already so; a start,
+  a finish and a delete take the Book out of the Side reads (Story 4.7);
 - ``check_invariants()`` holds, each Book has at most one unfinished Reading,
   and the file on disk reads back as the committed library;
 - no page is lost (R-01): a ledger of every Reading's page, set when the
-  machine seeds the library, when a start appends a Reading (p.0), when an
-  accepted update-page moves it, and when a finish (or its back-fill) settles
+  machine seeds the library, when a start appends a Reading (p.0, or the
+  sent "Which page?") or resumes one at a sent page, when an accepted
+  update-page moves it, and when a finish (or its back-fill) settles
   it, and pruned when a Book is deleted, matches every surviving Reading's
   ``currentPage``; and at most one catalog Book has ``role == "main"``;
 - the views agree: only ``mainBookId`` is ``main``, only ``upNextBookId`` is
@@ -37,9 +44,9 @@ After every step:
   spine and as Home's Waiting for you list, ordered by ``pausedAt``, then
   title key, then id), Home's Main book is the Main book's current Reading,
   and Home's Up next is the Up next Book, ``paused`` when it has a current
-  Reading.
-
-Later intents (Side reads) join the machine as they land.
+  Reading; ``sideReadBookIds`` is the model's Side reads, each shelf Book's
+  ``sideRead`` says whether it is one, and Home's On the side lists them in
+  order.
 """
 
 import json
@@ -52,17 +59,30 @@ from hypothesis import HealthCheck, settings
 from hypothesis import strategies as st
 from hypothesis.stateful import RuleBasedStateMachine, initialize, invariant, rule
 
-from bookvie.domain import FakeClock, Library, check_invariants, normalize_purpose, title_key
+from bookvie.domain import (
+    MAX_SIDE_READS,
+    FakeClock,
+    Library,
+    check_invariants,
+    normalize_purpose,
+    title_key,
+)
 from bookvie.intents import IntentError
 from bookvie.intents.delete_book import delete_book, parse_delete_book_intent
 from bookvie.intents.edit_purpose import edit_purpose, parse_edit_purpose_intent
 from bookvie.intents.finish_reading import finish_reading, parse_finish_reading_intent
 from bookvie.intents.pause import parse_pause_intent, pause
 from bookvie.intents.set_up_next import parse_set_up_next_intent, set_up_next
+from bookvie.intents.side_reads import (
+    mark_side_read,
+    parse_mark_side_read_intent,
+    parse_unmark_side_read_intent,
+    unmark_side_read,
+)
 from bookvie.intents.start_reading import parse_start_reading_intent, start_reading
 from bookvie.intents.update_page import parse_update_page_intent, update_page
 from bookvie.store import Store
-from bookvie.views import catalog, home
+from bookvie.views import book_detail, catalog, home
 from tests.builder import LibraryBuilder
 from tests.helpers import TODAY
 
@@ -71,6 +91,8 @@ GONE_ID = "00000000-0000-4000-8000-000000000000"
 _purposes = st.none() | st.sampled_from(["", "   ", "  x  ", "Why Arrakis"]) | st.text(max_size=8)
 _pages = st.integers(min_value=-2, max_value=415)
 """A page sent by the page field: in range for some Books, out of range for others."""
+_start_pages = st.none() | _pages
+"""A start's "Which page?": not sent (``None``), or a page as the field sends it."""
 _finish_offsets = st.integers(min_value=-200, max_value=2)
 """Finished on, in days from today: the past (maybe before the start), today, or the future."""
 _answers = st.sampled_from([None, "yes", "partly", "notYet"])
@@ -80,13 +102,15 @@ _slots = st.integers(min_value=0, max_value=4)
 
 
 def _seed(data_dir: Path) -> list[str]:
-    """Dune never started, Emma finished, Neuromancer paused at p.50, Fahrenheit 451 Main at p.120."""
+    """Dune never started, Emma finished, Neuromancer paused at p.50 and a Side read,
+    Fahrenheit 451 Main at p.120."""
     builder = LibraryBuilder()
     dune = builder.book(title="Dune", pages=412)
     emma = builder.book(title="Emma", pages=400)
     builder.reading(emma, current_page=400, finish_date="2026-04-10", finished_pages=400, rating=4)
     neuromancer = builder.book(title="Neuromancer", pages=271)
     builder.reading(neuromancer, current_page=50, purpose="Cyberspace", paused_at="2026-10-01")
+    builder.side_read(neuromancer)
     fahrenheit = builder.book(title="Fahrenheit 451", pages=187)
     builder.reading(fahrenheit, current_page=120)
     builder.main(fahrenheit)
@@ -123,6 +147,8 @@ class ReadingPlan(RuleBasedStateMachine):
         self.today = TODAY
         self.up_next: str | None = None
         """The model's Up next: what ``upNextBookId`` must be after every step."""
+        self.side_reads: list[str] = list(self.store.library.side_read_book_ids)
+        """The model's Side reads: what ``sideReadBookIds`` must be after every step."""
         self.pages: dict[str, int] = {
             reading.id: reading.current_page
             for book in self.store.library.books
@@ -157,8 +183,8 @@ class ReadingPlan(RuleBasedStateMachine):
 
     # --- rules -----------------------------------------------------------------
 
-    @rule(slot=_slots, purpose=_purposes)
-    def start(self, slot: int, purpose: str | None) -> None:
+    @rule(slot=_slots, purpose=_purposes, page=_start_pages)
+    def start(self, slot: int, purpose: str | None, page: int | None) -> None:
         book_id = self._book_id(slot)
         library = self.store.library
         before = _books(library)
@@ -167,12 +193,26 @@ class ReadingPlan(RuleBasedStateMachine):
             expected = "book_not_found"
         elif book_id == old_main:
             expected = "already_main"
+        elif page is None and book_id in self.side_reads:
+            expected = "invalid_fields"
+        elif page is not None and not 0 <= page <= before[book_id]["pages"]:
+            expected = "invalid_fields"
         else:
             expected = None
         clock = FakeClock(self.today)
-        intent = parse_start_reading_intent(_intent(book_id, purpose))
-        if not self._send(lambda: start_reading(self.store, clock, intent), expected):
+        body = {"bookId": book_id, "purpose": purpose}
+        if page is not None:
+            body["page"] = page
+        intent = parse_start_reading_intent(json.dumps(body))
+        reached: list[bool] = []
+        if not self._send(
+            lambda: reached.append(start_reading(self.store, clock, intent)), expected
+        ):
             return
+
+        assert reached == [page is not None and page == before[book_id]["pages"]]
+        # FR-8: the started Book leaves the Side reads.
+        self.side_reads = [other for other in self.side_reads if other != book_id]
 
         # FR-7: the interrupted Main book becomes Up next; with none, Up next
         # stays, except that the started Book leaves it.
@@ -201,20 +241,24 @@ class ReadingPlan(RuleBasedStateMachine):
         stamp = clock.now().isoformat()
         stored_purpose = normalize_purpose(purpose)
         if resumed is not None:
+            moved = {} if page is None else {"currentPage": page}
             assert now == [
-                {**r, "lastProgressUpdate": stamp, "purpose": stored_purpose}
+                {**r, "lastProgressUpdate": stamp, "purpose": stored_purpose, **moved}
                 if r["id"] == resumed["id"]
                 else r
                 for r in was
             ]
+            # The one page the user enters is the only page a start moves.
+            if page is not None:
+                self.pages[resumed["id"]] = page
         else:
             assert now[:-1] == was
             new = now[-1]
             assert new["id"] not in {r["id"] for r in was}
-            self.pages[new["id"]] = 0
+            self.pages[new["id"]] = page or 0
             assert {k: v for k, v in new.items() if k != "id"} == {
                 "startDate": self.today.isoformat(),
-                "currentPage": 0,
+                "currentPage": page or 0,
                 "purpose": stored_purpose,
                 "lastProgressUpdate": stamp,
                 "pausedAt": None,
@@ -283,6 +327,55 @@ class ReadingPlan(RuleBasedStateMachine):
         self.up_next = book_id
         assert _books(self.store.library) == before
         assert self.store.library.main_book_id == old_main
+
+    @rule(slot=_slots)
+    def mark_side(self, slot: int) -> None:
+        book_id = self._book_id(slot)
+        library = self.store.library
+        before = _books(library)
+        pointers = (library.main_book_id, library.up_next_book_id)
+        if book_id not in before:
+            expected = "book_not_found"
+        elif book_id == library.main_book_id:
+            expected = "main_cannot_be_side_read"
+        elif book_id in self.side_reads:
+            expected = None
+        elif len(self.side_reads) >= MAX_SIDE_READS:
+            expected = "side_reads_full"
+        else:
+            expected = None
+        no_op = book_id in self.side_reads
+        bytes_before = self._bytes()
+        intent = parse_mark_side_read_intent(_intent(book_id, with_purpose=False))
+        if not self._send(lambda: mark_side_read(self.store, intent), expected):
+            return
+
+        if no_op:
+            assert self._bytes() == bytes_before
+        else:
+            self.side_reads = [*self.side_reads, book_id]
+        # Marking changes nothing else: no Book, no other pointer.
+        assert _books(self.store.library) == before
+        assert (self.store.library.main_book_id, self.store.library.up_next_book_id) == pointers
+
+    @rule(slot=_slots)
+    def unmark_side(self, slot: int) -> None:
+        book_id = self._book_id(slot)
+        library = self.store.library
+        before = _books(library)
+        pointers = (library.main_book_id, library.up_next_book_id)
+        expected = None if book_id in before else "book_not_found"
+        no_op = book_id not in self.side_reads
+        bytes_before = self._bytes()
+        intent = parse_unmark_side_read_intent(_intent(book_id, with_purpose=False))
+        if not self._send(lambda: unmark_side_read(self.store, intent), expected):
+            return
+
+        if no_op:
+            assert self._bytes() == bytes_before
+        self.side_reads = [other for other in self.side_reads if other != book_id]
+        assert _books(self.store.library) == before
+        assert (self.store.library.main_book_id, self.store.library.up_next_book_id) == pointers
 
     @rule(slot=_slots, purpose=_purposes)
     def edit(self, slot: int, purpose: str | None) -> None:
@@ -428,6 +521,7 @@ class ReadingPlan(RuleBasedStateMachine):
         assert self.store.library.side_read_book_ids == [
             other for other in old_side_reads if other != book_id
         ]
+        self.side_reads = [other for other in self.side_reads if other != book_id]
 
     @rule(slot=_slots)
     def delete(self, slot: int) -> None:
@@ -446,6 +540,7 @@ class ReadingPlan(RuleBasedStateMachine):
             del self.pages[reading["id"]]
         if self.up_next == book_id:
             self.up_next = None
+        self.side_reads = [other for other in self.side_reads if other != book_id]
         # Nothing is promoted into a vacated Main book (CAT-API-007).
         assert self.store.library.main_book_id == (None if old_main == book_id else old_main)
 
@@ -479,11 +574,12 @@ class ReadingPlan(RuleBasedStateMachine):
     def views_agree_with_the_pointers(self) -> None:
         library = self.store.library
         assert library.up_next_book_id == self.up_next
-        assert library.side_read_book_ids == []
+        assert library.side_read_book_ids == self.side_reads
         stored = _books(library)
         main = library.main_book_id
         up_next = library.up_next_book_id
         for shelf in catalog(library).books:
+            assert shelf.side_read == (shelf.id in self.side_reads), shelf.title
             current = _current(stored[shelf.id])
             if shelf.id == main:
                 assert shelf.role == "main"
@@ -497,6 +593,13 @@ class ReadingPlan(RuleBasedStateMachine):
             else:
                 assert shelf.role is None, shelf.title
         view = home(library)
+        assert [s.id for s in view.side_reads] == self.side_reads
+        full = len(self.side_reads) >= MAX_SIDE_READS
+        for book_id in stored:
+            detail = book_detail(library, book_id)
+            assert detail is not None
+            assert detail.side_read == (book_id in self.side_reads)
+            assert detail.side_reads_full == (book_id not in self.side_reads and full)
         # Home's Waiting for you: the paused Books minus Up next, oldest pause
         # first, then title key, then id (AD-6).
         paused = [
