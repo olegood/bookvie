@@ -404,7 +404,7 @@ action_items:
       policy text, so capitalized entries count. Changes: `_bmad/custom/bmad-build.toml`,
       `_bmad/custom/bmad-retrospective.toml`, `AGENTS.md`. Due: before Epic 5. (PL-3)"
     owner: "Oleg / bmad config"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-4-retro-2026-11-09.md"
   - id: "epic-4-retro-item-40-record-oleg-s-story-pipeline-in-agents-m"
     epic: 4
@@ -417,7 +417,7 @@ action_items:
       step that marks it `done`. Changes: `_bmad/custom/bmad-build-auto.toml`, `AGENTS.md`.
       Due: before Epic 5. (PL-1, PL-2, PL-4)"
     owner: "Oleg / bmad config"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-4-retro-2026-11-09.md"
   - id: "epic-4-retro-item-41-split-bookdetailpage-s-action-flows-into"
     epic: 4
