@@ -467,3 +467,13 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-epic-4-retro-item-34-back-fill-drops-side-read.md`
   summary: Spine drift (AD-19), reconciled before the next epic (retro item 38): AD-19's "Back-filled finishes in edit" bullet should say a back-fill on a Book with no Readings also removes it from `sideReadBookIds` in the same commit, and that `upNextBookId` stays. Its "Finishing" bullet's "only `finish-reading` sets `finishDate`" should allow for edit-book's back-fill.
   evidence: `ARCHITECTURE-SPINE.md:236-237`; `backend/bookvie/intents/edit_book.py` (`edit_book`'s `change`).
+
+## Deferred from: spec-epic-4-retro-item-35-count-only-tracked-pages (2026-11-09)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-epic-4-retro-item-35-count-only-tracked-pages.md`
+  summary: Spine drift (AD-18, AD-19, AD-20), reconciled before the next epic (retro item 38): the document is now `schemaVersion` 2. AD-19's Reading fields should list `startPage` (after `startDate`; a whole number from 0, the page a new Reading starts at, 0 on a back-fill, unchanged by a resume). AD-18's invariant "card-note pages and unfinished Reading pages are within the Book's page count" should say it applies to `currentPage`, not `startPage`, which is deliberately unbounded. AD-20's Measured pace should say it sums `max(finishedPages − startPage, 0)`, with the days unchanged.
+  evidence: `backend/bookvie/domain/model.py` (`SCHEMA_VERSION`, `Reading.start_page`); `backend/bookvie/store/migrations/__init__.py` (`STEPS[1]`); `backend/bookvie/domain/pace.py`; `backend/bookvie/intents/start_reading.py`.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-epic-4-retro-item-35-count-only-tracked-pages.md`
+  summary: Measured pace still counts pages skipped on a resume: resuming a paused Reading at a higher "Which page?" doesn't change `startPage`, so a Reading started at 0, paused at 20 and resumed at 300 counts all the pages. Lowering the page below `startPage` (a mistyped start, later corrected) undercounts in the same way.
+  evidence: Item 35 stores the page a *new* Reading starts at, and its approved spec says a resume never changes `startPage`. `backend/bookvie/intents/start_reading.py` (resume branch), `backend/bookvie/domain/pace.py`. Fixing it would need the pages tracked per resume, a new decision.

@@ -607,8 +607,8 @@ def test_shutdown_waits_for_write_lock_then_removes_lock(
 
 # --- Story 1.4: the one-file store ----------------------------------------
 
-EMPTY_V1 = (
-    b'{\n  "schemaVersion": 1,\n  "mainBookId": null,\n  "upNextBookId": null,\n'
+EMPTY_LIBRARY = (
+    b'{\n  "schemaVersion": 2,\n  "mainBookId": null,\n  "upNextBookId": null,\n'
     b'  "sideReadBookIds": [],\n  "books": []\n}\n'
 )
 
@@ -618,7 +618,7 @@ def test_start_creates_library_and_wires_the_store(
 ) -> None:
     data_dir = tmp_path / "d"
     assert cli.main(["--data-dir", str(data_dir), "--no-browser"]) == 0
-    assert (data_dir / "library.json").read_bytes() == EMPTY_V1
+    assert (data_dir / "library.json").read_bytes() == EMPTY_LIBRARY
     assert (data_dir / "covers").is_dir() and (data_dir / ".staging").is_dir()
     state = fake_server.instances[0].config.app.state
     assert state.store.data_dir == data_dir
@@ -633,13 +633,13 @@ def test_newer_library_exits_1_without_serving(
 ) -> None:
     data_dir = tmp_path / "d"
     data_dir.mkdir()
-    raw = EMPTY_V1.replace(b'"schemaVersion": 1', b'"schemaVersion": 2')
+    raw = EMPTY_LIBRARY.replace(b'"schemaVersion": 2', b'"schemaVersion": 3')
     (data_dir / "library.json").write_bytes(raw)
     assert cli.main(["--data-dir", str(data_dir), "--no-browser"]) == 1
     err = capsys.readouterr().err.strip().splitlines()
     assert err == [
-        f"bookvie: {data_dir / 'library.json'}: has schemaVersion 2, which is newer than "
-        "this bookvie supports (1); update bookvie"
+        f"bookvie: {data_dir / 'library.json'}: has schemaVersion 3, which is newer than "
+        "this bookvie supports (2); update bookvie"
     ]
     assert (data_dir / "library.json").read_bytes() == raw
     assert fake_server.instances == []
@@ -730,7 +730,7 @@ def test_real_process_start_on_empty_folder(tmp_path: Path) -> None:
     server = subprocess.Popen(cmd, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     try:
         wait_for_health(server, port, data_dir)
-        assert (data_dir / "library.json").read_bytes() == EMPTY_V1
+        assert (data_dir / "library.json").read_bytes() == EMPTY_LIBRARY
         assert (data_dir / "covers").is_dir()
         assert list((data_dir / ".staging").iterdir()) == []
         server.send_signal(signal.SIGTERM)
@@ -739,6 +739,6 @@ def test_real_process_start_on_empty_folder(tmp_path: Path) -> None:
         if server.poll() is None:
             server.kill()
             server.wait()
-    assert (data_dir / "library.json").read_bytes() == EMPTY_V1
+    assert (data_dir / "library.json").read_bytes() == EMPTY_LIBRARY
     assert not list(data_dir.glob("library.json.tmp*"))
     assert not (data_dir / LOCK_NAME).exists()

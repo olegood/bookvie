@@ -91,6 +91,7 @@ def backfill_reading(reading_id: str, finished_on: date, pages: int) -> Reading:
     return Reading(
         id=reading_id,
         start_date=None,
+        start_page=0,
         current_page=pages,
         purpose=None,
         last_progress_update=None,

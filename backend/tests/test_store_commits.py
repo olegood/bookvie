@@ -16,8 +16,8 @@ from bookvie.store import (
 )
 from tests.helpers import FaultyFs, RecordingFs, seeded_store
 
-EMPTY_V1 = (
-    b'{\n  "schemaVersion": 1,\n  "mainBookId": null,\n  "upNextBookId": null,\n'
+EMPTY_LIBRARY = (
+    b'{\n  "schemaVersion": 2,\n  "mainBookId": null,\n  "upNextBookId": null,\n'
     b'  "sideReadBookIds": [],\n  "books": []\n}\n'
 )
 
@@ -52,7 +52,7 @@ def test_apply_accepts_a_returned_library(tmp_path: Path) -> None:
     store = seeded_store(tmp_path)
     new = store.apply(lambda library: Library.empty())
     assert store.library == new == Library.empty()
-    assert (tmp_path / "library.json").read_bytes() == EMPTY_V1
+    assert (tmp_path / "library.json").read_bytes() == EMPTY_LIBRARY
 
 
 def test_apply_unchanged_writes_nothing(tmp_path: Path) -> None:
@@ -207,7 +207,7 @@ def test_non_oserror_in_cleanup_still_removes_the_temp_file(tmp_path: Path) -> N
     assert _temps(tmp_path) == []
 
 
-@pytest.mark.parametrize("version", [0, 2])
+@pytest.mark.parametrize("version", [0, 3])
 def test_change_to_schema_version_commits_nothing(tmp_path: Path, version: int) -> None:
     store = seeded_store(tmp_path)
     before = (tmp_path / "library.json").read_bytes()

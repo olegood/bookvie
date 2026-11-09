@@ -14,7 +14,7 @@ from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
 from bookvie.domain import Library
-from bookvie.domain.model import Book, CardNote, Reading
+from bookvie.domain.model import SCHEMA_VERSION, Book, CardNote, Reading
 from bookvie.store import (
     CouldntSave,
     OsFileSystem,
@@ -24,11 +24,11 @@ from bookvie.store import (
     read_last_export,
     serialize,
 )
-from tests.builder import LibraryBuilder
+from tests.builder import LibraryBuilder, as_v1
 from tests.helpers import FaultyFs, seeded_store
 
-EMPTY_V1 = (
-    b'{\n  "schemaVersion": 1,\n  "mainBookId": null,\n  "upNextBookId": null,\n'
+EMPTY_LIBRARY = (
+    b'{\n  "schemaVersion": 2,\n  "mainBookId": null,\n  "upNextBookId": null,\n'
     b'  "sideReadBookIds": [],\n  "books": []\n}\n'
 )
 
@@ -41,7 +41,7 @@ def _temps(data_dir: Path) -> list[Path]:
 
 
 def test_serialize_empty_library_golden_bytes() -> None:
-    assert serialize(Library.empty()) == EMPTY_V1
+    assert serialize(Library.empty()) == EMPTY_LIBRARY
 
 
 def test_serialize_book_golden_bytes(library_builder: LibraryBuilder) -> None:
@@ -71,7 +71,7 @@ def test_serialize_book_golden_bytes(library_builder: LibraryBuilder) -> None:
     )  # fmt: skip
     library_builder.main(book)
     expected = """{
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "mainBookId": "b1",
   "upNextBookId": null,
   "sideReadBookIds": [],
@@ -104,6 +104,7 @@ def test_serialize_book_golden_bytes(library_builder: LibraryBuilder) -> None:
         {
           "id": "r1",
           "startDate": "2026-01-03",
+          "startPage": 0,
           "currentPage": 12,
           "purpose": null,
           "lastProgressUpdate": "2026-01-04T21:30:00+01:00",
@@ -156,6 +157,7 @@ _readings = _model(
     Reading,
     id=_text,
     start_date=_opt(_dates),
+    start_page=st.integers(min_value=0, max_value=100_000),
     current_page=_ints,
     purpose=_opt(_text),
     last_progress_update=_opt(_stamps),
@@ -194,7 +196,7 @@ _books = _model(
 )
 _libraries = _model(
     Library,
-    schema_version=st.just(1),
+    schema_version=st.just(SCHEMA_VERSION),
     main_book_id=_opt(_text),
     up_next_book_id=_opt(_text),
     side_read_book_ids=st.lists(_text, max_size=4),
@@ -221,7 +223,7 @@ def test_first_start_creates_empty_library_covers_and_staging(tmp_path: Path) ->
     data_dir = tmp_path / "data"
     ensure_writable(data_dir)
     store = Store.open(data_dir)
-    assert (data_dir / "library.json").read_bytes() == EMPTY_V1
+    assert (data_dir / "library.json").read_bytes() == EMPTY_LIBRARY
     assert (data_dir / "covers").is_dir()
     assert (data_dir / ".staging").is_dir()
     assert list((data_dir / ".staging").iterdir()) == []
@@ -339,7 +341,7 @@ def _valid_doc() -> dict:
 
 def test_newer_file_is_refused(tmp_path: Path) -> None:
     doc = _valid_doc()
-    doc["schemaVersion"] = 2
+    doc["schemaVersion"] = 3
     _refused(tmp_path, json.dumps(doc).encode(), "newer than this bookvie supports")
 
 
@@ -364,7 +366,7 @@ def test_invalid_file_is_refused(tmp_path: Path, raw: bytes, reason: str) -> Non
 
 def _newer() -> bytes:
     doc = _valid_doc()
-    doc["schemaVersion"] = 2
+    doc["schemaVersion"] = 3
     return json.dumps(doc).encode()
 
 
@@ -385,7 +387,7 @@ def _broken_rule() -> bytes:
         (lambda: b'{"schemaVersion": 0}', "has an unknown schemaVersion 0"),
         (
             _newer,
-            "has schemaVersion 2, which is newer than this bookvie supports (1); update bookvie",
+            "has schemaVersion 3, which is newer than this bookvie supports (2); update bookvie",
         ),
         (
             _broken_rule,
@@ -499,7 +501,9 @@ def test_uncreatable_folder_is_refused(tmp_path: Path, name: str) -> None:
 def test_failed_backup_stops_migration(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     from bookvie.store import migrations
 
-    original = LibraryBuilder().write(tmp_path).read_bytes()
+    path = LibraryBuilder().write(tmp_path)
+    original = as_v1(path.read_bytes())
+    path.write_bytes(original)
     monkeypatch.setattr(migrations, "CURRENT_VERSION", 2)
     monkeypatch.setattr(migrations, "STEPS", {1: lambda doc: {**doc, "schemaVersion": 2}})
     with pytest.raises(StartupError, match="library.v1.bak.json"):

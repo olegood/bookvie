@@ -62,7 +62,7 @@ Anyone other than the single user.
 - **Bookcase**: a row of Book spines. Unread Books are outlined; read Books show their spine color.
 - **Spine color**: a read Book's color on the bookcase. It's the user's choice, else derived from the cover, else taken from a curated palette.
 - **Quick pace calculator**: takes a pages/day value and shows an estimated finish date.
-- **Measured pace**: total pages of finished Readings divided by the total days from their start dates to their finish dates. Both the start and the finish day count, so a same-day start and finish is 1 day. Back-filled Readings are excluded.
+- **Measured pace**: total pages read in finished Readings, counted from each Reading's starting page, divided by the total days from their start dates to their finish dates. Both the start and the finish day count, so a same-day start and finish is 1 day. Back-filled Readings are excluded.
 - **Ownership**: *owned*, or *donated* once Donation ships (see addendum).
 - **Card note**: a piece of text (a quote or a note) plus the page or page range where the user found it, attached to a Book. It has one side only; it isn't a flash card.
 

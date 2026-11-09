@@ -386,3 +386,62 @@ def test_edit_purpose_without_a_current_reading_is_reading_already_finished(
         assert library_bytes(data_dir) == before, state
     schema = create_app().openapi()
     assert "reading_already_finished" in schema["components"]["schemas"]["ErrorCode"]["enum"]
+
+
+# --- Epic 4 retro item 35: the page a Reading starts at ----------------------------
+
+
+def _with_page(client: TestClient, book_id: str, page: int):
+    intent = {"bookId": book_id, "purpose": None, "page": page}
+    return client.post(
+        START_READING, files={"intent": (None, json.dumps(intent), "application/json")}
+    )
+
+
+def test_item35_p0_a_new_reading_stores_the_page_it_starts_at(tmp_path: Path) -> None:
+    builder = LibraryBuilder()
+    kindred = builder.book(title="Kindred", pages=330)
+    builder.write(tmp_path)
+
+    assert _with_page(api_client(tmp_path), kindred, 300).status_code == 200
+
+    (reading,) = stored_book(tmp_path, kindred)["readings"]
+    assert (reading["startPage"], reading["currentPage"]) == (300, 300)
+
+
+def test_item35_p0_a_new_reading_without_a_page_starts_at_0(tmp_path: Path) -> None:
+    builder = LibraryBuilder()
+    kindred = builder.book(title="Kindred", pages=330)
+    builder.write(tmp_path)
+
+    assert _send(api_client(tmp_path), START_READING, kindred, None).status_code == 200
+
+    (reading,) = stored_book(tmp_path, kindred)["readings"]
+    assert (reading["startPage"], reading["currentPage"]) == (0, 0)
+
+
+def test_item35_p0_resuming_with_a_page_keeps_the_start_page(tmp_path: Path) -> None:
+    builder = LibraryBuilder()
+    kindred = builder.book(title="Kindred", pages=330)
+    builder.reading(kindred, start_page=40, current_page=120, paused_at="2026-10-01")
+    builder.write(tmp_path)
+
+    assert _with_page(api_client(tmp_path), kindred, 200).status_code == 200
+
+    (reading,) = stored_book(tmp_path, kindred)["readings"]
+    assert (reading["startPage"], reading["currentPage"]) == (40, 200)
+
+
+def test_item35_p1_no_view_exposes_the_start_page(tmp_path: Path) -> None:
+    builder = LibraryBuilder()
+    kindred = builder.book(title="Kindred", pages=330)
+    builder.reading(kindred, start_page=40, current_page=120)
+    builder.main(kindred)
+    builder.write(tmp_path)
+    client = api_client(tmp_path)
+
+    for path in ("/api/views/home", "/api/views/catalog", f"/api/views/book?id={kindred}"):
+        response = client.get(path)
+        assert response.status_code == 200, path
+        assert "startPage" not in response.text, path
+    assert "startPage" not in json.dumps(create_app().openapi())

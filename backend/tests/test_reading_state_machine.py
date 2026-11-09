@@ -258,6 +258,7 @@ class ReadingPlan(RuleBasedStateMachine):
             self.pages[new["id"]] = page or 0
             assert {k: v for k, v in new.items() if k != "id"} == {
                 "startDate": self.today.isoformat(),
+                "startPage": page or 0,
                 "currentPage": page or 0,
                 "purpose": stored_purpose,
                 "lastProgressUpdate": stamp,
@@ -456,6 +457,7 @@ class ReadingPlan(RuleBasedStateMachine):
             pages = before[book_id]["pages"]
             current = {
                 "startDate": None,
+                "startPage": 0,
                 "currentPage": pages,
                 "purpose": None,
                 "lastProgressUpdate": None,

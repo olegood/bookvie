@@ -39,7 +39,7 @@ from fastapi.testclient import TestClient
 
 from bookvie.http.api import BODY_LIMIT
 from bookvie.store import OsFileSystem, Store, migrations
-from tests.builder import LibraryBuilder
+from tests.builder import LibraryBuilder, as_v1
 from tests.helpers import (
     ADD_BOOK,
     COULDNT_SAVE_BODY,
@@ -263,10 +263,10 @@ def _step_to_2(doc: dict) -> dict:
 def test_ac5_p1_an_older_schema_version_is_migrated_through_the_chain_then_restored(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    # A v1 export, made before this server learned v2 (the test_migrations fixture chain).
+    # A v1 export, upgraded by a stand-in for the real step (as in test_migrations).
     builder = LibraryBuilder()
     builder.book(id=DUNE_ID, **DUNE, tags=["sf"])
-    v1_library = builder.write(tmp_path / "v1").read_bytes()
+    v1_library = as_v1(builder.write(tmp_path / "v1").read_bytes())
     archive = zip_archive({"library.json": v1_library, "covers/": None})
     steps: list[int] = []
 
@@ -278,8 +278,7 @@ def test_ac5_p1_an_older_schema_version_is_migrated_through_the_chain_then_resto
     monkeypatch.setattr(migrations, "STEPS", {1: counted_step})
     target = tmp_path / "target"
     _seed_target(target)
-    client = api_client(target)  # the target itself is migrated to v2 at startup
-    steps.clear()
+    client = api_client(target)
 
     response = post_restore(client, archive)
 
@@ -296,7 +295,7 @@ def test_a_failing_migration_step_is_422_restore_invalid_and_changes_nothing(
 ) -> None:
     builder = LibraryBuilder()
     builder.book(id=DUNE_ID, **DUNE, tags=["sf"])
-    v1_library = builder.write(tmp_path / "v1").read_bytes()
+    v1_library = as_v1(builder.write(tmp_path / "v1").read_bytes())
     archive = zip_archive({"library.json": v1_library, "covers/": None})
     target = tmp_path / "target"
     _seed_target(target)
@@ -305,8 +304,7 @@ def test_a_failing_migration_step_is_422_restore_invalid_and_changes_nothing(
         raise RuntimeError("step 1 broke")
 
     monkeypatch.setattr(migrations, "CURRENT_VERSION", 2)
-    monkeypatch.setattr(migrations, "STEPS", {1: _step_to_2})
-    client = api_client(target)  # the target is migrated to v2 by the working chain
+    client = api_client(target)
     monkeypatch.setattr(migrations, "STEPS", {1: boom})
     capsys.readouterr()
 

@@ -197,6 +197,7 @@ def test_a_never_read_up_next_gets_one_backfilled_reading(tmp_path: Path) -> Non
     assert isinstance(reading.pop("id"), str)
     assert reading == {
         "startDate": None,
+        "startPage": 0,
         "currentPage": 400,
         "purpose": None,
         "lastProgressUpdate": None,

@@ -1258,7 +1258,7 @@ So that I can pick up again without guilt or arithmetic.
 
 **Given** `domain/` Measured pace
 **When** it is unit-tested with a fake Clock
-**Then** it equals total `finishedPages` of finished Readings with a start date ÷ Σ(finishDate − startDate + 1)
+**Then** it equals total `finishedPages` minus `startPage` of finished Readings with a start date ÷ Σ(finishDate − startDate + 1)
 **And** back-filled Readings are excluded, a same-day start and finish counts 1 day, and with no qualifying Reading there is no Measured pace (AR16).
 
 **Given** a Main book

@@ -16,7 +16,7 @@ from typing import Annotated, Literal
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 BookType = Literal["paperback", "hardcover", "ebook"]
 PurposeFulfilled = Literal["yes", "partly", "notYet"]
@@ -35,6 +35,7 @@ class _Model(BaseModel):
 class Reading(_Model):
     id: str
     start_date: date | None
+    start_page: Annotated[int, Field(ge=0)]
     current_page: int
     purpose: str | None
     last_progress_update: AwareDatetime | None

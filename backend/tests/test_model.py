@@ -9,9 +9,9 @@ from bookvie.domain.model import Book, Library, Reading
 from tests.builder import CURATED, LibraryBuilder
 
 
-def test_empty_library_is_the_v1_document() -> None:
+def test_empty_library_is_the_current_document() -> None:
     assert Library.empty().model_dump(by_alias=True) == {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "mainBookId": None,
         "upNextBookId": None,
         "sideReadBookIds": [],
@@ -27,8 +27,8 @@ def test_field_order_follows_ad18_and_ad19() -> None:
         "spineColor", "readings", "cardNotes",
     ]  # fmt: skip
     assert [f.alias for f in Reading.model_fields.values()] == [
-        "id", "startDate", "currentPage", "purpose", "lastProgressUpdate", "pausedAt",
-        "finishDate", "finishedPages", "purposeFulfilled", "rating",
+        "id", "startDate", "startPage", "currentPage", "purpose", "lastProgressUpdate",
+        "pausedAt", "finishDate", "finishedPages", "purposeFulfilled", "rating",
     ]  # fmt: skip
 
 
@@ -49,7 +49,7 @@ def test_builder_defaults_are_valid(library_builder: LibraryBuilder) -> None:
 
 def test_populate_by_name_and_alias() -> None:
     by_alias = Library.model_validate_json(
-        '{"schemaVersion": 1, "mainBookId": null, "upNextBookId": null,'
+        '{"schemaVersion": 2, "mainBookId": null, "upNextBookId": null,'
         ' "sideReadBookIds": [], "books": []}'
     )
     assert by_alias == Library.empty()

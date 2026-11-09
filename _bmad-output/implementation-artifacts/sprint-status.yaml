@@ -363,7 +363,7 @@ action_items:
       `backend/tests/test_reentry.py`. Due: before Epic 5, because a Reading started
       before this lands has no starting page to recover. (F-R2)"
     owner: "Amelia (Dev)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-4-retro-2026-11-09.md"
   - id: "epic-4-retro-item-36-run-test-automation-for-4-4-to-4-7-which"
     epic: 4

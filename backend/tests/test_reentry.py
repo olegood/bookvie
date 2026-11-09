@@ -32,12 +32,13 @@ The imports from ``bookvie.domain.pace`` sit inside the tests, so this module
 collects before the module exists.
 """
 
+import json
 from fractions import Fraction
 from pathlib import Path
 
 from bookvie.views import home
 from tests.builder import LibraryBuilder
-from tests.helpers import api_client
+from tests.helpers import FINISH_READING, START_READING, TODAY, api_client
 
 EARLIER = "2026-10-25T21:00:00+01:00"
 """The Main book's seeded ``lastProgressUpdate``."""
@@ -286,3 +287,121 @@ def test_ac2_p1_days_left_is_exact_when_pages_left_divide_evenly_by_pace() -> No
     main_book = home(library).main_book
     assert main_book is not None
     assert main_book.days_left == 15
+
+
+# --- Epic 4 retro item 35: only tracked pages count --------------------------------
+
+
+def _from_page(
+    builder: LibraryBuilder, book: str, start: str, finish: str, pages: int, start_page: int
+) -> None:
+    """A finished Reading of a ``pages``-page Book, started at ``start_page``."""
+    builder.reading(
+        book,
+        start_date=start,
+        start_page=start_page,
+        finish_date=finish,
+        finished_pages=pages,
+        current_page=pages,
+    )
+
+
+def test_item35_p0_a_reading_started_at_a_page_counts_only_the_pages_after_it() -> None:
+    from bookvie.domain.pace import measured_pace
+
+    builder = LibraryBuilder()
+    emma = builder.book(title="Emma", pages=300)
+    _finished(builder, emma, "2026-09-01", "2026-09-30", 300)  # 10.0 a day
+    kindred = builder.book(title="Kindred", pages=330)
+    _from_page(builder, kindred, "2026-10-01", "2026-10-03", 330, 300)
+
+    assert measured_pace(builder.build()) == Fraction(330, 33)
+
+
+def test_item35_p0_the_f_r2_side_read_no_longer_halves_the_main_book_s_days_left(
+    tmp_path: Path,
+) -> None:
+    builder = LibraryBuilder()
+    left_hand = builder.book(title="The Left Hand of Darkness", pages=400)
+    builder.reading(left_hand, start_date="2026-10-11", current_page=100)
+    builder.main(left_hand)
+    emma = builder.book(title="Emma", pages=300)
+    _finished(builder, emma, "2026-09-01", "2026-09-30", 300)
+    kindred = builder.book(title="Kindred", pages=330)
+    _from_page(builder, kindred, "2026-10-01", "2026-10-03", 330, 300)
+    builder.write(tmp_path)
+
+    body = api_client(tmp_path).get("/api/views/home").json()
+
+    # 300 pages left at 10.0 a day; counting the whole Side read made it 16.
+    assert body["mainBook"]["daysLeft"] == 30
+
+
+def test_item35_p1_a_reading_started_on_its_last_page_counts_0_pages_and_its_days() -> None:
+    from bookvie.domain.pace import measured_pace
+
+    builder = LibraryBuilder()
+    emma = builder.book(title="Emma", pages=330)
+    _from_page(builder, emma, "2026-10-01", "2026-10-02", 330, 330)
+    assert measured_pace(builder.build()) == Fraction(0)
+
+    kindred = builder.book(title="Kindred", pages=100)
+    _finished(builder, kindred, "2026-09-25", "2026-09-25", 100)
+    # 100 pages over 2 + 1 days.
+    assert measured_pace(builder.build()) == Fraction(100, 3)
+
+
+def test_item35_p1_pages_cut_below_the_start_count_0_never_negative() -> None:
+    from bookvie.domain.pace import measured_pace
+
+    builder = LibraryBuilder()
+    emma = builder.book(title="Emma", pages=100)
+    _from_page(builder, emma, "2026-10-01", "2026-10-02", 100, 300)
+    kindred = builder.book(title="Kindred", pages=100)
+    _finished(builder, kindred, "2026-09-25", "2026-09-25", 100)
+
+    assert measured_pace(builder.build()) == Fraction(100, 3)
+
+
+def test_item35_p1_a_back_fill_stays_out_of_pace_whatever_its_start_page() -> None:
+    from bookvie.domain.pace import measured_pace
+
+    builder = LibraryBuilder()
+    emma = builder.book(title="Emma", pages=400)
+    builder.reading(
+        emma,
+        start_date=None,
+        start_page=300,
+        finish_date="2025-06-01",
+        finished_pages=400,
+        current_page=400,
+    )
+
+    assert measured_pace(builder.build()) is None
+
+
+def test_item35_p0_starting_at_page_300_and_finishing_counts_30_pages_through_the_api(
+    tmp_path: Path,
+) -> None:
+    from bookvie.domain.pace import measured_pace
+
+    builder = LibraryBuilder()
+    kindred = builder.book(title="Kindred", pages=330)
+    builder.write(tmp_path)
+    client = api_client(tmp_path)
+
+    def post(path: str, intent: dict):
+        return client.post(path, files={"intent": (None, json.dumps(intent), "application/json")})
+
+    start = {"bookId": kindred, "purpose": None, "page": 300}
+    assert post(START_READING, start).status_code == 200
+    finish = {
+        "bookId": kindred,
+        "finishedOn": TODAY.isoformat(),
+        "purposeFulfilled": None,
+        "rating": None,
+    }
+    assert post(FINISH_READING, finish).status_code == 200
+
+    # Started and finished today: 1 day. The whole Book would be 330.
+    assert measured_pace(client.app.state.store.library) == Fraction(30)

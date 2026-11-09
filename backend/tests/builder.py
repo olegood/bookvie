@@ -27,6 +27,7 @@ from typing import Any
 from pydantic.alias_generators import to_camel
 
 from bookvie.domain import Library, check_invariants
+from bookvie.domain.model import SCHEMA_VERSION
 from bookvie.store import LIBRARY_NAME, serialize
 
 # Sage, Slate, Clay, Ochre, Plum, Teal, Moss, Stone (DESIGN.md, Spine colors).
@@ -46,10 +47,20 @@ def _camel(overrides: dict[str, Any]) -> dict[str, Any]:
     return {to_camel(key): value for key, value in overrides.items()}
 
 
+def as_v1(library_json: bytes) -> bytes:
+    """Current ``library.json`` bytes as schemaVersion 1 wrote them: no ``startPage``."""
+    doc = json.loads(library_json)
+    doc["schemaVersion"] = 1
+    for book in doc["books"]:
+        for reading in book["readings"]:
+            del reading["startPage"]
+    return (json.dumps(doc, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
+
+
 class LibraryBuilder:
     def __init__(self) -> None:
         self._doc: dict[str, Any] = {
-            "schemaVersion": 1,
+            "schemaVersion": SCHEMA_VERSION,
             "mainBookId": None,
             "upNextBookId": None,
             "sideReadBookIds": [],
@@ -120,6 +131,7 @@ class LibraryBuilder:
         reading: dict[str, Any] = {
             "id": str(uuid.uuid4()),
             "startDate": _BASE_DATE.isoformat(),
+            "startPage": 0,
             "currentPage": 0,
             "purpose": None,
             "lastProgressUpdate": self._stamp(),

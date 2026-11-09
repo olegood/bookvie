@@ -15,7 +15,8 @@ commit:
   sent Purpose; or, with no current Reading (never started, or every Reading
   finished), a new Reading is appended: ``startDate`` = today, page 0,
   ``lastProgressUpdate`` = now, every other field ``null``. A sent ``page``
-  becomes that Reading's ``currentPage``, even below the paused page;
+  becomes that Reading's ``currentPage``, even below the paused page, and a
+  new Reading's ``startPage`` too; resuming never changes ``startPage``;
 - ``mainBookId`` becomes the Book;
 - ``upNextBookId`` follows FR-7: with a Main book *Y* (another Book), it
   becomes *Y*, the interrupted Book. An earlier Up next *Z* is displaced,
@@ -113,10 +114,12 @@ def start_reading(store: Store, clock: Clock, intent: StartReadingIntent) -> boo
             resumed = reading.model_copy(update=update)
             readings = [resumed if r.id == reading.id else r for r in book.readings]
         else:
+            start_page = page if page is not None else 0
             started = Reading(
                 id=str(uuid.uuid4()),
                 start_date=clock.today(),
-                current_page=page if page is not None else 0,
+                start_page=start_page,
+                current_page=start_page,
                 purpose=purpose,
                 last_progress_update=now,
                 paused_at=None,
