@@ -343,7 +343,7 @@ action_items:
       `frontend/src/lib/pause.ts`, `frontend/src/components/StartDialog.tsx`, `frontend/e2e/up-next.spec.ts`.
       Due: before Epic 5. (F-R3)"
     owner: "Sally (UX) for copy, Amelia (Dev)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-4-retro-2026-11-09.md"
   - id: "epic-4-retro-item-34-a-back-fill-through-edit-book-s-finished"
     epic: 4

@@ -114,7 +114,7 @@ The user can make a Book the Main book, or resume a paused Reading, through a St
 - **Consequences:**
   - Confirming pauses the previous Reading at its current page and creates or resumes a Reading for *X*.
   - Starting a finished Book creates a new Reading for the re-read.
-  - When the start displaces the Up next Book, the confirmation names it: "*Z* moves to Waiting for you." if *Z* has a paused Reading, or "*Z* returns to the catalog." if it was never started.
+  - When the start displaces the Up next Book, the confirmation names it: "*Z* moves to Waiting for you." if *Z* has a paused Reading, "*Z* stays on the side." if it has none and is a Side read, or "*Z* returns to the catalog." if it has none and is not a Side read.
 
 #### FR-6: Pause
 The user can pause the Main book from Book detail or from the Main book card's "⋯" menu. Its current page is kept, and bookvie has no Main book until the user chooses one.
@@ -126,7 +126,7 @@ The user can pause the Main book from Book detail or from the Main book card's "
 The user can set one Book as Up next.
 - **Consequences:**
   - A Main book that is interrupted (FR-5) or paused (FR-6) becomes Up next.
-  - When a new Book takes over Up next, the displaced Book moves to Waiting for you if it has a paused Reading. If it was never started, it returns to the catalog.
+  - When a new Book takes over Up next, the displaced Book moves to Waiting for you if it has a paused Reading. If it has none and is a Side read, it stays on the side. Otherwise it returns to the catalog.
   - Waiting for you lists every paused Reading except the Up next Book's, oldest paused-at date first, with no cap. A paused Book that is Up next appears only in Up next, with Resume.
   - The user can resume any paused Reading at any time, from Waiting for you or from Up next. Resuming goes through the FR-5 confirmation, so there is still only one Main book.
 

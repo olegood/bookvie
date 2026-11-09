@@ -311,6 +311,43 @@ test.describe('Story 4.1 Keep the interrupted book as Up next (green-phase follo
     }
   })
 
+  test('[P0] AC-2 a never-started Up next that is a Side read stays on the side., and confirming leaves it in On the side', async ({
+    page,
+  }) => {
+    // Main: The Left Hand of Darkness at p.212; Up next: Dune, never started and a Side read.
+    const server = await serverAtFakeToday(page, 'up-next-stays-on-the-side', {
+      mainBookId: LEFT_HAND_ID,
+      upNextBookId: DUNE_ID,
+      sideReadBookIds: [DUNE_ID],
+      books: [LEFT_HAND_MAIN, DUNE, FAHRENHEIT],
+    })
+    try {
+      await page.goto(`${server.url}/book/${FAHRENHEIT_ID}`)
+      await page.getByRole('main').getByRole('button', { name: 'Start reading', exact: true }).click()
+      const dialog = startDialog(page, 'Start Fahrenheit 451?')
+      await expect(dialog).toContainText('Dune stays on the side.')
+      await expect(dialog).not.toContainText('returns to the catalog')
+      await expect(dialog).not.toContainText('moves to Waiting for you')
+      await expect(dialog).toHaveAccessibleDescription(
+        'This pauses The Left Hand of Darkness at p.212 (64%). Dune stays on the side.',
+      )
+      expect(await fontFamily(dialog.getByText('Dune', { exact: true }))).toMatch(/^ui-serif/)
+
+      await dialog.getByRole('button', { name: 'Start reading', exact: true }).click()
+      await expect(mainBookCard(page).getByRole('link', { name: 'Fahrenheit 451', exact: true })).toBeFocused()
+      await expect(upNextPane(page).getByRole('button', { name: RESUME_LEFT_HAND, exact: true })).toBeVisible()
+      await expect(upNextPane(page).getByText('Dune', { exact: true })).toHaveCount(0)
+      const onTheSide = page.getByRole('main').getByRole('region', { name: 'On the side', exact: true })
+      await expect(onTheSide.getByRole('link', { name: 'Dune', exact: true })).toBeVisible()
+      const library = storedLibrary(server)
+      expect(library.upNextBookId).toBe(LEFT_HAND_ID)
+      expect(library.sideReadBookIds).toEqual([DUNE_ID])
+      expect(storedBook(server, DUNE_ID).readings).toEqual([])
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+
   test('[P1] AC-2 with an Up next but no Main book, the Start dialog has no trade-off line, and Up next stays', async ({
     page,
     seededServer,

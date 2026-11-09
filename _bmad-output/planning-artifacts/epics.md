@@ -55,11 +55,11 @@ FR-3 [Must]: Duplicate warning. A new Book matching an existing one triggers a w
 
 FR-4 [Must]: Browse the catalog. The user can list Books, search them by title, and open them.
 
-FR-5 [Must]: Start a Reading with confirmation. The user makes a Book the Main book, or resumes a paused Reading, through a Start confirmation shown on every start or resume; it holds the optional Purpose field. When a Main book exists it shows the trade-off ("Start *X*? This pauses *Y* at p.120 (64%)"). Confirming pauses the previous Reading at its current page and creates or resumes a Reading for *X*. Starting a finished Book creates a new Reading (re-read). When the start displaces the Up next Book *Z*, the confirmation says "*Z* moves to Waiting for you." (paused Reading) or "*Z* returns to the catalog." (never started).
+FR-5 [Must]: Start a Reading with confirmation. The user makes a Book the Main book, or resumes a paused Reading, through a Start confirmation shown on every start or resume; it holds the optional Purpose field. When a Main book exists it shows the trade-off ("Start *X*? This pauses *Y* at p.120 (64%)"). Confirming pauses the previous Reading at its current page and creates or resumes a Reading for *X*. Starting a finished Book creates a new Reading (re-read). When the start displaces the Up next Book *Z*, the confirmation says "*Z* moves to Waiting for you." (paused Reading), "*Z* stays on the side." (no paused Reading, a Side read) or "*Z* returns to the catalog." (no paused Reading, not a Side read).
 
 FR-6 [Must]: Pause. The user can pause the Main book from Book detail or from the Main book card's "⋯" menu; its current page is kept and there is no Main book until the user chooses one. Every pause records the Reading's paused-at date. When pausing would displace an Up next Book, a confirmation says so first.
 
-FR-7 [Must]: Up next and Waiting for you. The user can set one Book as Up next. An interrupted or paused Main book becomes Up next. A displaced Up next Book moves to Waiting for you if it has a paused Reading, else returns to the catalog. Waiting for you lists every paused Reading except the Up next Book's, oldest paused-at date first, no cap. A paused Up next Book appears only in Up next, with Resume. Any paused Reading can be resumed at any time from Waiting for you or Up next, through the FR-5 confirmation.
+FR-7 [Must]: Up next and Waiting for you. The user can set one Book as Up next. An interrupted or paused Main book becomes Up next. A displaced Up next Book moves to Waiting for you if it has a paused Reading, else stays on the side if it is a Side read, else returns to the catalog. Waiting for you lists every paused Reading except the Up next Book's, oldest paused-at date first, no cap. A paused Up next Book appears only in Up next, with Resume. Any paused Reading can be resumed at any time from Waiting for you or Up next, through the FR-5 confirmation.
 
 FR-8 [Should]: Side reads. The user can mark up to 3 Books as Side reads. Marking/unmarking changes nothing else (no status change, Reading, progress, stats, goals or nudges). Starting a Side read by any route asks "Which page?" in the FR-5 confirmation and tracking starts from that page. A Side read that becomes the Main book, or is finished, leaves the Side reads automatically.
 
@@ -1422,7 +1422,7 @@ So that it is the first thing bookvie offers me once the urgent one is done.
 
 **Given** a Main book *Y* and an Up next *Z* that isn't *X*
 **When** the Start dialog opens for *X*
-**Then** below "This pauses *Y* at p.120 (64%)." it adds "*Z* moves to Waiting for you." when *Z* has a paused Reading, or "*Z* returns to the catalog." when *Z* was never started (FR-5, UX-DR39)
+**Then** below "This pauses *Y* at p.120 (64%)." it adds "*Z* moves to Waiting for you." when *Z* has a paused Reading, "*Z* stays on the side." when *Z* has none and is a Side read, or "*Z* returns to the catalog." when *Z* has none and is not a Side read (FR-5, UX-DR39)
 **And** confirming makes *Y* Up next and moves *Z* exactly as stated.
 
 **Given** *X* is itself the Up next Book
@@ -1506,7 +1506,7 @@ So that I can step away from reading entirely without losing my place.
 
 **Given** a Main book and an Up next *Z*
 **When** I choose **Pause**
-**Then** a Confirm `alertdialog` first says "Pause *X* at p.150 (58%)? *Z* moves to Waiting for you." (or "*Z* returns to the catalog."), with **Pause** and **Cancel** (Cancel has default focus) (UX-DR40)
+**Then** a Confirm `alertdialog` first says "Pause *X* at p.150 (58%)? *Z* moves to Waiting for you." (or "*Z* stays on the side." or "*Z* returns to the catalog."), with **Pause** and **Cancel** (Cancel has default focus) (UX-DR40)
 **And** confirming applies the pause and moves *Z* as stated, while **Cancel** or Esc changes nothing.
 
 **Given** a Book that is no longer Main
@@ -1557,7 +1557,7 @@ So that the Book I mean to read next is ready when the current one is done.
 
 **Given** an existing Up next *Z*
 **When** another Book becomes Up next
-**Then** *Z* moves to Waiting for you if it has a paused Reading, otherwise it returns to the catalog.
+**Then** *Z* moves to Waiting for you if it has a paused Reading, stays on the side if it has none and is a Side read, otherwise it returns to the catalog.
 
 **Given** an existing Up next
 **When** a spine popover offers **Set as Up next**

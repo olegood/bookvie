@@ -377,6 +377,23 @@ def test_p0_the_views_carry_the_side_read_fields(tmp_path: Path) -> None:
     ]
 
 
+@pytest.mark.parametrize("side_read", [True, False], ids=["side-read", "not-side-read"])
+def test_p0_the_home_up_next_says_whether_it_is_a_side_read(
+    tmp_path: Path, side_read: bool
+) -> None:
+    builder = LibraryBuilder()
+    _main_dune(builder)
+    emma = builder.book(title="Emma", authors=["Jane Austen"], pages=200)
+    builder.up_next(emma)
+    if side_read:
+        builder.side_read(emma)
+    builder.write(tmp_path)
+
+    up_next = _view(tmp_path, "/api/views/home")["upNext"]
+    assert up_next["id"] == emma
+    assert up_next["sideRead"] is side_read
+
+
 # --- the standard intent ACs (TR8) ------------------------------------------------
 
 

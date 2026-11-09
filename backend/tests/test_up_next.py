@@ -291,6 +291,7 @@ def test_ac7_p1_the_home_view_carries_up_next_with_whether_it_is_paused(
         "coverFile": None,
         "hasCover": False,
         "paused": True,
+        "sideRead": False,
     }
 
     # A never-started Up next, and a finished one with no Reading in progress:

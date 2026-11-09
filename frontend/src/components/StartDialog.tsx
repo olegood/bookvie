@@ -10,6 +10,7 @@ import {
 } from '../api/index.ts'
 import { announce, clearAnnouncements } from '../lib/announce.ts'
 import { pageRangeMessage, pageSavedCopy, parsePage } from '../lib/pageField.ts'
+import { displacementOutcome } from '../lib/pause.ts'
 import { detailPrimary } from '../lib/startReading.ts'
 import { useAlertDialog } from '../lib/useAlertDialog.ts'
 import Button from './Button.tsx'
@@ -40,7 +41,7 @@ type OpenProps = {
   opened: BookDetailView
   /** The home view's Main book: the trade-off line's title, page and percent (AD-6). */
   mainBook: HomeMainBook | null
-  /** The home view's Up next: the displacement line's *Z*, and whether it is paused. */
+  /** The home view's Up next: the displacement line's *Z*, and whether it is paused or a Side read. */
   upNext: HomeUpNext | null
   onCancel: () => void
 }
@@ -170,7 +171,7 @@ function OpenStartDialog({ book, opened, mainBook, upNext, onCancel }: OpenProps
         {displaced && (
           <p id={displacedId} className={styles.tradeOff}>
             <span className={styles.bookTitle}>{displaced.title}</span>
-            {displaced.paused ? ' moves to Waiting for you.' : ' returns to the catalog.'}
+            {` ${displacementOutcome(displaced)}`}
           </p>
         )}
         {asksPage && (
@@ -218,8 +219,10 @@ function OpenStartDialog({ book, opened, mainBook, upNext, onCancel }: OpenProps
  * "Resume *X*?" (a paused one, its Purpose prefilled), *X* in the
  * book-title face. With another Main book *Y*, "This pauses *Y* at p.N
  * (P%)." from the home view's numbers; and when that pause displaces an Up
- * next *Z* that isn't *X*, "*Z* moves to Waiting for you." (*Z* has a paused
- * Reading) or "*Z* returns to the catalog." (it has none), both named by
+ * next *Z* that isn't *X*, the line from `lib/pause.ts` that Pause's Confirm
+ * dialog shows: "*Z* moves to Waiting for you." (*Z* has a paused Reading),
+ * "*Z* stays on the side." (it has none and is a Side read) or "*Z* returns
+ * to the catalog." (it has none and isn't), both lines named by
  * `aria-describedby`. For a Side read (the opened view's `sideRead`), a
  * required "Which page?" number field comes first, prefilled with the paused
  * page (empty without one) and focused on open; else "Purpose (optional)" is

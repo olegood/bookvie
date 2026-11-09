@@ -718,6 +718,8 @@ export interface components {
             hasCover: boolean;
             /** Paused */
             paused: boolean;
+            /** Sideread */
+            sideRead: boolean;
         };
         /** HomeView */
         HomeView: {

@@ -328,6 +328,30 @@ test.describe('Story 4.3 Pause my Main book', () => {
     expect(storedBook(server, FAHRENHEIT_ID).readings).toEqual([])
   })
 
+  test('[P0] with an unstarted Up next that is a Side read, Pause says Fahrenheit 451 stays on the side., and confirming leaves it in On the side', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ ...UNSTARTED_UP_NEXT, sideReadBookIds: [FAHRENHEIT_ID] })
+    await page.goto(`${server.url}/`)
+    const dialog = pauseDialog(page)
+
+    await moreButton(page).click()
+    await item(page, 'Pause').click()
+    await expect(dialog).toHaveAccessibleDescription('Fahrenheit 451 stays on the side.')
+    await expect(dialog).not.toContainText('returns to the catalog')
+    await expect(dialog).not.toContainText('moves to Waiting for you')
+
+    await dialog.getByRole('button', { name: 'Pause', exact: true }).click()
+    await expect(mainBookCard(page).getByRole('button', { name: RESUME_LEFT_HAND, exact: true })).toBeFocused()
+    const onTheSide = page.getByRole('main').getByRole('region', { name: 'On the side', exact: true })
+    await expect(onTheSide.getByRole('link', { name: 'Fahrenheit 451', exact: true })).toBeVisible()
+    const library = storedLibrary(server)
+    expect(library.upNextBookId).toBe(LEFT_HAND_ID)
+    expect(library.sideReadBookIds).toEqual([FAHRENHEIT_ID])
+    expect(storedBook(server, FAHRENHEIT_ID).readings).toEqual([])
+  })
+
   test('[P0] with no Up next, Pause from Book detail applies with no dialog and lands on Resume', async ({
     page,
     seededServer,

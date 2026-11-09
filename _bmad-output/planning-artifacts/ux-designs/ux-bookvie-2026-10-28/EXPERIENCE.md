@@ -92,7 +92,7 @@ Microcopy. Brand voice lives in DESIGN.md → Brand & Style. A calm librarian: s
 | "~7 days left" | "Only 7 days to go — keep it up!" |
 | "Last export: 12 days ago" | "Warning: backup overdue" |
 | "Start *X*? This pauses *Y* at p.120 (64%)." | "Are you sure you want to switch books?" |
-| "*Z* returns to the catalog." | "Your previous Up next will be lost!" |
+| "*Z* returns to the catalog." or "*Z* stays on the side." | "Your previous Up next will be lost!" |
 | "Couldn't save. Your data wasn't changed." | "Error! Save failed." |
 | "Your shelf is empty. Add your first book." | "Welcome! Let's build your library!" |
 | "Possible duplicate: *X* by *Author* is already in your catalog." | "Error: duplicate detected" |
@@ -173,7 +173,7 @@ Use: page.
 - **Heading:** the `h1` is the Book title.
 - **Content:** metadata, cover, Tags, current Reading (status, gauge, Purpose), Readings (start, finish, stars, Purpose fulfilled). Back-filled Readings show "Finished 14 Aug 2019" with no start.
 - **Actions:** visible per state; see Book states → Book detail actions.
-- **Pause** (Main book only): pauses the Reading at its current page and records its paused-at date; per FR-7 it becomes Up next. If another Book is Up next, the Confirm dialog first states the displacement ("Pause *X* at p.150 (58%)? *Z* moves to Waiting for you." or "*Z* returns to the catalog.") with **Pause** and **Cancel**. Otherwise Pause applies at once and `status` announces "Paused *X* at p.150. It's Up next."
+- **Pause** (Main book only): pauses the Reading at its current page and records its paused-at date; per FR-7 it becomes Up next. If another Book is Up next, the Confirm dialog first states the displacement ("Pause *X* at p.150 (58%)? *Z* moves to Waiting for you.", "*Z* stays on the side." or "*Z* returns to the catalog.", the same line and rules as the Start dialog) with **Pause** and **Cancel**. Otherwise Pause applies at once and `status` announces "Paused *X* at p.150. It's Up next."
 - **Set as Up next, Mark as Side read, Remove from side:** apply at once with no dialog; `status` announces the outcome (Accessibility Floor → Live regions).
 - **Edit Purpose** (when a Reading is active or paused): turns the Purpose line into a one-line field with **Save** and **Cancel**; Enter saves, Esc cancels. The field is optional with no length limit; surrounding whitespace is trimmed, and saving it empty clears the Purpose.
 - **Mark finished:** opens the Finish dialog.
@@ -219,7 +219,7 @@ Use: anywhere a Reading starts or resumes.
 
 - **Role:** modal. Heading "Start *X*?" (or "Resume *X*?" for a paused Reading). Shown even with no Main book, because it carries the Purpose field.
 - **Opening focus:** on "Which page?" when it is shown, else on Purpose.
-- **Trade-off lines**, each shown only when it applies: "This pauses *Y* at p.120 (64%)." when a Main book exists; and, when that pause will displace an Up next *Z* that is not *X*: "*Z* moves to Waiting for you." (*Z* has a paused Reading) or "*Z* returns to the catalog." (*Z* was never started).
+- **Trade-off lines**, each shown only when it applies: "This pauses *Y* at p.120 (64%)." when a Main book exists; and, when that pause will displace an Up next *Z* that is not *X*: "*Z* moves to Waiting for you." (*Z* has a paused Reading), "*Z* stays on the side." (*Z* has none and is a Side read) or "*Z* returns to the catalog." (*Z* has none and is not a Side read).
 - **Which page?:** a required number field whenever *X* is a Side read, by any route, prefilled with its paused page if it has one, else empty. A value equal to the last page opens the Finish dialog right after confirming.
 - **Purpose:** optional field (one sentence, FR-9), prefilled with the existing Purpose when resuming.
 - **Start reading** or **Resume** confirms: the previous Main book is paused (its paused-at date is recorded) and becomes Up next; the displaced Up next goes as stated. Starting a Side read removes it from On the side. Starting or resuming sets the Reading's "Last updated" to now. Starting a finished Book creates a re-read.

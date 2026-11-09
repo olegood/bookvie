@@ -10,11 +10,19 @@ export function pauseHeading(title: string, page: number, percent: number): stri
 }
 
 /**
- * Where the displaced Up next *Z* goes (FR-7): "Z moves to Waiting for you."
- * when it has a paused Reading, else "Z returns to the catalog.".
+ * Where the displaced Up next *Z* goes (FR-7), the text after its title:
+ * "moves to Waiting for you." when it has a paused Reading (a Side read too,
+ * since it shows in both panes), else "stays on the side." for a Side read,
+ * else "returns to the catalog.".
  */
-export function displacementLine(upNext: Pick<HomeUpNext, 'title' | 'paused'>): string {
-  return upNext.paused ? `${upNext.title} moves to Waiting for you.` : `${upNext.title} returns to the catalog.`
+export function displacementOutcome(upNext: Pick<HomeUpNext, 'paused' | 'sideRead'>): string {
+  if (upNext.paused) return 'moves to Waiting for you.'
+  return upNext.sideRead ? 'stays on the side.' : 'returns to the catalog.'
+}
+
+/** The whole displacement line: "Z moves to Waiting for you.". */
+export function displacementLine(upNext: Pick<HomeUpNext, 'title' | 'paused' | 'sideRead'>): string {
+  return `${upNext.title} ${displacementOutcome(upNext)}`
 }
 
 /** The `status` line once the pause has landed: "Paused Dune at p.150. It's Up next.". */

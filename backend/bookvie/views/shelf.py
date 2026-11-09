@@ -133,6 +133,7 @@ def _up_next(library: Library) -> HomeUpNext | None:
         cover_file=book.cover_file,
         has_cover=_has_cover(book),
         paused=current_reading(book) is not None,
+        side_read=book.id in library.side_read_book_ids,
     )
 
 

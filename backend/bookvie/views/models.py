@@ -82,8 +82,11 @@ class HomeUpNext(_View):
     has_cover: bool
     paused: bool
     """Whether the Book has a current (unfinished) Reading: **Resume** and "moves to
-    Waiting for you." when true, **Start reading** and "returns to the catalog." when
+    Waiting for you." when true, **Start reading** and a line from ``side_read`` when
     false (a finished Book with no Reading in progress counts as never started)."""
+    side_read: bool
+    """Whether the Book is a Side read: "stays on the side." instead of "returns to the
+    catalog." when a not-paused Up next is displaced."""
 
 
 class HomeWaiting(_View):
