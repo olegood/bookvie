@@ -47,6 +47,7 @@ EDIT_PURPOSE = "/api/intents/edit-purpose"
 UPDATE_PAGE = "/api/intents/update-page"
 FINISH_READING = "/api/intents/finish-reading"
 PAUSE = "/api/intents/pause"
+SET_UP_NEXT = "/api/intents/set-up-next"
 
 # The fake today. Year may be at most next year (2027); Finished on at most today.
 TODAY = date(2026, 10, 30)
@@ -300,3 +301,11 @@ class RecordingFs(OsFileSystem):
     def remove(self, path: Path) -> None:
         super().remove(path)
         self._note("remove", path)
+
+
+def seeded_store(data_dir: Path, fs: OsFileSystem | None = None) -> Store:
+    """A store over a data folder seeded with one untagged Dune."""
+    builder = LibraryBuilder()
+    builder.book(title="Dune", tags=[])
+    builder.write(data_dir)
+    return Store.open(data_dir, fs=fs)

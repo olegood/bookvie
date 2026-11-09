@@ -497,10 +497,12 @@ test.describe('Story 1.14 Change a book’s color from the shelf (follow-ups)', 
     await expect(dune).toBeFocused()
 
     // Opening another spine's popover moves focus into it: to its first
-    // control, "Start reading" for a Book never started (Story 3.2).
+    // control, Set as Up next for a Book never started (Stories 3.2, 4.4).
     await dune.click()
     await spine(page, NEUROMANCER_SPINE).click()
-    await expect(popover(page, 'Neuromancer').getByRole('button', { name: 'Start reading', exact: true })).toBeFocused()
+    await expect(
+      popover(page, 'Neuromancer').getByRole('button', { name: 'Set as Up next', exact: true }),
+    ).toBeFocused()
 
     // A search that hides the open spine closes its popover.
     await page.keyboard.press('Escape')

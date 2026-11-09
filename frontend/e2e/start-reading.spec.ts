@@ -614,11 +614,13 @@ test.describe('Story 3.2 Start reading a book (automate)', () => {
     await expect(dialog).toHaveCount(0)
     await expect(dune).toBeFocused()
 
-    // Keyboard: Enter opens the popover with Start reading focused, Enter opens the dialog, Esc closes it.
+    // Keyboard: Enter opens the popover with Set as Up next focused (Story 4.4), Tab
+    // moves to Start reading, Enter opens the dialog, Esc closes it.
     await page.keyboard.press('Enter')
-    await expect(
-      page.getByRole('dialog', { name: 'Dune', exact: true }).getByRole('button', { name: 'Start reading' }),
-    ).toBeFocused()
+    const card = page.getByRole('dialog', { name: 'Dune', exact: true })
+    await expect(card.getByRole('button', { name: 'Set as Up next', exact: true })).toBeFocused()
+    await page.keyboard.press('Tab')
+    await expect(card.getByRole('button', { name: 'Start reading' })).toBeFocused()
     await page.keyboard.press('Enter')
     await expect(purposeField(dialog)).toBeFocused()
     await page.keyboard.press('Escape')

@@ -25,8 +25,10 @@ import {
 import { COULDNT_LOAD } from '../lib/copy.ts'
 import { usePageTitle } from '../lib/page.ts'
 import { pausedStatus } from '../lib/pause.ts'
+import { detailOffersSetUpNext, SETTING_UP_NEXT, upNextStatus } from '../lib/setUpNext.ts'
 import { detailPrimary } from '../lib/startReading.ts'
 import { PAUSING, usePauseFlow, type PauseBook } from '../lib/usePauseFlow.tsx'
+import { useSetUpNextFlow } from '../lib/useSetUpNextFlow.ts'
 import NewBookPanel from './NewBookPanel.tsx'
 import NotFoundPage from './NotFoundPage.tsx'
 import styles from './BookDetailPage.module.css'
@@ -136,6 +138,42 @@ function BookDetail({ book, onDelete, onFinish, finishButton }: BookDetailProps)
     setStartRefocus((count) => count + 1)
   }, [])
 
+  // Set as Up next: any Book that is neither Main nor already Up next. Once
+  // the refetched view shows it as Up next, focus goes to its primary (the
+  // `h1` if none), then `status` says so.
+  const offersSetUpNext = detailOffersSetUpNext(book.role)
+  const setUpNextButton = useRef<HTMLButtonElement>(null)
+  // The line to say, and the role the Book had when it was pressed.
+  const setUpNextLine = useRef<{ line: string; from: BookDetailView['role'] } | null>(null)
+  const [setUpNexts, setSetUpNexts] = useState(0)
+  const role = book.role
+  const onSet = useCallback(
+    (title: string) => {
+      setUpNextLine.current = { line: upNextStatus(title), from: role }
+      setSetUpNexts((count) => count + 1)
+    },
+    [role],
+  )
+  const primaryOrHeading = () => startButton.current ?? document.querySelector<HTMLElement>('main h1')
+  const {
+    request: requestSetUpNext,
+    busy: settingUpNext,
+    failed: setUpNextFailed,
+    regionSlot: setUpNextSlot,
+  } = useSetUpNextFlow({ opener: setUpNextButton, fallback: primaryOrHeading, onSet })
+
+  // `sendIntent` resolves after the refetch, but the view may render it a
+  // tick later: while the Book keeps the role it had, wait. Any other view
+  // settles the line, said only if it shows the Book as Up next.
+  useEffect(() => {
+    const pending = setUpNextLine.current
+    if (pending === null || book.role === pending.from) return
+    setUpNextLine.current = null
+    if (book.role !== 'upNext') return
+    primaryOrHeading()?.focus()
+    announce('status', pending.line)
+  }, [setUpNexts, book.role])
+
   // Mark finished: the Main book only (a non-Main finish is Story 4.5's).
   const canFinish = book.role === 'main'
   // Pause: the Main book only, whatever Story 4.5 does to `canFinish`.
@@ -222,6 +260,21 @@ function BookDetail({ book, onDelete, onFinish, finishButton }: BookDetailProps)
                 {primary}
               </Button>
             )}
+            {offersSetUpNext && (
+              <Button
+                ref={setUpNextButton}
+                disabledReason={settingUpNext ? SETTING_UP_NEXT : undefined}
+                onClick={() => requestSetUpNext({ id: book.id, title: book.title })}
+              >
+                Set as Up next
+              </Button>
+            )}
+            {/* Below Set as Up next, or where it was once a stale tab's refusal has removed it. */}
+            <div
+              ref={setUpNextSlot}
+              className={styles.regions}
+              data-show-alert={setUpNextFailed ? 'true' : undefined}
+            />
             {canPause && (
               <Button ref={pauseButton} disabledReason={pausing ? PAUSING : undefined} onClick={requestPause}>
                 Pause
@@ -325,8 +378,9 @@ function BookDetail({ book, onDelete, onFinish, finishButton }: BookDetailProps)
  * card; on the left the cover (an `img` "Cover of *Title*") or the no-cover
  * placeholder (`role="img"` "No cover"), 200×300, then the action stack
  * (the state-aware primary — **Start reading** or **Resume**, none for the
- * Main book — then **Pause** and **Mark finished** for the Main book, then
- * **Edit**, then **Delete**); the Book on the right. An unknown id shows
+ * Main book — then **Set as Up next** unless the Book is Main or Up next,
+ * then **Pause** and **Mark finished** for the Main book, then **Edit**,
+ * then **Delete**); the Book on the right. An unknown id shows
  * the not-found page. The title is set by the child that renders, never
  * here: child effects run first, so a title set here would overwrite the
  * not-found page's.
@@ -346,6 +400,14 @@ function BookDetail({ book, onDelete, onFinish, finishButton }: BookDetailProps)
  * its **Resume**. Once the refetched view shows
  * the Book as a paused Up next, focus goes to its **Resume** and then
  * `status` reads "Paused *X* at p.N. It's Up next."
+ *
+ * **Set as Up next** (`lib/useSetUpNextFlow.ts`) sends `set-up-next` at once,
+ * with no dialog, `aria-disabled` while it is out. Once the refetched view
+ * shows the Book as Up next, focus goes to the primary (the `h1` if none),
+ * then `status` reads "*X* is Up next.". A failure shows its line directly
+ * below the button, focus kept there; when a stale tab's refusal has removed
+ * the button, focus goes to the primary (else the `h1`) and the line stays
+ * where the button was.
  *
  * Delete: once `delete-book` is sent, the refetched view may already say the
  * Book is gone before the request resolves. Until the outcome is known the

@@ -14,6 +14,7 @@ export const EDIT_PURPOSE = '/api/intents/edit-purpose'
 export const UPDATE_PAGE = '/api/intents/update-page'
 export const FINISH_READING = '/api/intents/finish-reading'
 export const PAUSE = '/api/intents/pause'
+export const SET_UP_NEXT = '/api/intents/set-up-next'
 
 // A 40×60 solid red-orange PNG (rgb 200, 60, 40): a colored cover.
 export const COVER_PNG = Buffer.from(

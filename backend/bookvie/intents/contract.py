@@ -50,6 +50,7 @@ class ErrorCode(StrEnum):
     ALREADY_MAIN = "already_main"
     READING_ALREADY_FINISHED = "reading_already_finished"
     NOT_MAIN_BOOK = "not_main_book"
+    MAIN_CANNOT_BE_UP_NEXT = "main_cannot_be_up_next"
 
 
 class FieldError(_Wire):
@@ -218,6 +219,21 @@ def not_main_book() -> IntentError:
             kind=ErrorKind.REFUSAL,
             code=ErrorCode.NOT_MAIN_BOOK,
             message=NOT_MAIN_BOOK_MESSAGE,
+        ),
+    )
+
+
+MAIN_CANNOT_BE_UP_NEXT_MESSAGE = "Your Main book can't be Up next."
+
+
+def main_cannot_be_up_next() -> IntentError:
+    """409 ``main_cannot_be_up_next``: ``set-up-next`` for the Main book, e.g. a stale tab (AD-9)."""
+    return IntentError(
+        409,
+        ErrorBody(
+            kind=ErrorKind.REFUSAL,
+            code=ErrorCode.MAIN_CANNOT_BE_UP_NEXT,
+            message=MAIN_CANNOT_BE_UP_NEXT_MESSAGE,
         ),
     )
 

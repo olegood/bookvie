@@ -39,6 +39,7 @@ INTENT_ROUTES = {
     "edit-purpose": {"bookId": DUNE_ID, "purpose": None},
     "update-page": {"bookId": DUNE_ID, "page": 1},
     "pause": {"bookId": DUNE_ID},
+    "set-up-next": {"bookId": DUNE_ID},
     "restore": {},
 }
 """Each intent route with an intent it would accept for the seeded Dune.

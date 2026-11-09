@@ -17,7 +17,9 @@ import sys
 import threading
 from collections.abc import Callable, Iterable, Mapping
 from datetime import datetime
+from enum import Enum
 from pathlib import Path
+from typing import Final, Literal
 
 from pydantic import ValidationError
 
@@ -32,6 +34,23 @@ LIBRARY_NAME = "library.json"
 TEMP_PREFIX = "library.json.tmp"
 COVERS_DIR = "covers"
 STAGING_DIR = ".staging"
+
+
+class _Unchanged(Enum):
+    UNCHANGED = "unchanged"
+
+
+UNCHANGED: Final = _Unchanged.UNCHANGED
+"""What a change passed to :meth:`Store.apply` returns to commit nothing (AD-9's no-op).
+
+The decision is made under the store lock, inside the one locked change, so
+a check like "already Up next" can't race another commit. The store then
+removes any ``new_files`` it wrote, skips the commit and returns the current
+library.
+"""
+
+Unchanged = Literal[_Unchanged.UNCHANGED]
+"""The type of :data:`UNCHANGED`, for a change's return annotation."""
 
 
 def _log(message: str) -> None:
@@ -397,7 +416,7 @@ class Store:
 
     def apply(
         self,
-        change: Callable[[Library], Library | None],
+        change: Callable[[Library], Library | Unchanged | None],
         new_files: Mapping[str, bytes] | None = None,
     ) -> Library:
         """Write ``new_files``, apply ``change`` and commit it once, or change nothing.
@@ -417,13 +436,17 @@ class Store:
         :class:`InvariantViolation`. That, an exception from ``change``, an
         :class:`InvariantViolation` or :class:`CouldntSave` leaves the file and
         :attr:`library` unchanged.
+
+        ``change`` may instead return :data:`UNCHANGED` (AD-9's no-op): the new
+        files are removed again, nothing is committed (no write, no rename)
+        and the current library is returned.
         """
         with self.lock:
             return self._apply_locked(change, new_files)
 
     def _apply_locked(
         self,
-        change: Callable[[Library], Library | None],
+        change: Callable[[Library], Library | Unchanged | None],
         new_files: Mapping[str, bytes] | None,
     ) -> Library:
         written: list[Path] = []
@@ -438,6 +461,9 @@ class Store:
                 written.append(target)
             draft = self._library.model_copy(deep=True)
             result = change(draft)
+            if result is UNCHANGED:
+                undo()
+                return self._library
             new = draft if result is None else result
             # Assignment isn't validated; re-check so the next start can load it.
             new = Library.model_validate(new.model_dump(warnings=False))

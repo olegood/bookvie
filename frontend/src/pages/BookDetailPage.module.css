@@ -46,8 +46,8 @@
   width: 100%;
 }
 
-/* The live regions' slot below Pause: no grid row until a failed pause puts
-   its alert line there, one calm line in ink. */
+/* The live regions' slots below Set as Up next and Pause: no grid row until a
+   failed press puts its alert line there, one calm line in ink. */
 .regions:not([data-show-alert='true']) {
   display: contents;
 }

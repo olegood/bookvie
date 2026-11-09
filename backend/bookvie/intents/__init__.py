@@ -25,6 +25,7 @@ from .contract import (
     cover_too_large,
     duplicate_book,
     invalid_fields,
+    main_cannot_be_up_next,
     not_main_book,
     pages_refusal,
     reading_already_finished,
@@ -50,6 +51,7 @@ from .set_spine_color import (
     parse_set_spine_color_intent,
     set_spine_color,
 )
+from .set_up_next import SetUpNextIntent, parse_set_up_next_intent, set_up_next
 from .start_reading import StartReadingIntent, parse_start_reading_intent, start_reading
 from .update_page import UpdatePageIntent, parse_update_page_intent, update_page
 
@@ -80,6 +82,7 @@ __all__ = [
     "RefusedCover",
     "RestoreIntent",
     "SetSpineColorIntent",
+    "SetUpNextIntent",
     "StartReadingIntent",
     "SystemClock",
     "UpdatePageIntent",
@@ -99,6 +102,7 @@ __all__ = [
     "export_filename",
     "finish_reading",
     "invalid_fields",
+    "main_cannot_be_up_next",
     "malformed_intent",
     "max_upload_bytes",
     "not_main_book",
@@ -111,6 +115,7 @@ __all__ = [
     "parse_pause_intent",
     "parse_restore_intent",
     "parse_set_spine_color_intent",
+    "parse_set_up_next_intent",
     "parse_start_reading_intent",
     "parse_update_page_intent",
     "pause",
@@ -122,6 +127,7 @@ __all__ = [
     "restore_newer_version",
     "restore_unsafe",
     "set_spine_color",
+    "set_up_next",
     "start_reading",
     "update_page",
 ]

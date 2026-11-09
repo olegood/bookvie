@@ -349,6 +349,7 @@ export default function Bookcase(props: Props) {
             shelf={shelf}
             onClose={closePopover}
             onStart={openStart}
+            hasUpNext={books.some((book) => book.role === 'upNext')}
           />
         </div>
       )}

@@ -293,6 +293,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/intents/set-up-next": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Set Up Next Intent
+         * @description Make a Book Up next, displacing any earlier one (FR-7); a no-op for the current Up next.
+         */
+        post: operations["set_up_next_intent_api_intents_set_up_next_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/intents/restore": {
         parameters: {
             query?: never;
@@ -409,6 +429,14 @@ export interface components {
             /**
              * Intent
              * @description JSON object {"bookId": ..., "spineColor": "#RRGGBB" | null}: null is From cover.
+             */
+            intent?: string | null;
+        };
+        /** Body_set_up_next_intent_api_intents_set_up_next_post */
+        Body_set_up_next_intent_api_intents_set_up_next_post: {
+            /**
+             * Intent
+             * @description JSON object {"bookId": ...}: the Book to make Up next.
              */
             intent?: string | null;
         };
@@ -550,7 +578,7 @@ export interface components {
          * ErrorCode
          * @enum {string}
          */
-        ErrorCode: "invalid_fields" | "couldnt_save" | "duplicate_book" | "book_not_found" | "pages_below_current_page" | "pages_below_card_note" | "cover_too_large" | "couldnt_export" | "restore_invalid" | "restore_newer_version" | "restore_unsafe" | "already_main" | "reading_already_finished" | "not_main_book";
+        ErrorCode: "invalid_fields" | "couldnt_save" | "duplicate_book" | "book_not_found" | "pages_below_current_page" | "pages_below_card_note" | "cover_too_large" | "couldnt_export" | "restore_invalid" | "restore_newer_version" | "restore_unsafe" | "already_main" | "reading_already_finished" | "not_main_book" | "main_cannot_be_up_next";
         /**
          * ErrorKind
          * @enum {string}
@@ -1542,6 +1570,66 @@ export interface operations {
         requestBody?: {
             content: {
                 "multipart/form-data": components["schemas"]["Body_pause_intent_api_intents_pause_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkResponse"];
+                };
+            };
+            /** @description Refused by a library rule */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Invalid fields */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Couldn't save */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Couldn't save */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    set_up_next_intent_api_intents_set_up_next_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_set_up_next_intent_api_intents_set_up_next_post"];
             };
         };
         responses: {

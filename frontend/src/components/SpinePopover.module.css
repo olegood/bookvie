@@ -142,6 +142,50 @@
   line-height: var(--font-body-sm-line-height);
 }
 
+/* Set as Up next, its hint and the live regions' slot below it. No grid row
+   when it holds nothing (a Book that isn't offered it). */
+.setUpNext {
+  display: grid;
+  align-content: start;
+  gap: var(--space-1);
+}
+
+.setUpNext:has(> .regions:only-child:not([data-show-alert='true'])) {
+  display: none;
+}
+
+.setUpNextButton {
+  justify-self: start;
+}
+
+.hint {
+  margin: 0;
+  font-family: var(--font-meta-family);
+  font-size: var(--font-meta-size);
+  line-height: var(--font-meta-line-height);
+  color: var(--color-ink-secondary);
+}
+
+/* The live regions' slot below Set as Up next: no grid row until a failed
+   press puts its alert line there, one calm line in ink. */
+.regions:not([data-show-alert='true']) {
+  display: contents;
+}
+
+.regions[data-show-alert='true'] [role='alert'] {
+  position: static;
+  width: auto;
+  height: auto;
+  margin: 0;
+  overflow: visible;
+  clip-path: none;
+  white-space: normal;
+  font-family: var(--font-body-sm-family);
+  font-size: var(--font-body-sm-size);
+  line-height: var(--font-body-sm-line-height);
+  color: var(--color-ink);
+}
+
 .resume {
   justify-self: start;
 }

@@ -1,13 +1,12 @@
-// Story 4.4 Choose what to read next (ATDD red phase). Set as Up next on
+// Story 4.4 Choose what to read next. Set as Up next on
 // Book detail and in the spine popover: the `status` line and where focus
 // lands, the routed 503's alert line below the button, the popover's
 // "Replaces the current Up next." hint, and a paused Book moving from
 // Waiting for you to Up next. What `set-up-next` stores (displacement, the
 // no-op, the Main book refusal, TR8) is proven at API level in
 // backend/tests/test_set_up_next.py.
-//
-// Activate a leaf by changing `test.skip(` to `test(`.
 
+import AxeBuilder from '@axe-core/playwright'
 import type { Locator, Page } from '@playwright/test'
 import { expect, test } from './fixtures.ts'
 import {
@@ -24,11 +23,12 @@ import {
   waitingPane,
 } from './home.ts'
 import { bookcase } from './bookcase.ts'
-import { intentOf, requestsTo } from './intents.ts'
+import { intentOf, requestsTo, SET_UP_NEXT, START_READING } from './intents.ts'
 
-const SET_UP_NEXT = '/api/intents/set-up-next'
+const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']
 const COULDNT_SAVE = "Couldn't save. Your data wasn't changed."
 const REPLACES = 'Replaces the current Up next.'
+const MAIN_CANT = "Your Main book can't be Up next."
 
 const FAHRENHEIT_ID = '9d4e7a10-2b3c-4d5e-8f60-718293a4b5c6'
 const FAHRENHEIT = { id: FAHRENHEIT_ID, title: 'Fahrenheit 451', authors: ['Ray Bradbury'], pages: 187 }
@@ -125,7 +125,7 @@ test.describe('Story 4.4 Choose what to read next (ATDD)', () => {
     await page.emulateMedia({ colorScheme: 'light' })
   })
 
-  test.skip('[P0] AC-1 Set as Up next on Book detail makes the Book Up next, focuses the primary button, then says "X is Up next."', async ({
+  test('[P0] AC-1 Set as Up next on Book detail makes the Book Up next, focuses the primary button, then says "X is Up next."', async ({
     page,
     seededServer,
   }) => {
@@ -157,7 +157,7 @@ test.describe('Story 4.4 Choose what to read next (ATDD)', () => {
     expect(storedBook(server, FAHRENHEIT_ID).readings).toEqual([])
   })
 
-  test.skip("[P1] AC-3 a couldn't-save shows the line directly below Set as Up next, keeps focus there, and nothing changes", async ({
+  test("[P1] AC-3 a couldn't-save shows the line directly below Set as Up next, keeps focus there, and nothing changes", async ({
     page,
     seededServer,
   }) => {
@@ -181,7 +181,7 @@ test.describe('Story 4.4 Choose what to read next (ATDD)', () => {
     expect(libraryBytes(server)).toBe(before)
   })
 
-  test.skip('[P2] AC-5 with an Up next, the spine popover\'s Set as Up next carries "Replaces the current Up next." and hands focus back to the spine', async ({
+  test('[P2] AC-5 with an Up next, the spine popover\'s Set as Up next carries "Replaces the current Up next." and hands focus back to the spine', async ({
     page,
     seededServer,
   }) => {
@@ -218,7 +218,7 @@ test.describe('Story 4.4 Choose what to read next (ATDD)', () => {
     expect([stored.mainBookId, stored.upNextBookId]).toEqual([DUNE_ID, NEUROMANCER_ID])
   })
 
-  test.skip('[P1] AC-7 a paused Book set as Up next leaves Waiting for you and shows in Up next with Resume', async ({
+  test('[P1] AC-7 a paused Book set as Up next leaves Waiting for you and shows in Up next with Resume', async ({
     page,
     seededServer,
   }) => {
@@ -247,5 +247,193 @@ test.describe('Story 4.4 Choose what to read next (ATDD)', () => {
     // Only the pointer moved: the paused Reading keeps its page and its pausedAt.
     expect(storedBook(server, LEFT_HAND_ID)).toEqual(leftHandBefore)
     expect(storedLibrary(server).upNextBookId).toBe(LEFT_HAND_ID)
+  })
+})
+
+test.describe('Story 4.4 Choose what to read next (automate)', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.emulateMedia({ colorScheme: 'light' })
+  })
+
+  test("[P2] AC-1 with no Up next, the spine popover's Set as Up next has no hint and no description, and still hands focus back to the spine", async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ mainBookId: DUNE_ID, books: [DUNE_MAIN, NEUROMANCER] })
+    await page.goto(`${server.url}/catalog`)
+    await watchStatus(page)
+    const neuromancer = spineOf(page, 'Neuromancer by William Gibson')
+    await neuromancer.click()
+    const card = popover(page, 'Neuromancer')
+    const setUpNext = card.getByRole('button', { name: 'Set as Up next', exact: true })
+
+    await expect(setUpNext).toBeFocused()
+    await expect(card.getByText(REPLACES, { exact: true })).toHaveCount(0)
+    await expect(setUpNext).toHaveAccessibleDescription('')
+
+    await setUpNext.click()
+
+    await expect(page.getByRole('status')).toHaveText('Neuromancer is Up next.')
+    await expect(card).toBeHidden()
+    await expect(neuromancer).toBeFocused()
+    const seen = await statusSeen(page)
+    expect(seen.map((entry) => entry.text)).toEqual(['Neuromancer is Up next.'])
+    expect(seen[0].focused).toMatch(/^Neuromancer by William Gibson, /)
+    expect(storedLibrary(server).upNextBookId).toBe(NEUROMANCER_ID)
+  })
+
+  test("[P1] AC-6 Set as Up next isn't offered on the Main book's or the Up next Book's Book detail", async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({
+      mainBookId: DUNE_ID,
+      upNextBookId: LEFT_HAND_ID,
+      books: [DUNE_MAIN, LEFT_HAND],
+    })
+    await page.goto(`${server.url}/book/${DUNE_ID}`)
+    await expect(detailButton(page, 'Pause')).toBeVisible()
+    await expect(detailButton(page, 'Set as Up next')).toHaveCount(0)
+
+    await page.goto(`${server.url}/book/${LEFT_HAND_ID}`)
+    await expect(detailButton(page, 'Start reading')).toBeVisible()
+    await expect(detailButton(page, 'Set as Up next')).toHaveCount(0)
+  })
+
+  test("[P2] AC-3 a couldn't-save in the spine popover shows the line below Set as Up next, keeps focus there, and the popover stays open", async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ mainBookId: DUNE_ID, books: [DUNE_MAIN, NEUROMANCER] })
+    await routeCouldntSave(page)
+    const before = libraryBytes(server)
+    await page.goto(`${server.url}/catalog`)
+    await spineOf(page, 'Neuromancer by William Gibson').click()
+    const card = popover(page, 'Neuromancer')
+    const setUpNext = card.getByRole('button', { name: 'Set as Up next', exact: true })
+    await expect(setUpNext).toBeFocused()
+
+    await setUpNext.click()
+
+    await expect(page.getByRole('alert')).toHaveText(COULDNT_SAVE)
+    const line = card.getByText(COULDNT_SAVE, { exact: true })
+    await expect(line).toBeVisible()
+    expect(await topOf(line)).toBeGreaterThanOrEqual(await bottomOf(setUpNext))
+    await expect(setUpNext).toBeFocused()
+    await expect(card).toBeVisible()
+    await expect(page.getByRole('status')).toHaveText('')
+    expect(libraryBytes(server)).toBe(before)
+  })
+
+  test('[P2] while Set as Up next is in flight on Book detail, it is aria-disabled with "Setting the book as Up next." and a second press sends nothing', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ mainBookId: DUNE_ID, books: [DUNE_MAIN, FAHRENHEIT] })
+    const sent = requestsTo(page, SET_UP_NEXT)
+    let release = () => {}
+    const held = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    await page.route(`**${SET_UP_NEXT}`, async (route) => {
+      await held
+      await route.continue()
+    })
+    await page.goto(`${server.url}/book/${FAHRENHEIT_ID}`)
+    const setUpNext = detailButton(page, 'Set as Up next')
+    await setUpNext.click()
+
+    await expect(setUpNext).toHaveAttribute('aria-disabled', 'true')
+    await expect(setUpNext).toHaveAccessibleDescription('Setting the book as Up next.')
+    // Playwright waits on aria-disabled; force the press a user can still make.
+    await setUpNext.click({ force: true })
+    expect(sent).toHaveLength(1)
+
+    release()
+    await expect(detailButton(page, 'Start reading')).toBeFocused()
+    await expect(page.getByRole('status')).toHaveText('Fahrenheit 451 is Up next.')
+    expect(sent).toHaveLength(1)
+    expect(storedLibrary(server).upNextBookId).toBe(FAHRENHEIT_ID)
+  })
+
+  test('[P2] axe finds nothing on Book detail with Set as Up next and on the spine popover with its hint, in both themes', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({
+      mainBookId: DUNE_ID,
+      upNextBookId: LEFT_HAND_ID,
+      books: [DUNE_MAIN, LEFT_HAND, NEUROMANCER],
+    })
+    for (const colorScheme of ['light', 'dark'] as const) {
+      // No fade-in: axe would read the popover's colors mid-animation.
+      await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' })
+      await page.goto(`${server.url}/book/${NEUROMANCER_ID}`)
+      await expect(detailButton(page, 'Set as Up next')).toBeVisible()
+      let { violations } = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze()
+      expect(violations.map(({ id, nodes }) => `${colorScheme} Book detail: ${id} (${nodes.length})`)).toEqual([])
+
+      await page.goto(`${server.url}/catalog`)
+      await spineOf(page, 'Neuromancer by William Gibson').click()
+      await expect(popover(page, 'Neuromancer').getByText(REPLACES, { exact: true })).toBeVisible()
+      ;({ violations } = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze())
+      expect(violations.map(({ id, nodes }) => `${colorScheme} popover: ${id} (${nodes.length})`)).toEqual([])
+    }
+  })
+
+  test("[P2] AC-3 a stale tab's refusal on Book detail moves focus to the h1 and keeps the line where Set as Up next was", async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ mainBookId: DUNE_ID, books: [DUNE_MAIN, FAHRENHEIT] })
+    await page.goto(`${server.url}/book/${FAHRENHEIT_ID}`)
+    const setUpNext = detailButton(page, 'Set as Up next')
+    await expect(setUpNext).toBeVisible()
+
+    // Another tab makes the Book Main.
+    const started = await page.request.post(`${server.url}${START_READING}`, {
+      multipart: { intent: JSON.stringify({ bookId: FAHRENHEIT_ID, purpose: null }) },
+    })
+    expect(started.status()).toBe(200)
+    const before = libraryBytes(server)
+
+    await setUpNext.click()
+
+    await expect(page.getByRole('alert')).toHaveText(MAIN_CANT)
+    await expect(setUpNext).toHaveCount(0)
+    await expect(page.locator('main h1')).toBeFocused()
+    const line = page.getByRole('main').getByText(MAIN_CANT, { exact: true })
+    await expect(line).toBeVisible()
+    expect(await topOf(detailButton(page, 'Edit'))).toBeGreaterThanOrEqual(await bottomOf(line))
+    await expect(page.getByRole('status')).toHaveText('')
+    expect(libraryBytes(server)).toBe(before)
+  })
+
+  test("[P2] AC-3 a stale tab's refusal in the spine popover moves focus to Open book and keeps the popover open with the line", async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ mainBookId: DUNE_ID, books: [DUNE_MAIN, NEUROMANCER] })
+    await page.goto(`${server.url}/catalog`)
+    await spineOf(page, 'Neuromancer by William Gibson').click()
+    const card = popover(page, 'Neuromancer')
+    const setUpNext = card.getByRole('button', { name: 'Set as Up next', exact: true })
+    await expect(setUpNext).toBeFocused()
+
+    const started = await page.request.post(`${server.url}${START_READING}`, {
+      multipart: { intent: JSON.stringify({ bookId: NEUROMANCER_ID, purpose: null }) },
+    })
+    expect(started.status()).toBe(200)
+    const before = libraryBytes(server)
+
+    await setUpNext.click()
+
+    await expect(page.getByRole('alert')).toHaveText(MAIN_CANT)
+    await expect(setUpNext).toHaveCount(0)
+    await expect(card.getByRole('link', { name: 'Open book →', exact: true })).toBeFocused()
+    await expect(card).toBeVisible()
+    await expect(card.getByText(MAIN_CANT, { exact: true })).toBeVisible()
+    await expect(page.getByRole('status')).toHaveText('')
+    expect(libraryBytes(server)).toBe(before)
   })
 })

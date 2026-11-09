@@ -10,8 +10,11 @@ import {
 } from 'react'
 import { Link } from 'react-router'
 import type { ShelfBook } from '../api/index.ts'
+import { announce } from '../lib/announce.ts'
+import { popoverOffersSetUpNext, REPLACES_UP_NEXT, SETTING_UP_NEXT, upNextStatus } from '../lib/setUpNext.ts'
 import { placePopover, type Placement } from '../lib/spineColor.ts'
 import { popoverStart } from '../lib/startReading.ts'
+import { useSetUpNextFlow } from '../lib/useSetUpNextFlow.ts'
 import Button from './Button.tsx'
 import ChangeColor from './ChangeColor.tsx'
 import styles from './SpinePopover.module.css'
@@ -26,6 +29,8 @@ type Props = {
   onClose: (refocus: boolean) => void
   /** "Start reading" or **Resume**: the Bookcase closes it and opens the Start dialog. */
   onStart: () => void
+  /** Another Book is Up next: Set as Up next carries the hint "Replaces the current Up next.". */
+  hasUpNext: boolean
 }
 
 function pagesLine(pages: number, year: number | null): string {
@@ -39,17 +44,45 @@ function pagesLine(pages: number, year: number | null): string {
  * Book's details on the left; "Open book →" and Change color on the right;
  * × at the top right, last in tab order. Before "Open book →", the start
  * action: **Resume** (`button-primary`) or a link-styled "Start reading"
- * button. Focus starts on the first actionable control: the start action,
- * else "Open book →". Esc, × and focus leaving it close it; the Bookcase
- * closes it on an outside click.
+ * button. Focus starts on the first actionable control: Set as Up next, else
+ * the start action, else "Open book →". Esc, × and focus leaving it close
+ * it; the Bookcase closes it on an outside click.
+ *
+ * For a Book never read and with no Reading, **Set as Up next**
+ * (`button-primary`) comes first, with the hint "Replaces the current Up
+ * next." under it (its accessible description) while another Book is Up
+ * next. It sends `set-up-next` at once; on success the popover closes with
+ * focus back on its spine, then `status` reads "*X* is Up next.". A failure
+ * shows its line directly below the button, keeps focus there and leaves the
+ * popover open.
  */
-export default function SpinePopover({ book, anchor, shelf, onClose, onStart }: Props) {
+export default function SpinePopover({ book, anchor, shelf, onClose, onStart, hasUpNext }: Props) {
   const titleId = useId()
   const card = useRef<HTMLDivElement>(null)
   const link = useRef<HTMLAnchorElement>(null)
   const start = useRef<HTMLButtonElement>(null)
   const action = popoverStart(book)
   const [place, setPlace] = useState<Placement | null>(null)
+  const hintId = useId()
+  const setUpNextButton = useRef<HTMLButtonElement>(null)
+  const {
+    request: requestSetUpNext,
+    busy: settingUpNext,
+    failed: setUpNextFailed,
+    regionSlot,
+  } = useSetUpNextFlow({
+    opener: setUpNextButton,
+    fallback: () => link.current,
+    onSet: (title) => {
+      onClose(true)
+      announce('status', upNextStatus(title))
+    },
+  })
+  // Both kept as they were while the request is out: the refetch makes the
+  // Book Up next (and the old Up next not) before it resolves.
+  const offersSetUpNext = popoverOffersSetUpNext(book) || settingUpNext
+  const [hintAtPress, setHintAtPress] = useState(false)
+  const showHint = offersSetUpNext && (settingUpNext ? hintAtPress : hasUpNext)
 
   // Placed before paint, again on scroll, resize and any change of its own size.
   useLayoutEffect(() => {
@@ -90,7 +123,7 @@ export default function SpinePopover({ book, anchor, shelf, onClose, onStart }: 
   // Focus moves in once it is placed (a hidden element can't take focus).
   const placed = place !== null
   useEffect(() => {
-    if (placed) (start.current ?? link.current)?.focus()
+    if (placed) (setUpNextButton.current ?? start.current ?? link.current)?.focus()
   }, [placed])
 
   const keyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -163,6 +196,30 @@ export default function SpinePopover({ book, anchor, shelf, onClose, onStart }: 
         </p>
       </div>
       <div className={styles.actions}>
+        <div className={styles.setUpNext}>
+          {offersSetUpNext && (
+            <Button
+              ref={setUpNextButton}
+              variant="primary"
+              className={styles.setUpNextButton}
+              aria-describedby={showHint ? hintId : undefined}
+              disabledReason={settingUpNext ? SETTING_UP_NEXT : undefined}
+              onClick={() => {
+                if (!settingUpNext) setHintAtPress(hasUpNext)
+                requestSetUpNext({ id: book.id, title: book.title })
+              }}
+            >
+              Set as Up next
+            </Button>
+          )}
+          {showHint && (
+            <p id={hintId} className={styles.hint}>
+              {REPLACES_UP_NEXT}
+            </p>
+          )}
+          {/* Below Set as Up next, or where it was once a stale tab's refusal has removed it. */}
+          <div ref={regionSlot} className={styles.regions} data-show-alert={setUpNextFailed ? 'true' : undefined} />
+        </div>
         {action === 'Resume' && (
           <Button ref={start} variant="primary" className={styles.resume} onClick={onStart}>
             Resume

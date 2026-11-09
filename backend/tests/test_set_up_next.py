@@ -1,6 +1,6 @@
-"""Story 4.4 Choose what to read next: the ``set-up-next`` intent (API), ATDD red phase.
+"""Story 4.4 Choose what to read next: the ``set-up-next`` intent (API).
 
-One skipped leaf per criterion the server decides (RDG-API-003, R-01):
+One leaf per criterion the server decides (RDG-API-003, R-01):
 
 - AC-2: ``set-up-next`` for the current Up next is a 200 no-op that commits
   nothing (AD-9).
@@ -13,20 +13,18 @@ One skipped leaf per criterion the server decides (RDG-API-003, R-01):
 
 The Book detail and spine popover buttons, the ``status`` line, focus and
 the routed 503 are read in the browser (``frontend/e2e/set-up-next.spec.ts``).
-
-Activate a leaf by deleting its ``@pytest.mark.skip(reason=RED)`` line.
 """
 
 import json
 from pathlib import Path
 
-import pytest
 from fastapi.testclient import TestClient
 
 from bookvie.http.app import create_app
 from tests.builder import LibraryBuilder
 from tests.helpers import (
     COULDNT_SAVE_BODY,
+    SET_UP_NEXT,
     START_READING,
     FaultyFs,
     RecordingFs,
@@ -36,9 +34,6 @@ from tests.helpers import (
     stored_book,
 )
 
-RED = "ATDD red phase (Story 4.4): set-up-next is not implemented yet"
-
-SET_UP_NEXT = "/api/intents/set-up-next"
 GONE_ID = "00000000-0000-4000-8000-000000000000"
 EARLIER = "2026-10-01"
 
@@ -75,7 +70,6 @@ def _main_dune(builder: LibraryBuilder) -> str:
 # --- AC-2: the current Up next again is a no-op ------------------------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_ac2_p1_set_up_next_for_the_current_up_next_is_a_200_no_op_that_commits_nothing(
     tmp_path: Path,
 ) -> None:
@@ -104,7 +98,6 @@ def test_ac2_p1_set_up_next_for_the_current_up_next_is_a_200_no_op_that_commits_
 # --- AC-4: the displaced Up next goes where its Readings say -----------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_ac4_p0_a_new_up_next_displaces_a_paused_z_to_waiting_and_an_unstarted_z_to_the_catalog(
     tmp_path: Path,
 ) -> None:
@@ -151,7 +144,6 @@ def test_ac4_p0_a_new_up_next_displaces_a_paused_z_to_waiting_and_an_unstarted_z
 # --- AC-6: the Main book can't be Up next -------------------------------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_ac6_p0_set_up_next_for_the_main_book_is_refused_with_main_cannot_be_up_next(
     tmp_path: Path,
 ) -> None:
@@ -175,7 +167,6 @@ def test_ac6_p0_set_up_next_for_the_main_book_is_refused_with_main_cannot_be_up_
 # --- AC-8: a finished Book and a Side read are Books like any other ----------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_ac8_p1_a_finished_book_and_a_side_read_become_up_next_like_any_other_book(
     tmp_path: Path,
 ) -> None:
@@ -242,7 +233,6 @@ def test_ac8_p1_a_finished_book_and_a_side_read_become_up_next_like_any_other_bo
 # --- AC-9: the standard intent ACs (TR8) ----------------------------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_ac9_p0_set_up_next_meets_the_standard_intent_acs(tmp_path: Path) -> None:
     builder = LibraryBuilder()
     _main_dune(builder)

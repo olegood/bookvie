@@ -132,6 +132,26 @@ export function usePause(): (bookId: string) => Promise<IntentResult> {
   return (bookId) => pause(client, bookId)
 }
 
+export function setUpNextForm(bookId: string): FormData {
+  const form = new FormData()
+  form.set('intent', JSON.stringify({ bookId }))
+  return form
+}
+
+/**
+ * Sends `set-up-next` (make the Book Up next; a no-op for the current Up
+ * next); resolves after the views have refetched.
+ */
+export function setUpNext(client: QueryClient, bookId: string): Promise<IntentResult> {
+  return sendIntent(client, 'set-up-next', setUpNextForm(bookId))
+}
+
+/** `setUpNext` bound to the app's QueryClient. */
+export function useSetUpNext(): (bookId: string) => Promise<IntentResult> {
+  const client = useQueryClient()
+  return (bookId) => setUpNext(client, bookId)
+}
+
 export function setSpineColorForm(bookId: string, spineColor: string | null): FormData {
   const form = new FormData()
   form.set('intent', JSON.stringify({ bookId, spineColor }))

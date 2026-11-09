@@ -18,6 +18,8 @@ import {
   setSpineColor,
   startReading,
   setSpineColorForm,
+  setUpNext,
+  setUpNextForm,
   updatePage,
   updatePageForm,
   type BookFields,
@@ -384,5 +386,46 @@ describe('pause', () => {
 
   it('builds the same form on its own', () => {
     assert.equal(pauseForm('b2').get('intent'), '{"bookId":"b2"}')
+  })
+})
+
+describe('setUpNext', () => {
+  afterEach(() => mock.restoreAll())
+
+  it('posts only the bookId as the intent part of a multipart form', async () => {
+    const fetch = mock.method(globalThis, 'fetch', async (..._args: [string, RequestInit]) =>
+      Response.json({ ok: true }),
+    )
+    const client = new QueryClient()
+    const result = await setUpNext(client, 'b1')
+
+    assert.deepEqual(result, { kind: 'ok', ids: {}, reachedLastPage: false })
+    const [url, init] = fetch.mock.calls[0].arguments
+    assert.equal(url, '/api/intents/set-up-next')
+    assert.equal(init!.method, 'POST')
+    const body = init!.body as FormData
+    assert.deepEqual(
+      [...(body as unknown as Iterable<[string, unknown]>)].map(([key]) => key),
+      ['intent'],
+    )
+    assert.deepEqual(JSON.parse(body.get('intent') as string), { bookId: 'b1' })
+    client.clear()
+  })
+
+  it('passes a main_cannot_be_up_next refusal through', async () => {
+    mock.method(globalThis, 'fetch', async () =>
+      Response.json(
+        { error: { kind: 'refusal', code: 'main_cannot_be_up_next', message: "Your Main book can't be Up next." } },
+        { status: 409 },
+      ),
+    )
+    const client = new QueryClient()
+    const result = await setUpNext(client, 'b1')
+    assert.equal(result.kind === 'refusal' && result.code, 'main_cannot_be_up_next')
+    client.clear()
+  })
+
+  it('builds the same form on its own', () => {
+    assert.equal(setUpNextForm('b2').get('intent'), '{"bookId":"b2"}')
   })
 })

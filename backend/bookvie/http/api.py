@@ -70,6 +70,7 @@ from bookvie.intents import (
     parse_pause_intent,
     parse_restore_intent,
     parse_set_spine_color_intent,
+    parse_set_up_next_intent,
     parse_start_reading_intent,
     parse_update_page_intent,
     pause,
@@ -78,6 +79,7 @@ from bookvie.intents import (
     restore,
     restore_unsafe,
     set_spine_color,
+    set_up_next,
     start_reading,
     update_page,
 )
@@ -535,6 +537,23 @@ def pause_intent(
     """Pause the Main book at its page and make it Up next, clearing the Main book (FR-6)."""
     parsed = parse_pause_intent(intent)
     pause(request.app.state.store, request.app.state.clock, parsed)
+    return OkResponse(ok=True)
+
+
+@router.post("/intents/set-up-next", response_model=OkResponse, response_model_exclude_none=True)
+def set_up_next_intent(
+    request: Request,
+    intent: Annotated[
+        str | None,
+        Form(
+            media_type="multipart/form-data",
+            description='JSON object {"bookId": ...}: the Book to make Up next.',
+        ),
+    ] = None,
+) -> OkResponse:
+    """Make a Book Up next, displacing any earlier one (FR-7); a no-op for the current Up next."""
+    parsed = parse_set_up_next_intent(intent)
+    set_up_next(request.app.state.store, parsed)
     return OkResponse(ok=True)
 
 
