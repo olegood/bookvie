@@ -4,6 +4,7 @@ import {
   useBookView,
   useCatalogView,
   useDeleteBook,
+  useHomeView,
   useMarkSideRead,
   useUnmarkSideRead,
   type BookDetailView,
@@ -33,7 +34,7 @@ import { COULDNT_LOAD } from '../lib/copy.ts'
 import { detailOffersFinish, finishedStatus } from '../lib/markFinished.ts'
 import { usePageTitle } from '../lib/page.ts'
 import { pausedStatus } from '../lib/pause.ts'
-import { detailOffersSetUpNext, SETTING_UP_NEXT, upNextStatus } from '../lib/setUpNext.ts'
+import { detailOffersSetUpNext, REPLACES_UP_NEXT, SETTING_UP_NEXT, upNextStatus } from '../lib/setUpNext.ts'
 import {
   detailOffersSideRead,
   MARKING_SIDE_READ,
@@ -177,6 +178,12 @@ function BookDetail({ book, onDelete, onFinish, finishButton }: BookDetailProps)
     failed: setUpNextFailed,
     regionSlot: setUpNextSlot,
   } = useSetUpNextFlow({ opener: setUpNextButton, fallback: primaryOrHeading, onSet })
+  // The hint, kept as it was while the request is out: the refetch makes this Book the Up next before it resolves.
+  const home = useHomeView()
+  const hasUpNext = home.status === 'ready' && home.data.upNext !== null
+  const [hintAtPress, setHintAtPress] = useState(false)
+  const showSetUpNextHint = offersSetUpNext && (settingUpNext ? hintAtPress : hasUpNext)
+  const setUpNextHintId = useId()
 
   // `sendIntent` resolves after the refetch, but the view may render it a
   // tick later: while the Book keeps the role it had, wait. Any other view
@@ -323,11 +330,20 @@ function BookDetail({ book, onDelete, onFinish, finishButton }: BookDetailProps)
             {offersSetUpNext && (
               <Button
                 ref={setUpNextButton}
+                aria-describedby={showSetUpNextHint ? setUpNextHintId : undefined}
                 disabledReason={settingUpNext ? SETTING_UP_NEXT : undefined}
-                onClick={() => requestSetUpNext({ id: book.id, title: book.title })}
+                onClick={() => {
+                  if (!settingUpNext) setHintAtPress(hasUpNext)
+                  requestSetUpNext({ id: book.id, title: book.title })
+                }}
               >
                 Set as Up next
               </Button>
+            )}
+            {showSetUpNextHint && (
+              <p id={setUpNextHintId} className={styles.hint}>
+                {REPLACES_UP_NEXT}
+              </p>
             )}
             {/* Below Set as Up next, or where it was once a stale tab's refusal has removed it. */}
             <div
@@ -481,7 +497,8 @@ function BookDetail({ book, onDelete, onFinish, finishButton }: BookDetailProps)
  * `status` reads "Paused *X* at p.N. It's Up next."
  *
  * **Set as Up next** (`lib/useSetUpNextFlow.ts`) sends `set-up-next` at once,
- * with no dialog, `aria-disabled` while it is out. Once the refetched view
+ * with no dialog, `aria-disabled` while it is out, with the hint "Replaces
+ * the current Up next." under it while another Book is Up next. Once the refetched view
  * shows the Book as Up next, focus goes to the primary (the `h1` if none),
  * then `status` reads "*X* is Up next.". A failure shows its line directly
  * below the button, focus kept there; when a stale tab's refusal has removed
@@ -522,6 +539,18 @@ export default function BookDetailPage() {
     const target = finishButton.current ?? document.getElementById('main')
     target?.focus()
   }, [finishRefocus])
+
+  // The Book was deleted in another tab while this page showed it: focus fell
+  // with the page. After a client-side navigation the `h1` has already taken it.
+  const status = view.status
+  const shownBook = useRef(false)
+  useEffect(() => {
+    if (status === 'ready') shownBook.current = true
+    if (status !== 'missing' || !shownBook.current) return
+    if (document.activeElement === null || document.activeElement === document.body) {
+      document.querySelector<HTMLElement>('main h1')?.focus()
+    }
+  }, [status])
 
   const cancelFinish = useCallback(() => {
     setFinishingId(null)

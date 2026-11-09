@@ -305,6 +305,17 @@ class RecordingFs(OsFileSystem):
         self._note("remove", path)
 
 
+EMPTY_LIBRARY = (
+    b'{\n  "schemaVersion": 2,\n  "mainBookId": null,\n  "upNextBookId": null,\n'
+    b'  "sideReadBookIds": [],\n  "books": []\n}\n'
+)
+
+
+def temp_files(data_dir: Path) -> list[Path]:
+    """The commit's temporary files left in the data folder."""
+    return sorted(data_dir.glob("library.json.tmp*"))
+
+
 def seeded_store(data_dir: Path, fs: OsFileSystem | None = None) -> Store:
     """A store over a data folder seeded with one untagged Dune."""
     builder = LibraryBuilder()

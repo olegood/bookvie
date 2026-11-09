@@ -25,17 +25,7 @@ from bookvie.store import (
     serialize,
 )
 from tests.builder import LibraryBuilder, as_v1
-from tests.helpers import FaultyFs, seeded_store
-
-EMPTY_LIBRARY = (
-    b'{\n  "schemaVersion": 2,\n  "mainBookId": null,\n  "upNextBookId": null,\n'
-    b'  "sideReadBookIds": [],\n  "books": []\n}\n'
-)
-
-
-def _temps(data_dir: Path) -> list[Path]:
-    return sorted(data_dir.glob("library.json.tmp*"))
-
+from tests.helpers import EMPTY_LIBRARY, FaultyFs, seeded_store, temp_files
 
 # --- serialize --------------------------------------------------------------
 
@@ -228,7 +218,7 @@ def test_first_start_creates_empty_library_covers_and_staging(tmp_path: Path) ->
     assert (data_dir / ".staging").is_dir()
     assert list((data_dir / ".staging").iterdir()) == []
     assert store.library == Library.empty()
-    assert _temps(data_dir) == []
+    assert temp_files(data_dir) == []
 
 
 def test_leftovers_are_swept(tmp_path: Path) -> None:
@@ -240,7 +230,7 @@ def test_leftovers_are_swept(tmp_path: Path) -> None:
     (staging / "b.zip").write_text("z")
     (tmp_path / "keep.txt").write_text("keep")
     Store.open(tmp_path)
-    assert _temps(tmp_path) == []
+    assert temp_files(tmp_path) == []
     assert list(staging.iterdir()) == []
     assert (tmp_path / "keep.txt").read_text() == "keep"
 
@@ -473,7 +463,7 @@ def test_failed_startup_create_is_refused(tmp_path: Path) -> None:
     with pytest.raises(StartupError, match="can't be written"):
         Store.open(tmp_path, fs=FaultyFs("replace"))
     assert not (tmp_path / "library.json").exists()
-    assert _temps(tmp_path) == []
+    assert temp_files(tmp_path) == []
 
 
 def test_unreadable_library_is_refused(tmp_path: Path) -> None:

@@ -131,6 +131,38 @@ deferred:
   - `[false]` `[reject]` IA: the `h1` fallback can't be reached — the stale-tab refusal on Book detail reaches it (a Book now Main has no primary), and the new e2e leaf asserts it.
   - `[false]` `[reject]` IA: sprint status still `backlog` — finalization sets `4-4-choose-what-to-read-next: done`.
 
+### 2026-11-09 — Code review pass (epic 4 retro item 43)
+- scope: `38fb7fc^..38fb7fc`, full mode, five layers (blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor, spine-check), none failed. Each finding was checked against master at `225a6e9`, since 22 of the diff's 34 files have changed since; none was already fixed. A throwaway Chromium probe (deleted after one run) settled the timing findings.
+- verdicts: 30 findings — high 0, medium 3, low 20, false 7, maybe-false 0
+- findings:
+  - [x] [Review][Decision → fixed] `[medium]` Oleg chose focus only: the popover's vanished spine sends focus to the shelf or `main` (`useSpinePopover.ts`), Book detail's missing view to the "Page not found" `h1` (`BookDetailPage.tsx`), and the refusal stays in `alert`. A stale tab's `book_not_found` shows no visible line and drops focus to `body`, on both surfaces (AA, EC, BH) — the spec's Always rule puts a refusal's line directly below the button. Probe: Book deleted through the API, then Set as Up next pressed. In the popover it closes with its spine gone; on Book detail the page becomes "Page not found". Both times focus is on `body` and "This book isn't in your catalog anymore." is only in the 1×1 hidden `alert` region. The spec's fallback covers a removed button, not a removed page or popover, so where the line and focus go is a decision. [frontend/src/lib/useSetUpNextFlow.ts:89]
+  - [x] [Review][Decision → fixed] `[low]` Oleg chose the hint: Book detail now shows "Replaces the current Up next." under the button while another Book is Up next, and EXPERIENCE.md says so. Book detail's Set as Up next displaces the current Up next without saying so first (AA) — epic-4-context says "Every route that displaces Up next states it first", while EXPERIENCE.md gives the hint "Replaces the current Up next." only to the popover (l.166) and says the action applies "at once with no dialog" (l.177). The code follows EXPERIENCE.md; the planning documents disagree. [frontend/src/pages/BookDetailPage.tsx:163]
+  - [x] [Review][Patch] `[low]` No e2e presses Set as Up next from a spine popover on Home's slice (VG); every popover press in the spec starts at `/catalog`. Add a leaf to `home-slice.spec.ts`. [frontend/e2e/home-slice.spec.ts:632]
+  - [x] [Review][Patch] `[low]` No test reaches the failure branch after the surface has gone (VG): deleting `announce('alert', …)` at `useSetUpNextFlow.ts:98` fails nothing. Add a held-route leaf that closes the popover with Esc, then answers 503. [frontend/e2e/set-up-next.spec.ts:324]
+  - [x] [Review][Patch] `[low]` A displaced never-started *Z* that is a Side read stays on the side, but the docstring says "any other *Z* is back in the catalog" and no `set-up-next` test covers it (BH). The behavior is right (only the pointer moves); item 33 fixed the copy on the Start and Pause routes, not this. [backend/bookvie/intents/set_up_next.py:8]
+  - [x] [Review][Patch] `[low]` README's Epic 4 roadmap entry stops at Story 4.2 and still lists pause, marking finished, markers and Side reads as "Still to come" (BH), while its Status line says 4.1-4.7 are done. [README.md:79]
+  - [x] [Review][Patch] `[low]` The empty-document literal and `_temps` are duplicated in `test_store.py` and `test_store_commits.py` (BH). Item 35's schema bump had to edit both literals. Move them to `tests/helpers.py`. [backend/tests/test_store_commits.py:20]
+  - [x] [Review][Defer] `[low]` `UNCHANGED` is an outcome AD-3 and AD-12 don't allow for (SC) [backend/bookvie/store/store.py:464] — deferred: spine drift, reconciled before the next epic (item 38); the `deferred-work.md` entry for AD-9 and AD-2 doesn't name them.
+  - [x] [Review][Defer] `[low]` The drift entry for `set_up_next` wrongly says the "FR-5 to FR-9" row lacks it (SC) [ARCHITECTURE-SPINE.md:362] — deferred: the row already lists it, so only the Structural Seed half stands; noted for item 38.
+  - [x] [Review][Defer] `[low]` The popover's in-flight state is untested: `hintAtPress`, `aria-disabled` and its reason (VG, BH) [frontend/src/components/SpinePopover.tsx:81] — deferred: to item 36; one local round trip, and the shared `inFlight` guard is covered from Book detail.
+  - [x] [Review][Defer] `[low]` Two ATDD follow-ups have no test or recorded decision: AC-2 in the browser and refetch on focus (AA) [atdd-checklist-4-4 l.366-367] — deferred: to item 36, which works through this checklist.
+  - [x] [Review][Defer] `[low]` The checklist's e2e helper consolidation never happened (AA) [frontend/e2e/set-up-next.spec.ts:61] — deferred: the same helpers are now copied across `pause`, `set-up-next`, `side-reads` and `finish-any-book`, which is wider than this story.
+- rejected:
+  - `[false]` SC: the popover announces before the refetch has rendered (AD-7) — probe: when `status` changed, the Up next pane already showed the new Book.
+  - `[false]` BH: on Home's slice focus is lost when the press repacks the rows — probe with 61 Books and a row change: focus stayed on the spine. `Bookcase.tsx` also restores a slice spine's focus after a repack.
+  - `[false]` EC: the popover's blur timer races the fallback focus and closes it — React ignores focus events during its commit, so removing the button doesn't reach `blur`.
+  - `[false]` SC: `UNCHANGED` has no matching spine edit (AD-9, AD-2) — it is already logged as spine drift, as AGENTS.md requires.
+  - `[false]` AA: the diff marks the story `done` before code review — that rule entered AGENTS.md later (`0bebca6`, item 40).
+  - `[false]` BH: the build marks the story `done`, against the pipeline — duplicate of the AA row.
+  - `[false]` BH: the `(automate)` block label misleads — retro PL-1 and item 36 record that automate never ran, and item 36 adds to this block next.
+  - `[low]` EC: `failed` stays true after a 503 when the role later changes — same as the first pass's `[reject]`; the line stays true and focus only moves from `body`.
+  - `[low]` EC: Book detail's pending line never expires when the refetch fails — needs a failed local refetch and a later role change; the fix adds a guard.
+  - `[low]` BH: the pending line can steal focus much later — duplicate of the EC row.
+  - `[low]` BH: "Your data wasn't changed." can be false after a network failure — `sendIntent`'s behavior for every intent, not 4.4's; needs the local server to die between commit and response.
+  - `[low]` BH: `UNCHANGED` with `new_files` can lose a file — no intent sends both.
+  - `[low]` AA: the pending-line effect differs from the Code Map and Design Notes — the fix edits this spec.
+  - `[low]` BH: the Design Notes contradict the code on focus timing — the fix edits this spec.
+
 ## Design Notes
 
 - **No-op mechanism:** `Store.apply`'s lock isn't reentrant, so the "already Up next" check can't sit outside `commit()` without a race. A returned `UNCHANGED` sentinel keeps every check inside the one locked change and lets the store skip the write. Only `set-up-next` uses it; other intents keep committing as before. The client still invalidates views on the no-op (harmless, and a stale tab catches up).

@@ -68,7 +68,11 @@ export function useSpinePopover({ books, visible, ids, rows, buttons, shelfRef }
   const shelf = useCallback(() => shelfRef.current, [shelfRef])
 
   // A search that hides the open spine (or a delete) closes its popover.
-  if (openId !== null && !visible.has(openId)) setOpenId(null)
+  const [vanished, setVanished] = useState(0)
+  if (openId !== null && !visible.has(openId)) {
+    setOpenId(null)
+    setVanished((count) => count + 1)
+  }
   const openBook = openId === null ? undefined : books.find((book) => book.id === openId)
 
   // A slice repack remounts the spines: `rows` renews `anchor`, so an open
@@ -114,6 +118,13 @@ export function useSpinePopover({ books, visible, ids, rows, buttons, shelfRef }
     if (refocusId === null) return
     ;(buttons.current.get(refocusId.id) ?? fallbackTarget())?.focus()
   }, [refocusId, fallbackTarget, buttons])
+
+  // The open spine went (a delete in another tab): focus fell with the
+  // popover. A search that hides it keeps focus in Search titles.
+  useEffect(() => {
+    if (vanished === 0) return
+    if (document.activeElement === null || document.activeElement === document.body) fallbackTarget()?.focus()
+  }, [vanished, fallbackTarget])
 
   // The Book was deleted elsewhere: its `book` view went missing first, so
   // focus went back to the spine, and the catalog refetch then removed it.

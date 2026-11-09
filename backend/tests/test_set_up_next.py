@@ -141,6 +141,28 @@ def test_ac4_p0_a_new_up_next_displaces_a_paused_z_to_waiting_and_an_unstarted_z
     assert_invariants(tmp_path)
 
 
+def test_ac4_p1_a_displaced_never_started_side_read_stays_on_the_side(
+    tmp_path: Path,
+) -> None:
+    builder = LibraryBuilder()
+    dune = _main_dune(builder)
+    emma = builder.book(title="Emma", pages=400)
+    builder.up_next(emma)
+    builder.side_read(emma)
+    kindred = builder.book(title="Kindred", pages=264)
+    builder.write(tmp_path)
+    emma_before = stored_book(tmp_path, emma)
+
+    response = _set_up_next(api_client(tmp_path), kindred)
+
+    assert response.status_code == 200
+    stored = _stored(tmp_path)
+    assert (stored["mainBookId"], stored["upNextBookId"]) == (dune, kindred)
+    assert stored["sideReadBookIds"] == [emma]
+    assert stored_book(tmp_path, emma) == emma_before
+    assert_invariants(tmp_path)
+
+
 # --- AC-6: the Main book can't be Up next -------------------------------------------
 
 

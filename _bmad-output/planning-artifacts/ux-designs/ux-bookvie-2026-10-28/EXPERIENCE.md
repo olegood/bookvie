@@ -174,7 +174,7 @@ Use: page.
 - **Content:** metadata, cover, Tags, current Reading (status, gauge, Purpose), Readings (start, finish, stars, Purpose fulfilled). Back-filled Readings show "Finished 14 Aug 2019" with no start.
 - **Actions:** visible per state; see Book states → Book detail actions.
 - **Pause** (Main book only): pauses the Reading at its current page and records its paused-at date; per FR-7 it becomes Up next. If another Book is Up next, the Confirm dialog first states the displacement ("Pause *X* at p.150 (58%)? *Z* moves to Waiting for you.", "*Z* stays on the side." or "*Z* returns to the catalog.", the same line and rules as the Start dialog) with **Pause** and **Cancel**. Otherwise Pause applies at once and `status` announces "Paused *X* at p.150. It's Up next."
-- **Set as Up next, Mark as Side read, Remove from side:** apply at once with no dialog; `status` announces the outcome (Accessibility Floor → Live regions).
+- **Set as Up next, Mark as Side read, Remove from side:** apply at once with no dialog; `status` announces the outcome (Accessibility Floor → Live regions). While another Book is Up next, **Set as Up next** carries the hint "Replaces the current Up next." under the button, on Book detail as in the Spine popover.
 - **Edit Purpose** (when a Reading is active or paused): turns the Purpose line into a one-line field with **Save** and **Cancel**; Enter saves, Esc cancels. The field is optional with no length limit; surrounding whitespace is trimmed, and saving it empty clears the Purpose.
 - **Mark finished:** opens the Finish dialog.
 - **Mark as Side read:** When three Side reads already exist, **Mark as Side read** stays focusable with `aria-disabled="true"` and is described by the hint "Up to 3 side reads."

@@ -29,6 +29,7 @@ import {
   startDialog,
   storedBook,
   storedLibrary,
+  upNextPane,
 } from './home.ts'
 
 const MAIN_COLOR = { hex: '#4F7096', rgb: [79, 112, 150] as RGB }
@@ -728,4 +729,26 @@ test.describe('Epic 4 retro item 32: starting from a spine popover on Home’s s
       expect(storedLibrary(server).mainBookId).toBe(LEFT_HAND_ID)
     })
   }
+})
+
+test.describe('Epic 4 retro item 43: Set as Up next from a spine popover on Home’s slice', () => {
+  test('[P1] the popover closes, focus returns to the spine, and the Up next pane shows the Book', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer(mainAt(212, { others: [DUNE] }))
+    await page.goto(server.url)
+
+    await sliceSpine(page, 'Dune').click()
+    await page
+      .getByRole('dialog', { name: 'Dune', exact: true })
+      .getByRole('button', { name: 'Set as Up next', exact: true })
+      .click()
+
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    await expect(sliceSpine(page, 'Dune')).toBeFocused()
+    await expect(page.getByRole('status')).toHaveText('Dune is Up next.')
+    await expect(upNextPane(page)).toContainText('Dune')
+    expect(storedLibrary(server).upNextBookId).toBe(DUNE_ID)
+  })
 })

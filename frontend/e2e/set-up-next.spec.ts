@@ -23,12 +23,13 @@ import {
   waitingPane,
 } from './home.ts'
 import { spine } from './bookcase.ts'
-import { intentOf, requestsTo, SET_UP_NEXT, START_READING } from './intents.ts'
+import { DELETE_BOOK, intentOf, requestsTo, SET_UP_NEXT, START_READING } from './intents.ts'
 
 const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']
 const COULDNT_SAVE = "Couldn't save. Your data wasn't changed."
 const REPLACES = 'Replaces the current Up next.'
 const MAIN_CANT = "Your Main book can't be Up next."
+const GONE = "This book isn't in your catalog anymore."
 
 const FAHRENHEIT_ID = '9d4e7a10-2b3c-4d5e-8f60-718293a4b5c6'
 const FAHRENHEIT = { id: FAHRENHEIT_ID, title: 'Fahrenheit 451', authors: ['Ray Bradbury'], pages: 187 }
@@ -431,5 +432,109 @@ test.describe('Story 4.4 Choose what to read next (automate)', () => {
     await expect(card.getByText(MAIN_CANT, { exact: true })).toBeVisible()
     await expect(page.getByRole('status')).toHaveText('')
     expect(libraryBytes(server)).toBe(before)
+  })
+})
+
+test.describe('Epic 4 retro item 43: Set as Up next, second review', () => {
+  async function deleteElsewhere(page: Page, url: string, bookId: string): Promise<void> {
+    const deleted = await page.request.post(`${url}${DELETE_BOOK}`, {
+      multipart: { intent: JSON.stringify({ bookId }) },
+    })
+    expect(deleted.status()).toBe(200)
+  }
+
+  test('[P1] Book detail states the replacement under Set as Up next while another Book is Up next', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({
+      mainBookId: DUNE_ID,
+      upNextBookId: NEUROMANCER_ID,
+      books: [DUNE_MAIN, NEUROMANCER, FAHRENHEIT],
+    })
+    await page.goto(`${server.url}/book/${FAHRENHEIT_ID}`)
+
+    await expect(detailButton(page, 'Set as Up next')).toHaveAccessibleDescription(REPLACES)
+    await expect(page.getByRole('main').getByText(REPLACES, { exact: true })).toBeVisible()
+  })
+
+  test('[P2] Book detail shows no hint when no Book is Up next', async ({ page, seededServer }) => {
+    const server = await seededServer({ mainBookId: DUNE_ID, books: [DUNE_MAIN, FAHRENHEIT] })
+    await page.goto(`${server.url}/book/${FAHRENHEIT_ID}`)
+
+    await expect(detailButton(page, 'Set as Up next')).toHaveAccessibleDescription('')
+    await expect(page.getByRole('main').getByText(REPLACES, { exact: true })).toHaveCount(0)
+  })
+
+  test('[P2] a failure after Esc has closed the popover still reads in alert', async ({ page, seededServer }) => {
+    const server = await seededServer({ mainBookId: DUNE_ID, books: [DUNE_MAIN, NEUROMANCER] })
+    let release = () => {}
+    const held = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    await page.route(`**${SET_UP_NEXT}`, async (route) => {
+      await held
+      await route.fulfill({
+        status: 503,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: { kind: 'couldnt_save', code: 'couldnt_save', message: COULDNT_SAVE } }),
+      })
+    })
+    await page.goto(`${server.url}/catalog`)
+    const neuromancer = spine(page, NEUROMANCER_SPINE)
+    await neuromancer.click()
+    const card = popover(page, 'Neuromancer')
+    await card.getByRole('button', { name: 'Set as Up next', exact: true }).click()
+    const before = libraryBytes(server)
+
+    await page.keyboard.press('Escape')
+    await expect(card).toHaveCount(0)
+    await expect(neuromancer).toBeFocused()
+    release()
+
+    await expect(page.getByRole('alert')).toHaveText(COULDNT_SAVE)
+    expect(libraryBytes(server)).toBe(before)
+  })
+
+  test('[P1] a Book deleted in another tab: the popover closes and focus goes to the shelf or main', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ mainBookId: DUNE_ID, books: [DUNE_MAIN, NEUROMANCER] })
+    await page.goto(`${server.url}/catalog`)
+    await spine(page, NEUROMANCER_SPINE).click()
+    const card = popover(page, 'Neuromancer')
+    const setUpNext = card.getByRole('button', { name: 'Set as Up next', exact: true })
+    await expect(setUpNext).toBeFocused()
+    await deleteElsewhere(page, server.url, NEUROMANCER_ID)
+
+    await setUpNext.click()
+
+    await expect(card).toHaveCount(0)
+    await expect(page.getByRole('alert')).toHaveText(GONE)
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const active = document.activeElement
+          return active !== null && active !== document.body && document.getElementById('main')!.contains(active)
+        }),
+      )
+      .toBe(true)
+  })
+
+  test('[P1] a Book deleted in another tab: Book detail becomes Page not found with focus on its heading', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ mainBookId: DUNE_ID, books: [DUNE_MAIN, NEUROMANCER] })
+    await page.goto(`${server.url}/book/${NEUROMANCER_ID}`)
+    const setUpNext = detailButton(page, 'Set as Up next')
+    await expect(setUpNext).toBeVisible()
+    await deleteElsewhere(page, server.url, NEUROMANCER_ID)
+
+    await setUpNext.click()
+
+    await expect(page.getByRole('heading', { level: 1, name: 'Page not found', exact: true })).toBeFocused()
+    await expect(page.getByRole('alert')).toHaveText(GONE)
   })
 })

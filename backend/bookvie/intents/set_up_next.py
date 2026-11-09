@@ -5,7 +5,8 @@ parsed like ``pause``'s. In one commit, ``upNextBookId`` becomes the Book and
 nothing else changes: no Reading, ``mainBookId`` or ``sideReadBookIds``. An
 earlier Up next *Z* is displaced, which only means it is no longer
 ``upNextBookId``: its Readings are not touched, so a paused *Z* is in Waiting
-for you and any other *Z* is back in the catalog.
+for you, a Side read stays on the side, and any other *Z* is back in the
+catalog.
 
 Checked inside the commit, in order: 409 ``book_not_found`` when the Book is
 gone, then 409 ``main_cannot_be_up_next`` when it is the Main book. When the

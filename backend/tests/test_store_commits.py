@@ -14,17 +14,7 @@ from bookvie.store import (
     Store,
     serialize,
 )
-from tests.helpers import FaultyFs, RecordingFs, seeded_store
-
-EMPTY_LIBRARY = (
-    b'{\n  "schemaVersion": 2,\n  "mainBookId": null,\n  "upNextBookId": null,\n'
-    b'  "sideReadBookIds": [],\n  "books": []\n}\n'
-)
-
-
-def _temps(data_dir: Path) -> list[Path]:
-    return sorted(data_dir.glob("library.json.tmp*"))
-
+from tests.helpers import EMPTY_LIBRARY, FaultyFs, RecordingFs, seeded_store, temp_files
 
 # --- commits ------------------------------------------------------------------
 
@@ -45,7 +35,7 @@ def test_apply_commits_serialized_bytes_and_swaps(tmp_path: Path) -> None:
     assert Library.model_validate_json(on_disk) == new
     assert store.library is new
     assert old.books[0].tags == []  # the change ran on a copy
-    assert _temps(tmp_path) == []
+    assert temp_files(tmp_path) == []
 
 
 def test_apply_accepts_a_returned_library(tmp_path: Path) -> None:
@@ -76,7 +66,7 @@ def test_apply_unchanged_writes_nothing(tmp_path: Path) -> None:
     # The new file was written, then removed again; library.json was never renamed.
     assert log == ["replace covers/c.jpg", "remove covers/c.jpg"]
     assert not (tmp_path / "covers" / "c.jpg").exists()
-    assert _temps(tmp_path) == []
+    assert temp_files(tmp_path) == []
 
 
 def test_library_changes_only_after_the_rename(tmp_path: Path) -> None:
@@ -133,7 +123,7 @@ def test_fault_leaves_file_and_state_unchanged(tmp_path: Path, step: str) -> Non
     assert exc.value.code == "couldnt_save"
     assert (tmp_path / "library.json").read_bytes() == before
     assert store.library is old
-    assert _temps(tmp_path) == []
+    assert temp_files(tmp_path) == []
     store.fs = OsFileSystem()
     store.apply(_add_tag("y"))
     assert store.library.books[0].tags == ["y"]
@@ -167,7 +157,7 @@ def test_folder_fsync_fault_after_the_rename_still_commits(
     assert store.library is new
     assert (tmp_path / "library.json").read_bytes() == serialize(new)
     assert (tmp_path / "covers" / "c.jpg").read_bytes() == b"cover"
-    assert _temps(tmp_path) == []
+    assert temp_files(tmp_path) == []
     assert "couldn't flush" in capsys.readouterr().err
 
 
@@ -188,7 +178,7 @@ def test_fault_while_cleaning_up_still_reports_couldnt_save(tmp_path: Path) -> N
     with pytest.raises(CouldntSave):
         store.apply(_add_tag("x"))
     assert (tmp_path / "library.json").read_bytes() == before
-    assert _temps(tmp_path) == []
+    assert temp_files(tmp_path) == []
 
 
 def test_non_oserror_in_cleanup_still_removes_the_temp_file(tmp_path: Path) -> None:
@@ -204,7 +194,7 @@ def test_non_oserror_in_cleanup_still_removes_the_temp_file(tmp_path: Path) -> N
     with pytest.raises(CouldntSave):
         store.apply(_add_tag("x"))
     assert (tmp_path / "library.json").read_bytes() == before
-    assert _temps(tmp_path) == []
+    assert temp_files(tmp_path) == []
 
 
 @pytest.mark.parametrize("version", [0, 3])
@@ -255,7 +245,7 @@ def test_change_that_breaks_the_model_commits_nothing(
     assert (tmp_path / "library.json").read_bytes() == before
     assert store.library is old
     assert old.books[0].pages == 300 and old.books[0].type == "paperback"
-    assert _temps(tmp_path) == []
+    assert temp_files(tmp_path) == []
     Store.open(tmp_path)  # the file still loads
 
 
@@ -292,7 +282,7 @@ def test_concurrent_apply_loses_nothing(tmp_path: Path) -> None:
     assert len(tags) == 100 and set(tags) == expected
     on_disk = Library.model_validate_json((tmp_path / "library.json").read_bytes())
     assert on_disk == store.library
-    assert _temps(tmp_path) == []
+    assert temp_files(tmp_path) == []
 
 
 def test_apply_holds_the_ad4_lock(tmp_path: Path) -> None:

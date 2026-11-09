@@ -5,7 +5,7 @@
 
 import type { BookDetailView, ShelfBook } from '../api/index.ts'
 
-/** The popover hint under Set as Up next while any Book is Up next. */
+/** The hint under Set as Up next, on Book detail and in the popover, while any Book is Up next. */
 export const REPLACES_UP_NEXT = 'Replaces the current Up next.'
 
 /** The button's `aria-disabled` reason while `set-up-next` is out. */

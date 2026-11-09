@@ -1,8 +1,8 @@
 // Set as Up next, from Book detail or a spine popover (EXPERIENCE.md → Book
 // detail actions, Spine popover). A press sends `set-up-next` at once, with
-// no dialog: the displaced Up next keeps its Readings, so nothing needs
-// stating first. On `ok` the owner moves focus and announces once the
-// refetched views have rendered (`onSet`).
+// no dialog: the displaced Up next keeps its Readings, and the owner's hint
+// "Replaces the current Up next." states it first. On `ok` the owner moves
+// focus and announces once the refetched views have rendered (`onSet`).
 //
 // The same one-click flow serves Mark as Side read / Remove from side
 // (Story 4.7): `useOneClickFlow` takes the sender, and `useSetUpNextFlow`

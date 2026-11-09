@@ -477,3 +477,25 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-epic-4-retro-item-35-count-only-tracked-pages.md`
   summary: Measured pace still counts pages skipped on a resume: resuming a paused Reading at a higher "Which page?" doesn't change `startPage`, so a Reading started at 0, paused at 20 and resumed at 300 counts all the pages. Lowering the page below `startPage` (a mistyped start, later corrected) undercounts in the same way.
   evidence: Item 35 stores the page a *new* Reading starts at, and its approved spec says a resume never changes `startPage`. `backend/bookvie/intents/start_reading.py` (resume branch), `backend/bookvie/domain/pace.py`. Fixing it would need the pages tracked per resume, a new decision.
+
+## Deferred from: code review of spec-4-4-choose-what-to-read-next, second pass (2026-11-09, retro item 43)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-4-choose-what-to-read-next.md`
+  summary: Spine drift (AD-3, AD-12), reconciled before the next epic (retro item 38): AD-3 allows an intent only to commit once or refuse, but `set-up-next` on the current Up next (and the no-op Side-read intents) is a 200 with no commit and no `check_invariants()`. AD-12 says files always go write, commit, delete, but a change returning `UNCHANGED` with `new_files` writes and removes them with no commit. No intent sends both today. The AD-9 and AD-2 entry above doesn't name either decision.
+  evidence: `ARCHITECTURE-SPINE.md:65` (AD-3); `backend/bookvie/store/store.py:464`; `backend/bookvie/intents/set_up_next.py:45`; `backend/bookvie/intents/side_reads.py:60`, `:77`; `backend/tests/test_store_commits.py::test_apply_unchanged_writes_nothing`.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-4-choose-what-to-read-next.md`
+  summary: Spine drift correction for retro item 38: the entry above saying the Capability Map's "FR-5 to FR-9" row should name `intents/set_up_next` is half wrong. The row already lists `set_up_next`, and it names no routes. Only the Structural Seed's `intents/` list needs it.
+  evidence: `ARCHITECTURE-SPINE.md:362`.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-4-choose-what-to-read-next.md`
+  summary: For retro item 36: the spine popover's in-flight state has no test (the hint frozen by `hintAtPress`, `aria-disabled` with its reason, a second press sending nothing). With no earlier Up next, the refetch would otherwise show "Replaces the current Up next." during the request.
+  evidence: `frontend/src/components/SpinePopover.tsx:81-85`; the only held-route leaf is on Book detail, `frontend/e2e/set-up-next.spec.ts:324`.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-4-choose-what-to-read-next.md`
+  summary: For retro item 36: two green-phase follow-ups in 4.4's ATDD checklist have no test and no recorded decision: AC-2 in the browser (a stale tab presses, gets 200 and the `status` line) and refetch on focus (AD-7).
+  evidence: `_bmad-output/test-artifacts/atdd-checklist-4-4-choose-what-to-read-next.md:366-367`.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-4-choose-what-to-read-next.md`
+  summary: The e2e helpers `watchStatus`, `statusSeen`, `routeCouldntSave`, `detailButton`, `topOf` and `bottomOf` were due to move to a shared module in 4.4's green phase or in 4.5. They didn't, and are now copied across `pause`, `set-up-next`, `side-reads` and `finish-any-book` (`detailButton` also in `start-reading`).
+  evidence: `_bmad-output/test-artifacts/atdd-checklist-4-4-choose-what-to-read-next.md:265`; `frontend/e2e/set-up-next.spec.ts:61-113`.
