@@ -176,6 +176,7 @@ test.describe('Epic 3 retro: stale client hand-offs', () => {
       await expect(page.getByRole('status')).toHaveText('Finished The Left Hand of Darkness.')
       await expect(page).toHaveURL(url)
       expect(storedLibrary(server).mainBookId).toBe(DUNE_ID)
+      expect(storedLibrary(server).upNextBookId).toBeNull()
       expect(storedBook(server, LEFT_HAND_ID).readings[0]?.finishDate).toBe('2026-10-28')
     } finally {
       await stopAndRemove(server)

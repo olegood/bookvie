@@ -52,11 +52,11 @@ const MAIN_AT_300 = mainAt(300, {
   others: [DUNE],
 })
 
+const EMMA_ID = '2a7e4b1c-8d3f-4e5a-9b6c-7d8e9f0a1b2c'
 /**
  * The same, plus Emma finished in 20 days: Measured pace 20 pages a day, so
  * 30 pages left is "~2 days left" (Story 3.4), hidden once no pages are left.
  */
-const EMMA_ID = '2a7e4b1c-8d3f-4e5a-9b6c-7d8e9f0a1b2c'
 const PACED_MAIN_AT_300 = mainAt(300, {
   reading: { startDate: '2026-10-01', purpose: PURPOSE, lastProgressUpdate: EARLIER },
   others: [

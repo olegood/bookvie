@@ -499,3 +499,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-4-choose-what-to-read-next.md`
   summary: The e2e helpers `watchStatus`, `statusSeen`, `routeCouldntSave`, `detailButton`, `topOf` and `bottomOf` were due to move to a shared module in 4.4's green phase or in 4.5. They didn't, and are now copied across `pause`, `set-up-next`, `side-reads` and `finish-any-book` (`detailButton` also in `start-reading`).
   evidence: `_bmad-output/test-artifacts/atdd-checklist-4-4-choose-what-to-read-next.md:265`; `frontend/e2e/set-up-next.spec.ts:61-113`.
+
+## Deferred from: code review of spec-4-5-mark-any-book-finished-from-its-page, second pass (2026-11-10, retro item 43)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-5-mark-any-book-finished-from-its-page.md`
+  summary: Spine drift (Capability → Architecture Map FR-14 row, AD-18), reconciled before the next epic (retro item 38): the 4.5 entry above names the "FR-14 map row" but says nothing to change in it. `finish-reading` now writes the root pointers AD-18 defines (it clears `upNextBookId` and the Book's `sideReadBookIds` entry), so the row, which lists only AD-7, AD-11, AD-19 and AD-20, should add AD-18, and AD-18's pointer rules should cover a finish as well as a delete.
+  evidence: `ARCHITECTURE-SPINE.md:364`; `backend/bookvie/intents/finish_reading.py` (pointer clearing).

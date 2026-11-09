@@ -161,6 +161,29 @@ deferred:
   - `[low]` `[reject]` (blind) `book-detail.spec.ts` swaps End for `setSelectionRange` — the test is about the tag suggestions, not caret keys; End's macOS behavior depends on page height, which made the leaf platform-flaky.
   - `[low]` `[defer]` (blind) No spine drift logged for the non-Main finish — real: AD-7 and AD-19's "Finishing" describe only the Main finish; logged as spine drift in `deferred-work.md` and the frontmatter `deferred` list.
 
+### 2026-11-10 — Code review pass (epic 4 retro item 43)
+- scope: `4e38808^..4e38808`, full mode, five layers (blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor, spine-check), none failed; verification-gap found no gaps. Each finding was checked against master at `0298555`, since 9 of the diff's 18 files have changed since; none was already fixed.
+- verdicts: 18 findings — high 0, medium 0, low 9, false 9, maybe-false 0
+- findings:
+  - [x] [Review][Patch] `[low]` The stale-tab leaf for a Book paused elsewhere doesn't assert the pointer it exercises (BH): the other tab's start makes the Book Up next, so its finish must clear `upNextBookId`. [frontend/e2e/stale-hand-offs.spec.ts:178]
+  - [x] [Review][Patch] `[low]` `EMMA_ID` sits between a doc comment and the constant it describes (BH), so the comment attaches to the wrong declaration. [frontend/e2e/finish-reading.spec.ts:59]
+  - [x] [Review][Defer] `[low]` The drift entry names the "FR-14 map row" without saying what changes, and omits AD-18 (SC, BH) [ARCHITECTURE-SPINE.md:364] — deferred: spine drift, reconciled before the next epic (item 38).
+- rejected:
+  - `[false]` SC: AD-7 has no matching spine edit — already logged as spine drift, as AGENTS.md requires.
+  - `[false]` SC: AD-19's "Finishing" has no matching spine edit — already logged in the same entry.
+  - `[false]` SC: the spec states drift with no spine edit — that is the per-epic policy working as intended.
+  - `[false]` BH: Measured pace counts paused time as reading days — the PRD addendum records this as an accepted decision (`addendum.md:57`).
+  - `[false]` BH: the routed 503's `library.json` assertion can't fail — another write from the page would change it; the real fault path is proven at API level, and the assertion is the convention in six specs.
+  - `[false]` BH: nothing shows the in-memory library survives a failed commit — `test_store_commits.py:63` and `:108` assert `store.library is old` under faults, and every intent commits through that path.
+  - `[false]` BH: `detailOffersFinish`'s `role === 'main'` clause is dead — it spells out the spec's rule and has no bad outcome.
+  - `[false]` BH: the story reached `done` without the pipeline — that rule entered AGENTS.md later (`0bebca6`, item 40), and item 43 is this review.
+  - `[false]` BH: a back-fill silently defaults to today — Finished on is a visible field, focused when the dialog opens, and the user presses Done.
+  - `[low]` AA: Home's Finish dialog can still play the moment for a non-Main finish — needs a cross-tab pause during a last-page save; the moment is still for a Book really finished, and `FinishDialog.tsx:317` documents the opener rule.
+  - `[low]` EC: a route change during the request focuses another Book's `h1` and announces there — one local round trip plus browser Back; the fix adds a guard.
+  - `[low]` BH: the same route-change race — duplicate of the EC row.
+  - `[low]` BH: the focus-before-status check can't catch a reversed order, because `announce` waits 100 ms — true of the shared `watchStatus` helper; a real check needs spying on both calls, and the code path is two adjacent lines.
+  - `[low]` BH: the spec's Code Map, Verification and Change Log omit files the diff changed — the fix edits this spec.
+
 ## Design Notes
 
 - **Who decides "non-Main":** the dialog uses the `book` view fetched when it opened, which is already fixed for the Purpose question. If another tab made the Book Main meanwhile, the server finishes it as Main (it clears `mainBookId`) while this tab stays on Book detail. That is acceptable last-write-wins (AD-3): the refetched views are already in.
