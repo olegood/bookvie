@@ -351,7 +351,7 @@ action_items:
       Side reads (FR-8), with a test. Changes: `backend/bookvie/intents/edit_book.py`,
       `backend/tests/test_edit_book.py`. Due: before Epic 5. (F-R4)"
     owner: "Amelia (Dev)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-4-retro-2026-11-09.md"
   - id: "epic-4-retro-item-35-count-only-tracked-pages-in-measured-pac"
     epic: 4

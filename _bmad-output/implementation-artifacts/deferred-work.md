@@ -461,3 +461,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-7-keep-a-few-side-reads.md`
   summary: Spine drift (Capability → Architecture Map "FR-5 to FR-9" row, AD-18, AD-6), reconciled before the next epic: the "FR-5 to FR-9" row (FR-8 Side reads) names `mark_side_read`, but the code is `intents/side_reads.py` with `mark_side_read` and `unmark_side_read` (unmark isn't in the spine); AD-18/AD-6 don't name the views' Side-read fields `HomeView.sideReads`, `ShelfBook.sideRead`, `BookDetailView.sideRead` and `sideReadsFull`, nor `start-reading`'s `page` ("Which page?") and its `reachedLastPage`.
   evidence: Review of 4.7; `ARCHITECTURE-SPINE.md:362` ("FR-5 to FR-9" row); `backend/bookvie/intents/side_reads.py`, `intents/start_reading.py`, `views/models.py`.
+
+## Deferred from: review of spec-epic-4-retro-item-34-back-fill-drops-side-read (2026-11-09)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-epic-4-retro-item-34-back-fill-drops-side-read.md`
+  summary: Spine drift (AD-19), reconciled before the next epic (retro item 38): AD-19's "Back-filled finishes in edit" bullet should say a back-fill on a Book with no Readings also removes it from `sideReadBookIds` in the same commit, and that `upNextBookId` stays. Its "Finishing" bullet's "only `finish-reading` sets `finishDate`" should allow for edit-book's back-fill.
+  evidence: `ARCHITECTURE-SPINE.md:236-237`; `backend/bookvie/intents/edit_book.py` (`edit_book`'s `change`).

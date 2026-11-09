@@ -32,6 +32,9 @@ a date before ``latest``'s start is refused, and any other changed date sets
 Either way a stored date must be a *past* Reading's: when the Book has an
 unfinished Reading with a start date, a new or changed date after that start
 is refused (the start day itself is allowed, as a same-day re-read makes).
+A back-fill on a Book with no Readings finishes it, so the Book leaves the
+Side reads (FR-8) in the same commit; beside a paused Reading it only adds
+a past Reading, and the Book stays.
 """
 
 import uuid
@@ -215,5 +218,11 @@ def edit_book(
                 book.spine_color_curated,
             )
         library.replace_book(book.model_copy(update=update))
+        # Only a Book with no Readings is finished by this; `_readings` also back-fills beside
+        # a paused Reading, and that Book is still being read.
+        if fields.finished_on is not None and not book.readings:
+            library.side_read_book_ids = [
+                other for other in library.side_read_book_ids if other != book.id
+            ]
 
     commit(store, change, new_files)
