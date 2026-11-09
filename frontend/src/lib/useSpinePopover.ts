@@ -5,9 +5,11 @@
 // spine unless the user put it somewhere else. The popover's start action
 // closes it and opens the Start dialog; cancelling that returns focus to the
 // spine once the dialog has unmounted, or to the shelf or `main` when the
-// spine is gone.
+// spine is gone. Confirming navigates to a new history entry, which closes it
+// where the Bookcase stays mounted (Home's slice).
 
 import { useCallback, useEffect, useRef, useState, type MouseEvent, type RefObject } from 'react'
+import { useLocation } from 'react-router'
 import type { ShelfBook } from '../api/index.ts'
 
 /**
@@ -54,8 +56,13 @@ export function useSpinePopover({ books, visible, ids, rows, buttons, shelfRef }
   // The Book whose Spine popover is open: at most one.
   const [openId, setOpenId] = useState<string | null>(null)
   const popoverRef = useRef<HTMLDivElement>(null)
-  // The Book whose Start dialog is open (from its popover's start action).
-  const [startingId, setStartingId] = useState<string | null>(null)
+  // The Book whose Start dialog is open (from its popover's start action), and
+  // the history entry it opened on: a confirmed start navigates to `/`, a new
+  // entry, which closes it on Home, where the slice stays mounted.
+  const location = useLocation()
+  const [starting, setStarting] = useState<{ bookId: string; key: string } | null>(null)
+  if (starting !== null && starting.key !== location.key) setStarting(null)
+  const startingId = starting?.bookId ?? null
   // A press on the open spine closes its popover; the click that follows must not reopen it.
   const closedByPress = useRef<{ id: string; at: number } | null>(null)
   const shelf = useCallback(() => shelfRef.current, [shelfRef])
@@ -83,15 +90,15 @@ export function useSpinePopover({ books, visible, ids, rows, buttons, shelfRef }
   const openStart = useCallback(() => {
     if (openId === null) return
     closePopover(true)
-    setStartingId(openId)
-  }, [openId, closePopover])
+    setStarting({ bookId: openId, key: location.key })
+  }, [openId, closePopover, location.key])
 
   // Cancel or Esc: the popover has closed, so focus returns to the spine,
   // once the modal dialog (which makes the shelf inert) has unmounted.
   const [refocusId, setRefocusId] = useState<{ id: string } | null>(null)
   const cancelStart = useCallback(() => {
     if (startingId !== null) setRefocusId({ id: startingId })
-    setStartingId(null)
+    setStarting(null)
   }, [startingId])
 
   // The spine is gone (deleted or hidden by a refetch): the shelf if it takes focus, else `main`.

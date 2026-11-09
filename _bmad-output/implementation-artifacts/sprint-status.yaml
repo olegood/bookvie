@@ -333,7 +333,7 @@ action_items:
       last page. Changes: `frontend/src/lib/useSpinePopover.ts`, `frontend/e2e/home-slice.spec.ts`.
       Due: before Epic 5. (F-R1)"
     owner: "Amelia (Dev)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-4-retro-2026-11-09.md"
   - id: "epic-4-retro-item-33-state-the-truth-when-a-displaced-up-next"
     epic: 4

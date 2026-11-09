@@ -19,7 +19,17 @@
 import type { Locator, Page } from '@playwright/test'
 import { SPINE_EDGE, SPINE_UNREAD_FILL, SPINE_UNREAD_TEXT, TRANSPARENT, shelfOf } from './bookcase.ts'
 import { expect, test } from './fixtures.ts'
-import { LEFT_HAND, LEFT_HAND_ID, mainAt, mainBookCard } from './home.ts'
+import {
+  DUNE,
+  DUNE_ID,
+  LEFT_HAND,
+  LEFT_HAND_ID,
+  mainAt,
+  mainBookCard,
+  startDialog,
+  storedBook,
+  storedLibrary,
+} from './home.ts'
 
 const MAIN_COLOR = { hex: '#4F7096', rgb: [79, 112, 150] as RGB }
 const LEGEND_MAIN = 'Main book, filled to its %'
@@ -615,4 +625,107 @@ test.describe('Story 3.5 See my reading on Home’s shelf (ATDD)', () => {
     expect(ring).not.toBeNull()
     expect(ring!.startsWith(body)).toBe(false)
   })
+})
+
+// Epic 4 retro F-R1: Home stays mounted through a confirmed start, unlike
+// Catalog, so the Bookcase's Start dialog has to close on the new history entry.
+test.describe('Epic 4 retro item 32: starting from a spine popover on Home’s slice', () => {
+  test('[P1] a Start confirmed from a slice popover closes the dialog and focuses the new Main book’s title link', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer(mainAt(212, { others: [DUNE] }))
+    await page.goto(server.url)
+
+    await sliceSpine(page, 'Dune').click()
+    await page.getByRole('dialog', { name: 'Dune', exact: true }).getByRole('button', { name: 'Start reading' }).click()
+    const dialog = startDialog(page, 'Start Dune?')
+    await dialog.getByRole('button', { name: 'Start reading', exact: true }).click()
+
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    await expect(mainBookCard(page).getByRole('link', { name: 'Dune', exact: true })).toBeFocused()
+    expect(storedLibrary(server).mainBookId).toBe(DUNE_ID)
+  })
+
+  test('[P1] a Resume confirmed from a slice popover closes the dialog and the Book is Main again', async ({
+    page,
+    seededServer,
+  }) => {
+    const paused = { ...DUNE, readings: [{ currentPage: 120, pausedAt: '2026-10-20' }] }
+    const server = await seededServer(mainAt(212, { others: [paused] }))
+    await page.goto(server.url)
+
+    await sliceSpine(page, 'Dune').click()
+    await page.getByRole('dialog', { name: 'Dune', exact: true }).getByRole('button', { name: 'Resume' }).click()
+    await startDialog(page, 'Resume Dune?').getByRole('button', { name: 'Resume', exact: true }).click()
+
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    await expect(mainBookCard(page).getByRole('link', { name: 'Dune', exact: true })).toBeFocused()
+    expect(storedLibrary(server).mainBookId).toBe(DUNE_ID)
+  })
+
+  test('[P1] a Side read started at its last page from a slice popover shows only the Finish dialog', async ({
+    page,
+    seededServer,
+  }) => {
+    const paused = { ...DUNE, readings: [{ currentPage: 120, pausedAt: '2026-10-20' }] }
+    const server = await seededServer({ ...mainAt(212, { others: [paused] }), sideReadBookIds: [DUNE_ID] })
+    await page.goto(server.url)
+
+    await sliceSpine(page, 'Dune').click()
+    await page.getByRole('dialog', { name: 'Dune', exact: true }).getByRole('button', { name: 'Resume' }).click()
+    const dialog = startDialog(page, 'Resume Dune?')
+    await dialog.getByRole('spinbutton', { name: 'Which page?', exact: true }).fill(String(DUNE.pages))
+    await dialog.getByRole('button', { name: 'Resume', exact: true }).click()
+
+    const finish = page.getByRole('dialog', { name: 'Finished Dune', exact: true })
+    await expect(finish).toBeVisible()
+    await expect(finish).toHaveAccessibleDescription(`Page ${DUNE.pages} of ${DUNE.pages}, 100%.`)
+    await expect(page.getByRole('dialog')).toHaveCount(1)
+    expect(storedLibrary(server).mainBookId).toBe(DUNE_ID)
+    expect(storedBook(server, DUNE_ID).readings[0]).toMatchObject({ currentPage: DUNE.pages, finishDate: null })
+    await finish.getByRole('button', { name: 'Cancel', exact: true }).click()
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+  })
+
+  test('[P1] a Start confirmed from a slice popover with no Main book closes the dialog and focuses the title link', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: [DUNE] })
+    await page.goto(server.url)
+
+    await sliceSpine(page, 'Dune').click()
+    await page.getByRole('dialog', { name: 'Dune', exact: true }).getByRole('button', { name: 'Start reading' }).click()
+    await startDialog(page, 'Start Dune?').getByRole('button', { name: 'Start reading', exact: true }).click()
+
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    await expect(mainBookCard(page).getByRole('link', { name: 'Dune', exact: true })).toBeFocused()
+    expect(storedLibrary(server).mainBookId).toBe(DUNE_ID)
+  })
+
+  for (const [name, dismiss] of [
+    ['Cancel', (dialog: Locator) => dialog.getByRole('button', { name: 'Cancel', exact: true }).click()],
+    ['Esc', (dialog: Locator) => dialog.press('Escape')],
+  ] as const) {
+    test(`[P1] ${name} on a Start dialog from a slice popover returns focus to the spine and starts nothing`, async ({
+      page,
+      seededServer,
+    }) => {
+      const server = await seededServer(mainAt(212, { others: [DUNE] }))
+      await page.goto(server.url)
+      const dune = sliceSpine(page, 'Dune')
+
+      await dune.click()
+      await page
+        .getByRole('dialog', { name: 'Dune', exact: true })
+        .getByRole('button', { name: 'Start reading' })
+        .click()
+      await dismiss(startDialog(page, 'Start Dune?'))
+
+      await expect(page.getByRole('dialog')).toHaveCount(0)
+      await expect(dune).toBeFocused()
+      expect(storedLibrary(server).mainBookId).toBe(LEFT_HAND_ID)
+    })
+  }
 })
