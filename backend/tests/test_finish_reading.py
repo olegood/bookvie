@@ -31,8 +31,9 @@ The tests pin these names:
   Book is the Main book, ``mainBookId`` becomes ``null``. ``upNextBookId`` is
   left alone, so Home then suggests the Up next Book (Story 4.1).
 - Refusals, checked inside the commit in this order: 409 ``book_not_found``
-  when the Book is gone, 409 ``reading_already_finished`` when it has no
-  unfinished Reading, then 422 ``invalid_fields`` on ``finishedOn``: "Finished
+  when the Book is gone, 409 ``reading_already_finished`` when it has
+  Readings but none unfinished (a Book with no Readings is back-filled, Story
+  4.5, ``test_finish_any_book.py``), then 422 ``invalid_fields`` on ``finishedOn``: "Finished
   on can't be in the future." or "Finished on can't be before 12 March 2026,
   when this reading started." (the messages Edit book already uses).
 """
@@ -413,7 +414,7 @@ def test_finishing_the_main_book_leaves_up_next_alone(tmp_path: Path) -> None:
 
 
 def test_a_paused_book_is_finished_and_the_main_book_stays(tmp_path: Path) -> None:
-    # The API allows it (the UI offers Mark finished only for the Main book):
+    # Book detail offers Mark finished for a paused Book too (Story 4.5):
     # the Main pointer is cleared only when it names the finished Book.
     builder = LibraryBuilder()
     paused = builder.book(title="Neuromancer", pages=271)

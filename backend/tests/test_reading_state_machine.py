@@ -21,8 +21,10 @@ After every step:
   book, ``None`` when the started Book was Up next with no Main book, and
   unchanged otherwise; after a pause or a set-up-next it is that Book, and
   set-up-next changes no Book; a set-up-next for the current Up next writes
-  nothing (AD-9); a finish leaves it alone, and a delete of the Up next Book
-  clears it (Stories 4.1, 4.3, 4.4);
+  nothing (AD-9); a finish clears it when it names the finished Book (and
+  takes that Book out of the Side reads), a finish of a Book with no Readings
+  back-fills one Reading with no start date and no Purpose, and a delete of
+  the Up next Book clears it (Stories 4.1, 4.3, 4.4, 4.5);
 - ``check_invariants()`` holds, each Book has at most one unfinished Reading,
   and the file on disk reads back as the committed library;
 - the views agree: only ``mainBookId`` is ``main``, only ``upNextBookId`` is
@@ -342,6 +344,18 @@ class ReadingPlan(RuleBasedStateMachine):
         old_main = library.main_book_id
         finished_on = self.today + timedelta(days=offset)
         current = _current(before[book_id]) if book_id in before else None
+        backfill = book_id in before and not before[book_id]["readings"]
+        if backfill:
+            # The Reading a finish back-fills: no start date, no Purpose (FR-14).
+            pages = before[book_id]["pages"]
+            current = {
+                "startDate": None,
+                "currentPage": pages,
+                "purpose": None,
+                "lastProgressUpdate": None,
+                "pausedAt": None,
+            }
+        old_side_reads = list(library.side_read_book_ids)
         if book_id not in before:
             expected = "book_not_found"
         elif current is None:
@@ -370,24 +384,34 @@ class ReadingPlan(RuleBasedStateMachine):
 
         after = _books(self.store.library)
         assert current is not None
-        expected_book = {
-            **before[book_id],
-            "readings": [
-                {
-                    **r,
-                    "finishDate": finished_on.isoformat(),
-                    "finishedPages": before[book_id]["pages"],
-                    "purposeFulfilled": answer,
-                    "rating": rating,
-                }
-                if r["id"] == current["id"]
-                else r
-                for r in before[book_id]["readings"]
-            ],
+        answers = {
+            "finishDate": finished_on.isoformat(),
+            "finishedPages": before[book_id]["pages"],
+            "purposeFulfilled": answer,
+            "rating": rating,
         }
+        if backfill:
+            readings = after[book_id]["readings"]
+            assert len(readings) == 1
+            # Compared ignoring the minted id.
+            assert {k: v for k, v in readings[0].items() if k != "id"} == {**current, **answers}
+            expected_book = {**before[book_id], "readings": readings}
+        else:
+            expected_book = {
+                **before[book_id],
+                "readings": [
+                    {**r, **answers} if r["id"] == current["id"] else r
+                    for r in before[book_id]["readings"]
+                ],
+            }
         # Only the current Reading is finished; history and other Books stay.
         assert after == {**before, book_id: expected_book}
         assert self.store.library.main_book_id == (None if old_main == book_id else old_main)
+        if self.up_next == book_id:
+            self.up_next = None
+        assert self.store.library.side_read_book_ids == [
+            other for other in old_side_reads if other != book_id
+        ]
 
     @rule(slot=_slots)
     def delete(self, slot: int) -> None:

@@ -264,7 +264,10 @@ export interface paths {
         put?: never;
         /**
          * Finish Reading Intent
-         * @description Finish a Book's current Reading and clear it as the Main book (FR-14).
+         * @description Finish a Book's current Reading, or back-fill one for a Book with no Readings (FR-14).
+         *
+         *     In the same commit the Book is cleared as the Main book and as Up next
+         *     when a pointer names it, and leaves the Side reads.
          */
         post: operations["finish_reading_intent_api_intents_finish_reading_post"];
         delete?: never;

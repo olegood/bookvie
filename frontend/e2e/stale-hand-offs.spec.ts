@@ -23,6 +23,7 @@ import {
   serverAtFakeToday,
   stopAndRemove,
   storedBook,
+  storedLibrary,
 } from './home.ts'
 import { EDIT_PURPOSE, FINISH_READING, START_READING } from './intents.ts'
 
@@ -112,11 +113,13 @@ test.describe('Epic 3 retro: stale client hand-offs', () => {
       await page.goto(`${server.url}/book/${LEFT_HAND_ID}`)
       const markFinished = page.getByRole('main').getByRole('button', { name: 'Mark finished', exact: true })
       await expect(markFinished).toBeVisible()
-      // … while another tab makes Dune Main, pausing it.
-      await elsewhere(page, server, START_READING, { bookId: DUNE_ID, purpose: null })
-
       await markFinished.click()
       const dialog = page.getByRole('dialog', { name: FINISH_DIALOG, exact: true })
+      // The dialog opened on a view with it as Main …
+      await expect(dialog).toBeVisible()
+      // … while another tab makes Dune Main, pausing it. (Had that happened
+      // before the dialog opened, Done would stay on Book detail: Story 4.5.)
+      await elsewhere(page, server, START_READING, { bookId: DUNE_ID, purpose: null })
       await dialog.getByRole('button', { name: 'Done', exact: true }).click()
       await expect(dialog).toHaveCount(0)
       await expect(mainBookCard(page).getByRole('link', { name: 'Dune', exact: true })).toBeVisible()
@@ -135,6 +138,40 @@ test.describe('Epic 3 retro: stale client hand-offs', () => {
       await expect(empty).toBeVisible()
       await expect(empty).not.toBeFocused()
       await expect(page.getByText('Finished The Left Hand of Darkness.')).toHaveCount(0)
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+
+  test('[P1] F-R3 a Book paused elsewhere before Mark finished is pressed: Done stays on Book detail (Story 4.5)', async ({
+    page,
+  }) => {
+    const server = await serverAtFakeToday(
+      page,
+      'stale-hand-off-paused',
+      mainAt(300, { reading: { startDate: '2026-10-01' }, others: [DUNE] }),
+    )
+    try {
+      const url = `${server.url}/book/${LEFT_HAND_ID}`
+      // This tab still shows The Left Hand of Darkness as Main …
+      await page.goto(url)
+      const markFinished = page.getByRole('main').getByRole('button', { name: 'Mark finished', exact: true })
+      await expect(markFinished).toBeVisible()
+      // … while another tab makes Dune Main, pausing it, before the dialog opens.
+      await elsewhere(page, server, START_READING, { bookId: DUNE_ID, purpose: null })
+
+      await markFinished.click()
+      const dialog = page.getByRole('dialog', { name: FINISH_DIALOG, exact: true })
+      await dialog.getByRole('button', { name: 'Done', exact: true }).click()
+
+      await expect(dialog).toHaveCount(0)
+      await expect(
+        page.getByRole('main').getByRole('heading', { level: 1, name: 'The Left Hand of Darkness', exact: true }),
+      ).toBeFocused()
+      await expect(page.getByRole('status')).toHaveText('Finished The Left Hand of Darkness.')
+      await expect(page).toHaveURL(url)
+      expect(storedLibrary(server).mainBookId).toBe(DUNE_ID)
+      expect(storedBook(server, LEFT_HAND_ID).readings[0]?.finishDate).toBe('2026-10-28')
     } finally {
       await stopAndRemove(server)
     }

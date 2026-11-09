@@ -8,18 +8,24 @@ are taken as any JSON value, so a value of the wrong type is a field error on
 that field, not a malformed ``intent``. In one commit the Book's current
 (unfinished) Reading gets ``finishDate`` = ``finishedOn``, ``finishedPages``
 = the Book's ``pages`` now, and the two answers as sent; every other field is
-kept. When the Book is the Main book, ``mainBookId`` becomes ``null``. This
-is the only intent that sets ``finishDate`` on a current Reading.
+kept. A Book with no Readings at all instead gets a new back-filled Reading
+(``startDate`` and ``purpose`` null, ``currentPage`` = ``finishedPages`` =
+``pages``, the sent ``finishedOn`` and ``rating``), as Add book's Finished
+on does (FR-14). Then ``mainBookId`` and ``upNextBookId`` become ``null``
+when they name the Book, and the Book leaves ``sideReadBookIds``; nothing
+else changes. This is the only intent that sets ``finishDate`` on a current
+Reading.
 
 Refusals, checked inside the commit in this order: 409 ``book_not_found``
-when the Book is gone, 409 ``reading_already_finished`` when it has no
-unfinished Reading, then 422 ``invalid_fields`` naming, in form order,
-``finishedOn`` (not a date, in the future, or before the Reading's start:
-Edit book's messages), ``purposeFulfilled`` (not an answer, or sent for a
-Reading with no Purpose) and ``rating`` (not a whole number from 1 to 5).
-Today is the Clock's local date.
+when the Book is gone, 409 ``reading_already_finished`` when it has
+Readings but none unfinished, then 422 ``invalid_fields`` naming, in form
+order, ``finishedOn`` (not a date, in the future, or before the Reading's
+start: Edit book's messages), ``purposeFulfilled`` (not an answer, or sent
+for a Reading with no Purpose, which a back-fill never has) and ``rating``
+(not a whole number from 1 to 5). Today is the Clock's local date.
 """
 
+import uuid
 from datetime import date
 from typing import get_args
 
@@ -35,6 +41,7 @@ from bookvie.domain.labels import LABELS
 from bookvie.domain.model import PurposeFulfilled, Reading
 from bookvie.store import Store
 
+from .book_form import backfill_reading
 from .commit import commit
 from .contract import (
     FieldError,
@@ -109,7 +116,7 @@ def _rating_failure(value: JsonValue) -> str | None:
 
 
 def finish_reading(store: Store, clock: Clock, intent: FinishReadingIntent) -> None:
-    """Finish the Book's current Reading and clear it as Main, in one commit."""
+    """Finish the Book's current Reading (or back-fill one) and clear its pointers, in one commit."""
     book_id = intent.book_id
 
     def change(library: Library) -> None:
@@ -117,8 +124,13 @@ def finish_reading(store: Store, clock: Clock, intent: FinishReadingIntent) -> N
         if book is None:
             raise book_not_found()
         reading = current_reading(book)
+        backfill = reading is None and not book.readings
         if reading is None:
-            raise reading_already_finished()
+            if not backfill:
+                raise reading_already_finished()
+            # The candidate the field checks run against: they read only its
+            # null start_date and purpose; its finish fields are overwritten below.
+            reading = backfill_reading(str(uuid.uuid4()), clock.today(), book.pages)
         finished_on, finished_on_failure = _finished_on(intent.finished_on, reading, clock.today())
         failures = [
             (FINISHED_ON_FIELD, finished_on_failure),
@@ -143,12 +155,17 @@ def finish_reading(store: Store, clock: Clock, intent: FinishReadingIntent) -> N
                 "rating": intent.rating,
             }
         )
-        library.replace_book(
-            book.model_copy(
-                update={"readings": [finished if r.id == reading.id else r for r in book.readings]}
-            )
-        )
+        if backfill:
+            readings = [*book.readings, finished]
+        else:
+            readings = [finished if r.id == reading.id else r for r in book.readings]
+        library.replace_book(book.model_copy(update={"readings": readings}))
         if library.main_book_id == book_id:
             library.main_book_id = None
+        if library.up_next_book_id == book_id:
+            library.up_next_book_id = None
+        library.side_read_book_ids = [
+            other for other in library.side_read_book_ids if other != book_id
+        ]
 
     commit(store, change)

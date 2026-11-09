@@ -41,6 +41,12 @@ type Props = {
   fromPercent?: number
   /** Cancel, Esc, or the Book gone before it opened: the opener unmounts the dialog and takes focus back. */
   onCancel: () => void
+  /**
+   * Done for a Book that wasn't Main when the dialog opened (Story 4.5): the
+   * opener stays where it is, unmounts the dialog, and moves focus and
+   * announces. Without it, every finish goes Home.
+   */
+  onFinishedHere?: (title: string) => void
 }
 
 /** A star: filled (selected or lower) or an outline, so the shape changes, not only the color. */
@@ -69,11 +75,13 @@ function OpenFinishDialog({
   savedLine,
   fromPercent,
   onCancel,
+  onFinishedHere,
 }: {
   book: BookDetailView
   savedLine?: string
   fromPercent?: number
   onCancel: () => void
+  onFinishedHere?: (title: string) => void
 }) {
   const headingId = useId()
   const savedId = useId()
@@ -127,6 +135,11 @@ function OpenFinishDialog({
     const result = await sendFinish(book.id, { finishedOn, purposeFulfilled: fulfilled, rating })
     inFlight.current = false
     if (result.kind === 'ok') {
+      // Not Main when it opened: no finish moment, the opener stays (FR-14).
+      if (book.role !== 'main' && onFinishedHere) {
+        onFinishedHere(book.title)
+        return
+      }
       const state: FinishedState = {
         finished: true,
         bookId: book.id,
@@ -299,7 +312,11 @@ function OpenFinishDialog({
  * **Done** and **Cancel**.
  *
  * Done sends `finish-reading` (`aria-disabled` in flight; presses and Esc are
- * ignored) and goes to Home, which focuses the "No Main book." heading. A
+ * ignored) and, for the Main book, goes to Home, which plays the finish
+ * moment and moves focus (Stories 3.6, 3.7, 4.1). For a Book that wasn't
+ * Main when the dialog opened, an opener passing `onFinishedHere` keeps the
+ * user where they are: Done calls it with the title instead, with no finish
+ * moment and no `FinishedState` (Story 4.5). A
  * field refusal shows its message under the field; couldn't save or a 409
  * shows the `alert` line above the buttons, every answer kept. Cancel or Esc
  * sends nothing. Opened by a last-page save, its description is that save's
@@ -310,7 +327,7 @@ function OpenFinishDialog({
  * passes only the Book's id; it shows once a view fetched after it opened is
  * in, and keeps that view when a later refetch says the Book is finished or gone.
  */
-export default function FinishDialog({ bookId, savedLine, fromPercent, onCancel }: Props) {
+export default function FinishDialog({ bookId, savedLine, fromPercent, onCancel, onFinishedHere }: Props) {
   // Fetched after opening: a cached view of an earlier visit may predate a
   // restore or another tab's edit (the Purpose question and the re-read copy).
   const book = useFreshBookView(bookId)
@@ -323,5 +340,13 @@ export default function FinishDialog({ bookId, savedLine, fromPercent, onCancel 
   }, [gone, onCancel])
 
   if (opened === null) return null
-  return <OpenFinishDialog book={opened} savedLine={savedLine} fromPercent={fromPercent} onCancel={onCancel} />
+  return (
+    <OpenFinishDialog
+      book={opened}
+      savedLine={savedLine}
+      fromPercent={fromPercent}
+      onCancel={onCancel}
+      onFinishedHere={onFinishedHere}
+    />
+  )
 }

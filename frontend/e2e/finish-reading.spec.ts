@@ -56,12 +56,13 @@ const MAIN_AT_300 = mainAt(300, {
  * The same, plus Emma finished in 20 days: Measured pace 20 pages a day, so
  * 30 pages left is "~2 days left" (Story 3.4), hidden once no pages are left.
  */
+const EMMA_ID = '2a7e4b1c-8d3f-4e5a-9b6c-7d8e9f0a1b2c'
 const PACED_MAIN_AT_300 = mainAt(300, {
   reading: { startDate: '2026-10-01', purpose: PURPOSE, lastProgressUpdate: EARLIER },
   others: [
     DUNE,
     {
-      id: '2a7e4b1c-8d3f-4e5a-9b6c-7d8e9f0a1b2c',
+      id: EMMA_ID,
       title: 'Emma',
       authors: ['Jane Austen'],
       pages: 400,
@@ -110,7 +111,8 @@ test.describe('Story 3.6 Finish my Main book (ATDD)', () => {
   test('[P1] AC-1 the last page, or Mark finished on Book detail, opens the modal Finish dialog: Finished on prefilled with today and focused, Purpose fulfilled? under the quoted Purpose, Rating with No rating selected, Done and Cancel', async ({
     page,
   }) => {
-    const server = await serverAtFakeToday(page, 'finish-dialog', MAIN_AT_300)
+    // Emma (finished, no Reading in progress) is there for the last check.
+    const server = await serverAtFakeToday(page, 'finish-dialog', PACED_MAIN_AT_300)
     try {
       await page.goto(server.url)
       await reachLastPage(page)
@@ -155,10 +157,10 @@ test.describe('Story 3.6 Finish my Main book (ATDD)', () => {
       await expect(finishedOn(dialog)).toHaveValue(FAKE_TODAY)
       await expect(dialog.getByRole('radiogroup', { name: 'Purpose fulfilled?', exact: true })).toBeVisible()
 
-      // A Book that isn't Main offers no Mark finished (Story 4.5).
+      // A finished Book with no Reading in progress offers no Mark finished (Story 4.5).
       await dialogButton(dialog, 'Cancel').click()
-      await page.goto(`${server.url}/book/${DUNE_ID}`)
-      await expect(page.getByRole('main').getByRole('heading', { level: 1, name: 'Dune', exact: true })).toBeVisible()
+      await page.goto(`${server.url}/book/${EMMA_ID}`)
+      await expect(page.getByRole('main').getByRole('heading', { level: 1, name: 'Emma', exact: true })).toBeVisible()
       await expect(markFinished(page)).toHaveCount(0)
     } finally {
       await stopAndRemove(server)

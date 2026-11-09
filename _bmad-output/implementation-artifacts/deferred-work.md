@@ -439,3 +439,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-4-choose-what-to-read-next.md`
   summary: Spine drift (AD-9, AD-2), reconciled before the next epic: AD-9's "set-up-next for the current Up next is a 200 no-op that commits nothing" should name the mechanism, a change returning `store.UNCHANGED` so `Store.apply` skips the commit under the AD-4 lock (new files removed again), and AD-2's commit description should allow that no-write outcome.
   evidence: `backend/bookvie/store/store.py` `UNCHANGED` and `_apply_locked`; `backend/tests/test_store_commits.py::test_apply_unchanged_writes_nothing`.
+
+## Deferred from: code review of spec-4-5-mark-any-book-finished-from-its-page (2026-11-09)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-5-mark-any-book-finished-from-its-page.md`
+  summary: Spine drift (AD-7, AD-19, FR-14 map row), reconciled before the next epic: AD-7 describes only the Main finish carried to Home as router state; it should say a finish of a Book that wasn't Main when the Finish dialog opened stays on Book detail (focus to the `h1`, then "Finished *X*.", no finish moment). AD-19's "Finishing" bullet should say `finish-reading` back-fills a Reading (`startDate` null) for a Book with no Readings, and clears `upNextBookId` and the Book's `sideReadBookIds` entry in the same commit.
+  evidence: `backend/bookvie/intents/finish_reading.py` (back-fill, pointer clearing); `frontend/src/components/FinishDialog.tsx` `onFinishedHere`; `backend/tests/test_finish_any_book.py`.

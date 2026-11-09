@@ -467,7 +467,10 @@ test.describe('Story 1.11 Book detail and Edit book (ATDD)', () => {
     const tags = panel.getByRole('combobox', { name: 'Tags', exact: true })
     await expect(tags).toHaveValue('sci-fi')
 
-    await tags.press('End')
+    // The caret after the last tag. Not End: on macOS End scrolls the page
+    // instead, and Book detail can now be taller than the viewport (Story 4.5).
+    await tags.focus()
+    await tags.evaluate((input: HTMLInputElement) => input.setSelectionRange(input.value.length, input.value.length))
     await tags.pressSequentially(', cl')
     const suggestions = panel.getByRole('listbox')
     await expect(suggestions.getByRole('option')).toHaveText(['classics'])

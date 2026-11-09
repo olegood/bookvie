@@ -517,7 +517,11 @@ def finish_reading_intent(
         ),
     ] = None,
 ) -> OkResponse:
-    """Finish a Book's current Reading and clear it as the Main book (FR-14)."""
+    """Finish a Book's current Reading, or back-fill one for a Book with no Readings (FR-14).
+
+    In the same commit the Book is cleared as the Main book and as Up next
+    when a pointer names it, and leaves the Side reads.
+    """
     parsed = parse_finish_reading_intent(intent)
     finish_reading(request.app.state.store, request.app.state.clock, parsed)
     return OkResponse(ok=True)

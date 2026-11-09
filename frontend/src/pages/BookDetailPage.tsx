@@ -23,6 +23,7 @@ import {
   type DeletedState,
 } from '../lib/bookDetail.ts'
 import { COULDNT_LOAD } from '../lib/copy.ts'
+import { detailOffersFinish, finishedStatus } from '../lib/markFinished.ts'
 import { usePageTitle } from '../lib/page.ts'
 import { pausedStatus } from '../lib/pause.ts'
 import { detailOffersSetUpNext, SETTING_UP_NEXT, upNextStatus } from '../lib/setUpNext.ts'
@@ -174,9 +175,9 @@ function BookDetail({ book, onDelete, onFinish, finishButton }: BookDetailProps)
     announce('status', pending.line)
   }, [setUpNexts, book.role])
 
-  // Mark finished: the Main book only (a non-Main finish is Story 4.5's).
-  const canFinish = book.role === 'main'
-  // Pause: the Main book only, whatever Story 4.5 does to `canFinish`.
+  // Mark finished: the Main book, a Reading in progress, or a Book never finished (Story 4.5).
+  const canFinish = detailOffersFinish(book)
+  // Pause: the Main book only.
   const canPause = book.role === 'main'
 
   // Pause: the Main book only. Once the refetched view makes it a paused Up
@@ -379,8 +380,10 @@ function BookDetail({ book, onDelete, onFinish, finishButton }: BookDetailProps)
  * placeholder (`role="img"` "No cover"), 200×300, then the action stack
  * (the state-aware primary — **Start reading** or **Resume**, none for the
  * Main book — then **Set as Up next** unless the Book is Main or Up next,
- * then **Pause** and **Mark finished** for the Main book, then **Edit**,
- * then **Delete**); the Book on the right. An unknown id shows
+ * then **Pause** for the Main book, then **Mark finished** for the Main
+ * book, a Book with a Reading in progress or a Book never finished
+ * (`lib/markFinished.ts`), then **Edit**, then **Delete**); the Book on the
+ * right. An unknown id shows
  * the not-found page. The title is set by the child that renders, never
  * here: child effects run first, so a title set here would overwrite the
  * not-found page's.
@@ -389,6 +392,10 @@ function BookDetail({ book, onDelete, onFinish, finishButton }: BookDetailProps)
  * status, the gauge and the Purpose with **Edit Purpose**; the server
  * supplies every number. The primary opens the Start dialog and **Mark
  * finished** the Finish dialog; Cancel or Esc returns focus to the opener.
+ * Done for the Main book goes Home (Story 3.6). Done for any other Book
+ * (Story 4.5) keeps the page at `/book/:id`: once the dialog has unmounted,
+ * focus goes to the `h1`, then `status` reads "Finished *X*."; the refetched
+ * view already lists the finished Reading.
  * The Readings block lists each Reading newest first: "Started … · Finished
  * …", its stars when rated, and "Purpose fulfilled: …" when answered.
  *
@@ -431,7 +438,7 @@ export default function BookDetailPage() {
 
   useEffect(() => {
     if (finishRefocus === 0) return
-    // The opener is gone when a refetch says the Book isn't Main any more (or is gone): park focus on `main`.
+    // The opener is gone when a refetch says the Book is finished (no Reading in progress) or gone: park focus on `main`.
     const target = finishButton.current ?? document.getElementById('main')
     target?.focus()
   }, [finishRefocus])
@@ -439,6 +446,25 @@ export default function BookDetailPage() {
   const cancelFinish = useCallback(() => {
     setFinishingId(null)
     setFinishRefocus((count) => count + 1)
+  }, [])
+
+  // A non-Main finish stays here: once the dialog has unmounted, focus goes
+  // to the `h1`, then `status` says what was finished.
+  const finishedLine = useRef<string | null>(null)
+  const [finishedHere, setFinishedHere] = useState(0)
+
+  useEffect(() => {
+    const line = finishedLine.current
+    if (finishedHere === 0 || line === null) return
+    finishedLine.current = null
+    document.querySelector<HTMLElement>('main h1')?.focus()
+    announce('status', line)
+  }, [finishedHere])
+
+  const onFinishedHere = useCallback((title: string) => {
+    finishedLine.current = finishedStatus(title)
+    setFinishingId(null)
+    setFinishedHere((count) => count + 1)
   }, [])
 
   const onDelete: DeleteBook = async (id, title) => {
@@ -453,7 +479,9 @@ export default function BookDetailPage() {
     return { ok: false, message: result.message }
   }
 
-  const finishDialog = finishingId === bookId && <FinishDialog bookId={bookId} onCancel={cancelFinish} />
+  const finishDialog = finishingId === bookId && (
+    <FinishDialog bookId={bookId} onCancel={cancelFinish} onFinishedHere={onFinishedHere} />
+  )
   let content
   // While the delete is out, any non-ready view (missing, or a failed refetch) renders nothing.
   if (view.status === 'loading' || (deleting && view.status !== 'ready')) content = null
