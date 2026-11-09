@@ -180,6 +180,36 @@ deferred: []
   - `[low]` `[reject]` (intent-alignment) Scope beyond the epic (a page for any Book, the mark no-op, the pane's Start reading label) — these are the spec's Design Notes; changing them edits this spec.
   - `[low]` `[reject]` (intent-alignment) Side-read combinations come from random rules, not targeted generators — the seed has a paused Side read, and `mark_side` over five slots reaches Up next, paused and finished Side reads.
 
+### 2026-11-10 — Code review pass (epic 4 retro item 43)
+- scope: `e0306af^..e0306af`, full mode, whole diff (3,671 lines, over the chunking threshold; Oleg chose not to split), five layers (blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor, spine-check), none failed. Each finding was checked against master at `40d12e3`, since 13 of the diff's 41 files have changed since.
+- verdicts: 30 findings — high 0, medium 0, low 18, false 3, maybe-false 0, already fixed on master 9
+- findings:
+  - [x] [Review][Patch] `[low]` An invalid "Which page?" leaves focus on the pressed button (BH): `showPageInvalid` never focuses the field, while `PageField.tsx:157` does on a refusal, so a keyboard user has to tab back. [frontend/src/components/StartDialog.tsx:93]
+  - [x] [Review][Patch] `[low]` No test types text the number field can't parse (VG): removing the `badInput` check fails nothing, so the first pass's fix can regress. [frontend/e2e/side-reads.spec.ts:331]
+  - [x] [Review][Patch] `[low]` No test covers a stale-tab refusal that removes Mark as Side read (VG): only a 503 reaches this site, and the button survives that, so its slot placement and fallback never run. [frontend/e2e/side-reads.spec.ts:194]
+  - [x] [Review][Patch] `[low]` The matrix row "Side read + Up next" has no API test of both panes (AA): item 33's test checks `upNext.sideRead` only, not Home's `sideReads` or the shelf's `role`. [backend/tests/test_side_reads.py:381]
+  - [x] [Review][Patch] `[low]` `PAGE_REQUIRED` is exported but nothing imports it (BH). [frontend/src/components/StartDialog.tsx:30]
+  - [x] [Review][Defer] `[low]` The empty "Which page?" check is a client pre-check AD-3 and AD-9 don't sanction (SC) [frontend/src/components/StartDialog.tsx:109] — deferred: spine drift, reconciled before the next epic (item 38).
+  - [x] [Review][Defer] `[low]` AD-19 doesn't state what `start-reading` now does with `page` or a Side read (SC, two findings) [backend/bookvie/intents/start_reading.py] — deferred: spine drift, item 38.
+  - [x] [Review][Defer] `[low]` `side_reads.py` holds two intents against the Structural Seed's "one module per intent" (SC) [backend/bookvie/intents/side_reads.py] — deferred: spine drift, item 38.
+  - [x] [Review][Defer] `[low]` The 4.7 drift entry lists view fields AD-8 leaves to the models and misses the AD-19 disagreements (SC) [deferred-work.md:462] — deferred: correction for item 38.
+  - [x] [Review][Defer] `[low]` The last-page hand-off carries no Book id, so a failed refetch or another tab could open Finish for the wrong Book (EC, BH) [frontend/src/pages/HomePage.tsx:165] — deferred: this is retro F-R5, to be settled by item 36's probe.
+  - [x] [Review][Defer] `[low]` The last-page path is tested only from the On the side pane and Home's slice, and nothing pins that Finish doesn't reopen on Back (BH) [frontend/e2e/side-reads.spec.ts:440] — deferred: to item 36, which covers `reachedLastPage` on every route.
+  - [x] [Review][Defer] `[low]` `useOneClickFlow` keeps Set as Up next's names and file (BH) [frontend/src/lib/useSetUpNextFlow.ts:53] — deferred: to item 41 (retro F-A2).
+- already fixed on master:
+  - EC, BH: "Which page?" inflates Measured pace — fixed by `12a8fe4` (item 35); `domain/pace.py:35` subtracts `start_page`.
+  - AA, EC, BH: Edit book's back-fill leaves a finished Book on the side — fixed by `a262134` (item 34); `edit_book.py:224`.
+  - EC, BH: the displacement line is untrue for a Side read — fixed by `225a6e9` (item 33); `lib/pause.ts:20`.
+  - EC, BH: the Start dialog stays open after a confirmed start on Home's slice — fixed by `a0f2551` (item 32); `useSpinePopover.ts:64`, with e2e in `home-slice.spec.ts`.
+- rejected:
+  - `[false]` AA: the README count moved, though the spec said to keep it — the count is right at master (31 of 41), so nothing is wrong.
+  - `[false]` AA: the client hardcodes 100 in the last-page line — it is shown only when the page equals the Book's pages, so it is always 100.
+  - `[false]` BH: the story reached `done` without the pipeline — that rule entered AGENTS.md later (`0bebca6`, item 40), and item 43 is this review.
+  - `[low]` EC: a dialog opened before another tab marked the Book shows an alert naming a missing field — same as the first pass's `[reject]`; multi-tab is last-write-wins, and reopening the dialog fixes it.
+  - `[low]` BH: the same stale-tab dead end — duplicate of the EC row.
+  - `[low]` EC: Book detail's pending side-read line never expires when the refetch fails — needs a failed local refetch and a later flip; the fix adds a guard (same as 4.4's pending line).
+  - `[low]` BH: the Code Map and a ticked task name `pages/Bookcase.tsx`, which the diff doesn't touch — the fix edits this spec.
+
 ## Design Notes
 
 - **`page` on a non-Side read** is honored when sent (validated the same way). A tab that opened the dialog while the Book was a Side read, before another tab unmarked it, still has its typed page applied rather than refused. The client sends `page` only when it shows the field.

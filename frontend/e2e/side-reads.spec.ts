@@ -33,6 +33,7 @@ import { intentOf, MARK_SIDE_READ, requestsTo, START_READING, UNMARK_SIDE_READ }
 const COULDNT_SAVE = "Couldn't save. Your data wasn't changed."
 const FULL_HINT = 'Up to 3 side reads.'
 const PAGE_REQUIRED = 'Which page? is required.'
+const MAIN_CANT_SIDE = "Your Main book can't be a Side read."
 
 const KINDRED_ID = '7c2d4e6f-8a9b-4c1d-9e2f-3a4b5c6d7e8f'
 const KINDRED = { id: KINDRED_ID, title: 'Kindred', authors: ['Octavia E. Butler'], pages: 264 }
@@ -380,6 +381,59 @@ test.describe('Story 4.7 Keep a few side reads', () => {
     expect(await rowTitles(sidePane(page))).toEqual(['Kindred'])
     // No Finish dialog: not the last page.
     await expect(page.getByRole('dialog')).toHaveCount(0)
+  })
+
+  test('[P2] AC-4 text a number field can\'t parse reads as out of range, and focus returns to "Which page?"', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({
+      mainBookId: DUNE_ID,
+      sideReadBookIds: [LEFT_HAND_ID],
+      books: [DUNE_MAIN, LEFT_HAND_PAUSED],
+    })
+    const sent = requestsTo(page, START_READING)
+    await page.goto(`${server.url}/book/${LEFT_HAND_ID}`)
+    await detailButton(page, 'Resume').click()
+    const dialog = startDialog(page, 'Resume The Left Hand of Darkness?')
+    const field = whichPage(dialog)
+    await field.fill('')
+    await field.pressSequentially('1e')
+
+    await dialog.getByRole('button', { name: 'Resume', exact: true }).click()
+
+    await expect(field).toHaveAccessibleDescription('Page must be between 0 and 330.')
+    await expect(page.getByRole('alert')).toHaveText('Page must be between 0 and 330.')
+    await expect(field).toBeFocused()
+    expect(sent).toHaveLength(0)
+  })
+
+  test("[P2] a stale tab's refusal that removes Mark as Side read moves focus to the h1 and keeps the line in the stack", async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ mainBookId: DUNE_ID, books: [DUNE_MAIN, KINDRED] })
+    await page.goto(`${server.url}/book/${KINDRED_ID}`)
+    const mark = detailButton(page, 'Mark as Side read')
+    await expect(mark).toBeVisible()
+
+    // Another tab makes the Book Main.
+    const started = await page.request.post(`${server.url}${START_READING}`, {
+      multipart: { intent: JSON.stringify({ bookId: KINDRED_ID, purpose: null }) },
+    })
+    expect(started.status()).toBe(200)
+    const before = libraryBytes(server)
+
+    await mark.click()
+
+    await expect(page.getByRole('alert')).toHaveText(MAIN_CANT_SIDE)
+    await expect(mark).toHaveCount(0)
+    await expect(page.locator('main h1')).toBeFocused()
+    const line = page.getByRole('main').getByText(MAIN_CANT_SIDE, { exact: true })
+    await expect(line).toBeVisible()
+    expect(await topOf(detailButton(page, 'Edit'))).toBeGreaterThanOrEqual(await bottomOf(line))
+    await expect(page.getByRole('status')).toHaveText('')
+    expect(libraryBytes(server)).toBe(before)
   })
 
   test('[P1] AC-4 an unstarted Side read starts with "Which page?" empty, and a book that isn\'t one gets no field and sends no page', async ({

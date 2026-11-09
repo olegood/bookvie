@@ -389,9 +389,13 @@ def test_p0_the_home_up_next_says_whether_it_is_a_side_read(
         builder.side_read(emma)
     builder.write(tmp_path)
 
-    up_next = _view(tmp_path, "/api/views/home")["upNext"]
+    home = _view(tmp_path, "/api/views/home")
+    up_next = home["upNext"]
     assert up_next["id"] == emma
     assert up_next["sideRead"] is side_read
+    assert [s["id"] for s in home["sideReads"]] == ([emma] if side_read else [])
+    shelf = {b["id"]: b for b in _view(tmp_path, "/api/views/catalog")["books"]}
+    assert (shelf[emma]["role"], shelf[emma]["sideRead"]) == ("upNext", side_read)
 
 
 # --- the standard intent ACs (TR8) ------------------------------------------------

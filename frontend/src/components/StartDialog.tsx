@@ -27,7 +27,7 @@ export type StartedState = { started: true; reachedLastPage?: true; savedLine?: 
 const SAVING = 'Starting the book.'
 const PAGE_FIELD = 'page'
 /** The "Which page?" message when nothing is typed (the server's copy too). */
-export const PAGE_REQUIRED = 'Which page? is required.'
+const PAGE_REQUIRED = 'Which page? is required.'
 
 type Props = {
   bookId: string
@@ -92,6 +92,7 @@ function OpenStartDialog({ book, opened, mainBook, upNext, onCancel }: OpenProps
 
   const showPageInvalid = (message: string) => {
     setPageInvalid(message)
+    pageField.current?.focus()
     announce('alert', message)
   }
 

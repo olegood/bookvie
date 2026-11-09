@@ -505,3 +505,33 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-5-mark-any-book-finished-from-its-page.md`
   summary: Spine drift (Capability → Architecture Map FR-14 row, AD-18), reconciled before the next epic (retro item 38): the 4.5 entry above names the "FR-14 map row" but says nothing to change in it. `finish-reading` now writes the root pointers AD-18 defines (it clears `upNextBookId` and the Book's `sideReadBookIds` entry), so the row, which lists only AD-7, AD-11, AD-19 and AD-20, should add AD-18, and AD-18's pointer rules should cover a finish as well as a delete.
   evidence: `ARCHITECTURE-SPINE.md:364`; `backend/bookvie/intents/finish_reading.py` (pointer clearing).
+
+## Deferred from: code review of spec-4-7-keep-a-few-side-reads, second pass (2026-11-10, retro item 43)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-7-keep-a-few-side-reads.md`
+  summary: Spine drift (AD-3, AD-9), reconciled before the next epic (retro item 38): AD-3 calls the page field's range check "the one sanctioned pre-check" and AD-9 "the one exception" for copy. The Start dialog's "Which page?" also pre-checks an empty value with its own copy of "Which page? is required.", and reuses the range check. The shared case table `pageField.cases.json` covers neither.
+  evidence: `frontend/src/components/StartDialog.tsx:30`, `:103-110`; `backend/bookvie/intents/start_reading.py`; `frontend/src/lib/pageField.cases.json`.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-7-keep-a-few-side-reads.md`
+  summary: Spine drift (AD-19), reconciled before the next epic (retro item 38): AD-19's Starting bullet lists only resume or create and pausing the previous Main book. It should state that a sent `page` becomes `currentPage` (even below the paused page), a Side read without one gets 422 on `page`, and the Book leaves `sideReadBookIds` in the same commit. Its Finishing bullet limits `reachedLastPage` to "a Side read's starting page", but `start-reading` accepts `page` for any Book.
+  evidence: `backend/bookvie/intents/start_reading.py`; `backend/tests/test_side_reads.py::test_p1_a_page_sent_for_a_book_that_isnt_a_side_read_is_honored`.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-7-keep-a-few-side-reads.md`
+  summary: Spine drift (Structural Seed), reconciled before the next epic (retro item 38): the seed says `intents/` has "one module per intent", but `intents/side_reads.py` holds `mark_side_read` and `unmark_side_read`.
+  evidence: `backend/bookvie/intents/side_reads.py`.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-7-keep-a-few-side-reads.md`
+  summary: Spine drift correction for retro item 38: the 4.7 entry above for the "FR-5 to FR-9" row, AD-18 and AD-6 lists the views' Side-read fields as drift, but AD-18 covers the document shape and the spine's Deferred section leaves view fields to the Pydantic models (AD-8). `reachedLastPage` is already named in AD-19. The real disagreements are the AD-19 entry just above.
+  evidence: `ARCHITECTURE-SPINE.md` (AD-18, AD-19, Deferred); `deferred-work.md` entry for 4.7's "FR-5 to FR-9" row.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-7-keep-a-few-side-reads.md`
+  summary: For retro item 36 (retro F-R5): the last-page hand-off carries no Book id. `StartedState` has only `reachedLastPage` and `savedLine`, and Home opens Finish for whatever `mainId` the view shows. If the refetch fails after the start, or another tab changes Main, Finish opens for the wrong Book. The finish hand-off below it compares `handed.id`; this one doesn't.
+  evidence: `frontend/src/components/StartDialog.tsx:25`, `:121-124`; `frontend/src/pages/HomePage.tsx:165-170`.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-7-keep-a-few-side-reads.md`
+  summary: For retro item 36: a last-page start is tested only from the On the side pane and Home's slice, not from Book detail or Catalog, where navigation remounts Home. Nothing pins that Finish doesn't reopen on Back or reload (`lastPageOpened`, `clearHandOffState`).
+  evidence: `frontend/e2e/side-reads.spec.ts:440`; `frontend/e2e/home-slice.spec.ts:668`.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-4-7-keep-a-few-side-reads.md`
+  summary: For retro item 41 (F-A2): `useOneClickFlow` lives in `useSetUpNextFlow.ts`, returns `SetUpNextFlow`, takes `SetUpNextBook` and calls its callback `onSet`, while Side reads use it for mark and remove. Neutral names and its own module would stop the next one-click intent inheriting them.
+  evidence: `frontend/src/lib/useSetUpNextFlow.ts:36`, `:53`.
