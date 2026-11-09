@@ -381,6 +381,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-1-keep-the-interrupted-book-as-up-next.md`
   summary: Story 4.6 must name a paused Up next spine "Up next, paused at page N" (and "not read yet, Up next" / "finished, Up next"); since 4.1 the interrupted Main book is Up next and its spine reads "…, not read yet" though its page is kept, where Epic 3 said "waiting for you, page N".
   evidence: Blind-hunter review of 4.1 (BH1). `frontend/src/lib/catalog.ts` `spineStatus` handles only `main` and `waiting`; 4.1's intent puts spine names in Story 4.6, and `start-reading.spec.ts`/`stale-hand-offs.spec.ts` dropped or widened their spine-name asserts with "Story 4.6's" comments.
+  resolved: Story 4.6, `frontend/src/lib/catalog.ts` `spineStatus` (Up next names); exact asserts restored in `start-reading.spec.ts`, `stale-hand-offs.spec.ts`, `set-up-next.spec.ts`; every row pinned in `e2e/book-states.spec.ts`
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-1-keep-the-interrupted-book-as-up-next.md`
   summary: Spine drift (AD-19), reconciled before the next epic: the Starting bullet should state the FR-7 pointer move (the interrupted Main book becomes `upNextBookId`; with no Main book it stays unless it was the started Book, then `null`; a displaced Up next only loses the pointer).
   evidence: Spine-check review of 4.1 (SC1); `intents/start_reading.py` applies it in the same commit, and the spine names only the pause.
@@ -396,6 +397,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-1-keep-the-interrupted-book-as-up-next.md`
   summary: Book detail's Delete Confirm for a paused Up next reads "It is Up next." and no longer gives the page kept, where Epic 3's interrupted (`waiting`) Book read "It is waiting for you at p.120." Story 4.6, which owns the role lines, should carry the page for a paused Up next.
   evidence: `frontend/src/lib/bookDetail.ts:170` `roleLine` returns a fixed string for `upNext`; spec 4.1's Code Map froze `roleLine` ("Do not change").
+  resolved: Story 4.6, `frontend/src/lib/bookDetail.ts` `roleLine` ("It is Up next, paused at p.120.")
 
 ## Deferred from: implementation of spec-4-2-see-every-paused-book-in-waiting-for-you (2026-11-08)
 

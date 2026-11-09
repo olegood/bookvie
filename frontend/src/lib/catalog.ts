@@ -26,6 +26,7 @@ export interface NamedSpine extends ListedBook {
   authorCount: number
   finished: boolean
   role: 'main' | 'upNext' | 'waiting' | null
+  currentPage: number | null
   percent: number | null
   waitingPage: number | null
 }
@@ -40,7 +41,25 @@ function spineStatus(book: NamedSpine): string {
     const waiting = `waiting for you, page ${book.waitingPage}`
     return book.finished ? `finished, ${waiting}` : waiting
   }
+  if (book.role === 'upNext') {
+    // An Up next Book's unfinished Reading is always paused (it can't be Main).
+    if (book.currentPage === null) return `${read}, Up next`
+    const paused = `Up next, paused at page ${book.currentPage}`
+    return book.finished ? `finished, ${paused}` : paused
+  }
   return read
+}
+
+/** The kind of a spine's one marker dot (UX-DR24): Main, Up next or Waiting for you. */
+export type SpineMarker = 'main' | 'upNext' | 'waiting'
+
+/**
+ * The spine's marker: the server's role, which already applies the priority
+ * Main, then Up next (sky), then Waiting for you (sand). One dot at most;
+ * `null` for a spine with none.
+ */
+export function spineMarker(book: Pick<NamedSpine, 'role'>): SpineMarker | null {
+  return book.role
 }
 
 /**
@@ -49,6 +68,9 @@ function spineStatus(book: NamedSpine): string {
  * The status is "finished" or "not read yet", or for the Main book "Main
  * book, 64%" ("finished, re-reading, 12%" on a re-read), and for a paused
  * Book "waiting for you, page 120" ("finished, waiting for you, page 40").
+ * An Up next Book is "not read yet, Up next" ("finished, Up next") with no
+ * Reading in progress, and "Up next, paused at page 120" ("finished, Up
+ * next, paused at page 40") with a paused one.
  */
 export function spineName(book: NamedSpine): string {
   const others = book.authorCount - 1

@@ -224,7 +224,7 @@
   transition: height 600ms ease-out;
 }
 
-/* The Main-book marker: the strip moves down so the dot sits above it. */
+/* A spine's marker: the strip moves down so the dot sits above it. */
 .marked {
   position: relative;
   padding-top: var(--space-spine-label-strip-top-marked);
@@ -238,8 +238,20 @@
   height: 7px;
   margin-left: -3.5px;
   border-radius: var(--radius-full);
-  background: var(--color-spine-unread-text);
   box-shadow: 0 0 0 1.5px var(--color-marker-ring);
+}
+
+/* The dot's color by kind: Main, Up next (sky), Waiting for you (sand). */
+.markerMain {
+  background: var(--color-spine-unread-text);
+}
+
+.markerUpNext {
+  background: var(--color-marker-up-next);
+}
+
+.markerWaiting {
+  background: var(--color-marker-waiting);
 }
 
 /* The label strip: 16px wide, label + 4px at each end, at most 96px. */
@@ -358,6 +370,17 @@
   border-radius: 2px 2px 0 0;
 }
 
+/* The legend's marker swatch: the spine's dot, in its ring. */
+.swatchDot {
+  display: inline-block;
+  align-self: center;
+  width: 7px;
+  height: 7px;
+  margin: 1.5px;
+  border-radius: var(--radius-full);
+  box-shadow: 0 0 0 1.5px var(--color-marker-ring);
+}
+
 .swatchRead {
   border: var(--hairline) solid var(--color-spine-edge);
   border-bottom: 0;
@@ -462,7 +485,8 @@
   }
 
   /* A Canvas dot in a CanvasText ring reads on the Canvas body and on a read fill. */
-  .marker {
+  .marker,
+  .swatchDot {
     forced-color-adjust: none;
     background: Canvas;
     box-shadow: 0 0 0 1.5px CanvasText;

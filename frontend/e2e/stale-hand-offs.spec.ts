@@ -84,9 +84,14 @@ test.describe('Epic 3 retro: stale client hand-offs', () => {
       await elsewhere(page, server, START_READING, { bookId: DUNE_ID, purpose: null })
 
       await nav(page, 'Catalog').click()
-      // Its spine's status words are Story 4.6's; the popover's Resume comes
-      // from `popoverStart`, which offers it for a paused Up next.
-      await page.getByRole('button', { name: /^The Left Hand of Darkness by Ursula K\. Le Guin, / }).click()
+      // The popover's Resume comes from `popoverStart`, which offers it for a
+      // paused Up next.
+      await page
+        .getByRole('button', {
+          name: 'The Left Hand of Darkness by Ursula K. Le Guin, Up next, paused at page 0',
+          exact: true,
+        })
+        .click()
       await page
         .getByRole('dialog', { name: 'The Left Hand of Darkness', exact: true })
         .getByRole('button', { name: 'Resume', exact: true })

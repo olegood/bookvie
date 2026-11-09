@@ -27,6 +27,11 @@ After every step:
   the Up next Book clears it (Stories 4.1, 4.3, 4.4, 4.5);
 - ``check_invariants()`` holds, each Book has at most one unfinished Reading,
   and the file on disk reads back as the committed library;
+- no page is lost (R-01): a ledger of every Reading's page, set when the
+  machine seeds the library, when a start appends a Reading (p.0), when an
+  accepted update-page moves it, and when a finish (or its back-fill) settles
+  it, and pruned when a Book is deleted, matches every surviving Reading's
+  ``currentPage``; and at most one catalog Book has ``role == "main"``;
 - the views agree: only ``mainBookId`` is ``main``, only ``upNextBookId`` is
   ``upNext``, ``waiting`` is exactly the paused Books minus Up next (on each
   spine and as Home's Waiting for you list, ordered by ``pausedAt``, then
@@ -118,6 +123,12 @@ class ReadingPlan(RuleBasedStateMachine):
         self.today = TODAY
         self.up_next: str | None = None
         """The model's Up next: what ``upNextBookId`` must be after every step."""
+        self.pages: dict[str, int] = {
+            reading.id: reading.current_page
+            for book in self.store.library.books
+            for reading in book.readings
+        }
+        """The page ledger, by Reading id: what each Reading's ``currentPage`` must be."""
 
     def teardown(self) -> None:
         tmp = getattr(self, "_tmp", None)
@@ -200,6 +211,7 @@ class ReadingPlan(RuleBasedStateMachine):
             assert now[:-1] == was
             new = now[-1]
             assert new["id"] not in {r["id"] for r in was}
+            self.pages[new["id"]] = 0
             assert {k: v for k, v in new.items() if k != "id"} == {
                 "startDate": self.today.isoformat(),
                 "currentPage": 0,
@@ -333,6 +345,7 @@ class ReadingPlan(RuleBasedStateMachine):
         }
         # The last page never finishes the Reading; only the page and the stamp move.
         assert after == {**before, book_id: expected_book}
+        self.pages[current["id"]] = page
         assert self.store.library.main_book_id == book_id
         assert reached == [page == before[book_id]["pages"]]
 
@@ -396,6 +409,7 @@ class ReadingPlan(RuleBasedStateMachine):
             # Compared ignoring the minted id.
             assert {k: v for k, v in readings[0].items() if k != "id"} == {**current, **answers}
             expected_book = {**before[book_id], "readings": readings}
+            self.pages[readings[0]["id"]] = readings[0]["currentPage"]
         else:
             expected_book = {
                 **before[book_id],
@@ -404,6 +418,8 @@ class ReadingPlan(RuleBasedStateMachine):
                     for r in before[book_id]["readings"]
                 ],
             }
+            # The finished Reading keeps the page it was at.
+            self.pages[current["id"]] = current["currentPage"]
         # Only the current Reading is finished; history and other Books stay.
         assert after == {**before, book_id: expected_book}
         assert self.store.library.main_book_id == (None if old_main == book_id else old_main)
@@ -426,6 +442,8 @@ class ReadingPlan(RuleBasedStateMachine):
 
         after = _books(self.store.library)
         assert after == {k: v for k, v in before.items() if k != book_id}
+        for reading in before[book_id]["readings"]:
+            del self.pages[reading["id"]]
         if self.up_next == book_id:
             self.up_next = None
         # Nothing is promoted into a vacated Main book (CAT-API-007).
@@ -445,6 +463,17 @@ class ReadingPlan(RuleBasedStateMachine):
             assert sum(1 for r in book.readings if not r.finished) <= 1, book.title
         # What is on disk is what was committed.
         assert Library.model_validate_json(self._bytes()) == library
+
+    @invariant()
+    def no_page_is_lost(self) -> None:
+        """R-01: every surviving Reading is at its ledger page, and there is at most one Main book."""
+        library = self.store.library
+        stored = {
+            reading.id: reading.current_page for book in library.books for reading in book.readings
+        }
+        # Unfinished and finished alike: only the intents above move a page.
+        assert stored == self.pages
+        assert sum(1 for shelf in catalog(library).books if shelf.role == "main") <= 1
 
     @invariant()
     def views_agree_with_the_pointers(self) -> None:

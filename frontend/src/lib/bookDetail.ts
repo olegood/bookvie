@@ -155,19 +155,25 @@ export function readingLines(readings: readonly ListedReading[]): ReadingRow[] {
 }
 
 /** The fields of the `book` view the Confirm dialog's role line reads. */
-export type RoledBook = Pick<BookDetailView, 'role' | 'waitingPage'>
+export type RoledBook = Pick<BookDetailView, 'role' | 'waitingPage'> & {
+  currentReading: Pick<NonNullable<BookDetailView['currentReading']>, 'currentPage'> | null
+}
 
 /**
  * The Delete book Confirm dialog's role line: "It is your Main book.", "It
- * is Up next." or "It is waiting for you at p.120."; `null` for a Book with
- * no role. The server decides the role (Up next wins over a paused Reading).
+ * is Up next." ("It is Up next, paused at p.120." with a paused Reading) or
+ * "It is waiting for you at p.120."; `null` for a Book with no role. The
+ * server decides the role (Up next wins over a paused Reading).
  */
 export function roleLine(book: RoledBook): string | null {
   switch (book.role) {
     case 'main':
       return 'It is your Main book.'
     case 'upNext':
-      return 'It is Up next.'
+      // An Up next Book's unfinished Reading is always paused (it can't be Main).
+      return book.currentReading === null
+        ? 'It is Up next.'
+        : `It is Up next, paused at p.${book.currentReading.currentPage}.`
     case 'waiting':
       return book.waitingPage === null ? null : `It is waiting for you at p.${book.waitingPage}.`
     default:

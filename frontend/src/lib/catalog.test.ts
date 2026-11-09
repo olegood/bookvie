@@ -12,6 +12,7 @@ import {
   pickTag,
   sliceName,
   sortBooks,
+  spineMarker,
   spineName,
   tagSuggestions,
   type NamedSpine,
@@ -77,6 +78,7 @@ describe('spineName', () => {
     authorCount: 1,
     finished: true,
     role: null,
+    currentPage: null,
     percent: null,
     waitingPage: null,
   }
@@ -119,11 +121,28 @@ describe('spineName', () => {
     )
   })
 
-  it('keeps Up next to the read status (no Up-next names this story)', () => {
+  it('names an Up next Book with no Reading in progress after its read status', () => {
+    const upNext = { ...book, finished: false, role: 'upNext' } as const
+    assert.equal(spineName(upNext), 'Dune by Frank Herbert, not read yet, Up next')
+    assert.equal(spineName({ ...upNext, finished: true }), 'Dune by Frank Herbert, finished, Up next')
+  })
+
+  it('names a paused Up next Book at its page, finished or not', () => {
+    const paused = { ...book, finished: false, role: 'upNext', currentPage: 120, percent: 36 } as const
+    assert.equal(spineName(paused), 'Dune by Frank Herbert, Up next, paused at page 120')
     assert.equal(
-      spineName({ ...book, finished: false, role: 'upNext', percent: 29 }),
-      'Dune by Frank Herbert, not read yet',
+      spineName({ ...paused, finished: true, currentPage: 40 }),
+      'Dune by Frank Herbert, finished, Up next, paused at page 40',
     )
+  })
+})
+
+describe('spineMarker', () => {
+  it('gives each role its own marker and none without a role', () => {
+    assert.equal(spineMarker({ role: 'main' }), 'main')
+    assert.equal(spineMarker({ role: 'upNext' }), 'upNext')
+    assert.equal(spineMarker({ role: 'waiting' }), 'waiting')
+    assert.equal(spineMarker({ role: null }), null)
   })
 })
 

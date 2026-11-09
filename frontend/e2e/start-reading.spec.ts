@@ -501,14 +501,16 @@ test.describe('Story 3.2 Start reading a book (automate)', () => {
     await expect(mainBookCard(page).getByRole('link', { name: 'Dune', exact: true })).toBeFocused()
 
     // The interrupted Book is Up next (Story 4.1), its page kept: Home's Up
-    // next pane offers Resume, and so does Book detail. Its spine's status
-    // words are Story 4.6's.
+    // next pane offers Resume, its spine names the page, and Book detail
+    // offers Resume.
     await expect(
       page
         .getByRole('main')
         .getByRole('region', { name: 'Up next', exact: true })
         .getByRole('button', { name: 'Resume Fahrenheit 451', exact: true }),
     ).toBeVisible()
+    await page.goto(`${server.url}/catalog`)
+    await expect(spine(page, 'Fahrenheit 451 by Ray Bradbury, Up next, paused at page 120')).toBeVisible()
     await page.goto(`${server.url}/book/${FAHRENHEIT_ID}`)
     await expect(currentReading(page).getByText(/^Up next, paused at page 120\b/)).toBeVisible()
     await expect(detailButton(page, 'Resume')).toBeVisible()

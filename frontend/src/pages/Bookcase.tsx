@@ -12,7 +12,16 @@ import { Link } from 'react-router'
 import type { LibraryMeter, ShelfBook } from '../api/index.ts'
 import SpinePopover from '../components/SpinePopover.tsx'
 import StartDialog from '../components/StartDialog.tsx'
-import { bookcaseName, finishLine, matchesTitle, noMatchCopy, sliceName, spineName } from '../lib/catalog.ts'
+import {
+  bookcaseName,
+  finishLine,
+  matchesTitle,
+  noMatchCopy,
+  sliceName,
+  spineMarker,
+  spineName,
+  type SpineMarker,
+} from '../lib/catalog.ts'
 import { nearestVisible, spineHeight } from '../lib/spine.ts'
 import { useFinishMoment, type FinishMoment } from '../lib/useFinishMoment.ts'
 import { useSliceRows } from '../lib/useSliceRows.ts'
@@ -49,6 +58,13 @@ type SliceProps = Shared & {
 type Props = CatalogProps | SliceProps
 
 type Measured = Record<string, { title: string; height: number }>
+
+/** Each marker kind's dot color class. */
+const MARKER_CLASS: Record<SpineMarker, string> = {
+  main: styles.markerMain,
+  upNext: styles.markerUpNext,
+  waiting: styles.markerWaiting,
+}
 
 const MOVES = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'])
 
@@ -102,8 +118,9 @@ function MeterBar({ meter }: { meter: LibraryMeter }) {
 /**
  * The Bookcase view (DESIGN.md → Bookcase, Spine): every Book as a spine on
  * birch planks, read in its exact color, unread outlined, the Main book
- * outlined and filled to its percentage with the Main-book marker. One Tab
- * stop with roving tabindex.
+ * outlined and filled to its percentage. At most one marker dot per spine,
+ * by priority (`spineMarker`): Main, then Up next (sky), then Waiting for you
+ * (sand); the legend names all three. One Tab stop with roving tabindex.
  *
  * On Catalog, Search titles hides spines and the shelf closes up. With
  * `slice` (Home), the bookcase is packed into rows at the list's measured
@@ -218,13 +235,14 @@ export default function Bookcase(props: Props) {
 
   const spineButton = (book: ShelfBook) => {
     const main = book.role === 'main'
+    const marker = spineMarker(book)
     const height = measured[book.id]?.height ?? spineHeight(0)
     const moment = spineMoment(book, height)
     // The finish moment draws the finished spine as a filling Main spine until it is solid.
     const momentFill = moment.fill !== null
     const filling = (main && !book.finished) || momentFill
     const classes = [styles.spine, filling ? styles.main : book.finished ? styles.read : styles.unread]
-    if (main) classes.push(styles.marked)
+    if (marker !== null) classes.push(styles.marked)
     if (momentFill) classes.push(styles.finishing)
     if (book.id === highlightId || moment.ring) classes.push(styles.highlight)
     if (book.id === openId) classes.push(styles.open)
@@ -271,7 +289,9 @@ export default function Bookcase(props: Props) {
           }
         }}
       >
-        {main && <span aria-hidden="true" className={styles.marker} />}
+        {marker !== null && (
+          <span aria-hidden="true" data-marker={marker} className={`${styles.marker} ${MARKER_CLASS[marker]}`} />
+        )}
         <span className={styles.strip}>
           <span
             className={styles.label}
@@ -366,6 +386,14 @@ export default function Bookcase(props: Props) {
         <span className={styles.legendItem}>
           <span aria-hidden="true" className={styles.swatchMain} />
           Main book, filled to its %
+        </span>
+        <span className={styles.legendItem}>
+          <span aria-hidden="true" className={`${styles.swatchDot} ${styles.markerUpNext}`} />
+          up next
+        </span>
+        <span className={styles.legendItem}>
+          <span aria-hidden="true" className={`${styles.swatchDot} ${styles.markerWaiting}`} />
+          waiting for you
         </span>
       </div>
     </section>

@@ -194,12 +194,23 @@ describe('metadata', () => {
 
 describe('roleLine', () => {
   it('names Main book, Up next and Waiting for you, and nothing else', () => {
-    assert.equal(roleLine({ role: 'main', waitingPage: null }), 'It is your Main book.')
-    assert.equal(roleLine({ role: 'upNext', waitingPage: null }), 'It is Up next.')
-    assert.equal(roleLine({ role: 'waiting', waitingPage: 120 }), 'It is waiting for you at p.120.')
-    assert.equal(roleLine({ role: null, waitingPage: null }), null)
+    const none = { waitingPage: null, currentReading: null }
+    assert.equal(roleLine({ ...none, role: 'main', currentReading: { currentPage: 150 } }), 'It is your Main book.')
+    assert.equal(roleLine({ ...none, role: 'upNext' }), 'It is Up next.')
+    assert.equal(
+      roleLine({ ...none, role: 'waiting', waitingPage: 120, currentReading: { currentPage: 120 } }),
+      'It is waiting for you at p.120.',
+    )
+    assert.equal(roleLine({ ...none, role: null }), null)
     // A waiting role without its page has no line to say.
-    assert.equal(roleLine({ role: 'waiting', waitingPage: null }), null)
+    assert.equal(roleLine({ ...none, role: 'waiting' }), null)
+  })
+
+  it('carries the paused page for a paused Up next', () => {
+    assert.equal(
+      roleLine({ role: 'upNext', waitingPage: null, currentReading: { currentPage: 120 } }),
+      'It is Up next, paused at p.120.',
+    )
   })
 })
 

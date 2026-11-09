@@ -102,7 +102,7 @@ test.describe('Story 1.12 Delete a book (ATDD)', () => {
     // The Book's role, when it has one, is named after the consequence.
     const roles: [string, string, string][] = [
       [DUNE_ID, 'Dune', 'It is your Main book.'],
-      [NEUROMANCER_ID, 'Neuromancer', 'It is Up next.'],
+      [NEUROMANCER_ID, 'Neuromancer', 'It is Up next, paused at p.80.'],
       [DISPOSSESSED_ID, 'The Dispossessed', 'It is waiting for you at p.120.'],
     ]
     for (const [id, title, line] of roles) {
@@ -350,7 +350,7 @@ test.describe('Story 1.12 Delete a book (ATDD)', () => {
     expect(await catalogTitles(page, server)).toEqual(['Dune', 'Neuromancer', 'The Dispossessed'])
   })
 
-  test('[P2] AC-1 Up next with a paused Reading says only "It is Up next."; Tab stays inside the dialog', async ({
+  test('[P2] AC-1 Up next with a paused Reading says "It is Up next, paused at p.80." (Story 4.6), not waiting; Tab stays inside the dialog', async ({
     page,
     seededServer,
   }) => {
@@ -358,7 +358,7 @@ test.describe('Story 1.12 Delete a book (ATDD)', () => {
     await openBook(page, server, NEUROMANCER_ID)
     await deleteButton(page).click()
     const dialog = confirmDialog(page)
-    await expect(dialog).toContainText('It is Up next.')
+    await expect(dialog).toContainText('It is Up next, paused at p.80.')
     await expect(dialog).not.toContainText('waiting')
     const confirm = dialog.getByRole('button', { name: 'Delete book', exact: true })
     const cancel = dialog.getByRole('button', { name: 'Cancel', exact: true })

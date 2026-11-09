@@ -22,7 +22,7 @@ import {
   waitingHeading,
   waitingPane,
 } from './home.ts'
-import { bookcase } from './bookcase.ts'
+import { spine } from './bookcase.ts'
 import { intentOf, requestsTo, SET_UP_NEXT, START_READING } from './intents.ts'
 
 const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']
@@ -67,12 +67,8 @@ function popover(page: Page, title: string): Locator {
   return page.getByRole('dialog', { name: title, exact: true })
 }
 
-/** A spine by its title and first author, whatever status its name ends with (Story 4.6 adds "Up next"). */
-function spineOf(page: Page, titleAndAuthor: string): Locator {
-  return bookcase(page)
-    .getByRole('listitem')
-    .getByRole('button', { name: new RegExp(`^${titleAndAuthor}, `) })
-}
+const NEUROMANCER_SPINE = 'Neuromancer by William Gibson, not read yet'
+const NEUROMANCER_UP_NEXT_SPINE = 'Neuromancer by William Gibson, not read yet, Up next'
 
 /**
  * Records, each time the `status` region gets text, that text and the
@@ -192,7 +188,7 @@ test.describe('Story 4.4 Choose what to read next (ATDD)', () => {
     })
     await page.goto(`${server.url}/catalog`)
     await watchStatus(page)
-    const neuromancer = spineOf(page, 'Neuromancer by William Gibson')
+    const neuromancer = spine(page, NEUROMANCER_SPINE)
     await neuromancer.click()
     const card = popover(page, 'Neuromancer')
 
@@ -210,10 +206,10 @@ test.describe('Story 4.4 Choose what to read next (ATDD)', () => {
 
     await expect(page.getByRole('status')).toHaveText('Neuromancer is Up next.')
     await expect(card).toBeHidden()
-    await expect(neuromancer).toBeFocused()
+    await expect(spine(page, NEUROMANCER_UP_NEXT_SPINE)).toBeFocused()
     const seen = await statusSeen(page)
     expect(seen.map((entry) => entry.text)).toEqual(['Neuromancer is Up next.'])
-    expect(seen[0].focused).toMatch(/^Neuromancer by William Gibson, /)
+    expect(seen[0].focused).toBe(NEUROMANCER_UP_NEXT_SPINE)
     const stored = storedLibrary(server)
     expect([stored.mainBookId, stored.upNextBookId]).toEqual([DUNE_ID, NEUROMANCER_ID])
   })
@@ -262,7 +258,7 @@ test.describe('Story 4.4 Choose what to read next (automate)', () => {
     const server = await seededServer({ mainBookId: DUNE_ID, books: [DUNE_MAIN, NEUROMANCER] })
     await page.goto(`${server.url}/catalog`)
     await watchStatus(page)
-    const neuromancer = spineOf(page, 'Neuromancer by William Gibson')
+    const neuromancer = spine(page, NEUROMANCER_SPINE)
     await neuromancer.click()
     const card = popover(page, 'Neuromancer')
     const setUpNext = card.getByRole('button', { name: 'Set as Up next', exact: true })
@@ -275,10 +271,10 @@ test.describe('Story 4.4 Choose what to read next (automate)', () => {
 
     await expect(page.getByRole('status')).toHaveText('Neuromancer is Up next.')
     await expect(card).toBeHidden()
-    await expect(neuromancer).toBeFocused()
+    await expect(spine(page, NEUROMANCER_UP_NEXT_SPINE)).toBeFocused()
     const seen = await statusSeen(page)
     expect(seen.map((entry) => entry.text)).toEqual(['Neuromancer is Up next.'])
-    expect(seen[0].focused).toMatch(/^Neuromancer by William Gibson, /)
+    expect(seen[0].focused).toBe(NEUROMANCER_UP_NEXT_SPINE)
     expect(storedLibrary(server).upNextBookId).toBe(NEUROMANCER_ID)
   })
 
@@ -308,7 +304,7 @@ test.describe('Story 4.4 Choose what to read next (automate)', () => {
     await routeCouldntSave(page)
     const before = libraryBytes(server)
     await page.goto(`${server.url}/catalog`)
-    await spineOf(page, 'Neuromancer by William Gibson').click()
+    await spine(page, NEUROMANCER_SPINE).click()
     const card = popover(page, 'Neuromancer')
     const setUpNext = card.getByRole('button', { name: 'Set as Up next', exact: true })
     await expect(setUpNext).toBeFocused()
@@ -374,7 +370,7 @@ test.describe('Story 4.4 Choose what to read next (automate)', () => {
       expect(violations.map(({ id, nodes }) => `${colorScheme} Book detail: ${id} (${nodes.length})`)).toEqual([])
 
       await page.goto(`${server.url}/catalog`)
-      await spineOf(page, 'Neuromancer by William Gibson').click()
+      await spine(page, NEUROMANCER_SPINE).click()
       await expect(popover(page, 'Neuromancer').getByText(REPLACES, { exact: true })).toBeVisible()
       ;({ violations } = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze())
       expect(violations.map(({ id, nodes }) => `${colorScheme} popover: ${id} (${nodes.length})`)).toEqual([])
@@ -415,7 +411,7 @@ test.describe('Story 4.4 Choose what to read next (automate)', () => {
   }) => {
     const server = await seededServer({ mainBookId: DUNE_ID, books: [DUNE_MAIN, NEUROMANCER] })
     await page.goto(`${server.url}/catalog`)
-    await spineOf(page, 'Neuromancer by William Gibson').click()
+    await spine(page, NEUROMANCER_SPINE).click()
     const card = popover(page, 'Neuromancer')
     const setUpNext = card.getByRole('button', { name: 'Set as Up next', exact: true })
     await expect(setUpNext).toBeFocused()
