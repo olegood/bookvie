@@ -9,12 +9,12 @@ import {
   type KeyboardEvent,
 } from 'react'
 import { Link } from 'react-router'
-import type { ShelfBook } from '../api/index.ts'
+import { useSetUpNext, type ShelfBook } from '../api/index.ts'
 import { announce } from '../lib/announce.ts'
 import { popoverOffersSetUpNext, REPLACES_UP_NEXT, SETTING_UP_NEXT, upNextStatus } from '../lib/setUpNext.ts'
 import { placePopover, type Placement } from '../lib/spineColor.ts'
 import { popoverStart } from '../lib/startReading.ts'
-import { useSetUpNextFlow } from '../lib/useSetUpNextFlow.ts'
+import { useOneClickFlow } from '../lib/useOneClickFlow.ts'
 import Button from './Button.tsx'
 import ChangeColor from './ChangeColor.tsx'
 import styles from './SpinePopover.module.css'
@@ -65,18 +65,20 @@ export default function SpinePopover({ book, anchor, shelf, onClose, onStart, ha
   const [place, setPlace] = useState<Placement | null>(null)
   const hintId = useId()
   const setUpNextButton = useRef<HTMLButtonElement>(null)
+  const sendSetUpNext = useSetUpNext()
   const {
     request: requestSetUpNext,
     busy: settingUpNext,
     failed: setUpNextFailed,
     regionSlot,
-  } = useSetUpNextFlow({
+  } = useOneClickFlow({
     opener: setUpNextButton,
     fallback: () => link.current,
-    onSet: (title) => {
+    onDone: (title) => {
       onClose(true)
       announce('status', upNextStatus(title))
     },
+    send: sendSetUpNext,
   })
   // Both kept as they were while the request is out: the refetch makes the
   // Book Up next (and the old Up next not) before it resolves.

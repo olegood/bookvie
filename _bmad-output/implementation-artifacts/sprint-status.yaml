@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-29-2026 17:21
-last_updated: 11-10-2026 11:21
+last_updated: 11-10-2026 12:09
 project: bookvie
 project_key: NOKEY
 tracking_system: file-system
@@ -426,7 +426,7 @@ action_items:
       `frontend/src/lib/usePauseFlow.tsx`, `frontend/src/lib/useSetUpNextFlow.ts`.
       Due: before story 5.1. (F-A1, F-A2)"
     owner: "Amelia (Dev)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-4-retro-2026-11-09.md"
   - id: "epic-4-retro-item-42-find-and-fix-the-cause-of-the-1-in-8-fai"
     epic: 4

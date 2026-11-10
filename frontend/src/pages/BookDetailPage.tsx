@@ -1,31 +1,20 @@
 import { useCallback, useEffect, useId, useRef, useState, type RefObject } from 'react'
 import { useNavigate, useParams } from 'react-router'
-import {
-  useBookView,
-  useCatalogView,
-  useDeleteBook,
-  useHomeView,
-  useMarkSideRead,
-  useUnmarkSideRead,
-  type BookDetailView,
-} from '../api/index.ts'
+import { useBookView, useCatalogView, useDeleteBook, type BookDetailView } from '../api/index.ts'
 import Button from '../components/Button.tsx'
 import ChangeColor from '../components/ChangeColor.tsx'
-import ConfirmDialog from '../components/ConfirmDialog.tsx'
 import Cover from '../components/Cover.tsx'
 import EditPurpose from '../components/EditPurpose.tsx'
 import FailureMessage from '../components/FailureMessage.tsx'
 import FinishDialog from '../components/FinishDialog.tsx'
 import Gauge from '../components/Gauge.tsx'
 import PageHeading from '../components/PageHeading.tsx'
-import StartDialog from '../components/StartDialog.tsx'
 import { announce, clearAnnouncements } from '../lib/announce.ts'
 import {
   currentReadingStatus,
   metadata,
   panelCover,
   readingLines,
-  roleLine,
   starsLabel,
   toPanelFields,
   type DeletedState,
@@ -33,29 +22,20 @@ import {
 import { COULDNT_LOAD } from '../lib/copy.ts'
 import { detailOffersFinish, finishedStatus } from '../lib/markFinished.ts'
 import { usePageTitle } from '../lib/page.ts'
-import { pausedStatus } from '../lib/pause.ts'
-import { detailOffersSetUpNext, REPLACES_UP_NEXT, SETTING_UP_NEXT, upNextStatus } from '../lib/setUpNext.ts'
-import {
-  detailOffersSideRead,
-  MARKING_SIDE_READ,
-  REMOVING_FROM_SIDE,
-  SIDE_READS_FULL_HINT,
-  sideReadLabel,
-  sideReadStatus,
-} from '../lib/sideRead.ts'
+import { REPLACES_UP_NEXT, SETTING_UP_NEXT } from '../lib/setUpNext.ts'
+import { sideReadLabel } from '../lib/sideRead.ts'
 import { detailPrimary } from '../lib/startReading.ts'
-import { PAUSING, usePauseFlow, type PauseBook } from '../lib/usePauseFlow.tsx'
-import { useOneClickFlow, useSetUpNextFlow } from '../lib/useSetUpNextFlow.ts'
+import { useDeleteFlow, type DeleteBook } from '../lib/useDeleteFlow.tsx'
+import { useDetailPause } from '../lib/useDetailPause.ts'
+import { useDetailSetUpNext } from '../lib/useDetailSetUpNext.ts'
+import { useDetailSideRead } from '../lib/useDetailSideRead.ts'
+import { PAUSING } from '../lib/usePauseFlow.tsx'
+import { useStartFlow } from '../lib/useStartFlow.tsx'
 import NewBookPanel from './NewBookPanel.tsx'
 import NotFoundPage from './NotFoundPage.tsx'
 import styles from './BookDetailPage.module.css'
 
 const NO_TAGS: readonly string[] = []
-const CONSEQUENCE = 'Its readings and card notes are deleted too.'
-const DELETING = 'Deleting the book.'
-
-/** Sends `delete-book`; resolves `ok` once the Book is gone and Catalog is on its way. */
-type DeleteBook = (bookId: string, title: string) => Promise<{ ok: true } | { ok: false; message: string }>
 
 function FailedBook({ retry }: { retry: () => void }) {
   usePageTitle('Book')
@@ -124,191 +104,43 @@ function BookDetail({ book, onDelete, onFinish, finishButton }: BookDetailProps)
   const colorId = useId()
   const currentId = useId()
   const current = book.currentReading
-  const [confirming, setConfirming] = useState(false)
-  const [busy, setBusy] = useState(false)
-  const [showAlert, setShowAlert] = useState(false)
-  // A press while one is in flight is ignored even before `busy` renders.
-  const inFlight = useRef(false)
-  const deleteButton = useRef<HTMLButtonElement>(null)
-  // Set when the dialog closes, so focus returns to Delete once it has unmounted.
-  const [refocus, setRefocus] = useState(0)
-
-  useEffect(() => {
-    if (refocus > 0) deleteButton.current?.focus()
-  }, [refocus])
+  const { button: deleteButton, open: openConfirm, dialog: deleteDialog } = useDeleteFlow({ book, onDelete })
 
   const primary = detailPrimary(book)
-  const [starting, setStarting] = useState(false)
-  const startButton = useRef<HTMLButtonElement>(null)
-  // Set when the Start dialog is cancelled, so focus returns to its opener once it has unmounted.
-  const [startRefocus, setStartRefocus] = useState(0)
+  const { button: startButton, open: openStart, dialog: startDialog } = useStartFlow({ bookId: book.id })
 
-  useEffect(() => {
-    if (startRefocus === 0) return
-    // The opener is gone when a refetch made the Book Main meanwhile: park focus on `main`.
-    const target = startButton.current ?? document.getElementById('main')
-    target?.focus()
-  }, [startRefocus])
-
-  const cancelStart = useCallback(() => {
-    setStarting(false)
-    setStartRefocus((count) => count + 1)
-  }, [])
-
-  // Set as Up next: any Book that is neither Main nor already Up next. Once
-  // the refetched view shows it as Up next, focus goes to its primary (the
-  // `h1` if none), then `status` says so.
-  const offersSetUpNext = detailOffersSetUpNext(book.role)
-  const setUpNextButton = useRef<HTMLButtonElement>(null)
-  // The line to say, and the role the Book had when it was pressed.
-  const setUpNextLine = useRef<{ line: string; from: BookDetailView['role'] } | null>(null)
-  const [setUpNexts, setSetUpNexts] = useState(0)
-  const role = book.role
-  const onSet = useCallback(
-    (title: string) => {
-      setUpNextLine.current = { line: upNextStatus(title), from: role }
-      setSetUpNexts((count) => count + 1)
-    },
-    [role],
-  )
   const primaryOrHeading = () => startButton.current ?? document.querySelector<HTMLElement>('main h1')
   const {
-    request: requestSetUpNext,
+    offered: offersSetUpNext,
+    button: setUpNextButton,
+    press: pressSetUpNext,
     busy: settingUpNext,
     failed: setUpNextFailed,
     regionSlot: setUpNextSlot,
-  } = useSetUpNextFlow({ opener: setUpNextButton, fallback: primaryOrHeading, onSet })
-  // The hint, kept as it was while the request is out: the refetch makes this Book the Up next before it resolves.
-  const home = useHomeView()
-  const hasUpNext = home.status === 'ready' && home.data.upNext !== null
-  const [hintAtPress, setHintAtPress] = useState(false)
-  const showSetUpNextHint = offersSetUpNext && (settingUpNext ? hintAtPress : hasUpNext)
-  const setUpNextHintId = useId()
-
-  // `sendIntent` resolves after the refetch, but the view may render it a
-  // tick later: while the Book keeps the role it had, wait. Any other view
-  // settles the line, said only if it shows the Book as Up next.
-  useEffect(() => {
-    const pending = setUpNextLine.current
-    if (pending === null || book.role === pending.from) return
-    setUpNextLine.current = null
-    if (book.role !== 'upNext') return
-    primaryOrHeading()?.focus()
-    announce('status', pending.line)
-  }, [setUpNexts, book.role])
-
-  // Mark as Side read / Remove from side: any Book but the Main book (Story
-  // 4.7), at once through the same one-click flow. Once the refetched view
-  // shows the flip, focus goes to the primary (the `h1` if none), then
-  // `status` says where the Book is.
-  const offersSideRead = detailOffersSideRead(book.role)
-  const sideReadButton = useRef<HTMLButtonElement>(null)
-  const markSideRead = useMarkSideRead()
-  const unmarkSideRead = useUnmarkSideRead()
-  const sideRead = book.sideRead
-  // The Book's `sideRead` when pressed: the view is waited on until it flips.
-  const sideReadFrom = useRef<boolean | null>(null)
-  const sideReadTitle = useRef('')
-  const [sideReadToggles, setSideReadToggles] = useState(0)
-  const onSideReadSet = useCallback(
-    (title: string) => {
-      sideReadFrom.current = sideRead
-      sideReadTitle.current = title
-      setSideReadToggles((count) => count + 1)
-    },
-    [sideRead],
-  )
+    showHint: showSetUpNextHint,
+    hintId: setUpNextHintId,
+  } = useDetailSetUpNext({ book, fallback: primaryOrHeading })
   const {
-    request: requestSideRead,
+    offered: offersSideRead,
+    button: sideReadButton,
+    press: pressSideRead,
     busy: togglingSideRead,
     failed: sideReadFailed,
     regionSlot: sideReadSlot,
-  } = useOneClickFlow({
-    opener: sideReadButton,
-    fallback: primaryOrHeading,
-    onSet: onSideReadSet,
-    send: sideRead ? unmarkSideRead : markSideRead,
-  })
-  let sideReadReason: string | undefined
-  if (togglingSideRead) sideReadReason = sideRead ? REMOVING_FROM_SIDE : MARKING_SIDE_READ
-  else if (book.sideReadsFull) sideReadReason = SIDE_READS_FULL_HINT
-
-  useEffect(() => {
-    const from = sideReadFrom.current
-    if (from === null || book.sideRead === from) return
-    sideReadFrom.current = null
-    primaryOrHeading()?.focus()
-    announce('status', sideReadStatus(sideReadTitle.current, book.sideRead))
-  }, [sideReadToggles, book.sideRead])
+    reason: sideReadReason,
+  } = useDetailSideRead({ book, fallback: primaryOrHeading })
 
   // Mark finished: the Main book, a Reading in progress, or a Book never finished (Story 4.5).
   const canFinish = detailOffersFinish(book)
-  // Pause: the Main book only.
-  const canPause = book.role === 'main'
-
-  // Pause: the Main book only. Once the refetched view makes it a paused Up
-  // next, focus goes to its Resume and then `status` says where it went.
-  const pauseButton = useRef<HTMLButtonElement>(null)
-  const pausedLine = useRef<string | null>(null)
-  const [pauses, setPauses] = useState(0)
-  const onPaused = useCallback((paused: PauseBook) => {
-    pausedLine.current = pausedStatus(paused.title, paused.currentPage)
-    setPauses((count) => count + 1)
-  }, [])
   const {
+    offered: canPause,
+    button: pauseButton,
     request: requestPause,
     busy: pausing,
     failed: pauseFailed,
     regionSlot: pauseSlot,
     dialog: pauseDialog,
-  } = usePauseFlow({
-    book:
-      canPause && current !== null
-        ? { id: book.id, title: book.title, currentPage: current.currentPage, percent: current.percent }
-        : null,
-    opener: pauseButton,
-    fallback: () => startButton.current,
-    onPaused,
-  })
-
-  // While the view still shows the Book as Main, the refetch hasn't rendered;
-  // any other view settles the line, said only if it made the Book resumable.
-  useEffect(() => {
-    const line = pausedLine.current
-    if (line === null || book.role === 'main') return
-    pausedLine.current = null
-    if (primary !== 'Resume') return
-    startButton.current?.focus()
-    announce('status', line)
-  }, [pauses, book.role, primary])
-
-  const openConfirm = () => {
-    setShowAlert(false)
-    setConfirming(true)
-  }
-
-  const cancelConfirm = () => {
-    if (inFlight.current) return
-    // A couldn't-save line (or one still pending) must not outlive the dialog.
-    clearAnnouncements()
-    setConfirming(false)
-    setRefocus((count) => count + 1)
-  }
-
-  const confirmDelete = async () => {
-    if (inFlight.current) return
-    inFlight.current = true
-    clearAnnouncements()
-    setShowAlert(false)
-    setBusy(true)
-    const result = await onDelete(book.id, book.title)
-    // On success the page has already moved to Catalog.
-    if (result.ok) return
-    inFlight.current = false
-    setBusy(false)
-    setShowAlert(true)
-    announce('alert', result.message)
-  }
+  } = useDetailPause({ book, primary, resume: startButton })
 
   const onSaved = (_id: string, title: string) => {
     // SidePanel returns focus to Edit as it unmounts.
@@ -323,7 +155,7 @@ function BookDetail({ book, onDelete, onFinish, finishButton }: BookDetailProps)
           <Cover coverFile={book.coverFile} title={book.title} />
           <div className={styles.actions}>
             {primary !== null && (
-              <Button ref={startButton} variant="primary" onClick={() => setStarting(true)}>
+              <Button ref={startButton} variant="primary" onClick={openStart}>
                 {primary}
               </Button>
             )}
@@ -332,10 +164,7 @@ function BookDetail({ book, onDelete, onFinish, finishButton }: BookDetailProps)
                 ref={setUpNextButton}
                 aria-describedby={showSetUpNextHint ? setUpNextHintId : undefined}
                 disabledReason={settingUpNext ? SETTING_UP_NEXT : undefined}
-                onClick={() => {
-                  if (!settingUpNext) setHintAtPress(hasUpNext)
-                  requestSetUpNext({ id: book.id, title: book.title })
-                }}
+                onClick={pressSetUpNext}
               >
                 Set as Up next
               </Button>
@@ -368,7 +197,7 @@ function BookDetail({ book, onDelete, onFinish, finishButton }: BookDetailProps)
                 ref={sideReadButton}
                 disabledReason={sideReadReason}
                 reasonClassName={!togglingSideRead && book.sideReadsFull ? styles.hint : undefined}
-                onClick={() => requestSideRead({ id: book.id, title: book.title })}
+                onClick={pressSideRead}
               >
                 {sideReadLabel(book.sideRead)}
               </Button>
@@ -443,20 +272,9 @@ function BookDetail({ book, onDelete, onFinish, finishButton }: BookDetailProps)
           onSaved={onSaved}
         />
       )}
-      {starting && <StartDialog bookId={book.id} onCancel={cancelStart} />}
+      {startDialog}
       {pauseDialog}
-      {confirming && (
-        <ConfirmDialog
-          heading={`Delete ${book.title}?`}
-          lines={[CONSEQUENCE, roleLine(book)].filter((line) => line !== null)}
-          confirmLabel="Delete book"
-          busy={busy}
-          busyReason={DELETING}
-          showAlert={showAlert}
-          onConfirm={() => void confirmDelete()}
-          onCancel={cancelConfirm}
-        />
-      )}
+      {deleteDialog}
     </div>
   )
 }
@@ -478,8 +296,9 @@ function BookDetail({ book, onDelete, onFinish, finishButton }: BookDetailProps)
  *
  * The Current reading block (the Main book or a paused Book) shows the
  * status, the gauge and the Purpose with **Edit Purpose**; the server
- * supplies every number. The primary opens the Start dialog and **Mark
- * finished** the Finish dialog; Cancel or Esc returns focus to the opener.
+ * supplies every number. The primary opens the Start dialog
+ * (`lib/useStartFlow.tsx`) and **Mark finished** the Finish dialog; Cancel
+ * or Esc returns focus to the opener.
  * Done for the Main book goes Home (Story 3.6). Done for any other Book
  * (Story 4.5) keeps the page at `/book/:id`: once the dialog has unmounted,
  * focus goes to the `h1`, then `status` reads "Finished *X*."; the refetched
@@ -487,8 +306,8 @@ function BookDetail({ book, onDelete, onFinish, finishButton }: BookDetailProps)
  * The Readings block lists each Reading newest first: "Started … · Finished
  * …", its stars when rated, and "Purpose fulfilled: …" when answered.
  *
- * **Pause** (`lib/usePauseFlow.tsx`) sends `pause` at once with no Up next,
- * else opens the Confirm dialog naming where the Up next goes; Cancel or Esc
+ * **Pause** (`lib/useDetailPause.ts`, on `lib/usePauseFlow.tsx`) sends
+ * `pause` at once with no Up next, else opens the Confirm dialog naming where the Up next goes; Cancel or Esc
  * returns focus to **Pause**. A failure without the dialog shows its line
  * directly below **Pause**, focus kept there; when it is a stale tab's
  * refusal and the refetch makes the Book Up next, focus and the line move to
@@ -496,8 +315,8 @@ function BookDetail({ book, onDelete, onFinish, finishButton }: BookDetailProps)
  * the Book as a paused Up next, focus goes to its **Resume** and then
  * `status` reads "Paused *X* at p.N. It's Up next."
  *
- * **Set as Up next** (`lib/useSetUpNextFlow.ts`) sends `set-up-next` at once,
- * with no dialog, `aria-disabled` while it is out, with the hint "Replaces
+ * **Set as Up next** (`lib/useDetailSetUpNext.ts`, on `lib/useOneClickFlow.ts`)
+ * sends `set-up-next` at once, with no dialog, `aria-disabled` while it is out, with the hint "Replaces
  * the current Up next." under it while another Book is Up next. Once the refetched view
  * shows the Book as Up next, focus goes to the primary (the `h1` if none),
  * then `status` reads "*X* is Up next.". A failure shows its line directly
@@ -506,14 +325,14 @@ function BookDetail({ book, onDelete, onFinish, finishButton }: BookDetailProps)
  * where the button was.
  *
  * **Mark as Side read** / **Remove from side** (Story 4.7) work the same
- * way through `useOneClickFlow`, sending `mark-side-read` or
- * `unmark-side-read`: once the refetched view shows the flip, focus goes to
+ * way (`lib/useDetailSideRead.ts`, on `lib/useOneClickFlow.ts`), sending
+ * `mark-side-read` or `unmark-side-read`: once the refetched view shows the flip, focus goes to
  * the primary (the `h1` if none), then `status` reads "*X* is on the side."
  * or "*X* is off the side.". At 3 Side reads (`sideReadsFull`) **Mark as
  * Side read** stays focusable with `aria-disabled="true"` and the visible
  * hint "Up to 3 side reads." as its description; a press does nothing.
  *
- * Delete: once `delete-book` is sent, the refetched view may already say the
+ * Delete (`lib/useDeleteFlow.tsx`): once `delete-book` is sent, the refetched view may already say the
  * Book is gone before the request resolves. Until the outcome is known the
  * page renders nothing rather than the not-found page; on success it
  * replaces this history entry with Catalog, handing over the title. On a

@@ -586,3 +586,12 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-epic-4-retro-item-38-reconcile-the-spine-with-epic-4.md`
   summary: The Start dialog's displacement line (`upNext.id`, `upNext.paused`) and the Pause Confirm dialog read the home view as cached, so a dialog opened away from Home after another tab changed Up next can name the wrong Up next. The Pause flow can also skip or show its Confirm wrongly. This widens the Epic 3 entry on the Start dialog's "This pauses *Y*…" line, which covers only `mainBook`. The intent still applies to the current state (A2), so only the copy is wrong. Low.
   evidence: `frontend/src/components/StartDialog.tsx` (`home.data.upNext`); `frontend/src/lib/usePauseFlow.tsx` `request()`. AD-7 records it as a known gap. The spine drift entries for 4.1 and 4.3 closed only the spine wording.
+
+## Deferred from: spec-epic-4-retro-item-41-split-book-detail-flows-into-hooks (2026-11-10)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-epic-4-retro-item-41-split-book-detail-flows-into-hooks.md`
+  summary: No e2e test holds `mark-side-read` or `unmark-side-read` open on Book detail, so the in-flight reason ("Marking the book as a Side read." / "Removing the book from the side.") and the ignored second press are unpinned. Swapping the ternary in `useDetailSideRead` or dropping its in-flight branch leaves every spec green. Add a `[P2]` test in `e2e/side-reads.spec.ts` modelled on `set-up-next.spec.ts:325`. Low.
+  evidence: `frontend/src/lib/useDetailSideRead.ts` (`sideReadReason`); `e2e/side-reads.spec.ts` checks `aria-disabled` only at 3 Side reads; no e2e matches "Marking the book" or "Removing the book". Item 41 barred e2e edits.
+- source_spec: `_bmad-output/implementation-artifacts/spec-epic-4-retro-item-41-split-book-detail-flows-into-hooks.md`
+  summary: No e2e test holds `set-up-next` open on Book detail while another Book is Up next, so keeping "Replaces the current Up next." in the description during the request (`hintAtPress`) is pinned only for the spine popover. Add a `[P2]` Book detail counterpart to `set-up-next.spec.ts:629`. Low.
+  evidence: `frontend/src/lib/useDetailSetUpNext.ts` `press` and `showHint`; `set-up-next.spec.ts:325-354` seeds no Up next; `:629-662` covers only `SpinePopover`. Item 41 barred e2e edits.

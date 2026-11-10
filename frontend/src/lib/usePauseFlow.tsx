@@ -9,11 +9,12 @@
 // Focus then moves to the owner's `fallback` (its Resume), and the `alert`
 // line shows in the slot the owner renders below it.
 
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefCallback, type RefObject } from 'react'
+import { useEffect, useRef, useState, type ReactNode, type RefCallback, type RefObject } from 'react'
 import { useHomeView, usePause, type HomeUpNext } from '../api/index.ts'
 import ConfirmDialog from '../components/ConfirmDialog.tsx'
-import { adoptRegions, announce, clearAnnouncements, releaseRegions } from './announce.ts'
+import { announce, clearAnnouncements } from './announce.ts'
 import { displacementLine, pauseHeading } from './pause.ts'
+import { useAlertSlot, useIntentRequest } from './useIntentRequest.ts'
 
 export const PAUSING = 'Pausing the book.'
 
@@ -66,21 +67,11 @@ export function usePauseFlow({ book, opener, fallback, onPaused }: Options): Pau
   const [dialogBusy, setDialogBusy] = useState(false)
   const [showAlert, setShowAlert] = useState(false)
   const [failure, setFailure] = useState<Failure | null>(null)
-  const [slot, setSlot] = useState<HTMLDivElement | null>(null)
-  // A press while one is in flight is ignored even before `busy` renders.
-  const inFlight = useRef(false)
-  const mounted = useRef(true)
+  const { isInFlight, run } = useIntentRequest()
   const fallbackRef = useRef(fallback)
   fallbackRef.current = fallback
   // Set when the dialog is cancelled, so focus returns to the opener once it has unmounted.
   const [refocus, setRefocus] = useState(0)
-
-  useEffect(() => {
-    mounted.current = true
-    return () => {
-      mounted.current = false
-    }
-  }, [])
 
   useEffect(() => {
     if (refocus > 0) opener.current?.focus()
@@ -113,27 +104,21 @@ export function usePauseFlow({ book, opener, fallback, onPaused }: Options): Pau
   // After an immediate-path failure the live regions sit in the slot, so the
   // alert line shows there; they go back on the next press, when the line
   // goes, or when the slot unmounts.
-  useLayoutEffect(() => {
-    if (!failed || !slot) return
-    adoptRegions(slot)
-    return () => releaseRegions(slot)
-  }, [failed, slot])
+  const regionSlot = useAlertSlot(failed)
 
   const send = async (target: PauseBook, withDialog: boolean): Promise<void> => {
-    inFlight.current = true
-    clearAnnouncements()
-    if (withDialog) {
-      setShowAlert(false)
-      setDialogBusy(true)
-    } else {
-      setBusy(true)
-    }
-    const result = await sendPause(target.id)
-    inFlight.current = false
-    if (!mounted.current) {
-      if (result.kind !== 'ok') announce('alert', result.message)
-      return
-    }
+    const result = await run(
+      () => {
+        if (withDialog) {
+          setShowAlert(false)
+          setDialogBusy(true)
+        } else {
+          setBusy(true)
+        }
+      },
+      () => sendPause(target.id),
+    )
+    if (result === null) return // unmounted: run already announced a failure
     setBusy(false)
     setDialogBusy(false)
     if (result.kind === 'ok') {
@@ -152,7 +137,7 @@ export function usePauseFlow({ book, opener, fallback, onPaused }: Options): Pau
   }
 
   const request = () => {
-    if (inFlight.current || book === null || home.status !== 'ready') return
+    if (isInFlight() || book === null || home.status !== 'ready') return
     setFailure(null)
     const upNext = home.data.upNext
     // The Main book is never Up next, so any Up next is displaced.
@@ -165,7 +150,7 @@ export function usePauseFlow({ book, opener, fallback, onPaused }: Options): Pau
   }
 
   const cancel = () => {
-    if (inFlight.current) return
+    if (isInFlight()) return
     // A couldn't-save line must not outlive the dialog.
     clearAnnouncements()
     setConfirming(null)
@@ -173,7 +158,7 @@ export function usePauseFlow({ book, opener, fallback, onPaused }: Options): Pau
   }
 
   const confirm = () => {
-    if (inFlight.current || confirming === null) return
+    if (isInFlight() || confirming === null) return
     void send(confirming.book, true)
   }
 
@@ -191,5 +176,5 @@ export function usePauseFlow({ book, opener, fallback, onPaused }: Options): Pau
       />
     )
 
-  return { request, busy, failed, regionSlot: setSlot, dialog }
+  return { request, busy, failed, regionSlot, dialog }
 }
