@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-29-2026 17:21
-last_updated: 11-10-2026 10:31
+last_updated: 11-10-2026 11:21
 project: bookvie
 project_key: NOKEY
 tracking_system: file-system
@@ -396,7 +396,7 @@ action_items:
       `_bmad-output/implementation-artifacts/deferred-work.md`. Due: before Epic 5.
       (F-S2, F-S3)"
     owner: "Winston (Architect), applied by Oleg"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-4-retro-2026-11-09.md"
   - id: "epic-4-retro-item-39-make-the-spine-drift-marker-case-insensi"
     epic: 4

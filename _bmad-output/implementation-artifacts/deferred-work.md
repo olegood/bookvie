@@ -387,12 +387,15 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-1-keep-the-interrupted-book-as-up-next.md`
   summary: Spine drift (AD-19), reconciled before the next epic: the Starting bullet should state the FR-7 pointer move (the interrupted Main book becomes `upNextBookId`; with no Main book it stays unless it was the started Book, then `null`; a displaced Up next only loses the pointer).
   evidence: Spine-check review of 4.1 (SC1); `intents/start_reading.py` applies it in the same commit, and the spine names only the pause.
+  resolved: `spec-epic-4-retro-item-38-reconcile-the-spine-with-epic-4.md` (Epic 4 retro item 38, 2026-11-10); AD-19's Starting bullet states FR-7's pointer moves: the interrupted Main book becomes Up next, with no Main book Up next stays unless it was the started Book, and a displaced Up next only loses the pointer.
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-1-keep-the-interrupted-book-as-up-next.md`
   summary: Spine drift (AD-7), reconciled before the next epic: the known-gap sentence and the Deferred "Stale confirmation guard" should say the Start dialog's displacement line also reads the cached home view (`upNext.id`, `upNext.paused`), so a stale dialog can name the wrong Up next.
   evidence: Spine-check review of 4.1 (SC2); `StartDialog.tsx` reads `home.data.upNext`, as the spec's Design Notes accept.
+  resolved: `spec-epic-4-retro-item-38-reconcile-the-spine-with-epic-4.md` (Epic 4 retro item 38, 2026-11-10); AD-7's known gap names the Start dialog's trade-off and displacement lines (`upNext.id`, `upNext.paused`), and the Deferred stale confirmation guard gives a wrong Up next as a reason to revisit. The behavior itself stays open as its own entry (item 38 review).
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-1-keep-the-interrupted-book-as-up-next.md`
   summary: Spine drift (Capability → Architecture Map, AD-6), reconciled before the next epic: the "FR-5 to FR-9" row should list `views/shelf` (home `upNext` with its server-decided `paused`) and Home's Up next pane, and cite AD-6.
   evidence: Spine-check review of 4.1 (SC3); the row's "Lives in" names only the intents.
+  resolved: `spec-epic-4-retro-item-38-reconcile-the-spine-with-epic-4.md` (Epic 4 retro item 38, 2026-11-10); the "FR-5 to FR-9" row lists `views/shelf` (home `upNext` with `paused`) and Home's panes and cites AD-6; AD-6 lists `upNext.paused` as server-computed.
 
 ## Deferred from: code review of spec-4-1-keep-the-interrupted-book-as-up-next (2026-11-07, pass 2)
 
@@ -406,12 +409,14 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-2-see-every-paused-book-in-waiting-for-you.md`
   summary: Spine drift (Capability → Architecture Map, AD-6), reconciled before the next epic: the "FR-5 to FR-9" row (it holds FR-7) should name `views/shelf` (home `waiting`, the server-ordered Waiting for you list: `pausedAt` ascending, then title key, then Book id, never sending `pausedAt`) and Home's Waiting for you pane (`WaitingPane`), and its "Governed by" should add AD-6. Wording tightened by the code review of spec-4-2 (2026-11-08).
   evidence: Story 4.2 adds `HomeView.waiting` (`backend/bookvie/views/shelf.py` `_waiting`) and `frontend/src/components/WaitingPane.tsx`; the map's "FR-5 to FR-9" row names neither.
+  resolved: `spec-epic-4-retro-item-38-reconcile-the-spine-with-epic-4.md` (Epic 4 retro item 38, 2026-11-10); the "FR-5 to FR-9" row lists `views/shelf` (`waiting`) and the Waiting for you pane and cites AD-6; AD-6 states the Waiting set and order (`pausedAt`, none first, then title key, then Book id; `pausedAt` never sent).
 
 ## Deferred from: implementation of spec-4-3-pause-my-main-book (2026-11-08)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-3-pause-my-main-book.md`
   summary: Check in Safari and Firefox on macOS that a mouse click on a "⋯" menu item (Pause, Open book) and on "⋯" itself lands. Unverified; high if it fails. There a press doesn't focus the button, so the menu's blur has a null `relatedTarget`. The code review of 4.3 holds the blur off during a pointer press on an item or "⋯" (`pressing` in `MoreActionsMenu.tsx`), which should remove the race, but the e2e suite runs Chromium only.
   evidence: Spec 4.3 frontmatter `deferred`, item 1. Settle it with a manual check, or a Playwright webkit/firefox project run of `pause.spec.ts`.
+  resolved: not needed (Epic 4 retro item 38, 2026-11-10; retro open question 3): Oleg uses Chrome, which the Chromium e2e run covers, so the Safari and Firefox check is dropped.
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-3-pause-my-main-book.md`
   summary: No test covers a pause that fails after the page has unmounted (the late `alert` announcement in `usePauseFlow`). Low.
   evidence: Spec 4.3 frontmatter `deferred`, item 2. Cover it with the app's other unmount-after-request cases (`PageField`, `EditPurpose`).
@@ -421,12 +426,15 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-3-pause-my-main-book.md`
   summary: Spine drift (AD-19), reconciled before the next epic: AD-19 describes only how `start-reading` pauses a Book; it should also state the standalone `pause` intent (pauses the current Reading, overwriting `pausedAt`, clears `mainBookId`, makes the Book `upNextBookId`, a displaced Up next only loses the pointer). Extends the 4.1 AD-19 entry above.
   evidence: Spine-check review of 4.3; `backend/bookvie/intents/pause.py`, and `start_reading.py` now imports `pause_main` from it.
+  resolved: `spec-epic-4-retro-item-38-reconcile-the-spine-with-epic-4.md` (Epic 4 retro item 38, 2026-11-10); AD-19's "Pausing and Up next" bullet states the standalone `pause` intent.
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-3-pause-my-main-book.md`
   summary: Spine drift (AD-7), reconciled before the next epic: the known-gap sentence should name the Pause Confirm dialog too; its displacement line, and whether the dialog shows at all, read `useHomeView()` as cached when Pause is pressed. Extends the 4.1 AD-7 entry above.
   evidence: Spine-check review of 4.3; `frontend/src/lib/usePauseFlow.tsx` `request()` reads `home.data.upNext`, as the spec's Design Notes accept.
+  resolved: `spec-epic-4-retro-item-38-reconcile-the-spine-with-epic-4.md` (Epic 4 retro item 38, 2026-11-10); AD-7's known gap names the Pause Confirm dialog (whether it shows, and its displacement line, read the cached home view in `usePauseFlow`); the behavior stays open as its own entry (item 38 review).
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-3-pause-my-main-book.md`
   summary: Spine drift (Structural Seed, Capability → Architecture Map preface), reconciled before the next epic: the seed's `intents/` module list should add `pause`, and the map's preface should stop giving `intents/pause` as an example of a module not built yet.
   evidence: Spine-check review of 4.3; `backend/bookvie/intents/pause.py` and `POST /intents/pause` in `backend/bookvie/http/api.py`.
+  resolved: `spec-epic-4-retro-item-38-reconcile-the-spine-with-epic-4.md` (Epic 4 retro item 38, 2026-11-10); the seed's `intents/` list adds `pause`, and the map's preface gives `views/stats` and `views/card_notes` as unbuilt examples.
 
 ## Deferred from: test automation of spec-4-3-pause-my-main-book (2026-11-08)
 
@@ -440,15 +448,18 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-4-choose-what-to-read-next.md`
   summary: Spine drift (Capability → Architecture Map, Structural Seed), reconciled before the next epic: the "FR-5 to FR-9" row (it holds FR-7) should name `intents/set_up_next` (`POST /intents/set-up-next`), and the seed's `intents/` module list should add `set_up_next`.
   evidence: Story 4.4 adds `backend/bookvie/intents/set_up_next.py` and its route in `backend/bookvie/http/api.py`; the ATDD checklist for 4.4 ("Spine drift to expect") names this row.
+  resolved: `spec-epic-4-retro-item-38-reconcile-the-spine-with-epic-4.md` (Epic 4 retro item 38, 2026-11-10); the seed's `intents/` list adds `set_up_next`; the map row already listed it (see the correction below).
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-4-choose-what-to-read-next.md`
   summary: Spine drift (AD-9, AD-2), reconciled before the next epic: AD-9's "set-up-next for the current Up next is a 200 no-op that commits nothing" should name the mechanism, a change returning `store.UNCHANGED` so `Store.apply` skips the commit under the AD-4 lock (new files removed again), and AD-2's commit description should allow that no-write outcome.
   evidence: `backend/bookvie/store/store.py` `UNCHANGED` and `_apply_locked`; `backend/tests/test_store_commits.py::test_apply_unchanged_writes_nothing`.
+  resolved: `spec-epic-4-retro-item-38-reconcile-the-spine-with-epic-4.md` (Epic 4 retro item 38, 2026-11-10); AD-9's no-op bullet names `store.UNCHANGED` and `Store.apply` skipping the commit under the AD-4 lock, and AD-2 allows that no-write outcome.
 
 ## Deferred from: code review of spec-4-5-mark-any-book-finished-from-its-page (2026-11-09)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-5-mark-any-book-finished-from-its-page.md`
   summary: Spine drift (AD-7, AD-19, FR-14 map row), reconciled before the next epic: AD-7 describes only the Main finish carried to Home as router state; it should say a finish of a Book that wasn't Main when the Finish dialog opened stays on Book detail (focus to the `h1`, then "Finished *X*.", no finish moment). AD-19's "Finishing" bullet should say `finish-reading` back-fills a Reading (`startDate` null) for a Book with no Readings, and clears `upNextBookId` and the Book's `sideReadBookIds` entry in the same commit.
   evidence: `backend/bookvie/intents/finish_reading.py` (back-fill, pointer clearing); `frontend/src/components/FinishDialog.tsx` `onFinishedHere`; `backend/tests/test_finish_any_book.py`.
+  resolved: `spec-epic-4-retro-item-38-reconcile-the-spine-with-epic-4.md` (Epic 4 retro item 38, 2026-11-10); AD-7 says a non-Main finish stays on Book detail (focus to the `h1`, then "Finished *X*.", no moment); AD-19's Finishing bullet states the back-fill and the pointer clearing; the FR-14 row change is the entry further down.
 
 ## Deferred from: code review of spec-4-6-see-each-book-s-state-on-the-shelf-and-its-page (2026-11-09)
 
@@ -462,18 +473,21 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-7-keep-a-few-side-reads.md`
   summary: Spine drift (Capability → Architecture Map "FR-5 to FR-9" row, AD-18, AD-6), reconciled before the next epic: the "FR-5 to FR-9" row (FR-8 Side reads) names `mark_side_read`, but the code is `intents/side_reads.py` with `mark_side_read` and `unmark_side_read` (unmark isn't in the spine); AD-18/AD-6 don't name the views' Side-read fields `HomeView.sideReads`, `ShelfBook.sideRead`, `BookDetailView.sideRead` and `sideReadsFull`, nor `start-reading`'s `page` ("Which page?") and its `reachedLastPage`.
   evidence: Review of 4.7; `ARCHITECTURE-SPINE.md:362` ("FR-5 to FR-9" row); `backend/bookvie/intents/side_reads.py`, `intents/start_reading.py`, `views/models.py`.
+  resolved: `spec-epic-4-retro-item-38-reconcile-the-spine-with-epic-4.md` (Epic 4 retro item 38, 2026-11-10); the "FR-5 to FR-9" row names `side_reads` (mark, unmark) and `views/shelf` (`sideReads`). Per the correction below, view fields stay with the Pydantic models (AD-8, Deferred); `page` and `reachedLastPage` are in AD-19.
 
 ## Deferred from: review of spec-epic-4-retro-item-34-back-fill-drops-side-read (2026-11-09)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-epic-4-retro-item-34-back-fill-drops-side-read.md`
   summary: Spine drift (AD-19), reconciled before the next epic (retro item 38): AD-19's "Back-filled finishes in edit" bullet should say a back-fill on a Book with no Readings also removes it from `sideReadBookIds` in the same commit, and that `upNextBookId` stays. Its "Finishing" bullet's "only `finish-reading` sets `finishDate`" should allow for edit-book's back-fill.
   evidence: `ARCHITECTURE-SPINE.md:236-237`; `backend/bookvie/intents/edit_book.py` (`edit_book`'s `change`).
+  resolved: `spec-epic-4-retro-item-38-reconcile-the-spine-with-epic-4.md` (Epic 4 retro item 38, 2026-11-10); AD-19's back-fill bullet says a back-fill on a Book with no Readings leaves `sideReadBookIds` and `upNextBookId` stays; the Finishing bullet allows edit-book's back-fill; AD-18's pointer list repeats it.
 
 ## Deferred from: spec-epic-4-retro-item-35-count-only-tracked-pages (2026-11-09)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-epic-4-retro-item-35-count-only-tracked-pages.md`
   summary: Spine drift (AD-18, AD-19, AD-20), reconciled before the next epic (retro item 38): the document is now `schemaVersion` 2. AD-19's Reading fields should list `startPage` (after `startDate`; a whole number from 0, the page a new Reading starts at, 0 on a back-fill, unchanged by a resume). AD-18's invariant "card-note pages and unfinished Reading pages are within the Book's page count" should say it applies to `currentPage`, not `startPage`, which is deliberately unbounded. AD-20's Measured pace should say it sums `max(finishedPages − startPage, 0)`, with the days unchanged.
   evidence: `backend/bookvie/domain/model.py` (`SCHEMA_VERSION`, `Reading.start_page`); `backend/bookvie/store/migrations/__init__.py` (`STEPS[1]`); `backend/bookvie/domain/pace.py`; `backend/bookvie/intents/start_reading.py`.
+  resolved: `spec-epic-4-retro-item-38-reconcile-the-spine-with-epic-4.md` (Epic 4 retro item 38, 2026-11-10); AD-19's Fields list `startPage` (`schemaVersion` 2); AD-18's page invariant names `currentPage` and says `startPage` is deliberately not bounded; AD-20's Measured pace sums max(`finishedPages` − `startPage`, 0). The resume-pages entry below is not drift and stays open.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-epic-4-retro-item-35-count-only-tracked-pages.md`
   summary: Measured pace still counts pages skipped on a resume: resuming a paused Reading at a higher "Which page?" doesn't change `startPage`, so a Reading started at 0, paused at 20 and resumed at 300 counts all the pages. Lowering the page below `startPage` (a mistyped start, later corrected) undercounts in the same way.
@@ -484,10 +498,12 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-4-choose-what-to-read-next.md`
   summary: Spine drift (AD-3, AD-12), reconciled before the next epic (retro item 38): AD-3 allows an intent only to commit once or refuse, but `set-up-next` on the current Up next (and the no-op Side-read intents) is a 200 with no commit and no `check_invariants()`. AD-12 says files always go write, commit, delete, but a change returning `UNCHANGED` with `new_files` writes and removes them with no commit. No intent sends both today. The AD-9 and AD-2 entry above doesn't name either decision.
   evidence: `ARCHITECTURE-SPINE.md:65` (AD-3); `backend/bookvie/store/store.py:464`; `backend/bookvie/intents/set_up_next.py:45`; `backend/bookvie/intents/side_reads.py:60`, `:77`; `backend/tests/test_store_commits.py::test_apply_unchanged_writes_nothing`.
+  resolved: `spec-epic-4-retro-item-38-reconcile-the-spine-with-epic-4.md` (Epic 4 retro item 38, 2026-11-10); AD-3 allows a 200 no-op that commits nothing and runs no `check_invariants()`, and AD-12 says a no-op's new files are deleted again with nothing committed.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-4-choose-what-to-read-next.md`
   summary: Spine drift correction for retro item 38: the entry above saying the Capability Map's "FR-5 to FR-9" row should name `intents/set_up_next` is half wrong. The row already lists `set_up_next`, and it names no routes. Only the Structural Seed's `intents/` list needs it.
   evidence: `ARCHITECTURE-SPINE.md:362`.
+  resolved: `spec-epic-4-retro-item-38-reconcile-the-spine-with-epic-4.md` (Epic 4 retro item 38, 2026-11-10); applied with the entry it corrects: only the Structural Seed needed `set_up_next`.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-4-choose-what-to-read-next.md`
   summary: For retro item 36: the spine popover's in-flight state has no test (the hint frozen by `hintAtPress`, `aria-disabled` with its reason, a second press sending nothing). With no earlier Up next, the refetch would otherwise show "Replaces the current Up next." during the request.
@@ -508,24 +524,29 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-5-mark-any-book-finished-from-its-page.md`
   summary: Spine drift (Capability → Architecture Map FR-14 row, AD-18), reconciled before the next epic (retro item 38): the 4.5 entry above names the "FR-14 map row" but says nothing to change in it. `finish-reading` now writes the root pointers AD-18 defines (it clears `upNextBookId` and the Book's `sideReadBookIds` entry), so the row, which lists only AD-7, AD-11, AD-19 and AD-20, should add AD-18, and AD-18's pointer rules should cover a finish as well as a delete.
   evidence: `ARCHITECTURE-SPINE.md:364`; `backend/bookvie/intents/finish_reading.py` (pointer clearing).
+  resolved: `spec-epic-4-retro-item-38-reconcile-the-spine-with-epic-4.md` (Epic 4 retro item 38, 2026-11-10); the FR-14 row cites AD-18, and AD-18's pointer list covers `finish-reading` as well as delete.
 
 ## Deferred from: code review of spec-4-7-keep-a-few-side-reads, second pass (2026-11-10, retro item 43)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-7-keep-a-few-side-reads.md`
   summary: Spine drift (AD-3, AD-9), reconciled before the next epic (retro item 38): AD-3 calls the page field's range check "the one sanctioned pre-check" and AD-9 "the one exception" for copy. The Start dialog's "Which page?" also pre-checks an empty value with its own copy of "Which page? is required.", and reuses the range check. The shared case table `pageField.cases.json` covers neither.
   evidence: `frontend/src/components/StartDialog.tsx:30`, `:103-110`; `backend/bookvie/intents/start_reading.py`; `frontend/src/lib/pageField.cases.json`.
+  resolved: `spec-epic-4-retro-item-38-reconcile-the-spine-with-epic-4.md` (Epic 4 retro item 38, 2026-11-10); AD-3 lists two sanctioned pre-checks (the page field's range, and the Start dialog's "Which page?" for both empty and out-of-range values), and AD-9 points at both. The empty-value copy has no shared check. It is a known gap in AD-3, kept open as its own entry (item 38 review).
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-7-keep-a-few-side-reads.md`
   summary: Spine drift (AD-19), reconciled before the next epic (retro item 38): AD-19's Starting bullet lists only resume or create and pausing the previous Main book. It should state that a sent `page` becomes `currentPage` (even below the paused page), a Side read without one gets 422 on `page`, and the Book leaves `sideReadBookIds` in the same commit. Its Finishing bullet limits `reachedLastPage` to "a Side read's starting page", but `start-reading` accepts `page` for any Book.
   evidence: `backend/bookvie/intents/start_reading.py`; `backend/tests/test_side_reads.py::test_p1_a_page_sent_for_a_book_that_isnt_a_side_read_is_honored`.
+  resolved: `spec-epic-4-retro-item-38-reconcile-the-spine-with-epic-4.md` (Epic 4 retro item 38, 2026-11-10); AD-19's Starting bullet says a sent `page` becomes `currentPage` (even below the paused page) and a new Reading's `startPage`, is required for a Side read (422) and honored for any Book, and the Book leaves `sideReadBookIds`; the Finishing bullet says `reachedLastPage` follows any `start-reading` with a `page`.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-7-keep-a-few-side-reads.md`
   summary: Spine drift (Structural Seed), reconciled before the next epic (retro item 38): the seed says `intents/` has "one module per intent", but `intents/side_reads.py` holds `mark_side_read` and `unmark_side_read`.
   evidence: `backend/bookvie/intents/side_reads.py`.
+  resolved: `spec-epic-4-retro-item-38-reconcile-the-spine-with-epic-4.md` (Epic 4 retro item 38, 2026-11-10); the seed's `intents/` line says one module per intent except `side_reads` (mark-side-read and unmark-side-read).
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-7-keep-a-few-side-reads.md`
   summary: Spine drift correction for retro item 38: the 4.7 entry above for the "FR-5 to FR-9" row, AD-18 and AD-6 lists the views' Side-read fields as drift, but AD-18 covers the document shape and the spine's Deferred section leaves view fields to the Pydantic models (AD-8). `reachedLastPage` is already named in AD-19. The real disagreements are the AD-19 entry just above.
   evidence: `ARCHITECTURE-SPINE.md` (AD-18, AD-19, Deferred); `deferred-work.md` entry for 4.7's "FR-5 to FR-9" row.
+  resolved: `spec-epic-4-retro-item-38-reconcile-the-spine-with-epic-4.md` (Epic 4 retro item 38, 2026-11-10); applied with the entry it corrects.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-7-keep-a-few-side-reads.md`
   summary: For retro item 36 (retro F-R5): the last-page hand-off carries no Book id. `StartedState` has only `reachedLastPage` and `savedLine`, and Home opens Finish for whatever `mainId` the view shows. If the refetch fails after the start, or another tab changes Main, Finish opens for the wrong Book. The finish hand-off below it compares `handed.id`; this one doesn't.
@@ -552,3 +573,16 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-epic-4-retro-item-36-last-page-finish-for-the-started-book.md`
   summary: The other last-page path has the same shape as F-R5: `openFinish`, which the Main book card's page field calls on `reachedLastPage`, opens Finish for whatever `mainId` the view shows, not the Book the save was for. It needs another tab to change Main between the save landing and Home's refetch rendering. Low, predates this change; `PageField` already has the `bookId` to pass.
   evidence: `frontend/src/pages/HomePage.tsx` (`openFinish`); `frontend/src/components/PageField.tsx:146`.
+
+## Deferred from: spec-epic-4-retro-item-38-reconcile-the-spine-with-epic-4 (2026-11-10)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-epic-4-retro-item-38-reconcile-the-spine-with-epic-4.md`
+  summary: Spine drift (AD-7, AD-19), found by item 38's comparison of the Epic 4 diffs (F-S3): item 36's last-page start hands Home the started Book's id, and Home opens Finish only for that Book, once per history entry. AD-19's Finishing bullet said only "The client then opens the Finish dialog."
+  evidence: `frontend/src/components/StartDialog.tsx` (`StartedState`); `frontend/src/pages/HomePage.tsx` (`reachedLastPage`); `frontend/e2e/side-reads.spec.ts` ("[P0] F-R5 …").
+  resolved: `spec-epic-4-retro-item-38-reconcile-the-spine-with-epic-4.md` (Epic 4 retro item 38, 2026-11-10); AD-7's "Last-page start" bullet, and AD-19's Finishing bullet points to it.
+- source_spec: `_bmad-output/implementation-artifacts/spec-epic-4-retro-item-38-reconcile-the-spine-with-epic-4.md`
+  summary: Nothing keeps "Which page? is required." in step between the Start dialog's pre-check and `start-reading`. Each side's tests hard-code their own copy, and the e2e test never reaches the server, because the client refuses first. Changing one side's copy leaves both suites green. Add an empty-value case that both sides read, for example in `pageField.cases.json` or a sibling table. Low.
+  evidence: `frontend/src/components/StartDialog.tsx` `PAGE_REQUIRED`; `backend/bookvie/intents/start_reading.py` `PAGE_REQUIRED_MESSAGE`; `backend/tests/test_side_reads.py`; `frontend/e2e/side-reads.spec.ts`. AD-3 records it as a known gap.
+- source_spec: `_bmad-output/implementation-artifacts/spec-epic-4-retro-item-38-reconcile-the-spine-with-epic-4.md`
+  summary: The Start dialog's displacement line (`upNext.id`, `upNext.paused`) and the Pause Confirm dialog read the home view as cached, so a dialog opened away from Home after another tab changed Up next can name the wrong Up next. The Pause flow can also skip or show its Confirm wrongly. This widens the Epic 3 entry on the Start dialog's "This pauses *Y*…" line, which covers only `mainBook`. The intent still applies to the current state (A2), so only the copy is wrong. Low.
+  evidence: `frontend/src/components/StartDialog.tsx` (`home.data.upNext`); `frontend/src/lib/usePauseFlow.tsx` `request()`. AD-7 records it as a known gap. The spine drift entries for 4.1 and 4.3 closed only the spine wording.
