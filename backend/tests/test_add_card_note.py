@@ -35,6 +35,10 @@ from tests.helpers import (
     DUNE,
     DUNE_FORM,
     EDIT_BOOK,
+    NOTE_REQUIRED,
+    OUT_OF_RANGE,
+    PAGE_FORMS,
+    PAGE_REFUSALS,
     TODAY,
     FaultyFs,
     api_client,
@@ -71,16 +75,6 @@ def _left_hand(builder: LibraryBuilder) -> str:
 
 
 # --- AC-2: every Page form is parsed on the server ---------------------------------
-
-PAGE_FORMS = [
-    ("42", 42, None),
-    ("42–45", 42, 45),
-    ("42-45", 42, 45),
-    ("42 – 45", 42, 45),
-    ("p.42", 42, None),
-    ("pp. 42–45", 42, 45),
-    ("42–42", 42, None),
-]
 
 
 def test_ac2_p0_add_card_note_parses_every_page_form_and_stores_the_note_on_that_book(
@@ -161,26 +155,6 @@ def test_ac5_book_detail_lists_card_notes_by_page_then_created_at(tmp_path: Path
 
 
 # --- AC-3: the refusals, field by field ---------------------------------------------
-
-OUT_OF_RANGE = "Page must be between 1 and 330."
-REVERSED = "The first page must come before the last."
-ONE_RANGE = "Use one page or one range."
-PAGE_REQUIRED = "Page is required."
-NOTE_REQUIRED = "Note is required."
-
-PAGE_REFUSALS = [
-    ("0", OUT_OF_RANGE),
-    ("331", OUT_OF_RANGE),
-    ("42–400", OUT_OF_RANGE),
-    ("45–42", REVERSED),
-    ("42–45, 50–52", ONE_RANGE),
-    ("42, 50", ONE_RANGE),
-    ("abc", ONE_RANGE),
-    ("p.", ONE_RANGE),
-    ("42 to", ONE_RANGE),
-    ("", PAGE_REQUIRED),
-    ("   ", PAGE_REQUIRED),
-]
 
 
 def test_ac3_p0_add_card_note_refuses_a_bad_page_or_an_empty_note_and_saves_nothing(

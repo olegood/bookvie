@@ -31,13 +31,14 @@ from tests.helpers import (
     DUNE_FORM,
     EDIT_BOOK,
     EDIT_CARD_NOTE,
+    PAGE_FORMS,
+    PAGE_REFUSALS,
     FaultyFs,
     api_client,
     assert_invariants,
     library_bytes,
     stored_book,
 )
-from tests.test_add_card_note import PAGE_FORMS, PAGE_REFUSALS
 
 GONE_BOOK_ID = "00000000-0000-4000-8000-000000000000"
 GONE_NOTE_ID = "00000000-0000-4000-8000-0000000000aa"

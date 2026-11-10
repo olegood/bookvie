@@ -54,6 +54,40 @@ ADD_CARD_NOTE = "/api/intents/add-card-note"
 EDIT_CARD_NOTE = "/api/intents/edit-card-note"
 DELETE_CARD_NOTE = "/api/intents/delete-card-note"
 
+# Card note Page parsing (Stories 5.1, 5.2): every form the server accepts, as
+# (typed, pageStart, pageEnd), and every refusal on a 330-page Book, as (typed, message).
+
+PAGE_FORMS = [
+    ("42", 42, None),
+    ("42–45", 42, 45),
+    ("42-45", 42, 45),
+    ("42 – 45", 42, 45),
+    ("p.42", 42, None),
+    ("pp. 42–45", 42, 45),
+    ("42–42", 42, None),
+]
+
+
+OUT_OF_RANGE = "Page must be between 1 and 330."
+REVERSED = "The first page must come before the last."
+ONE_RANGE = "Use one page or one range."
+PAGE_REQUIRED = "Page is required."
+NOTE_REQUIRED = "Note is required."
+
+PAGE_REFUSALS = [
+    ("0", OUT_OF_RANGE),
+    ("331", OUT_OF_RANGE),
+    ("42–400", OUT_OF_RANGE),
+    ("45–42", REVERSED),
+    ("42–45, 50–52", ONE_RANGE),
+    ("42, 50", ONE_RANGE),
+    ("abc", ONE_RANGE),
+    ("p.", ONE_RANGE),
+    ("42 to", ONE_RANGE),
+    ("", PAGE_REQUIRED),
+    ("   ", PAGE_REQUIRED),
+]
+
 # The fake today. Year may be at most next year (2027); Finished on at most today.
 TODAY = date(2026, 10, 30)
 

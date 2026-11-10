@@ -106,6 +106,8 @@ test.describe('Story 5.1 Add a card note while reading', () => {
     await expect(panel.getByRole('textbox', { name: 'Page', exact: true })).toHaveValue('212')
     await expect(panel.getByRole('button', { name: 'Save note', exact: true })).toBeVisible()
     await expect(panel.getByRole('button', { name: 'Cancel', exact: true })).toBeVisible()
+    // Delete is edit mode's (Story 5.2): an added note has nothing to delete yet.
+    await expect(panel.getByRole('button', { name: 'Delete', exact: true })).toHaveCount(0)
     // The index card is 360px wide (DESIGN.md → Card note panel).
     expect((await sizeOf(panel)).width).toBe(360)
 

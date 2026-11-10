@@ -259,6 +259,7 @@ test.describe('Story 5.2 Edit or delete a card note', () => {
     await expect(page.getByRole('status')).toHaveText('')
     expect(libraryBytes(server)).toBe(before)
   })
+
   test('[P1] AC-1 a refused Page shows its message under Page, and nothing is saved', async ({
     page,
     seededServer,
@@ -437,6 +438,57 @@ test.describe('Story 5.2 Edit or delete a card note', () => {
     await expect(panel).toBeHidden()
     await expect(cardNotesBlock(page, 3)).toBeVisible()
     expect(sent).toHaveLength(1)
+  })
+
+  test('[P1] AC-1 while edit-card-note is out, Delete is aria-disabled and opens nothing', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: [DUNE_WITH_NOTES] })
+    let release!: () => void
+    const held = new Promise<void>((resolve) => (release = resolve))
+    await page.route(`**${EDIT_CARD_NOTE}`, async (route) => {
+      await held
+      await route.continue()
+    })
+    await page.goto(`${server.url}/book/${DUNE_ID}`)
+    await editOf(noteItem(cardNotesBlock(page, 4), 'The spice must flow.')).click()
+    const panel = editPanel(page)
+    const remove = panel.getByRole('button', { name: 'Delete', exact: true })
+
+    const sent = page.waitForRequest((request) => new URL(request.url()).pathname === EDIT_CARD_NOTE)
+    await panel.getByRole('button', { name: 'Save note', exact: true }).click()
+    await sent
+    await expect(remove).toHaveAttribute('aria-disabled', 'true')
+    // Playwright waits on aria-disabled; force the press a user can still make.
+    await remove.click({ force: true })
+    await expect(confirmDialog(page)).toHaveCount(0)
+    release()
+
+    await expect(panel).toBeHidden()
+    await expect(confirmDialog(page)).toHaveCount(0)
+  })
+
+  test("[P1] AC-2 a delete whose refetch fails never focuses the deleted note's Edit", async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: [DUNE_WITH_NOTES] })
+    await page.goto(`${server.url}/book/${DUNE_ID}`)
+    const block = cardNotesBlock(page, 4)
+    const spiceEdit = editOf(noteItem(block, 'The spice must flow.'))
+    await spiceEdit.click()
+    await editPanel(page).getByRole('button', { name: 'Delete', exact: true }).click()
+    // The delete commits, but the refetch after it fails: the stale block, p.96 included, stays on screen.
+    await page.route('**/api/views/book**', (route) => route.fulfill({ status: 500, body: '' }))
+    await confirmDialog(page).getByRole('button', { name: 'Delete card note', exact: true }).click()
+
+    await expect(editPanel(page)).toBeHidden()
+    await expect(spiceEdit).not.toBeFocused()
+    await expect(block.getByRole('heading', { level: 2 })).toBeFocused()
+    expect((storedBook(server, DUNE_ID).cardNotes as Record<string, unknown>[]).map((note) => note.id)).not.toContain(
+      SPICE_ID,
+    )
   })
 
   test('[P1] AC-2 deleting the last shown note focuses the Edit of the note that moves in', async ({

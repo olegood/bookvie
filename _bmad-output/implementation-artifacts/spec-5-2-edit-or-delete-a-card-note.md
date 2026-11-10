@@ -2,7 +2,7 @@
 title: 'Story 5.2: Edit or delete a card note'
 type: 'feature'
 created: '2026-11-10'
-status: 'in-review'
+status: 'done'
 baseline_revision: 'a4ecc340668527d1a771cfb6e46782dff25093d3'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -136,6 +136,36 @@ deferred:
   - `[false]` `[reject]` (edge-case) A delete with no cached view focuses the deleted note — same refutation as the blind finding: the view is cached while Book detail is mounted.
   - `[low]` `[patch]` (edge-case) The delete's index was captured when the panel opened, so a refetch that reorders the notes moves focus to the wrong neighbour — the index is now taken from the current `notes` when `onDeleted` fires, falling back to the opened index.
   - `[false]` `[reject]` (edge-case) Edit mode with `onDeleted` omitted leaves the Confirm busy forever — the only edit-mode caller (`useCardNoteEditFlow`) always passes it.
+
+### 2026-11-10 — Code review pass (bmad-code-review)
+- scope: `a4ecc34..7a49901`, full mode, five layers (blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor, spine-check), none failed.
+- verdicts: 31 findings (BH 15, AA 5, VG 3, EC 3, SC 5) — high 0, medium 0, low 28, false 3, maybe-false 0. Grouped: 6 patch entries (9 findings), 1 defer entry (the 5 spine-drift items the build already recorded), 17 rejected.
+
+### Review Findings
+- [x] [Review][Patch] After a successful delete whose refetch fails, or with no cached book view, focus goes to the deleted note's own Edit: `invalidateQueries` keeps the same `cardNotes` array, so `fresh === stale`, the effect runs at once, and the stale list still holds the deleted note at `index` (BH, EC ×2, VG other). The earlier "false" verdicts on this path missed the stale list. Fix: drop the deleted id from the shown ids before `noteAfterDelete` [frontend/src/lib/useCardNoteFlow.tsx:131]
+- [x] [Review][Patch] `useCardNoteEditFlow`'s wait-for-refetch depends on `notes` being the cache's own array (reference identity), and nothing says so. A 5.3 caller passing a filtered or sorted array would resolve focus against the stale list. Fix: state the requirement in `EditOptions.notes`'s doc (BH) [frontend/src/lib/useCardNoteFlow.tsx:84]
+- [x] [Review][Patch] Nothing tests that **Delete** is `aria-disabled`, and opens no Confirm, while `edit-card-note` is in flight: dropping `openConfirm`'s `inFlight` guard and Delete's `disabledReason` stays green (VG) [frontend/e2e/edit-card-note.spec.ts]
+- [x] [Review][Patch] Nothing tests that add mode has no **Delete**: rendering it in both modes stays green (VG) [frontend/e2e/add-card-note.spec.ts:107]
+- [x] [Review][Patch] `test_edit_card_note.py` imports `PAGE_FORMS` / `PAGE_REFUSALS` from another test module. Fix: move both tables to `tests/helpers.py` (BH) [backend/tests/test_edit_card_note.py]
+- [x] [Review][Patch] A blank line is missing before the "[P1] AC-1 a refused Page" leaf, unlike every other leaf in the file (BH) [frontend/e2e/edit-card-note.spec.ts]
+- [x] [Review][Defer] Spine drift (AD-9 targeting refusals and its no-op rule, AD-19 Targeting, the Structural Seed's `intents/` and `lib/` lines), reconciled before the next epic (SC ×5) — deferred: already recorded in deferred-work.md under "build-auto review of spec-5-2-edit-or-delete-a-card-note"; the code follows the ATDD contract decided with Oleg.
+
+### Rejected
+- `[low]` (BH, AA) The intent contract's "else the last shown note's Edit" clause contradicts the code, the story AC and the e2e leaf — the fix edits this spec; raised with Oleg as a separate spec correction.
+- `[low]` (BH, AA) The I/O matrix row and the e2e task use Page "400" on 412 pages, which is in range — the fix edits this spec; the tests use 413 and a 330-page Book. Raised with Oleg alongside the clause above.
+- `[low]` (BH) `CardNotePanel`'s optional props allow edit mode with no `onDeleted` — the only edit-mode caller passes it; a discriminated union adds surface for a case nobody can reach today.
+- `[low]` (BH) `editButton` makes a new callback ref per note on each render — React detaches and re-attaches them, so the map stays correct; nothing user-visible, and caching the callbacks adds a structure.
+- `[false]` (BH) `useCachedBookView` reads as a reactive hook — its docblock says it reads the cache "as it holds it right now", and its only caller reads it in an event handler.
+- `[low]` (BH) `edit_card_note.py` imports its field check from `add_card_note.py` — carried from the build review: no caller diverges, and moving the helper is churn.
+- `[low]` (BH) `_ready` seeds the note through `store.apply` instead of `LibraryBuilder` — the route test seeds through the running app's store (the other branches use intents); the note is invariant-valid, and the minted id can't be static through `add-card-note`.
+- `[low]` (BH) `books.test.ts` has no refusal case for `deleteCardNote` — carried: it goes through the same `sendIntent`, whose refusal path is unit-tested.
+- `[low]` (BH) No test that an edit lowering the highest note lowers the Pages floor — carried: `_check_pages_floors` reads the stored notes, and the in-place edit test pins those.
+- `[low]` (BH) The commit includes the recompiled `epic-5-context.md` — build-auto recompiles it whenever a planning document is newer; it is already committed, and splitting it out would rewrite history.
+- `[low]` (BH) Nothing tests that the panel is inert under the Confirm, or the Tab cycle inside it — carried: `showModal()` makes the panel inert natively, and the ATDD hands the Tab-cycle leaf to bmad-testarch-automate.
+- `[low]` (AA) The ATDD orders the edit panel's buttons Delete, Cancel, Save note, while the spec and code use Delete, Save note, Cancel — both put Delete at the left, which AC-1 checks, and the fix edits the ATDD document.
+- `[false]` (AA) The Confirm's `aria-describedby` points at an empty description — the spec's rule is to drop it only if axe objects, and the axe leaf passes in both themes.
+- `[false]` (AA) The ATDD's Tab-cycle follow-up has no leaf — the spec's e2e task list doesn't include it; it is bmad-testarch-automate's step.
+- `[low]` (EC) Two notes on one page share the name "Edit p.96" — carried from the build review: each Edit sits in its note's list item after the text, and a unique name needs copy the UX docs don't give.
 
 ## Design Notes
 

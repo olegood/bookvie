@@ -83,7 +83,11 @@ export function useCardNoteFlow({ bookId, initialPage }: Options): CardNoteFlow 
 type EditOptions = {
   /** The Book whose block this is. */
   bookId: string
-  /** The block's notes, in page order, as rendered. */
+  /**
+   * The block's notes, in page order, as rendered. Pass the view's own array
+   * (`book.cardNotes`), not a copy: focus waits for the refetch by comparing
+   * this array's identity with the cache's.
+   */
   notes: readonly BookCardNote[]
 }
 
@@ -107,7 +111,7 @@ type Refetched = { stale: readonly BookCardNote[]; fresh: readonly BookCardNote[
 type Pending =
   | { kind: 'cancel'; noteId: string }
   | ({ kind: 'saved'; noteId: string } & Refetched)
-  | ({ kind: 'deleted'; index: number } & Refetched)
+  | ({ kind: 'deleted'; noteId: string; index: number } & Refetched)
 
 /** The ids of the notes the block shows, in its order. */
 function shownIds(notes: readonly BookCardNote[]): string[] {
@@ -130,10 +134,12 @@ export function useCardNoteEditFlow({ bookId, notes }: EditOptions): CardNoteEdi
     // Wait until the refetched notes are the ones on screen (a tick after the intent resolves).
     if (next.kind !== 'cancel' && next.fresh !== null && notes !== next.fresh && notes === next.stale) return
     pending.current = null
-    const shown = shownIds(notes)
     let target: string | null
-    if (next.kind === 'deleted') target = noteAfterDelete(shown, next.index)
-    else target = shown.includes(next.noteId) ? next.noteId : null
+    if (next.kind === 'deleted') {
+      // A failed refetch keeps the stale list on screen, deleted note included: never pick it.
+      const remaining = shownIds(notes.filter((note) => note.id !== next.noteId))
+      target = noteAfterDelete(remaining, next.index)
+    } else target = shownIds(notes).includes(next.noteId) ? next.noteId : null
     const button = target !== null ? buttons.current.get(target) : undefined
     ;(button ?? heading.current ?? document.getElementById('main'))?.focus()
     if (next.kind === 'saved') announce('status', CARD_NOTE_SAVED)
@@ -173,7 +179,7 @@ export function useCardNoteEditFlow({ bookId, notes }: EditOptions): CardNoteEdi
       onDeleted={() => {
         // Its place in the order on screen now: a refetch may have re-sorted the block since it opened.
         const index = shownIds(notes).indexOf(opened.note.id)
-        close({ kind: 'deleted', index: index === -1 ? opened.index : index, ...refetched() })
+        close({ kind: 'deleted', noteId: opened.note.id, index: index === -1 ? opened.index : index, ...refetched() })
       }}
     />
   )
