@@ -317,53 +317,53 @@ Activate one test at a time: delete its `@pytest.mark.skip(reason=RED)` line, or
 - **E2E:** `TZ=Europe/Madrid npm --prefix frontend run e2e -- e2e/card-notes.spec.ts -g "AC-3"` (the e2e entry builds the SPA, Epic 3 retro item 27)
 
 ### AC-2: the view
-- [ ] `views/models.py`: `CardNotesScope`, `CardNotesGroup`, `CardNotesView` (reuse `BookCardNote`).
-- [ ] `views/card_notes.py`: `card_notes(library, book_id: str | None) -> CardNotesView | None` (`None` for an unknown id). Share the note sort key with `book_detail`. Order the groups by `title_key`, then id.
-- [ ] `http/api.py`: `GET /views/card-notes` with an optional `book` query, returning 404 `book_not_found` for an unknown id. Export it from `views/__init__.py`, then run `npm --prefix frontend run api:gen`.
-- [ ] Update `test_contract.py` (table above).
-- [ ] Activate AC-2.
+- [x] `views/models.py`: `CardNotesScope`, `CardNotesGroup`, `CardNotesView` (reuse `BookCardNote`). (done: backend/bookvie/views/models.py; backend/tests/test_card_notes_view.py:170 (schemas))
+- [x] `views/card_notes.py`: `card_notes(library, book_id: str | None) -> CardNotesView | None` (`None` for an unknown id). Share the note sort key with `book_detail`. Order the groups by `title_key`, then id. (done: backend/tests/test_card_notes_view.py:32 and :96 (title key, then Book id))
+- [x] `http/api.py`: `GET /views/card-notes` with an optional `book` query, returning 404 `book_not_found` for an unknown id. Export it from `views/__init__.py`, then run `npm --prefix frontend run api:gen`. (done: backend/tests/test_card_notes_view.py:154 (404), :170 (OpenAPI); `check:api` byte-compares schema.d.ts)
+- [x] Update `test_contract.py` (table above). (done: backend/tests/test_contract.py:337, :370)
+- [x] Activate AC-2. (done: backend/tests/test_card_notes_view.py:32)
 
 ### AC-1: the page and the nav
-- [ ] `api/views.ts`: `useCardNotesView(bookId?)`.
-- [ ] `pages/CardNotesPage.tsx` at `/card-notes` in `main.tsx`, with `usePageTitle('Card notes')` and `h1` "Card notes".
-- [ ] `AppShell.tsx`: a **Card notes** `NavLink` between Catalog and Backup.
-- [ ] Update `app-shell.spec.ts` (table above).
-- [ ] Activate AC-1.
+- [x] `api/views.ts`: `useCardNotesView(bookId?)`. (done: frontend/e2e/card-notes.spec.ts:102)
+- [x] `pages/CardNotesPage.tsx` at `/card-notes` in `main.tsx`, with `usePageTitle('Card notes')` and `h1` "Card notes". (done: frontend/e2e/card-notes.spec.ts:102; app-shell.spec.ts:222)
+- [x] `AppShell.tsx`: a **Card notes** `NavLink` between Catalog and Backup. (done: frontend/e2e/app-shell.spec.ts:115)
+- [x] Update `app-shell.spec.ts` (table above). (done: frontend/e2e/app-shell.spec.ts:122, :222)
+- [x] Activate AC-1. (done: frontend/e2e/card-notes.spec.ts:102)
 
 ### AC-3: Search card notes
-- [ ] The field: a label prop on `SearchTitles`, or a shared search field component.
-- [ ] `lib/cardNotes.ts`: `noteMatches(text, query)` (case-insensitive substring) and a highlight splitter that keeps the note's own casing; `notesMatchCopy(n)`; `NO_NOTES_MATCH(query)`. Add unit tests in `cardNotes.test.ts`.
-- [ ] The groups render `<mark>` (accent-soft, weight 600, 1px accent underline) and hide groups without a match. The ~500 ms debounced `status`, as Catalog does.
-- [ ] Activate AC-3.
+- [x] The field: a label prop on `SearchTitles`, or a shared search field component. (done: frontend/e2e/card-notes.spec.ts:122 (label prop on SearchTitles))
+- [x] `lib/cardNotes.ts`: `noteMatches(text, query)` (case-insensitive substring) and a highlight splitter that keeps the note's own casing; `notesMatchCopy(n)`; `NO_NOTES_MATCH(query)`. Add unit tests in `cardNotes.test.ts`. (done: frontend/src/lib/cardNotes.test.ts:97, :115, :155)
+- [x] The groups render `<mark>` (accent-soft, weight 600, 1px accent underline) and hide groups without a match. The ~500 ms debounced `status`, as Catalog does. (done: frontend/e2e/card-notes.spec.ts:122, :638, :677)
+- [x] Activate AC-3. (done: frontend/e2e/card-notes.spec.ts:122)
 
 ### AC-4: the links
-- [ ] `views/models.py` and `views/shelf.py`: `HomeMainBook.card_note_count`.
-- [ ] `MainBookCard.tsx`: the "See card notes · N" `link` with the name "See card notes, N notes" ("See card notes" at 0), to `/card-notes?book=<id>`.
-- [ ] `BookDetailPage.tsx` (`CardNotesBlock`): the "See all card notes" `link`, only when there are notes.
-- [ ] Activate AC-4.
+- [x] `views/models.py` and `views/shelf.py`: `HomeMainBook.card_note_count`. (done: backend/tests/test_home_view.py:56, :77)
+- [x] `MainBookCard.tsx`: the "See card notes · N" `link` with the name "See card notes, N notes" ("See card notes" at 0), to `/card-notes?book=<id>`. (done: frontend/e2e/card-notes.spec.ts:168, :426)
+- [x] `BookDetailPage.tsx` (`CardNotesBlock`): the "See all card notes" `link`, only when there are notes. (done: frontend/e2e/card-notes.spec.ts:168, :243)
+- [x] Activate AC-4. (done: frontend/e2e/card-notes.spec.ts:168)
 
 ### AC-5: the scope
-- [ ] `CardNotesPage` reads `?book=`, renders the "In *X*" chip with a **Remove In *X*** button that navigates to `/card-notes`, and handles the empty scoped view with **Add card note** (`useCardNoteFlow` with that Book's id).
-- [ ] An unknown `?book=` id gets the not-found page, or an unscoped fallback. Decide this in the spec.
-- [ ] Activate AC-5.
+- [x] `CardNotesPage` reads `?book=`, renders the "In *X*" chip with a **Remove In *X*** button that navigates to `/card-notes`, and handles the empty scoped view with **Add card note** (`useCardNoteFlow` with that Book's id). (done: frontend/e2e/card-notes.spec.ts:205, :449)
+- [x] An unknown `?book=` id gets the not-found page, or an unscoped fallback. Decide this in the spec. (done: the spec decided the not-found page; frontend/e2e/card-notes.spec.ts:513, and an empty `?book=` is unscoped at :520)
+- [x] Activate AC-5. (done: frontend/e2e/card-notes.spec.ts:205)
 
 ### AC-6: the block's search
-- [ ] `CardNotesBlock`: a Search card notes field when there are notes. While it holds text, show every match (not the first three) with `<mark>`, or the no-match line, and the same `status` count.
-- [ ] Activate AC-6.
+- [x] `CardNotesBlock`: a Search card notes field when there are notes. While it holds text, show every match (not the first three) with `<mark>`, or the no-match line, and the same `status` count. (done: frontend/e2e/card-notes.spec.ts:243)
+- [x] Activate AC-6. (done: frontend/e2e/card-notes.spec.ts:243)
 
 ### Green-phase follow-ups (secondary branches, not separate red leaves)
-- [ ] **AC-2, the page's rendering:** the group titles in serif (`book-title-sm`), each note with its page ref ("pp.42–45") and its Edit, and the notes in page order on screen. An empty library reads "No card notes yet." with no groups and no **Add card note**.
-- [ ] **AC-2, Edit from the Card notes page:** it opens the Edit card note panel (5.2) prefilled. After a save, focus returns to that note's Edit and `status` reads "Card note saved.". After a delete, focus goes to the next note's Edit in the group, else the group heading, else the `h1`. Check `useCardNoteEditFlow`'s reference-identity rule against the page's grouped and filtered list (5.2 review).
-- [ ] **AC-2, the scoped view at API level:** `?book=<id>` gives `scope` and one group. A Book with no notes gives `scope` and `groups: []`. An unknown id gets 404 `book_not_found`, and nothing is written.
-- [ ] **AC-2, OpenAPI:** `/api/views/card-notes` documents the `book` query and the 404, and `CardNotesView` is in the schemas.
-- [ ] **AC-3, the mark style:** `accent-soft` background and the 1px `accent` underline, in both themes. Forced colors keep the mark visible.
-- [ ] **AC-3, edge text:** a query with regex characters ("p.4(") matches literally. A query of spaces only filters nothing. A match spanning two marks in one note highlights both. "1 note matches." for one.
-- [ ] **AC-3, edit while searching:** an edit that stops a note matching removes it from the results, and focus has a target.
-- [ ] **AC-4, `cardNoteCount`** on the home view: 0, and N after an add or a delete. The link's count updates after **Add card note** on Home, without a reload.
-- [ ] **AC-4, "1 note":** the accessible name for one note is "See card notes, 1 note".
-- [ ] **AC-5, an unknown or deleted Book in `?book=`:** the page behaves as the spec decides.
-- [ ] **AC-5, Add card note on the empty scoped view:** it opens the Card note panel for that Book. After a save, the note shows in the scoped list, and focus is on its Edit or as the spec says.
-- [ ] **AC-6, an edit from a searched block:** the panel opens from a match beyond the first three, and focus returns to it.
-- [ ] **AC-1, Back and Forward** between scoped and unscoped views restore the right chip and groups.
-- [ ] **axe** on the Card notes page (unscoped, scoped, searching, empty) and on Book detail's searched block, in both themes.
-- [ ] **Timing smoke** (R-17, report only): the view on the 500-Book / 3,000-note fixture.
+- [x] **AC-2, the page's rendering:** the group titles in serif (`book-title-sm`), each note with its page ref ("pp.42–45") and its Edit, and the notes in page order on screen. An empty library reads "No card notes yet." with no groups and no **Add card note**. (done: frontend/e2e/card-notes.spec.ts:308)
+- [x] **AC-2, Edit from the Card notes page:** it opens the Edit card note panel (5.2) prefilled. After a save, focus returns to that note's Edit and `status` reads "Card note saved.". After a delete, focus goes to the next note's Edit in the group, else the group heading, else the `h1`. Check `useCardNoteEditFlow`'s reference-identity rule against the page's grouped and filtered list (5.2 review). (done: frontend/e2e/card-notes.spec.ts:349, :481)
+- [x] **AC-2, the scoped view at API level:** `?book=<id>` gives `scope` and one group. A Book with no notes gives `scope` and `groups: []`. An unknown id gets 404 `book_not_found`, and nothing is written. (done: backend/tests/test_card_notes_view.py:115, :138, :154)
+- [x] **AC-2, OpenAPI:** `/api/views/card-notes` documents the `book` query and the 404, and `CardNotesView` is in the schemas. (done: backend/tests/test_card_notes_view.py:170)
+- [x] **AC-3, the mark style:** `accent-soft` background and the 1px `accent` underline, in both themes. Forced colors keep the mark visible. (done: frontend/e2e/card-notes.spec.ts:122 (light), :638 (dark), :677 (forced colors))
+- [x] **AC-3, edge text:** a query with regex characters ("p.4(") matches literally. A query of spaces only filters nothing. A match spanning two marks in one note highlights both. "1 note matches." for one. (done: frontend/src/lib/cardNotes.test.ts:103, :108, :116, :155; frontend/e2e/card-notes.spec.ts:408, :710)
+- [x] **AC-3, edit while searching:** an edit that stops a note matching removes it from the results, and focus has a target. (done: frontend/e2e/card-notes.spec.ts:386)
+- [x] **AC-4, `cardNoteCount`** on the home view: 0, and N after an add or a delete. The link's count updates after **Add card note** on Home, without a reload. (done: backend/tests/test_home_view.py:56, :77; frontend/e2e/card-notes.spec.ts:426)
+- [x] **AC-4, "1 note":** the accessible name for one note is "See card notes, 1 note". (done: frontend/e2e/card-notes.spec.ts:426)
+- [x] **AC-5, an unknown or deleted Book in `?book=`:** the page behaves as the spec decides. (done: frontend/e2e/card-notes.spec.ts:513 (a deleted Book gets the same 404 from the same view))
+- [x] **AC-5, Add card note on the empty scoped view:** it opens the Card note panel for that Book. After a save, the note shows in the scoped list, and focus is on its Edit or as the spec says. (done: frontend/e2e/card-notes.spec.ts:449, :471)
+- [x] **AC-6, an edit from a searched block:** the panel opens from a match beyond the first three, and focus returns to it. (done: frontend/e2e/card-notes.spec.ts:553)
+- [x] **AC-1, Back and Forward** between scoped and unscoped views restore the right chip and groups. (done: frontend/e2e/card-notes.spec.ts:528)
+- [x] **axe** on the Card notes page (unscoped, scoped, searching, empty) and on Book detail's searched block, in both themes. (done: frontend/e2e/card-notes.spec.ts:577)
+- [x] **Timing smoke** (R-17, report only): the view on the 500-Book / 3,000-note fixture. (done: measured in this run, report only, no committed test: automation-summary.md → Validation)

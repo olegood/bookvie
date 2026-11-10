@@ -610,3 +610,185 @@ test.describe('Story 5.3 follow-ups', () => {
     }
   })
 })
+
+/** "Dune" on Book detail, whose Card notes block holds four notes. */
+function duneDetail(server: { url: string }): string {
+  return `${server.url}/book/${DUNE_ID}`
+}
+
+/**
+ * Installs Playwright's clock paused, before the page loads, so the search
+ * pause (SEARCH_PAUSE_MS, 500 ms) and announce's 100 ms tick only run when the
+ * test calls `runFor`. Nothing fires between a keystroke and the next action.
+ */
+async function pausedClock(page: Page): Promise<void> {
+  const start = new Date('2026-11-10T10:00:00+01:00')
+  await page.clock.install({ time: start })
+  await page.clock.pauseAt(new Date(start.getTime() + 1_000))
+}
+
+/** Past the search pause and announce's tick together. */
+const PAST_THE_PAUSE_MS = 1_000
+
+test.describe('Story 5.3 automate', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.emulateMedia({ colorScheme: 'light' })
+  })
+
+  test('[P2] AC-3 in the dark theme a match keeps its non-transparent background and a 1px underline in the accent color', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer(LIBRARY)
+    await page.emulateMedia({ colorScheme: 'dark' })
+    await page.goto(cardNotesPage(server))
+    const main = page.getByRole('main')
+    await searchField(main).fill('ice')
+    const mark = main.locator('mark').first()
+    await expect(main.locator('mark')).toHaveCount(2)
+
+    await expect(mark).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+    await expect(mark).toHaveCSS('font-weight', '600')
+    await expect(mark).toHaveCSS('text-decoration-line', 'underline')
+    await expect(mark).toHaveCSS('text-decoration-thickness', '1px')
+    // The theme's own tokens, resolved by the browser: a probe's color set to each token.
+    const { dark, accent, accentSoft } = await page.evaluate(() => {
+      const resolve = (value: string): string => {
+        const probe = document.createElement('span')
+        probe.style.color = value
+        document.body.append(probe)
+        const color = getComputedStyle(probe).color
+        probe.remove()
+        return color
+      }
+      const root = getComputedStyle(document.documentElement)
+      return {
+        dark: matchMedia('(prefers-color-scheme: dark)').matches,
+        accent: resolve(root.getPropertyValue('--color-accent').trim()),
+        accentSoft: resolve(root.getPropertyValue('--color-accent-soft').trim()),
+      }
+    })
+    // The dark theme is in force, so these are its tokens.
+    expect(dark).toBe(true)
+    await expect(mark).toHaveCSS('text-decoration-color', accent)
+    await expect(mark).toHaveCSS('background-color', accentSoft)
+  })
+
+  test('[P2] AC-3 in forced colors a match keeps a system highlight background that differs from its note', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer(LIBRARY)
+    await page.emulateMedia({ colorScheme: 'light', forcedColors: 'active' })
+    await page.goto(cardNotesPage(server))
+    const main = page.getByRole('main')
+    await searchField(main).fill('ice')
+    const item = noteItem(main, 'On the Ice, the two of them were alone.')
+    const mark = item.locator('mark')
+    await expect(mark).toHaveText('Ice')
+
+    await expect(mark).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+    // The system highlight pair, resolved by the browser on a probe that keeps its colors.
+    const { highlight, highlightText } = await page.evaluate(() => {
+      const probe = document.createElement('span')
+      probe.style.forcedColorAdjust = 'none'
+      probe.style.background = 'Mark'
+      probe.style.color = 'MarkText'
+      document.body.append(probe)
+      const style = getComputedStyle(probe)
+      const resolved = { highlight: style.backgroundColor, highlightText: style.color }
+      probe.remove()
+      return resolved
+    })
+    await expect(mark).toHaveCSS('background-color', highlight)
+    await expect(mark).toHaveCSS('color', highlightText)
+    // The note (its li) is painted Canvas, so the match stands out from it.
+    const noteBackground = await item.evaluate((li) => getComputedStyle(li).backgroundColor)
+    expect(noteBackground).not.toBe(highlight)
+  })
+
+  test('[P2] AC-3 a query of spaces only filters nothing, shows no no-match line, and announces nothing after the pause', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer(LIBRARY)
+    await pausedClock(page)
+    await page.goto(cardNotesPage(server))
+    const main = page.getByRole('main')
+    const search = searchField(main)
+    await expect(notes(main)).toHaveCount(7)
+    const announced = await recordStatus(page)
+
+    await search.pressSequentially('   ')
+    await page.clock.runFor(PAST_THE_PAUSE_MS)
+    await expect(notes(main)).toHaveCount(7)
+    await expect(groupHeadings(page)).toHaveText(['Dune', 'Neuromancer', 'The Left Hand of Darkness'])
+    await expect(main.getByText(/^No card notes contain/)).toHaveCount(0)
+    expect(await announced()).toEqual([])
+
+    // Control: the same clock does drive the pause, so the silence above is meaningful.
+    await search.fill('')
+    await search.pressSequentially('ice')
+    await page.clock.runFor(PAST_THE_PAUSE_MS)
+    await expect(page.getByRole('status')).toHaveText('2 notes match.')
+    expect(await announced()).toEqual(['2 notes match.'])
+  })
+
+  test('[P2] AC-3 opening a note\'s Edit on the Card notes page while typing pauses drops the pending "N notes match."', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer(LIBRARY)
+    await pausedClock(page)
+    await page.goto(cardNotesPage(server))
+    const main = page.getByRole('main')
+    const search = searchField(main)
+    await expect(notes(main)).toHaveCount(7)
+
+    // Control: left alone, the typing announces once the clock passes the pause.
+    const control = await recordStatus(page)
+    await search.pressSequentially('ice')
+    await page.clock.runFor(PAST_THE_PAUSE_MS)
+    expect(await control()).toEqual(['2 notes match.'])
+    await search.press('Escape')
+    await expect(notes(main)).toHaveCount(7)
+
+    // Edit opened inside the pause: the count never reaches the panel's regions.
+    const announced = await recordStatus(page)
+    await search.pressSequentially('ice')
+    await editOf(noteItem(main, 'On the Ice, the two of them were alone.')).click()
+    await expect(notePanel(page, 'Edit card note')).toBeVisible()
+    await page.clock.runFor(PAST_THE_PAUSE_MS)
+    await expect(notePanel(page, 'Edit card note').getByRole('status')).not.toHaveText('2 notes match.')
+    expect(await announced()).toEqual([])
+  })
+
+  test('[P2] AC-6 opening a note\'s Edit in Book detail\'s block while typing pauses drops the pending "N notes match."', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer(LIBRARY)
+    await pausedClock(page)
+    await page.goto(duneDetail(server))
+    const block = cardNotesBlock(page, 4)
+    const search = searchField(block)
+    await expect(notes(block)).toHaveCount(3)
+
+    // Control: left alone, the typing announces once the clock passes the pause.
+    const control = await recordStatus(page)
+    await search.pressSequentially('spice')
+    await page.clock.runFor(PAST_THE_PAUSE_MS)
+    expect(await control()).toEqual(['1 note matches.'])
+    await search.press('Escape')
+    await expect(notes(block)).toHaveCount(3)
+
+    // Edit opened inside the pause: the count never reaches the panel's regions.
+    const announced = await recordStatus(page)
+    await search.pressSequentially('spice')
+    await editOf(noteItem(block, 'The spice must flow.')).click()
+    await expect(notePanel(page, 'Edit card note')).toBeVisible()
+    await page.clock.runFor(PAST_THE_PAUSE_MS)
+    await expect(notePanel(page, 'Edit card note').getByRole('status')).not.toHaveText('1 note matches.')
+    expect(await announced()).toEqual([])
+  })
+})

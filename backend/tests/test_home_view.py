@@ -8,11 +8,12 @@ AC-6: the home view supplies the Main book's percentage, computed only on the
 server as ``floor(page * 100 / pages)``, so it reads 100 only at the last page.
 """
 
+import json
 from pathlib import Path
 
 from bookvie.views import home
 from tests.builder import LibraryBuilder
-from tests.helpers import api_client
+from tests.helpers import ADD_CARD_NOTE, DELETE_CARD_NOTE, api_client
 
 
 def _main_at(page: int, pages: int) -> LibraryBuilder:
@@ -71,3 +72,26 @@ def test_the_home_view_counts_the_main_books_card_notes(tmp_path: Path) -> None:
     builder.write(tmp_path / "with-notes")
     client = api_client(tmp_path / "with-notes", raise_server_exceptions=True)
     assert client.get("/api/views/home").json()["mainBook"]["cardNoteCount"] == 3
+
+
+def test_the_home_view_card_note_count_follows_add_and_delete(tmp_path: Path) -> None:
+    """[P2] ``cardNoteCount`` rises on ``add-card-note`` and drops on ``delete-card-note`` (Story 5.3 AC-4)."""
+    builder = LibraryBuilder()
+    book = builder.book(title="The Left Hand of Darkness", pages=330)
+    builder.reading(book, current_page=212)
+    builder.main(book)
+    builder.card_note(book, page_start=12)
+    doomed = builder.card_note(book, page_start=42)
+    builder.write(tmp_path)
+    client = api_client(tmp_path, raise_server_exceptions=True)
+    assert client.get("/api/views/home").json()["mainBook"]["cardNoteCount"] == 2
+
+    intent = json.dumps({"bookId": book, "text": "Ice.", "page": "151"})
+    added = client.post(ADD_CARD_NOTE, files={"intent": (None, intent, "application/json")})
+    assert added.status_code == 200
+    assert client.get("/api/views/home").json()["mainBook"]["cardNoteCount"] == 3
+
+    intent = json.dumps({"bookId": book, "cardNoteId": doomed})
+    deleted = client.post(DELETE_CARD_NOTE, files={"intent": (None, intent, "application/json")})
+    assert deleted.status_code == 200
+    assert client.get("/api/views/home").json()["mainBook"]["cardNoteCount"] == 2
