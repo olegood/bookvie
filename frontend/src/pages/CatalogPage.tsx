@@ -11,6 +11,8 @@ import { matchCountCopy, matchesTitle, sortBooks } from '../lib/catalog.ts'
 import { readCatalogView, writeCatalogView, type CatalogViewChoice } from '../lib/catalogView.ts'
 import { COULDNT_LOAD } from '../lib/copy.ts'
 import { usePageTitle } from '../lib/page.ts'
+// The count is announced once typing pauses, after the same pause as Search card notes.
+import { SEARCH_PAUSE_MS } from '../lib/useSearchCount.ts'
 import Bookcase from './Bookcase.tsx'
 import shelf from './Bookcase.module.css'
 import CatalogList from './CatalogList.tsx'
@@ -20,8 +22,6 @@ import styles from './CatalogPage.module.css'
 
 export const EMPTY_SHELF = 'Your shelf is empty. Add your first book.'
 const EMPTY_PLANKS = 3
-// The count is announced once typing pauses.
-const SEARCH_PAUSE_MS = 500
 // DESIGN.md → Highlight ring: how long the new spine or row keeps it.
 const HIGHLIGHT_MS = 2000
 

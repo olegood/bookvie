@@ -145,6 +145,11 @@ describe('highlightParts', () => {
   it('marks a match that is the whole text', () => {
     assert.deepEqual(highlightParts('spice', 'SPICE'), [{ text: 'spice', mark: true }])
   })
+
+  it('marks nothing rather than the wrong letters when lower-casing changes the length', () => {
+    // 'İ'.toLowerCase() is two code units, so an index into the lower-cased text would land one letter late.
+    assert.deepEqual(highlightParts('İstanbul', 'stan'), [{ text: 'İstanbul', mark: false }])
+  })
 })
 
 describe('search copy', () => {

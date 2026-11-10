@@ -1,7 +1,7 @@
 // The count a search announces once typing pauses (EXPERIENCE.md → Search
 // field, Live regions): about 500 ms after the last keystroke, `status`
 // reads the count once. A blank query announces nothing. Catalog keeps its
-// own copy of this rule; Search card notes uses this one.
+// own copy of this rule but shares SEARCH_PAUSE_MS; Search card notes uses this one.
 
 import { useCallback, useEffect, useRef } from 'react'
 import { announce } from './announce.ts'

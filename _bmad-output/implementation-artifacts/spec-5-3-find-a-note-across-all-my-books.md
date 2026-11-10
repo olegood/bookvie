@@ -2,7 +2,7 @@
 title: 'Story 5.3: Find a note across all my books'
 type: 'feature'
 created: '2026-11-10'
-status: 'in-review'
+status: 'done'
 baseline_revision: '96b1fd44df123be1ed1ace0c20de8ec90e3ddd35'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -111,6 +111,33 @@ deferred:
 - Given the Main book has 7 notes, when Home renders, then its card has the link "See card notes · 7" named "See card notes, 7 notes" (at 0, "See card notes"), opening `/card-notes?book=<id>`; and Book detail's block's "See all card notes" opens the same scoped view.
 - Given `/card-notes?book=<Dune>`, when it renders, then only Dune's group shows under the chip "In Dune", its search covers Dune only, and **Remove In Dune** goes to `/card-notes` with every group; a Book with no notes shows the chip, "No card notes yet." and **Add card note**.
 - Given Book detail's block with 4 notes, when I type "the", then all 4 matching notes show with `<mark>`s and `status` reads "4 notes match."; "zzz" shows the no-match line inside the block; Esc returns to the first three; a Book with no notes has no field and no "See all card notes".
+
+### Review Findings
+
+bmad-code-review, 2026-11-10. 27 findings from five layers (blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor, spine-check; none failed), grouped into 20 entries: 0 decision-needed, 6 patch, 2 defer, 12 rejected. Verdicts: high 0, medium 0.
+
+- [x] [Review][Patch] An empty `?book=` showing every note (unscoped) has no test: switching `||` to `??` would bring back "Page not found" unnoticed (verification-gap + blind-hunter) [frontend/e2e/card-notes.spec.ts]
+- [x] [Review][Patch] The groups' Book-id tie-break is never exercised: no test has two Books with the same `title_key` (verification-gap + blind-hunter) [backend/tests/test_card_notes_view.py]
+- [x] [Review][Patch] `highlightParts`'s guard for lower-casing that changes length ("İ") has no unit case; without it the mark shifts by one character (verification-gap) [frontend/src/lib/cardNotes.test.ts]
+- [x] [Review][Patch] Each Book group is a named `region` landmark (`<section aria-labelledby>`), so a library with notes in 40 Books adds 40 landmarks; the `h2`s already give heading navigation (acceptance-auditor + blind-hunter) [frontend/src/pages/CardNotesPage.tsx:65]
+- [x] [Review][Patch] Catalog keeps its own `SEARCH_PAUSE_MS = 500` beside `useSearchCount`'s exported one, so the two pauses can drift apart (blind-hunter) [frontend/src/pages/CatalogPage.tsx:24]
+- [x] [Review][Patch] The 5.3 spine-drift entry says the Seed's `lib/` line lacks `useSearchCount.ts` "beside `cardNotes.ts`", but `cardNotes.ts` isn't listed there either (spine-check) [_bmad-output/implementation-artifacts/deferred-work.md:635]
+- [x] [Review][Defer] Spine drift for AD-6 (server selections and `cardNoteCount`; client highlighting, match count, first-three cut), AD-9 (a second view answering 404 `book_not_found`) and the Structural Seed (`views/card_notes`, `lib/useSearchCount.ts`, `lib/cardNotes.ts`) [ARCHITECTURE-SPINE.md] — deferred: spine drift, reconciled before the next epic; already recorded under "build-auto review of spec-5-3-…" in deferred-work.md, so no second entry.
+- [x] [Review][Defer] Nothing checks that the `count.cancel()` before Edit stops a pending "N notes match." from being announced over the open panel (verification-gap) [frontend/src/pages/CardNotesPage.tsx:174] — deferred: timing-sensitive e2e; revisit if a shared announce-timing helper lands.
+
+**Rejected:**
+- `low` (edge-case-hunter + blind-hunter) Book detail's Add card note, Edit book, Start, Finish and Delete don't cancel a pending block count, so typing and pressing one within 500 ms reads "N notes match." inside the panel: the panel's regions are empty on open, and the late line is the count the user asked for. Needs a sub-500 ms move, and the fix adds a guard to every opener.
+- `low` (blind-hunter) A block search can hide a note just added from the action stack: "Card note saved." is announced and the heading count rises, and the field still shows the query. The fix adds a save callback to `useCardNoteFlow`. Searching and then adding from the action stack is uncommon.
+- `false` (blind-hunter) An unscoped 404 would show Page not found: the route always exists, so the unscoped view never answers 404.
+- `false` (blind-hunter) Server and client disagree on an empty `?book=`: an empty id is an unknown Book, and the contract answers 404 `book_not_found`. The client never sends it.
+- `low` (blind-hunter) Notes with the same page and `createdAt` have no final tie-break: this was already true of `book_detail` before 5.3, and the spec fixes the key as `(pageStart, createdAt)`. Equal timestamps are unlikely.
+- `low` (blind-hunter) `useCardNoteEditFlow`'s `source: unknown` loses type safety: both callers pass matching pairs, and a generic adds complexity with no user-visible harm.
+- `low` (blind-hunter) The scoped empty view fetches the Book view only for Page's prefill: already triaged and rejected at build time (same race), and the fix changes the view contract.
+- `low` (blind-hunter) The `book` query parameter has no OpenAPI description: OpenAPI does document it (name, `in: query`, optional, plus the 404), and `views/book`'s `id` has no description either.
+- `false` (blind-hunter) Group heading ref callbacks are recreated every render, so the focus effect could find no heading: React attaches every ref in the commit, before effects run.
+- `low` (acceptance-auditor) An open panel adds a second `h2` inside `main`: it's a modal `<dialog>`, the same structure Book detail has had since 5.2, and the rule describes the page at rest.
+- `low` (acceptance-auditor) No match also announces "0 notes match.": Catalog does the same, and the spec says to copy Catalog's rule.
+- `false` (acceptance-auditor) "It never writes" is checked only on the 404 path: the AC-2 test and the scoped test compare `library_bytes` before and after too.
 
 ## Spec Change Log
 

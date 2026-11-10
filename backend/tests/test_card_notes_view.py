@@ -93,6 +93,22 @@ def test_ac2_p0_card_notes_view_groups_every_note_by_book_title_in_page_order(
     assert response.json() == {"scope": None, "groups": []}
 
 
+def test_groups_with_the_same_title_key_go_by_book_id(
+    tmp_path: Path, library_builder: LibraryBuilder
+) -> None:
+    # Stored with the higher id first, so library order alone would get it wrong.
+    later = library_builder.book(id="bbbbbbbb-0000-4000-8000-000000000000", title="Dune")
+    library_builder.card_note(later, page_start=1)
+    earlier = library_builder.book(id="aaaaaaaa-0000-4000-8000-000000000000", title="dune")
+    library_builder.card_note(earlier, page_start=1)
+    library_builder.write(tmp_path)
+
+    response = api_client(tmp_path, raise_server_exceptions=True).get(CARD_NOTES_VIEW)
+
+    assert response.status_code == 200
+    assert [group["bookId"] for group in response.json()["groups"]] == [earlier, later]
+
+
 # --- Follow-ups: the scoped view, its 404, OpenAPI ------------------------------------
 
 

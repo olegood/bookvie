@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useRef, useState, type ReactNode, type RefCallback } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode, type RefCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import {
   useCachedCardNotesView,
@@ -60,10 +60,10 @@ function Group({
   editButton: (noteId: string) => RefCallback<HTMLButtonElement>
   onEdit: (note: BookCardNote, bookId: string) => void
 }) {
-  const headingId = useId()
   return (
-    <section className={styles.group} aria-labelledby={headingId}>
-      <h2 ref={headingRef} id={headingId} className={styles.groupTitle} tabIndex={-1}>
+    // Not a named region: a landmark per Book would bury main and the nav; the h2 heads the group.
+    <section className={styles.group}>
+      <h2 ref={headingRef} className={styles.groupTitle} tabIndex={-1}>
         {group.title}
       </h2>
       <ul className={styles.notes} role="list">

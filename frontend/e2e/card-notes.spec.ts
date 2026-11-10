@@ -316,7 +316,11 @@ test.describe('Story 5.3 follow-ups', () => {
     await expect(groupHeadings(page)).toHaveText(['Dune', 'Neuromancer', 'The Left Hand of Darkness'])
     await expect(groupHeading(page, 'Dune')).toHaveCSS('font-family', /^ui-serif/)
     // Dune's notes in page order on screen, each with its page ref and its Edit.
-    const dune = main.getByRole('region', { name: 'Dune', exact: true })
+    // A group is headed by its h2, not a named region: a landmark per Book would bury main and the nav.
+    await expect(main.getByRole('region')).toHaveCount(0)
+    const dune = main
+      .locator('section')
+      .filter({ has: page.getByRole('heading', { level: 2, name: 'Dune', exact: true }) })
     await expect(dune.getByRole('listitem')).toHaveCount(4)
     await expect(dune.getByRole('button', { name: /^Edit\b/ })).toHaveText(['Edit', 'Edit', 'Edit', 'Edit'])
     const names = await dune
@@ -511,6 +515,14 @@ test.describe('Story 5.3 follow-ups', () => {
     await page.goto(cardNotesPage(server, 'nope'))
     await expect(page.getByRole('main').getByRole('heading', { level: 1 })).toHaveText('Page not found')
     await expect(page).toHaveTitle('Page not found — bookvie')
+  })
+
+  test('[P2] AC-5 an empty ?book= is unscoped: every group, no chip', async ({ page, seededServer }) => {
+    const server = await seededServer(LIBRARY)
+    await page.goto(`${server.url}/card-notes?book=`)
+    await expect(page.getByRole('main').getByRole('heading', { level: 1 })).toHaveText('Card notes')
+    await expect(groupHeadings(page)).toHaveText(['Dune', 'Neuromancer', 'The Left Hand of Darkness'])
+    await expect(page.getByRole('main').getByRole('button', { name: /^Remove In / })).toHaveCount(0)
   })
 
   test('[P1] AC-1 removing the chip focuses the h1, and Back and Forward restore the scope from the URL', async ({
