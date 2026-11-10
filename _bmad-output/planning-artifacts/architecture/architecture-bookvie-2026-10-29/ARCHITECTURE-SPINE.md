@@ -62,7 +62,7 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
 
 - **Binds:** FR-1, FR-3, FR-5 to FR-10, FR-14, FR-17, FR-22, FR-23, A2, A3
 - **Prevents:** rules duplicated in TypeScript and Python without a shared check (the sanctioned pre-checks are below); stale whole-library writes overwriting another browser's changes; one user action split across several calls that can half-fail.
-- **Rule:** Each user action is exactly one intent call: `POST /api/intents/<verb>`. An intent validates, applies **every** consequence, runs `domain.check_invariants()`, and commits once (AD-2), or it changes nothing: it returns a refusal, or, when it asks for what is already so, a 200 no-op that commits nothing and so runs no `check_invariants()` (AD-9; story 4.4). No CRUD or PATCH endpoints on entities, and no whole-document write endpoint. A client may pre-check an input against a rule the server also enforces, with the server's exact copy, to refuse it without a round trip:
+- **Rule:** Each user action is exactly one intent call: `POST /api/intents/<verb>`. An intent validates, applies **every** consequence, runs `domain.check_invariants()`, and commits once (AD-2), or it changes nothing: it returns a refusal, or, when it asks for what is already so, a 200 no-op that commits nothing and so runs no `check_invariants()` (AD-9; story 4.4). An edit is never such a no-op: `edit-book` and `edit-card-note` commit an unchanged edit (AD-9; story 5.2). No CRUD or PATCH endpoints on entities, and no whole-document write endpoint. A client may pre-check an input against a rule the server also enforces, with the server's exact copy, to refuse it without a round trip:
   - the page field's range check ("Page must be between 0 and N.", story 3.3, `frontend/src/lib/pageField.ts`);
   - the Start dialog's "Which page?" (story 4.7, `frontend/src/components/StartDialog.tsx`), which the dialog asks only for a Side read. It reuses that range check, and refuses an empty value with "Which page? is required."
 
@@ -83,18 +83,19 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
 
 ### AD-6: The server owns domain numbers and selections; the client owns presentation [ADOPTED]
 
-- **Binds:** FR-4, FR-7, FR-11, FR-15, FR-16, FR-18, FR-19, FR-20, FR-24
+- **Binds:** FR-4, FR-7, FR-11, FR-15, FR-16, FR-17, FR-18, FR-19, FR-20, FR-24
 - **Prevents:** percentage, Measured pace, days left, Waiting order, stats or library scope being computed in two places with different results.
 - **Rule:**
-  - **The server computes:** percentages (`floor(page × 100 ÷ pages)`, so 100% only at the last page; story 3.1, `domain/progress`), Measured pace, days left, pages left (per Book and library scope), Waiting for you and its order (every paused Reading except the Up next Book's, `pausedAt` oldest first with a Reading that has none before all, then the title key, then Book id; `pausedAt` itself is never sent; story 4.2), whether Home's Up next is paused (`upNext.paused`, story 4.1), each Book's role and its waiting page (Main book, then Up next, then waiting for a paused Reading; `views/shelf` `_role_reading`; stories 4.1 and 4.6), the Home bookcase slice's priority, stats for a requested date range including the bars, and the "X of Y finished" meter.
+  - **The server computes:** percentages (`floor(page × 100 ÷ pages)`, so 100% only at the last page; story 3.1, `domain/progress`), Measured pace, days left, pages left (per Book and library scope), Waiting for you and its order (every paused Reading except the Up next Book's, `pausedAt` oldest first with a Reading that has none before all, then the title key, then Book id; `pausedAt` itself is never sent; story 4.2), whether Home's Up next is paused (`upNext.paused`, story 4.1), each Book's role and its waiting page (Main book, then Up next, then waiting for a paused Reading; `views/shelf` `_role_reading`; stories 4.1 and 4.6), a Book's Card notes in page order (`pageStart`, then `createdAt`, ties keeping stored order; `views/shelf` `card_note_views`, story 5.1), the `card-notes` view's groups (one per Book that has notes, ordered by the title key, then Book id; `?book=<id>` scopes it to that Book's group, empty when it has none; story 5.3), the Main book's note count on Home (`cardNoteCount`, story 5.3), the Home bookcase slice's priority, stats for a requested date range including the bars, and the "X of Y finished" meter.
   - **Stats view:** `GET /api/views/stats?from=YYYY-MM-DD&to=YYYY-MM-DD`, both inclusive local dates; omit both for All time. Response `{ books, pages, bucket: "month" | "year", buckets: [{ period, books, pages }] }`; `bucket` is `year` when the range exceeds 24 months. The browser resolves presets to dates: This month = the 1st..today, This year = 1 January..today, Last year = the full year. All time with no finished Reading returns 0 books, 0 pages and no buckets.
   - **The client may only apply presentation to the views it has fetched:**
     - catalog sort, using `Intl.Collator`, per the UX;
     - filter chips;
     - packing spines into rows by viewport width, and on Home choosing up to 3 of those rows from the view's `slicePriority` (Book ids: the Main book, then Up next, then finishes newest first; story 3.5): free slots up to 3 are filled from the first bookcase rows, priority ids not on the shelf are ignored, and the Main book's row comes first with the others in bookcase order (`frontend/src/lib/slice.ts`);
     - the gauge's ticks: 0 · round(pages ÷ 2) · pages, the half tick dropped under 4 pages (story 3.1);
-    - case-insensitive substring text search (Search titles, Search card notes);
-    - pile order and shuffle;
+    - case-insensitive substring text search (Search titles, Search card notes). It compares the text as stored, with no Unicode normalisation (unlike the server's title key), so a decomposed accent can fall outside a match (Epic 5 retro E5-R3, accepted). Search card notes wraps each match in `<mark>` and counts the matching notes itself for "N notes match." (`lib/cardNotes.ts`, `lib/useSearchCount.ts`; story 5.3);
+    - Book detail's Card notes block showing the first three notes of the view's page order, and every matching note while its search holds text (stories 5.1 and 5.3);
+    - pile order and shuffle, with an injectable random source (`lib/cardNotes.ts` `shuffled`; story 5.4);
     - copy and date formatting, including relative "N days ago" counted in local calendar days;
     - the Quick pace calculator's arithmetic. Days to finish = max(1, ceil(pages left ÷ pages per day)), and the finish date = today + days: the same rounding and minimum as the server's days left. With nothing left to read, or a pages-per-day of zero or less, it shows no days (EXPERIENCE.md → Pace calculator).
   - **Days left** is `max(1, ceil(pages left ÷ Measured pace))`, and null when there is no Measured pace, when it is 0, or when no pages are left (story 3.4); the client then omits "~N days left".
@@ -122,8 +123,8 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
   - **Failure:** `{ "error": { "kind": "refusal" | "couldnt_save" | "couldnt_export", "code": "<snake_case>", "message": "<user copy>", "fields"?: [{ "field", "code", "message" }] } }`.
     - HTTP 422 means field validation or a refused upload. For field validation `code` is `invalid_fields`, and `fields` lists every failing field. `start-reading`'s `page` ("Which page?") is such a field: required for a Side read, and a whole number from 0 to the Book's pages whenever it is sent (story 4.7). For uploads: a cover that isn't a supported image is a field error, and a refused restore archive is a `refusal` with one of the AD-14 codes, `restore_invalid`, `restore_newer_version` or `restore_unsafe`, with no `fields`. `restore_unsafe` shows `restore_invalid`'s copy. A restore body over the upload limit plus 64 KiB of multipart framing is 422 `restore_unsafe`: refused before anything is read when `Content-Length` says so, otherwise as soon as the counted bytes pass the limit while the form is parsed. Either way it is before the restore takes the lock (story 2.3).
     - HTTP 413 `cover_too_large` means a cover upload over 20 MB (AD-12); `fields` carries "Cover must be 20 MB or smaller."
-    - HTTP 409 means a state rule (e.g. `duplicate_book`, `pages_below_current_page`). An intent whose target is no longer in a state it can act on is refused, never applied to another Book: `book_not_found` (the Book was deleted), `not_main_book` (`update-page` or `pause` for a Book that isn't Main), `reading_already_finished`, `already_main` (`start-reading` for the Main book), `main_cannot_be_up_next`, `main_cannot_be_side_read`, `side_reads_full` ("You already have 3 side reads. Remove one first."). A 409 refusal about one field (e.g. `pages_below_current_page`) includes `fields`.
-    - HTTP 404 `book_not_found` (kind `refusal`) comes from a view, not an intent: `GET /api/views/book` for an id no Book has (decided in story 1.11). The client shows its not-found page.
+    - HTTP 409 means a state rule (e.g. `duplicate_book`, `pages_below_current_page`). An intent whose target is no longer in a state it can act on is refused, never applied to another Book: `book_not_found` (the Book was deleted), `not_main_book` (`update-page` or `pause` for a Book that isn't Main), `reading_already_finished`, `already_main` (`start-reading` for the Main book), `main_cannot_be_up_next`, `main_cannot_be_side_read`, `side_reads_full` ("You already have 3 side reads. Remove one first."), `card_note_not_found` (`edit-card-note` or `delete-card-note` for a note the Book no longer has, another Book's note id included; checked after `book_not_found` and before the fields; story 5.2). A 409 refusal about one field (e.g. `pages_below_current_page`) includes `fields`.
+    - HTTP 404 `book_not_found` (kind `refusal`) comes from a view, not an intent: `GET /api/views/book` for an id no Book has (decided in story 1.11), and `GET /api/views/card-notes?book=<id>` likewise (story 5.3). The client shows its not-found page.
     - On an intent route, a body that can't be parsed (broken multipart, a part over 1 MB, too many fields) is 422 `invalid_fields` on `intent`, the same refusal as a malformed `intent` part (retro item 8).
   - Unknown `/api` paths aren't enveloped: a GET or HEAD 404s through the SPA route, and any other method gets Starlette's 405 `{detail}`. No real route answers `{detail}`.
     - An intent that would change nothing is a no-op success, not a refusal. These return 200, change nothing and commit nothing:
@@ -131,7 +132,7 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
       - `mark-side-read` for a Book already a Side read, checked before `side_reads_full` (story 4.7);
       - `unmark-side-read` for a Book that isn't one (story 4.7).
 
-      The intent's change returns `store.UNCHANGED`, so `Store.apply` skips the commit under the AD-4 lock (AD-2).
+      The intent's change returns `store.UNCHANGED`, so `Store.apply` skips the commit under the AD-4 lock (AD-2). An edit is not a no-op: `edit-book` and `edit-card-note` commit an unchanged edit as normal (story 5.2).
     - HTTP 500 or 503 means `couldnt_save`. A restore write fault (staging, cover copy-in or the document commit) is 503 `couldnt_save`. When `check_invariants()` fails after validation passed, that is a server bug: the intent commits nothing, logs the failed rule to stderr, and returns 500 `couldnt_save`.
     - HTTP 503 with kind and code `couldnt_export` means export failed to read the data; nothing was sent (AD-14).
   - A global `RequestValidationError` handler maps framework validation errors into this shape. The server owns all message copy (PRD §5 Tone), and the client renders it as is; the exceptions are AD-3's pre-checks, which show the server's copy verbatim before sending. Error codes are an enum in the contract.
@@ -223,9 +224,9 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
 - **Binds:** every intent, view and migration; FR-1, FR-5 to FR-8, FR-14, FR-17
 - **Prevents:** two epics storing the same entity in different places, e.g. Card notes nested in one epic and top-level in another; pointers left dangling after a delete.
 - **Rule:**
-  - `library.json` is `{ schemaVersion, mainBookId|null, upNextBookId|null, sideReadBookIds[], books[] }`. Each Book carries `id`, `createdAt` (timestamp, for the Date added sort), `ownership` (`owned`), `coverFile|null`, the AD-11 color fields, and its PRD fields. It owns its nested `readings[]` and `cardNotes[]` (`{ id, text, pageStart, pageEnd|null, createdAt }`). Nothing else is top-level.
+  - `library.json` is `{ schemaVersion, mainBookId|null, upNextBookId|null, sideReadBookIds[], books[] }`. Each Book carries `id`, `createdAt` (timestamp, for the Date added sort), `ownership` (`owned`), `coverFile|null`, the AD-11 color fields, and its PRD fields. It owns its nested `readings[]` and `cardNotes[]` (`{ id, text, pageStart, pageEnd|null, createdAt }`). A Card note's `pageEnd` is null for one page and otherwise greater than `pageStart`, never equal to it: `add-card-note` and `edit-card-note` parse the Page field on the server (`domain/note_pages`), storing "42–42" as 42 with `pageEnd: null` (story 5.1). Known gap: `check_invariants()` doesn't check this, nor a non-blank `text`, so a restored file can hold `pageEnd == pageStart` or an empty note (Epic 5 retro E5-R1, open as retro item 49). Nothing else is top-level.
   - Main book, Up next and Side reads exist only as root pointers. `domain.check_invariants()` runs before every commit and enforces:
-    - Book ids are unique in the library, and Reading and Card note ids are unique within their Book (added with the Side-read rule, `spec-unique-side-reads-and-directory-fsync.md`);
+    - Book ids are unique in the library, and Reading and Card note ids are unique within their Book (added with the Side-read rule, `spec-unique-side-reads-and-directory-fsync.md`). Known gap: a Card note id repeated across two Books passes (Epic 5 retro E5-R2, open as retro item 49);
     - every pointer references an existing Book;
     - the Main book is neither Up next nor a Side read;
     - no Book is a Side read more than once, and there are at most 3 Side reads;
@@ -243,7 +244,7 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
 
 ### AD-19: Reading identity and status
 
-- **Binds:** FR-1 (edit-mode Finished on), FR-5 to FR-11, FR-14, FR-15, FR-24
+- **Binds:** FR-1 (edit-mode Finished on), FR-5 to FR-11, FR-14, FR-15, FR-17 (Card note targeting), FR-24
 - **Prevents:** a resumed Reading still counting as paused; two unfinished Readings on a re-read; the page update and the Finish dialog both finishing a Reading.
 - **Rule:**
   - **Fields:** a Reading stores `id`, `startDate|null`, `startPage` (a whole number from 0: the page a new Reading starts at, 0 on a back-fill, unchanged by a resume; added in `schemaVersion` 2 by Epic 4 retro item 35, whose migration step sets it to 0 on every v1 Reading, so Measured pace is unchanged for old data), `currentPage`, `purpose|null`, `lastProgressUpdate|null` (timestamp; set by `update-page` and by `start-reading`; null on a back-filled Reading, and the re-entry line then omits "Last updated"), `pausedAt|null` (a local date, overwritten on every pause and never cleared, not by resume nor by finish), `finishDate|null`, `finishedPages|null`, `purposeFulfilled|null` and `rating|null`.
@@ -257,7 +258,7 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
   - **Pausing and Up next:** `pause` pauses the Main book's current Reading (`pausedAt` = today, overwriting an earlier one; nothing else of it changes), clears `mainBookId` and makes the Book `upNextBookId`, displacing an earlier Up next as above (story 4.3). `set-up-next` moves only `upNextBookId`, with the same displacement. The Main book can't be Up next (story 4.4).
   - **Back-filled finishes in edit:** edit-book's Finished on adds or moves a *past* finish only. With an active or paused Reading that has a start date, a new or changed date after that start is refused ("Finished on can't be after *date*, when the current reading started."); the start day itself is allowed (retro item 21). A back-fill on a Book with no Readings finishes it, so the Book leaves `sideReadBookIds` in the same commit; `upNextBookId` stays (Epic 4 retro item 34). Known gap: moving the latest finish before another finished Reading's dates is not yet refused (open in `deferred-work.md`).
   - **Finishing:** only `finish-reading` sets `finishDate` on a current Reading; edit-book's Finished on sets it on a past or back-filled Reading (above). `finish-reading` finishes any Book's current Reading, Main or not. For a Book with no Readings it appends a back-filled Reading (`startDate` null). In the same commit it clears `mainBookId` and `upNextBookId` when they name the Book, and removes the Book from `sideReadBookIds` (story 4.5). `update-page`, or `start-reading` with a `page`, at the last page saves the page and returns `reachedLastPage: true`. The client sends a `page` only for a Side read, so in practice that is a Side read's start. The client then opens the Finish dialog for that Book (AD-7).
-  - **Targeting:** intents address `bookId` (and `readingId` where a finished Reading is edited) and apply to the server's current state. A2 last-write-wins applies to confirmation dialogs too. [ADOPTED]
+  - **Targeting:** intents address `bookId` (and `readingId` where a finished Reading is edited, `cardNoteId` where a Card note is edited or deleted; story 5.2) and apply to the server's current state. A2 last-write-wins applies to confirmation dialogs too. [ADOPTED]
 
 ### AD-20: Time is injected and local
 
@@ -270,7 +271,7 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
 | Concern | Convention |
 | --- | --- |
 | Naming | Domain terms exactly as PRD §3 (Book, Reading, Main book, Up next, Waiting for you, Side read, Card note). Python `snake_case`; JSON fields and TS `camelCase` (Pydantic alias generator). Intent paths are kebab-case verbs under `/api/intents/<verb>`; views are nouns under `GET /api/views/<name>`. |
-| IDs | Server-generated UUID v4 strings. The client never mints IDs. An id the client needs next comes back in the success `ids` (`add-book`'s `bookId`); one no client uses is not returned (`start-reading`'s new Reading id, story 3.2). |
+| IDs | Server-generated UUID v4 strings. The client never mints IDs. An id the client needs next comes back in the success `ids` (`add-book`'s `bookId`); one no client uses is not returned (`start-reading`'s new Reading id, story 3.2). The one exception is `add-card-note`'s `cardNoteId`: the app reads no id after an add, but the agent skills that write to bookvie are expected to (story 5.1, kept by Oleg). None reads it yet; drop it if none does once those skills exist. |
 | Dates | AD-20. Server and browser share the machine timezone. |
 | Title ordering (server) | One key for every server-side title ordering: NFKD, strip combining marks, casefold; ties by Book id. The client's catalog sort uses `Intl.Collator` (AD-6). |
 | Errors | AD-9. User-facing copy follows PRD §5 Tone (no exclamation marks, no praise, no red failure states). |
@@ -357,9 +358,9 @@ bookvie/
       cli.py                # flags, start server, open browser, signals
       instance.py           # bookvie.lock, loopback socket, health probe (AD-5)
       http/                 # FastAPI app, routes, Host/Origin guard, error handler, static/
-      intents/              # one module per intent (add_book, edit_book, delete_book, set_spine_color, start_reading, edit_purpose, update_page, finish_reading, pause, set_up_next, restore), except side_reads (mark-side-read and unmark-side-read), export; shared: book_form, intent_model, commit, cover (decode, downscale), contract (error enum)
-      views/                # read models: shelf (home, catalog, book detail), backup; models (view shapes)
-      domain/               # model (entities), invariants (check_invariants), book_fields (form parser), labels (form order, shared failures), finished_on (Finished on parser, long date), spine_color (curated rotation, AD-11 resolve), duplicates (ISBN), cover_color, clock, progress (percent, current_reading, reading_status), pace (Measured pace, days left), purpose, ordering (title key)
+      intents/              # one module per intent (add_book, edit_book, delete_book, set_spine_color, start_reading, edit_purpose, update_page, finish_reading, pause, set_up_next, add_card_note (its `check_card_note_fields` function is reused by edit_card_note), edit_card_note, delete_card_note, restore), except side_reads (mark-side-read and unmark-side-read), export; shared: book_form, intent_model, commit, cover (decode, downscale), contract (error enum)
+      views/                # read models: shelf (home, catalog, book detail), card_notes, backup; models (view shapes)
+      domain/               # model (entities), invariants (check_invariants), book_fields (form parser), labels (form order, shared failures), finished_on (Finished on parser, long date), spine_color (curated rotation, AD-11 resolve), duplicates (ISBN), cover_color, clock, progress (percent, current_reading, reading_status), pace (Measured pace, days left), purpose, ordering (title key), note_pages (Card note Page parser)
       store/                # store.py (serialize, load/commit, covers, AD-4 lock, staging); fs.py (filesystem seam); restore.py (unpack); local_state.py; migrations/
     tests/
   frontend/
@@ -367,14 +368,14 @@ bookvie/
       api/generated/        # openapi-typescript output, never edited (AD-8)
       api/                  # fetch wrapper, AD-9 envelope, query keys, invalidate-all
       styles/tokens.css     # DESIGN.md custom properties; components use CSS Modules
-      lib/                  # client rules and presentation: pageField (+ .cases.json, AD-3), gauge, slice (AD-6)
+      lib/                  # client rules and presentation: pageField (+ .cases.json, AD-3), gauge, slice, cardNotes (page refs, search, highlight, pile order), useSearchCount ("N notes match.") (AD-6)
       pages/  components/
     e2e/                    # Playwright, label-contract driven
 ```
 
 ## Capability → Architecture Map
 
-Rows for features not built yet name their planned modules (for example `views/stats`, `views/card_notes`).
+Rows for features not built yet name their planned modules (for example `views/stats`).
 
 | Capability / Area | Lives in | Governed by |
 | --- | --- | --- |
@@ -386,7 +387,7 @@ Rows for features not built yet name their planned modules (for example `views/s
 | FR-14 Finish | `intents/finish_reading` | AD-7, AD-11, AD-18, AD-19, AD-20 |
 | FR-15 Quick pace calculator | `views/` (pages left, Measured pace); client arithmetic | AD-6, AD-20 |
 | FR-16 Stats | `views/stats` | AD-6, AD-11, AD-20 |
-| FR-17 to FR-19 Card notes | `intents/*_card_note`; `views/card_notes` | AD-3, AD-6, AD-18 |
+| FR-17 to FR-19 Card notes | `intents/add_card_note`, `edit_card_note`, `delete_card_note`; `domain/note_pages`; `views/card_notes` (Card notes page), `views/shelf` (Book detail's `cardNotes`, home `cardNoteCount`); the Card notes page, Book detail's Card notes block and the pile | AD-3, AD-6, AD-7, AD-9, AD-18, AD-19 |
 | FR-21 Cover | `intents/cover` (decode, downscale); `store/store.py` (write, sweep); `intents/edit_book` (Remove cover); `/media/covers` | AD-11, AD-12 |
 | FR-22, FR-23 Export / restore | `GET /api/export` (`intents/export`), `POST /api/intents/restore` (`intents/restore`); `store/restore` (unpack), `store/store.py` (`replace_all`), `store/local_state`; `views/backup`, `views/shelf` (home's "Last export") | AD-4, AD-13, AD-14, AD-15 |
 | A1 shared storage | `store/`, `cli.py`, `instance.py` | AD-1, AD-5, AD-16 |
