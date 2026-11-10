@@ -20,9 +20,11 @@ import styles from './StartDialog.module.css'
 /**
  * Router state Home reads after a confirmed start: focus goes to the Main
  * book's title link. `reachedLastPage` (a Side read started at its last
- * page) also opens the Finish dialog for it, described by `savedLine`.
+ * page) also opens the Finish dialog for `bookId`, described by `savedLine`.
  */
-export type StartedState = { started: true; reachedLastPage?: true; savedLine?: string }
+export type StartedState =
+  | { started: true }
+  | { started: true; reachedLastPage: true; bookId: string; savedLine: string }
 
 const SAVING = 'Starting the book.'
 const PAGE_FIELD = 'page'
@@ -121,7 +123,12 @@ function OpenStartDialog({ book, opened, mainBook, upNext, onCancel }: OpenProps
     if (result.kind === 'ok') {
       const state: StartedState =
         result.reachedLastPage && sentPage !== undefined
-          ? { started: true, reachedLastPage: true, savedLine: pageSavedCopy(sentPage, book.pages, 100) }
+          ? {
+              started: true,
+              reachedLastPage: true,
+              bookId: book.id,
+              savedLine: pageSavedCopy(sentPage, book.pages, 100),
+            }
           : { started: true }
       void navigate('/', { state })
       return
@@ -234,8 +241,9 @@ function OpenStartDialog({ book, opened, mainBook, upNext, onCancel }: OpenProps
  * page? is required." and a value that isn't a whole number from 0 to the
  * page count "Page must be between 0 and N.", on the field with
  * `aria-invalid` and in `alert`, as a server 422 on `page` is shown. A start
- * at the last page (`reachedLastPage`) hands Home `reachedLastPage`, and
- * Home opens the Finish dialog for the new Main book.
+ * at the last page (`reachedLastPage`) hands Home `reachedLastPage` with the
+ * Book's id, and Home opens the Finish dialog once its view shows that Book
+ * as Main.
  *
  * Confirming sends `start-reading` (the confirm button is `aria-disabled` in
  * flight) and goes to Home, which focuses the Main book's title link.

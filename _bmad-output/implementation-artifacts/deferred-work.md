@@ -528,6 +528,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-7-keep-a-few-side-reads.md`
   summary: For retro item 36 (retro F-R5): the last-page hand-off carries no Book id. `StartedState` has only `reachedLastPage` and `savedLine`, and Home opens Finish for whatever `mainId` the view shows. If the refetch fails after the start, or another tab changes Main, Finish opens for the wrong Book. The finish hand-off below it compares `handed.id`; this one doesn't.
   evidence: `frontend/src/components/StartDialog.tsx:25`, `:121-124`; `frontend/src/pages/HomePage.tsx:165-170`.
+  resolved: Epic 4 retro item 36, `spec-epic-4-retro-item-36-last-page-finish-for-the-started-book.md`. The probe showed it real: with Home's refetch failing, Finish opened for Dune and Done finished Dune's paused Reading. The hand-off now carries the Book's id, and Home opens Finish only once its view shows that Book as Main (`frontend/e2e/side-reads.spec.ts`, "[P0] F-R5 …").
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-7-keep-a-few-side-reads.md`
   summary: For retro item 36: a last-page start is tested only from the On the side pane and Home's slice, not from Book detail or Catalog, where navigation remounts Home. Nothing pins that Finish doesn't reopen on Back or reload (`lastPageOpened`, `clearHandOffState`).
@@ -542,3 +543,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-epic-4-retro-item-42-refusal-reads-after-edit-purpose-unmounts.md`
   summary: `ChangeColor`'s unmount cleanup has the same shape as the Edit Purpose race: when a refusal's refetch closes the popover or removes the Book within 100 ms of `announce`, `if (failed.current) clearAnnouncements()` can cancel the message. Found by reading the code, not reproduced.
   evidence: `frontend/src/components/ChangeColor.tsx:44`, `:70-72`; the cause is in `spec-epic-4-retro-item-42-refusal-reads-after-edit-purpose-unmounts.md`.
+
+## Deferred from: spec-epic-4-retro-item-36-last-page-finish-for-the-started-book (2026-11-10)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-epic-4-retro-item-36-last-page-finish-for-the-started-book.md`
+  summary: The other last-page path has the same shape as F-R5: `openFinish`, which the Main book card's page field calls on `reachedLastPage`, opens Finish for whatever `mainId` the view shows, not the Book the save was for. It needs another tab to change Main between the save landing and Home's refetch rendering. Low, predates this change; `PageField` already has the `bookId` to pass.
+  evidence: `frontend/src/pages/HomePage.tsx` (`openFinish`); `frontend/src/components/PageField.tsx:146`.

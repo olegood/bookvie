@@ -26,11 +26,16 @@ function wantsStarted(state: unknown): boolean {
   return typeof state === 'object' && state !== null && (state as Partial<StartedState>).started === true
 }
 
-/** The Finish dialog's description when a start reached the last page (a Side read), else `null`. */
-function reachedLastPageLine(state: unknown): string | null {
+/**
+ * The Book a start reached the last page of (a Side read) and the Finish
+ * dialog's description, else `null`. A hand-off without the Book's id opens
+ * nothing.
+ */
+function reachedLastPage(state: unknown): { bookId: string; savedLine: string } | null {
   if (!wantsStarted(state)) return null
-  const { reachedLastPage, savedLine } = state as Partial<StartedState>
-  return reachedLastPage === true ? (typeof savedLine === 'string' ? savedLine : '') : null
+  const { reachedLastPage, bookId, savedLine } = state as Partial<Extract<StartedState, { reachedLastPage: true }>>
+  if (reachedLastPage !== true || typeof bookId !== 'string') return null
+  return { bookId, savedLine: typeof savedLine === 'string' ? savedLine : '' }
 }
 
 function wantsFinished(state: unknown): boolean {
@@ -94,7 +99,8 @@ function HomeSlice({ view, finishing }: { view: HomeView; finishing: FinishMomen
  * Arriving from a confirmed Start dialog (router state `{started: true}`),
  * focus goes to the Main book card's title link, winning over the `h1`;
  * with `reachedLastPage` (a Side read started at its last page) Home then
- * opens the Finish dialog for the new Main book, as a last-page save does.
+ * opens the Finish dialog for the started Book, as a last-page save does,
+ * once its view shows that Book as Main.
  * Arriving from a finish (`{finished: true}`), it goes to the empty card's
  * Up next suggestion button (**Start reading** or **Resume**) when there is
  * an Up next, else to the "No Main book." heading, the same way; and when
@@ -160,14 +166,6 @@ export default function HomePage() {
   // Set when the Finish dialog is cancelled, so focus moves once it has unmounted.
   const [finishRefocus, setFinishRefocus] = useState(0)
   const mainId = view.status === 'ready' ? (view.data.mainBook?.id ?? null) : null
-  // A start at the last page (a Side read) opens the Finish dialog for the new
-  // Main book, as a last-page save does, once per history entry.
-  const lastPageLine = reachedLastPageLine(location.state)
-  const [lastPageOpened, setLastPageOpened] = useState<string | null>(null)
-  if (lastPageLine !== null && mainId !== null && lastPageOpened !== location.key) {
-    setLastPageOpened(location.key)
-    setFinishing({ bookId: mainId, key: location.key, savedLine: lastPageLine })
-  }
   // The fill as the card shows it, read by Done (the render it was pressed in):
   // the refetched home view, not a `book` view cached from an earlier visit.
   const mainPercent = view.status === 'ready' ? (view.data.mainBook?.percent ?? null) : null
@@ -217,6 +215,21 @@ export default function HomePage() {
     fallback: () => suggestButton.current ?? emptyHeading.current,
     onPaused,
   })
+  // A start at the last page (a Side read) opens the Finish dialog for the
+  // started Book, as a last-page save does, once per history entry. Only once
+  // the view shows that Book as Main, still at its last page: a failed refetch
+  // keeps the old Main book, and another tab may have changed it. If another
+  // dialog is open by then (a later refetch), the hand-off is dropped.
+  const lastPage = reachedLastPage(location.state)
+  const [lastPageOpened, setLastPageOpened] = useState<string | null>(null)
+  const lastPageMain = homeMain !== null && homeMain.id === lastPage?.bookId ? homeMain : null
+  if (lastPage !== null && lastPageMain !== null && lastPageOpened !== location.key) {
+    setLastPageOpened(location.key)
+    // As rendered below: a dialog of an earlier history entry is already closing.
+    const otherDialog = starting?.key === location.key || finishing?.key === location.key || pauseFlow.dialog !== null
+    if (lastPageMain.currentPage === lastPageMain.pages && !otherDialog)
+      setFinishing({ bookId: lastPage.bookId, key: location.key, savedLine: lastPage.savedLine })
+  }
 
   // After a pause: focus first (the empty card's Resume), then the line. While
   // the view still shows the paused Book as Main, the refetch hasn't rendered;

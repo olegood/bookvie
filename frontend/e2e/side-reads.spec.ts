@@ -28,7 +28,7 @@ import {
   upNextPane,
   waitingPane,
 } from './home.ts'
-import { intentOf, MARK_SIDE_READ, requestsTo, START_READING, UNMARK_SIDE_READ } from './intents.ts'
+import { FINISH_READING, intentOf, MARK_SIDE_READ, requestsTo, START_READING, UNMARK_SIDE_READ } from './intents.ts'
 
 const COULDNT_SAVE = "Couldn't save. Your data wasn't changed."
 const FULL_HINT = 'Up to 3 side reads.'
@@ -529,5 +529,46 @@ test.describe('Story 4.7 Keep a few side reads', () => {
     } finally {
       await stopAndRemove(server)
     }
+  })
+
+  test('[P0] F-R5 a last-page start whose home refetch fails opens Finish only for the started Book, once Home shows it', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({
+      mainBookId: DUNE_ID,
+      sideReadBookIds: [LEFT_HAND_ID],
+      books: [DUNE_MAIN, LEFT_HAND_PAUSED],
+    })
+    const finishes = requestsTo(page, FINISH_READING)
+    await page.goto(`${server.url}/`)
+    await sidePane(page).getByRole('button', { name: 'Start reading The Left Hand of Darkness', exact: true }).click()
+    const dialog = startDialog(page, 'Resume The Left Hand of Darkness?')
+    await whichPage(dialog).fill('330')
+    // The start commits, then Home's refetch fails: the view keeps Dune as Main.
+    const homeView = '**/api/views/home'
+    await page.route(homeView, (route) => route.fulfill({ status: 503, body: '{}' }))
+    await dialog.getByRole('button', { name: 'Resume', exact: true }).click()
+
+    // Home would open Finish in the render that closes the Start dialog.
+    await expect(dialog).toBeHidden()
+    // The criterion: no Finish dialog for Dune, the Book the view still shows.
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    await expect(mainBookCard(page).getByRole('link', { name: 'Dune', exact: true })).toBeFocused()
+    expect(storedLibrary(server).mainBookId).toBe(LEFT_HAND_ID)
+
+    // Home refetches on focus and now shows the started Book: its Finish opens.
+    await page.unroute(homeView)
+    // Bubbling, so it reaches the focus listener on `window`.
+    await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange', { bubbles: true })))
+    const finish = page.getByRole('dialog', { name: 'Finished The Left Hand of Darkness', exact: true })
+    await expect(finish).toBeVisible()
+    await expect(finish).toHaveAccessibleDescription('Page 330 of 330, 100%.')
+    await finish.getByRole('button', { name: 'Done', exact: true }).click()
+    await expect(finish).toBeHidden()
+    expect(finishes).toHaveLength(1)
+    expect(intentOf(finishes[0])).toMatchObject({ bookId: LEFT_HAND_ID })
+    // Dune's paused Reading is untouched.
+    expect(storedBook(server, DUNE_ID).readings[0]).toMatchObject({ currentPage: 100, finishDate: null })
   })
 })
