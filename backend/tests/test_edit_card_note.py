@@ -318,3 +318,82 @@ def test_delete_card_note_removes_only_that_note(tmp_path: Path) -> None:
     assert {**dune_after, "cardNotes": []} == {**dune_before, "cardNotes": []}
     assert stored_book(tmp_path, neuromancer) == neuromancer_before
     assert_invariants(tmp_path)
+
+
+# --- Refusal order: a gone Book wins over a gone note and bad fields -----------------
+
+
+def test_refusal_order_p2_a_gone_book_is_refused_before_its_note_and_fields(
+    tmp_path: Path,
+) -> None:
+    # The Book is gone, so its note id is gone too, and the fields are bad
+    # (a blank Note, a Page past any Book). The Book is looked up first:
+    # 409 book_not_found, not card_note_not_found or 422 invalid_fields.
+    builder = LibraryBuilder()
+    dune = builder.book(**DUNE)
+    builder.card_note(dune, text="Fear is the mind-killer.", page_start=19)
+    builder.write(tmp_path)
+    client = api_client(tmp_path)
+    before = library_bytes(tmp_path)
+
+    for response in (
+        _edit_card_note(client, GONE_BOOK_ID, GONE_NOTE_ID, " ", "400"),
+        _delete_card_note(client, GONE_BOOK_ID, GONE_NOTE_ID),
+    ):
+        assert response.status_code == 409
+        error = response.json()["error"]
+        assert (error["kind"], error["code"]) == ("refusal", "book_not_found")
+        assert _fields(response) == {}
+        assert library_bytes(tmp_path) == before
+
+
+# --- R-09: editing a note's page moves edit-book's Pages floor with it --------------
+
+
+def _assert_pages_floor(tmp_path: Path, client: TestClient, book_id: str, floor: int) -> None:
+    """edit-book takes Pages at ``floor`` and refuses one below, naming ``floor``."""
+    accepted = _edit_pages(client, book_id, str(floor))
+    assert accepted.status_code == 200
+    assert stored_book(tmp_path, book_id)["pages"] == floor
+    assert_invariants(tmp_path)
+
+    before = library_bytes(tmp_path)
+    refused = _edit_pages(client, book_id, str(floor - 1))
+    assert refused.status_code == 409
+    assert refused.json()["error"]["code"] == "pages_below_card_note"
+    assert _fields(refused) == {"pages": f"Pages can't be less than {floor}, where a card note is."}
+    assert library_bytes(tmp_path) == before
+
+
+def test_r09_p2_editing_the_highest_note_down_lowers_the_pages_floor(tmp_path: Path) -> None:
+    # Dune, 412 pages, notes at p.19 and p.270. Editing p.270 down to p.20
+    # makes p.20 the highest note page, so Pages can go down to 20.
+    builder = LibraryBuilder()
+    dune = builder.book(**DUNE)
+    builder.card_note(dune, text="Fear is the mind-killer.", page_start=19)
+    highest = builder.card_note(dune, text="The sleeper must awaken.", page_start=270)
+    builder.write(tmp_path)
+    client = api_client(tmp_path)
+
+    response = _edit_card_note(client, dune, highest, "The sleeper must awaken.", "20")
+    assert response.status_code == 200
+
+    _assert_pages_floor(tmp_path, client, dune, 20)
+
+
+def test_r09_p2_editing_a_range_to_a_single_page_counts_its_new_page(tmp_path: Path) -> None:
+    # Dune, 412 pages, notes at p.19 and pp.200–230. The range counts by its
+    # pageEnd (230) until it is edited to the single page 200; then 200 is the floor.
+    builder = LibraryBuilder()
+    dune = builder.book(**DUNE)
+    builder.card_note(dune, text="Fear is the mind-killer.", page_start=19)
+    spice = builder.card_note(dune, text="The spice must flow.", page_start=200, page_end=230)
+    builder.write(tmp_path)
+    client = api_client(tmp_path)
+
+    response = _edit_card_note(client, dune, spice, "The spice must flow.", "200")
+    assert response.status_code == 200
+    stored = stored_book(tmp_path, dune)["cardNotes"][1]
+    assert (stored["pageStart"], stored["pageEnd"]) == (200, None)
+
+    _assert_pages_floor(tmp_path, client, dune, 200)

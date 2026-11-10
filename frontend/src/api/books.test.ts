@@ -613,6 +613,20 @@ describe('deleteCardNote', () => {
     client.clear()
   })
 
+  it('[P3] passes a 409 card_note_not_found through as a refusal', async () => {
+    mock.method(globalThis, 'fetch', async () =>
+      Response.json(
+        { error: { kind: 'refusal', code: 'card_note_not_found', message: "This card note isn't there anymore." } },
+        { status: 409 },
+      ),
+    )
+    const client = new QueryClient()
+    const result = await deleteCardNote(client, 'b1', 'gone')
+    assert.equal(result.kind === 'refusal' && result.code, 'card_note_not_found')
+    assert.equal(result.kind === 'refusal' && result.message, "This card note isn't there anymore.")
+    client.clear()
+  })
+
   it('builds the same form on its own', () => {
     assert.equal(deleteCardNoteForm('b2', 'n2').get('intent'), '{"bookId":"b2","cardNoteId":"n2"}')
   })

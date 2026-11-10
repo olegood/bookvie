@@ -301,40 +301,40 @@ Activate one test at a time: delete its `@pytest.mark.skip(reason=RED)` line, or
 - **E2E:** `TZ=Europe/Madrid npm --prefix frontend run e2e -- e2e/edit-card-note.spec.ts -g "AC-1"` (the e2e entry builds the SPA, Epic 3 retro item 27)
 
 ### AC-4, AC-5: the intents
-- [ ] `intents/contract.py`: `ErrorCode.CARD_NOTE_NOT_FOUND` and a `card_note_not_found()` refusal (409) with its copy.
-- [ ] `intents/edit_card_note.py`: `EditCardNoteIntent` (`book_id`, `card_note_id`, `text`, `page`), `parse_edit_card_note_intent`, and `edit_card_note(store, intent)`. Share the field checks with `add_card_note` instead of copying them. Check `book_not_found`, then `card_note_not_found`, then the fields.
-- [ ] `intents/delete_card_note.py`: `DeleteCardNoteIntent` (`book_id`, `card_note_id`) and `delete_card_note(store, intent)`.
-- [ ] `http/api.py`: `POST /intents/edit-card-note` and `POST /intents/delete-card-note`, each answering `OkResponse(ok=True)`. Export them from `intents/__init__.py`, then run `npm --prefix frontend run api:gen`.
-- [ ] Update `test_intent_routes.py` and `test_contract.py` (table above). Move `EDIT_CARD_NOTE` / `DELETE_CARD_NOTE` into `tests/helpers.py`.
-- [ ] Activate AC-4 and AC-5.
+- [x] `intents/contract.py`: `ErrorCode.CARD_NOTE_NOT_FOUND` and a `card_note_not_found()` refusal (409) with its copy. (done: backend/tests/test_edit_card_note.py:116 test_ac5_p0_edit_and_delete_card_note_meet_the_standard_intent_acs)
+- [x] `intents/edit_card_note.py`: `EditCardNoteIntent` (`book_id`, `card_note_id`, `text`, `page`), `parse_edit_card_note_intent`, and `edit_card_note(store, intent)`. Share the field checks with `add_card_note` instead of copying them. Check `book_not_found`, then `card_note_not_found`, then the fields. (done: backend/tests/test_edit_card_note.py:214, :228, :258)
+- [x] `intents/delete_card_note.py`: `DeleteCardNoteIntent` (`book_id`, `card_note_id`) and `delete_card_note(store, intent)`. (done: backend/tests/test_edit_card_note.py:299 test_delete_card_note_removes_only_that_note)
+- [x] `http/api.py`: `POST /intents/edit-card-note` and `POST /intents/delete-card-note`, each answering `OkResponse(ok=True)`. Export them from `intents/__init__.py`, then run `npm --prefix frontend run api:gen`. (done: backend/tests/test_edit_card_note.py:116 (OpenAPI asserts); `check:api` byte-checks `schema.d.ts`)
+- [x] Update `test_intent_routes.py` and `test_contract.py` (table above). Move `EDIT_CARD_NOTE` / `DELETE_CARD_NOTE` into `tests/helpers.py`. (done: backend/tests/test_intent_routes.py INTENT_ROUTES, test_contract.py; helpers.py EDIT_CARD_NOTE / DELETE_CARD_NOTE)
+- [x] Activate AC-4 and AC-5. (done: backend/tests/test_edit_card_note.py:76, :116)
 
 ### AC-1: the edit panel
-- [ ] `api/`: `useEditCardNote` and `useDeleteCardNote` mutations.
-- [ ] `CardNotePanel`: an edit mode with the heading "Edit card note", Note and Page prefilled from the note (`pageRef` without the "p." / "pp." prefix), and **Delete** at the left. Save note sends `edit-card-note`.
-- [ ] `CardNotesBlock`: an Edit button on each note (name "Edit p.96" recommended). It opens the panel, and after a save the focus returns to it before "Card note saved." is announced (reuse `useCardNoteFlow`).
-- [ ] Activate AC-1.
+- [x] `api/`: `useEditCardNote` and `useDeleteCardNote` mutations. (done: frontend/src/api/books.test.ts:553 editCardNote, :598 deleteCardNote)
+- [x] `CardNotePanel`: an edit mode with the heading "Edit card note", Note and Page prefilled from the note (`pageRef` without the "p." / "pp." prefix), and **Delete** at the left. Save note sends `edit-card-note`. (done: frontend/e2e/edit-card-note.spec.ts:97)
+- [x] `CardNotesBlock`: an Edit button on each note (name "Edit p.96" recommended). It opens the panel, and after a save the focus returns to it before "Card note saved." is announced (reuse `useCardNoteFlow`). (done: frontend/e2e/edit-card-note.spec.ts:97 (named "Edit p.96"))
+- [x] Activate AC-1. (done: frontend/e2e/edit-card-note.spec.ts:97)
 
 ### AC-2: the Delete stack
-- [ ] The "Delete this card note?" `alertdialog`, opened from the panel's **Delete**. It stacks over the panel, which stays open, and **Cancel** has default focus. Cancel or Esc close only the dialog, and focus goes back to **Delete**.
-- [ ] **Delete card note** sends `delete-card-note`. After the refetch, close both, then focus the next note's Edit, else the block heading (`tabIndex={-1}`).
-- [ ] Activate AC-2.
+- [x] The "Delete this card note?" `alertdialog`, opened from the panel's **Delete**. It stacks over the panel, which stays open, and **Cancel** has default focus. Cancel or Esc close only the dialog, and focus goes back to **Delete**. (done: frontend/e2e/edit-card-note.spec.ts:154)
+- [x] **Delete card note** sends `delete-card-note`. After the refetch, close both, then focus the next note's Edit, else the block heading (`tabIndex={-1}`). (done: frontend/e2e/edit-card-note.spec.ts:154, :379, :494)
+- [x] Activate AC-2. (done: frontend/e2e/edit-card-note.spec.ts:154)
 
 ### AC-3: couldn't save
-- [ ] On a 503, the panel shows its existing couldn't-save line above the buttons. The dialog uses `useAlertDialog`'s in-dialog line, as Delete book does. Neither closes, and the values are kept.
-- [ ] Activate AC-3.
+- [x] On a 503, the panel shows its existing couldn't-save line above the buttons. The dialog uses `useAlertDialog`'s in-dialog line, as Delete book does. Neither closes, and the values are kept. (done: frontend/e2e/edit-card-note.spec.ts:209)
+- [x] Activate AC-3. (done: frontend/e2e/edit-card-note.spec.ts:209)
 
 ### Green-phase follow-ups (secondary branches, not separate red leaves)
-- [ ] **AC-1, CRD-API-001:** `edit-card-note` parses every Page form in 5.1's `PAGE_FORMS` and refuses every case in `PAGE_REFUSALS`, an empty Note, and both at once ("Not saved. 2 fields need attention: Note, Page."). On a refusal the file is byte-identical. Reuse 5.1's tables by importing them.
-- [ ] **AC-1, the edit in place:** the note keeps its position in `cardNotes` and its `id` and `createdAt`; the other notes and the Book are unchanged; the outer whitespace is trimmed.
-- [ ] **AC-1, a refusal in the panel:** Page "400" shows "Page must be between 1 and 412." under Page with `aria-invalid`, nothing is saved, and the panel stays open.
-- [ ] **AC-1, a range prefill:** editing the pp.42–45 note prefills Page "42–45". Saving it unchanged sends "42–45" and stores the same pages.
-- [ ] **AC-1, Cancel and Esc** in the edit panel send nothing, and focus returns to that note's Edit.
-- [ ] **AC-1, a re-ordering edit:** moving a note from p.96 to p.400 takes it out of the first three. Focus then needs a target: the block heading, as after a delete. Confirm this with the spec.
-- [ ] **AC-2, the last note shown:** deleting the third shown note when only three exist moves focus to the "Card notes (2)" heading. Deleting the only note leaves "No card notes yet." with focus on the heading.
-- [ ] **AC-2, `delete-card-note` server side:** only that note goes; the other notes, the Book and the other Books are unchanged; the invariants hold.
-- [ ] **AC-2, the Tab cycle** stays inside the Confirm dialog while it is open, and inside the panel once it closes.
-- [ ] **AC-2, in flight:** **Delete card note** is `aria-disabled` while the request is out, a second press sends nothing, and Esc is ignored.
-- [ ] **AC-5, a stale tab:** the note was deleted in another tab, so Save note or Delete card note gets `card_note_not_found`. The message shows inside the panel or the dialog, and nothing on screen claims a change.
-- [ ] **AC-5, refusal order:** a gone Book with a gone note and bad fields is `book_not_found`; a gone note with bad fields is `card_note_not_found` (covered in the AC-5 leaf; add a P2 split if it grows).
-- [ ] **XUI-E2E-001:** add the edit panel and the Delete card note dialog to any shared couldn't-save sweep.
-- [ ] **axe** on the open edit panel and on the stacked Confirm dialog, in both themes.
+- [x] **AC-1, CRD-API-001:** `edit-card-note` parses every Page form in 5.1's `PAGE_FORMS` and refuses every case in `PAGE_REFUSALS`, an empty Note, and both at once ("Not saved. 2 fields need attention: Note, Page."). On a refusal the file is byte-identical. Reuse 5.1's tables by importing them. (done: backend/tests/test_edit_card_note.py:214, :228)
+- [x] **AC-1, the edit in place:** the note keeps its position in `cardNotes` and its `id` and `createdAt`; the other notes and the Book are unchanged; the outer whitespace is trimmed. (done: backend/tests/test_edit_card_note.py:258)
+- [x] **AC-1, a refusal in the panel:** Page "400" shows "Page must be between 1 and 412." under Page with `aria-invalid`, nothing is saved, and the panel stays open. (done: frontend/e2e/edit-card-note.spec.ts:263 (uses Page "413": "400" is in range on 412 pages, spec corrected in a91c5f3))
+- [x] **AC-1, a range prefill:** editing the pp.42–45 note prefills Page "42–45". Saving it unchanged sends "42–45" and stores the same pages. (done: frontend/e2e/edit-card-note.spec.ts:289)
+- [x] **AC-1, Cancel and Esc** in the edit panel send nothing, and focus returns to that note's Edit. (done: frontend/e2e/edit-card-note.spec.ts:312)
+- [x] **AC-1, a re-ordering edit:** moving a note from p.96 to p.400 takes it out of the first three. Focus then needs a target: the block heading, as after a delete. Confirm this with the spec. (done: frontend/e2e/edit-card-note.spec.ts:338 (focus goes to the block heading))
+- [x] **AC-2, the last note shown:** deleting the third shown note when only three exist moves focus to the "Card notes (2)" heading. Deleting the only note leaves "No card notes yet." with focus on the heading. (done: frontend/e2e/edit-card-note.spec.ts:379 (last of two → "Card notes (1)" heading), :357 (only note))
+- [x] **AC-2, `delete-card-note` server side:** only that note goes; the other notes, the Book and the other Books are unchanged; the invariants hold. (done: backend/tests/test_edit_card_note.py:299)
+- [x] **AC-2, the Tab cycle** stays inside the Confirm dialog while it is open, and inside the panel once it closes. (done: frontend/e2e/edit-card-note.spec.ts:548)
+- [x] **AC-2, in flight:** **Delete card note** is `aria-disabled` while the request is out, a second press sends nothing, and Esc is ignored. (done: frontend/e2e/edit-card-note.spec.ts:403 (and :443 for Delete while a save is out))
+- [x] **AC-5, a stale tab:** the note was deleted in another tab, so Save note or Delete card note gets `card_note_not_found`. The message shows inside the panel or the dialog, and nothing on screen claims a change. (done: frontend/e2e/edit-card-note.spec.ts:508)
+- [x] **AC-5, refusal order:** a gone Book with a gone note and bad fields is `book_not_found`; a gone note with bad fields is `card_note_not_found` (covered in the AC-5 leaf; add a P2 split if it grows). (done: backend/tests/test_edit_card_note.py:326 test_refusal_order_p2_a_gone_book_is_refused_before_its_note_and_fields; backend/tests/test_edit_card_note.py:116)
+- ~~**XUI-E2E-001:** add the edit panel and the Delete card note dialog to any shared couldn't-save sweep.~~ **Retired:** no shared couldn't-save sweep exists in `frontend/e2e`; AC-3 (`frontend/e2e/edit-card-note.spec.ts:209`) pins the line inside both the edit panel and the Confirm dialog.
+- [x] **axe** on the open edit panel and on the stacked Confirm dialog, in both themes. (done: frontend/e2e/edit-card-note.spec.ts:599)

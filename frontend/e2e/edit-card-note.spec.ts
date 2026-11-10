@@ -545,6 +545,57 @@ test.describe('Story 5.2 Edit or delete a card note', () => {
     await expect(cardNotesBlock(page, 3).getByRole('heading', { name: 'Card notes (3)', exact: true })).toBeFocused()
   })
 
+  test('[P2] AC-2 Tab stays inside the stacked Confirm, then inside the panel once it closes', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: [DUNE_WITH_NOTES] })
+    await page.goto(`${server.url}/book/${DUNE_ID}`)
+    await editOf(noteItem(cardNotesBlock(page, 4), 'The spice must flow.')).click()
+    const panel = editPanel(page)
+    const note = panel.getByRole('textbox', { name: 'Note', exact: true })
+    const pageField = panel.getByRole('textbox', { name: 'Page', exact: true })
+    const del = panel.getByRole('button', { name: 'Delete', exact: true })
+    const save = panel.getByRole('button', { name: 'Save note', exact: true })
+    const panelCancel = panel.getByRole('button', { name: 'Cancel', exact: true })
+    await expect(note).toBeFocused()
+    await del.click()
+
+    // The Confirm dialog's two buttons: Delete card note, then Cancel; Cancel has focus.
+    const dialog = confirmDialog(page)
+    const confirm = dialog.getByRole('button', { name: 'Delete card note', exact: true })
+    const confirmCancel = dialog.getByRole('button', { name: 'Cancel', exact: true })
+    await expect(confirmCancel).toBeFocused()
+
+    // Tab cycles Cancel → Delete card note → Cancel, never reaching the panel beneath.
+    for (const expected of [confirm, confirmCancel, confirm, confirmCancel]) {
+      await page.keyboard.press('Tab')
+      await expect(expected).toBeFocused()
+    }
+    // Shift+Tab mirrors it.
+    for (const expected of [confirm, confirmCancel, confirm, confirmCancel]) {
+      await page.keyboard.press('Shift+Tab')
+      await expect(expected).toBeFocused()
+    }
+    for (const beneath of [note, pageField, del, save, panelCancel]) await expect(beneath).not.toBeFocused()
+
+    // Cancel closes only the dialog; focus is on the panel's Delete.
+    await confirmCancel.click()
+    await expect(dialog).toBeHidden()
+    await expect(del).toBeFocused()
+
+    // The panel's order: Note, Page, Delete, Save note, Cancel; its last and first controls wrap.
+    for (const expected of [save, panelCancel, note, pageField, del]) {
+      await page.keyboard.press('Tab')
+      await expect(expected).toBeFocused()
+    }
+    for (const expected of [pageField, note, panelCancel, save, del]) {
+      await page.keyboard.press('Shift+Tab')
+      await expect(expected).toBeFocused()
+    }
+    await expect(panel).toBeVisible()
+  })
+
   test('[P2] The edit panel and the stacked Confirm dialog pass axe in both themes', async ({ page, seededServer }) => {
     const server = await seededServer({ books: [DUNE_WITH_NOTES] })
     const axe = async (where: string): Promise<string[]> => {
