@@ -198,16 +198,16 @@ There are 8 leaves in `frontend/e2e/card-notes-pile-keys.spec.ts`, one per crite
 Activate one leaf at a time: change `test.skip(` to `test(` and delete its RED comment. Watch it fail, implement, then watch it pass.
 - **Command:** `TZ=Europe/Madrid npm --prefix frontend run e2e -- e2e/card-notes-pile-keys.spec.ts -g "AC-1"`
 
-- [ ] **`CardNotesPile.tsx`:** a dialog `onKeyDown` that calls `dialogProps.onKeyDown`, then handles the four keys as pinned above. Update the doc comment.
-- [ ] **`aria-keyshortcuts`** on Previous and Next.
-- [ ] **`EXPERIENCE.md` § Pile:** add the spec's Keyboard bullet.
-- [ ] Activate AC-1, then AC-2, AC-3, AC-6, AC-5, AC-4, AC-7 and AC-8.
-- [ ] Re-run `card-notes-pile.spec.ts` in full, including the Tab/radio leaf and axe.
+- [x] **`CardNotesPile.tsx`:** a dialog `onKeyDown` that calls `dialogProps.onKeyDown`, then handles the four keys as pinned above. Update the doc comment. (done: `frontend/src/components/CardNotesPile.tsx` `stepByKey`, commit `c792de6`; Home/End on radios prevented by automate, see the spec's Spec Change Log)
+- [x] **`aria-keyshortcuts`** on Previous and Next. (done: frontend/e2e/card-notes-pile-keys.spec.ts:278, AC-7)
+- [x] **`EXPERIENCE.md` § Pile:** add the spec's Keyboard bullet. (done: `EXPERIENCE.md` § Pile, the Keyboard bullet after Ends, commit `c792de6`)
+- [x] Activate AC-1, then AC-2, AC-3, AC-6, AC-5, AC-4, AC-7 and AC-8. (done: all 8 leaves active and green, frontend/e2e/card-notes-pile-keys.spec.ts:73-295)
+- [x] Re-run `card-notes-pile.spec.ts` in full, including the Tab/radio leaf and axe. (done: frontend/e2e/card-notes-pile.spec.ts 25/25 green in this run's `npm run check`)
 
 ### Green-phase follow-ups (for `bmad-testarch-automate`, not red leaves)
 
-- [ ] **AC-1:** the keys work on Book detail's pile too (same component; one smoke step).
-- [ ] **AC-6, scroll:** at a short viewport with a long list behind the pile, End and Home leave `window.scrollY` and the dialog's `scrollTop` unchanged.
-- [ ] **AC-1, held key:** holding Right (auto-repeat) stops at "M of M" with no wrap. The polite region may merge announcements.
-- [ ] **AC-7, axe:** the existing `[P2] axe` leaf in `card-notes-pile.spec.ts` covers it once the attributes land; confirm it's still green.
-- [ ] **AC-4, Shuffled:** with Shuffled checked, Left on the radio returns to Page order without a step.
+- [x] **AC-1:** the keys work on Book detail's pile too (same component; one smoke step). (done: frontend/e2e/card-notes-pile-keys.spec.ts:383)
+- [x] **AC-6, scroll:** at a short viewport with a long list behind the pile, End and Home leave `window.scrollY` and the dialog's `scrollTop` unchanged. (done: frontend/e2e/card-notes-pile-keys.spec.ts:410, also Home on the radio; mutation-checked)
+- [x] **AC-1, held key:** holding Right (auto-repeat) stops at "M of M" with no wrap. The polite region may merge announcements. (done: frontend/e2e/card-notes-pile-keys.spec.ts:455, `event.repeat` recorded as `[false, true×7]`)
+- [x] **AC-7, axe:** the existing `[P2] axe` leaf in `card-notes-pile.spec.ts` covers it once the attributes land; confirm it's still green. (done: frontend/e2e/card-notes-pile.spec.ts:516, green with the attributes)
+- [x] **AC-4, Shuffled:** with Shuffled checked, Left on the radio returns to Page order without a step. (done: frontend/e2e/card-notes-pile-keys.spec.ts:186, AC-4 picks Shuffled with Right, then Page order with Left, staying at "1 of 4")

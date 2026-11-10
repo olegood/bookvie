@@ -42,7 +42,7 @@ deferred: []
 | Step back | Left, not at first | `move(index - 1)`, as above | No error expected |
 | Jump | Home / End, not already there | `move(0)` / `move(total - 1)`, announced | No error expected |
 | At an end | Right at last, Left at first, Home at first, End at last, any key in a 1-note pile | Nothing changes, nothing announced, still `preventDefault` | No error expected |
-| On a radio | any of the 4 keys, target is `input[type=radio]` | Pile ignores it; native radio behaviour (arrows switch order) | No error expected |
+| On a radio | any of the 4 keys, target is `input[type=radio]` | No step; arrows keep native radio behaviour (switch order); Home/End are `preventDefault`-ed so the dialog doesn't scroll | No error expected |
 | Modified | Alt/Ctrl/Meta/Shift + any of the 4 keys | Pile ignores it, not `preventDefault`-ed | No error expected |
 | Other keys | Tab / Shift+Tab / Esc | Unchanged: Tab trap via `dialogProps.onKeyDown`, Esc via `onCancel` | No error expected |
 
@@ -91,7 +91,7 @@ Code review 2026-11-10, of commits `ab8fe66..c792de6`. 17 findings from 5 layers
 - `false` (blind) The ATDD checklist's AC texts and red-phase body are out of date — project convention keeps checklists as red-phase records (the 5.4 checklist still says `test.skip`).
 - `low` (blind) AC-5 covers only modified forward keys — carried; the modifier guard is one branch for all four keys, and Verification Gap showed that dropping any modifier check fails AC-5.
 - `low` (blind) `keyTarget` has no unit test — carried; AC-1, AC-2 and AC-8 fail when any mapping is swapped.
-- `false` (blind) Home/End on a radio aren't prevented and scroll — carried; the probe left `scrollTop` unchanged on an overflowing dialog.
+- `false` (blind) Home/End on a radio aren't prevented and scroll — carried; the probe left `scrollTop` unchanged on an overflowing dialog. **Corrected by automate (2026-11-10):** the probe was wrong (it read too early). This was real and is fixed, see Spec Change Log.
 - `false` (blind) Without a `defaultPrevented`/`isComposing` check, a future child could double-step — the pile has no text field, link or other key-handling child today; this is a hypothetical.
 - `false` (blind) Spec rationale was dropped (the 1000-line split, why Ends is unedited) — the fix edits the spec under review.
 - `false` (blind) The Code Map uses line numbers for EXPERIENCE.md — the fix edits the spec under review.
@@ -100,6 +100,12 @@ Code review 2026-11-10, of commits `ab8fe66..c792de6`. 17 findings from 5 layers
 - `false` (blind) The Verification command differs from CI's (TZ, build) — carried; the fix edits the spec under review, and the keys tests use no dates.
 
 ## Spec Change Log
+
+### 2026-11-10 — bmad-testarch-automate correction
+- **Trigger:** the automate E2E worker found that Home on a focused Order radio scrolls an overflowing pile dialog (360×300: `scrollTop` 91 → 0; re-probed 64 → 0 after the scroll settled). The build review's probe (`scrollTop` 118 → 118) read before Chromium's smooth keyboard scroll had started, so both reviews wrongly rejected this as `false` (the edge-case and blind rows in the Review Triage Log, and "Home/End on a radio aren't prevented and scroll" under Review Findings → Rejected).
+- **Amended (Oleg chose to fix it now):** the "On a radio" row of the I/O matrix. In `CardNotesPile.tsx`, `stepByKey` now `preventDefault`s Home and End on a radio and still doesn't step. The arrows stay native. This matches EXPERIENCE.md's "Home and End do nothing" there, which is unchanged.
+- **Known-bad state avoided:** on a short viewport, Home or End on the Order radios jumped the dialog's scroll.
+- **Test:** `frontend/e2e/card-notes-pile-keys.spec.ts`, the `[P2] AC-6 in an overflowing pile…` leaf, asserts that both scroll values are unchanged after Home on the radio. It fails with the `preventDefault` removed.
 
 ## Review Triage Log
 
@@ -126,6 +132,7 @@ Code review 2026-11-10, of commits `ab8fe66..c792de6`. 17 findings from 5 layers
   - `[false]` `[reject]` (intent) The tests predate the code — that's ATDD by design, and Verification Gap confirmed each guard is load-bearing.
   - `[low]` `[reject]` (intent) The no-hint check catches text only — the diff adds no icon or pseudo-element hint, and a broader check isn't worth the complexity.
 - Spine check: no findings (AD-1, AD-3, AD-6, AD-7, AD-15, AD-17). Verification gap: no gaps.
+- **Correction (2026-11-10, automate):** the two `false` rows on Home/End on a radio scrolling were wrong. The probe read before the smooth scroll began. They're really `low`, now fixed (see Spec Change Log).
 
 ## Auto Run Result
 

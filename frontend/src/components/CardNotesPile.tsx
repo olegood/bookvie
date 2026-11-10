@@ -62,7 +62,8 @@ type Props = {
  * Keys (spec-pile-arrow-key-navigation): Left and Right do what Previous and
  * Next do (the same `move`, announcement and no-wrap ends); Home and End go to
  * the first and last note. They work wherever focus is in the pile except on
- * the Order radios, which keep their native arrow keys; a key held with Alt,
+ * the Order radios, which keep their native arrow keys (Home and End do
+ * nothing there, and are `preventDefault`-ed); a key held with Alt,
  * Ctrl, Meta or Shift is left to the browser. Focus stays put, a handled key
  * is `preventDefault`-ed even at an end, and Previous and Next carry
  * `aria-keyshortcuts`. No on-screen hint.
@@ -110,9 +111,13 @@ export default function CardNotesPile({ title, notes, startNoteId, onClose }: Pr
     dialogProps.onKeyDown(event)
     if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return
     const target = event.target
-    if (target instanceof HTMLInputElement && target.type === 'radio') return
     const to = keyTarget(event.key, index, total)
     if (to === undefined) return
+    if (target instanceof HTMLInputElement && target.type === 'radio') {
+      // The radios keep their native arrow keys. Home and End do nothing there, not even scroll the dialog.
+      if (event.key === 'Home' || event.key === 'End') event.preventDefault()
+      return
+    }
     event.preventDefault()
     if (to !== index && sequence[to]) move(to)
   }
