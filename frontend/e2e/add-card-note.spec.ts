@@ -7,14 +7,17 @@
 // `add-card-note` parses the Page and what it refuses (CRD-API-001, TR8) is
 // proven at API level in backend/tests/test_add_card_note.py.
 
+import AxeBuilder from '@axe-core/playwright'
 import type { Locator, Page } from '@playwright/test'
 import { expect, test } from './fixtures.ts'
 import { DUNE, DUNE_ID, LEFT_HAND_ID, libraryBytes, mainAt, mainBookCard, sizeOf, storedBook } from './home.ts'
-import { ADD_CARD_NOTE, intentOf, requestsTo } from './intents.ts'
-import { rgbOf } from './library.ts'
+import { ADD_CARD_NOTE, DELETE_BOOK, intentOf, requestsTo } from './intents.ts'
+import { rgbOf, settled } from './library.ts'
 
 const SAVED = 'Card note saved.'
 const COULDNT_SAVE = "Couldn't save. Your data wasn't changed."
+const BOOK_GONE = "This book isn't in your catalog anymore."
+const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']
 // --color-ink-tertiary in the light theme (tokens.css).
 const INK_TERTIARY = rgbOf('#666961')
 
@@ -360,6 +363,197 @@ test.describe('Story 5.1 Add a card note while reading', () => {
     ] as const) {
       await page.keyboard.press(key)
       await expect(focused).toBeFocused()
+    }
+  })
+
+  test('[P1] A note added on Home shows on that Book\'s detail in "Card notes (1)" with its page ref', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer(mainAt(212))
+    await page.goto(`${server.url}/`)
+
+    await addCardNote(page).click()
+    const panel = cardNotePanel(page)
+    await panel.getByRole('textbox', { name: 'Note', exact: true }).fill('Light is the left hand of darkness.')
+    await panel.getByRole('button', { name: 'Save note', exact: true }).click()
+    await expect(page.getByRole('status')).toHaveText(SAVED)
+    await expect(panel).toBeHidden()
+
+    // On to the Book's detail from the Main book card's title.
+    await mainBookCard(page).getByRole('link', { name: 'The Left Hand of Darkness', exact: true }).click()
+    await expect(page).toHaveURL(new RegExp(`/book/${LEFT_HAND_ID}$`))
+    const block = page.getByRole('main').getByRole('region', { name: 'Card notes (1)', exact: true })
+    await expect(block).toBeVisible()
+    const note = block.getByRole('listitem')
+    await expect(note).toHaveCount(1)
+    await expect(note.getByText('Light is the left hand of darkness.', { exact: true })).toBeVisible()
+    await expect(note.getByText('p.212', { exact: true })).toBeVisible()
+  })
+
+  test('[P1] Adding on Book detail updates "Card notes (N)", and a lower page moves into the first three', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: [DUNE_WITH_NOTES] })
+    await page.goto(`${server.url}/book/${DUNE_ID}`)
+    const main = page.getByRole('main')
+    await expect(main.getByRole('region', { name: 'Card notes (4)', exact: true })).toBeVisible()
+
+    await main.getByRole('button', { name: 'Add card note', exact: true }).click()
+    const panel = cardNotePanel(page)
+    await panel.getByRole('textbox', { name: 'Note', exact: true }).fill('A world without spice.')
+    await panel.getByRole('textbox', { name: 'Page', exact: true }).fill('5')
+    await panel.getByRole('button', { name: 'Save note', exact: true }).click()
+    await expect(page.getByRole('status')).toHaveText(SAVED)
+
+    // The refetched view: five notes, and p.5 leads the three shown; p.96 drops out.
+    const block = main.getByRole('region', { name: 'Card notes (5)', exact: true })
+    await expect(block).toBeVisible()
+    const notes = block.getByRole('listitem')
+    await expect(notes).toHaveCount(3)
+    for (const [index, [text, ref]] of [
+      ['A world without spice.', 'p.5'],
+      ['Fear is the mind-killer.', 'p.12'],
+      ['A beginning is the time for taking the most delicate care.', 'pp.42–45'],
+    ].entries()) {
+      await expect(notes.nth(index).getByText(text, { exact: true })).toBeVisible()
+      await expect(notes.nth(index).getByText(ref, { exact: true })).toBeVisible()
+    }
+    await expect(block.getByText('The spice must flow.')).toHaveCount(0)
+    expect(storedBook(server, DUNE_ID).cardNotes).toHaveLength(5)
+  })
+
+  test('[P2] Fixing a refused field and saving again clears its aria-invalid, and the next save goes through', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer(mainAt(212))
+    await page.goto(`${server.url}/`)
+
+    await addCardNote(page).click()
+    const panel = cardNotePanel(page)
+    const note = panel.getByRole('textbox', { name: 'Note', exact: true })
+    const pageField = panel.getByRole('textbox', { name: 'Page', exact: true })
+    const save = panel.getByRole('button', { name: 'Save note', exact: true })
+    await pageField.fill('400')
+    await save.click()
+    await expect(page.getByRole('alert')).toHaveText('Not saved. 2 fields need attention: Note, Page.')
+    await expect(note).toHaveAttribute('aria-invalid', 'true')
+    await expect(pageField).toHaveAttribute('aria-invalid', 'true')
+
+    // Note fixed: only Page is still refused.
+    await note.fill('Ice.')
+    await save.click()
+    await expect(page.getByRole('alert')).toHaveText('Not saved. 1 field needs attention: Page.')
+    await expect(note).not.toHaveAttribute('aria-invalid', 'true')
+    await expect(pageField).toHaveAttribute('aria-invalid', 'true')
+    await expect(pageField).toBeFocused()
+    expect(storedBook(server, LEFT_HAND_ID).cardNotes).toEqual([])
+
+    // Page fixed: the save goes through.
+    await pageField.fill('212')
+    await save.click()
+    await expect(page.getByRole('status')).toHaveText(SAVED)
+    await expect(panel).toBeHidden()
+    await expect(addCardNote(page)).toBeFocused()
+    const notes = storedBook(server, LEFT_HAND_ID).cardNotes as Record<string, unknown>[]
+    expect(notes.map(({ text, pageStart }) => ({ text, pageStart }))).toEqual([{ text: 'Ice.', pageStart: 212 }])
+  })
+
+  test('[P2] A second Save note press while the save is out sends nothing', async ({ page, seededServer }) => {
+    const server = await seededServer(mainAt(212))
+    const sent = requestsTo(page, ADD_CARD_NOTE)
+    let release!: () => void
+    const held = new Promise<void>((resolve) => (release = resolve))
+    await page.route(`**${ADD_CARD_NOTE}`, async (route) => {
+      await held
+      await route.continue()
+    })
+    await page.goto(`${server.url}/`)
+
+    await addCardNote(page).click()
+    const panel = cardNotePanel(page)
+    const save = panel.getByRole('button', { name: 'Save note', exact: true })
+    await panel.getByRole('textbox', { name: 'Note', exact: true }).fill('Once.')
+    const first = page.waitForRequest((request) => new URL(request.url()).pathname === ADD_CARD_NOTE)
+    await save.click()
+    await first
+    await expect(save).toHaveAttribute('aria-disabled', 'true')
+    // Playwright waits on aria-disabled; force the press a user can still make.
+    await save.click({ force: true })
+    release()
+
+    await expect(page.getByRole('status')).toHaveText(SAVED)
+    await expect(panel).toBeHidden()
+    expect(sent).toHaveLength(1)
+    expect(storedBook(server, LEFT_HAND_ID).cardNotes).toHaveLength(1)
+  })
+
+  test('[P2] Stale tab: Save on Home after the Main book was deleted elsewhere shows the 409 inside the panel, values kept', async ({
+    page,
+    seededServer,
+  }) => {
+    // A second Book keeps the library non-empty, so Home keeps its Main book card (now empty).
+    const server = await seededServer(mainAt(212, { others: [NEUROMANCER] }))
+    await page.goto(`${server.url}/`)
+
+    await addCardNote(page).click()
+    const panel = cardNotePanel(page)
+    const note = panel.getByRole('textbox', { name: 'Note', exact: true })
+    const pageField = panel.getByRole('textbox', { name: 'Page', exact: true })
+    await note.fill('Kept.')
+    await pageField.fill('212–213')
+
+    // Another tab deletes the Main book while the panel is open.
+    const deleted = await page.request.post(`${server.url}${DELETE_BOOK}`, {
+      multipart: { intent: JSON.stringify({ bookId: LEFT_HAND_ID }) },
+    })
+    expect(deleted.status()).toBe(200)
+    const before = libraryBytes(server)
+
+    const answered = page.waitForResponse((response) => new URL(response.url()).pathname === ADD_CARD_NOTE)
+    await panel.getByRole('button', { name: 'Save note', exact: true }).click()
+    expect((await answered).status()).toBe(409)
+
+    // The refetched Home empties the card behind the panel; the panel keeps its line and both values.
+    await expect(page.getByRole('alert')).toHaveText(BOOK_GONE)
+    await expect(panel.getByText(BOOK_GONE, { exact: true })).toBeVisible()
+    await expect(panel).toBeVisible()
+    await expect(note).toHaveValue('Kept.')
+    await expect(pageField).toHaveValue('212–213')
+    await expect(mainBookCard(page).getByRole('heading', { name: 'No Main book.', exact: true })).toBeAttached()
+    await expect(page.getByRole('status')).toHaveText('')
+    expect(libraryBytes(server)).toBe(before)
+
+    // Cancel: the opener is gone, so focus parks on main.
+    await panel.getByRole('button', { name: 'Cancel', exact: true }).click()
+    await expect(panel).toBeHidden()
+    await expect(page.getByRole('main')).toBeFocused()
+  })
+
+  test("[P2] The open Card note panel and Book detail's Card notes block pass axe in both themes", async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer(mainAt(212, { others: [DUNE_WITH_NOTES] }))
+    const axe = async (where: string): Promise<string[]> => {
+      const { violations } = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze()
+      return violations.map(({ id, nodes }) => `${where}: ${id} (${nodes.length})`)
+    }
+
+    for (const colorScheme of ['light', 'dark'] as const) {
+      await page.emulateMedia({ colorScheme })
+      await page.goto(`${server.url}/`)
+      await addCardNote(page).click()
+      const panel = cardNotePanel(page)
+      await expect(panel.getByRole('textbox', { name: 'Note', exact: true })).toBeFocused()
+      await settled(panel)
+      expect(await axe(`${colorScheme} panel`)).toEqual([])
+
+      await page.goto(`${server.url}/book/${DUNE_ID}`)
+      await expect(page.getByRole('main').getByRole('region', { name: 'Card notes (4)', exact: true })).toBeVisible()
+      expect(await axe(`${colorScheme} block`)).toEqual([])
     }
   })
 })

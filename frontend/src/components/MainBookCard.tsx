@@ -92,89 +92,95 @@ export default function MainBookCard({
   })
   if (book === null) {
     return (
-      <section className={`${styles.card} ${styles.empty}`} aria-label="Main book">
-        <h2 ref={emptyHeadingRef} className={styles.emptyHeading} tabIndex={-1}>
-          {NO_MAIN_BOOK}
-        </h2>
-        {upNext !== null ? (
-          <div className={styles.suggestion}>
-            <Cover coverFile={upNext.coverFile} title={upNext.title} size="thumb" />
-            <div className={styles.suggestionInfo}>
-              <p className={styles.suggestionTitle}>{upNext.title}</p>
-              <p className={styles.suggestionAuthors}>{upNext.authors.join('; ')}</p>
-              <Button
-                ref={suggestRef}
-                variant="primary"
-                className={styles.suggestionButton}
-                aria-label={`${upNextStart(upNext)} ${upNext.title}`}
-                onClick={() => onStartUpNext?.(upNext.id)}
-              >
-                {upNextStart(upNext)}
-              </Button>
+      <>
+        <section className={`${styles.card} ${styles.empty}`} aria-label="Main book">
+          <h2 ref={emptyHeadingRef} className={styles.emptyHeading} tabIndex={-1}>
+            {NO_MAIN_BOOK}
+          </h2>
+          {upNext !== null ? (
+            <div className={styles.suggestion}>
+              <Cover coverFile={upNext.coverFile} title={upNext.title} size="thumb" />
+              <div className={styles.suggestionInfo}>
+                <p className={styles.suggestionTitle}>{upNext.title}</p>
+                <p className={styles.suggestionAuthors}>{upNext.authors.join('; ')}</p>
+                <Button
+                  ref={suggestRef}
+                  variant="primary"
+                  className={styles.suggestionButton}
+                  aria-label={`${upNextStart(upNext)} ${upNext.title}`}
+                  onClick={() => onStartUpNext?.(upNext.id)}
+                >
+                  {upNextStart(upNext)}
+                </Button>
+              </div>
             </div>
-          </div>
-        ) : (
-          <p className={styles.emptyBody}>
-            <Link to="/catalog">{CHOOSE_A_BOOK}</Link>
-          </p>
-        )}
-        <div
-          ref={pauseSlot}
-          className={`${styles.regions} ${styles.regionsStart}`}
-          data-show-alert={pauseFailed ? 'true' : undefined}
-        />
+          ) : (
+            <p className={styles.emptyBody}>
+              <Link to="/catalog">{CHOOSE_A_BOOK}</Link>
+            </p>
+          )}
+          <div
+            ref={pauseSlot}
+            className={`${styles.regions} ${styles.regionsStart}`}
+            data-show-alert={pauseFailed ? 'true' : undefined}
+          />
+        </section>
         {cardNotePanel}
-      </section>
+      </>
     )
   }
+  // The panel sits beside the card, at the same place in both branches, so a
+  // refetch that empties the card (a stale tab) keeps it mounted with its values.
   return (
-    <section className={`${styles.card} ${styles.main}`} aria-labelledby={eyebrowId}>
-      <div className={styles.side}>
-        <Cover coverFile={book.coverFile} title={book.title} />
-        <div className={styles.actions}>
-          <Button ref={cardNoteButton} onClick={openCardNote}>
-            Add card note
-          </Button>
+    <>
+      <section className={`${styles.card} ${styles.main}`} aria-labelledby={eyebrowId}>
+        <div className={styles.side}>
+          <Cover coverFile={book.coverFile} title={book.title} />
+          <div className={styles.actions}>
+            <Button ref={cardNoteButton} onClick={openCardNote}>
+              Add card note
+            </Button>
+          </div>
         </div>
-      </div>
-      <div className={styles.info}>
-        <div className={styles.eyebrowRow}>
-          <p id={eyebrowId} className={styles.eyebrow}>
-            Main book
-          </p>
-          <MoreActionsMenu
-            buttonRef={moreRef}
-            items={[
-              { label: 'Pause', onSelect: () => onPause?.() },
-              { label: 'Open book', onSelect: () => void navigate(`/book/${book.id}`) },
-            ]}
+        <div className={styles.info}>
+          <div className={styles.eyebrowRow}>
+            <p id={eyebrowId} className={styles.eyebrow}>
+              Main book
+            </p>
+            <MoreActionsMenu
+              buttonRef={moreRef}
+              items={[
+                { label: 'Pause', onSelect: () => onPause?.() },
+                { label: 'Open book', onSelect: () => void navigate(`/book/${book.id}`) },
+              ]}
+            />
+          </div>
+          <div ref={pauseSlot} className={styles.regions} data-show-alert={pauseFailed ? 'true' : undefined} />
+          <h2 className={styles.titleHeading}>
+            <Link ref={titleRef} to={`/book/${book.id}`} className={styles.title}>
+              {book.title}
+            </Link>
+          </h2>
+          <p className={styles.authors}>{book.authors.join('; ')}</p>
+          {book.edition !== 1 && <p className={styles.edition}>Edition {book.edition}</p>}
+          <Gauge title={book.title} page={book.currentPage} pages={book.pages} percent={book.percent} />
+          <PageField
+            bookId={book.id}
+            currentPage={book.currentPage}
+            pages={book.pages}
+            percent={book.percent}
+            onReachedLastPage={onReachedLastPage}
+            fieldRef={pageFieldRef}
+          />
+          <ReentryLine
+            lastProgressUpdate={book.lastProgressUpdate}
+            daysLeft={book.daysLeft}
+            lastExportAt={lastExportAt}
+            now={now}
           />
         </div>
-        <div ref={pauseSlot} className={styles.regions} data-show-alert={pauseFailed ? 'true' : undefined} />
-        <h2 className={styles.titleHeading}>
-          <Link ref={titleRef} to={`/book/${book.id}`} className={styles.title}>
-            {book.title}
-          </Link>
-        </h2>
-        <p className={styles.authors}>{book.authors.join('; ')}</p>
-        {book.edition !== 1 && <p className={styles.edition}>Edition {book.edition}</p>}
-        <Gauge title={book.title} page={book.currentPage} pages={book.pages} percent={book.percent} />
-        <PageField
-          bookId={book.id}
-          currentPage={book.currentPage}
-          pages={book.pages}
-          percent={book.percent}
-          onReachedLastPage={onReachedLastPage}
-          fieldRef={pageFieldRef}
-        />
-        <ReentryLine
-          lastProgressUpdate={book.lastProgressUpdate}
-          daysLeft={book.daysLeft}
-          lastExportAt={lastExportAt}
-          now={now}
-        />
-      </div>
+      </section>
       {cardNotePanel}
-    </section>
+    </>
   )
 }

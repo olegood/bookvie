@@ -307,34 +307,34 @@ Activate one test at a time: delete its `@pytest.mark.skip(reason=RED)` line, or
 - **E2E:** `TZ=Europe/Madrid npm --prefix frontend run e2e -- e2e/add-card-note.spec.ts -g "AC-1"` (the e2e entry builds the SPA, Epic 3 retro item 27)
 
 ### AC-2, AC-3, AC-6: the intent
-- [ ] `domain/`: a pure Page parser, `parse_note_pages(text, pages)`, returning `(start, end | None)` or the refusal message. Give it unit cases for every form and refusal in this checklist.
-- [ ] `intents/add_card_note.py`: `AddCardNoteIntent` (`book_id`, `text`, `page` as strings), `parse_add_card_note_intent`, and `add_card_note(store, clock, intent) -> str`. Check `book_not_found`, then the fields (`text`, then `page`). Append the note and return its id.
-- [ ] `http/api.py`: `POST /intents/add-card-note`, answering `ids: {cardNoteId}` and exported from `intents/__init__.py`. Then run `npm --prefix frontend run api:gen`.
-- [ ] EXPERIENCE.md → Validation messages (other forms): add "Card note panel | Page | Not empty | "Page is required."" (decision above).
-- [ ] Update `test_intent_routes.py` and `test_contract.py` (table above).
-- [ ] Activate AC-2, AC-3 and AC-6.
+- [x] `domain/`: a pure Page parser, `parse_note_pages(text, pages)`, returning `(start, end | None)` or the refusal message. Give it unit cases for every form and refusal in this checklist. (done: backend/bookvie/domain/note_pages.py; backend/tests/test_note_pages.py (every form and refusal))
+- [x] `intents/add_card_note.py`: `AddCardNoteIntent` (`book_id`, `text`, `page` as strings), `parse_add_card_note_intent`, and `add_card_note(store, clock, intent) -> str`. Check `book_not_found`, then the fields (`text`, then `page`). Append the note and return its id. (done: backend/bookvie/intents/add_card_note.py; backend/tests/test_add_card_note.py:test_refusal_order_p2_a_gone_book_is_409_book_not_found_before_its_fields_are_checked, test_ac3_p0_…)
+- [x] `http/api.py`: `POST /intents/add-card-note`, answering `ids: {cardNoteId}` and exported from `intents/__init__.py`. Then run `npm --prefix frontend run api:gen`. (done: backend/bookvie/http/api.py add_card_note_intent; backend/tests/test_add_card_note.py:test_ac6_p0_add_card_note_meets_the_standard_intent_acs (OpenAPI); schema.d.ts regenerated (check:api))
+- [x] EXPERIENCE.md → Validation messages (other forms): add "Card note panel | Page | Not empty | "Page is required."" (decision above). (done: EXPERIENCE.md → Validation messages (other forms), "Card note panel | Page | Not empty")
+- [x] Update `test_intent_routes.py` and `test_contract.py` (table above). (done: backend/tests/test_intent_routes.py INTENT_ROUTES, backend/tests/test_contract.py)
+- [x] Activate AC-2, AC-3 and AC-6. (done: backend/tests/test_add_card_note.py: test_ac2_p0_…, test_ac3_p0_…, test_ac6_p0_… (no skips))
 
 ### AC-1, AC-4: the panel from the Main book card
-- [ ] A `useAddCardNote` mutation in `api/`, and a `CardNotePanel` component: a modal dialog, an index card 360px wide, with Note (`textarea`), Page, **Save note** and **Cancel**. Field errors come from the 422 `fields`, with `aria-invalid`, `aria-describedby` and the `alert` region. On a 503 the panel stays open with the values kept.
-- [ ] **Add card note** on `MainBookCard`. Prefill Page from the current Reading's page (at least 1). On save, wait for the refetch, close the panel, focus the opener, then announce "Card note saved.".
-- [ ] Activate AC-1 and AC-4.
+- [x] A `useAddCardNote` mutation in `api/`, and a `CardNotePanel` component: a modal dialog, an index card 360px wide, with Note (`textarea`), Page, **Save note** and **Cancel**. Field errors come from the 422 `fields`, with `aria-invalid`, `aria-describedby` and the `alert` region. On a 503 the panel stays open with the values kept. (done: frontend/src/components/CardNotePanel.tsx, frontend/src/api/books.ts useAddCardNote; frontend/e2e/add-card-note.spec.ts:224 [P1] AC-3, :272 [P1] AC-6)
+- [x] **Add card note** on `MainBookCard`. Prefill Page from the current Reading's page (at least 1). On save, wait for the refetch, close the panel, focus the opener, then announce "Card note saved.". (done: frontend/src/components/MainBookCard.tsx, frontend/src/lib/useCardNoteFlow.tsx; frontend/e2e/add-card-note.spec.ts:120 [P0] AC-4)
+- [x] Activate AC-1 and AC-4. (done: frontend/e2e/add-card-note.spec.ts:88 [P0] AC-1, :120 [P0] AC-4 (no skips))
 
 ### AC-5: Book detail
-- [ ] `views/models.py`: `BookDetailView.card_notes` (id, text, pageStart, pageEnd, createdAt) in page order, filled in `views/shelf.py`.
-- [ ] Book detail's right column: the "Card notes (N)" `region` with the first three notes as list items, each with its text and a page ref ("p.42" / "pp.42–45", meta / `ink-tertiary`) below; "No card notes yet." with none.
-- [ ] **Add card note** in Book detail's secondary actions, after the Side read action and before **Edit**. It is always shown. Prefill Page from the current Reading (empty with none).
-- [ ] Activate AC-5.
+- [x] `views/models.py`: `BookDetailView.card_notes` (id, text, pageStart, pageEnd, createdAt) in page order, filled in `views/shelf.py`. (done: backend/bookvie/views/shelf.py book_detail; backend/tests/test_add_card_note.py:test_ac5_book_detail_lists_card_notes_by_page_then_created_at)
+- [x] Book detail's right column: the "Card notes (N)" `region` with the first three notes as list items, each with its text and a page ref ("p.42" / "pp.42–45", meta / `ink-tertiary`) below; "No card notes yet." with none. (done: frontend/src/pages/BookDetailPage.tsx CardNotesBlock; frontend/e2e/add-card-note.spec.ts:156 [P1] AC-5)
+- [x] **Add card note** in Book detail's secondary actions, after the Side read action and before **Edit**. It is always shown. Prefill Page from the current Reading (empty with none). (done: frontend/src/pages/BookDetailPage.tsx; frontend/e2e/book-states.spec.ts and side-reads.spec.ts (action-stack order); frontend/e2e/add-card-note.spec.ts:191, :340)
+- [x] Activate AC-5. (done: frontend/e2e/add-card-note.spec.ts:156 [P1] AC-5 (no skip))
 
 ### Green-phase follow-ups (secondary branches, not separate red leaves)
-- [ ] **AC-1 from Book detail:** **Add card note** is in the action stack before **Edit**. For a Book with no Reading, Page is empty. For a paused Book, it holds the paused page. Focus goes back to that button after a save.
-- [ ] **AC-1, prefill at p.0:** a current Reading at page 0 prefills "1".
-- [ ] **AC-3 in the panel:** Page "400" on a 330-page Book shows "Page must be between 1 and 330." under Page with `aria-invalid="true"` and `aria-describedby`. The same line is in the `alert` region, the panel stays open with both values kept, and nothing is saved. Do the same for an empty Note ("Note is required."). Fixing the value and saving clears the error.
-- [ ] **AC-6 in the panel** (TR9, XUI-E2E-001): a routed 503 on `add-card-note`. "Couldn't save. Your data wasn't changed." is in an `alert` line inside the panel, the panel stays open, Note and Page keep their text, `status` is empty, and the file is byte-identical.
-- [ ] **CRD-E2E-001, one journey:** add a note from Home, open Book detail, and see it in the block with the new count.
-- [ ] **AC-5, count and order after an add:** adding a note on Book detail updates "Card notes (N)". A new note with a lower page moves into the first three.
-- [ ] **AC-5, ties:** two notes with the same `pageStart` are shown in `createdAt` order (assumption above).
-- [ ] **Esc closes the panel** like **Cancel**, with focus back on the opener (Interaction Primitives).
-- [ ] **A delayed response** (XUI-E2E-003): while the request is in flight, **Save note** has `aria-disabled="true"`, and a second press sends nothing.
-- [ ] **A stale tab:** the Book was deleted in another tab, so **Save note** gets 409 `book_not_found`. The message is shown in the panel where focus can reach it.
-- [ ] **Edit book's Pages floor:** a note made here at p.270 refuses lowering Pages below 270 (`pages_below_card_note`, Story 1.11).
-- [ ] **axe** on the open panel and on Book detail's block, in both themes.
+- [x] **AC-1 from Book detail:** **Add card note** is in the action stack before **Edit**. For a Book with no Reading, Page is empty. For a paused Book, it holds the paused page. Focus goes back to that button after a save. (done: frontend/e2e/add-card-note.spec.ts:191 [P1] AC-1 from Book detail (empty Page, refocus), :340 [P1] paused Book prefill 88; book-states.spec.ts (before Edit))
+- [x] **AC-1, prefill at p.0:** a current Reading at page 0 prefills "1". (done: frontend/e2e/add-card-note.spec.ts:319 [P2] Esc leaf (mainAt(0) prefills "1"); frontend/src/lib/cardNotes.test.ts notePrefill)
+- [x] **AC-3 in the panel:** Page "400" on a 330-page Book shows "Page must be between 1 and 330." under Page with `aria-invalid="true"` and `aria-describedby`. The same line is in the `alert` region, the panel stays open with both values kept, and nothing is saved. Do the same for an empty Note ("Note is required."). Fixing the value and saving clears the error. (done: frontend/e2e/add-card-note.spec.ts:224 [P1] AC-3 (Page, Note, both), :427 [P2] fixing a refused field clears aria-invalid and saves)
+- [x] **AC-6 in the panel** (TR9, XUI-E2E-001): a routed 503 on `add-card-note`. "Couldn't save. Your data wasn't changed." is in an `alert` line inside the panel, the panel stays open, Note and Page keep their text, `status` is empty, and the file is byte-identical. (done: frontend/e2e/add-card-note.spec.ts:272 [P1] AC-6 routed 503)
+- [x] **CRD-E2E-001, one journey:** add a note from Home, open Book detail, and see it in the block with the new count. (done: frontend/e2e/add-card-note.spec.ts:369 [P1] a note added on Home shows on Book detail in "Card notes (1)")
+- [x] **AC-5, count and order after an add:** adding a note on Book detail updates "Card notes (N)". A new note with a lower page moves into the first three. (done: frontend/e2e/add-card-note.spec.ts:394 [P1] adding on Book detail updates "Card notes (N)", lower page moves in)
+- [x] **AC-5, ties:** two notes with the same `pageStart` are shown in `createdAt` order (assumption above). (done: backend/tests/test_add_card_note.py:test_ac5_book_detail_lists_card_notes_by_page_then_created_at (the view orders ties by createdAt; the block renders the view order))
+- [x] **Esc closes the panel** like **Cancel**, with focus back on the opener (Interaction Primitives). (done: frontend/e2e/add-card-note.spec.ts:319 [P2] Esc closes the panel like Cancel)
+- [x] **A delayed response** (XUI-E2E-003): while the request is in flight, **Save note** has `aria-disabled="true"`, and a second press sends nothing. (done: frontend/e2e/add-card-note.spec.ts:464 [P2] a second Save note press sends nothing; :272 aria-disabled while held)
+- [x] **A stale tab:** the Book was deleted in another tab, so **Save note** gets 409 `book_not_found`. The message is shown in the panel where focus can reach it. (done: frontend/e2e/add-card-note.spec.ts:493 [P2] stale tab on Home (the message inside the panel, values kept). Book detail's stale tab unmounts the panel with the page: rejected in the 5.1 code review (spec Review Findings → Rejected))
+- [x] **Edit book's Pages floor:** a note made here at p.270 refuses lowering Pages below 270 (`pages_below_card_note`, Story 1.11). (done: backend/tests/test_add_card_note.py:test_r09_p1_a_note_added_through_the_intent_sets_the_pages_floor_for_edit_book)
+- [x] **axe** on the open panel and on Book detail's block, in both themes. (done: frontend/e2e/add-card-note.spec.ts:535 [P2] axe on the open panel and the block, both themes)

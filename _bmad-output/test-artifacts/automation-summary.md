@@ -2,16 +2,15 @@
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03c-aggregate', 'step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
 lastSaved: '2026-11-10'
-storyId: '4.4, 4.5, 4.6, 4.7 (Epic 4 retro item 36)'
+storyId: '5.1'
 inputDocuments:
-  - _bmad-output/implementation-artifacts/epic-4-retro-2026-11-09.md (PL-1, PL-5, PL-7, F-R5, F-R7; action 36)
-  - _bmad-output/implementation-artifacts/spec-4-4-choose-what-to-read-next.md, spec-4-5-mark-any-book-finished-from-its-page.md, spec-4-6-see-each-book-s-state-on-the-shelf-and-its-page.md, spec-4-7-keep-a-few-side-reads.md (Review Triage Logs, residual risks)
-  - _bmad-output/implementation-artifacts/deferred-work.md (the entries "For retro item 36")
-  - _bmad-output/test-artifacts/atdd-checklist-4-4-choose-what-to-read-next.md
+  - _bmad-output/implementation-artifacts/spec-5-1-add-a-card-note-while-reading.md (Boundaries, I/O matrix, Review Triage Log, code review findings)
+  - _bmad-output/implementation-artifacts/epic-5-context.md
+  - _bmad-output/test-artifacts/atdd-checklist-5-1-add-a-card-note-while-reading.md
+  - _bmad-output/test-artifacts/test-design-qa.md (CRD-API-001, CRD-E2E-001, XUI-E2E-001, R-09)
   - _bmad/tea/config.yaml
-  - frontend/src/pages/HomePage.tsx, frontend/src/components/StartDialog.tsx, SpinePopover.tsx, frontend/src/api/views.ts, intents.ts, queryClient.ts
-  - frontend/e2e/side-reads.spec.ts, set-up-next.spec.ts, home-slice.spec.ts, up-next.spec.ts, finish-any-book.spec.ts, book-states.spec.ts, stale-hand-offs.spec.ts
-  - backend/tests/test_reading_state_machine.py, backend/bookvie/intents/edit_book.py, add_book.py
+  - frontend/playwright.config.ts, backend/tests/conftest.py
+  - backend/tests/test_add_card_note.py, test_note_pages.py; frontend/e2e/add-card-note.spec.ts; frontend/src/lib/cardNotes.test.ts, src/api/books.test.ts
   - knowledge/test-levels-framework.md
   - knowledge/test-priorities-matrix.md
   - knowledge/data-factories.md
@@ -23,105 +22,109 @@ inputDocuments:
   - knowledge/playwright-cli.md
 ---
 
-# Automation Summary: Stories 4.4 to 4.7 (Epic 4 retro item 36)
+# Automation Summary: Story 5.1 Add a card note while reading
 
-This file used to hold the Story 4.3 summary, which is in git history (`5e2632d`).
+This file used to hold the summary for Stories 4.4 to 4.7 (Epic 4 retro item 36), which is in git history (`a773997`).
 
-**Execution mode:** BMad-Integrated. Inputs: the four story specs (their Review Triage Logs, including retro item 43's second passes, and residual risks), the Epic 4 retro, the `deferred-work.md` entries addressed to item 36, and 4.4's ATDD checklist. 4.5, 4.6 and 4.7 have no ATDD checklist.
-**Detected stack:** fullstack (`backend/pyproject.toml` + `frontend/playwright.config.ts`).
-**Playwright Utils mandate:** off (`tea_use_playwright_utils: false`).
-**Pact.js Utils mandate:** not applicable (the repo has no contract testing).
-**Subagent execution:** SEQUENTIAL. The targets were small and spread over three files, so they were written inline.
-**Total tests added:** 13 Playwright tests and 2 Hypothesis rules.
-**Browser exploration:** skipped. The specs pin roles and names. Two throwaway probe specs ran: `e2e/zz-probe-f-r5.spec.ts` (F-R5) and `e2e/zz-probe-inflight.spec.ts` (the popover's refetch). Both are deleted.
+## Preflight
 
-## F-R5 probe result: real, and it finishes the wrong Book
-
-Seed: Dune Main at p.100; The Left Hand of Darkness paused at p.120 and a Side read. From Home's On the side pane, start The Left Hand of Darkness at "Which page?" 330 (its last page) while `GET /api/views/home` answers 503.
-
-- `start-reading` commits: The Left Hand of Darkness is Main at p.330, Dune is paused.
-- The home refetch fails. `retry: false`, and a failed background refetch keeps the last data (`views.ts`), so Home still shows Dune as Main.
-- Home opens **"Finished Dune"**, described by The Left Hand of Darkness's line "Page 330 of 330, 100%.".
-- **Done sends `finish-reading` for Dune.** Since 4.5 any Book with an unfinished Reading can be finished, so the server accepts it: Dune's paused Reading is finished at 412 pages, and The Left Hand of Darkness stays Main, unfinished.
-
-The cause is the one F-R5 named: `StartedState` carries no Book id (`StartDialog.tsx:25`), and Home opens Finish for whatever `mainId` the view shows (`HomePage.tsx:165-170`). The finish hand-off just below it compares `handed.id`; this one doesn't. In the probe's first run, the route was removed before Home rendered, and Finish opened for the right Book, so the outcome depends on timing.
+- **Execution mode:** BMad-Integrated. Inputs: the 5.1 spec (with its build and code review logs), the Epic 5 context and the 5.1 ATDD checklist.
+- **Detected stack:** fullstack (`backend/pyproject.toml` + `frontend/playwright.config.ts`). The frameworks are pytest (`backend/tests/conftest.py`) and Playwright, both in place.
+- **Playwright Utils mandate:** off (`tea_use_playwright_utils: false`, and the package isn't installed).
+- **Pact.js Utils mandate:** not applicable (the repo has no contract testing).
+- **Browser automation:** `auto`, so `playwright-cli.md` is loaded.
+- **Knowledge fragments:** the six core fragments, the two traditional Playwright fragments (`fixture-architecture`, `network-first`) and `playwright-cli`.
 
 ## Coverage Plan by Test Level and Priority
 
-Scope: **selective**, aimed at what the retro (F-R7, PL-5) and the reviews deferred to item 36. Most of 4.4's checklist is already proven by the `(ATDD)`, `(automate)` and retro item 43 blocks of `set-up-next.spec.ts` and by `test_set_up_next.py`; those lines are ticked with that evidence, not re-tested.
+**Browser exploration:** skipped. `playwright-cli` isn't installed, and the spec and checklist pin every role and name.
 
-| # | Target | Evidence | Level | Priority |
+**What 5.1 already proves.** The ATDD leaves plus the build and code review follow-ups cover:
+- **API (`test_add_card_note.py`, `test_note_pages.py`):** every Page form and refusal, the stored shape, trimming, TR8, and the view order with a tie.
+- **E2E (`add-card-note.spec.ts`, 10 leaves):**
+  - the panel from both openers and the three prefills (212, 88 and 1, plus empty);
+  - Save on Home and on Book detail;
+  - 422 on Page, on Note and on both;
+  - a routed 503 with Esc and Cancel ignored in flight;
+  - Esc, and the Tab cycle.
+
+**Scope: selective.** The plan covers the checklist's open green-phase follow-ups and two API edges. It adds no duplicate coverage.
+
+| # | Target | Level | Priority | Why |
 |---|---|---|---|---|
-| T1 | **F-R5:** a last-page start whose home refetch fails never opens Finish for another Book. | The probe above. | E2E | P0 |
-| T2 | **"Which page?" and `reachedLastPage` from every other route:** Book detail, the Catalog spine popover, Home's Up next pane, the empty card's suggestion, a Waiting row. Each: the field is focused and prefilled, and a last-page start opens "Finished *X*" on Home for that Book. | F-R7; 4.7 residual risk. Only the On the side pane (`side-reads.spec.ts:494`) and Home's slice (`home-slice.spec.ts`, not repeated) are covered. Book detail and Catalog navigate to a remounted Home. | E2E | P1 |
-| T3 | **The last-page hand-off is used once:** after Cancel, a reload, Back then Forward don't reopen Finish. | `deferred-work.md` (`lastPageOpened`, `clearHandOffState` untested). | E2E | P1 |
-| T4 | **AC-2 in the browser:** a stale tab presses Set as Up next for the current Up next; 200, the `status` line, and nothing written. | 4.4 checklist l.366; deferred entry. | E2E | P1 |
-| T5 | **Property test gains `edit-book` and `add-book`** (RDG-UNIT-002): pages floors, a Finished on back-fill that takes a Book out of the Side reads, and a new Book joining the slots. | F-R7 ("fix now (action 36)"). | Unit/API | P1 |
-| T6 | **The spine popover's in-flight state** for Set as Up next: the hint frozen, `aria-disabled` with its reason, a second press sends nothing. | Deferred from 4.4's second review. | E2E | P2 |
-| T7 | **Refetch on focus (AD-7) for set-up-next:** a set-up-next in another context shows in Home's panes and on Book detail after focus, with no warning. | 4.4 checklist l.367; deferred entry. | E2E | P2 |
-| T8 | **Tick 4.4's ATDD checklist** (22 open lines) against the tests above and the existing ones. | PL-7. | n/a | n/a |
+| 1 | CRD-E2E-001 as one journey: add from Home, then open Book detail and see the note in "Card notes (1)" with its ref | E2E | P1 | Flow 6, end to end; the checklist's one-journey follow-up |
+| 2 | Adding on Book detail updates "Card notes (N)", and a lower page moves into the first three | E2E | P1 | AC-5 after a write: the view refetch drives the block |
+| 3 | R-09: a note added at p.270 makes `edit-book` refuse Pages 260 with `pages_below_card_note` | API | P1 | Closes R-09 with a note the app wrote, not a seeded one |
+| 4 | A gone Book with bad fields gets 409 `book_not_found`, not 422 | API | P2 | Pins the refusal order (the Book is checked first) |
+| 5 | Wrong JSON types (`page` as the integer 42, `text` null, an unknown key) get 422 on `intent`, and nothing is written | API | P2 | `page` is a string by contract; strict parsing |
+| 6 | Fixing a refused field and saving again clears `aria-invalid` and saves | E2E | P2 | AC-3 follow-up: the error is not sticky |
+| 7 | A second Save note press while the save is out sends nothing | E2E | P2 | XUI-E2E-003 follow-up |
+| 8 | Stale tab on Home: the Main book is deleted elsewhere, so Save gets 409, the message shows inside the panel, and both values are kept | E2E | P2 | Checklist stale-tab follow-up; the panel survives the emptied card |
+| 9 | axe on the open panel and on Book detail's block, light and dark | E2E | P2 | Checklist a11y follow-up, modeled on `book-detail.spec.ts:529` |
 
-**Not selected:**
-- **The shared e2e helpers** (`watchStatus`, `routeCouldntSave`, …, copied across five specs). Deferred in `deferred-work.md` as wider than one story; a move now would churn five specs inside a test-only item.
-- **4.5 and 4.6 beyond what their reviews added.** 4.5's matrix rows are in `test_finish_any_book.py` and `finish-any-book.spec.ts` (plus item 43's stale-finish leaf); 4.6's Book states table is a parameterized leaf per row in `book-states.spec.ts`, with forced colors. Nothing in their logs is left for item 36.
-- **Safari and Firefox.** Only Chromium is installed.
+## Execution
 
-**Decision (Oleg, 2026-11-10):** fix F-R5 now through `bmad-build`, and run T1–T8 as planned.
+- **Mode:** `tea_execution_mode: auto` with the capability probe on. Subagents are supported, agent teams aren't, so the mode resolved to **subagent**.
+- **Workers:**
+  - **3A (API):** zero tests. The repo has no Playwright API layer, since API tests run in pytest through `TestClient`.
+  - **3B-backend:** rows 3 to 5.
+  - **3B-e2e:** rows 1, 2 and 6 to 9.
+- **Fixtures:** none needed. Both workers reuse the spec's helpers and `tests/helpers.py`.
 
 ## Tests Added
 
-**T1, the F-R5 fix** (commit `295e74d`, spec `spec-epic-4-retro-item-36-last-page-finish-for-the-started-book.md`):
-- `frontend/e2e/side-reads.spec.ts`, "[P0] F-R5 a last-page start whose home refetch fails opens Finish only for the started Book, once Home shows it". It fails on the old code at the "no Finish dialog" line, and passed 30 of 30 at `--workers=6`.
+**API** (`backend/tests/test_add_card_note.py`): 3 tests, 5 cases.
+- `[P1]` `test_r09_p1_a_note_added_through_the_intent_sets_the_pages_floor_for_edit_book`: a note added at "p.270" makes Pages 260 fail with 409 `pages_below_card_note`, bytes unchanged. Pages 270 saves.
+- `[P2]` `test_refusal_order_p2_a_gone_book_is_409_book_not_found_before_its_fields_are_checked`
+- `[P2]` `test_strict_parsing_p2_wrong_json_types_are_422_on_intent_and_save_nothing`, parametrized: `page` 42, `text` null, an unknown key.
 
-**T2 and T3**, a new block in `frontend/e2e/side-reads.spec.ts`, "Epic 4 retro item 36: "Which page?" and the last page from every route":
-- One leaf per route: Book detail, the Catalog's spine popover, Home's Up next pane, the empty Main book card's suggestion, and a Waiting for you row. Each checks that "Which page?" is focused and prefilled with the paused page. A start at p.330 lands on `/`, opens "Finished The Left Hand of Darkness" described "Page 330 of 330, 100%.", makes it Main and takes it off the side.
-- "[P1] a last-page start opens Finish once: a reload, Back and Forward never reopen it". Finish is cancelled first, and the Reading stays unfinished throughout.
+**E2E** (`frontend/e2e/add-card-note.spec.ts`): 6 tests.
+- `[P1]` A note added on Home shows on that Book's detail in "Card notes (1)" with its page ref (CRD-E2E-001).
+- `[P1]` Adding on Book detail updates "Card notes (N)", and a lower page moves into the first three.
+- `[P2]` Fixing a refused field and saving again clears its `aria-invalid`, and the next save goes through.
+- `[P2]` A second Save note press while the save is out sends nothing (XUI-E2E-003).
+- `[P2]` Stale tab: Save on Home after the Main book was deleted elsewhere shows the 409 inside the panel, with the values kept.
+- `[P2]` The open panel and Book detail's block pass axe in both themes.
 
-**T4, T6, T7 and two more 4.4 checklist lines**, a new block in `frontend/e2e/set-up-next.spec.ts`, "Epic 4 retro item 36: Set as Up next, automate":
-- **`:555` AC-2 in the browser:** a stale tab presses Set as Up next for the current Up next. It gets a 200, "Fahrenheit 451 is Up next.", focus on Start reading, and identical bytes.
-- **`:583` the popover in flight, with no earlier Up next:** the answer is held after the server commits, and a refetch shows the Book as Up next. Throughout, the button stays `aria-disabled`, it is described only by "Setting the book as Up next.", no hint appears, and a forced second press sends nothing.
-- **`:629` the same with an Up next:** the hint shown at the press stays, beside the busy reason.
-- **`:664` AC-4 on Home:** a displaced paused Up next joins Waiting for you in `pausedAt` order. A displaced never-started one is in neither pane.
-- **`:694` AC-8:** a finished Book set as Up next shows Start reading in the pane, and "Start Fahrenheit 451?" has an empty Purpose.
-- **`:720` refetch on focus (AD-7):** two contexts. The other context's Home moves the Book from Waiting for you to Up next, and its Book detail drops Set as Up next, with no alert or dialog.
+**Totals:** 9 tests (3 P1, 6 P2). With the spec's earlier leaves, `add-card-note.spec.ts` has 15 tests and `test_add_card_note.py` has 7.
 
-**T5**, `backend/tests/test_reading_state_machine.py` (RDG-UNIT-002):
-- An `add` rule (up to two Books, maybe with a Finished on).
-- An `edit_details` rule (`edit-book` with the panel prefilled: a new Pages, and maybe a new Finished on).
-- The model predicts each refusal (`book_not_found`; `invalid_fields` for a future date, a date before the latest finished Reading's start, or a new date after the current Reading's start; `pages_below_current_page`) and the exact change: only Pages and the latest finished date, or an appended back-fill. A back-fill on a Book with no Readings leaves the Side reads, and no pointer moves.
-- The page ledger follows each back-fill. Slots 5 and 6 name the added Books.
-- A 2,000-example run reached every outcome: `add` accepted 1,805 times and refused 43 times; `edit_details` accepted 1,669 times, with 452 `invalid_fields`, 88 `pages_below_current_page` and 1,448 `book_not_found`. Nothing failed, which agrees with the retro reviewer's own fuzz.
+## Defect Found and Fixed
+
+**The stale-tab leaf found a real bug.** The panel lost its typed values and its alert line when a refetch emptied the Main book card.
+- **Cause:** the code review's patch rendered `{cardNotePanel}` inside each branch of `MainBookCard`. Its position differed between the branches, so React remounted the panel when the card flipped to "No Main book.".
+- **Fix:** `frontend/src/components/MainBookCard.tsx` now renders the card and the panel as siblings in a fragment, which puts the panel at the same place in both branches.
+- **Proof:** the leaf fails against the committed component and passes with the fix.
+
+**Two test-side corrections:**
+- The second-press leaf uses `click({ force: true })`, because Playwright waits on `aria-disabled`, as in `set-up-next.spec.ts:345`.
+- The stale-tab leaf seeds a second Book. Deleting the only Book empties the library, and Home then shows the empty-shelf page with no Main book card.
 
 ## Files Created/Updated
 
-- `frontend/src/components/StartDialog.tsx`, `frontend/src/pages/HomePage.tsx`: the F-R5 fix (commit `295e74d`).
-- `frontend/e2e/side-reads.spec.ts`: the F-R5 leaf (in `295e74d`) and the every-route block.
-- `frontend/e2e/set-up-next.spec.ts`: the item 36 block.
-- `backend/tests/test_reading_state_machine.py`: `add-book` and `edit-book` rules, and the docstring.
-- `_bmad-output/test-artifacts/atdd-checklist-4-4-choose-what-to-read-next.md`: 22 lines ticked.
-- `_bmad-output/implementation-artifacts/deferred-work.md`: `resolved:` lines on the four item 36 entries.
-- `_bmad-output/implementation-artifacts/sprint-status.yaml`: item 36 `done`.
+- `backend/tests/test_add_card_note.py`: 3 tests, plus imports and an `_edit` helper.
+- `frontend/e2e/add-card-note.spec.ts`: 6 tests, plus imports (`AxeBuilder`, `DELETE_BOOK`, `settled`) and the `BOOK_GONE` and `AXE_TAGS` constants.
+- `frontend/src/components/MainBookCard.tsx`: the fix above.
+- `_bmad-output/test-artifacts/atdd-checklist-5-1-add-a-card-note-while-reading.md`: every line resolved.
 
 ## Validation
 
-- `npm run check:py`: 1167 passed (the state machine is still 2 tests), and ruff is clean. Coverage gates: domain 100%, intents+store 97.95%.
-- `npm run check:api`: 237 passed, with Prettier, oxlint, `tsc -b` and the schema check clean.
-- `npm --prefix frontend run e2e`: 416 passed, up from 404 (12 new; the F-R5 leaf was already in the 404).
-- **Burn-in:** the 12 new e2e tests passed `--repeat-each=10 --retries=0 --workers=4`, 120 of 120. The F-R5 leaf passed 30 of 30 at `--workers=6`.
-- **Mutation check:** with `showHint` reduced to `hasUpNext` (no `hintAtPress`), `:583` fails at its criterion line, the accessible description. The source was restored from a scratchpad backup, and `git status` showed it clean.
-- No CLI browser sessions were opened.
+- `npm run check` exits 0, with 1,279 backend tests and 431 e2e tests passing.
+- Burn-in: `add-card-note.spec.ts` with `--repeat-each=3` gives 45 of 45.
+- **Test quality:** there are no skips, `only` or hard waits, and each title carries one `[P#]` tag. Network-first: the routes are registered before the triggering click, and the held route is released after the assertions.
+- No browser sessions were opened (`playwright-cli` isn't installed). The worker temp files are in `/tmp/tea-automate-*-2026-11-10T14-27-28-351Z.json`.
 
 ## ATDD Checklist
 
-`atdd-checklist-4-4-choose-what-to-read-next.md`: 22 of 22 open lines ticked, with evidence (test file and line, or test name). Remaining `[ ]` count: **0**. 4.5, 4.6 and 4.7 have no checklist.
+All 31 open lines of `atdd-checklist-5-1-add-a-card-note-while-reading.md` are ticked, each with its evidence. `grep -cF '[ ]'` now gives **0**.
+
+The Book-detail half of the stale-tab line is recorded as rejected in the 5.1 code review: the panel unmounts with the not-found page, and the Book is gone.
 
 ## Assumptions and Risks
 
-- **A focus refetch in e2e needs a bubbling `visibilitychange`.** TanStack's listener is on `window`. A non-bubbling event on `document` refetched nothing, and an early F-R5 run passed only by accident. In the popover leaves, even a bubbling event sometimes didn't show the new state in time, about half the runs at `--workers=4`; a probe showed the refetch does go out. So those leaves send the event again until the spine reads ", Up next" (`expect(...).toPass()`), which waits on a condition, not the clock.
-- **The window that `hintAtPress` guards is forced by holding the intent's answer after the server commits** (`route.fetch()`, then a held `route.fulfill`). In the app, that window is the time between the refetch rendering and the flow handling the result.
-- **The AC-8 Side-read line is ticked from a seeded state** (`side-reads.spec.ts:306`) plus the API proof that `set-up-next` keeps `sideReadBookIds` (`test_ac8_p1_…`), not from a press in the browser.
-- **The F-R5 review deferred one finding:** the page field's last-page save (`openFinish`) has the same wrong-Book shape (`deferred-work.md`).
+- **Book detail stale tab:** a 409 unmounts the panel along with the page. This was rejected in the code review as rare, since the note can't be kept for a deleted Book.
+- **Last Book deleted elsewhere:** the panel also unmounts when Home switches to its empty-shelf page. That is the same class of rare stale-tab case, and the alert is still announced.
+- **The axe leaf** covers the block with seeded notes only, not the empty "No card notes yet." state. The empty state is plain text inside the same section.
 
 ## Next Recommended Workflow
 
-Item 37: the Epic 4 trace and gate (`bmad-testarch-trace`) against TR7. Then item 38 (spine reconciliation) and item 41 (BookDetailPage hooks) before Epic 5.
+5.1's pipeline is complete (ATDD, build, code review, automate). Next is Story 5.2 (`bmad-testarch-atdd`), which is not the end of an epic.

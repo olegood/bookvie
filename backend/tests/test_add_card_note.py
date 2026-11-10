@@ -20,15 +20,21 @@ in the browser (``frontend/e2e/add-card-note.spec.ts``).
 
 import json
 from pathlib import Path
+from typing import Any
 
+import pytest
 from fastapi.testclient import TestClient
 
 from bookvie.domain.clock import FakeClock
 from bookvie.http.app import create_app
+from bookvie.intents.intent_model import MALFORMED_INTENT_MESSAGE
 from tests.builder import LibraryBuilder
 from tests.helpers import (
     ADD_CARD_NOTE,
     COULDNT_SAVE_BODY,
+    DUNE,
+    DUNE_FORM,
+    EDIT_BOOK,
     TODAY,
     FaultyFs,
     api_client,
@@ -51,6 +57,12 @@ def _fields(response) -> dict[str, str]:
     """The refused fields' messages by field; empty when the body has none."""
     fields = response.json().get("error", {}).get("fields") or []
     return {f["field"]: f["message"] for f in fields}
+
+
+def _edit(client: TestClient, book_id: str, form: dict[str, Any], **changes: Any):
+    """``edit-book`` for ``book_id``: the prefilled ``form`` with ``changes``."""
+    intent = {"bookId": book_id, **form, **changes}
+    return client.post(EDIT_BOOK, files={"intent": (None, json.dumps(intent), "application/json")})
 
 
 def _left_hand(builder: LibraryBuilder) -> str:
@@ -254,3 +266,83 @@ def test_ac6_p0_add_card_note_meets_the_standard_intent_acs(tmp_path: Path) -> N
         ref = responses[status]["content"]["application/json"]["schema"]["$ref"]
         assert ref == "#/components/schemas/ErrorResponse"
     assert "413" not in responses
+
+
+# --- R-09: a note the app wrote becomes edit-book's Pages floor ---------------------
+
+
+def test_r09_p1_a_note_added_through_the_intent_sets_the_pages_floor_for_edit_book(
+    tmp_path: Path,
+) -> None:
+    builder = LibraryBuilder()
+    dune = builder.book(**DUNE)
+    builder.write(tmp_path)
+    client = api_client(tmp_path)
+
+    # The note is written by add-card-note itself, not seeded.
+    assert _add_card_note(client, dune, "The spice must flow.", "p.270").status_code == 200
+    before = library_bytes(tmp_path)
+
+    lowered = _edit(client, dune, DUNE_FORM, pages="260")
+
+    assert lowered.status_code == 409
+    assert lowered.json()["error"]["code"] == "pages_below_card_note"
+    assert _fields(lowered) == {"pages": "Pages can't be less than 270, where a card note is."}
+    assert library_bytes(tmp_path) == before
+
+    # Pages equal to the note's page is the floor itself, and saves.
+    assert _edit(client, dune, DUNE_FORM, pages="270").status_code == 200
+    saved = stored_book(tmp_path, dune)
+    assert saved["pages"] == 270
+    assert [(n["text"], n["pageStart"]) for n in saved["cardNotes"]] == [
+        ("The spice must flow.", 270)
+    ]
+    assert_invariants(tmp_path)
+
+
+# --- Refusal order and strict parsing -----------------------------------------------
+
+
+def test_refusal_order_p2_a_gone_book_is_409_book_not_found_before_its_fields_are_checked(
+    tmp_path: Path,
+) -> None:
+    builder = LibraryBuilder()
+    _left_hand(builder)
+    builder.write(tmp_path)
+    before = library_bytes(tmp_path)
+
+    # An empty Note and a Page past any Book: the Book is checked first.
+    response = _add_card_note(api_client(tmp_path), GONE_ID, "", "400")
+
+    assert response.status_code == 409
+    error = response.json()["error"]
+    assert (error["kind"], error["code"]) == ("refusal", "book_not_found")
+    assert _fields(response) == {}
+    assert library_bytes(tmp_path) == before
+
+
+WRONG_TYPES = [
+    ("page as an integer", {"page": 42}),
+    ("text as null", {"text": None}),
+    ("an unknown key", {"pageEnd": "45"}),
+]
+
+
+@pytest.mark.parametrize(("case", "change"), WRONG_TYPES, ids=[c for c, _ in WRONG_TYPES])
+def test_strict_parsing_p2_wrong_json_types_are_422_on_intent_and_save_nothing(
+    tmp_path: Path, case: str, change: dict[str, Any]
+) -> None:
+    builder = LibraryBuilder()
+    left_hand = _left_hand(builder)
+    builder.write(tmp_path)
+    before = library_bytes(tmp_path)
+    intent = json.dumps({"bookId": left_hand, "text": "Ice.", "page": "42", **change})
+
+    response = api_client(tmp_path).post(
+        ADD_CARD_NOTE, files={"intent": (None, intent, "application/json")}
+    )
+
+    assert response.status_code == 422, case
+    assert response.json()["error"]["code"] == "invalid_fields", case
+    assert _fields(response) == {"intent": MALFORMED_INTENT_MESSAGE}, case
+    assert library_bytes(tmp_path) == before, case
