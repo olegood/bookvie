@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-29-2026 17:21
-last_updated: 11-10-2026 21:59
+last_updated: 11-10-2026 23:28
 project: bookvie
 project_key: NOKEY
 tracking_system: file-system
@@ -83,7 +83,7 @@ development_status:
   5-2-edit-or-delete-a-card-note: done
   5-3-find-a-note-across-all-my-books: done
   5-4-go-through-a-book-s-notes-as-a-pile: done
-  epic-5-retrospective: optional
+  epic-5-retrospective: done
 
   epic-6: backlog
   6-1-see-when-this-book-will-be-finished: backlog
@@ -447,3 +447,88 @@ action_items:
     owner: "Amelia (Dev)"
     status: done
     ref: "_bmad-output/implementation-artifacts/epic-4-retro-2026-11-09.md"
+  - id: "epic-5-retro-item-44-reconcile-the-spine-with-epic-5-and-add"
+    epic: 5
+    action: "Reconcile the spine with Epic 5 and add a `resolved:` line to each entry
+      it closes: Structural Seed, FR-17 to FR-19 row, AD-6, AD-18 (`deferred-work.md:602`);
+      IDs convention and AD-9, naming only the agent skills as `cardNoteId`'s reader
+      (`:617`, `:619`); AD-9 `card_note_not_found` and the unchanged-edit commit,
+      AD-19 Targeting, Seed `intents/` and `lib/` (`:624`, `:630`, one item); AD-6
+      `card-notes` view and `cardNoteCount`, AD-9 404 on `views/card-notes`, Seed
+      `views/` and `lib/` (`:636`). Changes: `ARCHITECTURE-SPINE.md`, `deferred-work.md`.
+      Due: before Epic 6. (F-S1)"
+    owner: "Winston (Architect), applied by Oleg"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-5-retro-2026-11-10.md"
+  - id: "epic-5-retro-item-45-update-the-ux-docs-to-match-story-5-4-s"
+    epic: 5
+    action: "Update the UX docs to match Story 5.4's decisions, and close `deferred-work.md:651`.
+      EXPERIENCE.md → Pile (l.261): the pile uses its own `status`, empty on open,
+      and the announcement has no final period. The Focus after close row (l.397)
+      gets the Card notes page's fallback to the group's \"Go through as a pile\"\
+      , then the `h1`. DESIGN.md → Pile shows the page ref under the note text. Changes:
+      `_bmad-output/planning-artifacts/ux-designs/ux-bookvie-2026-10-28/EXPERIENCE.md`,
+      `…/DESIGN.md`, `deferred-work.md`. Due: before Epic 6. (F-A4)"
+    owner: "Sally (UX), applied by Oleg"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-5-retro-2026-11-10.md"
+  - id: "epic-5-retro-item-46-make-build-auto-end-at-in-review-for-a-s"
+    epic: 5
+    action: "Make build-auto end at `in-review` for a standalone spec that declares
+      the story pipeline, not only when `story_key` is set, and keep the spec's \"\
+      Pipeline\" note in its rewrite. Close `deferred-work.md:656`. Changes: `_bmad/custom/bmad-build-auto.toml`,
+      `deferred-work.md`. Due: before Epic 6. (PL-2)"
+    owner: "Oleg / bmad config"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-5-retro-2026-11-10.md"
+  - id: "epic-5-retro-item-47-run-every-story-s-bmad-code-review-in-a"
+    epic: 5
+    action: "Run every story's `bmad-code-review` in a new session, not the build's,
+      so it rechecks probes instead of reusing them. When `bmad-build` is invoked
+      for a story, flag that the pipeline uses `bmad-build-auto`. Changes: `AGENTS.md`
+      (\"Story pipeline\"), `_bmad/custom/bmad-build.toml`. Due: before story 6.1.
+      (PL-3, PL-4)"
+    owner: "Oleg / bmad config"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-5-retro-2026-11-10.md"
+  - id: "epic-5-retro-item-48-extract-the-card-note-list-item-text-wit"
+    epic: 5
+    action: "Extract the Card note list item (text with `MarkedText`, the page-ref
+      chip, **Edit**) and its CSS into one shared component, used by the Card notes
+      page's `Group` and Book detail's `CardNotesBlock`; move `CardNotesBlock` out
+      of `BookDetailPage.tsx`. Changes: `frontend/src/components/CardNoteItem.tsx`
+      (new), `frontend/src/pages/CardNotesPage.tsx`, `frontend/src/pages/BookDetailPage.tsx`,
+      both pages' `.module.css`. Due: before story 6.1. (F-A1, F-A2)"
+    owner: "Amelia (Dev)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-5-retro-2026-11-10.md"
+  - id: "epic-5-retro-item-49-harden-the-card-note-invariants-so-a-res"
+    epic: 5
+    action: "Harden the Card note invariants so a restore refuses what no intent can
+      produce: `pageEnd` equal to `pageStart`, empty or whitespace-only or untrimmed
+      `text`, and a note id repeated anywhere in the library (make `unique_card_note_ids`
+      library-wide). Add restore-refusal tests. Changes: `backend/bookvie/domain/invariants.py`,
+      `backend/tests/test_invariants.py`, `backend/tests/test_restore.py`. Due: before
+      Epic 6. (E5-R1, E5-R2)"
+    owner: "Amelia (Dev)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-5-retro-2026-11-10.md"
+  - id: "epic-5-retro-item-50-run-the-epic-5-trace-and-gate-against-tr"
+    epic: 5
+    action: "Run the Epic 5 trace and gate against TR7 (P0 100%, P1 ≥ 95%, every error
+      code including `card_note_not_found` has an API test) and confirm CRD-API-001
+      and the BKP-API-001 full-data re-run row by row. Changes: `_bmad-output/test-artifacts/traceability/epic-5-traceability-matrix.md`,
+      `…/epic-5-gate-decision.json`. Due: before Epic 6. (Gate)"
+    owner: "Murat (TEA)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-5-retro-2026-11-10.md"
+  - id: "epic-5-retro-item-51-record-the-waiting-for-you-spec-ts-p1-ac"
+    epic: 5
+    action: "Record the `waiting-for-you.spec.ts` \"[P1] AC-6 Cancel on a row's Start
+      dialog\" flake in `deferred-work.md`, burn it in (`--repeat-each` on that spec),
+      then fix the cause or close the entry with the run as evidence. Changes: `_bmad-output/implementation-artifacts/deferred-work.md`,
+      `frontend/e2e/waiting-for-you.spec.ts`. Due: before the Epic 5 trace (action
+      50). (PL-6)"
+    owner: "Murat (TEA)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-5-retro-2026-11-10.md"
