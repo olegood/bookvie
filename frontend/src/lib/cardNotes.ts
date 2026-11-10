@@ -1,6 +1,8 @@
 // Card notes (EXPERIENCE.md → Card note panel, Book detail's Card notes
 // block): the client's copy and the page refs. Only the server parses Page.
 
+import type { BookCardNote } from '../api/index.ts'
+
 /** The `status` line once a note is saved. */
 export const CARD_NOTE_SAVED = 'Card note saved.'
 
@@ -128,3 +130,49 @@ export function scopeChipRemoveName(title: string): string {
 export function cardNotesPath(bookId?: string): string {
   return bookId === undefined ? '/card-notes' : `/card-notes?${new URLSearchParams({ book: bookId })}`
 }
+
+// The pile (Story 5.4; EXPERIENCE.md → Pile): one Book's notes, one at a
+// time. Order and shuffle are the client's (AD-6).
+
+/** A note as the pile reads it. */
+type PileNote = Pick<BookCardNote, 'id' | 'text' | 'pageStart' | 'pageEnd'>
+
+/** A page-ref chip's name: "Open p.42 in the pile", "Open pp.42–45 in the pile". */
+export function openInPileName(start: number, end: number | null): string {
+  return `Open ${pageRef(start, end)} in the pile`
+}
+
+/** The pile's place: "2 of 4". `n` counts from 1. */
+export function pilePosition(n: number, m: number): string {
+  return `${n} of ${m}`
+}
+
+/** The pile's live region after a move: "Note 2 of 4, pp.42–45: <text>", no period added. */
+export function pileAnnouncement(n: number, m: number, note: PileNote): string {
+  return `Note ${pilePosition(n, m)}, ${pageRef(note.pageStart, note.pageEnd)}: ${note.text}`
+}
+
+/** A Fisher–Yates shuffle of a copy; `random` returns [0, 1) like `Math.random`. The input is untouched. */
+export function shuffled<T>(notes: readonly T[], random: () => number = Math.random): T[] {
+  const copy = [...notes]
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1))
+    ;[copy[i], copy[j]] = [copy[j] as T, copy[i] as T]
+  }
+  return copy
+}
+
+/** Where the pile opens: the note's index in `notes`, else 0 (no id, or an id not there). */
+export function pileStart(notes: readonly { id: string }[], noteId?: string): number {
+  if (noteId === undefined) return 0
+  return Math.max(
+    0,
+    notes.findIndex((note) => note.id === noteId),
+  )
+}
+
+/** Why Previous is `aria-disabled` at the first note. */
+export const PILE_AT_FIRST = 'This is the first note.'
+
+/** Why Next is `aria-disabled` at the last note. */
+export const PILE_AT_LAST = 'This is the last note.'

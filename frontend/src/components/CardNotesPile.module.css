@@ -1,0 +1,178 @@
+/* DESIGN.md → Pile: a modal on `page` with the dialog radius and shadow, over
+   the scrim. Close at the top right; one `card-note` in `pile-text` with a
+   faint stacked edge; Previous · "N of M" · Next; the Order segmented control. */
+.pile {
+  box-sizing: border-box;
+  width: 560px;
+  max-width: calc(100vw - 2 * var(--space-6));
+  margin: auto;
+  padding: var(--space-6);
+  border: var(--hairline) solid var(--color-line);
+  border-radius: var(--radius-lg);
+  background: var(--color-page);
+  color: var(--color-ink);
+  box-shadow: var(--shadow-overlay);
+}
+
+.pile::backdrop {
+  background: var(--color-scrim);
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+
+.heading {
+  margin: 0;
+  font-family: var(--font-panel-heading-family);
+  font-size: var(--font-panel-heading-size);
+  font-weight: var(--font-panel-heading-weight);
+  line-height: var(--font-panel-heading-line-height);
+  overflow-wrap: anywhere;
+}
+
+.title {
+  font-family: var(--font-book-title-sm-family);
+}
+
+/* The note as a `card-note`, with two 1px `line` offsets behind it for the stacked edge. */
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0 8px 8px 0;
+  padding: var(--space-5) var(--space-6);
+  border: var(--hairline) solid var(--color-line);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow:
+    4px 4px 0 calc(var(--hairline) * -1) var(--color-page),
+    4px 4px 0 0 var(--color-line),
+    8px 8px 0 calc(var(--hairline) * -1) var(--color-page),
+    8px 8px 0 0 var(--color-line);
+}
+
+.text {
+  margin: 0;
+  font-family: var(--font-pile-text-family);
+  font-size: var(--font-pile-text-size);
+  font-weight: var(--font-pile-text-weight);
+  line-height: var(--font-pile-text-line-height);
+  color: var(--color-ink);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.ref {
+  margin: 0;
+  font-family: var(--font-meta-family);
+  font-size: var(--font-meta-size);
+  font-weight: var(--font-meta-weight);
+  line-height: var(--font-meta-line-height);
+  color: var(--color-ink-tertiary);
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  margin-top: var(--space-5);
+}
+
+/* An end keeps its shape, with `ink-tertiary` text. */
+.step[aria-disabled='true'] {
+  color: var(--color-ink-tertiary);
+}
+
+.position {
+  min-width: 4em;
+  font-family: var(--font-body-sm-family);
+  font-size: var(--font-body-sm-size);
+  line-height: var(--font-body-sm-line-height);
+  color: var(--color-ink-secondary);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.order {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.orderLabel {
+  font-family: var(--font-meta-family);
+  font-size: var(--font-meta-size);
+  line-height: var(--font-meta-line-height);
+  color: var(--color-ink-secondary);
+}
+
+/* The segmented control: ViewToggle's look, on native radios. */
+.segments {
+  display: inline-flex;
+  overflow: hidden;
+  border: var(--hairline) solid var(--color-input-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.segment {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-1) var(--space-3);
+  border-bottom: var(--indicator-width) solid transparent;
+  color: var(--color-ink-secondary);
+  font-family: var(--font-nav-family);
+  font-size: var(--font-body-sm-size);
+  line-height: var(--font-body-sm-line-height);
+  cursor: pointer;
+}
+
+/* The radio covers its label, unseen, so a press anywhere on the option picks it. */
+.segment input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.segment + .segment {
+  border-left: var(--hairline) solid var(--color-line);
+}
+
+.segment:has(:checked) {
+  border-bottom-color: var(--color-accent);
+  background: var(--color-accent-soft);
+  color: var(--color-ink);
+  font-weight: var(--font-nav-active-weight);
+}
+
+.segment:has(:focus-visible) {
+  outline: var(--focus-ring-width) solid var(--color-accent);
+  outline-offset: calc(var(--focus-ring-width) * -1);
+}
+
+@media (forced-colors: active) {
+  .segment:has(:checked) {
+    border-bottom-color: Highlight;
+  }
+
+  .segment:has(:focus-visible) {
+    outline-color: Highlight;
+  }
+
+  .step[aria-disabled='true'] {
+    color: GrayText;
+  }
+}

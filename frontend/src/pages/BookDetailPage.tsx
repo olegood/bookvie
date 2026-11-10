@@ -37,6 +37,7 @@ import {
   noteMatches,
   notePrefill,
   notesMatchCopy,
+  openInPileName,
   pageRef,
   SEARCH_CARD_NOTES,
 } from '../lib/cardNotes.ts'
@@ -51,6 +52,7 @@ import { useDeleteFlow, type DeleteBook } from '../lib/useDeleteFlow.tsx'
 import { useDetailPause } from '../lib/useDetailPause.ts'
 import { useDetailSetUpNext } from '../lib/useDetailSetUpNext.ts'
 import { useDetailSideRead } from '../lib/useDetailSideRead.ts'
+import { usePileFlow } from '../lib/usePileFlow.tsx'
 import { PAUSING } from '../lib/usePauseFlow.tsx'
 import { useSearchCount } from '../lib/useSearchCount.ts'
 import { useStartFlow } from '../lib/useStartFlow.tsx'
@@ -125,11 +127,13 @@ function blockNotes(notes: readonly BookCardNote[], query: string): readonly Boo
  * Search card notes field under the heading, then the first three notes in
  * page order as cards (every matching note, matches in `<mark>`, while the
  * field holds text; "No card notes contain “…”." when none match), each its
- * text, then its page ref below in `meta` / `ink-tertiary`, then its
- * **Edit** (named "Edit p.96", so it never matches the Book's own Edit);
- * then the link "See all card notes" to the scoped Card notes page. With
- * none, "No card notes yet." and no field or link. The heading takes focus
- * (`tabIndex={-1}`) when a note's Edit is gone after a save or delete.
+ * text (clamped to 6 lines while the search is empty, so a match is never
+ * hidden), then its page ref below as a `chip` button ("Open p.96 in the
+ * pile"), then its **Edit** (named "Edit p.96", so it never matches the
+ * Book's own Edit); then "Go through as a pile" and the link "See all card
+ * notes" to the scoped Card notes page. With none, "No card notes yet." and
+ * no field or link. The heading takes focus (`tabIndex={-1}`) when a note's
+ * Edit is gone after a save or delete.
  */
 function CardNotesBlock({
   bookId,
@@ -140,6 +144,8 @@ function CardNotesBlock({
   heading,
   editButton,
   onEdit,
+  pileOpener,
+  onOpenPile,
 }: {
   bookId: string
   notes: readonly BookCardNote[]
@@ -149,6 +155,9 @@ function CardNotesBlock({
   heading: RefObject<HTMLHeadingElement | null>
   editButton: (noteId: string) => RefCallback<HTMLButtonElement>
   onEdit: (note: BookCardNote) => void
+  pileOpener: RefObject<HTMLButtonElement | null>
+  /** Opens the pile at that note, else at the first. */
+  onOpenPile: (noteId?: string) => void
 }) {
   const headingId = useId()
   return (
@@ -166,13 +175,20 @@ function CardNotesBlock({
           {shown.length === 0 ? (
             <p className={styles.none}>{noNotesMatchCopy(query)}</p>
           ) : (
-            <ul className={styles.cardNotes} role="list">
+            <ul className={styles.cardNotes} role="list" data-clamped={query.trim() === '' ? 'true' : undefined}>
               {shown.map((note) => (
                 <li key={note.id} className={styles.cardNote}>
                   <p className={styles.cardNoteText}>
                     <MarkedText text={note.text} query={query} />
                   </p>
-                  <p className={styles.pageRef}>{pageRef(note.pageStart, note.pageEnd)}</p>
+                  <button
+                    type="button"
+                    className={styles.pageRef}
+                    aria-label={openInPileName(note.pageStart, note.pageEnd)}
+                    onClick={() => onOpenPile(note.id)}
+                  >
+                    {pageRef(note.pageStart, note.pageEnd)}
+                  </button>
                   <Button
                     ref={editButton(note.id)}
                     className={styles.cardNoteEdit}
@@ -185,9 +201,12 @@ function CardNotesBlock({
               ))}
             </ul>
           )}
-          <p className={styles.seeAll}>
+          <div className={styles.seeAll}>
+            <button ref={pileOpener} type="button" className="linkButton" onClick={() => onOpenPile()}>
+              Go through as a pile
+            </button>
             <Link to={cardNotesPath(bookId)}>See all card notes</Link>
-          </p>
+          </div>
         </>
       )}
     </section>
@@ -234,6 +253,7 @@ function BookDetail({ book, onDelete, onFinish, finishButton }: BookDetailProps)
   const {
     editButton: noteEditButton,
     open: openNoteEditFor,
+    find: findNoteEdit,
     panel: noteEditPanel,
   } = useCardNoteEditFlow({
     shownIds: () => shownNoteIds,
@@ -246,6 +266,17 @@ function BookDetail({ book, onDelete, onFinish, finishButton }: BookDetailProps)
     // A count still waiting would empty the panel's regions.
     noteCount.cancel()
     openNoteEditFor(note, book.id)
+  }
+  // The pile holds every note of the Book, whatever the block shows.
+  const pileOpener = useRef<HTMLButtonElement>(null)
+  const { open: openPileFor, pile } = usePileFlow({
+    editButton: findNoteEdit,
+    fallback: () => pileOpener.current,
+  })
+  const openPile = (noteId?: string) => {
+    // A count still waiting would speak over the pile.
+    noteCount.cancel()
+    openPileFor({ bookId: book.id, title: book.title, notes: book.cardNotes }, noteId)
   }
   const { button: startButton, open: openStart, dialog: startDialog } = useStartFlow({ bookId: book.id })
 
@@ -393,6 +424,8 @@ function BookDetail({ book, onDelete, onFinish, finishButton }: BookDetailProps)
             heading={cardNotesHeadingRef}
             editButton={noteEditButton}
             onEdit={openNoteEdit}
+            pileOpener={pileOpener}
+            onOpenPile={openPile}
           />
           <section className={styles.block} aria-labelledby={readingsId}>
             <h2 id={readingsId} className={styles.blockLabel}>
@@ -428,6 +461,7 @@ function BookDetail({ book, onDelete, onFinish, finishButton }: BookDetailProps)
       {startDialog}
       {cardNotePanel}
       {noteEditPanel}
+      {pile}
       {pauseDialog}
       {deleteDialog}
     </div>
@@ -463,7 +497,11 @@ function BookDetail({ book, onDelete, onFinish, finishButton }: BookDetailProps)
  * notes yet." (heading "Card notes"). With notes, its Search card notes
  * field (Story 5.3) shows every matching note while it holds text, matches
  * in `<mark>`, and "N notes match." in `status` once typing pauses; "See
- * all card notes" opens the Card notes page scoped to the Book. **Add card note**
+ * all card notes" opens the Card notes page scoped to the Book. "Go through
+ * as a pile" and each note's page-ref chip open the Card notes pile
+ * (`lib/usePileFlow.tsx`; Story 5.4) over every note of the Book; Close or
+ * Esc returns focus to the last viewed note's Edit if shown, else "Go
+ * through as a pile". **Add card note**
  * (`lib/useCardNoteFlow.tsx`) opens the Card note panel with Page prefilled
  * from Current reading (at least 1), empty without one; Cancel, Esc and a
  * save return focus to it, and after a save `status` reads "Card note

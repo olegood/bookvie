@@ -7,16 +7,12 @@ page), a paused Reading that is not Up next, an Up next Book, three Side
 reads, a reread finished Book and covers. AC-7 in
 ``_bmad-output/test-artifacts/atdd-checklist-5-4-go-through-a-book-s-notes-as-a-pile.md``.
 
-This leaf is green on arrival: Story 2.2's ``test_restore.py`` ac6 already
-round-trips a smaller full library, and nothing in 5.4 changes export or
-restore. It is skipped as the red phase requires, and is activated with the
-rest of the story as a regression re-run, not new behaviour (decided with
-Oleg, 2026-11-10).
+Story 2.2's ``test_restore.py`` ac6 already round-trips a smaller full
+library, and nothing in 5.4 changes export or restore, so this is a
+regression re-run, not new behaviour (decided with Oleg, 2026-11-10).
 """
 
 from pathlib import Path
-
-import pytest
 
 from tests.builder import LibraryBuilder
 from tests.helpers import (
@@ -28,8 +24,6 @@ from tests.helpers import (
     library_bytes,
     post_restore,
 )
-
-RED = "ATDD red phase (story 5.4): activate with the story; green on arrival, a regression re-run"
 
 EXPORT = "/api/export"
 EXPORT_HEADERS = {"X-Bookvie-Export": "1"}
@@ -184,7 +178,6 @@ def _export(data_dir: Path) -> bytes:
     return api_client(data_dir).get(EXPORT, headers=EXPORT_HEADERS).content
 
 
-@pytest.mark.skip(reason=RED)
 def test_ac7_p0_export_then_restore_with_full_data_is_byte_identical(tmp_path: Path) -> None:
     source = tmp_path / "source"
     covers = _seed_full(source)

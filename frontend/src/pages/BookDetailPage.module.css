@@ -269,13 +269,39 @@
   overflow-wrap: anywhere;
 }
 
+/* Unsearched, a card shows at most 6 lines (the pile reads the rest);
+   while the block's search holds text, nothing is clamped, so every match shows. */
+.cardNotes[data-clamped='true'] .cardNoteText {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 6;
+  line-clamp: 6;
+}
+
+/* A note's page ref: a `chip` button that opens the pile at that note (DESIGN.md → Card notes list). */
 .pageRef {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  min-height: 24px;
   margin: 0;
+  padding: 0 var(--space-2);
+  border: var(--hairline) solid var(--color-input-border);
+  border-radius: var(--radius-full);
+  background: var(--color-surface-inset);
   font-family: var(--font-meta-family);
   font-size: var(--font-meta-size);
   font-weight: var(--font-meta-weight);
   line-height: var(--font-meta-line-height);
   color: var(--color-ink-tertiary);
+  cursor: pointer;
+}
+
+.pageRef:hover,
+.pageRef:focus-visible {
+  color: var(--color-ink);
 }
 
 /* A note's Edit sits under its page ref, at the card's start. */
@@ -289,8 +315,11 @@
   margin-bottom: var(--space-3);
 }
 
-/* "See all card notes" below the notes. */
+/* "Go through as a pile" and "See all card notes" in a row below the notes. */
 .seeAll {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-5);
   margin: var(--space-3) 0 0;
   font-family: var(--font-body-sm-family);
   font-size: var(--font-body-sm-size);

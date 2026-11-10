@@ -18,6 +18,11 @@ import {
   notePrefill,
   pageField,
   pageRef,
+  openInPileName,
+  pileAnnouncement,
+  pilePosition,
+  pileStart,
+  shuffled,
 } from './cardNotes.ts'
 
 describe('pageRef', () => {
@@ -180,5 +185,68 @@ describe('the links into the Card notes page', () => {
 
   it('names the scope chip’s remove button', () => {
     assert.equal(scopeChipRemoveName('Dune'), 'Remove In Dune')
+  })
+})
+
+describe('the pile', () => {
+  const notes = [
+    { id: 'a', text: 'Fear is the mind-killer.', pageStart: 12, pageEnd: null },
+    { id: 'b', text: 'A beginning is the time.', pageStart: 42, pageEnd: 45 },
+    { id: 'c', text: 'The spice must flow.', pageStart: 96, pageEnd: null },
+    { id: 'd', text: 'The mystery of life.', pageStart: 300, pageEnd: null },
+  ]
+
+  it('names a page-ref chip for one page or a range', () => {
+    assert.equal(openInPileName(42, null), 'Open p.42 in the pile')
+    assert.equal(openInPileName(42, 45), 'Open pp.42–45 in the pile')
+  })
+
+  it("reads the pile's place", () => {
+    assert.equal(pilePosition(2, 4), '2 of 4')
+  })
+
+  it('announces a move with the page ref and the text, adding no period', () => {
+    assert.equal(pileAnnouncement(1, 4, notes[0]!), 'Note 1 of 4, p.12: Fear is the mind-killer.')
+    assert.equal(pileAnnouncement(2, 4, notes[1]!), 'Note 2 of 4, pp.42–45: A beginning is the time.')
+    assert.equal(pileAnnouncement(1, 1, { ...notes[0]!, text: 'no period' }), 'Note 1 of 1, p.12: no period')
+  })
+
+  it('starts at the note’s index among all of them, else 0', () => {
+    assert.equal(pileStart(notes), 0)
+    assert.equal(pileStart(notes, 'c'), 2)
+    assert.equal(pileStart(notes, 'd'), 3)
+    assert.equal(pileStart(notes, 'gone'), 0)
+    assert.equal(pileStart([], 'a'), 0)
+  })
+
+  it('shuffles into a permutation of a copy, leaving the input untouched', () => {
+    const before = [...notes]
+    const result = shuffled(notes)
+    assert.deepEqual(notes, before)
+    assert.notEqual(result, notes)
+    assert.deepEqual(
+      result.map((note) => note.id).sort(),
+      notes.map((note) => note.id),
+    )
+  })
+
+  it('is deterministic with an injected source', () => {
+    const source = () => {
+      let calls = 0
+      return () => [0.1, 0.7, 0.3][calls++ % 3]!
+    }
+    const first = shuffled(notes, source()).map((note) => note.id)
+    const second = shuffled(notes, source()).map((note) => note.id)
+    assert.deepEqual(first, second)
+    // i=3: j=floor(0.1*4)=0 → d b c a; i=2: j=floor(0.7*3)=2 → same; i=1: j=floor(0.3*2)=0 → b d c a
+    assert.deepEqual(first, ['b', 'd', 'c', 'a'])
+  })
+
+  it('keeps an empty or one-note pile as it is', () => {
+    assert.deepEqual(shuffled([]), [])
+    assert.deepEqual(
+      shuffled([notes[0]!], () => 0.99),
+      [notes[0]],
+    )
   })
 })

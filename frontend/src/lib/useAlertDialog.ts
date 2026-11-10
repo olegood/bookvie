@@ -5,7 +5,8 @@
 // open, and emptied on open; the default focus; Tab and Shift+Tab cycling
 // between its buttons and fields; Esc and any native close routed to
 // `onDismiss`. An `alertdialog` by default; the Start dialog, which holds a
-// field, is a plain `dialog`.
+// field, is a plain `dialog`. The Card notes pile keeps its own `status`, so
+// it opts out of adopting the shell's regions.
 
 import { useLayoutEffect, useRef, type KeyboardEvent, type RefObject, type SyntheticEvent } from 'react'
 import { adoptRegions, clearAnnouncements, releaseRegions } from './announce.ts'
@@ -17,6 +18,8 @@ type Options = {
   initialFocus?: RefObject<HTMLElement | null>
   /** `alertdialog` (the default) or, for a dialog that holds a form field, `dialog`. */
   role?: 'alertdialog' | 'dialog'
+  /** Move the shell's live regions into `regionSlot` and empty them on open (the default). */
+  adoptRegions?: boolean
 }
 
 type AlertDialog = {
@@ -31,10 +34,17 @@ type AlertDialog = {
   }
 }
 
+// An unchecked radio isn't a Tab stop: Tab reaches a radio group at its checked radio.
+function isTabStop(element: HTMLElement): boolean {
+  return !(element instanceof HTMLInputElement && element.type === 'radio' && !element.checked)
+}
+
 // Tab and Shift+Tab cycle between the dialog's buttons and fields.
 function keepFocusInside(event: KeyboardEvent<HTMLDialogElement>): void {
   if (event.key !== 'Tab') return
-  const controls = Array.from(event.currentTarget.querySelectorAll<HTMLElement>('button, input, textarea'))
+  const controls = Array.from(event.currentTarget.querySelectorAll<HTMLElement>('button, input, textarea')).filter(
+    isTabStop,
+  )
   const first = controls[0]
   const last = controls.at(-1)
   if (!first || !last) return
@@ -48,19 +58,25 @@ function keepFocusInside(event: KeyboardEvent<HTMLDialogElement>): void {
   }
 }
 
-export function useAlertDialog({ onDismiss, initialFocus, role = 'alertdialog' }: Options): AlertDialog {
+export function useAlertDialog({
+  onDismiss,
+  initialFocus,
+  role = 'alertdialog',
+  adoptRegions: adopt = true,
+}: Options): AlertDialog {
   const dialog = useRef<HTMLDialogElement>(null)
   const regionSlot = useRef<HTMLDivElement>(null)
   // Read at open only: the default focus never moves while the dialog is up.
   const focusTarget = useRef(initialFocus)
+  const adopting = useRef(adopt)
 
   useLayoutEffect(() => {
     const element = dialog.current
     if (!element) return
     if (!element.open) element.showModal()
-    const slot = regionSlot.current
+    const slot = adopting.current ? regionSlot.current : null
     if (slot) adoptRegions(slot)
-    clearAnnouncements()
+    if (adopting.current) clearAnnouncements()
     const target = focusTarget.current?.current ?? element.querySelector<HTMLButtonElement>('button')
     target?.focus()
     return () => {

@@ -333,9 +333,9 @@ test.describe('Story 5.3 follow-ups', () => {
         exact: true,
       }),
     ).toBeVisible()
-    // Page refs are plain text in 5.3: no pile buttons, no "Go through as a pile".
-    await expect(main.getByRole('button', { name: /^Open p/ })).toHaveCount(0)
-    await expect(main.getByText('Go through as a pile')).toHaveCount(0)
+    // Story 5.4: each page ref is a chip button that opens the pile, and each group has "Go through as a pile".
+    await expect(main.getByRole('button', { name: /^Open pp?\.[\d–]+ in the pile$/ })).toHaveCount(7)
+    await expect(main.getByRole('button', { name: 'Go through as a pile', exact: true })).toHaveCount(3)
 
     // An empty library: "No card notes yet.", no groups, no field, no Add card note.
     const empty = await seededServer({ books: [EMMA] })

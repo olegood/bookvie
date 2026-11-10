@@ -106,6 +106,8 @@ type CardNoteEditFlow = {
   editButton: (noteId: string) => RefCallback<HTMLButtonElement>
   /** A note's Edit press: opens the panel in edit mode for that note's Book. */
   open: (note: BookCardNote, bookId: string) => void
+  /** A note's Edit, if it is rendered now (the pile returns focus there). */
+  find: (noteId: string) => HTMLButtonElement | undefined
   /** The Card note panel in edit mode while it is open, else nothing. */
   panel: ReactNode
 }
@@ -211,5 +213,7 @@ export function useCardNoteEditFlow({ shownIds, source, cached, fallback }: Edit
     />
   )
 
-  return { editButton, open, panel }
+  const find = useCallback((noteId: string) => buttons.current.get(noteId), [])
+
+  return { editButton, open, find, panel }
 }

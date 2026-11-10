@@ -124,15 +124,39 @@
   overflow-wrap: anywhere;
 }
 
+/* A note's page ref: a `chip` button that opens the pile at that note (DESIGN.md → Card notes list). */
 .pageRef {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  min-height: 24px;
   margin: 0;
+  padding: 0 var(--space-2);
+  border: var(--hairline) solid var(--color-input-border);
+  border-radius: var(--radius-full);
+  background: var(--color-surface-inset);
   font-family: var(--font-meta-family);
   font-size: var(--font-meta-size);
   font-weight: var(--font-meta-weight);
   line-height: var(--font-meta-line-height);
   color: var(--color-ink-tertiary);
+  cursor: pointer;
+}
+
+.pageRef:hover,
+.pageRef:focus-visible {
+  color: var(--color-ink);
 }
 
 .noteEdit {
   align-self: flex-start;
+}
+
+/* "Go through as a pile", after the group's notes: a button with the link look. */
+.pileLink {
+  margin: 0;
+  font-family: var(--font-body-sm-family);
+  font-size: var(--font-body-sm-size);
+  line-height: var(--font-body-sm-line-height);
 }

@@ -20,6 +20,7 @@ import {
   noteMatches,
   notePrefill,
   notesMatchCopy,
+  openInPileName,
   pageRef,
   scopeChipRemoveName,
   SEARCH_CARD_NOTES,
@@ -27,6 +28,7 @@ import {
 import { COULDNT_LOAD } from '../lib/copy.ts'
 import { usePageTitle } from '../lib/page.ts'
 import { useCardNoteEditFlow, useCardNoteFlow } from '../lib/useCardNoteFlow.tsx'
+import { usePileFlow } from '../lib/usePileFlow.tsx'
 import { useSearchCount } from '../lib/useSearchCount.ts'
 import NotFoundPage from './NotFoundPage.tsx'
 import SearchTitles from './SearchTitles.tsx'
@@ -46,19 +48,28 @@ function countNotes(groups: readonly CardNotesGroup[]): number {
   return groups.reduce((total, group) => total + group.notes.length, 0)
 }
 
-/** One Book's notes under its serif title: an `h2` (focusable by script), then the notes as list items. */
+/**
+ * One Book's notes under its serif title: an `h2` (focusable by script), then
+ * the notes as list items (each its text, its page-ref chip and its Edit),
+ * then "Go through as a pile".
+ */
 function Group({
   group,
   query,
   headingRef,
   editButton,
   onEdit,
+  pileOpenerRef,
+  onOpenPile,
 }: {
   group: CardNotesGroup
   query: string
   headingRef: RefCallback<HTMLHeadingElement>
   editButton: (noteId: string) => RefCallback<HTMLButtonElement>
   onEdit: (note: BookCardNote, bookId: string) => void
+  pileOpenerRef: RefCallback<HTMLButtonElement>
+  /** Opens the Book's pile at that note, else at the first. */
+  onOpenPile: (noteId?: string) => void
 }) {
   return (
     // Not a named region: a landmark per Book would bury main and the nav; the h2 heads the group.
@@ -72,7 +83,14 @@ function Group({
             <p className={styles.noteText}>
               <MarkedText text={note.text} query={query} />
             </p>
-            <p className={styles.pageRef}>{pageRef(note.pageStart, note.pageEnd)}</p>
+            <button
+              type="button"
+              className={styles.pageRef}
+              aria-label={openInPileName(note.pageStart, note.pageEnd)}
+              onClick={() => onOpenPile(note.id)}
+            >
+              {pageRef(note.pageStart, note.pageEnd)}
+            </button>
             <Button
               ref={editButton(note.id)}
               className={styles.noteEdit}
@@ -84,6 +102,11 @@ function Group({
           </li>
         ))}
       </ul>
+      <p className={styles.pileLink}>
+        <button ref={pileOpenerRef} type="button" className="linkButton" onClick={() => onOpenPile()}>
+          Go through as a pile
+        </button>
+      </p>
     </section>
   )
 }
@@ -93,8 +116,15 @@ function Group({
  * `/card-notes`, scoped to one Book with `?book=<id>`. The `card-notes` view
  * groups the notes by Book (title A→Z) in page order; the page renders the
  * groups in that order, each an `h2` with the Book's serif title, then its
- * notes: the text, the page ref as plain text and an **Edit** ("Edit p.42")
- * that opens the Card note panel in edit mode (`useCardNoteEditFlow`).
+ * notes: the text, the page ref as a chip `button` ("Open p.42 in the
+ * pile") and an **Edit** ("Edit p.42") that opens the Card note panel in
+ * edit mode (`useCardNoteEditFlow`); then the group's "Go through as a pile".
+ *
+ * The pile (Story 5.4; `usePileFlow`) holds every note of the Book, in page
+ * order, whatever the search shows: "Go through as a pile" opens it at "1 of
+ * M", a page-ref chip at that note. Close or Esc returns focus to the last
+ * viewed note's Edit if it is shown, else that group's "Go through as a
+ * pile", else the `h1`.
  *
  * Search card notes (visible label, no placeholder, Esc clears) keeps only
  * the notes whose text contains the query, ignoring case, matches in
@@ -161,6 +191,7 @@ function CardNotesBody({ bookId }: { bookId: string | undefined }) {
   const {
     editButton,
     open: openEditFor,
+    find: findEdit,
     panel: editPanel,
   } = useCardNoteEditFlow({
     shownIds: (id) => shown.find((group) => group.bookId === id)?.notes.map((note) => note.id) ?? [],
@@ -173,6 +204,28 @@ function CardNotesBody({ bookId }: { bookId: string | undefined }) {
     // A count still waiting would empty the panel's regions.
     count.cancel()
     openEditFor(note, id)
+  }
+
+  // The pile: every note of the Book (the unfiltered view), whatever the search shows.
+  const pileOpeners = useRef(new Map<string, HTMLButtonElement>())
+  const pileOpener = useCallback(
+    (id: string): RefCallback<HTMLButtonElement> =>
+      (element) => {
+        if (element) pileOpeners.current.set(id, element)
+        else pileOpeners.current.delete(id)
+      },
+    [],
+  )
+  const { open: openPileFor, pile } = usePileFlow({
+    editButton: findEdit,
+    fallback: (id) => pileOpeners.current.get(id) ?? null,
+  })
+  const openPile = (id: string, noteId?: string) => {
+    const full = groups.find((group) => group.bookId === id)
+    if (!full) return
+    // A count still waiting would speak over the pile.
+    count.cancel()
+    openPileFor({ bookId: full.bookId, title: full.title, notes: full.notes }, noteId)
   }
 
   // The couldn't-load line is shown in `main` and set in the shell's alert; it clears once the view loads.
@@ -253,6 +306,8 @@ function CardNotesBody({ bookId }: { bookId: string | undefined }) {
                   headingRef={groupHeading(group.bookId)}
                   editButton={editButton}
                   onEdit={openEdit}
+                  pileOpenerRef={pileOpener(group.bookId)}
+                  onOpenPile={(noteId) => openPile(group.bookId, noteId)}
                 />
               ))
             )}
@@ -260,6 +315,7 @@ function CardNotesBody({ bookId }: { bookId: string | undefined }) {
         )}
         {addPanel}
         {editPanel}
+        {pile}
       </>
     )
   }

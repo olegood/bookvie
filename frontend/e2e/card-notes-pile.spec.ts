@@ -12,6 +12,7 @@
 // Book, even when opened from a search result; a change of order restarts at
 // "1 of M"; "Go through as a pile" is a `button` (it opens a dialog).
 
+import AxeBuilder from '@axe-core/playwright'
 import type { Locator, Page } from '@playwright/test'
 import { expect, test } from './fixtures.ts'
 import { DUNE, DUNE_ID, LEFT_HAND } from './home.ts'
@@ -20,6 +21,10 @@ const NEUROMANCER_ID = '2a7b9c1d-3e4f-4a5b-9c6d-7e8f9a0b1c2d'
 const SCRIM = 'rgba(43, 46, 42, 0.24)'
 /** `page` in the light theme (#F6F4EF). */
 const PAGE_LIGHT = 'rgb(246, 244, 239)'
+/** `page` and the scrim in the dark theme (#191B18, rgba(25,27,24,0.60)). */
+const PAGE_DARK = 'rgb(25, 27, 24)'
+const SCRIM_DARK = 'rgba(25, 27, 24, 0.6)'
+const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']
 
 const FEAR = 'Fear is the mind-killer.'
 const BEGINNING = 'A beginning is the time for taking the most delicate care.'
@@ -53,6 +58,9 @@ const NEUROMANCER = {
   pages: 271,
   cardNotes: [{ text: 'The sky above the port was the color of television.', pageStart: 3 }],
 }
+
+/** A Book without notes: its block has no pile opener. */
+const EMMA = { id: '9c4d2b1a-7e6f-4a5b-8c9d-0e1f2a3b4c5d', title: 'Emma', authors: ['Jane Austen'], pages: 474 }
 
 /** Seven notes in three Books; the Card notes page lists Dune, The Left Hand of Darkness, Neuromancer. */
 const LIBRARY = { books: [NEUROMANCER, DUNE_WITH_NOTES, LEFT_HAND_WITH_NOTES] }
@@ -116,6 +124,32 @@ function searchField(scope: Locator): Locator {
   return scope.getByRole('searchbox', { name: 'Search card notes', exact: true })
 }
 
+async function pausedClock(page: Page): Promise<void> {
+  const start = new Date('2026-11-10T10:00:00+01:00')
+  await page.clock.install({ time: start })
+  await page.clock.pauseAt(new Date(start.getTime() + 1_000))
+}
+
+/** Past the search pause and announce's tick together. */
+const PAST_THE_PAUSE_MS = 1_000
+
+/** Records every non-empty text the shell's `status` takes from now on. Call while no pile is open. */
+async function recordStatus(page: Page): Promise<() => Promise<string[]>> {
+  await page.getByRole('status').evaluate((region) => {
+    const seen: string[] = []
+    ;(window as Window & { statusTexts?: string[] }).statusTexts = seen
+    new MutationObserver(() => seen.push(region.textContent ?? '')).observe(region, {
+      childList: true,
+      characterData: true,
+      subtree: true,
+    })
+  })
+  return async () =>
+    ((await page.evaluate(() => (window as Window & { statusTexts?: string[] }).statusTexts)) ?? []).filter(
+      (text) => text !== '',
+    )
+}
+
 /** Presses a pile button by keyboard: an `aria-disabled` button stays focusable and pressable. */
 async function press(button: Locator): Promise<void> {
   await button.focus()
@@ -133,7 +167,7 @@ test.describe("Story 5.4 Go through a book's notes as a pile", () => {
     await page.emulateMedia({ colorScheme: 'light' })
   })
 
-  test.skip('[P0] AC-1 "Go through as a pile" opens a modal "Card notes pile, X" showing one note, Close, Previous · N of M · Next and an Order radio group', async ({
+  test('[P0] AC-1 "Go through as a pile" opens a modal "Card notes pile, X" showing one note, Close, Previous · N of M · Next and an Order radio group', async ({
     page,
     seededServer,
   }) => {
@@ -144,6 +178,9 @@ test.describe("Story 5.4 Go through a book's notes as a pile", () => {
 
     // The criterion: the pile, named for its Book.
     await expect(dialog).toBeVisible()
+    // The pile's status isn't set on open; the shown note is the dialog's description instead.
+    await expect(announcement(dialog)).toHaveText('')
+    await expect(dialog).toHaveAccessibleDescription(`${FEAR} p.12 1 of 4`)
 
     // One note at a time, the first in page order, in pile-text (17px, 1.6).
     await expect(dialog.getByText(FEAR, { exact: true })).toBeVisible()
@@ -176,7 +213,7 @@ test.describe("Story 5.4 Go through a book's notes as a pile", () => {
     expect(await dialog.evaluate((element) => getComputedStyle(element, '::backdrop').backgroundColor)).toBe(SCRIM)
   })
 
-  test.skip('[P0] AC-2 Next and Previous change the note and announce "Note N of M, p.X: text."; the ends are aria-disabled with no wrap, and a one-note pile disables both', async ({
+  test('[P0] AC-2 Next and Previous change the note and announce "Note N of M, p.X: text."; the ends are aria-disabled with no wrap, and a one-note pile disables both', async ({
     page,
     seededServer,
   }) => {
@@ -225,7 +262,7 @@ test.describe("Story 5.4 Go through a book's notes as a pile", () => {
     await expect(nextButton(single)).toHaveAttribute('aria-disabled', 'true')
   })
 
-  test.skip('[P1] AC-3 picking Shuffled reshuffles once for that change with "N of M" following the order, and Page order restores page order', async ({
+  test('[P1] AC-3 picking Shuffled reshuffles once for that change with "N of M" following the order, and Page order restores page order', async ({
     page,
     seededServer,
   }) => {
@@ -246,6 +283,8 @@ test.describe("Story 5.4 Go through a book's notes as a pile", () => {
     const order = orderGroup(dialog)
     await press(nextButton(dialog))
     await order.getByRole('radio', { name: 'Shuffled', exact: true }).check()
+    // A change of order isn't announced.
+    await expect(announcement(dialog)).toHaveText('')
 
     // The criterion: a new order restarts at "1 of 4".
     await expect(position(dialog)).toHaveText('1 of 4')
@@ -272,6 +311,7 @@ test.describe("Story 5.4 Go through a book's notes as a pile", () => {
 
     // Page order restores page order, from "1 of 4".
     await order.getByRole('radio', { name: 'Page order', exact: true }).check()
+    await expect(announcement(dialog)).toHaveText('')
     await expect(position(dialog)).toHaveText('1 of 4')
     await expect(dialog.getByText(FEAR, { exact: true })).toBeVisible()
     for (const [index, text] of DUNE_IN_PAGE_ORDER.slice(1).entries()) {
@@ -281,7 +321,7 @@ test.describe("Story 5.4 Go through a book's notes as a pile", () => {
     }
   })
 
-  test.skip("[P1] AC-4 opening a search result on the Card notes page or in Book detail's block opens the pile in Page order at that note", async ({
+  test("[P1] AC-4 opening a search result on the Card notes page or in Book detail's block opens the pile in Page order at that note", async ({
     page,
     seededServer,
   }) => {
@@ -312,7 +352,7 @@ test.describe("Story 5.4 Go through a book's notes as a pile", () => {
     await expect(orderGroup(dialog).getByRole('radio', { name: 'Page order', exact: true })).toBeChecked()
   })
 
-  test.skip('[P1] AC-5 a note\'s page ref is a chip button "Open p.42 in the pile" that opens the pile in Page order at that note, separate from its Edit', async ({
+  test('[P1] AC-5 a note\'s page ref is a chip button "Open p.42 in the pile" that opens the pile in Page order at that note, separate from its Edit', async ({
     page,
     seededServer,
   }) => {
@@ -325,7 +365,10 @@ test.describe("Story 5.4 Go through a book's notes as a pile", () => {
     await expect(ref).toHaveText('pp.42–45')
 
     // Edit stays a separate button on the same note.
-    const item = block.getByRole('listitem').filter({ has: ref })
+    // `has` is matched inside each item, so its locator starts from the page, not the block.
+    const item = block
+      .getByRole('listitem')
+      .filter({ has: page.getByRole('button', { name: 'Open pp.42–45 in the pile', exact: true }) })
     await expect(item.getByRole('button', { name: 'Edit pp.42–45', exact: true })).toBeVisible()
     await expect(item.getByRole('button')).toHaveCount(2)
 
@@ -344,7 +387,7 @@ test.describe("Story 5.4 Go through a book's notes as a pile", () => {
     await expect(other.getByText('Light is the left hand of darkness.', { exact: true })).toBeVisible()
   })
 
-  test.skip("[P1] AC-6 Close or Esc returns to the list at the last viewed note with focus on its Edit, on Book detail that note's Edit if shown, else Go through as a pile; the pile has no search and no editing", async ({
+  test("[P1] AC-6 Close or Esc returns to the list at the last viewed note with focus on its Edit, on Book detail that note's Edit if shown, else Go through as a pile; the pile has no search and no editing", async ({
     page,
     seededServer,
   }) => {
@@ -392,5 +435,246 @@ test.describe("Story 5.4 Go through a book's notes as a pile", () => {
     await expect(position(dialog)).toHaveText('2 of 4')
     await page.keyboard.press('Escape')
     await expect(block.getByRole('button', { name: 'Edit pp.42–45', exact: true })).toBeFocused()
+  })
+
+  // Green-phase follow-ups (ATDD checklist → Green-phase follow-ups).
+
+  test('[P1] AC-1 each group\'s "Go through as a pile" on the unscoped page opens its own Book\'s pile', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer(LIBRARY)
+    await page.goto(cardNotesPage(server))
+    for (const [title, count, first] of [
+      ['Dune', 4, FEAR],
+      ['The Left Hand of Darkness', 2, 'Light is the left hand of darkness.'],
+      ['Neuromancer', 1, 'The sky above the port was the color of television.'],
+    ] as const) {
+      await pileOpener(group(page, title)).click()
+      const dialog = pile(page, title)
+      await expect(position(dialog)).toHaveText(`1 of ${count}`)
+      await expect(dialog.getByText(first, { exact: true })).toBeVisible()
+      await page.keyboard.press('Escape')
+      await expect(dialog).toBeHidden()
+    }
+  })
+
+  test('[P2] AC-1 focus opens on Next, and Tab and Shift+Tab stay inside the pile, reaching only the checked radio', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer(LIBRARY)
+    await page.goto(cardNotesPage(server, DUNE_ID))
+    await pileOpener(page.getByRole('main')).click()
+    const dialog = pile(page, 'Dune')
+    const close = dialog.getByRole('button', { name: 'Close', exact: true })
+    const pageOrder = orderGroup(dialog).getByRole('radio', { name: 'Page order', exact: true })
+    await expect(nextButton(dialog)).toBeFocused()
+
+    // Forward: Next → Page order → (wrap) Close → Previous → Next.
+    for (const expected of [pageOrder, close, previousButton(dialog), nextButton(dialog)]) {
+      await page.keyboard.press('Tab')
+      await expect(expected).toBeFocused()
+    }
+    // Backward: Next → Previous → Close → (wrap) Page order.
+    for (const expected of [previousButton(dialog), close, pageOrder]) {
+      await page.keyboard.press('Shift+Tab')
+      await expect(expected).toBeFocused()
+    }
+
+    // With Shuffled checked, Tab reaches Shuffled instead (arrow keys move within the group).
+    await page.keyboard.press('ArrowRight')
+    const shuffledRadio = orderGroup(dialog).getByRole('radio', { name: 'Shuffled', exact: true })
+    await expect(shuffledRadio).toBeChecked()
+    await expect(shuffledRadio).toBeFocused()
+    await page.keyboard.press('Tab')
+    await expect(close).toBeFocused()
+    await page.keyboard.press('Shift+Tab')
+    await expect(shuffledRadio).toBeFocused()
+  })
+
+  test('[P2] AC-3 picking Shuffled again while it is checked keeps the order and the place', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer(LIBRARY)
+    await page.goto(cardNotesPage(server, DUNE_ID))
+    await pileOpener(page.getByRole('main')).click()
+    const dialog = pile(page, 'Dune')
+    const shuffledRadio = orderGroup(dialog).getByRole('radio', { name: 'Shuffled', exact: true })
+    await shuffledRadio.check()
+    await expect(position(dialog)).toHaveText('1 of 4')
+    await press(nextButton(dialog))
+    await expect(position(dialog)).toHaveText('2 of 4')
+    const second = await announcedNote(dialog)
+
+    await shuffledRadio.click()
+    await expect(shuffledRadio).toBeChecked()
+    await expect(position(dialog)).toHaveText('2 of 4')
+    await expect(dialog.getByText(second, { exact: true })).toBeVisible()
+  })
+
+  test('[P2] AC-1 the dark theme puts the pile on dark `page` over the dark scrim', async ({ page, seededServer }) => {
+    await page.emulateMedia({ colorScheme: 'dark' })
+    const server = await seededServer(LIBRARY)
+    await page.goto(cardNotesPage(server, DUNE_ID))
+    await pileOpener(page.getByRole('main')).click()
+    const dialog = pile(page, 'Dune')
+    await expect(dialog).toBeVisible()
+    expect(await dialog.evaluate((element) => getComputedStyle(element).backgroundColor)).toBe(PAGE_DARK)
+    expect(await dialog.evaluate((element) => getComputedStyle(element, '::backdrop').backgroundColor)).toBe(SCRIM_DARK)
+  })
+
+  test('[P2] AC-5 a page-ref chip is at least 24px tall, on the page and in the block', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer(LIBRARY)
+    await page.goto(cardNotesPage(server))
+    const onPage = (await pageRefButton(group(page, 'Dune'), 'p.12').boundingBox())!
+    expect(onPage.height).toBeGreaterThanOrEqual(24)
+    await page.goto(`${server.url}/book/${DUNE_ID}`)
+    const inBlock = (await pageRefButton(cardNotesBlock(page, 4), 'pp.42–45').boundingBox())!
+    expect(inBlock.height).toBeGreaterThanOrEqual(24)
+  })
+
+  test('[P1] AC-6 closing on the page when a search hides the last viewed note focuses that group\'s "Go through as a pile"', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer(LIBRARY)
+    await page.goto(cardNotesPage(server))
+    const main = page.getByRole('main')
+    await searchField(main).pressSequentially('spice')
+    await pageRefButton(main, 'p.96').click()
+    const dialog = pile(page, 'Dune')
+    await expect(position(dialog)).toHaveText('3 of 4')
+    // p.300 doesn't match "spice", so its Edit isn't shown.
+    await press(nextButton(dialog))
+    await expect(position(dialog)).toHaveText('4 of 4')
+    await page.keyboard.press('Escape')
+    await expect(dialog).toBeHidden()
+    await expect(pileOpener(group(page, 'Dune'))).toBeFocused()
+  })
+
+  test('[P2] the block clamps a long note to 6 lines while its search is empty, and not while it holds text', async ({
+    page,
+    seededServer,
+  }) => {
+    const long = Array.from({ length: 10 }, (_, index) => `Line ${index + 1} of a long note.`).join('\n')
+    const server = await seededServer({ books: [{ ...NEUROMANCER, cardNotes: [{ text: long, pageStart: 3 }] }] })
+    await page.goto(`${server.url}/book/${NEUROMANCER_ID}`)
+    const block = cardNotesBlock(page, 1)
+    const text = block.getByRole('listitem').getByRole('paragraph')
+    const box = () =>
+      text.evaluate((element) => ({
+        height: element.clientHeight,
+        scrolled: element.scrollHeight,
+        line: parseFloat(getComputedStyle(element).lineHeight),
+      }))
+
+    const clamped = await box()
+    expect(clamped.height).toBeLessThanOrEqual(clamped.line * 6 + 1)
+    expect(clamped.scrolled).toBeGreaterThan(clamped.height)
+
+    await searchField(block).fill('line 10')
+    await expect(block.locator('mark')).toHaveText('Line 10')
+    await expect(block.locator('mark')).toBeVisible()
+    const searched = await box()
+    expect(searched.height).toBeGreaterThan(searched.line * 9)
+  })
+
+  test('[P2] axe finds nothing on the open pile (light and dark) or on the lists with page-ref chips', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer(LIBRARY)
+    const axe = async (where: string): Promise<string[]> => {
+      const { violations } = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze()
+      return violations.map(({ id, nodes }) => `${where}: ${id} (${nodes.length})`)
+    }
+    for (const colorScheme of ['light', 'dark'] as const) {
+      await page.emulateMedia({ colorScheme })
+      await page.goto(cardNotesPage(server))
+      await expect(pageRefButton(group(page, 'Dune'), 'p.12')).toBeVisible()
+      expect(await axe(`${colorScheme} page with chips`)).toEqual([])
+
+      await pileOpener(group(page, 'Dune')).click()
+      const dialog = pile(page, 'Dune')
+      await press(nextButton(dialog))
+      await expect(position(dialog)).toHaveText('2 of 4')
+      expect(await axe(`${colorScheme} open pile`)).toEqual([])
+      await page.keyboard.press('Escape')
+
+      await page.goto(`${server.url}/book/${DUNE_ID}`)
+      await expect(pileOpener(cardNotesBlock(page, 4))).toBeVisible()
+      expect(await axe(`${colorScheme} block with chips`)).toEqual([])
+    }
+  })
+
+  test('[P2] AC-1 Book detail\'s "Go through as a pile" stays while the block\'s search matches nothing, and a Book without notes has none', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: [...LIBRARY.books, { ...EMMA }] })
+    await page.goto(`${server.url}/book/${DUNE_ID}`)
+    const block = cardNotesBlock(page, 4)
+    await searchField(block).fill('zzz')
+    await expect(block.getByText('No card notes contain “zzz”.', { exact: true })).toBeVisible()
+    await expect(pileOpener(block)).toBeVisible()
+    await pileOpener(block).click()
+    const dialog = pile(page, 'Dune')
+    await expect(position(dialog)).toHaveText('1 of 4')
+    await expect(dialog.getByText(FEAR, { exact: true })).toBeVisible()
+    await page.keyboard.press('Escape')
+
+    await page.goto(`${server.url}/book/${EMMA.id}`)
+    const empty = page.getByRole('main').getByRole('region', { name: 'Card notes', exact: true })
+    await expect(empty.getByText('No card notes yet.', { exact: true })).toBeVisible()
+    await expect(pileOpener(empty)).toHaveCount(0)
+  })
+
+  test('[P2] AC-4 opening the pile from a chip on the Card notes page while typing pauses drops the pending "N notes match."', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer(LIBRARY)
+    await pausedClock(page)
+    await page.goto(cardNotesPage(server))
+    const main = page.getByRole('main')
+    await expect(pageRefButton(main, 'p.96')).toBeVisible()
+
+    const announced = await recordStatus(page)
+    await searchField(main).pressSequentially('spice')
+    await pageRefButton(main, 'p.96').click()
+    const dialog = pile(page, 'Dune')
+    await expect(position(dialog)).toHaveText('3 of 4')
+    await page.clock.runFor(PAST_THE_PAUSE_MS)
+    await page.keyboard.press('Escape')
+    await expect(dialog).toBeHidden()
+    await page.clock.runFor(PAST_THE_PAUSE_MS)
+    expect(await announced()).toEqual([])
+  })
+
+  test('[P2] AC-4 opening the pile from a chip in Book detail\'s block while typing pauses drops the pending "N notes match."', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer(LIBRARY)
+    await pausedClock(page)
+    await page.goto(`${server.url}/book/${DUNE_ID}`)
+    const block = cardNotesBlock(page, 4)
+    await expect(pageRefButton(block, 'p.12')).toBeVisible()
+
+    const announced = await recordStatus(page)
+    await searchField(block).pressSequentially('mystery')
+    await pageRefButton(block, 'p.300').click()
+    const dialog = pile(page, 'Dune')
+    await expect(position(dialog)).toHaveText('4 of 4')
+    await page.clock.runFor(PAST_THE_PAUSE_MS)
+    await page.keyboard.press('Escape')
+    await expect(dialog).toBeHidden()
+    await page.clock.runFor(PAST_THE_PAUSE_MS)
+    expect(await announced()).toEqual([])
   })
 })
