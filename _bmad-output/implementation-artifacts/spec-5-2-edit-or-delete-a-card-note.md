@@ -39,7 +39,7 @@ deferred:
 - **Edit mode of the Card note panel:** the same component, a modal `dialog` headed "Edit card note"; Note holds the note's text and Page holds "96" or "42–45" (en dash, no prefix); focus on open is in Note; the action row is **Delete** (`button-secondary`) at the left, then **Save note** and **Cancel** as in add mode. Save note sends `edit-card-note` with Note and Page as typed; refusals, the in-flight guard and the couldn't-save line behave as in add mode.
 - **After an edit is saved**, the panel closes, focus goes to that note's Edit (looked up by note id after the refetch), then `status` reads "Card note saved.". If that note is no longer among the three shown (it moved past them), focus goes to the block heading. Cancel or Esc send nothing and return focus to the note's Edit.
 - **The Confirm dialog** is the existing `ConfirmDialog`: `alertdialog` "Delete this card note?", no description lines, **Delete card note** and **Cancel** (Cancel focused). It stacks over the edit panel, which stays open beneath it. Cancel or Esc close only the dialog, and focus goes to the panel's **Delete**. While the delete is in flight both buttons are `aria-disabled` and Esc is ignored.
-- **Delete card note** sends `delete-card-note`; on success (after the views refetch) the dialog and panel close, and focus goes to the Edit of the note that now sits where the deleted note was in the block's shown order (the next note), else the last shown note's Edit, else the block heading; nothing is announced. The heading has `tabIndex={-1}`.
+- **Delete card note** sends `delete-card-note`; on success (after the views refetch) the dialog and panel close, and focus goes to the Edit of the note that now sits where the deleted note was in the block's shown order (the next note), else the block heading; nothing is announced. The heading has `tabIndex={-1}`.
 - **Couldn't save** (any non-field failure, `card_note_not_found` included): the panel's or the dialog's `alert` line shows inside it above its buttons, the surface stays open with every value kept, `status` stays empty.
 
 **Never:**
@@ -53,7 +53,7 @@ deferred:
 | Scenario | Input / State | Expected Output / Behavior | Error Handling |
 |----------|--------------|---------------------------|----------------|
 | Edit a note | p.96 note, text "New", page "pp. 97–98" | 200 `{ok:true}`; note (97, 98), same id/createdAt/position | — |
-| Edit, bad fields | text " ", page "400" on 412 pages | 422 fields [text, page] | file byte-identical |
+| Edit, bad fields | text " ", page "413" on 412 pages | 422 fields [text, page] | file byte-identical |
 | Gone note | note id unknown or another Book's | 409 `card_note_not_found`, checked before fields | file byte-identical |
 | Gone Book | unknown bookId | 409 `book_not_found` (before the note check) | file byte-identical |
 | Delete highest | notes p.19, pp.200–230, p.270; delete p.270 | 200; then Pages "230" ok, "229" 409 `pages_below_card_note` "…less than 230…" | — |
@@ -92,7 +92,7 @@ deferred:
 - [x] `frontend/src/lib/cardNotes.ts` (+ test), `useCardNoteFlow.tsx` -- helpers, note-keyed refocus.
 - [x] `frontend/src/components/CardNotePanel.tsx`, `.module.css` -- edit mode, Delete, stacked Confirm.
 - [x] `frontend/src/pages/BookDetailPage.tsx` -- Edit per note, focusable heading.
-- [x] `frontend/e2e/edit-card-note.spec.ts`, `intents.ts` -- activate AC-1..AC-3; add follow-ups: a 422 (Page "400" → "Page must be between 1 and 412." with `aria-invalid`); range prefill "42–45" saved unchanged; Cancel/Esc in the edit panel refocus the note's Edit and send nothing; an edit moving p.96 → p.400 focuses the heading; deleting the only note leaves "No card notes yet." with focus on the "Card notes" heading; a stale `card_note_not_found` shows inside the panel; axe on the edit panel and the stacked Confirm.
+- [x] `frontend/e2e/edit-card-note.spec.ts`, `intents.ts` -- activate AC-1..AC-3; add follow-ups: a 422 (Page "413" → "Page must be between 1 and 412." with `aria-invalid`); range prefill "42–45" saved unchanged; Cancel/Esc in the edit panel refocus the note's Edit and send nothing; an edit moving p.96 → p.400 focuses the heading; deleting the only note leaves "No card notes yet." with focus on the "Card notes" heading; a stale `card_note_not_found` shows inside the panel; axe on the edit panel and the stacked Confirm.
 - [x] `README.md` -- Status line and links.
 
 **Acceptance Criteria:**
@@ -103,6 +103,10 @@ deferred:
 - Given either intent, then TR8 holds (faults 503 byte-identical, `book_not_found`, `card_note_not_found` before fields, malformed intent 422, invariants after success, OpenAPI documents the statuses and the new code).
 
 ## Spec Change Log
+
+### 2026-11-10 — Spec corrections after code review (approved by Oleg)
+- Boundaries → Always, Delete card note: struck "else the last shown note's Edit". Focus after a delete is the next note's Edit, else the block heading, as the story AC, EXPERIENCE.md:392 and the code say.
+- I/O matrix "Edit, bad fields" and the e2e task line: Page "400" (in range on 412 pages) is now "413", matching the tests.
 
 ## Review Triage Log
 
