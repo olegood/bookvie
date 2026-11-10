@@ -455,6 +455,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-6-see-each-book-s-state-on-the-shelf-and-its-page.md`
   summary: `stale-hand-offs.spec.ts` "[P1] F-R4 a refusal that removes Edit Purpose still reads in alert" is flaky. In about 1 run in 8, `getByRole('alert')` stays empty (`Received: ""`) for 10 s instead of reading "This reading is already finished.".
   evidence: Seen in the review's `npm run check` (1 failure in 372), then reproduced at `b6e10d8` without the review's patches: 1 of 5 with `--repeat-each=5`, and 1 of 8 twice with `--repeat-each=8 --retries=0`. Story 4.6 doesn't touch Edit Purpose, the finish intent or the alert. Next step: keep the trace and check whether the refusal's alert renders before the Edit Purpose field unmounts, or whether a home or book refetch replaces it.
+  resolved: `spec-epic-4-retro-item-42-refusal-reads-after-edit-purpose-unmounts.md` (Epic 4 retro item 42, 2026-11-10); a product race, not a test bug: `EditPurpose`'s unmount cleanup cancelled the refusal's pending `announce`. 8 of 40 failed before the fix, 0 of 120 after.
 
 ## Deferred from: review of spec-4-7-keep-a-few-side-reads (2026-11-09)
 
@@ -535,3 +536,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-7-keep-a-few-side-reads.md`
   summary: For retro item 41 (F-A2): `useOneClickFlow` lives in `useSetUpNextFlow.ts`, returns `SetUpNextFlow`, takes `SetUpNextBook` and calls its callback `onSet`, while Side reads use it for mark and remove. Neutral names and its own module would stop the next one-click intent inheriting them.
   evidence: `frontend/src/lib/useSetUpNextFlow.ts:36`, `:53`.
+
+## Deferred from: spec-epic-4-retro-item-42-refusal-reads-after-edit-purpose-unmounts (2026-11-10)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-epic-4-retro-item-42-refusal-reads-after-edit-purpose-unmounts.md`
+  summary: `ChangeColor`'s unmount cleanup has the same shape as the Edit Purpose race: when a refusal's refetch closes the popover or removes the Book within 100 ms of `announce`, `if (failed.current) clearAnnouncements()` can cancel the message. Found by reading the code, not reproduced.
+  evidence: `frontend/src/components/ChangeColor.tsx:44`, `:70-72`; the cause is in `spec-epic-4-retro-item-42-refusal-reads-after-edit-purpose-unmounts.md`.

@@ -29,6 +29,8 @@ export default function EditPurpose({ bookId, purpose }: Props) {
   const [value, setValue] = useState('')
   const [busy, setBusy] = useState(false)
   const [failed, setFailed] = useState(false)
+  // The last failure was a refusal, not a couldn't-save.
+  const refused = useRef(false)
   const inFlight = useRef(false)
   const mounted = useRef(true)
   const editButton = useRef<HTMLButtonElement>(null)
@@ -59,11 +61,18 @@ export default function EditPurpose({ bookId, purpose }: Props) {
     if (!failed || !slot) return
     adoptRegions(slot)
     return () => {
-      // The line must not outlive the field.
-      clearAnnouncements()
+      // The line must not outlive the field, unless this is a refusal whose
+      // refetch removed the block: its message is still waiting to reach `alert`.
+      if (!refused.current) clearAnnouncements()
       releaseRegions(slot)
     }
   }, [failed])
+
+  // The user closed the field or saves again, so even a refusal's line goes.
+  const clearFailure = () => {
+    refused.current = false
+    setFailed(false)
+  }
 
   const open = () => {
     setValue(purpose ?? '')
@@ -72,7 +81,7 @@ export default function EditPurpose({ bookId, purpose }: Props) {
   }
 
   const close = () => {
-    setFailed(false)
+    clearFailure()
     setEditing(false)
     setRefocus((count) => count + 1)
   }
@@ -85,7 +94,7 @@ export default function EditPurpose({ bookId, purpose }: Props) {
   const save = async () => {
     if (inFlight.current) return
     inFlight.current = true
-    setFailed(false)
+    clearFailure()
     setBusy(true)
     // Sent as typed: the server trims it, and stores null when nothing is left.
     const result = await sendPurpose(bookId, value)
@@ -100,6 +109,7 @@ export default function EditPurpose({ bookId, purpose }: Props) {
       close()
       return
     }
+    refused.current = result.kind === 'refusal'
     setFailed(true)
     announce('alert', result.message)
   }

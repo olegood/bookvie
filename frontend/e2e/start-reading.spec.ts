@@ -374,6 +374,55 @@ test.describe('Story 3.2 Start reading a book (ATDD)', () => {
     expect(alertBox.y - (fieldBox.y + fieldBox.height)).toBeLessThanOrEqual(32)
     expect(libraryBytes(server)).toBe(before)
   })
+
+  test("[P2] AC-10 Edit Purpose's couldn't-save line goes when Cancel closes the field", async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: [DUNE_PAUSED] })
+    await page.route(`**${EDIT_PURPOSE}`, (route) =>
+      route.fulfill({
+        status: 503,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: { kind: 'couldnt_save', code: 'couldnt_save', message: COULDNT_SAVE } }),
+      }),
+    )
+    await page.goto(`${server.url}/book/${DUNE_ID}`)
+    const block = currentReading(page)
+    await block.getByRole('button', { name: 'Edit Purpose', exact: true }).click()
+    await block.getByRole('textbox', { name: 'Purpose', exact: true }).fill('For the ecology')
+    await block.getByRole('button', { name: 'Save', exact: true }).click()
+    const alert = page.getByRole('alert')
+    await expect(alert).toHaveText(COULDNT_SAVE)
+
+    await block.getByRole('button', { name: 'Cancel', exact: true }).click()
+
+    await expect(alert).toHaveText('')
+    await expect(block.getByRole('button', { name: 'Edit Purpose', exact: true })).toBeFocused()
+  })
+
+  test("[P2] AC-10 Edit Purpose's couldn't-save line goes when the page is left", async ({ page, seededServer }) => {
+    const server = await seededServer({ books: [DUNE_PAUSED] })
+    await page.route(`**${EDIT_PURPOSE}`, (route) =>
+      route.fulfill({
+        status: 503,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: { kind: 'couldnt_save', code: 'couldnt_save', message: COULDNT_SAVE } }),
+      }),
+    )
+    await page.goto(`${server.url}/book/${DUNE_ID}`)
+    const block = currentReading(page)
+    await block.getByRole('button', { name: 'Edit Purpose', exact: true }).click()
+    await block.getByRole('textbox', { name: 'Purpose', exact: true }).fill('For the ecology')
+    await block.getByRole('button', { name: 'Save', exact: true }).click()
+    const alert = page.getByRole('alert')
+    await expect(alert).toHaveText(COULDNT_SAVE)
+
+    await page.getByRole('navigation').getByRole('link', { name: 'Catalog', exact: true }).click()
+
+    await expect(page).toHaveURL(/\/catalog$/)
+    await expect(alert).toHaveText('')
+  })
 })
 
 /** A 503 `couldnt_save` for `path`, held until `release()` so the in-flight state can be read. */
