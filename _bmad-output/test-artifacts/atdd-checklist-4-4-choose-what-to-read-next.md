@@ -339,31 +339,31 @@ Activate one test at a time: delete its `@pytest.mark.skip(reason=RED)` line, or
 - **E2E:** `TZ=Europe/Madrid npm --prefix frontend run e2e -- e2e/set-up-next.spec.ts -g "AC-1"` (the e2e entry builds the SPA, Epic 3 retro item 27)
 
 ### AC-2, AC-4, AC-6, AC-8, AC-9: the intent
-- [ ] `intents/contract.py`: `ErrorCode.MAIN_CANNOT_BE_UP_NEXT` and `main_cannot_be_up_next()`.
-- [ ] `intents/set_up_next.py`: `SetUpNextIntent`, `parse_set_up_next_intent` and `set_up_next(store, intent)`. Check `book_not_found`, then `main_cannot_be_up_next`. Return before `commit()` when the Book is already Up next. Otherwise set `upNextBookId`.
-- [ ] `http/api.py`: `POST /intents/set-up-next`, exported from `intents/__init__.py`. Then run `npm --prefix frontend run api:gen`.
-- [ ] Update `test_intent_routes.py`, `test_contract.py` and `test_reading_state_machine.py` (table above).
-- [ ] Activate AC-2, AC-4, AC-6, AC-8 and AC-9.
+- [x] `intents/contract.py`: `ErrorCode.MAIN_CANNOT_BE_UP_NEXT` and `main_cannot_be_up_next()`. (done: backend/tests/test_set_up_next.py::test_ac6_p0_set_up_next_for_the_main_book_is_refused_with_main_cannot_be_up_next; backend/tests/test_contract.py::test_openapi_error_enums)
+- [x] `intents/set_up_next.py`: `SetUpNextIntent`, `parse_set_up_next_intent` and `set_up_next(store, intent)`. Check `book_not_found`, then `main_cannot_be_up_next`. Return before `commit()` when the Book is already Up next. Otherwise set `upNextBookId`. (done: backend/tests/test_set_up_next.py::test_ac2_p1_…, test_ac4_p0_…, test_ac6_p0_…, test_ac9_p0_…)
+- [x] `http/api.py`: `POST /intents/set-up-next`, exported from `intents/__init__.py`. Then run `npm --prefix frontend run api:gen`. (done: backend/tests/test_set_up_next.py::test_ac9_p0_set_up_next_meets_the_standard_intent_acs; backend/tests/test_contract.py:344; `check:api` compares `schema.d.ts`)
+- [x] Update `test_intent_routes.py`, `test_contract.py` and `test_reading_state_machine.py` (table above). (done: backend/tests/test_intent_routes.py:42; backend/tests/test_contract.py:306, :344, :373; backend/tests/test_reading_state_machine.py `choose_up_next`)
+- [x] Activate AC-2, AC-4, AC-6, AC-8 and AC-9. (done: backend/tests/test_set_up_next.py, no skips left)
 
 ### AC-1, AC-3, AC-7: Book detail
-- [ ] A `useSetUpNext` mutation in `api/`, and a **Set as Up next** button on Book detail (the first secondary). It is shown when `role` isn't `main` or `upNext`. On success, wait for the refetched view, focus the primary, then announce "*X* is Up next.". On failure, put the alert line in a slot directly below the button and keep focus there.
-- [ ] Activate AC-1, AC-3 and AC-7.
+- [x] A `useSetUpNext` mutation in `api/`, and a **Set as Up next** button on Book detail (the first secondary). It is shown when `role` isn't `main` or `upNext`. On success, wait for the refetched view, focus the primary, then announce "*X* is Up next.". On failure, put the alert line in a slot directly below the button and keep focus there. (done: frontend/src/api/books.ts:150; frontend/e2e/set-up-next.spec.ts:125, :157)
+- [x] Activate AC-1, AC-3 and AC-7. (done: frontend/e2e/set-up-next.spec.ts:125, :157, :218)
 
 ### AC-5: the spine popover
-- [ ] `SpinePopover`: for the "Never read, no Reading" row, a `button-primary` **Set as Up next** before the "Start reading" button, with initial focus. When an Up next exists, the hint "Replaces the current Up next." goes under it, wired with `aria-describedby`. The Bookcase needs to know whether any shelf Book has role `upNext`. On success, close the popover with `refocus`, then announce.
-- [ ] Activate AC-5.
+- [x] `SpinePopover`: for the "Never read, no Reading" row, a `button-primary` **Set as Up next** before the "Start reading" button, with initial focus. When an Up next exists, the hint "Replaces the current Up next." goes under it, wired with `aria-describedby`. The Bookcase needs to know whether any shelf Book has role `upNext`. On success, close the popover with `refocus`, then announce. (done: frontend/e2e/set-up-next.spec.ts:181, :255)
+- [x] Activate AC-5. (done: frontend/e2e/set-up-next.spec.ts:181)
 
 ### Green-phase follow-ups (secondary branches, not separate red leaves)
-- [ ] **AC-1, the popover with no Up next:** no hint, and the button has no description. Pressing it gives the same focus-to-spine and `status`.
-- [ ] **AC-1, a Book whose Book detail primary is Resume** (a paused, non-Up-next Book): focus lands on **Resume**. AC-7 covers it; this item just records that AC-7 is the reference.
-- [ ] **AC-1, a delayed response** (XUI-E2E-003): while the request is in flight, the button has `aria-disabled="true"`, and a second press sends nothing.
-- [ ] **AC-3, the popover's 503:** the line is directly below the popover's button, focus stays there, and the popover stays open.
-- [ ] **AC-3, a stale tab's refusal** (`main_cannot_be_up_next` or `book_not_found` after another tab acted): the line is shown where focus can reach it, as in Pause's stale-tab amendment (4.3).
-- [ ] **AC-6, not offered:** no **Set as Up next** on the Main book's Book detail, or on an Up next Book's Book detail. The Main book's popover has no primary, and an Up next Book's popover keeps **Start reading** or **Resume**.
-- [ ] **AC-4, in the browser:** setting a Book as Up next while a paused *Z* is Up next. Home then shows *Z* as a Waiting row, placed by its own `pausedAt`. An unstarted *Z* is in neither pane.
-- [ ] **AC-8, in the browser:** a finished Book set as Up next shows **Start reading** in the Up next pane, and the Start dialog says "Start *X*?" with no Purpose prefilled.
-- [ ] **AC-8, Side read** in the On the side pane once 4.7 adds it: still listed after becoming Up next.
-- [ ] **AC-2, in the browser:** once a Book is Up next, the button isn't offered, so the no-op is reachable only from a stale tab. Two contexts (XUI-E2E-002): tab B still shows the button and presses it. The answer is 200, the `status` line is said, and nothing changes.
-- [ ] **Refetch on focus** (AD-7): a set-up-next in another tab updates Home's panes and Book detail's actions with no warning.
-- [ ] **axe** on Book detail with the button, and on the popover with the hint, in both themes.
-- [ ] **RDG-UNIT-002:** the `set_up_next` rule (table above).
+- [x] **AC-1, the popover with no Up next:** no hint, and the button has no description. Pressing it gives the same focus-to-spine and `status`. (done: frontend/e2e/set-up-next.spec.ts:255)
+- [x] **AC-1, a Book whose Book detail primary is Resume** (a paused, non-Up-next Book): focus lands on **Resume**. AC-7 covers it; this item just records that AC-7 is the reference. (done: frontend/e2e/set-up-next.spec.ts:218)
+- [x] **AC-1, a delayed response** (XUI-E2E-003): while the request is in flight, the button has `aria-disabled="true"`, and a second press sends nothing. (done: frontend/e2e/set-up-next.spec.ts:325 on Book detail; :583 and :629 in the popover, epic 4 retro item 36)
+- [x] **AC-3, the popover's 503:** the line is directly below the popover's button, focus stays there, and the popover stays open. (done: frontend/e2e/set-up-next.spec.ts:300)
+- [x] **AC-3, a stale tab's refusal** (`main_cannot_be_up_next` or `book_not_found` after another tab acted): the line is shown where focus can reach it, as in Pause's stale-tab amendment (4.3). (done: frontend/e2e/set-up-next.spec.ts:381, :409)
+- [x] **AC-6, not offered:** no **Set as Up next** on the Main book's Book detail, or on an Up next Book's Book detail. The Main book's popover has no primary, and an Up next Book's popover keeps **Start reading** or **Resume**. (done: frontend/e2e/set-up-next.spec.ts:282 for Book detail; frontend/e2e/book-states.spec.ts "Never read, Main" (no popover primary) and "Never read, Up next" (Start reading))
+- [x] **AC-4, in the browser:** setting a Book as Up next while a paused *Z* is Up next. Home then shows *Z* as a Waiting row, placed by its own `pausedAt`. An unstarted *Z* is in neither pane. (done: frontend/e2e/set-up-next.spec.ts:664, epic 4 retro item 36)
+- [x] **AC-8, in the browser:** a finished Book set as Up next shows **Start reading** in the Up next pane, and the Start dialog says "Start *X*?" with no Purpose prefilled. (done: frontend/e2e/set-up-next.spec.ts:694, epic 4 retro item 36)
+- [x] **AC-8, Side read** in the On the side pane once 4.7 adds it: still listed after becoming Up next. (done: frontend/e2e/side-reads.spec.ts:306 (both panes); backend/tests/test_set_up_next.py::test_ac8_p1_… (set-up-next keeps `sideReadBookIds`))
+- [x] **AC-2, in the browser:** once a Book is Up next, the button isn't offered, so the no-op is reachable only from a stale tab. Two contexts (XUI-E2E-002): tab B still shows the button and presses it. The answer is 200, the `status` line is said, and nothing changes. (done: frontend/e2e/set-up-next.spec.ts:555, epic 4 retro item 36)
+- [x] **Refetch on focus** (AD-7): a set-up-next in another tab updates Home's panes and Book detail's actions with no warning. (done: frontend/e2e/set-up-next.spec.ts:720, epic 4 retro item 36)
+- [x] **axe** on Book detail with the button, and on the popover with the hint, in both themes. (done: frontend/e2e/set-up-next.spec.ts:356)
+- [x] **RDG-UNIT-002:** the `set_up_next` rule (table above). (done: backend/tests/test_reading_state_machine.py `choose_up_next`)

@@ -1,17 +1,17 @@
 ---
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03c-aggregate', 'step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
-lastSaved: '2026-11-08'
-storyId: '4.3'
+lastSaved: '2026-11-10'
+storyId: '4.4, 4.5, 4.6, 4.7 (Epic 4 retro item 36)'
 inputDocuments:
-  - _bmad-output/implementation-artifacts/spec-4-3-pause-my-main-book.md (Boundaries, I/O matrix, Code Map, Review Triage Log, Review Findings, Auto Run Result residual risks)
-  - _bmad-output/planning-artifacts/ux-designs/ux-bookvie-2026-10-28/EXPERIENCE.md (Flow 10, Pause and resume)
-  - _bmad-output/test-artifacts/test-design-qa.md (RDG-E2E-002, RDG-API-002, RDG-E2E-003, XUI-E2E-001)
-  - _bmad-output/test-artifacts/atdd-checklist-4-2-see-every-paused-book-in-waiting-for-you.md (the Waiting helpers to move for 4.3)
+  - _bmad-output/implementation-artifacts/epic-4-retro-2026-11-09.md (PL-1, PL-5, PL-7, F-R5, F-R7; action 36)
+  - _bmad-output/implementation-artifacts/spec-4-4-choose-what-to-read-next.md, spec-4-5-mark-any-book-finished-from-its-page.md, spec-4-6-see-each-book-s-state-on-the-shelf-and-its-page.md, spec-4-7-keep-a-few-side-reads.md (Review Triage Logs, residual risks)
+  - _bmad-output/implementation-artifacts/deferred-work.md (the entries "For retro item 36")
+  - _bmad-output/test-artifacts/atdd-checklist-4-4-choose-what-to-read-next.md
   - _bmad/tea/config.yaml
-  - frontend/src/components/MoreActionsMenu.tsx, MainBookCard.tsx, frontend/src/lib/usePauseFlow.tsx, frontend/src/pages/HomePage.tsx, BookDetailPage.tsx, frontend/src/components/Button.tsx
-  - frontend/e2e/pause.spec.ts, waiting-for-you.spec.ts, finish-reading.spec.ts, stale-hand-offs.spec.ts, home.ts, intents.ts
-  - backend/tests/test_pause.py, test_reading_state_machine.py
+  - frontend/src/pages/HomePage.tsx, frontend/src/components/StartDialog.tsx, SpinePopover.tsx, frontend/src/api/views.ts, intents.ts, queryClient.ts
+  - frontend/e2e/side-reads.spec.ts, set-up-next.spec.ts, home-slice.spec.ts, up-next.spec.ts, finish-any-book.spec.ts, book-states.spec.ts, stale-hand-offs.spec.ts
+  - backend/tests/test_reading_state_machine.py, backend/bookvie/intents/edit_book.py, add_book.py
   - knowledge/test-levels-framework.md
   - knowledge/test-priorities-matrix.md
   - knowledge/data-factories.md
@@ -23,104 +23,105 @@ inputDocuments:
   - knowledge/playwright-cli.md
 ---
 
-# Automation Summary: Story 4.3, Pause my Main book
+# Automation Summary: Stories 4.4 to 4.7 (Epic 4 retro item 36)
 
-This file used to hold the Story 4.2 summary, which is in git history (`70e3e71`).
+This file used to hold the Story 4.3 summary, which is in git history (`5e2632d`).
 
-**Execution mode:** BMad-Integrated. Inputs: the story spec (matrix, Code Map, triage log, review findings, residual risks), EXPERIENCE.md's Flow 10, and the QA test design. Story 4.3 has no ATDD checklist (it was built without an ATDD pass), so the checklist-ticking fact has nothing to tick.
+**Execution mode:** BMad-Integrated. Inputs: the four story specs (their Review Triage Logs, including retro item 43's second passes, and residual risks), the Epic 4 retro, the `deferred-work.md` entries addressed to item 36, and 4.4's ATDD checklist. 4.5, 4.6 and 4.7 have no ATDD checklist.
 **Detected stack:** fullstack (`backend/pyproject.toml` + `frontend/playwright.config.ts`).
 **Playwright Utils mandate:** off (`tea_use_playwright_utils: false`).
 **Pact.js Utils mandate:** not applicable (the repo has no contract testing).
-**Subagent execution:** SEQUENTIAL. There were five small e2e targets, all in one spec, written inline.
-**Total tests added:** 5 Playwright tests.
-**Browser exploration:** skipped. The spec pins the roles and names, so I worked from the source and from one throwaway probe spec (deleted).
+**Subagent execution:** SEQUENTIAL. The targets were small and spread over three files, so they were written inline.
+**Total tests added:** 13 Playwright tests and 2 Hypothesis rules.
+**Browser exploration:** skipped. The specs pin roles and names. Two throwaway probe specs ran: `e2e/zz-probe-f-r5.spec.ts` (F-R5) and `e2e/zz-probe-inflight.spec.ts` (the popover's refetch). Both are deleted.
+
+## F-R5 probe result: real, and it finishes the wrong Book
+
+Seed: Dune Main at p.100; The Left Hand of Darkness paused at p.120 and a Side read. From Home's On the side pane, start The Left Hand of Darkness at "Which page?" 330 (its last page) while `GET /api/views/home` answers 503.
+
+- `start-reading` commits: The Left Hand of Darkness is Main at p.330, Dune is paused.
+- The home refetch fails. `retry: false`, and a failed background refetch keeps the last data (`views.ts`), so Home still shows Dune as Main.
+- Home opens **"Finished Dune"**, described by The Left Hand of Darkness's line "Page 330 of 330, 100%.".
+- **Done sends `finish-reading` for Dune.** Since 4.5 any Book with an unfinished Reading can be finished, so the server accepts it: Dune's paused Reading is finished at 412 pages, and The Left Hand of Darkness stays Main, unfinished.
+
+The cause is the one F-R5 named: `StartedState` carries no Book id (`StartDialog.tsx:25`), and Home opens Finish for whatever `mainId` the view shows (`HomePage.tsx:165-170`). The finish hand-off just below it compares `handed.id`; this one doesn't. In the probe's first run, the route was removed before Home rendered, and Finish opened for the right Book, so the outcome depends on timing.
 
 ## Coverage Plan by Test Level and Priority
 
-Scope: **selective**. Story 4.3 shipped with broad coverage:
-- **API:** 12 tests in `test_pause.py` cover every matrix row, the 503 faults and `check_invariants`. The code review made AC5 (`pausedAt` kept after a resume and a finish) run on later fake-clock days.
-- **Unit:** the `pause` rule in `test_reading_state_machine.py` (RDG-UNIT-002), plus `pause.test.ts` and `books.test.ts`.
-- **E2E:** 15 tests in `pause.spec.ts`: the menu's keyboard and presses, both paths from both pages, Cancel and Esc, focus then `status`, 503 on all three paths, the region release after a failure, double presses, and axe on the menu and dialog.
+Scope: **selective**, aimed at what the retro (F-R7, PL-5) and the reviews deferred to item 36. Most of 4.4's checklist is already proven by the `(ATDD)`, `(automate)` and retro item 43 blocks of `set-up-next.spec.ts` and by `test_set_up_next.py`; those lines are ticked with that evidence, not re-tested.
 
-Gaps found against the ACs, Flow 10, the test design and the spec's residual risks:
-
-| # | Gap | Evidence | Level | Priority |
+| # | Target | Evidence | Level | Priority |
 |---|---|---|---|---|
-| G1 | **Flow 10 end to end (RDG-E2E-002):** Pause via "⋯", the Up next moves to Waiting for you, Resume it there with its Purpose prefilled and no trade-off, and the paused Book comes back as Up next with its page. | The test design's RDG-E2E-002 had no test. The 4.2 summary left it to 4.3, and no 4.3 test resumes from Waiting after a pause. | E2E | P1 |
-| G2 | **A real stale-tab refusal (409 `not_main_book`)** on Book detail, not a routed 503. | Every failure test routed a 503. The spec's follow-up risk names "the region-release fix after a refusal refetch, which no test exercises". | E2E | P1 |
-| G3 | **The busy state:** Book detail's Pause is `aria-disabled` with "Pausing the book." while the request is out. | It's in the Code Map. The double-click tests can't see it, because the in-flight ref swallows the second press before `busy` renders. | E2E | P2 |
-| G4 | **axe on the visible couldn't-save lines** below "⋯" and below Pause. Both are restyled out of their visually-hidden state, in both themes. | Review finding (rejected as low for the review, but cheap here). axe ran only on the menu and the dialog. | E2E | P2 |
-| G5 | **The "⋯" layout:** 32×32, on the eyebrow's line and to its right, inside the card, clear of the title. | A residual risk in the Auto Run Result ("overhangs the title margin by about 8px; not visually checked"). | E2E | P2 |
+| T1 | **F-R5:** a last-page start whose home refetch fails never opens Finish for another Book. | The probe above. | E2E | P0 |
+| T2 | **"Which page?" and `reachedLastPage` from every other route:** Book detail, the Catalog spine popover, Home's Up next pane, the empty card's suggestion, a Waiting row. Each: the field is focused and prefilled, and a last-page start opens "Finished *X*" on Home for that Book. | F-R7; 4.7 residual risk. Only the On the side pane (`side-reads.spec.ts:494`) and Home's slice (`home-slice.spec.ts`, not repeated) are covered. Book detail and Catalog navigate to a remounted Home. | E2E | P1 |
+| T3 | **The last-page hand-off is used once:** after Cancel, a reload, Back then Forward don't reopen Finish. | `deferred-work.md` (`lastPageOpened`, `clearHandOffState` untested). | E2E | P1 |
+| T4 | **AC-2 in the browser:** a stale tab presses Set as Up next for the current Up next; 200, the `status` line, and nothing written. | 4.4 checklist l.366; deferred entry. | E2E | P1 |
+| T5 | **Property test gains `edit-book` and `add-book`** (RDG-UNIT-002): pages floors, a Finished on back-fill that takes a Book out of the Side reads, and a new Book joining the slots. | F-R7 ("fix now (action 36)"). | Unit/API | P1 |
+| T6 | **The spine popover's in-flight state** for Set as Up next: the hint frozen, `aria-disabled` with its reason, a second press sends nothing. | Deferred from 4.4's second review. | E2E | P2 |
+| T7 | **Refetch on focus (AD-7) for set-up-next:** a set-up-next in another context shows in Home's panes and on Book detail after focus, with no warning. | 4.4 checklist l.367; deferred entry. | E2E | P2 |
+| T8 | **Tick 4.4's ATDD checklist** (22 open lines) against the tests above and the existing ones. | PL-7. | n/a | n/a |
 
 **Not selected:**
-- **Safari and Firefox mouse clicks on the menu.** WebKit and Firefox aren't installed (`~/Library/Caches/ms-playwright` has Chromium only), so this stays deferred. The code review changed the blur logic (`pressing`), which should remove the race. It is still unverified.
-- **A failure after the page unmounts.** Deferred, low. Cover it with the app's other unmount-after-request cases.
-- **Re-pause, gone, and the faults from the UI.** These are API-level matrix rows, already covered in `test_pause.py`. In the UI they reuse the same refusal path G2 exercises.
+- **The shared e2e helpers** (`watchStatus`, `routeCouldntSave`, …, copied across five specs). Deferred in `deferred-work.md` as wider than one story; a move now would churn five specs inside a test-only item.
+- **4.5 and 4.6 beyond what their reviews added.** 4.5's matrix rows are in `test_finish_any_book.py` and `finish-any-book.spec.ts` (plus item 43's stale-finish leaf); 4.6's Book states table is a parameterized leaf per row in `book-states.spec.ts`, with forced colors. Nothing in their logs is left for item 36.
+- **Safari and Firefox.** Only Chromium is installed.
+
+**Decision (Oleg, 2026-11-10):** fix F-R5 now through `bmad-build`, and run T1–T8 as planned.
 
 ## Tests Added
 
-The five tests are in a new `Story 4.3 Pause my Main book (automate)` block at the end of `frontend/e2e/pause.spec.ts`:
+**T1, the F-R5 fix** (commit `295e74d`, spec `spec-epic-4-retro-item-36-last-page-finish-for-the-started-book.md`):
+- `frontend/e2e/side-reads.spec.ts`, "[P0] F-R5 a last-page start whose home refetch fails opens Finish only for the started Book, once Home shows it". It fails on the old code at the "no Finish dialog" line, and passed 30 of 30 at `--workers=6`.
 
-1. **`[P1] RDG-E2E-002 Flow 10: …`** (G1, `:480`). The seed follows the flow: The Left Hand of Darkness is Main at p.212, and Dune is Up next, paused at p.120 with a Purpose.
-   - Pause via "⋯" shows "Dune moves to Waiting for you."
-   - The empty card's **Resume** is focused, the Up next pane is hidden, and "Waiting for you (1)" lists Dune at "p.120 of 412".
-   - Resuming Dune opens "Resume Dune?" with its Purpose prefilled and no trade-off lines.
-   - Dune is then Main at "29%, page 120 of 412", the paused Book is back in the Up next pane, and nothing waits.
-   - **Stored state:** the paused Reading is kept at p.212 with `pausedAt` today. Dune keeps its single Reading and its 20 October `pausedAt`.
-2. **`[P1] a Book paused in another tab: …`** (G2, `:541`). Another tab pauses the Book with a direct `pause` request; then Pause on the stale Book detail is pressed.
-   - One request goes out, and `alert` reads "This book isn't your Main book anymore."
-   - The refetch swaps Pause for **Resume**, and no live region is left inside `main`.
-   - The library is unchanged from the other tab's state.
-3. **`[P2] while a pause from Book detail is in flight, …`** (G3, `:569`). The pause route is held open.
-   - Pause is `aria-disabled="true"`, described as "Pausing the book.", and a forced second press sends nothing.
-   - On release, focus lands on **Resume** and the `status` line follows.
-4. **`[P2] axe finds nothing on the visible couldn't-save line …`** (G4, `:600`). A routed 503, Home then Book detail, light then dark. There are no violations.
-5. **`[P2] the "⋯" button sits at the right end of the MAIN BOOK row, …`** (G5, `:623`). It checks the bounding boxes against the eyebrow, the card and the title link.
+**T2 and T3**, a new block in `frontend/e2e/side-reads.spec.ts`, "Epic 4 retro item 36: "Which page?" and the last page from every route":
+- One leaf per route: Book detail, the Catalog's spine popover, Home's Up next pane, the empty Main book card's suggestion, and a Waiting for you row. Each checks that "Which page?" is focused and prefilled with the paused page. A start at p.330 lands on `/`, opens "Finished The Left Hand of Darkness" described "Page 330 of 330, 100%.", makes it Main and takes it off the side.
+- "[P1] a last-page start opens Finish once: a reload, Back and Forward never reopen it". Finish is cancelled first, and the Reading stays unfinished throughout.
+
+**T4, T6, T7 and two more 4.4 checklist lines**, a new block in `frontend/e2e/set-up-next.spec.ts`, "Epic 4 retro item 36: Set as Up next, automate":
+- **`:555` AC-2 in the browser:** a stale tab presses Set as Up next for the current Up next. It gets a 200, "Fahrenheit 451 is Up next.", focus on Start reading, and identical bytes.
+- **`:583` the popover in flight, with no earlier Up next:** the answer is held after the server commits, and a refetch shows the Book as Up next. Throughout, the button stays `aria-disabled`, it is described only by "Setting the book as Up next.", no hint appears, and a forced second press sends nothing.
+- **`:629` the same with an Up next:** the hint shown at the press stays, beside the busy reason.
+- **`:664` AC-4 on Home:** a displaced paused Up next joins Waiting for you in `pausedAt` order. A displaced never-started one is in neither pane.
+- **`:694` AC-8:** a finished Book set as Up next shows Start reading in the pane, and "Start Fahrenheit 451?" has an empty Purpose.
+- **`:720` refetch on focus (AD-7):** two contexts. The other context's Home moves the Book from Waiting for you to Up next, and its Book detail drops Set as Up next, with no alert or dialog.
+
+**T5**, `backend/tests/test_reading_state_machine.py` (RDG-UNIT-002):
+- An `add` rule (up to two Books, maybe with a Finished on).
+- An `edit_details` rule (`edit-book` with the panel prefilled: a new Pages, and maybe a new Finished on).
+- The model predicts each refusal (`book_not_found`; `invalid_fields` for a future date, a date before the latest finished Reading's start, or a new date after the current Reading's start; `pages_below_current_page`) and the exact change: only Pages and the latest finished date, or an appended back-fill. A back-fill on a Book with no Readings leaves the Side reads, and no pointer moves.
+- The page ledger follows each back-fill. Slots 5 and 6 name the added Books.
+- A 2,000-example run reached every outcome: `add` accepted 1,805 times and refused 43 times; `edit_details` accepted 1,669 times, with 452 `invalid_fields`, 88 `pages_below_current_page` and 1,448 `book_not_found`. Nothing failed, which agrees with the retro reviewer's own fuzz.
 
 ## Files Created/Updated
 
-- `frontend/e2e/pause.spec.ts`: the automate block, 5 tests.
-- `frontend/e2e/home.ts`: now exports `waitingPane`, `waitingHeading` and `rowTitles`, moved from `waiting-for-you.spec.ts` as the 4.2 checklist planned.
-- `frontend/e2e/waiting-for-you.spec.ts`: imports the moved helpers, and its own copies are gone. Behaviour is unchanged.
-- `_bmad-output/implementation-artifacts/deferred-work.md`: the defect found in G2 (below).
-- `_bmad-output/test-artifacts/automation-summary.md`: this summary.
+- `frontend/src/components/StartDialog.tsx`, `frontend/src/pages/HomePage.tsx`: the F-R5 fix (commit `295e74d`).
+- `frontend/e2e/side-reads.spec.ts`: the F-R5 leaf (in `295e74d`) and the every-route block.
+- `frontend/e2e/set-up-next.spec.ts`: the item 36 block.
+- `backend/tests/test_reading_state_machine.py`: `add-book` and `edit-book` rules, and the docstring.
+- `_bmad-output/test-artifacts/atdd-checklist-4-4-choose-what-to-read-next.md`: 22 lines ticked.
+- `_bmad-output/implementation-artifacts/deferred-work.md`: `resolved:` lines on the four item 36 entries.
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`: item 36 `done`.
 
 ## Validation
 
-- **`TZ=Europe/Madrid npm run check` passes:**
-  - ruff is clean, and pytest gives 1079 passed.
-  - `check:api` is clean (Prettier, oxlint, `tsc -b`, `schema.d.ts` in sync).
-  - e2e goes from 336 to 341 passed, and smoke is ok.
-- **Mutation check.** Each mutant was reverted after its run, and `git status` shows only the test files.
-  - **M1** (`disabledReason` removed from Book detail's Pause) is killed by test 3.
-  - **M2** (`holdsRegions = failed`, the pre-EC1 code) **survives test 2.** On a refusal, `sendIntent` refetches before it returns, so the Pause slot has already unmounted when `failed` is set and the regions are never adopted. M2 stays covered by the review's test at `:381` (a 503, then a finish), which kills it.
-- **Burn-in:** the 5 new tests passed `--repeat-each=10 --retries=0 --workers=4`, 50 of 50.
-- No CLI browser sessions were opened. The mutation backups stayed in the session scratchpad, and the probe spec was deleted.
-
-## Defect Found
-
-**After a stale-tab refusal on Book detail, the refusal is invisible and focus is lost.**
-- **Seen in:** a probe of test 2's state. `document.activeElement` is `BODY`, and the only copy of "This book isn't your Main book anymore." is the shell's visually hidden 1×1 `alert` region.
-- **Why:** the refusal's refetch makes the Book Up next, so Pause and its slot unmount before `send()` sets `failed` and focuses the opener (`usePauseFlow.tsx:105-106`, where `opener.current` is null).
-- **Spec it breaks:** "on the immediate path the `alert` line shows directly below Pause … with focus kept on that button". A screen reader still hears the alert. A sighted user sees Pause turn into Resume with no message.
-- **Home:** the same is likely there, because the card empties and "⋯" goes.
-- **Status:** test 2 asserts only what holds today (the announcement and the swap), not the focus or visibility. Recorded in `deferred-work.md`.
-- **Fixed (follow-up, 2026-11-08):** focus now moves to the Resume the refetch shows, and the line shows below it, on Book detail and on Home. Test 2 now asserts that, and a Home twin was added. Both fail on the old code. `deferred-work.md` has a `resolved:` line.
+- `npm run check:py`: 1167 passed (the state machine is still 2 tests), and ruff is clean. Coverage gates: domain 100%, intents+store 97.95%.
+- `npm run check:api`: 237 passed, with Prettier, oxlint, `tsc -b` and the schema check clean.
+- `npm --prefix frontend run e2e`: 416 passed, up from 404 (12 new; the F-R5 leaf was already in the 404).
+- **Burn-in:** the 12 new e2e tests passed `--repeat-each=10 --retries=0 --workers=4`, 120 of 120. The F-R5 leaf passed 30 of 30 at `--workers=6`.
+- **Mutation check:** with `showHint` reduced to `hasUpNext` (no `hintAtPress`), `:583` fails at its criterion line, the accessible description. The source was restored from a scratchpad backup, and `git status` showed it clean.
+- No CLI browser sessions were opened.
 
 ## ATDD Checklist
 
-Not applicable: Story 4.3 has no `atdd-checklist-4-3-*.md`. Remaining `[ ]` count: n/a.
+`atdd-checklist-4-4-choose-what-to-read-next.md`: 22 of 22 open lines ticked, with evidence (test file and line, or test name). Remaining `[ ]` count: **0**. 4.5, 4.6 and 4.7 have no checklist.
 
 ## Assumptions and Risks
 
-- **Test 2 makes the other tab's change with `page.request`,** as `finish-reading.spec.ts:545` does. No focus or visibility change happens, so React Query doesn't refetch before the press.
-- **Test 3 holds the route with a promise,** with no timers. The forced click is needed because Playwright waits on `aria-disabled`, while a real user can still press the button.
-- **Test 5 pins a 32×32 button.** If DESIGN.md changes the icon-button size, update the expected size.
-- **WebKit and Firefox stay unverified for the menu** until a browser install or a manual check.
+- **A focus refetch in e2e needs a bubbling `visibilitychange`.** TanStack's listener is on `window`. A non-bubbling event on `document` refetched nothing, and an early F-R5 run passed only by accident. In the popover leaves, even a bubbling event sometimes didn't show the new state in time, about half the runs at `--workers=4`; a probe showed the refetch does go out. So those leaves send the event again until the spine reads ", Up next" (`expect(...).toPass()`), which waits on a condition, not the clock.
+- **The window that `hintAtPress` guards is forced by holding the intent's answer after the server commits** (`route.fetch()`, then a held `route.fulfill`). In the app, that window is the time between the refetch rendering and the flow handling the result.
+- **The AC-8 Side-read line is ticked from a seeded state** (`side-reads.spec.ts:306`) plus the API proof that `set-up-next` keeps `sideReadBookIds` (`test_ac8_p1_…`), not from a press in the browser.
+- **The F-R5 review deferred one finding:** the page field's last-page save (`openFinish`) has the same wrong-Book shape (`deferred-work.md`).
 
 ## Next Recommended Workflow
 
-Story 4.3 isn't the last story of Epic 4 (4.4 to 4.7 are `backlog`), so there is no retrospective or gate yet. The next steps are:
-1. Fix the G2 defect, as a small follow-up or inside Story 4.4.
-2. Optionally, run `npx playwright install webkit firefox` and run `pause.spec.ts` against them, to close the Safari/Firefox deferral.
-3. Start the next story, 4.4 (`bmad-build`).
+Item 37: the Epic 4 trace and gate (`bmad-testarch-trace`) against TR7. Then item 38 (spine reconciliation) and item 41 (BookDetailPage hooks) before Epic 5.

@@ -538,3 +538,227 @@ test.describe('Epic 4 retro item 43: Set as Up next, second review', () => {
     await expect(page.getByRole('alert')).toHaveText(GONE)
   })
 })
+
+test.describe('Epic 4 retro item 36: Set as Up next, automate', () => {
+  /** Signals "visible again" until the Catalog's refetch shows Neuromancer as Up next. */
+  async function refetchUntilUpNext(page: Page): Promise<void> {
+    await expect(async () => {
+      await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange', { bubbles: true })))
+      await expect(spine(page, NEUROMANCER_UP_NEXT_SPINE)).toBeVisible({ timeout: 1000 })
+    }).toPass()
+  }
+
+  test.beforeEach(async ({ page }) => {
+    await page.emulateMedia({ colorScheme: 'light' })
+  })
+
+  test('[P1] AC-2 a stale tab sets the current Up next again: 200, the status line, and nothing written', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ mainBookId: DUNE_ID, books: [DUNE_MAIN, FAHRENHEIT] })
+    await page.goto(`${server.url}/book/${FAHRENHEIT_ID}`)
+    const setUpNext = detailButton(page, 'Set as Up next')
+    await expect(setUpNext).toBeVisible()
+
+    // Another tab makes it Up next first.
+    const elsewhere = await page.request.post(`${server.url}${SET_UP_NEXT}`, {
+      multipart: { intent: JSON.stringify({ bookId: FAHRENHEIT_ID }) },
+    })
+    expect(elsewhere.status()).toBe(200)
+    const before = libraryBytes(server)
+    const answered = page.waitForResponse((response) => response.url().endsWith(SET_UP_NEXT))
+
+    await setUpNext.click()
+
+    // The criterion: the no-op is a 200, said like any success, and writes nothing (AD-9).
+    expect((await answered).status()).toBe(200)
+    await expect(page.getByRole('status')).toHaveText('Fahrenheit 451 is Up next.')
+    await expect(detailButton(page, 'Start reading')).toBeFocused()
+    await expect(page.getByRole('alert')).toHaveText('')
+    await expect(setUpNext).toHaveCount(0)
+    expect(libraryBytes(server)).toBe(before)
+  })
+
+  test('[P2] in flight in the spine popover, Set as Up next stays aria-disabled with no hint, even once a refetch shows the Book as Up next, and a second press sends nothing', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ mainBookId: DUNE_ID, books: [DUNE_MAIN, NEUROMANCER] })
+    const sent = requestsTo(page, SET_UP_NEXT)
+    let release = () => {}
+    const held = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    // The server commits; only its answer is held.
+    await page.route(`**${SET_UP_NEXT}`, async (route) => {
+      const response = await route.fetch()
+      await held
+      await route.fulfill({ response })
+    })
+    await page.goto(`${server.url}/catalog`)
+    await watchStatus(page)
+    await spine(page, NEUROMANCER_SPINE).click()
+    const card = popover(page, 'Neuromancer')
+    const setUpNext = card.getByRole('button', { name: 'Set as Up next', exact: true })
+
+    await setUpNext.click()
+    await expect(setUpNext).toHaveAttribute('aria-disabled', 'true')
+    await expect(setUpNext).toHaveAccessibleDescription('Setting the book as Up next.')
+    await expect.poll(() => storedLibrary(server).upNextBookId).toBe(NEUROMANCER_ID)
+
+    // A refetch (the tab regains focus) shows Neuromancer as Up next while the answer is out.
+    await refetchUntilUpNext(page)
+
+    // The criterion: the button and its state are as they were at the press; no hint appears.
+    await expect(setUpNext).toHaveAttribute('aria-disabled', 'true')
+    await expect(setUpNext).toHaveAccessibleDescription('Setting the book as Up next.')
+    await expect(card.getByText(REPLACES, { exact: true })).toHaveCount(0)
+    // Playwright waits on aria-disabled; force the press a user can still make.
+    await setUpNext.click({ force: true })
+    expect(sent).toHaveLength(1)
+
+    release()
+    await expect(page.getByRole('status')).toHaveText('Neuromancer is Up next.')
+    await expect(card).toBeHidden()
+    await expect(spine(page, NEUROMANCER_UP_NEXT_SPINE)).toBeFocused()
+    expect((await statusSeen(page)).map((entry) => entry.text)).toEqual(['Neuromancer is Up next.'])
+    expect(sent).toHaveLength(1)
+  })
+
+  test('[P2] with an Up next, the popover keeps "Replaces the current Up next." while Set as Up next is in flight', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({
+      mainBookId: DUNE_ID,
+      upNextBookId: LEFT_HAND_ID,
+      books: [DUNE_MAIN, LEFT_HAND, NEUROMANCER],
+    })
+    let release = () => {}
+    const held = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    await page.route(`**${SET_UP_NEXT}`, async (route) => {
+      const response = await route.fetch()
+      await held
+      await route.fulfill({ response })
+    })
+    await page.goto(`${server.url}/catalog`)
+    await spine(page, NEUROMANCER_SPINE).click()
+    const card = popover(page, 'Neuromancer')
+    const setUpNext = card.getByRole('button', { name: 'Set as Up next', exact: true })
+
+    await setUpNext.click()
+    await expect.poll(() => storedLibrary(server).upNextBookId).toBe(NEUROMANCER_ID)
+    await refetchUntilUpNext(page)
+
+    // The criterion: the hint shown at the press stays, beside the busy reason.
+    await expect(card.getByText(REPLACES, { exact: true })).toBeVisible()
+    await expect(setUpNext).toHaveAccessibleDescription(`${REPLACES} Setting the book as Up next.`)
+
+    release()
+    await expect(page.getByRole('status')).toHaveText('Neuromancer is Up next.')
+  })
+
+  test('[P1] AC-4 on Home, a displaced paused Up next joins Waiting for you by its own pausedAt, and a displaced unstarted one is in neither pane', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({
+      mainBookId: DUNE_ID,
+      upNextBookId: LEFT_HAND_ID,
+      // The Left Hand of Darkness paused 5 October, Fahrenheit 451 on 10 October.
+      books: [DUNE_MAIN, LEFT_HAND_WAITING, FAHRENHEIT_WAITING, NEUROMANCER],
+    })
+    await page.goto(`${server.url}/book/${NEUROMANCER_ID}`)
+    await detailButton(page, 'Set as Up next').click()
+    await expect(page.getByRole('status')).toHaveText('Neuromancer is Up next.')
+
+    await page.goto(`${server.url}/`)
+    await expect(upNextPane(page).getByRole('link', { name: 'Neuromancer', exact: true })).toBeVisible()
+    // The criterion: the earlier pause comes first.
+    expect(await rowTitles(waitingPane(page))).toEqual(['The Left Hand of Darkness', 'Fahrenheit 451'])
+
+    await page.goto(`${server.url}/book/${FAHRENHEIT_ID}`)
+    await detailButton(page, 'Set as Up next').click()
+    await expect(page.getByRole('status')).toHaveText('Fahrenheit 451 is Up next.')
+
+    await page.goto(`${server.url}/`)
+    await expect(upNextPane(page).getByRole('link', { name: 'Fahrenheit 451', exact: true })).toBeVisible()
+    expect(await rowTitles(waitingPane(page))).toEqual(['The Left Hand of Darkness'])
+    // Neuromancer, never started, is back in the catalog only.
+    await expect(page.getByRole('main').getByRole('region').getByRole('link', { name: 'Neuromancer' })).toHaveCount(0)
+  })
+
+  test('[P1] AC-8 a finished Book set as Up next offers Start reading in the pane, and its dialog asks "Start X?" with no Purpose prefilled', async ({
+    page,
+    seededServer,
+  }) => {
+    const finished = {
+      ...FAHRENHEIT,
+      readings: [
+        { startDate: '2026-01-05', currentPage: 187, purpose: 'Firemen', finishDate: '2026-02-01', finishedPages: 187 },
+      ],
+    }
+    const server = await seededServer({ mainBookId: DUNE_ID, books: [DUNE_MAIN, finished] })
+    await page.goto(`${server.url}/book/${FAHRENHEIT_ID}`)
+    await detailButton(page, 'Set as Up next').click()
+    await expect(page.getByRole('status')).toHaveText('Fahrenheit 451 is Up next.')
+
+    await page.goto(`${server.url}/`)
+    const start = upNextPane(page).getByRole('button', { name: 'Start reading Fahrenheit 451', exact: true })
+    // The criterion: a re-read starts, so the pane says Start reading.
+    await expect(start).toHaveText('Start reading')
+    await start.click()
+    const dialog = page.getByRole('dialog', { name: 'Start Fahrenheit 451?', exact: true })
+    await expect(dialog.getByRole('textbox', { name: 'Purpose (optional)', exact: true })).toHaveValue('')
+    await dialog.getByRole('button', { name: 'Cancel', exact: true }).click()
+    await expect(start).toBeFocused()
+  })
+
+  test("[P2] refetch on focus (AD-7): a set-up-next in one context shows in the other's Home panes and Book detail once it regains focus, with no warning", async ({
+    page,
+    browser,
+    seededServer,
+  }) => {
+    const server = await seededServer({
+      mainBookId: DUNE_ID,
+      books: [DUNE_MAIN, LEFT_HAND_WAITING, FAHRENHEIT],
+    })
+    const otherContext = await browser.newContext()
+    try {
+      const home = await otherContext.newPage()
+      await home.goto(`${server.url}/`)
+      await expect(waitingHeading(home, 1)).toBeVisible()
+      await expect(upNextPane(home).getByText('Nothing up next.', { exact: true })).toBeVisible()
+      const detail = await otherContext.newPage()
+      await detail.goto(`${server.url}/book/${LEFT_HAND_ID}`)
+      await expect(detailButton(detail, 'Set as Up next')).toBeVisible()
+
+      // This context sets it.
+      await page.goto(`${server.url}/book/${LEFT_HAND_ID}`)
+      await detailButton(page, 'Set as Up next').click()
+      await expect(page.getByRole('status')).toHaveText('The Left Hand of Darkness is Up next.')
+
+      for (const other of [home, detail]) {
+        await other.bringToFront()
+        await other.evaluate(() => window.dispatchEvent(new Event('focus')))
+      }
+
+      // The criterion: the other context's Home moved it from Waiting for you to Up next.
+      await expect(
+        upNextPane(home).getByRole('button', { name: 'Resume The Left Hand of Darkness', exact: true }),
+      ).toBeVisible()
+      await expect(waitingPane(home)).toHaveCount(0)
+      await expect(home.getByRole('alert')).toHaveText('')
+      await expect(home.getByRole('dialog')).toHaveCount(0)
+      // Its Book detail no longer offers it.
+      await expect(detailButton(detail, 'Resume')).toBeVisible()
+      await expect(detailButton(detail, 'Set as Up next')).toHaveCount(0)
+      await expect(detail.getByRole('alert')).toHaveText('')
+    } finally {
+      await otherContext.close()
+    }
+  })
+})

@@ -2,9 +2,10 @@
 
 A Hypothesis state machine drives ``start-reading``, ``pause``, ``set-up-next``,
 ``edit-purpose``, ``update-page``, ``finish-reading``, ``delete-book``,
-``mark-side-read`` and ``unmark-side-read`` (with days passing in between)
+``mark-side-read``, ``unmark-side-read``, ``add-book`` and ``edit-book``
+(Pages and Finished on; epic 4 retro item 36) with days passing in between,
 over a small library that starts with a Book in each state: never started,
-finished, paused (and a Side read), and Main.
+finished, paused (and a Side read), and Main, and gains up to two Books.
 After every step:
 
 - a refusal is the one a simple model predicts (``book_not_found``,
@@ -13,8 +14,9 @@ After every step:
   ``main_cannot_be_side_read``, ``side_reads_full``, ``invalid_fields`` for
   a page out of range (update-page, or a start's "Which page?"), a start of
   a Side read without a page, a Finished on date in the
-  future or before the start, or Purpose fulfilled sent for a Reading with no
-  Purpose) and leaves ``library.json``
+  future or before the start (or, in edit-book, a new one after the current
+  Reading's start), Purpose fulfilled sent for a Reading with no
+  Purpose, and ``pages_below_current_page``) and leaves ``library.json``
   byte-for-byte unchanged;
 - an accepted intent changed exactly what its contract says and nothing else
   (the paused Main book, the resumed or appended Reading, the one Purpose,
@@ -31,13 +33,17 @@ After every step:
   the Book to the Side reads and an unmark removes it, changing no Book or
   other pointer, and either writes nothing when it is already so; a start,
   a finish and a delete take the Book out of the Side reads (Story 4.7);
+  an add appends one Book (with a back-fill when it has a Finished on) and
+  moves no pointer; an edit changes only Pages and the latest finished
+  Reading's date, or back-fills one, and a back-fill on a Book with no
+  Readings takes it out of the Side reads;
 - ``check_invariants()`` holds, each Book has at most one unfinished Reading,
   and the file on disk reads back as the committed library;
 - no page is lost (R-01): a ledger of every Reading's page, set when the
   machine seeds the library, when a start appends a Reading (p.0, or the
   sent "Which page?") or resumes one at a sent page, when an accepted
-  update-page moves it, and when a finish (or its back-fill) settles
-  it, and pruned when a Book is deleted, matches every surviving Reading's
+  update-page moves it, and when a finish (or its back-fill, or an add's or
+  an edit's) settles it, and pruned when a Book is deleted, matches every surviving Reading's
   ``currentPage``; and at most one catalog Book has ``role == "main"``;
 - the views agree: only ``mainBookId`` is ``main``, only ``upNextBookId`` is
   ``upNext``, ``waiting`` is exactly the paused Books minus Up next (on each
@@ -51,7 +57,7 @@ After every step:
 
 import json
 import tempfile
-from datetime import timedelta
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -68,7 +74,9 @@ from bookvie.domain import (
     title_key,
 )
 from bookvie.intents import IntentError
+from bookvie.intents.add_book import add_book, parse_add_book_intent
 from bookvie.intents.delete_book import delete_book, parse_delete_book_intent
+from bookvie.intents.edit_book import edit_book, parse_edit_book_intent
 from bookvie.intents.edit_purpose import edit_purpose, parse_edit_purpose_intent
 from bookvie.intents.finish_reading import finish_reading, parse_finish_reading_intent
 from bookvie.intents.pause import parse_pause_intent, pause
@@ -97,8 +105,22 @@ _finish_offsets = st.integers(min_value=-200, max_value=2)
 """Finished on, in days from today: the past (maybe before the start), today, or the future."""
 _answers = st.sampled_from([None, "yes", "partly", "notYet"])
 _ratings = st.none() | st.integers(min_value=1, max_value=5)
-_slots = st.integers(min_value=0, max_value=4)
-"""Which Book an intent names: the four seeded Books, or 4 for one that never existed."""
+_slots = st.integers(min_value=0, max_value=6)
+"""Which Book an intent names: the four seeded Books, 4 for one that never existed, and
+5 and 6 for the first two Books ``add-book`` adds (one that never existed until then)."""
+_edit_pages = st.integers(min_value=1, max_value=450)
+"""Pages sent by the Edit book panel: below some Books' current page, above others'."""
+_edit_finished = st.none() | _finish_offsets
+"""Finished on sent by the Edit book panel: as prefilled (``None``), or a day from today."""
+MAX_ADDED = 2
+_GONE_FORM = {
+    "title": "Gone",
+    "authors": "Nobody",
+    "language": "English",
+    "publisher": "Publisher",
+    "type": "paperback",
+}
+"""A valid Edit book form for a Book that doesn't exist."""
 
 
 def _seed(data_dir: Path) -> list[str]:
@@ -135,6 +157,37 @@ def _intent(book_id: str, purpose: str | None = None, *, with_purpose: bool = Tr
     )
 
 
+def _latest_finished(book: dict[str, Any]) -> dict[str, Any] | None:
+    """The finished Reading with the greatest ``finishDate``; the later in list order on a tie."""
+    latest = None
+    for reading in book["readings"]:
+        if reading["finishDate"] is not None and (
+            latest is None or reading["finishDate"] >= latest["finishDate"]
+        ):
+            latest = reading
+    return latest
+
+
+def _form(book: dict[str, Any]) -> dict[str, str]:
+    """The Edit book panel's fields, prefilled from the stored Book."""
+    latest = _latest_finished(book)
+    return {
+        "title": book["title"],
+        "subtitle": book["subtitle"] or "",
+        "pages": str(book["pages"]),
+        "authors": ", ".join(book["authors"]),
+        "edition": str(book["edition"]),
+        "language": book["language"],
+        "publisher": book["publisher"],
+        "type": book["type"],
+        "isbn": book["isbn"] or "",
+        "year": "" if book["year"] is None else str(book["year"]),
+        "finishedOn": "" if latest is None else latest["finishDate"],
+        "tags": ", ".join(book["tags"]),
+        "spineColor": book["spineColorUser"] or "",
+    }
+
+
 class ReadingPlan(RuleBasedStateMachine):
     """The library as a sequence of reading intents sees it."""
 
@@ -143,6 +196,8 @@ class ReadingPlan(RuleBasedStateMachine):
         self._tmp = tempfile.TemporaryDirectory()
         self.data_dir = Path(self._tmp.name)
         self.ids = _seed(self.data_dir)
+        self.added: list[str] = []
+        """The Books ``add-book`` added, in order: slots 5 and 6."""
         self.store = Store.open(self.data_dir)
         self.today = TODAY
         self.up_next: str | None = None
@@ -164,7 +219,10 @@ class ReadingPlan(RuleBasedStateMachine):
     # --- helpers ---------------------------------------------------------------
 
     def _book_id(self, slot: int) -> str:
-        return self.ids[slot] if slot < len(self.ids) else GONE_ID
+        if slot < len(self.ids):
+            return self.ids[slot]
+        added = slot - len(self.ids) - 1
+        return self.added[added] if 0 <= added < len(self.added) else GONE_ID
 
     def _bytes(self) -> bytes:
         return (self.data_dir / "library.json").read_bytes()
@@ -524,6 +582,144 @@ class ReadingPlan(RuleBasedStateMachine):
             other for other in old_side_reads if other != book_id
         ]
         self.side_reads = [other for other in self.side_reads if other != book_id]
+
+    @rule(pages=_edit_pages, offset=_edit_finished)
+    def add(self, pages: int, offset: int | None) -> None:
+        if len(self.added) >= MAX_ADDED:
+            return
+        library = self.store.library
+        before = _books(library)
+        pointers = (library.main_book_id, library.up_next_book_id, library.side_read_book_ids)
+        finished_on = None if offset is None else self.today + timedelta(days=offset)
+        future = finished_on is not None and finished_on > self.today
+        n = len(self.added) + 1
+        form = {
+            "title": f"Added {n}",
+            "pages": str(pages),
+            "authors": f"Added Author {n}",
+            "language": "English",
+            "publisher": "Publisher",
+            "type": "paperback",
+            "finishedOn": "" if finished_on is None else finished_on.isoformat(),
+        }
+        clock = FakeClock(self.today)
+        intent = parse_add_book_intent(json.dumps(form))
+        added: list[str] = []
+        expected = "invalid_fields" if future else None
+        if not self._send(lambda: added.append(add_book(self.store, clock, intent)), expected):
+            return
+
+        (book_id,) = added
+        self.added.append(book_id)
+        after = _books(self.store.library)
+        # Only the new Book; no pointer or Side read moves (FR-1).
+        assert {k: v for k, v in after.items() if k != book_id} == before
+        library = self.store.library
+        assert (library.main_book_id, library.up_next_book_id, library.side_read_book_ids) == (
+            pointers
+        )
+        readings = after[book_id]["readings"]
+        if finished_on is None:
+            assert readings == []
+            return
+        # Finished on back-fills one finished Reading with no start (FR-14).
+        (reading,) = readings
+        assert {k: v for k, v in reading.items() if k != "id"} == {
+            "startDate": None,
+            "startPage": 0,
+            "currentPage": pages,
+            "purpose": None,
+            "lastProgressUpdate": None,
+            "pausedAt": None,
+            "finishDate": finished_on.isoformat(),
+            "finishedPages": pages,
+            "purposeFulfilled": None,
+            "rating": None,
+        }
+        self.pages[reading["id"]] = pages
+
+    @rule(slot=_slots, pages=_edit_pages, offset=_edit_finished)
+    def edit_details(self, slot: int, pages: int, offset: int | None) -> None:
+        """``edit-book`` with the panel prefilled: a new Pages and maybe a new Finished on."""
+        book_id = self._book_id(slot)
+        library = self.store.library
+        before = _books(library)
+        pointers = (library.main_book_id, library.up_next_book_id)
+        old_side_reads = list(library.side_read_book_ids)
+        if book_id not in before:
+            form = {**_GONE_FORM, "pages": str(pages)}
+            intent = parse_edit_book_intent(json.dumps({"bookId": book_id, **form}))
+            self._send(
+                lambda: edit_book(self.store, FakeClock(self.today), intent), "book_not_found"
+            )
+            return
+        book = before[book_id]
+        latest = _latest_finished(book)
+        current = _current(book)
+        form = {**_form(book), "pages": str(pages)}
+        finished_on = None if offset is None else self.today + timedelta(days=offset)
+        if finished_on is not None:
+            form["finishedOn"] = finished_on.isoformat()
+        sent = (
+            finished_on
+            if finished_on is not None
+            else (None if latest is None else date.fromisoformat(latest["finishDate"]))
+        )
+        changed = sent is not None and (latest is None or sent.isoformat() != latest["finishDate"])
+        start = None if current is None else current["startDate"]
+        floor = 0 if current is None else current["currentPage"]
+        if sent is not None and sent > self.today:
+            expected = "invalid_fields"
+        elif (
+            latest is not None
+            and latest["startDate"] is not None
+            and sent is not None
+            and (sent.isoformat() < latest["startDate"])
+        ):
+            expected = "invalid_fields"
+        elif changed and start is not None and sent.isoformat() > start:
+            # A stored finish must be a past Reading's: not after the current one's start.
+            expected = "invalid_fields"
+        elif pages < floor:
+            expected = "pages_below_current_page"
+        else:
+            expected = None
+        intent = parse_edit_book_intent(json.dumps({"bookId": book_id, **form}))
+        if not self._send(lambda: edit_book(self.store, FakeClock(self.today), intent), expected):
+            return
+
+        after = _books(self.store.library)
+        readings = list(book["readings"])
+        if changed and latest is not None:
+            readings = [
+                {**r, "finishDate": sent.isoformat()} if r is latest else r for r in readings
+            ]
+        backfilled = changed and latest is None
+        if backfilled:
+            new = after[book_id]["readings"][-1]
+            assert {k: v for k, v in new.items() if k != "id"} == {
+                "startDate": None,
+                "startPage": 0,
+                "currentPage": pages,
+                "purpose": None,
+                "lastProgressUpdate": None,
+                "pausedAt": None,
+                "finishDate": sent.isoformat(),
+                "finishedPages": pages,
+                "purposeFulfilled": None,
+                "rating": None,
+            }
+            readings.append(new)
+            self.pages[new["id"]] = pages
+        # Only Pages and the Finished on Reading change; no other Book does.
+        assert after == {**before, book_id: {**book, "pages": pages, "readings": readings}}
+        assert (self.store.library.main_book_id, self.store.library.up_next_book_id) == pointers
+        # A back-fill that finishes a Book with no Readings takes it off the side (FR-8).
+        if backfilled and not book["readings"]:
+            self.side_reads = [other for other in self.side_reads if other != book_id]
+        assert self.store.library.side_read_book_ids == [
+            other for other in old_side_reads if other in self.side_reads
+        ]
 
     @rule(slot=_slots)
     def delete(self, slot: int) -> None:

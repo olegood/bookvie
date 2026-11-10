@@ -572,3 +572,120 @@ test.describe('Story 4.7 Keep a few side reads', () => {
     expect(storedBook(server, DUNE_ID).readings[0]).toMatchObject({ currentPage: 100, finishDate: null })
   })
 })
+
+test.describe('Epic 4 retro item 36: "Which page?" and the last page from every route', () => {
+  const RESUME_LEFT_HAND = 'Resume The Left Hand of Darkness'
+  const FINISHED_LEFT_HAND = 'Finished The Left Hand of Darkness'
+  /** Dune Main, The Left Hand of Darkness paused at p.120 and a Side read. */
+  const SIDE_READ_WAITING = {
+    mainBookId: DUNE_ID,
+    sideReadBookIds: [LEFT_HAND_ID],
+    books: [DUNE_MAIN, LEFT_HAND_PAUSED],
+  }
+
+  // On the side pane and Home's slice have their own leaves (above, and in home-slice.spec.ts).
+  const routes: { name: string; seed: Record<string, unknown>; open: (page: Page, url: string) => Promise<void> }[] = [
+    {
+      name: 'Book detail',
+      seed: SIDE_READ_WAITING,
+      open: async (page, url) => {
+        await page.goto(`${url}/book/${LEFT_HAND_ID}`)
+        await detailButton(page, 'Resume').click()
+      },
+    },
+    {
+      name: "the Catalog's spine popover",
+      seed: SIDE_READ_WAITING,
+      open: async (page, url) => {
+        await page.goto(`${url}/catalog`)
+        await spine(
+          page,
+          'The Left Hand of Darkness by Ursula K. Le Guin, waiting for you, page 120, on the side',
+        ).click()
+        await page
+          .getByRole('dialog', { name: 'The Left Hand of Darkness', exact: true })
+          .getByRole('button', { name: 'Resume', exact: true })
+          .click()
+      },
+    },
+    {
+      name: "Home's Up next pane",
+      seed: { ...SIDE_READ_WAITING, upNextBookId: LEFT_HAND_ID },
+      open: async (page, url) => {
+        await page.goto(`${url}/`)
+        await upNextPane(page).getByRole('button', { name: RESUME_LEFT_HAND, exact: true }).click()
+      },
+    },
+    {
+      name: "the empty Main book card's suggestion",
+      seed: { ...SIDE_READ_WAITING, mainBookId: null, upNextBookId: LEFT_HAND_ID },
+      open: async (page, url) => {
+        await page.goto(`${url}/`)
+        await mainBookCard(page).getByRole('button', { name: RESUME_LEFT_HAND, exact: true }).click()
+      },
+    },
+    {
+      name: 'a Waiting for you row',
+      seed: SIDE_READ_WAITING,
+      open: async (page, url) => {
+        await page.goto(`${url}/`)
+        await waitingPane(page).getByRole('button', { name: RESUME_LEFT_HAND, exact: true }).click()
+      },
+    },
+  ]
+
+  for (const route of routes) {
+    test(`[P1] AC-4 from ${route.name}, "Which page?" is prefilled and focused, and the last page opens Finish on Home`, async ({
+      page,
+      seededServer,
+    }) => {
+      const server = await seededServer(route.seed)
+      await route.open(page, server.url)
+      const dialog = startDialog(page, 'Resume The Left Hand of Darkness?')
+      const field = whichPage(dialog)
+
+      await expect(field).toBeFocused()
+      await expect(field).toHaveValue('120')
+      await field.fill('330')
+      await dialog.getByRole('button', { name: 'Resume', exact: true }).click()
+
+      const finish = page.getByRole('dialog', { name: FINISHED_LEFT_HAND, exact: true })
+      await expect(finish).toBeVisible()
+      await expect(finish).toHaveAccessibleDescription('Page 330 of 330, 100%.')
+      expect(page.url()).toBe(`${server.url}/`)
+      expect(storedLibrary(server).mainBookId).toBe(LEFT_HAND_ID)
+      expect(storedLibrary(server).sideReadBookIds).toEqual([])
+      await finish.getByRole('button', { name: 'Cancel', exact: true }).click()
+      await expect(finish).toBeHidden()
+    })
+  }
+
+  test('[P1] a last-page start opens Finish once: a reload, Back and Forward never reopen it', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer(SIDE_READ_WAITING)
+    await page.goto(`${server.url}/book/${LEFT_HAND_ID}`)
+    await detailButton(page, 'Resume').click()
+    const dialog = startDialog(page, 'Resume The Left Hand of Darkness?')
+    await whichPage(dialog).fill('330')
+    await dialog.getByRole('button', { name: 'Resume', exact: true }).click()
+    const finish = page.getByRole('dialog', { name: FINISHED_LEFT_HAND, exact: true })
+    await finish.getByRole('button', { name: 'Cancel', exact: true }).click()
+    await expect(finish).toBeHidden()
+    const title = mainBookCard(page).getByRole('link', { name: 'The Left Hand of Darkness', exact: true })
+
+    await page.reload()
+    // Home would open it in the render that shows the card.
+    await expect(title).toBeVisible()
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+
+    await page.goBack()
+    await expect(page.getByRole('heading', { level: 1, name: 'The Left Hand of Darkness', exact: true })).toBeVisible()
+    await page.goForward()
+    await expect(title).toBeVisible()
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    // Nothing finished it.
+    expect(storedBook(server, LEFT_HAND_ID).readings[0]).toMatchObject({ currentPage: 330, finishDate: null })
+  })
+})

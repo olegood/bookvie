@@ -492,10 +492,12 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-4-choose-what-to-read-next.md`
   summary: For retro item 36: the spine popover's in-flight state has no test (the hint frozen by `hintAtPress`, `aria-disabled` with its reason, a second press sending nothing). With no earlier Up next, the refetch would otherwise show "Replaces the current Up next." during the request.
   evidence: `frontend/src/components/SpinePopover.tsx:81-85`; the only held-route leaf is on Book detail, `frontend/e2e/set-up-next.spec.ts:324`.
+  resolved: Epic 4 retro item 36, `frontend/e2e/set-up-next.spec.ts` ("in flight in the spine popover…" and "with an Up next, the popover keeps…"): the answer is held while a refetch shows the Book as Up next; no hint appears, `aria-disabled` and its reason stay, and a second press sends nothing.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-4-choose-what-to-read-next.md`
   summary: For retro item 36: two green-phase follow-ups in 4.4's ATDD checklist have no test and no recorded decision: AC-2 in the browser (a stale tab presses, gets 200 and the `status` line) and refetch on focus (AD-7).
   evidence: `_bmad-output/test-artifacts/atdd-checklist-4-4-choose-what-to-read-next.md:366-367`.
+  resolved: Epic 4 retro item 36, `frontend/e2e/set-up-next.spec.ts` ("[P1] AC-2 a stale tab sets the current Up next again…" and "[P2] refetch on focus (AD-7)…"); both checklist lines ticked.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-4-choose-what-to-read-next.md`
   summary: The e2e helpers `watchStatus`, `statusSeen`, `routeCouldntSave`, `detailButton`, `topOf` and `bottomOf` were due to move to a shared module in 4.4's green phase or in 4.5. They didn't, and are now copied across `pause`, `set-up-next`, `side-reads` and `finish-any-book` (`detailButton` also in `start-reading`).
@@ -533,6 +535,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-7-keep-a-few-side-reads.md`
   summary: For retro item 36: a last-page start is tested only from the On the side pane and Home's slice, not from Book detail or Catalog, where navigation remounts Home. Nothing pins that Finish doesn't reopen on Back or reload (`lastPageOpened`, `clearHandOffState`).
   evidence: `frontend/e2e/side-reads.spec.ts:440`; `frontend/e2e/home-slice.spec.ts:668`.
+  resolved: Epic 4 retro item 36, `frontend/e2e/side-reads.spec.ts` (the "Epic 4 retro item 36: Which page? and the last page from every route" block): Book detail, the Catalog's spine popover, the Up next pane, the empty card and a Waiting row each open Finish on Home; a reload, Back and Forward don't reopen it.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-7-keep-a-few-side-reads.md`
   summary: For retro item 41 (F-A2): `useOneClickFlow` lives in `useSetUpNextFlow.ts`, returns `SetUpNextFlow`, takes `SetUpNextBook` and calls its callback `onSet`, while Side reads use it for mark and remove. Neutral names and its own module would stop the next one-click intent inheriting them.
