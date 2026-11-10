@@ -77,6 +77,28 @@ EXPERIENCE.md bullet (verbatim):
 - AC-7: Given the pile open, then Previous has `aria-keyshortcuts="ArrowLeft"`, Next has `aria-keyshortcuts="ArrowRight"`, nothing else in the pile has one, there is no on-screen hint, and axe finds nothing in light and dark.
 - AC-8: Given Shuffled order, when the keys are used, then they follow the shuffled sequence, End reaches "M of M", and closing there focuses that note's Edit (story 5.4 AC-6).
 
+### Review Findings
+
+Code review 2026-11-10, of commits `ab8fe66..c792de6`. 17 findings from 5 layers: 0 decision-needed, 0 patch, 1 defer (2 findings), 14 rejected. Spine check: none (AD-1, AD-3, AD-6, AD-7, AD-15, AD-17). Verification gap: none.
+
+- [x] [Review][Defer] bmad-build-auto set this spec to `done` before bmad-code-review ran, and its rewrite dropped the "Pipeline" note [_bmad-output/implementation-artifacts/spec-pile-arrow-key-navigation.md:5] — deferred: build-auto's persistent facts treat any spec with no `story_key` as non-story work and mark it `done`, although this standalone spec asked for the full story pipeline. Fixing it means editing build-auto's customization (agent context), not this change. Users weren't affected: this review is the gate, and it confirms `done`. (edge-case-hunter + blind-hunter)
+
+**Rejected:**
+- `low` (acceptance) The ATDD checklist was edited although the Code Map doesn't list it — a one-line, docs-only fix of a stale reference; no harm.
+- `low` (acceptance, blind) `sequence[to]` is checked twice — the spec's Execution asks for it; no caller would diverge.
+- `low` (acceptance, blind) AC-6's "no scroll" is tested only through `defaultPrevented` — carried from the build's triage; a browser probe showed no scroll, and `preventDefault` is the mechanism.
+- `false` (blind) The ACs were reworded but the Spec Change Log is empty — that log is for review loopbacks only, and there were none; the AC-7 additions match assertions the ATDD test already made.
+- `false` (blind) The ATDD checklist's AC texts and red-phase body are out of date — project convention keeps checklists as red-phase records (the 5.4 checklist still says `test.skip`).
+- `low` (blind) AC-5 covers only modified forward keys — carried; the modifier guard is one branch for all four keys, and Verification Gap showed that dropping any modifier check fails AC-5.
+- `low` (blind) `keyTarget` has no unit test — carried; AC-1, AC-2 and AC-8 fail when any mapping is swapped.
+- `false` (blind) Home/End on a radio aren't prevented and scroll — carried; the probe left `scrollTop` unchanged on an overflowing dialog.
+- `false` (blind) Without a `defaultPrevented`/`isComposing` check, a future child could double-step — the pile has no text field, link or other key-handling child today; this is a hypothetical.
+- `false` (blind) Spec rationale was dropped (the 1000-line split, why Ends is unedited) — the fix edits the spec under review.
+- `false` (blind) The Code Map uses line numbers for EXPERIENCE.md — the fix edits the spec under review.
+- `false` (blind) Right-to-left text isn't addressed — the app is left-to-right only; no `dir` is used anywhere in `frontend/`.
+- `false` (blind) `review_loop_iteration` is 0 after a review pass — it counts bad_spec loopbacks, and there were none.
+- `false` (blind) The Verification command differs from CI's (TZ, build) — carried; the fix edits the spec under review, and the keys tests use no dates.
+
 ## Spec Change Log
 
 ## Review Triage Log
