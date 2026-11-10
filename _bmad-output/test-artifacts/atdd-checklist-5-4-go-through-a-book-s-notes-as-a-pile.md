@@ -315,46 +315,46 @@ Activate one test at a time: delete its `@pytest.mark.skip(reason=RED)` line, or
 - **E2E:** `TZ=Europe/Madrid npm --prefix frontend run e2e -- e2e/card-notes-pile.spec.ts -g "AC-1"` (the e2e entry builds the SPA, Epic 3 retro item 27)
 
 ### AC-1: the pile
-- [ ] `lib/cardNotes.ts`: `pileName(title)`, `pileAnnouncement`, `pilePosition(n, m)`, with unit tests.
-- [ ] `components/CardNotesPile.tsx` (+ `.module.css`): a modal `dialog` on `page`, the note in `pile-text` with the stacked edge, Close at the top right, Previous · N of M · Next, and the Order `radiogroup` (segmented style).
-- [ ] "Go through as a pile" `button` in each group of `CardNotesPage` and in `CardNotesBlock`.
-- [ ] Activate AC-1.
+- [x] `lib/cardNotes.ts`: `pileName(title)`, `pileAnnouncement`, `pilePosition(n, m)`, with unit tests. (done: frontend/src/lib/cardNotes.test.ts:203 `pilePosition`, :208 `pileAnnouncement`; `pileName` was removed at the build review because it was unused. The dialog name is composed in `CardNotesPile.tsx` and asserted in frontend/e2e/card-notes-pile.spec.ts:170)
+- [x] `components/CardNotesPile.tsx` (+ `.module.css`): a modal `dialog` on `page`, the note in `pile-text` with the stacked edge, Close at the top right, Previous · N of M · Next, and the Order `radiogroup` (segmented style). (done: frontend/e2e/card-notes-pile.spec.ts:170, :872)
+- [x] "Go through as a pile" `button` in each group of `CardNotesPage` and in `CardNotesBlock`. (done: frontend/e2e/card-notes-pile.spec.ts:442, :615)
+- [x] Activate AC-1. (done: frontend/e2e/card-notes-pile.spec.ts:170)
 
 ### AC-2: stepping
-- [ ] Next and Previous with `aria-disabled` at the ends, no wrap, and the polite `status` inside the dialog.
-- [ ] Activate AC-2.
+- [x] Next and Previous with `aria-disabled` at the ends, no wrap, and the polite `status` inside the dialog. (done: frontend/e2e/card-notes-pile.spec.ts:216)
+- [x] Activate AC-2. (done: frontend/e2e/card-notes-pile.spec.ts:216)
 
 ### AC-3: order
-- [ ] `shuffled(notes, random = Math.random)`: a Fisher–Yates shuffle with an injectable source, reshuffled only when the order changes. A change restarts at 1.
-- [ ] Unit tests with an injected source: a permutation, deterministic, the input untouched.
-- [ ] Activate AC-3.
+- [x] `shuffled(notes, random = Math.random)`: a Fisher–Yates shuffle with an injectable source, reshuffled only when the order changes. A change restarts at 1. (done: frontend/src/lib/cardNotes.test.ts:222, :233; frontend/e2e/card-notes-pile.spec.ts:265, :496)
+- [x] Unit tests with an injected source: a permutation, deterministic, the input untouched. (done: frontend/src/lib/cardNotes.test.ts:222, :233, :245)
+- [x] Activate AC-3. (done: frontend/e2e/card-notes-pile.spec.ts:265)
 
 ### AC-5: page refs (do before AC-4)
-- [ ] Replace the page-ref `<p>` with a chip `button` named `openInPileName(...)` on `CardNotesPage` and in `CardNotesBlock`. It opens the pile at that note's index in the Book's full page-order list.
-- [ ] Activate AC-5.
+- [x] Replace the page-ref `<p>` with a chip `button` named `openInPileName(...)` on `CardNotesPage` and in `CardNotesBlock`. It opens the pile at that note's index in the Book's full page-order list. (done: frontend/e2e/card-notes-pile.spec.ts:355; frontend/src/lib/cardNotes.test.ts:199)
+- [x] Activate AC-5. (done: frontend/e2e/card-notes-pile.spec.ts:355)
 
 ### AC-4: search results
-- [ ] Opening from a searched list uses the Book's full notes (from the unfiltered view), not the filtered ones.
-- [ ] Activate AC-4.
+- [x] Opening from a searched list uses the Book's full notes (from the unfiltered view), not the filtered ones. (done: frontend/e2e/card-notes-pile.spec.ts:324, :927)
+- [x] Activate AC-4. (done: frontend/e2e/card-notes-pile.spec.ts:324)
 
 ### AC-6: closing
-- [ ] On close, focus goes to the last viewed note's Edit, scrolled into view (`auto` under reduced motion), else "Go through as a pile" on Book detail. Reuse the `editButton` ref maps the edit flow already keeps.
-- [ ] Cancel any pending search count before opening, as `openEdit` does.
-- [ ] Activate AC-6.
+- [x] On close, focus goes to the last viewed note's Edit, scrolled into view (`auto` under reduced motion), else "Go through as a pile" on Book detail. Reuse the `editButton` ref maps the edit flow already keeps. (done: frontend/e2e/card-notes-pile.spec.ts:390, :541, :774, :948)
+- [x] Cancel any pending search count before opening, as `openEdit` does. (done: frontend/e2e/card-notes-pile.spec.ts:682, :704)
+- [x] Activate AC-6. (done: frontend/e2e/card-notes-pile.spec.ts:390)
 
 ### AC-7: the full-data round trip
-- [ ] Activate AC-7. It should pass at once. If it doesn't, the failure is a real export or restore regression: fix it, don't change the seed.
+- [x] Activate AC-7. It should pass at once. If it doesn't, the failure is a real export or restore regression: fix it, don't change the seed. (done: backend/tests/test_full_data_round_trip.py:181, green with no seed change)
 
 ### Green-phase follow-ups (secondary branches, not separate red leaves)
-- [ ] **AC-1, the openers on the unscoped page:** each group's "Go through as a pile" opens that Book's pile. A Book without notes has no group, so it has no opener.
-- [ ] **AC-1, the stacked edge** and the dialog radius and shadow (a screenshot or computed style). Check the dark theme's `page` (`#191B18`) and scrim (`rgba(25, 27, 24, 0.6)`).
-- [ ] **AC-1, forced colors:** the dialog border, the selected radio and the disabled ends stay visible.
-- [ ] **AC-1, Tab stays inside the pile** (modal), and focus starts on a sensible control (Next, or Close: decide in the spec).
-- [ ] **AC-2, the disabled ends' look:** `ink-tertiary` text, the shape kept.
-- [ ] **AC-3, re-picking the checked radio** doesn't reshuffle. Arrow keys move within the radio group.
-- [ ] **AC-4, a search on a scoped page** opens the same pile. The page's search status doesn't speak over the pile.
-- [ ] **AC-5, a range ref's name** reads "Open pp.42–45 in the pile". The chip has a visible focus ring and a 24px target.
-- [ ] **AC-6, reduced motion:** the return scroll is instant. A long list (a 30-note Book) scrolls to the note.
-- [ ] **AC-6, the opener vanished:** a note edited or deleted elsewhere while the pile is open can't happen (the pile is modal), but a refetch that drops the note must still leave focus somewhere sensible.
-- [ ] **axe** on the open pile (light and dark), and on the list with page-ref chips.
-- [ ] **Unit:** the starting index for a note id, and the announcement copy for a single page and a range.
+- [x] **AC-1, the openers on the unscoped page:** each group's "Go through as a pile" opens that Book's pile. A Book without notes has no group, so it has no opener. (done: frontend/e2e/card-notes-pile.spec.ts:442; a Book without notes has no opener: frontend/e2e/card-notes-pile.spec.ts:615)
+- [x] **AC-1, the stacked edge** and the dialog radius and shadow (a screenshot or computed style). Check the dark theme's `page` (`#191B18`) and scrim (`rgba(25, 27, 24, 0.6)`). (done: frontend/e2e/card-notes-pile.spec.ts:872 computed styles; dark `page` and scrim frontend/e2e/card-notes-pile.spec.ts:517)
+- [x] **AC-1, forced colors:** the dialog border, the selected radio and the disabled ends stay visible. (done: frontend/e2e/card-notes-pile.spec.ts:834, for the selected segment's `Highlight` bar and the ends' `GrayText`. The dialog border is the UA's forced-colors `CanvasText`, with no rule of ours to pin)
+- [x] **AC-1, Tab stays inside the pile** (modal), and focus starts on a sensible control (Next, or Close: decide in the spec). (done: frontend/e2e/card-notes-pile.spec.ts:462, focus on Next)
+- [x] **AC-2, the disabled ends' look:** `ink-tertiary` text, the shape kept. (done: frontend/e2e/card-notes-pile.spec.ts:872)
+- [x] **AC-3, re-picking the checked radio** doesn't reshuffle. Arrow keys move within the radio group. (done: frontend/e2e/card-notes-pile.spec.ts:496; arrow keys frontend/e2e/card-notes-pile.spec.ts:462)
+- [x] **AC-4, a search on a scoped page** opens the same pile. The page's search status doesn't speak over the pile. (done: frontend/e2e/card-notes-pile.spec.ts:927; status frontend/e2e/card-notes-pile.spec.ts:682, :661)
+- [x] **AC-5, a range ref's name** reads "Open pp.42–45 in the pile". The chip has a visible focus ring and a 24px target. (done: frontend/e2e/card-notes-pile.spec.ts:355 range name, :528 24px; focus ring is the global `:focus-visible`, and axe passes at frontend/e2e/card-notes-pile.spec.ts:587)
+- [x] **AC-6, reduced motion:** the return scroll is instant. A long list (a 30-note Book) scrolls to the note. (done: frontend/e2e/card-notes-pile.spec.ts:774, :803)
+- ~~**AC-6, the opener vanished:** a note edited or deleted elsewhere while the pile is open can't happen (the pile is modal), but a refetch that drops the note must still leave focus somewhere sensible.~~ **Retired:** nothing in the app can drop a note while the modal, read-only pile is open. `usePileFlow` already falls through Edit → the group's opener → the `h1` → `#main` (`frontend/src/lib/usePileFlow.tsx`), and the opener path is pinned at frontend/e2e/card-notes-pile.spec.ts:541 and :637.
+- [x] **axe** on the open pile (light and dark), and on the list with page-ref chips. (done: frontend/e2e/card-notes-pile.spec.ts:587)
+- [x] **Unit:** the starting index for a note id, and the announcement copy for a single page and a range. (done: frontend/src/lib/cardNotes.test.ts:214, :208)

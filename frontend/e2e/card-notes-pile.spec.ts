@@ -723,3 +723,250 @@ test.describe("Story 5.4 Go through a book's notes as a pile", () => {
     expect(await announced()).toEqual([])
   })
 })
+
+/** Seeds `Math.random` with mulberry32, so Shuffled gives the same order on every run. */
+async function seededRandom(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    let seed = 42
+    Math.random = () => {
+      seed = (seed + 0x6d2b79f5) | 0
+      let t = Math.imul(seed ^ (seed >>> 15), 1 | seed)
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+    }
+  })
+}
+
+type ScrollCall = { name: string | null; focused: boolean; options: ScrollIntoViewOptions | boolean | undefined }
+
+/** Records every `scrollIntoView` call (and still scrolls): its element's name, whether it had focus, its options. */
+async function recordScrolls(page: Page): Promise<() => Promise<ScrollCall[]>> {
+  await page.addInitScript(() => {
+    const calls: ScrollCall[] = []
+    ;(window as Window & { scrollCalls?: ScrollCall[] }).scrollCalls = calls
+    const original = Element.prototype.scrollIntoView
+    Element.prototype.scrollIntoView = function (this: Element, options?: ScrollIntoViewOptions | boolean) {
+      calls.push({ name: this.getAttribute('aria-label'), focused: this === document.activeElement, options })
+      return original.call(this, options)
+    }
+  })
+  return async () => (await page.evaluate(() => (window as Window & { scrollCalls?: ScrollCall[] }).scrollCalls)) ?? []
+}
+
+/** Splits a computed `box-shadow` into its layers (commas inside `rgb(...)` don't split). */
+function shadowLayers(shadow: string): string[] {
+  return shadow.split(/,(?![^(]*\))/).map((layer) => layer.trim())
+}
+
+/** Dune's notes by text, with their Edit names on the Card notes page. */
+const DUNE_EDIT_BY_TEXT: Record<string, string> = {
+  [FEAR]: 'Edit p.12',
+  [BEGINNING]: 'Edit pp.42–45',
+  [SPICE]: 'Edit p.96',
+  [MYSTERY]: 'Edit p.300',
+}
+
+test.describe('Story 5.4 automate', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.emulateMedia({ colorScheme: 'light' })
+  })
+
+  test('[P2] AC-6 closing scrolls the focused Edit into view smoothly, and instantly under reduced motion', async ({
+    page,
+    seededServer,
+  }) => {
+    const scrolls = await recordScrolls(page)
+    const server = await seededServer(LIBRARY)
+    await page.goto(cardNotesPage(server, DUNE_ID))
+    const main = page.getByRole('main')
+    const dialog = pile(page, 'Dune')
+
+    // Default motion: smooth, to the nearest edge.
+    await pageRefButton(main, 'p.96').click()
+    await expect(position(dialog)).toHaveText('3 of 4')
+    await page.keyboard.press('Escape')
+    const edit = main.getByRole('button', { name: 'Edit p.96', exact: true })
+    await expect(edit).toBeFocused()
+    const smooth = (await scrolls()).filter((call) => call.focused && call.name === 'Edit p.96')
+    expect(smooth.map((call) => call.options)).toEqual([{ block: 'nearest', behavior: 'smooth' }])
+
+    // Reduced motion: the same scroll, instant.
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await pageRefButton(main, 'p.12').click()
+    await expect(position(dialog)).toHaveText('1 of 4')
+    await page.keyboard.press('Escape')
+    await expect(main.getByRole('button', { name: 'Edit p.12', exact: true })).toBeFocused()
+    const instant = (await scrolls()).filter((call) => call.focused && call.name === 'Edit p.12')
+    expect(instant.map((call) => call.options)).toEqual([{ block: 'nearest', behavior: 'auto' }])
+  })
+
+  test('[P2] AC-6 in a list of 30 notes, closing at "30 of 30" focuses p.30\'s Edit and brings it into the viewport', async ({
+    page,
+    seededServer,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 480 })
+    const thirty = Array.from({ length: 30 }, (_, index) => ({
+      text: `Note number ${index + 1} of the long list.`,
+      pageStart: index + 1,
+    }))
+    const server = await seededServer({ books: [{ ...NEUROMANCER, cardNotes: thirty }] })
+    await page.goto(cardNotesPage(server, NEUROMANCER_ID))
+    const main = page.getByRole('main')
+    const editLast = main.getByRole('button', { name: 'Edit p.30', exact: true })
+    // The last note starts out of view.
+    await expect(editLast).not.toBeInViewport()
+
+    await pageRefButton(main, 'p.1').click()
+    const dialog = pile(page, 'Neuromancer')
+    await expect(position(dialog)).toHaveText('1 of 30')
+    for (let n = 2; n <= 30; n++) {
+      await press(nextButton(dialog))
+      await expect(position(dialog)).toHaveText(`${n} of 30`)
+    }
+    await expect(dialog.getByText('Note number 30 of the long list.', { exact: true })).toBeVisible()
+    await page.keyboard.press('Escape')
+
+    await expect(dialog).toBeHidden()
+    await expect(editLast).toBeFocused()
+    await expect(editLast).toBeInViewport()
+  })
+
+  test('[P2] AC-1 in forced colors the checked Order segment is underlined in Highlight and a disabled end reads GrayText', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer(LIBRARY)
+    await page.emulateMedia({ colorScheme: 'light', forcedColors: 'active' })
+    await page.goto(cardNotesPage(server, DUNE_ID))
+    await pileOpener(page.getByRole('main')).click()
+    const dialog = pile(page, 'Dune')
+    await expect(position(dialog)).toHaveText('1 of 4')
+    await expect(previousButton(dialog)).toHaveAttribute('aria-disabled', 'true')
+
+    // The system colors, resolved by the browser on a probe inside the dialog.
+    const { highlight, grayText } = await dialog.evaluate((element) => {
+      const resolve = (value: string): string => {
+        const probe = document.createElement('span')
+        probe.style.forcedColorAdjust = 'none'
+        probe.style.color = value
+        element.append(probe)
+        const color = getComputedStyle(probe).color
+        probe.remove()
+        return color
+      }
+      return { highlight: resolve('Highlight'), grayText: resolve('GrayText') }
+    })
+    expect(highlight).not.toBe(grayText)
+
+    // The checked segment is the radio's label.
+    const checkedSegment = orderGroup(dialog)
+      .locator('label')
+      .filter({ has: page.getByRole('radio', { checked: true }) })
+    await expect(checkedSegment).toHaveText('Page order')
+    await expect(checkedSegment).toHaveCSS('border-bottom-color', highlight)
+    await expect(previousButton(dialog)).toHaveCSS('color', grayText)
+    // An enabled step isn't GrayText.
+    await expect(nextButton(dialog)).not.toHaveCSS('color', grayText)
+  })
+
+  test('[P2] AC-1 in the light theme the pile has the dialog radius and overlay shadow, the note a stacked edge in `line`, and a disabled end keeps its shape in `ink-tertiary`', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer(LIBRARY)
+    await page.goto(cardNotesPage(server, DUNE_ID))
+    await pileOpener(page.getByRole('main')).click()
+    const dialog = pile(page, 'Dune')
+    await expect(position(dialog)).toHaveText('1 of 4')
+
+    // The tokens, resolved by the browser on probes.
+    const tokens = await dialog.evaluate((element) => {
+      const probe = document.createElement('div')
+      probe.style.borderRadius = 'var(--radius-lg)'
+      probe.style.boxShadow = 'var(--shadow-overlay)'
+      probe.style.color = 'var(--color-ink-tertiary)'
+      probe.style.backgroundColor = 'var(--color-line)'
+      element.append(probe)
+      const style = getComputedStyle(probe)
+      const resolved = {
+        radius: style.borderTopLeftRadius,
+        shadow: style.boxShadow,
+        inkTertiary: style.color,
+        line: style.backgroundColor,
+      }
+      probe.remove()
+      return resolved
+    })
+    expect(tokens.radius).toBe('12px')
+    expect(tokens.shadow).not.toBe('none')
+
+    await expect(dialog).toHaveCSS('border-top-left-radius', tokens.radius)
+    await expect(dialog).toHaveCSS('box-shadow', tokens.shadow)
+
+    // The note card: four layers, the second and fourth in `line` at 4px and 8px.
+    const card = dialog.getByText(FEAR, { exact: true }).locator('..')
+    const layers = shadowLayers(await card.evaluate((element) => getComputedStyle(element).boxShadow))
+    expect(layers).toHaveLength(4)
+    expect(layers[1]).toBe(`${tokens.line} 4px 4px 0px 0px`)
+    expect(layers[3]).toBe(`${tokens.line} 8px 8px 0px 0px`)
+
+    // A disabled end reads `ink-tertiary`, and has the same box as when enabled.
+    const previous = previousButton(dialog)
+    await expect(previous).toHaveAttribute('aria-disabled', 'true')
+    await expect(previous).toHaveCSS('color', tokens.inkTertiary)
+    const disabledBox = (await previous.boundingBox())!
+    await press(nextButton(dialog))
+    await expect(position(dialog)).toHaveText('2 of 4')
+    await expect(previous).not.toHaveAttribute('aria-disabled', 'true')
+    await expect(previous).not.toHaveCSS('color', tokens.inkTertiary)
+    const enabledBox = (await previous.boundingBox())!
+    expect(disabledBox.width).toBe(enabledBox.width)
+    expect(disabledBox.height).toBe(enabledBox.height)
+  })
+
+  test('[P2] AC-4 on the scoped Card notes page a search result opens the pile in Page order at that note, holding every note', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer(LIBRARY)
+    await page.goto(cardNotesPage(server, DUNE_ID))
+    const main = page.getByRole('main')
+    await searchField(main).pressSequentially('spice')
+    await expect(pageRefButton(main, 'p.300')).toHaveCount(0)
+    await pageRefButton(main, 'p.96').click()
+    const dialog = pile(page, 'Dune')
+
+    await expect(position(dialog)).toHaveText('3 of 4')
+    await expect(dialog.getByText(SPICE, { exact: true })).toBeVisible()
+    await expect(orderGroup(dialog).getByRole('radio', { name: 'Page order', exact: true })).toBeChecked()
+    // p.300 doesn't match "spice", but the pile holds it.
+    await press(nextButton(dialog))
+    await expect(position(dialog)).toHaveText('4 of 4')
+    await expect(dialog.getByText(MYSTERY, { exact: true })).toBeVisible()
+  })
+
+  test("[P2] AC-6 closing a Shuffled pile focuses the Edit of the note last shown in the shuffle, not page order's", async ({
+    page,
+    seededServer,
+  }) => {
+    await seededRandom(page)
+    const server = await seededServer(LIBRARY)
+    await page.goto(cardNotesPage(server))
+    const dune = group(page, 'Dune')
+    await pileOpener(dune).click()
+    const dialog = pile(page, 'Dune')
+    await orderGroup(dialog).getByRole('radio', { name: 'Shuffled', exact: true }).check()
+    await expect(position(dialog)).toHaveText('1 of 4')
+    await press(nextButton(dialog))
+    await expect(position(dialog)).toHaveText('2 of 4')
+    const shown = await announcedNote(dialog)
+    await expect(dialog.getByText(shown, { exact: true })).toBeVisible()
+    // The seeded shuffle moved another note to second place, so page order would point elsewhere.
+    expect(shown).not.toBe(BEGINNING)
+    expect(Object.keys(DUNE_EDIT_BY_TEXT)).toContain(shown)
+
+    await page.keyboard.press('Escape')
+    await expect(dialog).toBeHidden()
+    await expect(dune.getByRole('button', { name: DUNE_EDIT_BY_TEXT[shown], exact: true })).toBeFocused()
+  })
+})
