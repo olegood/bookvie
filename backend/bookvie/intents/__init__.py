@@ -3,6 +3,7 @@
 from bookvie.domain import Clock, FakeClock, SystemClock
 
 from .add_book import AddBookIntent, add_book, parse_add_book_intent
+from .add_card_note import AddCardNoteIntent, add_card_note, parse_add_card_note_intent
 from .commit import commit
 from .contract import (
     COULDNT_EXPORT_MESSAGE,
@@ -73,6 +74,7 @@ __all__ = [
     "RESTORE_INVALID_MESSAGE",
     "RESTORE_NEWER_VERSION_MESSAGE",
     "AddBookIntent",
+    "AddCardNoteIntent",
     "Clock",
     "DeleteBookIntent",
     "DuplicateMatch",
@@ -100,6 +102,7 @@ __all__ = [
     "UpdatePageIntent",
     "UploadedCover",
     "add_book",
+    "add_card_note",
     "already_main",
     "book_not_found",
     "build_export",
@@ -122,6 +125,7 @@ __all__ = [
     "not_main_book",
     "pages_refusal",
     "parse_add_book_intent",
+    "parse_add_card_note_intent",
     "parse_delete_book_intent",
     "parse_edit_book_intent",
     "parse_edit_purpose_intent",

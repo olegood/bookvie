@@ -34,7 +34,7 @@ type AlertDialog = {
 // Tab and Shift+Tab cycle between the dialog's buttons and fields.
 function keepFocusInside(event: KeyboardEvent<HTMLDialogElement>): void {
   if (event.key !== 'Tab') return
-  const controls = Array.from(event.currentTarget.querySelectorAll<HTMLElement>('button, input'))
+  const controls = Array.from(event.currentTarget.querySelectorAll<HTMLElement>('button, input, textarea'))
   const first = controls[0]
   const last = controls.at(-1)
   if (!first || !last) return

@@ -3,6 +3,7 @@
 from .backup import backup
 from .models import (
     BackupView,
+    BookCardNote,
     BookDetailView,
     BookReading,
     CatalogView,
@@ -16,6 +17,7 @@ from .shelf import book_detail, catalog, cover_path, home, home_for
 
 __all__ = [
     "BackupView",
+    "BookCardNote",
     "BookDetailView",
     "BookReading",
     "CatalogView",

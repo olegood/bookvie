@@ -1,8 +1,10 @@
 import { useId, type Ref } from 'react'
 import { Link, useNavigate } from 'react-router'
 import type { HomeMainBook, HomeUpNext } from '../api/index.ts'
+import { notePrefill } from '../lib/cardNotes.ts'
 import { CHOOSE_A_BOOK } from '../lib/copy.ts'
 import { upNextStart } from '../lib/startReading.ts'
+import { useCardNoteFlow } from '../lib/useCardNoteFlow.tsx'
 import Button from './Button.tsx'
 import Cover from './Cover.tsx'
 import Gauge from './Gauge.tsx'
@@ -41,6 +43,11 @@ const NO_MAIN_BOOK = 'No Main book.'
  * `pauseFailed`, so a couldn't-save line shows directly below "⋯". The empty
  * card renders the slot last, below its suggestion, for a stale tab's
  * refusal that emptied the card.
+ *
+ * Under the cover, a stack of `button-secondary` actions: **Add card note**
+ * opens the Card note panel (`lib/useCardNoteFlow.tsx`) with Page prefilled
+ * at the current page (at least 1); after a save focus returns to it, then
+ * `status` reads "Card note saved.".
  */
 export default function MainBookCard({
   book,
@@ -75,6 +82,14 @@ export default function MainBookCard({
 }) {
   const eyebrowId = useId()
   const navigate = useNavigate()
+  const {
+    button: cardNoteButton,
+    open: openCardNote,
+    panel: cardNotePanel,
+  } = useCardNoteFlow({
+    bookId: book?.id ?? null,
+    initialPage: notePrefill(book?.currentPage ?? null),
+  })
   if (book === null) {
     return (
       <section className={`${styles.card} ${styles.empty}`} aria-label="Main book">
@@ -108,12 +123,20 @@ export default function MainBookCard({
           className={`${styles.regions} ${styles.regionsStart}`}
           data-show-alert={pauseFailed ? 'true' : undefined}
         />
+        {cardNotePanel}
       </section>
     )
   }
   return (
     <section className={`${styles.card} ${styles.main}`} aria-labelledby={eyebrowId}>
-      <Cover coverFile={book.coverFile} title={book.title} />
+      <div className={styles.side}>
+        <Cover coverFile={book.coverFile} title={book.title} />
+        <div className={styles.actions}>
+          <Button ref={cardNoteButton} onClick={openCardNote}>
+            Add card note
+          </Button>
+        </div>
+      </div>
       <div className={styles.info}>
         <div className={styles.eyebrowRow}>
           <p id={eyebrowId} className={styles.eyebrow}>
@@ -151,6 +174,7 @@ export default function MainBookCard({
           now={now}
         />
       </div>
+      {cardNotePanel}
     </section>
   )
 }

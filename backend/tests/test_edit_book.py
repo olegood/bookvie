@@ -889,6 +889,7 @@ def test_book_view_returns_the_book_and_its_latest_finish(
         "currentReading": None,
         "sideRead": False,
         "sideReadsFull": False,
+        "cardNotes": [],
     }
     assert sorted(readings, key=lambda r: r["id"]) == sorted(
         [

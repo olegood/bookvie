@@ -50,6 +50,7 @@ from bookvie.intents import (
     OkResponse,
     UploadedCover,
     add_book,
+    add_card_note,
     book_not_found,
     build_export,
     couldnt_save,
@@ -64,6 +65,7 @@ from bookvie.intents import (
     mark_side_read,
     max_upload_bytes,
     parse_add_book_intent,
+    parse_add_card_note_intent,
     parse_delete_book_intent,
     parse_edit_book_intent,
     parse_edit_purpose_intent,
@@ -569,6 +571,26 @@ def set_up_next_intent(
     parsed = parse_set_up_next_intent(intent)
     set_up_next(request.app.state.store, parsed)
     return OkResponse(ok=True)
+
+
+@router.post("/intents/add-card-note", response_model=OkResponse, response_model_exclude_none=True)
+def add_card_note_intent(
+    request: Request,
+    intent: Annotated[
+        str | None,
+        Form(
+            media_type="multipart/form-data",
+            description=(
+                'JSON object {"bookId": ..., "text": ..., "page": ...}: the Note, and the '
+                'Page as typed ("42", "42–45", "pp. 42–45"), parsed on the server.'
+            ),
+        ),
+    ] = None,
+) -> OkResponse:
+    """Add a Card note to any Book, at a page or a page range (FR-17)."""
+    parsed = parse_add_card_note_intent(intent)
+    note_id = add_card_note(request.app.state.store, request.app.state.clock, parsed)
+    return OkResponse(ok=True, ids={"cardNoteId": note_id})
 
 
 @router.post("/intents/mark-side-read", response_model=OkResponse, response_model_exclude_none=True)

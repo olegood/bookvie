@@ -595,3 +595,12 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-epic-4-retro-item-41-split-book-detail-flows-into-hooks.md`
   summary: No e2e test holds `set-up-next` open on Book detail while another Book is Up next, so keeping "Replaces the current Up next." in the description during the request (`hintAtPress`) is pinned only for the spine popover. Add a `[P2]` Book detail counterpart to `set-up-next.spec.ts:629`. Low.
   evidence: `frontend/src/lib/useDetailSetUpNext.ts` `press` and `showHint`; `set-up-next.spec.ts:325-354` seeds no Up next; `:629-662` covers only `SpinePopover`. Item 41 barred e2e edits.
+
+## Deferred from: build review of spec-5-1-add-a-card-note-while-reading (2026-11-10)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-1-add-a-card-note-while-reading.md`
+  summary: Spine drift (Structural Seed, Capability map FR-17 to FR-19, AD-6, AD-18), reconciled before the next epic. The Structural Seed's `intents/` and `domain/` lines don't list `add_card_note` or `note_pages`. The FR-17 to FR-19 row names only `views/card_notes`, but Book detail's notes come from `views/shelf.book_detail` (`BookDetailView.cardNotes`). AD-6's server list lacks the Card notes order (`pageStart`, then `createdAt`), and its client list lacks the block's first-three cut. AD-18 doesn't say that `pageEnd: null` means one page (never `pageEnd == pageStart`) or that `pageStart ≤ pageEnd`.
+  evidence: The spine-check layer of Story 5.1's build review. In each case the code is right and ARCHITECTURE-SPINE.md is out of date (AGENTS.md → Architecture spine).
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-1-add-a-card-note-while-reading.md`
+  summary: The README Status line is stale. It still says "Epic 4 is in progress, with Stories 4.1-4.7 done", "31 of 41 stories done" and "All three retrospectives are done", but Epic 4, its retro, trace and gate are complete. Update it when bmad-code-review moves 5.1 to done.
+  evidence: `README.md:8` against `sprint-status.yaml` (`epic-4-retrospective: done`, the epic 4 retro items done). It predates Story 5.1, and a story leaves the count to bmad-code-review.

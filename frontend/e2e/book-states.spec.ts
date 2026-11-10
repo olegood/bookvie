@@ -48,7 +48,7 @@ const ROWS: Row[] = [
     marker: null,
     primary: 'Set as Up next',
     pane: null,
-    stack: ['Start reading', 'Set as Up next', 'Mark finished', 'Mark as Side read', 'Edit', 'Delete'],
+    stack: ['Start reading', 'Set as Up next', 'Mark finished', 'Mark as Side read', 'Add card note', 'Edit', 'Delete'],
   },
   {
     name: 'Never read, Up next',
@@ -59,7 +59,7 @@ const ROWS: Row[] = [
     marker: 'upNext',
     primary: 'Start reading',
     pane: 'Up next',
-    stack: ['Start reading', 'Mark finished', 'Mark as Side read', 'Edit', 'Delete'],
+    stack: ['Start reading', 'Mark finished', 'Mark as Side read', 'Add card note', 'Edit', 'Delete'],
   },
   {
     name: 'Never read, Main',
@@ -70,7 +70,7 @@ const ROWS: Row[] = [
     marker: 'main',
     primary: null,
     pane: 'Main card',
-    stack: ['Pause', 'Mark finished', 'Edit', 'Delete'],
+    stack: ['Pause', 'Mark finished', 'Add card note', 'Edit', 'Delete'],
   },
   {
     name: 'Never read, paused',
@@ -81,7 +81,7 @@ const ROWS: Row[] = [
     marker: 'waiting',
     primary: 'Resume',
     pane: 'Waiting',
-    stack: ['Resume', 'Set as Up next', 'Mark finished', 'Mark as Side read', 'Edit', 'Delete'],
+    stack: ['Resume', 'Set as Up next', 'Mark finished', 'Mark as Side read', 'Add card note', 'Edit', 'Delete'],
   },
   {
     name: 'Never read, paused, Up next',
@@ -92,7 +92,7 @@ const ROWS: Row[] = [
     marker: 'upNext',
     primary: 'Resume',
     pane: 'Up next',
-    stack: ['Resume', 'Mark finished', 'Mark as Side read', 'Edit', 'Delete'],
+    stack: ['Resume', 'Mark finished', 'Mark as Side read', 'Add card note', 'Edit', 'Delete'],
   },
   {
     name: 'Never read, paused, Side read',
@@ -104,7 +104,7 @@ const ROWS: Row[] = [
     marker: 'waiting',
     primary: 'Resume',
     pane: 'Waiting',
-    stack: ['Resume', 'Set as Up next', 'Mark finished', 'Remove from side', 'Edit', 'Delete'],
+    stack: ['Resume', 'Set as Up next', 'Mark finished', 'Remove from side', 'Add card note', 'Edit', 'Delete'],
   },
   {
     name: 'Finished, no Reading',
@@ -115,7 +115,7 @@ const ROWS: Row[] = [
     marker: null,
     primary: null,
     pane: null,
-    stack: ['Start reading', 'Set as Up next', 'Mark as Side read', 'Edit', 'Delete'],
+    stack: ['Start reading', 'Set as Up next', 'Mark as Side read', 'Add card note', 'Edit', 'Delete'],
   },
   {
     name: 'Finished, Up next',
@@ -126,7 +126,7 @@ const ROWS: Row[] = [
     marker: 'upNext',
     primary: 'Start reading',
     pane: 'Up next',
-    stack: ['Start reading', 'Mark as Side read', 'Edit', 'Delete'],
+    stack: ['Start reading', 'Mark as Side read', 'Add card note', 'Edit', 'Delete'],
   },
   {
     name: 'Finished, re-reading Main',
@@ -137,7 +137,7 @@ const ROWS: Row[] = [
     marker: 'main',
     primary: null,
     pane: 'Main card',
-    stack: ['Pause', 'Mark finished', 'Edit', 'Delete'],
+    stack: ['Pause', 'Mark finished', 'Add card note', 'Edit', 'Delete'],
   },
   {
     name: 'Finished, re-read paused',
@@ -148,7 +148,7 @@ const ROWS: Row[] = [
     marker: 'waiting',
     primary: 'Resume',
     pane: 'Waiting',
-    stack: ['Resume', 'Set as Up next', 'Mark finished', 'Mark as Side read', 'Edit', 'Delete'],
+    stack: ['Resume', 'Set as Up next', 'Mark finished', 'Mark as Side read', 'Add card note', 'Edit', 'Delete'],
   },
   {
     name: 'Finished, re-read paused, Up next',
@@ -159,7 +159,7 @@ const ROWS: Row[] = [
     marker: 'upNext',
     primary: 'Resume',
     pane: 'Up next',
-    stack: ['Resume', 'Mark finished', 'Mark as Side read', 'Edit', 'Delete'],
+    stack: ['Resume', 'Mark finished', 'Mark as Side read', 'Add card note', 'Edit', 'Delete'],
   },
 ]
 

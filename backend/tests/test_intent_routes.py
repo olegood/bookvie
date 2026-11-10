@@ -50,6 +50,7 @@ INTENT_ROUTES = {
     "set-up-next": {"bookId": DUNE_ID},
     "mark-side-read": {"bookId": DUNE_ID},
     "unmark-side-read": {"bookId": DUNE_ID},
+    "add-card-note": {"bookId": DUNE_ID, "text": "Fear is the mind-killer.", "page": "1"},
     "restore": {},
 }
 """Each intent route with an intent it would accept for the seeded Dune.

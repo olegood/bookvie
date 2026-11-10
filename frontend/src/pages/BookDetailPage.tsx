@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState, type RefObject } from 'react'
 import { useNavigate, useParams } from 'react-router'
-import { useBookView, useCatalogView, useDeleteBook, type BookDetailView } from '../api/index.ts'
+import { useBookView, useCatalogView, useDeleteBook, type BookCardNote, type BookDetailView } from '../api/index.ts'
 import Button from '../components/Button.tsx'
 import ChangeColor from '../components/ChangeColor.tsx'
 import Cover from '../components/Cover.tsx'
@@ -19,12 +19,14 @@ import {
   toPanelFields,
   type DeletedState,
 } from '../lib/bookDetail.ts'
+import { BLOCK_NOTES, cardNotesHeading, NO_CARD_NOTES, notePrefill, pageRef } from '../lib/cardNotes.ts'
 import { COULDNT_LOAD } from '../lib/copy.ts'
 import { detailOffersFinish, finishedStatus } from '../lib/markFinished.ts'
 import { usePageTitle } from '../lib/page.ts'
 import { REPLACES_UP_NEXT, SETTING_UP_NEXT } from '../lib/setUpNext.ts'
 import { sideReadLabel } from '../lib/sideRead.ts'
 import { detailPrimary } from '../lib/startReading.ts'
+import { useCardNoteFlow } from '../lib/useCardNoteFlow.tsx'
 import { useDeleteFlow, type DeleteBook } from '../lib/useDeleteFlow.tsx'
 import { useDetailPause } from '../lib/useDetailPause.ts'
 import { useDetailSetUpNext } from '../lib/useDetailSetUpNext.ts'
@@ -86,6 +88,35 @@ function Stars({ rating }: { rating: number }) {
   )
 }
 
+/**
+ * Book detail's "Card notes (N)" block (EXPERIENCE.md → Book detail): a
+ * `region` named by its heading, with the first three notes in page order
+ * as cards, each its text then its page ref below in `meta` / `ink-tertiary`;
+ * "No card notes yet." with none.
+ */
+function CardNotesBlock({ notes }: { notes: BookCardNote[] }) {
+  const headingId = useId()
+  return (
+    <section className={styles.block} aria-labelledby={headingId}>
+      <h2 id={headingId} className={styles.blockLabel}>
+        {cardNotesHeading(notes.length)}
+      </h2>
+      {notes.length === 0 ? (
+        <p className={styles.none}>{NO_CARD_NOTES}</p>
+      ) : (
+        <ul className={styles.cardNotes}>
+          {notes.slice(0, BLOCK_NOTES).map((note) => (
+            <li key={note.id} className={styles.cardNote}>
+              <p className={styles.cardNoteText}>{note.text}</p>
+              <p className={styles.pageRef}>{pageRef(note.pageStart, note.pageEnd)}</p>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  )
+}
+
 type BookDetailProps = {
   book: BookDetailView
   onDelete: DeleteBook
@@ -107,6 +138,11 @@ function BookDetail({ book, onDelete, onFinish, finishButton }: BookDetailProps)
   const { button: deleteButton, open: openConfirm, dialog: deleteDialog } = useDeleteFlow({ book, onDelete })
 
   const primary = detailPrimary(book)
+  const {
+    button: cardNoteButton,
+    open: openCardNote,
+    panel: cardNotePanel,
+  } = useCardNoteFlow({ bookId: book.id, initialPage: notePrefill(current?.currentPage ?? null) })
   const { button: startButton, open: openStart, dialog: startDialog } = useStartFlow({ bookId: book.id })
 
   const primaryOrHeading = () => startButton.current ?? document.querySelector<HTMLElement>('main h1')
@@ -204,6 +240,9 @@ function BookDetail({ book, onDelete, onFinish, finishButton }: BookDetailProps)
             )}
             {/* Below Mark as Side read / Remove from side, or where it was once a refetch has removed it. */}
             <div ref={sideReadSlot} className={styles.regions} data-show-alert={sideReadFailed ? 'true' : undefined} />
+            <Button ref={cardNoteButton} onClick={openCardNote}>
+              Add card note
+            </Button>
             <Button onClick={() => setEditing(true)}>Edit</Button>
             <Button ref={deleteButton} onClick={openConfirm}>
               Delete
@@ -241,6 +280,7 @@ function BookDetail({ book, onDelete, onFinish, finishButton }: BookDetailProps)
               <EditPurpose key={book.id} bookId={book.id} purpose={current.purpose} />
             </section>
           )}
+          <CardNotesBlock notes={book.cardNotes} />
           <section className={styles.block} aria-labelledby={readingsId}>
             <h2 id={readingsId} className={styles.blockLabel}>
               Readings
@@ -273,6 +313,7 @@ function BookDetail({ book, onDelete, onFinish, finishButton }: BookDetailProps)
         />
       )}
       {startDialog}
+      {cardNotePanel}
       {pauseDialog}
       {deleteDialog}
     </div>
@@ -288,8 +329,8 @@ function BookDetail({ book, onDelete, onFinish, finishButton }: BookDetailProps)
  * then **Pause** for the Main book, then **Mark finished** for the Main
  * book, a Book with a Reading in progress or a Book never finished
  * (`lib/markFinished.ts`), then **Mark as Side read** or **Remove from
- * side** unless the Book is Main, then **Edit**, then **Delete**); the Book on the
- * right. An unknown id shows
+ * side** unless the Book is Main, then **Add card note** (always), then
+ * **Edit**, then **Delete**); the Book on the right. An unknown id shows
  * the not-found page. The title is set by the child that renders, never
  * here: child effects run first, so a title set here would overwrite the
  * not-found page's.
@@ -303,6 +344,13 @@ function BookDetail({ book, onDelete, onFinish, finishButton }: BookDetailProps)
  * (Story 4.5) keeps the page at `/book/:id`: once the dialog has unmounted,
  * focus goes to the `h1`, then `status` reads "Finished *X*."; the refetched
  * view already lists the finished Reading.
+ * The "Card notes (N)" block, between Current reading and Readings, shows
+ * the first three notes in page order with their page refs, or "No card
+ * notes yet." (heading "Card notes"). **Add card note**
+ * (`lib/useCardNoteFlow.tsx`) opens the Card note panel with Page prefilled
+ * from Current reading (at least 1), empty without one; Cancel, Esc and a
+ * save return focus to it, and after a save `status` reads "Card note
+ * saved.".
  * The Readings block lists each Reading newest first: "Started … · Finished
  * …", its stars when rated, and "Purpose fulfilled: …" when answered.
  *

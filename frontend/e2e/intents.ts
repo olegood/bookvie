@@ -17,6 +17,7 @@ export const PAUSE = '/api/intents/pause'
 export const SET_UP_NEXT = '/api/intents/set-up-next'
 export const MARK_SIDE_READ = '/api/intents/mark-side-read'
 export const UNMARK_SIDE_READ = '/api/intents/unmark-side-read'
+export const ADD_CARD_NOTE = '/api/intents/add-card-note'
 
 // A 40×60 solid red-orange PNG (rgb 200, 60, 40): a colored cover.
 export const COVER_PNG = Buffer.from(
@@ -47,7 +48,8 @@ export function bodyOf(request: Request): string {
 export function intentOf(request: Request): Record<string, unknown> {
   const json = /name="intent"[^]*?\r\n\r\n(\{[^]*?\})\r\n--/.exec(bodyOf(request))?.[1]
   if (json === undefined) throw new Error(`no intent part in the ${request.url()} request`)
-  return JSON.parse(json) as Record<string, unknown>
+  // The body was read as latin1 (byte for byte); the JSON part is UTF-8 ("212–213").
+  return JSON.parse(Buffer.from(json, 'latin1').toString('utf8')) as Record<string, unknown>
 }
 
 /** Setup: gives a Book a cover through edit-book, as the Edit book panel would. */

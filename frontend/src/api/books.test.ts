@@ -4,6 +4,8 @@ import { QueryClient } from '@tanstack/react-query'
 import {
   addBook,
   addBookForm,
+  addCardNote,
+  addCardNoteForm,
   BOOK_FIELD_KEYS,
   deleteBook,
   deleteBookForm,
@@ -491,5 +493,55 @@ describe('markSideRead and unmarkSideRead', () => {
 
   it('builds the same form on its own', () => {
     assert.equal(sideReadForm('b2').get('intent'), '{"bookId":"b2"}')
+  })
+})
+
+describe('addCardNote', () => {
+  afterEach(() => mock.restoreAll())
+
+  it('posts the Note and the Page as typed, and passes the new id through', async () => {
+    const fetch = mock.method(globalThis, 'fetch', async (..._args: [string, RequestInit]) =>
+      Response.json({ ok: true, ids: { cardNoteId: 'n1' } }),
+    )
+    const client = new QueryClient()
+    const result = await addCardNote(client, 'b1', 'Fear is the mind-killer.', 'pp. 42–45')
+
+    assert.deepEqual(result, { kind: 'ok', ids: { cardNoteId: 'n1' }, reachedLastPage: false })
+    const [url, init] = fetch.mock.calls[0].arguments
+    assert.equal(url, '/api/intents/add-card-note')
+    assert.equal(init!.method, 'POST')
+    assert.deepEqual(JSON.parse((init!.body as FormData).get('intent') as string), {
+      bookId: 'b1',
+      text: 'Fear is the mind-killer.',
+      page: 'pp. 42–45',
+    })
+    client.clear()
+  })
+
+  it('passes a 422 through with its fields', async () => {
+    mock.method(globalThis, 'fetch', async () =>
+      Response.json(
+        {
+          error: {
+            kind: 'refusal',
+            code: 'invalid_fields',
+            message: 'Not saved. 1 field needs attention: Page.',
+            fields: [{ field: 'page', message: 'Page must be between 1 and 330.' }],
+          },
+        },
+        { status: 422 },
+      ),
+    )
+    const client = new QueryClient()
+    const result = await addCardNote(client, 'b1', 'Ice.', '400')
+    assert.equal(result.kind === 'refusal' && result.code, 'invalid_fields')
+    assert.deepEqual(result.kind === 'refusal' && result.fields, [
+      { field: 'page', message: 'Page must be between 1 and 330.' },
+    ])
+    client.clear()
+  })
+
+  it('builds the same form on its own', () => {
+    assert.equal(addCardNoteForm('b2', 'x', '42').get('intent'), '{"bookId":"b2","text":"x","page":"42"}')
   })
 })

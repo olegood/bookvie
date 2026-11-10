@@ -319,6 +319,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/intents/add-card-note": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add Card Note Intent
+         * @description Add a Card note to any Book, at a page or a page range (FR-17).
+         */
+        post: operations["add_card_note_intent_api_intents_add_card_note_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/intents/mark-side-read": {
         parameters: {
             query?: never;
@@ -411,6 +431,14 @@ export interface components {
              * @description The cover image: JPEG, PNG or WebP, 20 MB or smaller. Optional.
              */
             cover?: string | null;
+        };
+        /** Body_add_card_note_intent_api_intents_add_card_note_post */
+        Body_add_card_note_intent_api_intents_add_card_note_post: {
+            /**
+             * Intent
+             * @description JSON object {"bookId": ..., "text": ..., "page": ...}: the Note, and the Page as typed ("42", "42–45", "pp. 42–45"), parsed on the server.
+             */
+            intent?: string | null;
         };
         /** Body_delete_book_intent_api_intents_delete_book_post */
         Body_delete_book_intent_api_intents_delete_book_post: {
@@ -519,6 +547,25 @@ export interface components {
             intent?: string | null;
         };
         /**
+         * BookCardNote
+         * @description One Card note as Book detail's "Card notes (N)" block shows it (AD-18).
+         */
+        BookCardNote: {
+            /** Id */
+            id: string;
+            /** Text */
+            text: string;
+            /** Pagestart */
+            pageStart: number;
+            /** Pageend */
+            pageEnd: number | null;
+            /**
+             * Createdat
+             * Format: date-time
+             */
+            createdAt: string;
+        };
+        /**
          * BookDetailView
          * @description One Book as Book detail and the Edit book panel show it.
          */
@@ -575,6 +622,8 @@ export interface components {
             sideRead: boolean;
             /** Sidereadsfull */
             sideReadsFull: boolean;
+            /** Cardnotes */
+            cardNotes: components["schemas"]["BookCardNote"][];
         };
         /** BookReading */
         BookReading: {
@@ -1714,6 +1763,66 @@ export interface operations {
         requestBody?: {
             content: {
                 "multipart/form-data": components["schemas"]["Body_set_up_next_intent_api_intents_set_up_next_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkResponse"];
+                };
+            };
+            /** @description Refused by a library rule */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Invalid fields */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Couldn't save */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Couldn't save */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    add_card_note_intent_api_intents_add_card_note_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_add_card_note_intent_api_intents_add_card_note_post"];
             };
         };
         responses: {

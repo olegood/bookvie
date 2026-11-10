@@ -1,20 +1,20 @@
 // Story 5.1 Add a card note while reading. The Card note panel from the
 // Main book card (its heading, fields, prefilled Page and opening focus),
 // the outcome of Save note on Home (the `status` line, focus back on Add card
-// note, still on Home), and Book detail's "Card notes (N)" block. How
+// note, still on Home), and Book detail's "Card notes (N)" block. Also the
+// panel from Book detail (empty and paused prefills), a 422 under its field,
+// a couldn't-save inside the panel, Esc, and the Tab cycle. How
 // `add-card-note` parses the Page and what it refuses (CRD-API-001, TR8) is
 // proven at API level in backend/tests/test_add_card_note.py.
-//
-// Activate a leaf by changing its `test.skip(` to `test(`.
 
 import type { Locator, Page } from '@playwright/test'
 import { expect, test } from './fixtures.ts'
-import { DUNE, DUNE_ID, LEFT_HAND_ID, mainAt, mainBookCard, sizeOf, storedBook } from './home.ts'
-import { intentOf, requestsTo } from './intents.ts'
+import { DUNE, DUNE_ID, LEFT_HAND_ID, libraryBytes, mainAt, mainBookCard, sizeOf, storedBook } from './home.ts'
+import { ADD_CARD_NOTE, intentOf, requestsTo } from './intents.ts'
 import { rgbOf } from './library.ts'
 
-const ADD_CARD_NOTE = '/api/intents/add-card-note'
 const SAVED = 'Card note saved.'
+const COULDNT_SAVE = "Couldn't save. Your data wasn't changed."
 // --color-ink-tertiary in the light theme (tokens.css).
 const INK_TERTIARY = rgbOf('#666961')
 
@@ -77,12 +77,12 @@ const DUNE_WITH_NOTES = {
 const NEUROMANCER_ID = '1b6e2c4a-3d5f-4e7a-9b8c-0d1e2f3a4b5c'
 const NEUROMANCER = { id: NEUROMANCER_ID, title: 'Neuromancer', authors: ['William Gibson'], pages: 271 }
 
-test.describe('Story 5.1 Add a card note while reading (ATDD)', () => {
+test.describe('Story 5.1 Add a card note while reading', () => {
   test.beforeEach(async ({ page }) => {
     await page.emulateMedia({ colorScheme: 'light' })
   })
 
-  test.skip('[P0] AC-1 Add card note on the Main book card opens the "Card note" index card, Page prefilled, focus in Note', async ({
+  test('[P0] AC-1 Add card note on the Main book card opens the "Card note" index card, Page prefilled, focus in Note', async ({
     page,
     seededServer,
   }) => {
@@ -114,7 +114,7 @@ test.describe('Story 5.1 Add a card note while reading (ATDD)', () => {
     expect(storedBook(server, LEFT_HAND_ID).cardNotes).toEqual([])
   })
 
-  test.skip('[P0] AC-4 Save note on Home stays on Home, returns focus to Add card note, then says "Card note saved."', async ({
+  test('[P0] AC-4 Save note on Home stays on Home, returns focus to Add card note, then says "Card note saved."', async ({
     page,
     seededServer,
   }) => {
@@ -150,7 +150,7 @@ test.describe('Story 5.1 Add a card note while reading (ATDD)', () => {
     ])
   })
 
-  test.skip('[P1] AC-5 Book detail shows "Card notes (N)" with the first three notes in page order, or "No card notes yet."', async ({
+  test('[P1] AC-5 Book detail shows "Card notes (N)" with the first three notes in page order, or "No card notes yet."', async ({
     page,
     seededServer,
   }) => {
@@ -183,5 +183,167 @@ test.describe('Story 5.1 Add a card note while reading (ATDD)', () => {
     // A Book with no notes.
     await page.goto(`${server.url}/book/${NEUROMANCER_ID}`)
     await expect(page.getByRole('main').getByText('No card notes yet.', { exact: true })).toBeVisible()
+  })
+
+  test('[P1] AC-1 from Book detail: Page is empty with no Reading, and a save returns focus to that Add card note', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: [NEUROMANCER] })
+    await page.goto(`${server.url}/book/${NEUROMANCER_ID}`)
+    await watchStatus(page)
+
+    const main = page.getByRole('main')
+    const opener = main.getByRole('button', { name: 'Add card note', exact: true })
+    // In the action stack, directly before Edit.
+    const stack = await main.getByRole('button').allTextContents()
+    expect(stack.indexOf('Edit') - stack.indexOf('Add card note')).toBe(1)
+    await expect(main.getByRole('region', { name: 'Card notes', exact: true })).toContainText('No card notes yet.')
+
+    await opener.click()
+    const panel = cardNotePanel(page)
+    await expect(panel.getByRole('textbox', { name: 'Note', exact: true })).toBeFocused()
+    await expect(panel.getByRole('textbox', { name: 'Page', exact: true })).toHaveValue('')
+    await panel.getByRole('textbox', { name: 'Note', exact: true }).fill('The sky above the port.')
+    await panel.getByRole('textbox', { name: 'Page', exact: true }).fill('p.3')
+    await panel.getByRole('button', { name: 'Save note', exact: true }).click()
+
+    await expect(page.getByRole('status')).toHaveText(SAVED)
+    await expect(panel).toBeHidden()
+    await expect(opener).toBeFocused()
+    expect(await statusSeen(page)).toEqual([{ text: SAVED, focused: 'Add card note' }])
+    // The block now has the note.
+    const block = main.getByRole('region', { name: 'Card notes (1)', exact: true })
+    await expect(block.getByRole('listitem')).toHaveCount(1)
+    await expect(block.getByText('p.3', { exact: true })).toBeVisible()
+  })
+
+  test('[P1] AC-3 a refused Page shows under the field with aria-invalid, alert reads the summary, the panel keeps both values', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer(mainAt(212))
+    await page.goto(`${server.url}/`)
+    const before = libraryBytes(server)
+
+    await addCardNote(page).click()
+    const panel = cardNotePanel(page)
+    const note = panel.getByRole('textbox', { name: 'Note', exact: true })
+    const pageField = panel.getByRole('textbox', { name: 'Page', exact: true })
+    await note.fill('Ice.')
+    await pageField.fill('400')
+    await panel.getByRole('button', { name: 'Save note', exact: true }).click()
+
+    await expect(page.getByRole('alert')).toHaveText('Not saved. 1 field needs attention: Page.')
+    await expect(pageField).toHaveAttribute('aria-invalid', 'true')
+    await expect(pageField).toHaveAccessibleDescription('Page must be between 1 and 330.')
+    await expect(pageField).toBeFocused()
+    await expect(note).not.toHaveAttribute('aria-invalid', 'true')
+    await expect(panel).toBeVisible()
+    await expect(note).toHaveValue('Ice.')
+    await expect(pageField).toHaveValue('400')
+    expect(libraryBytes(server)).toBe(before)
+
+    // An empty Note: the message is on Note, which takes focus.
+    await note.fill('  ')
+    await pageField.fill('42')
+    await panel.getByRole('button', { name: 'Save note', exact: true }).click()
+    await expect(note).toHaveAccessibleDescription('Note is required.')
+    await expect(note).toHaveAttribute('aria-invalid', 'true')
+    await expect(note).toBeFocused()
+    await expect(pageField).not.toHaveAttribute('aria-invalid', 'true')
+    expect(libraryBytes(server)).toBe(before)
+  })
+
+  test("[P1] AC-6 a routed 503 shows Couldn't save inside the panel above the buttons, with both values kept", async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer(mainAt(212))
+    let release!: () => void
+    const held = new Promise<void>((resolve) => (release = resolve))
+    await page.route(`**${ADD_CARD_NOTE}`, async (route) => {
+      await held
+      await route.fulfill({
+        status: 503,
+        contentType: 'application/json',
+        body: JSON.stringify({ error: { kind: 'couldnt_save', code: 'couldnt_save', message: COULDNT_SAVE } }),
+      })
+    })
+    await page.goto(`${server.url}/`)
+    const before = libraryBytes(server)
+
+    await addCardNote(page).click()
+    const panel = cardNotePanel(page)
+    const save = panel.getByRole('button', { name: 'Save note', exact: true })
+    await panel.getByRole('textbox', { name: 'Note', exact: true }).fill('Kept.')
+    await panel.getByRole('textbox', { name: 'Page', exact: true }).fill('212–213')
+    const sent = page.waitForRequest((request) => new URL(request.url()).pathname === ADD_CARD_NOTE)
+    await save.click()
+    await sent
+    await expect(save).toHaveAttribute('aria-disabled', 'true')
+    release()
+
+    await expect(page.getByRole('alert')).toHaveText(COULDNT_SAVE)
+    const line = panel.getByText(COULDNT_SAVE, { exact: true })
+    await expect(line).toBeVisible()
+    await expect(line).toHaveCSS('position', 'static')
+    expect(await bottomOf(line)).toBeLessThanOrEqual(await topOf(save))
+    await expect(panel).toBeVisible()
+    await expect(save).not.toHaveAttribute('aria-disabled', 'true')
+    await expect(panel.getByRole('textbox', { name: 'Note', exact: true })).toHaveValue('Kept.')
+    await expect(panel.getByRole('textbox', { name: 'Page', exact: true })).toHaveValue('212–213')
+    await expect(page.getByRole('status')).toHaveText('')
+    expect(libraryBytes(server)).toBe(before)
+  })
+
+  test('[P2] Esc closes the panel like Cancel, sends nothing, and returns focus to Add card note', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer(mainAt(0))
+    const sent = requestsTo(page, ADD_CARD_NOTE)
+    await page.goto(`${server.url}/`)
+
+    await addCardNote(page).click()
+    const panel = cardNotePanel(page)
+    // A current Reading at p.0 prefills 1.
+    await expect(panel.getByRole('textbox', { name: 'Page', exact: true })).toHaveValue('1')
+    await panel.getByRole('textbox', { name: 'Note', exact: true }).fill('Not kept.')
+    await page.keyboard.press('Escape')
+
+    await expect(panel).toBeHidden()
+    await expect(addCardNote(page)).toBeFocused()
+    expect(sent).toHaveLength(0)
+    expect(storedBook(server, LEFT_HAND_ID).cardNotes).toEqual([])
+  })
+
+  test('[P1] AC-1 from Book detail of a paused Book: Page is prefilled with its paused page', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: [{ ...NEUROMANCER, readings: [{ currentPage: 88 }] }] })
+    await page.goto(`${server.url}/book/${NEUROMANCER_ID}`)
+
+    await page.getByRole('main').getByRole('button', { name: 'Add card note', exact: true }).click()
+
+    await expect(cardNotePanel(page).getByRole('textbox', { name: 'Page', exact: true })).toHaveValue('88')
+  })
+
+  test('[P2] Tab and Shift+Tab cycle inside the panel, the Note textarea included', async ({ page, seededServer }) => {
+    const server = await seededServer(mainAt(212))
+    await page.goto(`${server.url}/`)
+
+    await addCardNote(page).click()
+    const panel = cardNotePanel(page)
+    const note = panel.getByRole('textbox', { name: 'Note', exact: true })
+    await expect(note).toBeFocused()
+    for (const [key, focused] of [
+      ['Shift+Tab', panel.getByRole('button', { name: 'Cancel', exact: true })],
+      ['Tab', note],
+    ] as const) {
+      await page.keyboard.press(key)
+      await expect(focused).toBeFocused()
+    }
   })
 })

@@ -17,6 +17,7 @@ export type ShelfBook = Schemas['ShelfBook']
 export type LibraryMeter = Schemas['LibraryMeter']
 export type BookDetailView = Schemas['BookDetailView']
 export type BookReading = Schemas['BookReading']
+export type BookCardNote = Schemas['BookCardNote']
 export type BackupView = Schemas['BackupView']
 
 export interface Views {

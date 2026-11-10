@@ -1,0 +1,71 @@
+/* DESIGN.md → Card note panel: a small dialog styled as an index card
+   (`card-note`: surface, 1px line border, rounded.lg), 360px wide. */
+.panel {
+  box-sizing: border-box;
+  width: 360px;
+  max-width: calc(100vw - 2 * var(--space-6));
+  margin: auto;
+  padding: var(--space-6);
+  border: var(--hairline) solid var(--color-line);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  box-shadow: var(--shadow-overlay);
+}
+
+.panel::backdrop {
+  background: var(--color-scrim);
+}
+
+.heading {
+  margin: 0 0 var(--space-4);
+  font-family: var(--font-panel-heading-family);
+  font-size: var(--font-panel-heading-size);
+  font-weight: var(--font-panel-heading-weight);
+  line-height: var(--font-panel-heading-line-height);
+}
+
+.field {
+  margin: 0 0 var(--space-4);
+}
+
+/* Note: multi-line, in `body`. */
+.note {
+  height: auto;
+  min-height: 112px;
+  padding: var(--space-2) var(--space-3);
+  font-family: var(--font-body-family);
+  font-size: var(--font-body-size);
+  line-height: var(--font-body-line-height);
+  resize: vertical;
+}
+
+/* Page: short, tabular figures ("42" or "pp. 42–45"). */
+.pageField input {
+  width: 140px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The live regions' host sits here, above the buttons, while the panel is
+   open. A couldn't-save or refusal shows as one calm line in ink. */
+.regions[data-show-alert='true'] [role='alert'] {
+  position: static;
+  width: auto;
+  height: auto;
+  margin: 0 0 var(--space-3);
+  overflow: visible;
+  clip-path: none;
+  white-space: normal;
+  font-family: var(--font-body-sm-family);
+  font-size: var(--font-body-sm-size);
+  font-weight: var(--font-body-sm-weight);
+  line-height: var(--font-body-sm-line-height);
+  color: var(--color-ink);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}

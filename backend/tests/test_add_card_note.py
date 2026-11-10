@@ -1,6 +1,6 @@
 """Story 5.1 Add a card note while reading: the ``add-card-note`` intent (API).
 
-One skipped leaf per criterion the server decides (CRD-API-001, R-09):
+The criteria the server decides (CRD-API-001, R-09):
 
 - AC-2: every accepted Page form is parsed on the server into ``pageStart``
   and ``pageEnd`` ("42–42" is stored as 42 with ``pageEnd: null``), and the
@@ -10,24 +10,24 @@ One skipped leaf per criterion the server decides (CRD-API-001, R-09):
   than one range, or text that isn't a page is refused with the copy on the
   ``page`` field; an empty Page with "Page is required."; an empty or
   whitespace-only Note with "Note is required.".
+- AC-5: Book detail's ``cardNotes``, in page order (``pageStart``, then
+  ``createdAt``), and empty for a Book with none.
 - AC-6: the standard intent ACs (TR8).
 
 The panel, its focus, the ``status`` line and the Card notes block are read
 in the browser (``frontend/e2e/add-card-note.spec.ts``).
-
-Activate a leaf by deleting its ``@pytest.mark.skip(reason=RED)`` line.
 """
 
 import json
 from pathlib import Path
 
-import pytest
 from fastapi.testclient import TestClient
 
 from bookvie.domain.clock import FakeClock
 from bookvie.http.app import create_app
 from tests.builder import LibraryBuilder
 from tests.helpers import (
+    ADD_CARD_NOTE,
     COULDNT_SAVE_BODY,
     TODAY,
     FaultyFs,
@@ -37,9 +37,6 @@ from tests.helpers import (
     stored_book,
 )
 
-RED = "ATDD red phase (Story 5.1): add-card-note is not implemented yet"
-
-ADD_CARD_NOTE = "/api/intents/add-card-note"
 GONE_ID = "00000000-0000-4000-8000-000000000000"
 NOW = FakeClock(TODAY).now()
 
@@ -51,7 +48,7 @@ def _add_card_note(client: TestClient, book_id: str, text: str, page: str):
 
 
 def _fields(response) -> dict[str, str]:
-    """The refused fields' messages by field; empty when the body has none (a red-phase 405)."""
+    """The refused fields' messages by field; empty when the body has none."""
     fields = response.json().get("error", {}).get("fields") or []
     return {f["field"]: f["message"] for f in fields}
 
@@ -74,7 +71,6 @@ PAGE_FORMS = [
 ]
 
 
-@pytest.mark.skip(reason=RED)
 def test_ac2_p0_add_card_note_parses_every_page_form_and_stores_the_note_on_that_book(
     tmp_path: Path,
 ) -> None:
@@ -114,6 +110,43 @@ def test_ac2_p0_add_card_note_parses_every_page_form_and_stores_the_note_on_that
     assert stored_book(tmp_path, dune) == dune_before
     assert_invariants(tmp_path)
 
+    # The Note is stored with its outer whitespace trimmed; inner newlines are kept.
+    response = _add_card_note(api_client(tmp_path), left_hand, "  \n Ice.\nAnd snow.  \t", "42")
+    assert response.status_code == 200
+    assert stored_book(tmp_path, left_hand)["cardNotes"][-1]["text"] == "Ice.\nAnd snow."
+    assert_invariants(tmp_path)
+
+
+def test_ac5_book_detail_lists_card_notes_by_page_then_created_at(tmp_path: Path) -> None:
+    builder = LibraryBuilder()
+    left_hand = _left_hand(builder)
+    # Seeded out of order, with a tie on pageStart broken by createdAt.
+    for text, start, end, created in (
+        ("Later", 96, None, "2026-05-01T10:00:00+02:00"),
+        ("Second at 42", 42, None, "2026-05-03T10:00:00+02:00"),
+        ("Low", 12, None, "2026-05-04T10:00:00+02:00"),
+        ("First at 42", 42, 45, "2026-05-02T10:00:00+02:00"),
+    ):
+        builder.card_note(left_hand, text=text, page_start=start, page_end=end, created_at=created)
+    builder.write(tmp_path)
+
+    detail = api_client(tmp_path).get("/api/views/book", params={"id": left_hand}).json()
+
+    notes = detail["cardNotes"]
+    assert [(n["text"], n["pageStart"], n["pageEnd"]) for n in notes] == [
+        ("Low", 12, None),
+        ("First at 42", 42, 45),
+        ("Second at 42", 42, None),
+        ("Later", 96, None),
+    ]
+    assert set(notes[0]) == {"id", "text", "pageStart", "pageEnd", "createdAt"}
+    # A Book with no notes has an empty list.
+    builder = LibraryBuilder()
+    bare = _left_hand(builder)
+    builder.write(tmp_path)
+    detail = api_client(tmp_path).get("/api/views/book", params={"id": bare}).json()
+    assert detail["cardNotes"] == []
+
 
 # --- AC-3: the refusals, field by field ---------------------------------------------
 
@@ -138,7 +171,6 @@ PAGE_REFUSALS = [
 ]
 
 
-@pytest.mark.skip(reason=RED)
 def test_ac3_p0_add_card_note_refuses_a_bad_page_or_an_empty_note_and_saves_nothing(
     tmp_path: Path,
 ) -> None:
@@ -182,7 +214,6 @@ def test_ac3_p0_add_card_note_refuses_a_bad_page_or_an_empty_note_and_saves_noth
 # --- AC-6: the standard intent ACs (TR8) ---------------------------------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_ac6_p0_add_card_note_meets_the_standard_intent_acs(tmp_path: Path) -> None:
     builder = LibraryBuilder()
     left_hand = _left_hand(builder)

@@ -177,6 +177,17 @@ class CurrentReading(_View):
     purpose: str | None
 
 
+class BookCardNote(_View):
+    """One Card note as Book detail's "Card notes (N)" block shows it (AD-18)."""
+
+    id: str
+    text: str
+    page_start: int
+    page_end: int | None
+    """``None`` for one page."""
+    created_at: AwareDatetime
+
+
 class BookDetailView(_View):
     """One Book as Book detail and the Edit book panel show it."""
 
@@ -226,6 +237,8 @@ class BookDetailView(_View):
     side_reads_full: bool
     """Whether there are 3 Side reads and this Book isn't one of them: **Mark as Side read**
     is disabled with "Up to 3 side reads."."""
+    card_notes: list[BookCardNote]
+    """The Book's Card notes in page order: ``pageStart``, then ``createdAt``."""
 
 
 class BackupView(_View):

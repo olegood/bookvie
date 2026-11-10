@@ -247,7 +247,7 @@ Use: Home (Main book card), Book detail; Card notes list (edit).
 
 - **Role:** small modal styled as an index card.
 - **Opening focus:** on Note.
-- **Fields:** Note (required) and Page, prefilled with the current page (at least 1), or empty when the Book has no Reading.
+- **Fields:** Note (required) and Page (required), prefilled with the current page (at least 1), or empty when the Book has no Reading.
 - **Page format:** accepts "42", "42–45", "42-45", "42 – 45", with or without "p." or "pp."; "42–42" is stored as 42. Valid pages are 1 to the Book's page count. A reversed range ("45–42") is refused: "The first page must come before the last." More than one range is refused: "Use one page or one range."
 - **Errors:** `aria-invalid`, message linked by `aria-describedby`, announced in `alert`.
 - **Save note** saves and closes; the "See card notes · N" count (on Book detail, the Card notes block) updates; `status` announces "Card note saved." The user never leaves the page they were on.
@@ -327,6 +327,7 @@ Messages for forms outside the Agent Label Contract's validation table. Each is 
 | Main book card | Page field | 0 to the Book's page count | "Page must be between 0 and N." |
 | Start dialog | Which page? | Required when shown | "Which page? is required." |
 | Card note panel | Note | Not empty | "Note is required." |
+| Card note panel | Page | Not empty | "Page is required." |
 | Card note panel | Page | 1 to the Book's page count | "Page must be between 1 and N." |
 | Card note panel | Page | A range runs from low to high | "The first page must come before the last." |
 | Card note panel | Page | One page or one range | "Use one page or one range." |

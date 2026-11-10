@@ -147,6 +147,7 @@ const dune: BookDetailView = {
   currentReading: null,
   sideRead: false,
   sideReadsFull: false,
+  cardNotes: [],
 }
 
 describe('the book view', () => {

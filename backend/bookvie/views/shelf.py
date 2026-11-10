@@ -22,6 +22,7 @@ from bookvie.domain.book_fields import merge_tags
 from bookvie.store import COVERS_DIR, Store, read_last_export, referenced_covers
 
 from .models import (
+    BookCardNote,
     BookDetailView,
     BookReading,
     CatalogView,
@@ -306,6 +307,16 @@ def book_detail(library: Library, book_id: str) -> BookDetailView | None:
         current_reading=_current_reading(book, role, reading),
         side_read=side_read,
         side_reads_full=not side_read and len(library.side_read_book_ids) >= MAX_SIDE_READS,
+        card_notes=[
+            BookCardNote(
+                id=n.id,
+                text=n.text,
+                page_start=n.page_start,
+                page_end=n.page_end,
+                created_at=n.created_at,
+            )
+            for n in sorted(book.card_notes, key=lambda n: (n.page_start, n.created_at))
+        ],
     )
 
 

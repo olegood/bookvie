@@ -3,6 +3,7 @@
 
 export {
   addBook,
+  addCardNote,
   BOOK_FIELD_KEYS,
   deleteBook,
   editBook,
@@ -16,6 +17,7 @@ export {
   unmarkSideRead,
   updatePage,
   useAddBook,
+  useAddCardNote,
   useDeleteBook,
   useEditBook,
   useEditPurpose,
@@ -55,6 +57,7 @@ export {
   useHomeView,
   viewKey,
   type BackupView,
+  type BookCardNote,
   type BookDetailView,
   type BookReading,
   type BookViewState,

@@ -342,6 +342,7 @@ def test_openapi_documents_the_envelope_not_fastapi_errors(openapi: dict) -> Non
     operations.append(("post", "/api/intents/update-page"))
     operations.append(("post", "/api/intents/pause"))
     operations.append(("post", "/api/intents/set-up-next"))
+    operations.append(("post", "/api/intents/add-card-note"))
     operations.append(("post", "/api/intents/restore"))
     operations.append(("get", "/api/views/backup"))
     operations.append(("get", "/api/export"))
@@ -371,6 +372,7 @@ def test_openapi_documents_the_envelope_not_fastapi_errors(openapi: dict) -> Non
         ("post", "/api/intents/update-page"),
         ("post", "/api/intents/pause"),
         ("post", "/api/intents/set-up-next"),
+        ("post", "/api/intents/add-card-note"),
         ("post", "/api/intents/restore"),
     ]
     for method, path in coverless:

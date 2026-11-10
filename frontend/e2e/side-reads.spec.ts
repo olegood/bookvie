@@ -135,12 +135,13 @@ test.describe('Story 4.7 Keep a few side reads', () => {
     await watchStatus(page)
     const mark = detailButton(page, 'Mark as Side read')
 
-    // Right after Mark finished, before Edit.
+    // Right after Mark finished, before Add card note and Edit.
     await expect(actionStack(page)).toHaveText([
       'Start reading',
       'Set as Up next',
       'Mark finished',
       'Mark as Side read',
+      'Add card note',
       'Edit',
       'Delete',
     ])

@@ -300,3 +300,26 @@ export function useFinishReading(): (bookId: string, answers: FinishAnswers) => 
   const client = useQueryClient()
   return (bookId, answers) => finishReading(client, bookId, answers)
 }
+
+// `add-card-note`'s intent part is `{ bookId, text, page }`: the Note and the
+// Page as typed. Only the server parses Page ("42", "42–45", "pp. 42–45").
+
+export function addCardNoteForm(bookId: string, text: string, page: string): FormData {
+  const form = new FormData()
+  form.set('intent', JSON.stringify({ bookId, text, page }))
+  return form
+}
+
+/**
+ * Sends `add-card-note`; resolves after the views have refetched. `ids.cardNoteId`
+ * names the new note.
+ */
+export function addCardNote(client: QueryClient, bookId: string, text: string, page: string): Promise<IntentResult> {
+  return sendIntent(client, 'add-card-note', addCardNoteForm(bookId, text, page))
+}
+
+/** `addCardNote` bound to the app's QueryClient. */
+export function useAddCardNote(): (bookId: string, text: string, page: string) => Promise<IntentResult> {
+  const client = useQueryClient()
+  return (bookId, text, page) => addCardNote(client, bookId, text, page)
+}
