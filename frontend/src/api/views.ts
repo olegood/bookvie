@@ -19,6 +19,9 @@ export type BookDetailView = Schemas['BookDetailView']
 export type BookReading = Schemas['BookReading']
 export type BookCardNote = Schemas['BookCardNote']
 export type BackupView = Schemas['BackupView']
+export type CardNotesView = Schemas['CardNotesView']
+export type CardNotesGroup = Schemas['CardNotesGroup']
+export type CardNotesScope = Schemas['CardNotesScope']
 
 export interface Views {
   home: HomeView
@@ -108,6 +111,56 @@ export function toBookViewState(query: ViewQuery<BookDetailView | null>): BookVi
 export function useBookView(id: string): BookViewState {
   const query = useQuery({ queryKey: bookViewKey(id), queryFn: () => fetchBookView(id) })
   return toBookViewState(query)
+}
+
+/**
+ * The `card-notes` view's key: under 'view', so every intent refetches it.
+ * Unscoped is `['view', 'card-notes']`, scoped adds the Book id.
+ */
+export function cardNotesViewKey(bookId?: string): readonly string[] {
+  return bookId === undefined ? [VIEW_ROOT, 'card-notes'] : [VIEW_ROOT, 'card-notes', bookId]
+}
+
+/** GET /api/views/card-notes[?book=…]; `null` when the scoped Book doesn't exist (404). */
+export async function fetchCardNotesView(bookId?: string): Promise<CardNotesView | null> {
+  const query = bookId === undefined ? '' : `?${new URLSearchParams({ book: bookId })}`
+  const url = `${VIEWS_BASE}/card-notes${query}`
+  const response = await fetch(url)
+  if (response.status === 404) return null
+  if (!response.ok) throw new ViewLoadError(`GET ${url}: ${response.status}`)
+  return (await response.json()) as CardNotesView
+}
+
+/** A view state, plus `missing` when the scoped Book doesn't exist. */
+export type CardNotesViewState = ViewState<CardNotesView> | { status: 'missing' }
+
+export function useCardNotesView(bookId?: string): CardNotesViewState {
+  const query = useQuery({ queryKey: cardNotesViewKey(bookId), queryFn: () => fetchCardNotesView(bookId) })
+  if (query.data === null) return { status: 'missing' }
+  return toViewState<CardNotesView>({ ...query, data: query.data })
+}
+
+/**
+ * Reads the `card-notes` view as the cache holds it right now (see
+ * `useCachedBookView`). `undefined` when it isn't cached, `null` when the
+ * scoped Book is gone.
+ */
+export function useCachedCardNotesView(): (bookId?: string) => CardNotesView | null | undefined {
+  const client = useQueryClient()
+  return (bookId) => client.getQueryData<CardNotesView | null>(cardNotesViewKey(bookId))
+}
+
+/**
+ * The `book` view of `id` when it is given, else nothing is fetched:
+ * `undefined` until loaded (or on a failed load), `null` when the Book is gone.
+ */
+export function useOptionalBookView(id: string | undefined): BookDetailView | null | undefined {
+  const query = useQuery({
+    queryKey: bookViewKey(id ?? ''),
+    queryFn: () => fetchBookView(id ?? ''),
+    enabled: id !== undefined,
+  })
+  return id === undefined ? undefined : query.data
 }
 
 /**

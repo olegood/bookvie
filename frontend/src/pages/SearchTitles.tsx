@@ -6,13 +6,16 @@ type Props = {
   onChange: (value: string) => void
   /** The input, so the page can focus it (when no spine remains). */
   inputRef?: Ref<HTMLInputElement>
+  /** The visible label that names the field ("Search titles" unless given). */
+  label?: string
 }
 
 /**
  * Search titles (EXPERIENCE.md → Search field): a visible label, no
- * placeholder. Esc in a non-empty field clears it.
+ * placeholder. Esc in a non-empty field clears it. `label` reuses it as
+ * Search card notes.
  */
-export default function SearchTitles({ value, onChange, inputRef }: Props) {
+export default function SearchTitles({ value, onChange, inputRef, label = 'Search titles' }: Props) {
   const id = useId()
   const keyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Escape' && value !== '') {
@@ -23,7 +26,7 @@ export default function SearchTitles({ value, onChange, inputRef }: Props) {
   return (
     <div className={styles.search}>
       <label htmlFor={id} className={styles.label}>
-        Search titles
+        {label}
       </label>
       <div className={styles.box}>
         <svg className={styles.glyph} viewBox="0 0 16 16" aria-hidden="true" focusable="false">

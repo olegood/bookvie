@@ -1,0 +1,138 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-5);
+  padding: var(--space-page-top) var(--space-page-x);
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-page-title-family);
+  font-size: var(--font-page-title-size);
+  font-weight: var(--font-page-title-weight);
+  line-height: var(--font-page-title-line-height);
+  color: var(--color-ink);
+}
+
+.failure,
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.none {
+  margin: 0;
+  font-family: var(--font-body-sm-family);
+  font-size: var(--font-body-sm-size);
+  line-height: var(--font-body-sm-line-height);
+  color: var(--color-ink-secondary);
+}
+
+/* DESIGN.md → Card notes list: the removable "In X" scope chip. */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0 var(--space-1) 0 var(--space-3);
+  border: var(--hairline) solid var(--color-input-border);
+  border-radius: var(--radius-full);
+  background: var(--color-surface-inset);
+  font-family: var(--font-meta-family);
+  font-size: var(--font-meta-size);
+  font-weight: var(--font-meta-weight);
+  line-height: var(--font-meta-line-height);
+  color: var(--color-ink);
+}
+
+.chipTitle {
+  font-family: var(--font-book-title-sm-family);
+}
+
+.chipRemove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--color-ink-secondary);
+  cursor: pointer;
+}
+
+.chipRemove svg {
+  width: var(--glyph-size);
+  height: var(--glyph-size);
+}
+
+.chipRemove:hover,
+.chipRemove:focus-visible {
+  color: var(--color-ink);
+}
+
+/* One Book's notes, under its serif title (book-title-sm). */
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: 100%;
+  max-width: 720px;
+}
+
+.groupTitle {
+  margin: 0;
+  font-family: var(--font-book-title-sm-family);
+  font-size: var(--font-book-title-sm-size);
+  font-weight: var(--font-book-title-sm-weight);
+  line-height: var(--font-book-title-sm-line-height);
+  color: var(--color-ink);
+}
+
+/* A single column of notes, with the card-note look of Book detail's block. */
+.notes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.note {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: var(--hairline) solid var(--color-line);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.noteText {
+  margin: 0;
+  font-family: var(--font-body-family);
+  font-size: var(--font-body-size);
+  font-weight: var(--font-body-weight);
+  line-height: var(--font-body-line-height);
+  color: var(--color-ink);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.pageRef {
+  margin: 0;
+  font-family: var(--font-meta-family);
+  font-size: var(--font-meta-size);
+  font-weight: var(--font-meta-weight);
+  line-height: var(--font-meta-line-height);
+  color: var(--color-ink-tertiary);
+}
+
+.noteEdit {
+  align-self: flex-start;
+}

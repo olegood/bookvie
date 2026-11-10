@@ -1,0 +1,17 @@
+.mark {
+  background: var(--color-accent-soft);
+  color: inherit;
+  font-weight: 600;
+  text-decoration: underline var(--hairline) var(--color-accent);
+  text-underline-offset: 2px;
+}
+
+/* Forced colors: the system highlight pair keeps the match visible. */
+@media (forced-colors: active) {
+  .mark {
+    forced-color-adjust: none;
+    background: Mark;
+    color: MarkText;
+    text-decoration-color: MarkText;
+  }
+}

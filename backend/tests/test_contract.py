@@ -334,6 +334,7 @@ def test_openapi_documents_the_envelope_not_fastapi_errors(openapi: dict) -> Non
     assert ids == {"type": "object", "additionalProperties": {"type": "string"}}
     operations = [("get", "/api/views/home"), ("get", "/api/views/catalog")]
     operations.append(("get", "/api/views/book"))
+    operations.append(("get", "/api/views/card-notes"))
     operations.append(("post", "/api/intents/add-book"))
     operations.append(("post", "/api/intents/edit-book"))
     operations.append(("post", "/api/intents/delete-book"))
@@ -366,6 +367,7 @@ def test_openapi_documents_the_envelope_not_fastapi_errors(openapi: dict) -> Non
         ("get", "/api/views/home"),
         ("get", "/api/views/catalog"),
         ("get", "/api/views/book"),
+        ("get", "/api/views/card-notes"),
         ("get", "/api/views/backup"),
         ("get", "/api/export"),
         ("post", "/api/intents/delete-book"),

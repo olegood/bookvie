@@ -283,3 +283,16 @@
   align-self: flex-start;
   margin-top: auto;
 }
+
+/* Search card notes sits under the block heading, above the notes. */
+.noteSearch {
+  margin-bottom: var(--space-3);
+}
+
+/* "See all card notes" below the notes. */
+.seeAll {
+  margin: var(--space-3) 0 0;
+  font-family: var(--font-body-sm-family);
+  font-size: var(--font-body-sm-size);
+  line-height: var(--font-body-sm-line-height);
+}

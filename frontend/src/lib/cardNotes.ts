@@ -55,3 +55,76 @@ export const DELETING_CARD_NOTE = 'Deleting the card note.'
 export function noteAfterDelete(shownIds: readonly string[], index: number): string | null {
   return shownIds[index] ?? null
 }
+
+// Search card notes (Story 5.3; EXPERIENCE.md → Search field, Card notes
+// list): a case-insensitive substring of the note text only, on the trimmed
+// query. Regex characters match literally; a blank query filters nothing.
+
+/** The query as matched: trimmed and lower-cased; `''` filters nothing. */
+function needle(query: string): string {
+  return query.trim().toLowerCase()
+}
+
+/** Whether a note's text contains the query, ignoring case. A blank query matches every note. */
+export function noteMatches(text: string, query: string): boolean {
+  const q = needle(query)
+  return q === '' || text.toLowerCase().includes(q)
+}
+
+/** One run of a note's text, marked when it is a match. */
+export type HighlightPart = { text: string; mark: boolean }
+
+/**
+ * The note's text split into runs, each match marked, in the note's own
+ * casing. A blank query, or no match, gives the whole text unmarked.
+ */
+export function highlightParts(text: string, query: string): HighlightPart[] {
+  const q = needle(query)
+  if (q === '') return [{ text, mark: false }]
+  const lower = text.toLowerCase()
+  // Lower-casing can change a string's length (e.g. "İ"); fall back to no marks then.
+  if (lower.length !== text.length) return [{ text, mark: false }]
+  const parts: HighlightPart[] = []
+  let from = 0
+  for (let at = lower.indexOf(q); at !== -1; at = lower.indexOf(q, at + q.length)) {
+    if (at > from) parts.push({ text: text.slice(from, at), mark: false })
+    parts.push({ text: text.slice(at, at + q.length), mark: true })
+    from = at + q.length
+  }
+  if (from < text.length || parts.length === 0) parts.push({ text: text.slice(from), mark: false })
+  return parts
+}
+
+/** The search field's visible label. */
+export const SEARCH_CARD_NOTES = 'Search card notes'
+
+/** The count announced after typing pauses: "2 notes match.", "1 note matches.". */
+export function notesMatchCopy(count: number): string {
+  return count === 1 ? '1 note matches.' : `${count} notes match.`
+}
+
+/** The line shown in place of the notes when nothing matches. */
+export function noNotesMatchCopy(query: string): string {
+  return `No card notes contain “${query.trim()}”.`
+}
+
+/** The Main book card's link text: "See card notes · 7", or "See card notes" at 0. */
+export function seeCardNotesLabel(count: number): string {
+  return count === 0 ? 'See card notes' : `See card notes · ${count}`
+}
+
+/** The Main book card's link name: "See card notes, 7 notes", "…, 1 note", or "See card notes" at 0. */
+export function seeCardNotesName(count: number): string {
+  if (count === 0) return 'See card notes'
+  return count === 1 ? 'See card notes, 1 note' : `See card notes, ${count} notes`
+}
+
+/** The scope chip's remove button: "Remove In Dune". */
+export function scopeChipRemoveName(title: string): string {
+  return `Remove In ${title}`
+}
+
+/** The scoped Card notes page's route: `/card-notes?book=<id>`. */
+export function cardNotesPath(bookId?: string): string {
+  return bookId === undefined ? '/card-notes' : `/card-notes?${new URLSearchParams({ book: bookId })}`
+}

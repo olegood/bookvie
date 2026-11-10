@@ -113,6 +113,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/views/card-notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Card Notes View
+         * @description Every Card note grouped by Book, or one Book's with ``book``; 404 ``book_not_found``
+         *     when that Book is gone.
+         */
+        get: operations["card_notes_view_api_views_card_notes_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/intents/add-book": {
         parameters: {
             query?: never;
@@ -694,6 +715,37 @@ export interface components {
             /** Purposefulfilled */
             purposeFulfilled: ("yes" | "partly" | "notYet") | null;
         };
+        /**
+         * CardNotesGroup
+         * @description One Book's Card notes on the Card notes page, under its title.
+         */
+        CardNotesGroup: {
+            /** Bookid */
+            bookId: string;
+            /** Title */
+            title: string;
+            /** Notes */
+            notes: components["schemas"]["BookCardNote"][];
+        };
+        /**
+         * CardNotesScope
+         * @description The Book a scoped Card notes view is limited to (the "In *X*" chip).
+         */
+        CardNotesScope: {
+            /** Bookid */
+            bookId: string;
+            /** Title */
+            title: string;
+        };
+        /**
+         * CardNotesView
+         * @description The Card notes page: every note grouped by Book, or one Book's (FR-19).
+         */
+        CardNotesView: {
+            scope: components["schemas"]["CardNotesScope"] | null;
+            /** Groups */
+            groups: components["schemas"]["CardNotesGroup"][];
+        };
         /** CatalogView */
         CatalogView: {
             meter: components["schemas"]["LibraryMeter"];
@@ -793,6 +845,8 @@ export interface components {
             daysLeft: number | null;
             /** Lastprogressupdate */
             lastProgressUpdate: string | null;
+            /** Cardnotecount */
+            cardNoteCount: number;
         };
         /**
          * HomeSideRead
@@ -1202,6 +1256,73 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BookDetailView"];
+                };
+            };
+            /** @description No such Book */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Refused by a library rule */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Invalid fields */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Couldn't save */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Couldn't save */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    card_notes_view_api_views_card_notes_get: {
+        parameters: {
+            query?: {
+                book?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CardNotesView"];
                 };
             };
             /** @description No such Book */

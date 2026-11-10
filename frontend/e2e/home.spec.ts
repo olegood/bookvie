@@ -53,7 +53,7 @@ test.describe('Story 3.1 See my Main book on Home (ATDD)', () => {
     const server = await seededServer({ books: [DUNE] })
     await page.goto(`${server.url}/`)
 
-    await expect(nav(page).getByRole('link')).toHaveText(['Home', 'Catalog', 'Backup'])
+    await expect(nav(page).getByRole('link')).toHaveText(['Home', 'Catalog', 'Card notes', 'Backup'])
 
     const home = nav(page).getByRole('link', { name: 'Home', exact: true })
     const catalog = nav(page).getByRole('link', { name: 'Catalog', exact: true })

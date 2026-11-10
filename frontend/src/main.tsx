@@ -8,6 +8,7 @@ import { markNavigated } from './lib/page.ts'
 import { applyTheme, readTheme } from './lib/theme.ts'
 import BackupPage from './pages/BackupPage.tsx'
 import BookDetailPage from './pages/BookDetailPage.tsx'
+import CardNotesPage from './pages/CardNotesPage.tsx'
 import CatalogPage from './pages/CatalogPage.tsx'
 import { BareErrorPage, RouteErrorPage } from './pages/ErrorPage.tsx'
 import HomePage from './pages/HomePage.tsx'
@@ -34,6 +35,7 @@ const router = createBrowserRouter([
           { path: '/', element: <HomePage /> },
           { path: '/catalog', element: <CatalogPage /> },
           { path: '/book/:bookId', element: <BookDetailPage /> },
+          { path: '/card-notes', element: <CardNotesPage /> },
           { path: '/backup', element: <BackupPage /> },
           { path: '*', element: <NotFoundPage /> },
         ],

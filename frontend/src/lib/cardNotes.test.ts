@@ -4,6 +4,14 @@ import {
   BLOCK_NOTES,
   CARD_NOTE_SAVED,
   cardNotesHeading,
+  cardNotesPath,
+  highlightParts,
+  noNotesMatchCopy,
+  noteMatches,
+  notesMatchCopy,
+  scopeChipRemoveName,
+  seeCardNotesLabel,
+  seeCardNotesName,
   editNoteName,
   NO_CARD_NOTES,
   noteAfterDelete,
@@ -83,5 +91,89 @@ describe('noteAfterDelete', () => {
 
   it('is null when no note is left', () => {
     assert.equal(noteAfterDelete([], 0), null)
+  })
+})
+
+describe('noteMatches', () => {
+  it('matches a substring ignoring case', () => {
+    assert.equal(noteMatches('On the Ice, alone.', 'ICE'), true)
+    assert.equal(noteMatches('Fear is the mind-killer.', 'ice'), false)
+  })
+
+  it('matches regex characters literally', () => {
+    assert.equal(noteMatches('See p.4(2) here', 'p.4('), true)
+    assert.equal(noteMatches('See p442 here', 'p.4'), false)
+  })
+
+  it('filters nothing on a blank query, and trims the query', () => {
+    assert.equal(noteMatches('Anything', '   '), true)
+    assert.equal(noteMatches('Anything', ''), true)
+    assert.equal(noteMatches('The spice', '  spice '), true)
+  })
+})
+
+describe('highlightParts', () => {
+  it('marks each match in the note’s own casing', () => {
+    assert.deepEqual(highlightParts('Ice and ice', 'ICE'), [
+      { text: 'Ice', mark: true },
+      { text: ' and ', mark: false },
+      { text: 'ice', mark: true },
+    ])
+  })
+
+  it('keeps the text around a match', () => {
+    assert.deepEqual(highlightParts('On the Ice, alone.', 'ice'), [
+      { text: 'On the ', mark: false },
+      { text: 'Ice', mark: true },
+      { text: ', alone.', mark: false },
+    ])
+  })
+
+  it('matches regex characters literally', () => {
+    assert.deepEqual(highlightParts('a.b(c) a*b', '.b('), [
+      { text: 'a', mark: false },
+      { text: '.b(', mark: true },
+      { text: 'c) a*b', mark: false },
+    ])
+  })
+
+  it('gives the whole text unmarked on a blank query or no match', () => {
+    assert.deepEqual(highlightParts('Fear', '  '), [{ text: 'Fear', mark: false }])
+    assert.deepEqual(highlightParts('Fear', 'zzz'), [{ text: 'Fear', mark: false }])
+  })
+
+  it('marks a match that is the whole text', () => {
+    assert.deepEqual(highlightParts('spice', 'SPICE'), [{ text: 'spice', mark: true }])
+  })
+})
+
+describe('search copy', () => {
+  it('counts notes, singular for one', () => {
+    assert.equal(notesMatchCopy(2), '2 notes match.')
+    assert.equal(notesMatchCopy(1), '1 note matches.')
+    assert.equal(notesMatchCopy(0), '0 notes match.')
+  })
+
+  it('quotes the trimmed query with curly quotes when nothing matches', () => {
+    assert.equal(noNotesMatchCopy('  zzz '), 'No card notes contain “zzz”.')
+  })
+})
+
+describe('the links into the Card notes page', () => {
+  it('labels and names the Main book card’s count link', () => {
+    assert.equal(seeCardNotesLabel(7), 'See card notes · 7')
+    assert.equal(seeCardNotesName(7), 'See card notes, 7 notes')
+    assert.equal(seeCardNotesName(1), 'See card notes, 1 note')
+    assert.equal(seeCardNotesLabel(0), 'See card notes')
+    assert.equal(seeCardNotesName(0), 'See card notes')
+  })
+
+  it('routes to the scoped or unscoped page', () => {
+    assert.equal(cardNotesPath(), '/card-notes')
+    assert.equal(cardNotesPath('abc-1'), '/card-notes?book=abc-1')
+  })
+
+  it('names the scope chip’s remove button', () => {
+    assert.equal(scopeChipRemoveName('Dune'), 'Remove In Dune')
   })
 })

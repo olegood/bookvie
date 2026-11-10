@@ -1,11 +1,15 @@
 """views layer."""
 
 from .backup import backup
+from .card_notes import card_notes
 from .models import (
     BackupView,
     BookCardNote,
     BookDetailView,
     BookReading,
+    CardNotesGroup,
+    CardNotesScope,
+    CardNotesView,
     CatalogView,
     CurrentReading,
     HomeMainBook,
@@ -20,6 +24,9 @@ __all__ = [
     "BookCardNote",
     "BookDetailView",
     "BookReading",
+    "CardNotesGroup",
+    "CardNotesScope",
+    "CardNotesView",
     "CatalogView",
     "CurrentReading",
     "HomeMainBook",
@@ -28,6 +35,7 @@ __all__ = [
     "ShelfBook",
     "backup",
     "book_detail",
+    "card_notes",
     "catalog",
     "cover_path",
     "home",

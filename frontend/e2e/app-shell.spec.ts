@@ -112,18 +112,16 @@ test.describe('Story 1.6 app shell (ATDD)', () => {
     await expect(catalogHeading(page)).toHaveCSS('font-family', /^system-ui/)
   })
 
-  test('[P0] AC-2 the top nav shows Skip to content, the wordmark and Home · Catalog · Backup, Catalog marked current', async ({
+  test('[P0] AC-2 the top nav shows Skip to content, the wordmark and Home · Catalog · Card notes · Backup, Catalog marked current', async ({
     page,
   }) => {
     await page.goto('/catalog')
 
     const nav = page.getByRole('banner').getByRole('navigation')
-    // Story 3.1 put Home first; Stats and Card notes arrive later.
-    await expect(nav.getByRole('link')).toHaveText(['Home', 'Catalog', 'Backup'])
+    // Story 3.1 put Home first, Story 5.3 added Card notes; Stats arrives later.
+    await expect(nav.getByRole('link')).toHaveText(['Home', 'Catalog', 'Card notes', 'Backup'])
     await expect(nav.getByRole('link', { name: 'Catalog', exact: true })).toHaveAttribute('aria-current', 'page')
-    for (const later of ['Stats', 'Card notes']) {
-      await expect(nav.getByRole('link', { name: later, exact: true })).toHaveCount(0)
-    }
+    await expect(nav.getByRole('link', { name: 'Stats', exact: true })).toHaveCount(0)
     await expect(page.getByRole('banner')).toContainText('bookvie')
     await expect(catalogHeading(page)).toBeVisible()
 
@@ -221,6 +219,7 @@ test.describe('Story 1.6 app shell (ATDD)', () => {
     for (const [path, title] of [
       ['/', 'Home — bookvie'],
       ['/catalog', 'Catalog — bookvie'],
+      ['/card-notes', 'Card notes — bookvie'],
     ] as const) {
       await page.goto(path)
       await expect(page).toHaveTitle(title)

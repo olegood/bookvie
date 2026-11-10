@@ -392,6 +392,7 @@ def test_home_view_main_book_card_fields(tmp_path: Path, library_builder: Librar
         "percent": 64,
         "daysLeft": None,  # the only finished Reading is back-filled: no Measured pace
         "lastProgressUpdate": "2026-10-25T21:00:00+01:00",
+        "cardNoteCount": 0,
     }
     assert [book["id"] for book in body["books"]] == [other, left_hand]
 

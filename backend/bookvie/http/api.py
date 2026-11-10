@@ -361,6 +361,20 @@ def book_view(request: Request, id: str) -> views.BookDetailView:
     return view
 
 
+@router.get(
+    "/views/card-notes",
+    response_model=views.CardNotesView,
+    responses={404: {"model": ErrorResponse, "description": "No such Book"}},
+)
+def card_notes_view(request: Request, book: str | None = None) -> views.CardNotesView:
+    """Every Card note grouped by Book, or one Book's with ``book``; 404 ``book_not_found``
+    when that Book is gone."""
+    view = views.card_notes(request.app.state.store.library, book)
+    if view is None:
+        raise book_not_found(404)
+    return view
+
+
 @router.post(
     "/intents/add-book",
     response_model=OkResponse,

@@ -51,3 +51,23 @@ def test_ac6_p0_the_home_view_supplies_the_main_book_percentage_floored_on_the_s
         main_book = home(_main_at(page, pages).build()).main_book
         assert main_book is not None, (page, pages)
         assert main_book.percent == expected, (page, pages)
+
+
+def test_the_home_view_counts_the_main_books_card_notes(tmp_path: Path) -> None:
+    """``cardNoteCount`` is 0 without notes and N with them ("See card notes · N", Story 5.3)."""
+    builder = _main_at(212, 330)
+    builder.write(tmp_path)
+    client = api_client(tmp_path, raise_server_exceptions=True)
+    assert client.get("/api/views/home").json()["mainBook"]["cardNoteCount"] == 0
+
+    builder = LibraryBuilder()
+    book = builder.book(title="The Left Hand of Darkness", pages=330)
+    builder.reading(book, current_page=212)
+    builder.main(book)
+    for page in (12, 42, 151):
+        builder.card_note(book, page_start=page)
+    other = builder.book(title="Dune")
+    builder.card_note(other, page_start=5)  # another Book's note doesn't count
+    builder.write(tmp_path / "with-notes")
+    client = api_client(tmp_path / "with-notes", raise_server_exceptions=True)
+    assert client.get("/api/views/home").json()["mainBook"]["cardNoteCount"] == 3

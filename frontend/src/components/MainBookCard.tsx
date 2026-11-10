@@ -1,11 +1,12 @@
 import { useId, type Ref } from 'react'
 import { Link, useNavigate } from 'react-router'
 import type { HomeMainBook, HomeUpNext } from '../api/index.ts'
-import { notePrefill } from '../lib/cardNotes.ts'
+import { cardNotesPath, notePrefill, seeCardNotesLabel, seeCardNotesName } from '../lib/cardNotes.ts'
 import { CHOOSE_A_BOOK } from '../lib/copy.ts'
 import { upNextStart } from '../lib/startReading.ts'
 import { useCardNoteFlow } from '../lib/useCardNoteFlow.tsx'
 import Button from './Button.tsx'
+import buttonStyles from './Button.module.css'
 import Cover from './Cover.tsx'
 import Gauge from './Gauge.tsx'
 import MoreActionsMenu from './MoreActionsMenu.tsx'
@@ -47,7 +48,10 @@ const NO_MAIN_BOOK = 'No Main book.'
  * Under the cover, a stack of `button-secondary` actions: **Add card note**
  * opens the Card note panel (`lib/useCardNoteFlow.tsx`) with Page prefilled
  * at the current page (at least 1); after a save focus returns to it, then
- * `status` reads "Card note saved.".
+ * `status` reads "Card note saved.". Then the link "See card notes · N"
+ * (named "See card notes, N notes"; "See card notes" at 0), styled as a
+ * `button-secondary`, opens the Card notes page scoped to the Book; N is the
+ * home view's `cardNoteCount`, so it follows an add.
  */
 export default function MainBookCard({
   book,
@@ -140,6 +144,13 @@ export default function MainBookCard({
             <Button ref={cardNoteButton} onClick={openCardNote}>
               Add card note
             </Button>
+            <Link
+              to={cardNotesPath(book.id)}
+              className={`${buttonStyles.button} ${buttonStyles.secondary} ${styles.actionLink}`}
+              aria-label={seeCardNotesName(book.cardNoteCount)}
+            >
+              {seeCardNotesLabel(book.cardNoteCount)}
+            </Link>
           </div>
         </div>
         <div className={styles.info}>

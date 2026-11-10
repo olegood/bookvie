@@ -116,6 +116,7 @@ def _main_book(library: Library) -> HomeMainBook | None:
         percent=percent(page, book.pages),
         days_left=days_left(book.pages - page, measured_pace(library)),
         last_progress_update=reading.last_progress_update if reading else None,
+        card_note_count=len(book.card_notes),
     )
 
 
@@ -264,6 +265,20 @@ def _current_reading(book: Book, role: Role, reading: Reading | None) -> Current
     )
 
 
+def card_note_views(book: Book) -> list[BookCardNote]:
+    """The Book's Card notes in page order: ``pageStart``, then ``createdAt``."""
+    return [
+        BookCardNote(
+            id=n.id,
+            text=n.text,
+            page_start=n.page_start,
+            page_end=n.page_end,
+            created_at=n.created_at,
+        )
+        for n in sorted(book.card_notes, key=lambda n: (n.page_start, n.created_at))
+    ]
+
+
 def book_detail(library: Library, book_id: str) -> BookDetailView | None:
     """One Book for Book detail, or ``None`` when there is no such Book."""
     book = library.book(book_id)
@@ -307,16 +322,7 @@ def book_detail(library: Library, book_id: str) -> BookDetailView | None:
         current_reading=_current_reading(book, role, reading),
         side_read=side_read,
         side_reads_full=not side_read and len(library.side_read_book_ids) >= MAX_SIDE_READS,
-        card_notes=[
-            BookCardNote(
-                id=n.id,
-                text=n.text,
-                page_start=n.page_start,
-                page_end=n.page_end,
-                created_at=n.created_at,
-            )
-            for n in sorted(book.card_notes, key=lambda n: (n.page_start, n.created_at))
-        ],
+        card_notes=card_note_views(book),
     )
 
 

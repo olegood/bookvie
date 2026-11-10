@@ -69,6 +69,8 @@ class HomeMainBook(_View):
     at pace 0, or with no pages left (AD-6)."""
     last_progress_update: AwareDatetime | None
     """The current Reading's ``lastProgressUpdate``, as stored ("Last updated …")."""
+    card_note_count: int
+    """How many Card notes the Main book has ("See card notes · N")."""
 
 
 class HomeUpNext(_View):
@@ -186,6 +188,32 @@ class BookCardNote(_View):
     page_end: int | None
     """``None`` for one page."""
     created_at: AwareDatetime
+
+
+class CardNotesScope(_View):
+    """The Book a scoped Card notes view is limited to (the "In *X*" chip)."""
+
+    book_id: str
+    title: str
+
+
+class CardNotesGroup(_View):
+    """One Book's Card notes on the Card notes page, under its title."""
+
+    book_id: str
+    title: str
+    notes: list[BookCardNote]
+    """In page order: ``pageStart``, then ``createdAt``."""
+
+
+class CardNotesView(_View):
+    """The Card notes page: every note grouped by Book, or one Book's (FR-19)."""
+
+    scope: CardNotesScope | None
+    """The Book the view is scoped to (``?book=<id>``); ``None`` unscoped."""
+    groups: list[CardNotesGroup]
+    """One group per Book with notes, by title key, then Book id (AD-6). Scoped:
+    only that Book's group, or none when it has no notes."""
 
 
 class BookDetailView(_View):
