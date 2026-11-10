@@ -57,5 +57,6 @@ The existing **Ends** bullet ("there is no wrap") now covers the keys too and ne
   - Add the two `aria-keyshortcuts` attributes. `Button` already passes extra props through to the `<button>` (`...rest`).
   - Update the component's doc comment.
 - **Spec:** the EXPERIENCE.md bullet above. DESIGN.md is unchanged.
-- **Tests:** new cases in `frontend/e2e/card-notes-pile.spec.ts` for AC-1 to AC-8. Reuse the seeded piles of 7 notes and of 1 note that the 5.4 tests use.
+- **Tests:** AC-1 to AC-8 live in `frontend/e2e/card-notes-pile-keys.spec.ts`, a separate file because the 5.4 spec would pass the 1000-line limit. They reuse 5.4's seeded pile of 7 notes and of 1 note from `e2e/pile.ts`.
+- **ATDD artifacts:** `_bmad-output/test-artifacts/atdd-checklist-pile-arrow-key-navigation.md`. The 8 skipped red leaves are in `frontend/e2e/card-notes-pile-keys.spec.ts`. Shared pile seeds and helpers moved to `frontend/e2e/pile.ts`.
 - **Pipeline:** ATDD → `bmad-build-auto` → `bmad-code-review` → `bmad-testarch-automate`, as for any story. There's no `story_key` in `sprint-status.yaml`.

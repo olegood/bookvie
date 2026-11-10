@@ -15,9 +15,31 @@
 import AxeBuilder from '@axe-core/playwright'
 import type { Locator, Page } from '@playwright/test'
 import { expect, test } from './fixtures.ts'
-import { DUNE, DUNE_ID, LEFT_HAND } from './home.ts'
+import { DUNE_ID } from './home.ts'
+import {
+  announcedNote,
+  announcement,
+  BEGINNING,
+  cardNotesPage,
+  DUNE_EDIT_BY_TEXT,
+  DUNE_IN_PAGE_ORDER,
+  FEAR,
+  group,
+  LIBRARY,
+  MYSTERY,
+  nextButton,
+  NEUROMANCER,
+  NEUROMANCER_ID,
+  orderGroup,
+  pile,
+  pileOpener,
+  position,
+  press,
+  previousButton,
+  seededRandom,
+  SPICE,
+} from './pile.ts'
 
-const NEUROMANCER_ID = '2a7b9c1d-3e4f-4a5b-9c6d-7e8f9a0b1c2d'
 const SCRIM = 'rgba(43, 46, 42, 0.24)'
 /** `page` in the light theme (#F6F4EF). */
 const PAGE_LIGHT = 'rgb(246, 244, 239)'
@@ -26,93 +48,12 @@ const PAGE_DARK = 'rgb(25, 27, 24)'
 const SCRIM_DARK = 'rgba(25, 27, 24, 0.6)'
 const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']
 
-const FEAR = 'Fear is the mind-killer.'
-const BEGINNING = 'A beginning is the time for taking the most delicate care.'
-const SPICE = 'The spice must flow.'
-const MYSTERY = 'The mystery of life isn’t a problem to solve.'
-/** Dune's notes in page order: p.12, pp.42–45, p.96, p.300. */
-const DUNE_IN_PAGE_ORDER = [FEAR, BEGINNING, SPICE, MYSTERY]
-
-/** Dune with four notes, seeded out of page order. The block shows the first three. */
-const DUNE_WITH_NOTES = {
-  ...DUNE,
-  cardNotes: [
-    { text: MYSTERY, pageStart: 300 },
-    { text: FEAR, pageStart: 12 },
-    { text: SPICE, pageStart: 96 },
-    { text: BEGINNING, pageStart: 42, pageEnd: 45 },
-  ],
-}
-const LEFT_HAND_WITH_NOTES = {
-  ...LEFT_HAND,
-  cardNotes: [
-    { text: 'On the Ice, the two of them were alone.', pageStart: 151 },
-    { text: 'Light is the left hand of darkness.', pageStart: 42 },
-  ],
-}
-/** A one-note pile: both Previous and Next are disabled. */
-const NEUROMANCER = {
-  id: NEUROMANCER_ID,
-  title: 'Neuromancer',
-  authors: ['William Gibson'],
-  pages: 271,
-  cardNotes: [{ text: 'The sky above the port was the color of television.', pageStart: 3 }],
-}
-
 /** A Book without notes: its block has no pile opener. */
 const EMMA = { id: '9c4d2b1a-7e6f-4a5b-8c9d-0e1f2a3b4c5d', title: 'Emma', authors: ['Jane Austen'], pages: 474 }
-
-/** Seven notes in three Books; the Card notes page lists Dune, The Left Hand of Darkness, Neuromancer. */
-const LIBRARY = { books: [NEUROMANCER, DUNE_WITH_NOTES, LEFT_HAND_WITH_NOTES] }
-
-function cardNotesPage(server: { url: string }, bookId?: string): string {
-  return bookId === undefined ? `${server.url}/card-notes` : `${server.url}/card-notes?book=${bookId}`
-}
-
-/** The pile: a modal named "Card notes pile, X". */
-function pile(page: Page, title: string): Locator {
-  return page.getByRole('dialog', { name: `Card notes pile, ${title}`, exact: true })
-}
-
-/** "Go through as a pile": a `button`, since it opens a dialog. */
-function pileOpener(scope: Locator): Locator {
-  return scope.getByRole('button', { name: 'Go through as a pile', exact: true })
-}
 
 /** A note's page ref: a chip `button` named "Open p.42 in the pile", reading "p.42". */
 function pageRefButton(scope: Locator, ref: string): Locator {
   return scope.getByRole('button', { name: `Open ${ref} in the pile`, exact: true })
-}
-
-/** "N of M" in the pile. */
-function position(dialog: Locator): Locator {
-  return dialog.getByText(/^\d+ of \d+$/)
-}
-
-/** The pile's polite live region. */
-function announcement(dialog: Locator): Locator {
-  return dialog.getByRole('status')
-}
-
-function nextButton(dialog: Locator): Locator {
-  return dialog.getByRole('button', { name: 'Next', exact: true })
-}
-
-function previousButton(dialog: Locator): Locator {
-  return dialog.getByRole('button', { name: 'Previous', exact: true })
-}
-
-/** The "Order" radio group: Page order · Shuffled. */
-function orderGroup(dialog: Locator): Locator {
-  return dialog.getByRole('radiogroup', { name: 'Order', exact: true })
-}
-
-/** One Book's group on the Card notes page: the section headed by its serif title. */
-function group(page: Page, title: string): Locator {
-  return page
-    .getByRole('main')
-    .locator('section')
-    .filter({ has: page.getByRole('heading', { level: 2, name: title, exact: true }) })
 }
 
 /** Book detail's Card notes block, named by its heading "Card notes (N)". */
@@ -148,18 +89,6 @@ async function recordStatus(page: Page): Promise<() => Promise<string[]>> {
     ((await page.evaluate(() => (window as Window & { statusTexts?: string[] }).statusTexts)) ?? []).filter(
       (text) => text !== '',
     )
-}
-
-/** Presses a pile button by keyboard: an `aria-disabled` button stays focusable and pressable. */
-async function press(button: Locator): Promise<void> {
-  await button.focus()
-  await button.press('Enter')
-}
-
-/** The text of the note just announced: "Note 2 of 4, pp.42–45: <text>". */
-async function announcedNote(dialog: Locator): Promise<string> {
-  const text = (await announcement(dialog).textContent()) ?? ''
-  return text.replace(/^Note \d+ of \d+, pp?\.[\d–]+: /, '')
 }
 
 test.describe("Story 5.4 Go through a book's notes as a pile", () => {
@@ -724,19 +653,6 @@ test.describe("Story 5.4 Go through a book's notes as a pile", () => {
   })
 })
 
-/** Seeds `Math.random` with mulberry32, so Shuffled gives the same order on every run. */
-async function seededRandom(page: Page): Promise<void> {
-  await page.addInitScript(() => {
-    let seed = 42
-    Math.random = () => {
-      seed = (seed + 0x6d2b79f5) | 0
-      let t = Math.imul(seed ^ (seed >>> 15), 1 | seed)
-      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
-      return ((t ^ (t >>> 14)) >>> 0) / 4294967296
-    }
-  })
-}
-
 type ScrollCall = { name: string | null; focused: boolean; options: ScrollIntoViewOptions | boolean | undefined }
 
 /** Records every `scrollIntoView` call (and still scrolls): its element's name, whether it had focus, its options. */
@@ -756,14 +672,6 @@ async function recordScrolls(page: Page): Promise<() => Promise<ScrollCall[]>> {
 /** Splits a computed `box-shadow` into its layers (commas inside `rgb(...)` don't split). */
 function shadowLayers(shadow: string): string[] {
   return shadow.split(/,(?![^(]*\))/).map((layer) => layer.trim())
-}
-
-/** Dune's notes by text, with their Edit names on the Card notes page. */
-const DUNE_EDIT_BY_TEXT: Record<string, string> = {
-  [FEAR]: 'Edit p.12',
-  [BEGINNING]: 'Edit pp.42–45',
-  [SPICE]: 'Edit p.96',
-  [MYSTERY]: 'Edit p.300',
 }
 
 test.describe('Story 5.4 automate', () => {
