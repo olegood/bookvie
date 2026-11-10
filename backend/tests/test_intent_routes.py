@@ -19,10 +19,12 @@ from starlette.requests import Request
 
 from bookvie.domain.model import Library
 from bookvie.http.api import BODY_LIMIT, _http_error
+from bookvie.http.app import create_app
 from bookvie.intents.intent_model import MALFORMED_INTENT_MESSAGE
 from bookvie.store import serialize
 from tests.helpers import (
     DUNE_ID,
+    TODAY,
     VALID,
     VALID_FORM,
     api_client,
@@ -38,14 +40,23 @@ INTENT_ROUTES = {
     "start-reading": {"bookId": DUNE_ID, "purpose": None},
     "edit-purpose": {"bookId": DUNE_ID, "purpose": None},
     "update-page": {"bookId": DUNE_ID, "page": 1},
+    "finish-reading": {
+        "bookId": DUNE_ID,
+        "finishedOn": TODAY.isoformat(),
+        "purposeFulfilled": None,
+        "rating": None,
+    },
     "pause": {"bookId": DUNE_ID},
     "set-up-next": {"bookId": DUNE_ID},
+    "mark-side-read": {"bookId": DUNE_ID},
+    "unmark-side-read": {"bookId": DUNE_ID},
     "restore": {},
 }
 """Each intent route with an intent it would accept for the seeded Dune.
 
-``edit-purpose`` needs a current Reading and ``update-page`` and ``pause`` a
-Main book, so their tests start Dune first (:func:`_ready`).
+``edit-purpose`` and ``finish-reading`` need a current Reading and
+``update-page`` and ``pause`` a Main book, so their tests start Dune first
+(:func:`_ready`).
 """
 
 MALFORMED_INTENT = {
@@ -106,9 +117,19 @@ def _intent_files(route: str) -> dict:
 
 def _ready(client, route: str) -> None:
     """Put the seeded library in the state ``route``'s intent needs."""
-    if route in ("edit-purpose", "update-page", "pause"):
+    if route in ("edit-purpose", "finish-reading", "update-page", "pause"):
         response = client.post("/api/intents/start-reading", files=_intent_files("start-reading"))
         assert response.status_code == 200
+
+
+def test_the_table_lists_every_intent_route() -> None:
+    # Epic 4 retro item 37: Story 4.7's side-read routes were missing from this table.
+    served = {
+        path.removeprefix("/api/intents/")
+        for path in create_app().openapi()["paths"]
+        if path.startswith("/api/intents/")
+    }
+    assert served == set(INTENT_ROUTES)
 
 
 @pytest.fixture

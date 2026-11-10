@@ -11,6 +11,9 @@ through the view routes:
   (and whether that Up next is ``paused``), or listed in Waiting for you;
 - the book view: its ``role`` and its Current reading's ``status``.
 
+A second test sends ``start-reading``, ``pause`` and ``set-up-next`` from each
+row and checks the outcome the row calls for (Epic 4 retro item 37).
+
 The spine names, markers, popover actions and Book detail stacks the client
 derives from these fields are read in the browser
 (``frontend/e2e/book-states.spec.ts``).
@@ -20,6 +23,7 @@ p.120 is 36%, p.40 is 12%. Every row but the Main ones has Dune as the Main
 book, so Home shows its Up next pane.
 """
 
+import json
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
@@ -27,7 +31,16 @@ from typing import Any, Literal
 import pytest
 
 from tests.builder import LibraryBuilder
-from tests.helpers import api_client, assert_invariants
+from tests.helpers import (
+    PAUSE,
+    SET_UP_NEXT,
+    START_READING,
+    TODAY,
+    api_client,
+    assert_invariants,
+    library_bytes,
+    stored_book,
+)
 
 PAGES = 330
 
@@ -155,3 +168,93 @@ def test_p0_every_book_state_reads_the_same_on_the_shelf_home_and_book_detail(
 
     # The seed is a valid library.
     assert_invariants(tmp_path)
+
+
+# --- Epic 4 retro item 37: each row under start-reading, pause and set-up-next ----
+
+
+def _send(data_dir: Path, path: str, book_id: str) -> Any:
+    intent: dict[str, Any] = {"bookId": book_id}
+    if path == START_READING:
+        intent["purpose"] = None
+    return api_client(data_dir).post(
+        path, files={"intent": (None, json.dumps(intent), "application/json")}
+    )
+
+
+def _pointers(data_dir: Path) -> tuple[str | None, str | None]:
+    stored = json.loads(library_bytes(data_dir))
+    return stored["mainBookId"], stored["upNextBookId"]
+
+
+def _refused(data_dir: Path, response: Any, code: str, before: bytes) -> None:
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == code
+    assert library_bytes(data_dir) == before
+
+
+@pytest.mark.parametrize("row", ROWS.values(), ids=ROWS.keys())
+def test_p0_every_book_state_row_under_start_reading_pause_and_set_up_next(
+    tmp_path: Path, row: Row
+) -> None:
+    """RDG-API-001..003, one Given per Book states row (the Main book is Dune unless the Book is)."""
+    # start-reading (RDG-API-001): the Main book is refused; any other Book becomes
+    # Main, resuming its paused Reading at its page or starting a new one at 0, and
+    # the interrupted Dune becomes Up next.
+    start_dir = tmp_path / "start"
+    book_id = _seed(start_dir, row)
+    before = library_bytes(start_dir)
+    readings_before = stored_book(start_dir, book_id)["readings"]
+    response = _send(start_dir, START_READING, book_id)
+    if row.role == "main":
+        _refused(start_dir, response, "already_main", before)
+    else:
+        assert response.status_code == 200
+        main_id, up_next_id = _pointers(start_dir)
+        assert main_id == book_id
+        assert up_next_id is not None and up_next_id != book_id
+        readings = stored_book(start_dir, book_id)["readings"]
+        if row.page is None:
+            assert readings[:-1] == readings_before
+            assert (readings[-1]["currentPage"], readings[-1]["finishDate"]) == (0, None)
+        else:
+            assert len(readings) == len(readings_before)
+            assert readings[-1]["id"] == readings_before[-1]["id"]
+            assert readings[-1]["currentPage"] == row.page
+        assert_invariants(start_dir)
+
+    # pause (RDG-API-002): only the Main book pauses, at its page, and becomes Up next.
+    pause_dir = tmp_path / "pause"
+    book_id = _seed(pause_dir, row)
+    before = library_bytes(pause_dir)
+    response = _send(pause_dir, PAUSE, book_id)
+    if row.role != "main":
+        _refused(pause_dir, response, "not_main_book", before)
+    else:
+        assert response.status_code == 200
+        assert _pointers(pause_dir) == (None, book_id)
+        current = stored_book(pause_dir, book_id)["readings"][-1]
+        assert (current["currentPage"], current["pausedAt"]) == (row.page, TODAY.isoformat())
+        assert current["finishDate"] is None
+        assert_invariants(pause_dir)
+
+    # set-up-next (RDG-API-003): the Main book is refused, the Up next is a no-op that
+    # writes nothing, and any other Book becomes Up next with its Readings untouched.
+    up_next_dir = tmp_path / "up-next"
+    book_id = _seed(up_next_dir, row)
+    before = library_bytes(up_next_dir)
+    book_before = stored_book(up_next_dir, book_id)
+    main_before, _ = _pointers(up_next_dir)
+    response = _send(up_next_dir, SET_UP_NEXT, book_id)
+    if row.role == "main":
+        _refused(up_next_dir, response, "main_cannot_be_up_next", before)
+    else:
+        assert response.status_code == 200
+        if row.role == "upNext":
+            assert library_bytes(up_next_dir) == before
+        assert _pointers(up_next_dir) == (main_before, book_id)
+        assert stored_book(up_next_dir, book_id) == book_before
+        home = api_client(up_next_dir).get("/api/views/home").json()
+        assert home["upNext"]["paused"] is (row.page is not None)
+        assert book_id not in [entry["id"] for entry in home["waiting"]]
+        assert_invariants(up_next_dir)

@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-29-2026 17:21
-last_updated: 11-10-2026 10:21
+last_updated: 11-10-2026 10:31
 project: bookvie
 project_key: NOKEY
 tracking_system: file-system
@@ -382,7 +382,7 @@ action_items:
       `_bmad-output/test-artifacts/traceability/epic-4-gate-decision.json`. Due: before
       Epic 5. (F-S1)"
     owner: "Murat (TEA)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-4-retro-2026-11-09.md"
   - id: "epic-4-retro-item-38-reconcile-the-spine-with-epic-4-and-add"
     epic: 4

@@ -1,0 +1,24 @@
+{
+  "schema_version": "0.1.0",
+  "evaluated_at": "2026-11-10T09:31:34.000000Z",
+  "repo": "bookvie",
+  "target": {
+    "type": "epic",
+    "id": "4",
+    "label": "Epic 4: Switch books without losing your place"
+  },
+  "collection_status": "COLLECTED",
+  "gate_basis": "priority_thresholds",
+  "gate_status": "PASS",
+  "rationale": "P0 coverage is 100%, P1 coverage is 100% (TR7 target: 95%; workflow default 90%), and overall coverage is 100% (minimum: 80%). RDG-UNIT-002 is green (60 examples in CI, 600 in this trace), every EXPERIENCE.md Book-states row has Given/When/Then API tests for its state and for start-reading, pause and set-up-next, and every new Epic 4 error code has an API test. R-01 and R-11 are closed.",
+  "p0_status": "MET",
+  "p1_status": "MET",
+  "overall_status": "MET",
+  "critical_open": 0,
+  "links": {
+    "trace_report_path": "_bmad-output/test-artifacts/traceability/epic-4-traceability-matrix.md",
+    "trace_report_url": "",
+    "artifact_url": "",
+    "journey_evidence_url": ""
+  }
+}
