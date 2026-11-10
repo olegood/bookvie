@@ -10,7 +10,7 @@ generatedTestFiles:
   - 'frontend/e2e/card-notes-pile-keys.spec.ts'
   - 'frontend/e2e/pile.ts'
 inputDocuments:
-  - '_bmad-output/implementation-artifacts/spec-pile-arrow-key-navigation.md (Intent, UX bullet, AC-1 to AC-8, Implementation Notes)'
+  - '_bmad-output/implementation-artifacts/spec-pile-arrow-key-navigation.md (Intent, I/O matrix, Code Map, Tasks & Acceptance AC-1 to AC-8)'
   - '_bmad-output/planning-artifacts/ux-designs/ux-bookvie-2026-10-28/EXPERIENCE.md (§ Pile, Focus after close)'
   - '_bmad-output/test-artifacts/atdd-checklist-5-4-go-through-a-book-s-notes-as-a-pile.md (format, seeds, conventions)'
   - 'frontend/src/components/CardNotesPile.tsx, frontend/src/lib/useAlertDialog.ts, frontend/src/components/Button.tsx'

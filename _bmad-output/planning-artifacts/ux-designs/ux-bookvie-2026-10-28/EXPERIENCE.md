@@ -261,6 +261,7 @@ Use: over Card notes or Book detail.
 - **Role:** modal, named "Card notes pile, *X*". One note at a time. The note sits in a polite live region, so each move announces "Note 3 of 7, p.42: *text*."
 - **Controls:** Previous and Next buttons, "N of M", and an "Order" radio group (Page order · Shuffled; shuffle reorders once per change). "N of M" follows the current order.
 - **Ends:** at the first and last note, Previous and Next stay focusable with `aria-disabled="true"`; there is no wrap. A pile of one note has both disabled.
+- **Keyboard:** Left and Right do what Previous and Next do; Home and End go to the first and last note. They work wherever focus is in the pile except on the Order radios, where the arrow keys keep picking the order, and Home and End do nothing. A key held with Alt, Ctrl, Meta or Shift is left to the browser. Focus stays where it is; the move is announced like a button press ("Note 3 of 7, p.42: *text*"). At an end the key does nothing: no wrap and no announcement. Previous and Next carry `aria-keyshortcuts` ("ArrowLeft", "ArrowRight"). There is no on-screen hint.
 - **Entry:** opening a search result, or activating a note's page ref in any Card notes list (Card notes page or Book detail's Card notes block), opens the pile in Page order at that note. To jump to a specific note, use its page ref or a search result.
 - **Read-only:** editing happens in the list.
 - **Closing:** a visible **Close** button (top right) and Esc both close it, returning to the list scrolled to the last viewed note.

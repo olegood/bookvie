@@ -1,13 +1,10 @@
 // Pile arrow keys (_bmad-output/implementation-artifacts/
 // spec-pile-arrow-key-navigation.md). Left and Right do what Previous and Next
 // do, Home and End go to the first and last note, from anywhere in the pile
-// except the Order radios. Keys with Alt, Ctrl, Meta or
-// Shift are left to the browser. Focus stays put, a move is announced like a
-// button press, an end does nothing, and handled keys are preventDefault-ed.
-// Previous and Next carry aria-keyshortcuts. No visible hint.
-//
-// The guard criteria (AC-3, AC-4, AC-5) pass on today's code by themselves, so
-// each leaf also steps by key once: that control is what makes it red now.
+// except the Order radios. Keys with Alt, Ctrl, Meta or Shift are left to the
+// browser. Focus stays put, a move is announced like a button press, an end
+// does nothing, and handled keys are preventDefault-ed. Previous and Next carry
+// aria-keyshortcuts. No visible hint.
 
 import type { Locator, Page } from '@playwright/test'
 import { expect, test } from './fixtures.ts'
@@ -72,8 +69,7 @@ test.describe('Pile arrow keys', () => {
     await page.emulateMedia({ colorScheme: 'light' })
   })
 
-  // RED (ATDD): the pile has no key handler yet; un-skip when building spec-pile-arrow-key-navigation.
-  test.skip('[P0] AC-1 Left and Right step like Previous and Next from Next, Close or Previous, announcing the move and keeping focus', async ({
+  test('[P0] AC-1 Left and Right step like Previous and Next from Next, Close or Previous, announcing the move and keeping focus', async ({
     page,
     seededServer,
   }) => {
@@ -111,8 +107,7 @@ test.describe('Pile arrow keys', () => {
     await expect(previousButton(dialog)).toBeFocused()
   })
 
-  // RED (ATDD): the pile has no key handler yet; un-skip when building spec-pile-arrow-key-navigation.
-  test.skip('[P0] AC-2 Home and End jump to the first and last note, announced; Home on the first and End on the last do nothing', async ({
+  test('[P0] AC-2 Home and End jump to the first and last note, announced; Home on the first and End on the last do nothing', async ({
     page,
     seededServer,
   }) => {
@@ -145,8 +140,7 @@ test.describe('Pile arrow keys', () => {
     expect(await spoken()).toEqual([`Note 1 of 4, p.12: ${FEAR}`])
   })
 
-  // RED (ATDD): the pile has no key handler yet; un-skip when building spec-pile-arrow-key-navigation.
-  test.skip('[P1] AC-3 at either end the arrow keys do nothing and announce nothing (no wrap), and a one-note pile ignores all four keys', async ({
+  test('[P1] AC-3 at either end the arrow keys do nothing and announce nothing (no wrap), and a one-note pile ignores all four keys', async ({
     page,
     seededServer,
   }) => {
@@ -188,8 +182,7 @@ test.describe('Pile arrow keys', () => {
     await expect(nextButton(single)).toHaveAttribute('aria-disabled', 'true')
   })
 
-  // RED (ATDD): the pile has no key handler yet; un-skip when building spec-pile-arrow-key-navigation.
-  test.skip('[P1] AC-4 on an Order radio the arrow keys pick the order without stepping the note, and Home and End do nothing', async ({
+  test('[P1] AC-4 on an Order radio the arrow keys pick the order without stepping the note, and Home and End do nothing', async ({
     page,
     seededServer,
   }) => {
@@ -201,7 +194,7 @@ test.describe('Pile arrow keys', () => {
     const pageOrder = order.getByRole('radio', { name: 'Page order', exact: true })
     const shuffledRadio = order.getByRole('radio', { name: 'Shuffled', exact: true })
 
-    // The control: from Next, Right steps (red today), so the radio check below isn't vacuous.
+    // The control: from Next, Right steps, so the radio check below isn't vacuous.
     await page.keyboard.press('ArrowRight')
     await expect(position(dialog)).toHaveText('2 of 4')
 
@@ -226,8 +219,7 @@ test.describe('Pile arrow keys', () => {
     await expect(pageOrder).toBeFocused()
   })
 
-  // RED (ATDD): the pile has no key handler yet; un-skip when building spec-pile-arrow-key-navigation.
-  test.skip('[P1] AC-5 a key held with Alt, Ctrl, Meta or Shift steps nothing and is not preventDefault-ed', async ({
+  test('[P1] AC-5 a key held with Alt, Ctrl, Meta or Shift steps nothing and is not preventDefault-ed', async ({
     page,
     seededServer,
   }) => {
@@ -242,7 +234,7 @@ test.describe('Pile arrow keys', () => {
     for (const chord of ['Alt+ArrowRight', 'Control+ArrowRight', 'Meta+ArrowRight', 'Shift+ArrowRight', 'Shift+End']) {
       await page.keyboard.press(chord)
     }
-    // The control: a plain Right steps (red today), so "nothing stepped" isn't vacuous.
+    // The control: a plain Right steps, so "nothing stepped" isn't vacuous.
     await page.keyboard.press('ArrowRight')
 
     // The criterion: none of the modified keys stepped or was prevented; the plain one did both.
@@ -258,8 +250,7 @@ test.describe('Pile arrow keys', () => {
     await expect(announcement(dialog)).toHaveText(`Note 2 of 4, pp.42–45: ${BEGINNING}`)
   })
 
-  // RED (ATDD): the pile has no key handler yet; un-skip when building spec-pile-arrow-key-navigation.
-  test.skip('[P1] AC-6 each handled key is preventDefault-ed, including at an end where it moves nothing', async ({
+  test('[P1] AC-6 each handled key is preventDefault-ed, including at an end where it moves nothing', async ({
     page,
     seededServer,
   }) => {
@@ -283,8 +274,7 @@ test.describe('Pile arrow keys', () => {
     await expect(position(dialog)).toHaveText('4 of 4')
   })
 
-  // RED (ATDD): Previous and Next have no aria-keyshortcuts yet; un-skip when building spec-pile-arrow-key-navigation.
-  test.skip('[P1] AC-7 Previous carries aria-keyshortcuts "ArrowLeft" and Next "ArrowRight"', async ({
+  test('[P1] AC-7 Previous carries aria-keyshortcuts "ArrowLeft" and Next "ArrowRight"', async ({
     page,
     seededServer,
   }) => {
@@ -301,8 +291,7 @@ test.describe('Pile arrow keys', () => {
     await expect(dialog.getByText(/←|→|arrow/i)).toHaveCount(0)
   })
 
-  // RED (ATDD): the pile has no key handler yet; un-skip when building spec-pile-arrow-key-navigation.
-  test.skip("[P1] AC-8 in Shuffled the keys follow the shuffle, and closing at End focuses the shuffle's last note's Edit", async ({
+  test("[P1] AC-8 in Shuffled the keys follow the shuffle, and closing at End focuses the shuffle's last note's Edit", async ({
     page,
     seededServer,
   }) => {
