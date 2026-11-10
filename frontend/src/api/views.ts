@@ -2,7 +2,7 @@
 // one of three states. A failed first load is `failed` with a retry; a failed
 // background refetch keeps the last data and reports nothing.
 
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { components } from './generated/schema.d.ts'
 
 type Schemas = components['schemas']
@@ -108,6 +108,16 @@ export function toBookViewState(query: ViewQuery<BookDetailView | null>): BookVi
 export function useBookView(id: string): BookViewState {
   const query = useQuery({ queryKey: bookViewKey(id), queryFn: () => fetchBookView(id) })
   return toBookViewState(query)
+}
+
+/**
+ * Reads the `book` view as the cache holds it right now: once an intent has
+ * resolved this is the refetched copy, which a component may render a tick
+ * later. `undefined` when it isn't cached, `null` when the Book is gone.
+ */
+export function useCachedBookView(): (id: string) => BookDetailView | null | undefined {
+  const client = useQueryClient()
+  return (id) => client.getQueryData<BookDetailView | null>(bookViewKey(id))
 }
 
 /**

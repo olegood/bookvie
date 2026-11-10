@@ -306,6 +306,7 @@ def test_openapi_error_enums(openapi: dict) -> None:
         "main_cannot_be_up_next",
         "main_cannot_be_side_read",
         "side_reads_full",
+        "card_note_not_found",
     ]
     kinds = ["refusal", "couldnt_save", "couldnt_export"]
     assert schemas["ErrorCode"]["enum"] == codes
@@ -343,6 +344,8 @@ def test_openapi_documents_the_envelope_not_fastapi_errors(openapi: dict) -> Non
     operations.append(("post", "/api/intents/pause"))
     operations.append(("post", "/api/intents/set-up-next"))
     operations.append(("post", "/api/intents/add-card-note"))
+    operations.append(("post", "/api/intents/edit-card-note"))
+    operations.append(("post", "/api/intents/delete-card-note"))
     operations.append(("post", "/api/intents/restore"))
     operations.append(("get", "/api/views/backup"))
     operations.append(("get", "/api/export"))
@@ -373,6 +376,8 @@ def test_openapi_documents_the_envelope_not_fastapi_errors(openapi: dict) -> Non
         ("post", "/api/intents/pause"),
         ("post", "/api/intents/set-up-next"),
         ("post", "/api/intents/add-card-note"),
+        ("post", "/api/intents/edit-card-note"),
+        ("post", "/api/intents/delete-card-note"),
         ("post", "/api/intents/restore"),
     ]
     for method, path in coverless:

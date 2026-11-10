@@ -29,6 +29,23 @@ CARD_NOTE_LABELS = {TEXT_FIELD: "Note", PAGE_FIELD: "Page"}
 NOTE_REQUIRED_MESSAGE = "Note is required."
 
 
+def check_card_note_fields(text: str, page: str, pages: int) -> tuple[int, int | None]:
+    """The parsed ``(pageStart, pageEnd)``, or 422 ``invalid_fields``: Note, then Page.
+
+    ``text`` is already trimmed; ``page`` is the Page field as typed, parsed
+    against the Book's ``pages``. Shared by ``add-card-note`` and ``edit-card-note``.
+    """
+    errors: list[FieldError] = []
+    if not text:
+        errors.append(FieldError(field=TEXT_FIELD, message=NOTE_REQUIRED_MESSAGE))
+    parsed = parse_note_pages(page, pages)
+    if isinstance(parsed, str):
+        errors.append(FieldError(field=PAGE_FIELD, message=parsed))
+    if errors or isinstance(parsed, str):
+        raise invalid_fields(errors, CARD_NOTE_LABELS)
+    return parsed
+
+
 class AddCardNoteIntent(IntentModel):
     """The Book, the Note text and the Page as typed (checked in the commit)."""
 
@@ -52,15 +69,7 @@ def add_card_note(store: Store, clock: Clock, intent: AddCardNoteIntent) -> str:
         book = library.book(book_id)
         if book is None:
             raise book_not_found()
-        errors: list[FieldError] = []
-        if not text:
-            errors.append(FieldError(field=TEXT_FIELD, message=NOTE_REQUIRED_MESSAGE))
-        parsed = parse_note_pages(intent.page, book.pages)
-        if isinstance(parsed, str):
-            errors.append(FieldError(field=PAGE_FIELD, message=parsed))
-        if errors or isinstance(parsed, str):
-            raise invalid_fields(errors, CARD_NOTE_LABELS)
-        page_start, page_end = parsed
+        page_start, page_end = check_card_note_fields(text, intent.page, book.pages)
         note = CardNote(
             id=note_id,
             text=text,

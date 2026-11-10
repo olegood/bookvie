@@ -17,7 +17,8 @@ import pytest
 from fastapi import HTTPException
 from starlette.requests import Request
 
-from bookvie.domain.model import Library
+from bookvie.domain.clock import FakeClock
+from bookvie.domain.model import CardNote, Library
 from bookvie.http.api import BODY_LIMIT, _http_error
 from bookvie.http.app import create_app
 from bookvie.intents.intent_model import MALFORMED_INTENT_MESSAGE
@@ -31,6 +32,11 @@ from tests.helpers import (
     library_bytes,
     seed_dune_with_cover,
 )
+
+NOTE_ID = "0c1d2e3f-4a5b-4c6d-8e7f-8091a2b3c4d5"
+"""The Card note :func:`_ready` gives Dune for ``edit-card-note`` and ``delete-card-note``."""
+
+NOW = FakeClock(TODAY)
 
 INTENT_ROUTES = {
     "add-book": VALID,
@@ -51,12 +57,20 @@ INTENT_ROUTES = {
     "mark-side-read": {"bookId": DUNE_ID},
     "unmark-side-read": {"bookId": DUNE_ID},
     "add-card-note": {"bookId": DUNE_ID, "text": "Fear is the mind-killer.", "page": "1"},
+    "edit-card-note": {
+        "bookId": DUNE_ID,
+        "cardNoteId": NOTE_ID,
+        "text": "The spice must flow.",
+        "page": "2",
+    },
+    "delete-card-note": {"bookId": DUNE_ID, "cardNoteId": NOTE_ID},
     "restore": {},
 }
 """Each intent route with an intent it would accept for the seeded Dune.
 
 ``edit-purpose`` and ``finish-reading`` need a current Reading and
-``update-page`` and ``pause`` a Main book, so their tests start Dune first
+``update-page`` and ``pause`` a Main book, so their tests start Dune first;
+``edit-card-note`` and ``delete-card-note`` need Dune's note :data:`NOTE_ID`
 (:func:`_ready`).
 """
 
@@ -121,6 +135,17 @@ def _ready(client, route: str) -> None:
     if route in ("edit-purpose", "finish-reading", "update-page", "pause"):
         response = client.post("/api/intents/start-reading", files=_intent_files("start-reading"))
         assert response.status_code == 200
+    if route in ("edit-card-note", "delete-card-note"):
+        note = CardNote(
+            id=NOTE_ID, text="A note", page_start=1, page_end=None, created_at=NOW.now()
+        )
+
+        def add_note(library: Library) -> None:
+            book = library.book(DUNE_ID)
+            assert book is not None
+            library.replace_book(book.model_copy(update={"card_notes": [note]}))
+
+        client.app.state.store.apply(add_note)
 
 
 def test_the_table_lists_every_intent_route() -> None:

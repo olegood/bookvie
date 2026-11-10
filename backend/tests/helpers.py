@@ -51,6 +51,8 @@ SET_UP_NEXT = "/api/intents/set-up-next"
 MARK_SIDE_READ = "/api/intents/mark-side-read"
 UNMARK_SIDE_READ = "/api/intents/unmark-side-read"
 ADD_CARD_NOTE = "/api/intents/add-card-note"
+EDIT_CARD_NOTE = "/api/intents/edit-card-note"
+DELETE_CARD_NOTE = "/api/intents/delete-card-note"
 
 # The fake today. Year may be at most next year (2027); Finished on at most today.
 TODAY = date(2026, 10, 30)

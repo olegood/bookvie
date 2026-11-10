@@ -56,7 +56,9 @@ from bookvie.intents import (
     couldnt_save,
     cover_too_large,
     delete_book,
+    delete_card_note,
     edit_book,
+    edit_card_note,
     edit_purpose,
     export_filename,
     finish_reading,
@@ -67,7 +69,9 @@ from bookvie.intents import (
     parse_add_book_intent,
     parse_add_card_note_intent,
     parse_delete_book_intent,
+    parse_delete_card_note_intent,
     parse_edit_book_intent,
+    parse_edit_card_note_intent,
     parse_edit_purpose_intent,
     parse_finish_reading_intent,
     parse_mark_side_read_intent,
@@ -591,6 +595,45 @@ def add_card_note_intent(
     parsed = parse_add_card_note_intent(intent)
     note_id = add_card_note(request.app.state.store, request.app.state.clock, parsed)
     return OkResponse(ok=True, ids={"cardNoteId": note_id})
+
+
+@router.post("/intents/edit-card-note", response_model=OkResponse, response_model_exclude_none=True)
+def edit_card_note_intent(
+    request: Request,
+    intent: Annotated[
+        str | None,
+        Form(
+            media_type="multipart/form-data",
+            description=(
+                'JSON object {"bookId": ..., "cardNoteId": ..., "text": ..., "page": ...}: '
+                "the note to change, its new Note, and the Page as typed, parsed on the server."
+            ),
+        ),
+    ] = None,
+) -> OkResponse:
+    """Change a Card note's text and page in place, keeping its id and createdAt (FR-17)."""
+    parsed = parse_edit_card_note_intent(intent)
+    edit_card_note(request.app.state.store, parsed)
+    return OkResponse(ok=True)
+
+
+@router.post(
+    "/intents/delete-card-note", response_model=OkResponse, response_model_exclude_none=True
+)
+def delete_card_note_intent(
+    request: Request,
+    intent: Annotated[
+        str | None,
+        Form(
+            media_type="multipart/form-data",
+            description='JSON object {"bookId": ..., "cardNoteId": ...}: the note to delete.',
+        ),
+    ] = None,
+) -> OkResponse:
+    """Delete one Card note from its Book (FR-17)."""
+    parsed = parse_delete_card_note_intent(intent)
+    delete_card_note(request.app.state.store, parsed)
+    return OkResponse(ok=True)
 
 
 @router.post("/intents/mark-side-read", response_model=OkResponse, response_model_exclude_none=True)

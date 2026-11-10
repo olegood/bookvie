@@ -323,3 +323,53 @@ export function useAddCardNote(): (bookId: string, text: string, page: string) =
   const client = useQueryClient()
   return (bookId, text, page) => addCardNote(client, bookId, text, page)
 }
+
+// `edit-card-note`'s intent part is `{ bookId, cardNoteId, text, page }`: the
+// note, its new Note and the Page as typed, parsed on the server as for add.
+
+export function editCardNoteForm(bookId: string, cardNoteId: string, text: string, page: string): FormData {
+  const form = new FormData()
+  form.set('intent', JSON.stringify({ bookId, cardNoteId, text, page }))
+  return form
+}
+
+/** Sends `edit-card-note`; resolves after the views have refetched. */
+export function editCardNote(
+  client: QueryClient,
+  bookId: string,
+  cardNoteId: string,
+  text: string,
+  page: string,
+): Promise<IntentResult> {
+  return sendIntent(client, 'edit-card-note', editCardNoteForm(bookId, cardNoteId, text, page))
+}
+
+/** `editCardNote` bound to the app's QueryClient. */
+export function useEditCardNote(): (
+  bookId: string,
+  cardNoteId: string,
+  text: string,
+  page: string,
+) => Promise<IntentResult> {
+  const client = useQueryClient()
+  return (bookId, cardNoteId, text, page) => editCardNote(client, bookId, cardNoteId, text, page)
+}
+
+// `delete-card-note`'s intent part is `{ bookId, cardNoteId }`.
+
+export function deleteCardNoteForm(bookId: string, cardNoteId: string): FormData {
+  const form = new FormData()
+  form.set('intent', JSON.stringify({ bookId, cardNoteId }))
+  return form
+}
+
+/** Sends `delete-card-note`; resolves after the views have refetched. */
+export function deleteCardNote(client: QueryClient, bookId: string, cardNoteId: string): Promise<IntentResult> {
+  return sendIntent(client, 'delete-card-note', deleteCardNoteForm(bookId, cardNoteId))
+}
+
+/** `deleteCardNote` bound to the app's QueryClient. */
+export function useDeleteCardNote(): (bookId: string, cardNoteId: string) => Promise<IntentResult> {
+  const client = useQueryClient()
+  return (bookId, cardNoteId) => deleteCardNote(client, bookId, cardNoteId)
+}

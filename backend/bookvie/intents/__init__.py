@@ -21,6 +21,7 @@ from .contract import (
     OkResponse,
     already_main,
     book_not_found,
+    card_note_not_found,
     couldnt_export,
     couldnt_save,
     cover_too_large,
@@ -38,7 +39,13 @@ from .contract import (
 )
 from .cover import PreparedCover, RefusedCover, UploadedCover, prepare_cover
 from .delete_book import DeleteBookIntent, delete_book, parse_delete_book_intent
+from .delete_card_note import (
+    DeleteCardNoteIntent,
+    delete_card_note,
+    parse_delete_card_note_intent,
+)
 from .edit_book import EditBookIntent, edit_book, parse_edit_book_intent
+from .edit_card_note import EditCardNoteIntent, edit_card_note, parse_edit_card_note_intent
 from .edit_purpose import EditPurposeIntent, edit_purpose, parse_edit_purpose_intent
 from .export import EXPORT_CHUNK, build_export, export_filename, record_export
 from .finish_reading import (
@@ -77,8 +84,10 @@ __all__ = [
     "AddCardNoteIntent",
     "Clock",
     "DeleteBookIntent",
+    "DeleteCardNoteIntent",
     "DuplicateMatch",
     "EditBookIntent",
+    "EditCardNoteIntent",
     "EditPurposeIntent",
     "ErrorBody",
     "ErrorCode",
@@ -106,13 +115,16 @@ __all__ = [
     "already_main",
     "book_not_found",
     "build_export",
+    "card_note_not_found",
     "commit",
     "couldnt_export",
     "couldnt_save",
     "cover_too_large",
     "delete_book",
+    "delete_card_note",
     "duplicate_book",
     "edit_book",
+    "edit_card_note",
     "edit_purpose",
     "export_filename",
     "finish_reading",
@@ -127,7 +139,9 @@ __all__ = [
     "parse_add_book_intent",
     "parse_add_card_note_intent",
     "parse_delete_book_intent",
+    "parse_delete_card_note_intent",
     "parse_edit_book_intent",
+    "parse_edit_card_note_intent",
     "parse_edit_purpose_intent",
     "parse_finish_reading_intent",
     "parse_mark_side_read_intent",

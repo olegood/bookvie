@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useRef, useState, type RefObject } from 'react'
+import { useCallback, useEffect, useId, useRef, useState, type RefCallback, type RefObject } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { useBookView, useCatalogView, useDeleteBook, type BookCardNote, type BookDetailView } from '../api/index.ts'
 import Button from '../components/Button.tsx'
@@ -19,14 +19,14 @@ import {
   toPanelFields,
   type DeletedState,
 } from '../lib/bookDetail.ts'
-import { BLOCK_NOTES, cardNotesHeading, NO_CARD_NOTES, notePrefill, pageRef } from '../lib/cardNotes.ts'
+import { BLOCK_NOTES, cardNotesHeading, editNoteName, NO_CARD_NOTES, notePrefill, pageRef } from '../lib/cardNotes.ts'
 import { COULDNT_LOAD } from '../lib/copy.ts'
 import { detailOffersFinish, finishedStatus } from '../lib/markFinished.ts'
 import { usePageTitle } from '../lib/page.ts'
 import { REPLACES_UP_NEXT, SETTING_UP_NEXT } from '../lib/setUpNext.ts'
 import { sideReadLabel } from '../lib/sideRead.ts'
 import { detailPrimary } from '../lib/startReading.ts'
-import { useCardNoteFlow } from '../lib/useCardNoteFlow.tsx'
+import { useCardNoteEditFlow, useCardNoteFlow } from '../lib/useCardNoteFlow.tsx'
 import { useDeleteFlow, type DeleteBook } from '../lib/useDeleteFlow.tsx'
 import { useDetailPause } from '../lib/useDetailPause.ts'
 import { useDetailSetUpNext } from '../lib/useDetailSetUpNext.ts'
@@ -91,14 +91,26 @@ function Stars({ rating }: { rating: number }) {
 /**
  * Book detail's "Card notes (N)" block (EXPERIENCE.md → Book detail): a
  * `region` named by its heading, with the first three notes in page order
- * as cards, each its text then its page ref below in `meta` / `ink-tertiary`;
- * "No card notes yet." with none.
+ * as cards, each its text, then its page ref below in `meta` /
+ * `ink-tertiary`, then its **Edit** (named "Edit p.96", so it never matches
+ * the Book's own Edit); "No card notes yet." with none. The heading takes
+ * focus (`tabIndex={-1}`) when a note's Edit is gone after a save or delete.
  */
-function CardNotesBlock({ notes }: { notes: BookCardNote[] }) {
+function CardNotesBlock({
+  notes,
+  heading,
+  editButton,
+  onEdit,
+}: {
+  notes: BookCardNote[]
+  heading: RefObject<HTMLHeadingElement | null>
+  editButton: (noteId: string) => RefCallback<HTMLButtonElement>
+  onEdit: (note: BookCardNote) => void
+}) {
   const headingId = useId()
   return (
     <section className={styles.block} aria-labelledby={headingId}>
-      <h2 id={headingId} className={styles.blockLabel}>
+      <h2 ref={heading} id={headingId} className={styles.blockLabel} tabIndex={-1}>
         {cardNotesHeading(notes.length)}
       </h2>
       {notes.length === 0 ? (
@@ -109,6 +121,14 @@ function CardNotesBlock({ notes }: { notes: BookCardNote[] }) {
             <li key={note.id} className={styles.cardNote}>
               <p className={styles.cardNoteText}>{note.text}</p>
               <p className={styles.pageRef}>{pageRef(note.pageStart, note.pageEnd)}</p>
+              <Button
+                ref={editButton(note.id)}
+                className={styles.cardNoteEdit}
+                aria-label={editNoteName(note.pageStart, note.pageEnd)}
+                onClick={() => onEdit(note)}
+              >
+                Edit
+              </Button>
             </li>
           ))}
         </ul>
@@ -143,6 +163,12 @@ function BookDetail({ book, onDelete, onFinish, finishButton }: BookDetailProps)
     open: openCardNote,
     panel: cardNotePanel,
   } = useCardNoteFlow({ bookId: book.id, initialPage: notePrefill(current?.currentPage ?? null) })
+  const {
+    editButton: noteEditButton,
+    heading: cardNotesHeadingRef,
+    open: openNoteEdit,
+    panel: noteEditPanel,
+  } = useCardNoteEditFlow({ bookId: book.id, notes: book.cardNotes })
   const { button: startButton, open: openStart, dialog: startDialog } = useStartFlow({ bookId: book.id })
 
   const primaryOrHeading = () => startButton.current ?? document.querySelector<HTMLElement>('main h1')
@@ -280,7 +306,12 @@ function BookDetail({ book, onDelete, onFinish, finishButton }: BookDetailProps)
               <EditPurpose key={book.id} bookId={book.id} purpose={current.purpose} />
             </section>
           )}
-          <CardNotesBlock notes={book.cardNotes} />
+          <CardNotesBlock
+            notes={book.cardNotes}
+            heading={cardNotesHeadingRef}
+            editButton={noteEditButton}
+            onEdit={openNoteEdit}
+          />
           <section className={styles.block} aria-labelledby={readingsId}>
             <h2 id={readingsId} className={styles.blockLabel}>
               Readings
@@ -314,6 +345,7 @@ function BookDetail({ book, onDelete, onFinish, finishButton }: BookDetailProps)
       )}
       {startDialog}
       {cardNotePanel}
+      {noteEditPanel}
       {pauseDialog}
       {deleteDialog}
     </div>
@@ -350,7 +382,14 @@ function BookDetail({ book, onDelete, onFinish, finishButton }: BookDetailProps)
  * (`lib/useCardNoteFlow.tsx`) opens the Card note panel with Page prefilled
  * from Current reading (at least 1), empty without one; Cancel, Esc and a
  * save return focus to it, and after a save `status` reads "Card note
- * saved.".
+ * saved.". Each shown note's **Edit** ("Edit p.96";
+ * `useCardNoteEditFlow`) opens the same panel as "Edit card note", with
+ * **Delete** at the left stacking the "Delete this card note?" Confirm
+ * dialog over it (Story 5.2). After a save focus goes to that note's Edit
+ * (the block heading if the edit moved it past the three shown), then
+ * `status` reads "Card note saved."; Cancel or Esc return to it. After a
+ * delete focus goes to the Edit of the note now shown in its place (the
+ * next note), else the heading; nothing is announced.
  * The Readings block lists each Reading newest first: "Started … · Finished
  * …", its stars when rated, and "Purpose fulfilled: …" when answered.
  *

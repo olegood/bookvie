@@ -339,6 +339,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/intents/edit-card-note": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Edit Card Note Intent
+         * @description Change a Card note's text and page in place, keeping its id and createdAt (FR-17).
+         */
+        post: operations["edit_card_note_intent_api_intents_edit_card_note_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/intents/delete-card-note": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Delete Card Note Intent
+         * @description Delete one Card note from its Book (FR-17).
+         */
+        post: operations["delete_card_note_intent_api_intents_delete_card_note_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/intents/mark-side-read": {
         parameters: {
             query?: never;
@@ -448,6 +488,14 @@ export interface components {
              */
             intent?: string | null;
         };
+        /** Body_delete_card_note_intent_api_intents_delete_card_note_post */
+        Body_delete_card_note_intent_api_intents_delete_card_note_post: {
+            /**
+             * Intent
+             * @description JSON object {"bookId": ..., "cardNoteId": ...}: the note to delete.
+             */
+            intent?: string | null;
+        };
         /** Body_edit_book_intent_api_intents_edit_book_post */
         Body_edit_book_intent_api_intents_edit_book_post: {
             /**
@@ -460,6 +508,14 @@ export interface components {
              * @description The cover image: JPEG, PNG or WebP, 20 MB or smaller. Optional.
              */
             cover?: string | null;
+        };
+        /** Body_edit_card_note_intent_api_intents_edit_card_note_post */
+        Body_edit_card_note_intent_api_intents_edit_card_note_post: {
+            /**
+             * Intent
+             * @description JSON object {"bookId": ..., "cardNoteId": ..., "text": ..., "page": ...}: the note to change, its new Note, and the Page as typed, parsed on the server.
+             */
+            intent?: string | null;
         };
         /** Body_edit_purpose_intent_api_intents_edit_purpose_post */
         Body_edit_purpose_intent_api_intents_edit_purpose_post: {
@@ -693,7 +749,7 @@ export interface components {
          * ErrorCode
          * @enum {string}
          */
-        ErrorCode: "invalid_fields" | "couldnt_save" | "duplicate_book" | "book_not_found" | "pages_below_current_page" | "pages_below_card_note" | "cover_too_large" | "couldnt_export" | "restore_invalid" | "restore_newer_version" | "restore_unsafe" | "already_main" | "reading_already_finished" | "not_main_book" | "main_cannot_be_up_next" | "main_cannot_be_side_read" | "side_reads_full";
+        ErrorCode: "invalid_fields" | "couldnt_save" | "duplicate_book" | "book_not_found" | "pages_below_current_page" | "pages_below_card_note" | "cover_too_large" | "couldnt_export" | "restore_invalid" | "restore_newer_version" | "restore_unsafe" | "already_main" | "reading_already_finished" | "not_main_book" | "main_cannot_be_up_next" | "main_cannot_be_side_read" | "side_reads_full" | "card_note_not_found";
         /**
          * ErrorKind
          * @enum {string}
@@ -1823,6 +1879,126 @@ export interface operations {
         requestBody?: {
             content: {
                 "multipart/form-data": components["schemas"]["Body_add_card_note_intent_api_intents_add_card_note_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkResponse"];
+                };
+            };
+            /** @description Refused by a library rule */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Invalid fields */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Couldn't save */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Couldn't save */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    edit_card_note_intent_api_intents_edit_card_note_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_edit_card_note_intent_api_intents_edit_card_note_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkResponse"];
+                };
+            };
+            /** @description Refused by a library rule */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Invalid fields */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Couldn't save */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Couldn't save */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    delete_card_note_intent_api_intents_delete_card_note_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_delete_card_note_intent_api_intents_delete_card_note_post"];
             };
         };
         responses: {

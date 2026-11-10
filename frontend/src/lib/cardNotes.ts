@@ -27,3 +27,31 @@ export function notePrefill(currentPage: number | null): string {
 export function cardNotesHeading(count: number): string {
   return count === 0 ? 'Card notes' : `Card notes (${count})`
 }
+
+/** The Edit card note panel's Page prefill: "96" or "42–45" (en dash, no prefix), read back unchanged by the server. */
+export function pageField(start: number, end: number | null): string {
+  return end === null ? String(start) : `${start}–${end}`
+}
+
+/** A note's Edit in the block: "Edit p.96", so it never matches Book detail's own **Edit**. */
+export function editNoteName(start: number, end: number | null): string {
+  return `Edit ${pageRef(start, end)}`
+}
+
+/** The Delete card note Confirm dialog's heading. */
+export const DELETE_CARD_NOTE_HEADING = 'Delete this card note?'
+
+/** The Delete card note Confirm dialog's confirm button. */
+export const DELETE_CARD_NOTE = 'Delete card note'
+
+/** Why the Confirm dialog's buttons are `aria-disabled` while the delete is out. */
+export const DELETING_CARD_NOTE = 'Deleting the card note.'
+
+/**
+ * The note whose Edit takes focus after a delete: the one now shown where the
+ * deleted note was (`index` in the block's shown order), the next note, else
+ * `null` (the block heading).
+ */
+export function noteAfterDelete(shownIds: readonly string[], index: number): string | null {
+  return shownIds[index] ?? null
+}

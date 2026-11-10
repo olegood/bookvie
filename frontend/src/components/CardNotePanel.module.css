@@ -69,3 +69,8 @@
   gap: var(--space-3);
   margin-top: var(--space-2);
 }
+
+/* Edit mode: Delete (`button-secondary`) at the left, Save note and Cancel at the right. */
+.delete {
+  margin-right: auto;
+}

@@ -13,35 +13,31 @@ The Edit card note panel, the Confirm dialog stacked over it, focus after a
 delete, and the couldn't-save line are read in the browser
 (``frontend/e2e/edit-card-note.spec.ts``).
 
-RED PHASE: neither intent exists yet, so every leaf is skipped. Activate one
-at a time by deleting its ``@pytest.mark.skip`` line.
+The follow-ups pin ``edit-card-note``'s parsing and refusals (the same as
+``add-card-note``'s), an edit in place, and a delete that touches only its note.
 """
 
 import json
 from pathlib import Path
 
-import pytest
 from fastapi.testclient import TestClient
 
 from bookvie.http.app import create_app
 from tests.builder import LibraryBuilder
 from tests.helpers import (
     COULDNT_SAVE_BODY,
+    DELETE_CARD_NOTE,
     DUNE,
     DUNE_FORM,
     EDIT_BOOK,
+    EDIT_CARD_NOTE,
     FaultyFs,
     api_client,
     assert_invariants,
     library_bytes,
     stored_book,
 )
-
-RED = "RED phase: edit-card-note and delete-card-note are not implemented yet (Story 5.2)"
-
-# Move both to tests/helpers.py with the implementation, beside ADD_CARD_NOTE.
-EDIT_CARD_NOTE = "/api/intents/edit-card-note"
-DELETE_CARD_NOTE = "/api/intents/delete-card-note"
+from tests.test_add_card_note import PAGE_FORMS, PAGE_REFUSALS
 
 GONE_BOOK_ID = "00000000-0000-4000-8000-000000000000"
 GONE_NOTE_ID = "00000000-0000-4000-8000-0000000000aa"
@@ -76,7 +72,6 @@ def _fields(response) -> dict[str, str]:
 # --- AC-4: deleting the highest note lowers edit-book's Pages floor ------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_ac4_p1_deleting_the_highest_card_note_lets_pages_go_down_to_the_highest_remaining(
     tmp_path: Path,
 ) -> None:
@@ -117,7 +112,6 @@ def test_ac4_p1_deleting_the_highest_card_note_lets_pages_go_down_to_the_highest
 # --- AC-5: the standard intent ACs (TR8) for both intents ----------------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_ac5_p0_edit_and_delete_card_note_meet_the_standard_intent_acs(tmp_path: Path) -> None:
     # Dune with two notes, so a success can be checked to touch only its note.
     builder = LibraryBuilder()
@@ -202,3 +196,124 @@ def test_ac5_p0_edit_and_delete_card_note_meet_the_standard_intent_acs(tmp_path:
         assert "413" not in responses, path
     codes = openapi["components"]["schemas"]["ErrorCode"]["enum"]
     assert "card_note_not_found" in codes
+
+
+# --- Follow-ups: edit-card-note parses and refuses as add-card-note does ------------
+
+
+def _left_hand_with_note(builder: LibraryBuilder) -> tuple[str, str]:
+    """The Left Hand of Darkness (330 pages, as PAGE_REFUSALS expects) and its one note."""
+    left_hand = builder.book(
+        title="The Left Hand of Darkness", authors=["Ursula K. Le Guin"], pages=330
+    )
+    note = builder.card_note(left_hand, text="Light is the left hand of darkness.", page_start=233)
+    return left_hand, note
+
+
+def test_edit_card_note_parses_every_page_form(tmp_path: Path) -> None:
+    builder = LibraryBuilder()
+    left_hand, note = _left_hand_with_note(builder)
+    builder.write(tmp_path)
+    client = api_client(tmp_path)
+
+    for form, start, end in PAGE_FORMS:
+        response = _edit_card_note(client, left_hand, note, "Ice.", form)
+        assert response.status_code == 200, form
+        stored = stored_book(tmp_path, left_hand)["cardNotes"][0]
+        assert (stored["pageStart"], stored["pageEnd"]) == (start, end), form
+        assert_invariants(tmp_path)
+
+
+def test_edit_card_note_refuses_what_add_card_note_refuses_and_saves_nothing(
+    tmp_path: Path,
+) -> None:
+    builder = LibraryBuilder()
+    left_hand, note = _left_hand_with_note(builder)
+    builder.write(tmp_path)
+    client = api_client(tmp_path)
+    before = library_bytes(tmp_path)
+
+    for page, message in PAGE_REFUSALS:
+        response = _edit_card_note(client, left_hand, note, "Ice.", page)
+        assert response.status_code == 422, page
+        assert response.json()["error"]["code"] == "invalid_fields", page
+        assert _fields(response) == {"page": message}, page
+        assert library_bytes(tmp_path) == before, page
+
+    for text in ("", "  \n\t "):
+        response = _edit_card_note(client, left_hand, note, text, "42")
+        assert response.status_code == 422, repr(text)
+        assert _fields(response) == {"text": "Note is required."}, repr(text)
+        assert library_bytes(tmp_path) == before, repr(text)
+
+    # Both at once: Note first, then Page, each named by its label.
+    response = _edit_card_note(client, left_hand, note, " ", "400")
+    assert response.status_code == 422
+    assert [f["field"] for f in response.json()["error"]["fields"]] == ["text", "page"]
+    assert response.json()["error"]["message"] == "Not saved. 2 fields need attention: Note, Page."
+    assert library_bytes(tmp_path) == before
+
+
+def test_edit_card_note_changes_the_note_in_place_and_nothing_else(tmp_path: Path) -> None:
+    builder = LibraryBuilder()
+    dune = builder.book(**DUNE)
+    first = builder.card_note(dune, text="Fear is the mind-killer.", page_start=19)
+    target = builder.card_note(
+        dune, text="The spice must flow.", page_start=96, created_at="2026-05-01T10:00:00+02:00"
+    )
+    last = builder.card_note(dune, text="The sleeper must awaken.", page_start=270)
+    neuromancer = builder.book(title="Neuromancer", authors=["William Gibson"], pages=271)
+    builder.card_note(neuromancer, text="The sky above the port.", page_start=1)
+    builder.write(tmp_path)
+    dune_before = stored_book(tmp_path, dune)
+    neuromancer_before = stored_book(tmp_path, neuromancer)
+    client = api_client(tmp_path)
+
+    # Moved past the last note's page: the stored position is kept all the same.
+    response = _edit_card_note(client, dune, target, "  \n New.\nLine two.  \t", "pp. 300–301")
+
+    assert response.status_code == 200
+    assert response.json() == {"ok": True}
+    dune_after = stored_book(tmp_path, dune)
+    notes = dune_after["cardNotes"]
+    assert [n["id"] for n in notes] == [first, target, last]
+    assert notes[1] == {
+        **dune_before["cardNotes"][1],
+        "text": "New.\nLine two.",
+        "pageStart": 300,
+        "pageEnd": 301,
+    }
+    assert notes[1]["createdAt"] == dune_before["cardNotes"][1]["createdAt"]
+    assert [notes[0], notes[2]] == [dune_before["cardNotes"][0], dune_before["cardNotes"][2]]
+    assert {**dune_after, "cardNotes": []} == {**dune_before, "cardNotes": []}
+    assert stored_book(tmp_path, neuromancer) == neuromancer_before
+    assert_invariants(tmp_path)
+
+    # An unchanged edit commits as normal: 200, and the note reads the same.
+    response = _edit_card_note(client, dune, target, "New.\nLine two.", "300–301")
+    assert response.status_code == 200
+    assert stored_book(tmp_path, dune) == dune_after
+
+
+def test_delete_card_note_removes_only_that_note(tmp_path: Path) -> None:
+    builder = LibraryBuilder()
+    dune = builder.book(**DUNE)
+    first = builder.card_note(dune, text="Fear is the mind-killer.", page_start=19)
+    target = builder.card_note(dune, text="The spice must flow.", page_start=96)
+    last = builder.card_note(dune, text="The sleeper must awaken.", page_start=270)
+    neuromancer = builder.book(title="Neuromancer", authors=["William Gibson"], pages=271)
+    builder.card_note(neuromancer, text="The sky above the port.", page_start=1)
+    builder.write(tmp_path)
+    dune_before = stored_book(tmp_path, dune)
+    neuromancer_before = stored_book(tmp_path, neuromancer)
+
+    response = _delete_card_note(api_client(tmp_path), dune, target)
+
+    assert response.status_code == 200
+    assert response.json() == {"ok": True}
+    dune_after = stored_book(tmp_path, dune)
+    assert [n["id"] for n in dune_after["cardNotes"]] == [first, last]
+    assert dune_after["cardNotes"] == [dune_before["cardNotes"][0], dune_before["cardNotes"][2]]
+    assert {**dune_after, "cardNotes": []} == {**dune_before, "cardNotes": []}
+    assert stored_book(tmp_path, neuromancer) == neuromancer_before
+    assert_invariants(tmp_path)

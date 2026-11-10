@@ -18,6 +18,8 @@ export const SET_UP_NEXT = '/api/intents/set-up-next'
 export const MARK_SIDE_READ = '/api/intents/mark-side-read'
 export const UNMARK_SIDE_READ = '/api/intents/unmark-side-read'
 export const ADD_CARD_NOTE = '/api/intents/add-card-note'
+export const EDIT_CARD_NOTE = '/api/intents/edit-card-note'
+export const DELETE_CARD_NOTE = '/api/intents/delete-card-note'
 
 // A 40×60 solid red-orange PNG (rgb 200, 60, 40): a colored cover.
 export const COVER_PNG = Buffer.from(

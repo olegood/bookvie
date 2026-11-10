@@ -9,8 +9,12 @@ import {
   BOOK_FIELD_KEYS,
   deleteBook,
   deleteBookForm,
+  deleteCardNote,
+  deleteCardNoteForm,
   editBook,
   editBookForm,
+  editCardNote,
+  editCardNoteForm,
   editPurpose,
   finishReading,
   finishReadingForm,
@@ -543,5 +547,73 @@ describe('addCardNote', () => {
 
   it('builds the same form on its own', () => {
     assert.equal(addCardNoteForm('b2', 'x', '42').get('intent'), '{"bookId":"b2","text":"x","page":"42"}')
+  })
+})
+
+describe('editCardNote', () => {
+  afterEach(() => mock.restoreAll())
+
+  it('posts the note id, the Note and the Page as typed, and answers ok without ids', async () => {
+    const fetch = mock.method(globalThis, 'fetch', async (..._args: [string, RequestInit]) =>
+      Response.json({ ok: true }),
+    )
+    const client = new QueryClient()
+    const result = await editCardNote(client, 'b1', 'n1', 'The spice must flow.', 'pp. 97–98')
+
+    assert.deepEqual(result, { kind: 'ok', ids: {}, reachedLastPage: false })
+    const [url, init] = fetch.mock.calls[0].arguments
+    assert.equal(url, '/api/intents/edit-card-note')
+    assert.equal(init!.method, 'POST')
+    assert.deepEqual(JSON.parse((init!.body as FormData).get('intent') as string), {
+      bookId: 'b1',
+      cardNoteId: 'n1',
+      text: 'The spice must flow.',
+      page: 'pp. 97–98',
+    })
+    client.clear()
+  })
+
+  it('passes a 409 card_note_not_found through as a refusal', async () => {
+    mock.method(globalThis, 'fetch', async () =>
+      Response.json(
+        { error: { kind: 'refusal', code: 'card_note_not_found', message: "This card note isn't there anymore." } },
+        { status: 409 },
+      ),
+    )
+    const client = new QueryClient()
+    const result = await editCardNote(client, 'b1', 'gone', 'Ice.', '42')
+    assert.equal(result.kind === 'refusal' && result.code, 'card_note_not_found')
+    assert.equal(result.kind === 'refusal' && result.message, "This card note isn't there anymore.")
+    client.clear()
+  })
+
+  it('builds the same form on its own', () => {
+    assert.equal(
+      editCardNoteForm('b2', 'n2', 'x', '42–45').get('intent'),
+      '{"bookId":"b2","cardNoteId":"n2","text":"x","page":"42–45"}',
+    )
+  })
+})
+
+describe('deleteCardNote', () => {
+  afterEach(() => mock.restoreAll())
+
+  it('posts the Book and the note id', async () => {
+    const fetch = mock.method(globalThis, 'fetch', async (..._args: [string, RequestInit]) =>
+      Response.json({ ok: true }),
+    )
+    const client = new QueryClient()
+    const result = await deleteCardNote(client, 'b1', 'n1')
+
+    assert.deepEqual(result, { kind: 'ok', ids: {}, reachedLastPage: false })
+    const [url, init] = fetch.mock.calls[0].arguments
+    assert.equal(url, '/api/intents/delete-card-note')
+    assert.equal(init!.method, 'POST')
+    assert.deepEqual(JSON.parse((init!.body as FormData).get('intent') as string), { bookId: 'b1', cardNoteId: 'n1' })
+    client.clear()
+  })
+
+  it('builds the same form on its own', () => {
+    assert.equal(deleteCardNoteForm('b2', 'n2').get('intent'), '{"bookId":"b2","cardNoteId":"n2"}')
   })
 })

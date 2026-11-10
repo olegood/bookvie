@@ -53,6 +53,7 @@ class ErrorCode(StrEnum):
     MAIN_CANNOT_BE_UP_NEXT = "main_cannot_be_up_next"
     MAIN_CANNOT_BE_SIDE_READ = "main_cannot_be_side_read"
     SIDE_READS_FULL = "side_reads_full"
+    CARD_NOTE_NOT_FOUND = "card_note_not_found"
 
 
 class FieldError(_Wire):
@@ -191,6 +192,21 @@ def book_not_found(status: int = 409) -> IntentError:
             kind=ErrorKind.REFUSAL,
             code=ErrorCode.BOOK_NOT_FOUND,
             message=BOOK_NOT_FOUND_MESSAGE,
+        ),
+    )
+
+
+CARD_NOTE_NOT_FOUND_MESSAGE = "This card note isn't there anymore."
+
+
+def card_note_not_found() -> IntentError:
+    """409 ``card_note_not_found``: a note gone from its Book, e.g. deleted in another tab."""
+    return IntentError(
+        409,
+        ErrorBody(
+            kind=ErrorKind.REFUSAL,
+            code=ErrorCode.CARD_NOTE_NOT_FOUND,
+            message=CARD_NOTE_NOT_FOUND_MESSAGE,
         ),
     )
 
