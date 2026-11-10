@@ -2,7 +2,7 @@
 title: 'Story 5.1: Add a card note while reading'
 type: 'feature'
 created: '2026-11-10'
-status: 'in-review'
+status: 'done'
 route: 'dispatch'
 warnings: ['oversized']
 baseline_revision: '6d6bd736e2a288bad5429dc7b26a9fc0597572c7'
@@ -166,3 +166,32 @@ The refocus-then-announce order follows Book detail's `onSaved` and finish flows
   - `[low]` `[reject]` (blind) The ATDD checklist isn't updated — that is `bmad-testarch-automate`'s step after done (AGENTS.md → Story pipeline).
   - `[reject]` (edge-case claim) The ticked task names `pages/HomePage.tsx`, which didn't change — the fix edits this spec; the opener lives in MainBookCard.
   - `[false]` `[reject]` (verification-gap, other) Esc and Cancel are ignored while a save is in flight, with no test — the reviewer filed it for awareness, and it is StartDialog's guard, not a gap the spec asks for.
+
+### 2026-11-10 — Code review pass (bmad-code-review)
+- scope: `6d6bd73..740aef2`, full mode, five layers (blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor, spine-check), none failed.
+- verdicts: 27 findings — high 0, medium 0, low 19, false 3, plus 5 spine-drift items already deferred by the build review.
+
+### Review Findings
+- [x] [Review][Defer] (decided by Oleg: keep it) `add-card-note` returns `ids.cardNoteId`, which no client reads (SC) — the Consistency Conventions → IDs rule says an id no client uses is not returned (`start-reading`'s Reading id). This spec and the ATDD contract both require `cardNoteId`. Either drop it, or keep it and record the exception (the agent skill and 5.2 as its readers) as spine drift. — deferred: spine drift (Consistency Conventions → IDs, AD-9), reconciled before the next epic.
+- [x] [Review][Patch] The Page grammar takes any whitespace (`\s`: tabs, newlines, Unicode spaces) where the frozen grammar says "optional spaces" (AA) [backend/bookvie/domain/note_pages.py:19]
+- [x] [Review][Patch] Esc or Cancel during an in-flight save is untested (VG): removing `dismiss`'s `inFlight` guard leaves every leaf green [frontend/e2e/add-card-note.spec.ts]
+- [x] [Review][Patch] A 422 refusing both Note and Page is untested in the browser: focus on Note, both `aria-invalid`, and the two-field summary (VG, AA, BH) [frontend/e2e/add-card-note.spec.ts]
+- [x] [Review][Patch] The Card notes `<ul>` has `list-style: none` with no `role="list"`, so Safari/VoiceOver drops the list semantics; `Bookcase.tsx:336` adds the role for this reason (BH) [frontend/src/pages/BookDetailPage.tsx:107]
+- [x] [Review][Patch] `.cardNoteText` uses `white-space: pre-line`, which collapses runs of spaces the server keeps; `pre-wrap` shows the note as stored (BH) [frontend/src/pages/BookDetailPage.module.css:268]
+- [x] [Review][Defer] A long note makes its card, and the block's grid row, arbitrarily tall and pushes Readings down; DESIGN.md sets no clamp for the block's preview cards (BH) [frontend/src/pages/BookDetailPage.module.css:251] — deferred: a UX choice for 5.3/5.4 (full text lives in the list and the pile).
+
+### Rejected
+- `[low]` (EC, BH) A digit run over 4,300 characters makes `int()` raise, giving a 500 — reachable only by a crafted request, and nothing is written; the guard adds a branch (the build review rejected it too).
+- `[low]` (AA, EC) A stale-tab 409 on Book detail unmounts the panel with the page — the Book is gone, so the note can't be kept anyway; `announce('alert')` still fires.
+- `[false]` (EC) Focus drops to `body` after that 409 — `BookDetailPage`'s missing-status effect focuses the not-found `h1` when focus is on `body`.
+- `[low]` (EC) A Note made only of zero-width characters passes `strip()` — no one types that, and the guard adds a branch.
+- `[low]` (BH) `check_invariants` accepts `pageEnd == pageStart`, which renders "pp.42–42" — only a hand-edited or restored file can hold it; recorded in the AD-18 spine drift.
+- `[low]` (AA) The Esc leaf doesn't use the p.212 seed — the refocus path is the same code for every prefill, and AC-1's Cancel covers p.212.
+- `[low]` (BH) Cancel and Esc discard a typed Note with no warning — the frozen spec says "Esc works like Cancel"; changing it is a product decision, not a fix.
+- `[low]` (BH) Page has no hint about ranges — no hint is in EXPERIENCE.md or DESIGN.md; adding copy is a spec change.
+- `[low]` (BH) The README Status line is stale beyond the count — fixed with the count when this review moves the story to `done`.
+- (BH) The ticked task names `pages/HomePage.tsx` — the fix edits this spec.
+- `[low]` (BH) No browser leaf for a stale-tab 409 from Home — it takes the same alert-line branch the routed-503 leaf pins.
+- `[false]` (BH) `isinstance(parsed, str)` in `if errors or …` is redundant — it narrows `parsed` for the type checker before the tuple unpack; the behavior is single-path.
+- `[low]` (BH) Screen readers say "p dot 42" — 5.4 turns page refs into buttons named "Open p.42 in the pile" (DESIGN.md → Card notes list).
+- `[false]` (BH) An e2e gap for a two-field refusal was filed separately — grouped with the VG/AA patch above.

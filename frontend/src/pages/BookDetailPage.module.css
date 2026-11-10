@@ -265,7 +265,7 @@
   font-weight: var(--font-body-weight);
   line-height: var(--font-body-line-height);
   color: var(--color-ink);
-  white-space: pre-line;
+  white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 

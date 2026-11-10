@@ -16,7 +16,8 @@ PAGE_REQUIRED_MESSAGE = "Page is required."
 ONE_RANGE_MESSAGE = "Use one page or one range."
 REVERSED_RANGE_MESSAGE = "The first page must come before the last."
 
-_PAGE_PATTERN = re.compile(r"(?:pp?\.?\s*)?([0-9]+)(?:\s*[-–]\s*([0-9]+))?")
+# Spaces only, not ``\s``: a tab or a newline inside a Page is not one page or one range.
+_PAGE_PATTERN = re.compile(r"(?:pp?\.? *)?([0-9]+)(?: *[-–] *([0-9]+))?")
 
 
 def page_range_message(pages: int) -> str:

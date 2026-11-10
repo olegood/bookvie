@@ -70,6 +70,10 @@ def test_parse_note_pages_accepts_one_page_or_one_range(
         ("ppp.42", ONE_RANGE_MESSAGE),
         ("page 42", ONE_RANGE_MESSAGE),
         ("٤٢", ONE_RANGE_MESSAGE),
+        # Spaces only: a tab or a newline inside the Page is refused.
+        ("p.\t42", ONE_RANGE_MESSAGE),
+        ("42\n–\n45", ONE_RANGE_MESSAGE),
+        ("42\u00a0–\u00a045", ONE_RANGE_MESSAGE),
         ("0", OUT_OF_RANGE),
         ("331", OUT_OF_RANGE),
         ("42–400", OUT_OF_RANGE),

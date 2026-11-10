@@ -104,7 +104,7 @@ function CardNotesBlock({ notes }: { notes: BookCardNote[] }) {
       {notes.length === 0 ? (
         <p className={styles.none}>{NO_CARD_NOTES}</p>
       ) : (
-        <ul className={styles.cardNotes}>
+        <ul className={styles.cardNotes} role="list">
           {notes.slice(0, BLOCK_NOTES).map((note) => (
             <li key={note.id} className={styles.cardNote}>
               <p className={styles.cardNoteText}>{note.text}</p>

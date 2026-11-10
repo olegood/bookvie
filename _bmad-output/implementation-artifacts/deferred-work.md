@@ -604,3 +604,13 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-5-1-add-a-card-note-while-reading.md`
   summary: The README Status line is stale. It still says "Epic 4 is in progress, with Stories 4.1-4.7 done", "31 of 41 stories done" and "All three retrospectives are done", but Epic 4, its retro, trace and gate are complete. Update it when bmad-code-review moves 5.1 to done.
   evidence: `README.md:8` against `sprint-status.yaml` (`epic-4-retrospective: done`, the epic 4 retro items done). It predates Story 5.1, and a story leaves the count to bmad-code-review.
+  resolved: Story 5.1 code review (2026-11-10), `README.md:8` Status line (Epics 1-4 complete, 32 of 41, four retros and gates).
+
+## Deferred from: code review of spec-5-1-add-a-card-note-while-reading (2026-11-10)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-1-add-a-card-note-while-reading.md`
+  summary: Book detail's Card notes block has no clamp, so one long note makes its card and its grid row arbitrarily tall and pushes Readings down the page. Decide on a line clamp or a max height for the block's preview cards with 5.3/5.4, where the full text lives in the list and the pile.
+  evidence: `frontend/src/pages/BookDetailPage.module.css` (`.cardNote`, `.cardNoteText`) sets no clamp, and DESIGN.md → Book detail specifies none. Note has no length limit.
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-1-add-a-card-note-while-reading.md`
+  summary: Spine drift (Consistency Conventions → IDs, AD-9), reconciled before the next epic. `add-card-note` returns `ids.cardNoteId`, which no client reads yet. The IDs convention says an id no client uses is not returned. Oleg chose to keep it, so record the exception in the spine, naming its expected readers: the agent skills that write to bookvie, and Story 5.2's edit.
+  evidence: `backend/bookvie/http/api.py` (`add_card_note_intent`); `frontend/src/lib/useCardNoteFlow.tsx` and `CardNotePanel.tsx` ignore `result.ids`. The spec and the ATDD contract pin `cardNoteId`, and the code review decision (2026-11-10) was to keep it.

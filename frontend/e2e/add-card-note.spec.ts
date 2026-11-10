@@ -253,6 +253,17 @@ test.describe('Story 5.1 Add a card note while reading', () => {
     await expect(note).toBeFocused()
     await expect(pageField).not.toHaveAttribute('aria-invalid', 'true')
     expect(libraryBytes(server)).toBe(before)
+
+    // Both refused: both fields are invalid, the summary names both, and focus goes to Note first.
+    await note.fill('  ')
+    await pageField.fill('400')
+    await panel.getByRole('button', { name: 'Save note', exact: true }).click()
+    await expect(page.getByRole('alert')).toHaveText('Not saved. 2 fields need attention: Note, Page.')
+    await expect(note).toHaveAttribute('aria-invalid', 'true')
+    await expect(pageField).toHaveAttribute('aria-invalid', 'true')
+    await expect(pageField).toHaveAccessibleDescription('Page must be between 1 and 330.')
+    await expect(note).toBeFocused()
+    expect(libraryBytes(server)).toBe(before)
   })
 
   test("[P1] AC-6 a routed 503 shows Couldn't save inside the panel above the buttons, with both values kept", async ({
@@ -282,6 +293,11 @@ test.describe('Story 5.1 Add a card note while reading', () => {
     await save.click()
     await sent
     await expect(save).toHaveAttribute('aria-disabled', 'true')
+    // Esc and Cancel are ignored while the save is out: the panel and both values stay.
+    await page.keyboard.press('Escape')
+    await panel.getByRole('button', { name: 'Cancel', exact: true }).click()
+    await expect(panel).toBeVisible()
+    await expect(panel.getByRole('textbox', { name: 'Note', exact: true })).toHaveValue('Kept.')
     release()
 
     await expect(page.getByRole('alert')).toHaveText(COULDNT_SAVE)
