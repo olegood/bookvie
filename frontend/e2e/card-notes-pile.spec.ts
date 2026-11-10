@@ -213,7 +213,7 @@ test.describe("Story 5.4 Go through a book's notes as a pile", () => {
     expect(await dialog.evaluate((element) => getComputedStyle(element, '::backdrop').backgroundColor)).toBe(SCRIM)
   })
 
-  test('[P0] AC-2 Next and Previous change the note and announce "Note N of M, p.X: text."; the ends are aria-disabled with no wrap, and a one-note pile disables both', async ({
+  test('[P0] AC-2 Next and Previous change the note and announce "Note N of M, p.X: text" (no period added); the ends are aria-disabled with no wrap, and a one-note pile disables both', async ({
     page,
     seededServer,
   }) => {
@@ -632,6 +632,51 @@ test.describe("Story 5.4 Go through a book's notes as a pile", () => {
     const empty = page.getByRole('main').getByRole('region', { name: 'Card notes', exact: true })
     await expect(empty.getByText('No card notes yet.', { exact: true })).toBeVisible()
     await expect(pileOpener(empty)).toHaveCount(0)
+  })
+
+  test('[P2] AC-1 the scoped Card notes page keeps its Book\'s "Go through as a pile" while the search matches nothing', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer(LIBRARY)
+    await page.goto(cardNotesPage(server, DUNE_ID))
+    const main = page.getByRole('main')
+    await searchField(main).fill('zzz')
+    await expect(main.getByText('No card notes contain “zzz”.', { exact: true })).toBeVisible()
+    await expect(pileOpener(main)).toHaveCount(1)
+    await pileOpener(main).click()
+    const dialog = pile(page, 'Dune')
+    await expect(position(dialog)).toHaveText('1 of 4')
+    await page.keyboard.press('Escape')
+    await expect(dialog).toBeHidden()
+    await expect(pileOpener(main)).toBeFocused()
+
+    // Unscoped, a Book with no match has no group, so no opener either.
+    await page.goto(cardNotesPage(server))
+    await searchField(main).fill('zzz')
+    await expect(main.getByText('No card notes contain “zzz”.', { exact: true })).toBeVisible()
+    await expect(pileOpener(main)).toHaveCount(0)
+  })
+
+  test("[P2] AC-1 opening and closing the pile leaves the shell's status as it was", async ({ page, seededServer }) => {
+    const server = await seededServer(LIBRARY)
+    await pausedClock(page)
+    await page.goto(cardNotesPage(server))
+    const main = page.getByRole('main')
+    // The shell's own status, outside any dialog.
+    const shellStatus = page.locator('[role="status"]:not(dialog [role="status"])')
+    await searchField(main).pressSequentially('spice')
+    await page.clock.runFor(PAST_THE_PAUSE_MS)
+    await expect(shellStatus).toHaveText('1 note matches.')
+
+    await pageRefButton(main, 'p.96').click()
+    const dialog = pile(page, 'Dune')
+    await expect(position(dialog)).toHaveText('3 of 4')
+    await page.clock.runFor(PAST_THE_PAUSE_MS)
+    await expect(shellStatus).toHaveText('1 note matches.')
+    await page.keyboard.press('Escape')
+    await expect(dialog).toBeHidden()
+    await expect(shellStatus).toHaveText('1 note matches.')
   })
 
   test('[P2] AC-4 opening the pile from a chip on the Card notes page while typing pauses drops the pending "N notes match."', async ({

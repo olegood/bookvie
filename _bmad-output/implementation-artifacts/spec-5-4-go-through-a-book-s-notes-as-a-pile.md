@@ -2,7 +2,7 @@
 title: "Story 5.4: Go through a book's notes as a pile"
 type: 'feature'
 created: '2026-11-10'
-status: 'in-review'
+status: 'done'
 baseline_revision: '24899ea692d793d3a512512196f6529ff3ec7366'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -88,6 +88,31 @@ deferred: []
 - Given the pile, when I press Close or Esc, then focus goes to the last viewed note's Edit (scrolled into view), else that Book's "Go through as a pile", and the pile has no search or editing controls.
 - Given Book detail's block with a note longer than 6 lines and an empty search, when it renders, then the card's text is clamped to 6 lines; with text in the search, it is not.
 - Given a full-data library (AC-7 seed), when exported then restored, then `library.json` and every cover are byte-identical.
+
+### Review Findings
+
+Code review, 2026-11-10 (`24899ea..db4a8ce`). Layers: blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor, spine-check. None failed. The spine check found no drift.
+
+- [x] [Review][Patch] (Decision → patch, Oleg 2026-11-10: on the scoped page with no match, show the Book's opener under the none line; the unscoped page is unchanged) On the scoped Card notes page, a search with no match removes the Book's only "Go through as a pile" [frontend/src/pages/CardNotesPage.tsx:298] — `visibleGroups` drops a group with no match, so on `/card-notes?book=<id>` with "zzz" only "No card notes contain “zzz”." shows, and the pile opens only after the search is cleared. The Openers rule says "shown only when the Book has notes (also while a search shows no match)", and the block follows it. The build triage rejected this only for the unscoped page. (acceptance-auditor, low)
+- [x] [Review][Patch] No test checks that the pile leaves the shell's `status` alone: drop `adoptRegions: false` and opening the pile runs `clearAnnouncements()`, but every test stays green [frontend/e2e/card-notes-pile.spec.ts] (verification-gap, low)
+- [x] [Review][Patch] AC-2's e2e title quotes the announcement with a final period ("Note N of M, p.X: text."), but the decided copy has none [frontend/e2e/card-notes-pile.spec.ts:216] (blind-hunter, low)
+- [x] [Review][Defer] Reduced-motion return scroll and the forced-colors styles have no e2e test [frontend/src/lib/usePileFlow.tsx:32] — deferred: the spec accepts the gap. AC-6's retrying `toBeInViewport` passes with either scroll behavior. A dependable test needs `emulateMedia` plus a `scrollIntoView` spy, and forced-colors screenshots. (verification-gap+blind-hunter, low)
+- [x] [Review][Defer] EXPERIENCE.md → Pile not reconciled with decisions made in this story [_bmad-output/planning-artifacts/ux-designs/ux-bookvie-2026-10-28/EXPERIENCE.md:261] — deferred: UX doc edit. EXPERIENCE.md says the note sits in a live region and quotes the announcement with a period, and its Focus-after-close row (l.396) gives the page no fallback. The code uses a separate empty-on-open `status`, no period, and falls back to the group's opener, then the `h1`. (blind-hunter, low)
+
+**Rejected:**
+- `[low]` (acceptance-auditor+blind, decision: keep, Oleg 2026-11-10) The pile card shows a page-ref line under the note text, which the spec doesn't describe. The line stays. Recording it in DESIGN.md → Pile is folded into the deferred UX-doc reconciliation.
+- `[false]` (edge-case) `shuffled` doesn't clamp an injected `random()` outside [0, 1): production passes `Math.random`, which stays in range, and every test injects values in range.
+- `[low]` (edge-case+verification-gap) The Code Map says "no other dialog has radios", but `FinishDialog` has two radio groups: its first and last controls are not radios, so its Tab wrap is unchanged. Fixing this means editing the spec.
+- `[false]` (blind) `isTabStop` makes a radio group with nothing checked unreachable: the filter only picks the first and last controls for the wrap; Tab between them is native. FinishDialog's unchecked Purpose group is neither first nor last, and the pile always has a checked radio.
+- `[low]` (acceptance-auditor+blind) The Code Map and the ATDD table still name `pileName`: fixing this means editing the spec.
+- `[low]` (blind) The Spec Change Log is empty, and the `aria-describedby` added at review isn't an Always rule: fixing this means editing the spec. The Review Triage Log records the change.
+- `[low]` (blind) No test covers "the Card notes page never clamps": the clamp rule is in `BookDetailPage.module.css`, and CSS-module scoping keeps it from reaching the page.
+- `[low]` (blind) The page-ref chip markup and CSS are copied between the page and the block: this is a refactor with no user-visible harm, and the build triage already rejected it.
+- `[low]` (blind) Focus after closing a Shuffled pile is untested: `close` passes `sequence[index].id`, the note shown, so it is correct by construction.
+- `[low]` (blind) The `h1` / `#main` fallback is untested: no real flow reaches it, because the group's opener is shown whenever the pile could be open.
+- `[low]` (blind) The Verification unit-test command is ambiguous: fixing this means editing the spec.
+- `[false]` (blind) The README still says "5.1 to 5.3 done": the review's done step updates the counts.
+- `[low]` (blind) `pileOpener(bookId)` returns a new ref callback on each render, so the map entry is deleted and re-added: React re-sets the refs in the same commit, before the close effect reads them, so it is harmless.
 
 ## Spec Change Log
 

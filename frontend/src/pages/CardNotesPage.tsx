@@ -124,7 +124,8 @@ function Group({
  * order, whatever the search shows: "Go through as a pile" opens it at "1 of
  * M", a page-ref chip at that note. Close or Esc returns focus to the last
  * viewed note's Edit if it is shown, else that group's "Go through as a
- * pile", else the `h1`.
+ * pile", else the `h1`. Scoped, the Book's "Go through as a pile" stays
+ * under "No card notes contain “…”." while the search matches nothing.
  *
  * Search card notes (visible label, no placeholder, Esc clears) keeps only
  * the notes whose text contains the query, ignoring case, matches in
@@ -296,7 +297,22 @@ function CardNotesBody({ bookId }: { bookId: string | undefined }) {
           <>
             <SearchTitles label={SEARCH_CARD_NOTES} value={query} onChange={search} />
             {shown.length === 0 ? (
-              <p className={styles.none}>{noNotesMatchCopy(query)}</p>
+              <>
+                <p className={styles.none}>{noNotesMatchCopy(query)}</p>
+                {/* Scoped to one Book with notes: its pile stays reachable while the search matches nothing. */}
+                {scope !== null && (
+                  <p className={styles.pileLink}>
+                    <button
+                      ref={pileOpener(scope.bookId)}
+                      type="button"
+                      className="linkButton"
+                      onClick={() => openPile(scope.bookId)}
+                    >
+                      Go through as a pile
+                    </button>
+                  </p>
+                )}
+              </>
             ) : (
               shown.map((group) => (
                 <Group
