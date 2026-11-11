@@ -21,6 +21,7 @@ the lock is taken; the exact limit is checked on the spooled file.
 ``app.state.store`` is duck-typed and only its ``library`` is read.
 """
 
+import re
 import sys
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
@@ -37,7 +38,7 @@ from fastapi.exception_handlers import (
 )
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, PlainTextResponse, Response
-from pydantic import BaseModel
+from pydantic import BaseModel, BeforeValidator
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
@@ -376,19 +377,32 @@ def card_notes_view(request: Request, book: str | None = None) -> views.CardNote
     return view
 
 
+_ISO_DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
+
+
+def _iso_date(value: object) -> object:
+    """Refuse anything but ``YYYY-MM-DD``: a lax ``date`` also takes datetimes and timestamps."""
+    if isinstance(value, str) and not _ISO_DATE.fullmatch(value):
+        raise ValueError("Use YYYY-MM-DD.")
+    return value
+
+
+_IsoDate = Annotated[date, BeforeValidator(_iso_date)]
+
+
 @router.get("/views/stats", response_model=views.StatsView)
 def stats_view(
     request: Request,
     start: Annotated[
-        date | None, Query(alias="from", description="First day of the range (inclusive).")
+        _IsoDate | None, Query(alias="from", description="First day of the range (inclusive).")
     ] = None,
     end: Annotated[
-        date | None, Query(alias="to", description="Last day of the range (inclusive).")
+        _IsoDate | None, Query(alias="to", description="Last day of the range (inclusive).")
     ] = None,
 ) -> views.StatsView:
     """Books and pages finished from ``from`` to ``to``, both inclusive local dates;
     All time without either. 422 ``invalid_fields`` names a missing half of the
-    range, a value that isn't a date, or a ``to`` before ``from``."""
+    range, a value that isn't a ``YYYY-MM-DD`` date, or a ``to`` before ``from``."""
     if start is None and end is not None:
         raise invalid_fields([FieldError(field="from", message="Give both from and to.")])
     if end is None and start is not None:

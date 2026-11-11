@@ -3,7 +3,7 @@ title: 'Story 6.3: See what I finished in any period'
 type: 'feature'
 created: '2026-11-11'
 baseline_revision: 'f326a37c8c0307bdbfaa00d704302083a0065c66'
-status: 'in-review'
+status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -144,6 +144,33 @@ deferred:
 - Given the app, when I use the nav and the Stats page, then the nav, the `h1`, the picker, the preset requests, the numbers, the announcement and the New Year boundary behave as the ATDD's AC-1, AC-2, AC-3, AC-5 and AC-7 say.
 - Given a bad query, when the view is requested, then it answers 422 `invalid_fields` naming the field.
 - Given Stats in either theme, when axe scans it, then there are no violations.
+
+### Review Findings
+
+Code review, 2026-11-11 (new session, diff f326a37..f2cf63f without `.claude/`). Five layers: Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor, Spine Check. Re-run here: `pytest tests/test_stats.py tests/test_contract.py` 57 passed; the spec's e2e list 83 passed; `check:api` exit 0 (300 unit tests).
+
+- [x] [Review][Decision] Non-ISO dates get 200, not 422 — **resolved: enforce (patched below).** `?from=2026-01-01T00:00:00` and `?from=0&to=86400` answer 200 (re-probed with the app), because FastAPI parses a `date` query in lax mode. The spec's Query errors say "a date that isn't `YYYY-MM-DD`" is 422. The build changed the docstring instead of the behaviour. `Strict()` and `pattern=` don't work on a `date` query; a `BeforeValidator` with `^\d{4}-\d{2}-\d{2}$` does (probed: 422 enveloped, schema still `format: date`). Options: enforce it, or keep the lax parsing. Only hand-made requests can reach this; the page always sends ISO dates. (blind-hunter+edge-case-hunter+acceptance-auditor)
+- [x] [Review][Decision] Tab between the segments of one date field swaps reversed dates mid-edit — `swapOnTab` runs on every Tab keydown, and Chromium keeps focus in the date input while Tab moves between segments. The spec says the swap happens when a field loses focus, and its Design Notes say swapping mid-edit is what blur avoids. The ATDD AC-2 leaf presses Tab right after `fill`, which leaves focus on the first segment, so it needs the keydown swap. Options: keep the Tab swap (accept the mid-edit jump), or swap on blur only and change the two AC-2 leaves to leave the field (for example `.blur()` or a click elsewhere). (acceptance-auditor+blind-hunter) **Resolved: keep the Tab swap (Oleg); rejected, see below.**
+- [x] [Review][Patch] Non-ISO dates: a `BeforeValidator` refuses anything but `YYYY-MM-DD` on `from` and `to`, the docstring says so again, `schema.d.ts` is regenerated, and the 422 test adds a datetime and a Unix timestamp [backend/bookvie/http/api.py:379]
+- [x] [Review][Patch] No test that a Stats tab left open past midnight moves its preset to the new day silently [frontend/e2e/stats.spec.ts] — new `[P2]` leaf; it fails when `selectionKey` includes the preset's dates (mutation run)
+- [x] [Review][Patch] No test for a failed load after a range change (the previous triage relied on that path showing `COULDNT_LOAD` and Try again) [frontend/e2e/stats.spec.ts] — new `[P2]` leaf: This month's 503 shows the failure, drops This year's numbers, and Try again shows 610
+- [x] [Review][Patch] `afterAnnounceDelay` hard-codes 100 instead of `ANNOUNCE_DELAY_MS` [frontend/e2e/stats.spec.ts:175]
+- [x] [Review][Patch] The edge test fetches each range twice [backend/tests/test_stats.py:172]
+- [x] [Review][Defer] Spine drift (AD-6, AD-9, AD-3's sanctioned pre-checks, Structural Seed, FR-16 row) [backend/bookvie/views/stats.py] — deferred: spine drift, reconciled before the next epic. The build's existing `deferred-work.md` entry for 6.3 already covers every point, so no new entry was added.
+
+**Rejected:**
+- `low` Tab between the segments of one date swaps mid-edit (acceptance-auditor, blind-hunter) — Oleg's call: keep the Tab swap that ATDD AC-2 needs; the request is always ordered, so the numbers are never wrong.
+- `low` `views.stats()` treats a half range as All time (acceptance-auditor, blind-hunter) — the route refuses half ranges with 422, its only caller; a narrower signature would only re-shape unreachable input.
+- `false` the OpenAPI for this GET lists 409, 500 and 503 (blind-hunter) — `ERROR_RESPONSES` is router-wide by design ("Every /api route documents the envelope"), the same for every view; not caused by this change.
+- `low` no busy state while a new range loads (blind-hunter) — the spec asks `useStatsView` to keep the previous data; the local server answers in milliseconds.
+- `false` "No books finished yet." under Custom after All time (acceptance-auditor, blind-hunter, edge-case-hunter) — it shows only when All time has 0 finishes, and then it is true of every range; the spec keeps the last result while a field is empty.
+- `false` returning to the last announced selection isn't announced (acceptance-auditor, edge-case-hunter) — that happens only when the shown figures never changed (the other range hadn't loaded, or Custom was cleared and refilled), so there is nothing new to announce; the pressed button's state is read anyway.
+- `low` the figures aren't tied to their captions (blind-hunter) — reading order gives each figure then its caption, and axe passes in both themes.
+- `false` `RangePicker` imports `ViewToggle.module.css` (blind-hunter) — the spec asks for exactly that reuse.
+- `low` `.figure` repeats Gauge's declarations (blind-hunter) — both read the same `gauge-figure` tokens, so a DESIGN.md change reaches both.
+- `low` year `0000` passes `isIsoDate` (edge-case-hunter) — Chromium's date input can't produce it.
+- `false` a 5+ digit year sends nothing and keeps the last result (edge-case-hunter) — that is the spec's rule for an invalid field.
+- `low` presets keep yesterday without a focus or visibility event (edge-case-hunter) — `useNow`'s existing behaviour, shared by Home and the calculators.
 
 ## Spec Change Log
 

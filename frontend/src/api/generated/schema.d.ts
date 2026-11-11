@@ -145,7 +145,7 @@ export interface paths {
          * Stats View
          * @description Books and pages finished from ``from`` to ``to``, both inclusive local dates;
          *     All time without either. 422 ``invalid_fields`` names a missing half of the
-         *     range, a value that isn't a date, or a ``to`` before ``from``.
+         *     range, a value that isn't a ``YYYY-MM-DD`` date, or a ``to`` before ``from``.
          */
         get: operations["stats_view_api_views_stats_get"];
         put?: never;

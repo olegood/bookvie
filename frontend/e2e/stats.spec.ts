@@ -15,8 +15,9 @@
 
 import AxeBuilder from '@axe-core/playwright'
 import type { Locator, Page, Request } from '@playwright/test'
+import { ANNOUNCE_DELAY_MS } from '../src/lib/announce.ts'
 import { expect, startSeededServer, test } from './fixtures.ts'
-import { serverAtFakeToday, stopAndRemove } from './home.ts'
+import { FAKE_TODAY, serverAtFakeToday, stopAndRemove } from './home.ts'
 
 const STATS_API = '/api/views/stats'
 const COULDNT_LOAD = "Couldn't load. Is bookvie still running?"
@@ -168,11 +169,11 @@ function recordStatsRequests(page: Page): Record<string, string>[] {
 
 /**
  * Resolves once an announcement scheduled before this call would have been set:
- * `announce` sets its text in a timer of ANNOUNCE_DELAY_MS (100 ms), and timers
- * of at least that delay registered later fire after it.
+ * `announce` sets its text in a timer of ANNOUNCE_DELAY_MS, and timers of at
+ * least that delay registered later fire after it.
  */
 async function afterAnnounceDelay(page: Page): Promise<void> {
-  await page.evaluate(() => new Promise<void>((resolve) => setTimeout(resolve, 100)))
+  await page.evaluate((delay) => new Promise<void>((resolve) => setTimeout(resolve, delay)), ANNOUNCE_DELAY_MS)
 }
 
 /** A request's query as a plain object, to compare the whole query at once. */
@@ -468,6 +469,57 @@ test.describe('Story 6.3 See what I finished in any period (ATDD)', () => {
       await page.getByRole('button', { name: 'Try again', exact: true }).click()
       await expect(figure(page, '1,010')).toBeVisible()
       await expect(page.getByText(COULDNT_LOAD)).toHaveCount(0)
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+
+  test("[P2] a range that fails to load after a shown one shows Couldn't load with Try again, which refetches", async ({
+    page,
+  }) => {
+    const server = await serverAtFakeToday(page, 'stats-failed-change', FLOW_7)
+    try {
+      await page.goto(`${server.url}/stats`)
+      await expect(figure(page, '1,010')).toBeVisible()
+
+      let down = true
+      await page.route('**/api/views/stats**', async (route) => {
+        if (!down) return route.continue()
+        down = false
+        await route.fulfill({ status: 503, contentType: 'text/plain', body: 'Service Unavailable' })
+      })
+      await preset(page, 'This month').click()
+      await expect(page.getByRole('alert')).toHaveText(COULDNT_LOAD)
+      await expect(page.getByRole('main').getByText(COULDNT_LOAD, { exact: true })).toBeVisible()
+      // This year's numbers don't stay under This month.
+      await expect(figure(page, '1,010')).toHaveCount(0)
+
+      await page.getByRole('button', { name: 'Try again', exact: true }).click()
+      await expect(figure(page, '610')).toBeVisible()
+      await expect(page.getByText(COULDNT_LOAD)).toHaveCount(0)
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+
+  test('[P2] a tab left open past midnight asks for the new day when it regains focus, and announces nothing', async ({
+    page,
+  }) => {
+    const server = await serverAtFakeToday(page, 'stats-midnight', FLOW_7)
+    try {
+      await page.clock.setFixedTime(new Date(`${FAKE_TODAY}T23:59:00+01:00`))
+      await page.goto(`${server.url}/stats`)
+      await expect(figure(page, '1,010')).toBeVisible()
+
+      const nextDay = statsRequestFor(page, { from: '2026-01-01', to: '2026-10-29' })
+      await page.clock.setFixedTime(new Date('2026-10-29T00:01:00+01:00'))
+      await page.evaluate(() => window.dispatchEvent(new Event('focus')))
+      await nextDay
+
+      await expect(preset(page, 'This year')).toHaveAttribute('aria-pressed', 'true')
+      await expect(figure(page, '1,010')).toBeVisible()
+      await afterAnnounceDelay(page)
+      await expect(page.getByRole('status')).toHaveText('')
     } finally {
       await stopAndRemove(server)
     }

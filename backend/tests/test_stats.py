@@ -169,10 +169,10 @@ def test_ac7_p0_a_finish_on_an_edge_counts_in_its_own_month_and_year(
     b.write(tmp_path)
     client = api_client(tmp_path, raise_server_exceptions=True)
 
-    assert _stats(client, *inside)["books"] == 1
-    assert _stats(client, *inside)["pages"] == 250
-    assert _stats(client, *outside)["books"] == 0
-    assert _stats(client, *outside)["pages"] == 0
+    shown_inside = _stats(client, *inside)
+    shown_outside = _stats(client, *outside)
+    assert (shown_inside["books"], shown_inside["pages"]) == (1, 250)
+    assert (shown_outside["books"], shown_outside["pages"]) == (0, 0)
 
 
 def test_ac7_p1_a_single_day_range_counts_that_day(
@@ -284,6 +284,9 @@ def test_p1_all_time_spans_the_earliest_finish_to_the_latest(
         ({"to": "2026-01-01"}, "from"),
         ({"from": "2026-13-01", "to": "2026-12-31"}, "from"),
         ({"from": "2026-01-01", "to": "someday"}, "to"),
+        # Lax dates: a datetime and a Unix timestamp aren't YYYY-MM-DD.
+        ({"from": "2026-01-01T00:00:00", "to": "2026-12-31"}, "from"),
+        ({"from": "2026-01-01", "to": "86400"}, "to"),
         ({"from": "2026-10-28", "to": "2026-10-27"}, "to"),
     ],
 )
