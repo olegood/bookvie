@@ -258,7 +258,7 @@ Use: Home (Main book card), Book detail; Card notes list (edit).
 
 Use: over Card notes or Book detail.
 
-- **Role:** modal, named "Card notes pile, *X*". One note at a time. The note sits in a polite live region, so each move announces "Note 3 of 7, p.42: *text*."
+- **Role:** modal, named "Card notes pile, *X*". One note at a time, its page ref below the text. Next takes focus on open, and the dialog's description reads the note, its page ref and "N of M". The pile has its own polite `status`, separate from the shell's regions; it is empty on open. Each move sets it to "Note 3 of 7, p.42: *text*", with no final period. A change of order restarts at "1 of M" and empties the status.
 - **Controls:** Previous and Next buttons, "N of M", and an "Order" radio group (Page order · Shuffled; shuffle reorders once per change). "N of M" follows the current order.
 - **Ends:** at the first and last note, Previous and Next stay focusable with `aria-disabled="true"`; there is no wrap. A pile of one note has both disabled.
 - **Keyboard:** Left and Right do what Previous and Next do; Home and End go to the first and last note. They work wherever focus is in the pile except on the Order radios, where the arrow keys keep picking the order, and Home and End do nothing. A key held with Alt, Ctrl, Meta or Shift is left to the browser. Focus stays where it is; the move is announced like a button press ("Note 3 of 7, p.42: *text*"). At an end the key does nothing: no wrap and no announcement. Previous and Next carry `aria-keyshortcuts` ("ArrowLeft", "ArrowRight"). There is no on-screen hint.
@@ -394,7 +394,7 @@ When a panel, dialog, popover or menu closes, focus goes to:
 | Confirm, Delete card note | Cancel or Esc | **Delete** in the Edit card note panel |
 | Confirm, Restore | Restored | Home `h1` |
 | Any Confirm | Cancel or Esc | The opener |
-| Pile | Close or Esc | The last viewed note's Edit button in the list; on Book detail, that note's Edit if it is among the notes shown, else "Go through as a pile" |
+| Pile | Close or Esc | The last viewed note's Edit button if the list shows it (a search, or Book detail's first-three cut, can hide it), else that Book's "Go through as a pile" (on the Card notes page a search can hide the whole group), else the page `h1` |
 | Anything whose opener no longer exists | — | The page `h1` |
 
 ## Agent Label Contract
