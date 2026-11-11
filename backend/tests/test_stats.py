@@ -13,7 +13,7 @@ The criteria the server decides (STA-API-001, R-10):
 
 The range picker, its presets, the two big numbers and the empty states are
 read in the browser (``frontend/e2e/stats.spec.ts``). The buckets' contents
-are Story 6.4's; these leaves don't pin them.
+are Story 6.4's, pinned at the end of this module.
 
 The leaves pin these names: the route ``GET /api/views/stats`` with the query
 parameters ``from`` and ``to``, and the response's ``books: int`` and
@@ -257,23 +257,30 @@ def test_ac5_p1_all_time_with_nothing_finished_is_zero_month_and_no_buckets(
 
 
 @pytest.mark.parametrize(
-    ("start", "end", "bucket"),
+    ("start", "end", "bucket", "count"),
     [
-        ("2024-01-01", "2025-12-31", "month"),  # 24 months
-        ("2024-01-01", "2026-01-01", "year"),  # 25 months
-        ("2026-10-28", "2026-10-28", "month"),  # one day
-        ("2024-01-31", "2025-12-01", "month"),  # 24 months touched, partly
+        ("2024-01-01", "2025-12-31", "month", 24),  # 24 months
+        ("2024-01-01", "2026-01-01", "year", 3),  # 25 months
+        ("2026-10-28", "2026-10-28", "month", 1),  # one day
+        ("2024-01-31", "2025-12-01", "month", 24),  # 24 months touched, partly
     ],
 )
 def test_p1_the_bucket_is_year_past_24_calendar_months(
-    tmp_path: Path, library_builder: LibraryBuilder, start: str, end: str, bucket: str
+    tmp_path: Path,
+    library_builder: LibraryBuilder,
+    start: str,
+    end: str,
+    bucket: str,
+    count: int,
 ) -> None:
     library_builder.write(tmp_path)
     client = api_client(tmp_path, raise_server_exceptions=True)
 
     body = _stats(client, start, end)
     assert body["bucket"] == bucket
-    assert body["buckets"] == []
+    # An empty library still gets one empty bucket per month (or year) the range touches.
+    assert len(body["buckets"]) == count
+    assert all((b["books"], b["pages"]) == (0, 0) for b in body["buckets"])
 
 
 @pytest.mark.parametrize(
@@ -324,7 +331,7 @@ def test_p1_a_bad_query_is_422_invalid_fields_naming_the_field(
     assert [f["field"] for f in error["fields"]] == [field]
 
 
-# --- Story 6.4 See my reading month by month: the buckets (ATDD, red phase) -----------
+# --- Story 6.4 See my reading month by month: the buckets ----------------------------
 #
 # The bucket contents the server owns (AD-6, FR-16). ``period`` is ``YYYY-MM`` for a
 # month bucket and ``YYYY`` for a year bucket, oldest first, one per calendar month
@@ -333,10 +340,7 @@ def test_p1_a_bad_query_is_422_invalid_fields_naming_the_field(
 # finish month. The chart, its table and the instant update are read in the browser
 # (``frontend/e2e/stats.spec.ts``).
 
-RED = "Story 6.4 red phase: the stats view doesn't fill buckets yet"
 
-
-@pytest.mark.skip(reason=RED)
 def test_ac1_p0_a_range_gets_one_bucket_per_month_counting_only_finishes_inside_it(
     tmp_path: Path, library_builder: LibraryBuilder
 ) -> None:
@@ -373,7 +377,6 @@ def test_ac1_p0_a_range_gets_one_bucket_per_month_counting_only_finishes_inside_
     ]
 
 
-@pytest.mark.skip(reason=RED)
 def test_ac3_p1_a_900_page_book_finished_on_2_december_is_900_pages_in_december(
     tmp_path: Path, library_builder: LibraryBuilder
 ) -> None:
@@ -393,3 +396,157 @@ def test_ac3_p1_a_900_page_book_finished_on_2_december_is_900_pages_in_december(
     assert [bucket["period"] for bucket in year["buckets"]] == [
         f"2025-{m:02d}" for m in range(1, 13)
     ]
+
+
+@pytest.mark.parametrize(
+    ("finish", "period"),
+    [
+        ("2026-03-29", "2026-03"),  # the DST Sunday in March
+        ("2026-03-31", "2026-03"),
+        ("2026-04-01", "2026-04"),
+        ("2026-10-25", "2026-10"),  # the DST Sunday in October
+    ],
+)
+def test_p0_a_finish_on_an_edge_lands_in_its_own_month_bucket(
+    tmp_path: Path, library_builder: LibraryBuilder, finish: str, period: str
+) -> None:
+    b = library_builder
+    _finished(b, b.book(title="Edge", pages=250), None, finish, 250)
+    b.write(tmp_path)
+    client = api_client(tmp_path, raise_server_exceptions=True)
+
+    by_period = {x["period"]: x for x in _stats(client, "2026-01-01", "2026-12-31")["buckets"]}
+    assert (by_period[period]["books"], by_period[period]["pages"]) == (1, 250)
+    assert sum(x["books"] for x in by_period.values()) == 1
+
+
+def test_p1_the_edges_together_fill_march_april_and_october(
+    tmp_path: Path, library_builder: LibraryBuilder
+) -> None:
+    b = library_builder
+    for title, finish in [
+        ("A", "2026-03-29"),
+        ("B", "2026-03-31"),
+        ("C", "2026-04-01"),
+        ("D", "2026-10-25"),
+    ]:
+        _finished(b, b.book(title=title, pages=100), None, finish, 100)
+    b.write(tmp_path)
+    client = api_client(tmp_path, raise_server_exceptions=True)
+
+    books = {x["period"]: x["books"] for x in _stats(client, "2026-01-01", "2026-12-31")["buckets"]}
+    assert (books["2026-03"], books["2026-04"], books["2026-10"]) == (2, 1, 1)
+    assert sum(books.values()) == 4
+
+
+def test_p1_a_re_read_counts_again_in_its_own_bucket_and_a_side_read_adds_nothing(
+    tmp_path: Path, library_builder: LibraryBuilder
+) -> None:
+    b = library_builder
+    kindred = b.book(title="Kindred", pages=100)
+    _finished(b, kindred, "2026-02-01", "2026-02-10", 100)
+    _finished(b, kindred, "2026-05-01", "2026-05-10", 100)
+    hyperion = b.book(title="Hyperion", pages=482)
+    b.reading(hyperion, start_date="2026-06-01", current_page=210)
+    b.side_read(hyperion)
+    b.write(tmp_path)
+    client = api_client(tmp_path, raise_server_exceptions=True)
+
+    buckets = _stats(client, "2026-01-01", "2026-06-30")["buckets"]
+    assert [(x["period"], x["books"], x["pages"]) for x in buckets] == [
+        ("2026-01", 0, 0),
+        ("2026-02", 1, 100),
+        ("2026-03", 0, 0),
+        ("2026-04", 0, 0),
+        ("2026-05", 1, 100),
+        ("2026-06", 0, 0),
+    ]
+
+
+def test_p1_all_time_buckets_run_from_the_earliest_finish_to_the_latest(
+    tmp_path: Path, library_builder: LibraryBuilder
+) -> None:
+    b = library_builder
+    _finished(b, b.book(title="Dune", pages=412), None, "2024-01-15", 412)
+    _finished(b, b.book(title="Emma", pages=400), None, "2026-01-02", 400)
+    b.write(tmp_path)
+    client = api_client(tmp_path, raise_server_exceptions=True)
+
+    all_time = _stats(client)
+    assert all_time["bucket"] == "year"
+    assert all_time["buckets"] == [
+        {"period": "2024", "books": 1, "pages": 412},
+        {"period": "2025", "books": 0, "pages": 0},
+        {"period": "2026", "books": 1, "pages": 400},
+    ]
+
+
+def test_p1_all_time_within_24_months_has_month_buckets_from_the_first_to_the_last(
+    tmp_path: Path, library_builder: LibraryBuilder
+) -> None:
+    b = library_builder
+    _finished(b, b.book(title="Dune", pages=412), None, "2026-03-31", 412)
+    _finished(b, b.book(title="Emma", pages=400), None, "2026-05-01", 400)
+    b.write(tmp_path)
+    client = api_client(tmp_path, raise_server_exceptions=True)
+
+    all_time = _stats(client)
+    assert all_time["bucket"] == "month"
+    assert [x["period"] for x in all_time["buckets"]] == ["2026-03", "2026-04", "2026-05"]
+
+
+def test_p1_a_single_day_range_is_one_bucket(
+    tmp_path: Path, library_builder: LibraryBuilder
+) -> None:
+    b = library_builder
+    _finished(b, b.book(title="Neuromancer", pages=271), "2026-12-15", "2027-01-01", 271)
+    b.write(tmp_path)
+    client = api_client(tmp_path, raise_server_exceptions=True)
+
+    assert _stats(client, "2027-01-01", "2027-01-01")["buckets"] == [
+        {"period": "2027-01", "books": 1, "pages": 271}
+    ]
+
+
+def test_p1_25_months_from_1_january_is_three_partial_and_full_years(
+    tmp_path: Path, library_builder: LibraryBuilder
+) -> None:
+    b = library_builder
+    _finished(b, b.book(title="Dune", pages=412), None, "2024-01-01", 412)
+    _finished(b, b.book(title="Emma", pages=400), None, "2026-01-01", 400)
+    _finished(b, b.book(title="Kindred", pages=286), None, "2026-01-02", 286)  # outside
+    b.write(tmp_path)
+    client = api_client(tmp_path, raise_server_exceptions=True)
+
+    body = _stats(client, "2024-01-01", "2026-01-01")
+    assert body["bucket"] == "year"
+    assert body["buckets"] == [
+        {"period": "2024", "books": 1, "pages": 412},
+        {"period": "2025", "books": 0, "pages": 0},
+        {"period": "2026", "books": 1, "pages": 400},
+    ]
+
+
+@pytest.mark.parametrize(
+    ("start", "end"),
+    [("2026-01-01", "2026-10-28"), ("2019-01-01", "2026-12-31"), (None, None)],
+)
+def test_p1_the_buckets_add_up_to_the_totals(
+    library_builder: LibraryBuilder, start: str | None, end: str | None
+) -> None:
+    b = library_builder
+    _finished(b, b.book(title="Omens", pages=300), None, "2019-08-14", 300)
+    kindred = b.book(title="Kindred", pages=100)
+    _finished(b, kindred, None, "2025-06-01", 100)
+    _finished(b, kindred, "2026-10-01", "2026-10-10", 100)
+    emma = b.book(title="Emma", pages=400)
+    b.reading(emma, finish_date="2026-09-20", finished_pages=None, current_page=400)
+
+    view = stats(
+        b.build(),
+        None if start is None else date.fromisoformat(start),
+        None if end is None else date.fromisoformat(end),
+    )
+    assert view.books == sum(x.books for x in view.buckets)
+    assert view.pages == sum(x.pages for x in view.buckets)
+    assert view.books > 0

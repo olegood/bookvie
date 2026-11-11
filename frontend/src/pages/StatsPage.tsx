@@ -4,6 +4,7 @@ import Button from '../components/Button.tsx'
 import FailureMessage from '../components/FailureMessage.tsx'
 import PageHeading from '../components/PageHeading.tsx'
 import RangePicker from '../components/RangePicker.tsx'
+import StatsBars from '../components/StatsBars.tsx'
 import TextField from '../components/TextField.tsx'
 import { announce, clearAnnouncements } from '../lib/announce.ts'
 import { COULDNT_LOAD } from '../lib/copy.ts'
@@ -126,7 +127,7 @@ export default function StatsPage() {
       )}
       {shown !== null && (
         <>
-          <div className={styles.totals}>
+          <div className={styles.totals} role="group" aria-label="Totals">
             <div className={styles.total}>
               <p className={styles.figure}>{formatCount(shown.view.books)}</p>
               <p className={styles.caption}>books finished</p>
@@ -139,6 +140,7 @@ export default function StatsPage() {
           {shown.view.books === 0 && (
             <p className={styles.empty}>{shown.range === 'all' ? NO_BOOKS_YET : NO_BOOKS_IN_RANGE}</p>
           )}
+          <StatsBars bucket={shown.view.bucket} buckets={shown.view.buckets} />
         </>
       )}
     </div>

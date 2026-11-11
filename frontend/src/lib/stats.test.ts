@@ -6,7 +6,16 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
-import { formatCount, isIsoDate, orderedRange, presetRange, statsLine } from './stats.ts'
+import {
+  barLines,
+  barShare,
+  formatCount,
+  isIsoDate,
+  orderedRange,
+  periodName,
+  presetRange,
+  statsLine,
+} from './stats.ts'
 
 const at = (year: number, month: number, day: number, hour = 10, minute = 0) =>
   new Date(year, month - 1, day, hour, minute)
@@ -80,5 +89,49 @@ describe('statsLine and formatCount', () => {
     assert.equal(formatCount(1010), '1,010')
     assert.equal(formatCount(1234567), '1,234,567')
     assert.equal(statsLine(3, 1010), '3 books, 1,010 pages.')
+  })
+})
+
+// Story 6.4 See my reading month by month: the bars' labels and heights. The
+// server sends the buckets; the client only names their periods and sizes the fills.
+
+describe('periodName', () => {
+  it('names a month with its year', () => {
+    assert.equal(periodName('2026-01'), 'January 2026')
+    assert.equal(periodName('2025-12'), 'December 2025')
+  })
+
+  it('names a year as the year', () => {
+    assert.equal(periodName('2026'), '2026')
+  })
+})
+
+describe('barLines', () => {
+  it('reads a month as its short name', () => {
+    assert.deepEqual(barLines('2025-12', false), ['Dec'])
+    assert.deepEqual(barLines('2026-05', false), ['May'])
+  })
+
+  it('adds the year on the first bar and on each January', () => {
+    assert.deepEqual(barLines('2025-12', true), ['Dec', '2025'])
+    assert.deepEqual(barLines('2026-01', false), ['Jan', '2026'])
+    assert.deepEqual(barLines('2026-01', true), ['Jan', '2026'])
+  })
+
+  it('reads a year as the year alone', () => {
+    assert.deepEqual(barLines('2026', true), ['2026'])
+    assert.deepEqual(barLines('2025', false), ['2025'])
+  })
+})
+
+describe('barShare', () => {
+  it('is pages over the largest pages', () => {
+    assert.equal(barShare(610, 610), 1)
+    assert.equal(barShare(400, 800), 0.5)
+    assert.equal(barShare(0, 610), 0)
+  })
+
+  it('is 0 when the largest is 0 (an empty range)', () => {
+    assert.equal(barShare(0, 0), 0)
   })
 })

@@ -293,9 +293,10 @@ class BackupView(_View):
 
 
 class StatsBucket(_View):
-    """One month or year of the Stats bars (Story 6.4 fills them)."""
+    """One month or year of the Stats bars: the finishes inside the range in that period."""
 
     period: str
+    """``YYYY-MM`` for a month bucket, ``YYYY`` for a year bucket."""
     books: int
     pages: int
 
@@ -311,4 +312,6 @@ class StatsView(_View):
     """``year`` when the range spans more than 24 calendar months, else ``month``. All
     time spans the earliest finish to the latest; with no finishes it is ``month``."""
     buckets: list[StatsBucket]
-    """The bars' buckets; always empty until Story 6.4."""
+    """The bars' buckets, oldest first: one for every calendar month (or year) from the
+    range's start to its end, empty ones included as 0 books and 0 pages. All time runs
+    from the earliest finish's period to the latest's, and is ``[]`` with no finishes."""

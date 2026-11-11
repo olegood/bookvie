@@ -1,0 +1,69 @@
+/* DESIGN.md → components.monthly-bar: an accent fill on an accent-soft track, meta labels. */
+.chart {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-2);
+  width: 100%;
+}
+
+/* Up to 24 columns share the width; labels never wrap, and the chart never scrolls. */
+.column {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.value,
+.period {
+  font-family: var(--font-meta-family);
+  font-size: var(--font-meta-size);
+  font-weight: var(--font-meta-weight);
+  line-height: var(--font-meta-line-height);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-ink-secondary);
+  white-space: nowrap;
+}
+
+.period {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.line {
+  display: block;
+}
+
+/* A vertical track; the fill grows from the bottom. No transition: a new range redraws at once. */
+.track {
+  position: relative;
+  display: block;
+  width: 100%;
+  max-width: 32px;
+  height: 160px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: var(--color-accent-soft);
+}
+
+.fill {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: block;
+  background: var(--color-accent);
+}
+
+@media (forced-colors: active) {
+  .track {
+    border: 1px solid CanvasText;
+  }
+
+  .fill {
+    background: Highlight;
+  }
+}

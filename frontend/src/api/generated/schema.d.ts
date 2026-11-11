@@ -1015,7 +1015,7 @@ export interface components {
         };
         /**
          * StatsBucket
-         * @description One month or year of the Stats bars (Story 6.4 fills them).
+         * @description One month or year of the Stats bars: the finishes inside the range in that period.
          */
         StatsBucket: {
             /** Period */

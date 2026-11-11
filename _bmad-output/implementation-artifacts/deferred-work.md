@@ -782,3 +782,11 @@
   - the Structural Seed diagram's `AG[agent's automated browser] --> S` node should read as the cataloging skill calling the API.
   FR-2 and AD-17 stay as they are: the New book form must still be fillable by its labels, and the e2e suite still enforces the Agent Label Contract. The skill is now a second client of the add-book intent body (AD-8), so a renamed intent key breaks it; the reconciliation may add one line saying so.
   evidence: `.claude/skills/bookvie-new-book/scripts/add_book.py`; `.claude/skills/bookvie-new-book/scripts/check_catalog.py`; `ARCHITECTURE-SPINE.md` Overview paragraph and the Structural Seed diagram (`AG` node).
+
+## Deferred from: build-auto review of spec-6-4-see-my-reading-month-by-month (2026-11-11)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-4-see-my-reading-month-by-month.md`
+  summary: Spine drift (AD-6), reconciled before the next epic. The spine doesn't record either of these:
+  - the stats buckets' rules: `period` is `YYYY-MM` or `YYYY`; buckets come oldest first, one per calendar month (or year) from `from` to `to`, with empty ones as 0 books and 0 pages; and `[]` is only for All time with nothing finished;
+  - the Stats bars' client presentation, which AD-6's list of client calculations doesn't name: each fill's height is pages over the range's largest, the chart is `aria-hidden` with a visually hidden table (Period, Books, Pages), and the bar labels read "Jan", with the year on the first bar and each January.
+  evidence: `backend/bookvie/views/stats.py` `_period`, `_periods`; `backend/bookvie/views/models.py` `StatsBucket`; `frontend/src/lib/stats.ts` `barShare`, `barLines`, `periodName`; `frontend/src/components/StatsBars.tsx`; `ARCHITECTURE-SPINE.md` AD-6 (spine check, build-auto review of 6.4).

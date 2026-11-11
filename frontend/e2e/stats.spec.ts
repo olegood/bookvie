@@ -6,7 +6,7 @@
 // finished and pages finished, announced as "N books, M pages." in the shell's
 // `status` region. What the server counts (finishDate, back-fills, re-reads,
 // stored finishedPages: AC-4, AC-6) is proven in backend/tests/test_stats.py.
-// The bucket contents and the chart belong to Story 6.4.
+// The bucket contents and the chart belong to Story 6.4, at the end of this file.
 //
 // Dates: `serverAtFakeToday` starts `bookvie --fake-today 2026-10-28` and
 // fixes the browser clock at 10:00 that day in Europe/Madrid (TC-2, AD-20).
@@ -110,6 +110,36 @@ const NOTHING_FINISHED = {
   ],
 }
 
+/** The Tome, 900 pages, read 20 October to 2 December 2025: Last year at fake today 2026-10-28. */
+const THE_TOME = {
+  books: [
+    {
+      title: 'The Tome',
+      authors: ['A. Writer'],
+      pages: 900,
+      readings: [{ startDate: '2025-10-20', finishDate: '2025-12-02', finishedPages: 900, currentPage: 900 }],
+    },
+  ],
+}
+
+/** Two back-filled finishes more than 24 months apart: All time is bucketed by year. */
+const YEARS_APART = {
+  books: [
+    {
+      title: 'Dune',
+      authors: ['Frank Herbert'],
+      pages: 412,
+      readings: [{ finishDate: '2024-01-15', finishedPages: 412, currentPage: 412 }],
+    },
+    {
+      title: 'Emma',
+      authors: ['Jane Austen'],
+      pages: 400,
+      readings: [{ finishDate: '2026-01-02', finishedPages: 400, currentPage: 400 }],
+    },
+  ],
+}
+
 /** The banner's nav. */
 function nav(page: Page): Locator {
   return page.getByRole('banner').getByRole('navigation')
@@ -131,13 +161,13 @@ function dateField(page: Page, name: 'From' | 'To'): Locator {
 }
 
 /**
- * A big number, by its exact text inside `main`. Exact matching only hits an
- * element whose whole text is the figure, so "2" doesn't match "2026" in a date
- * or the caption "books finished"; the status line, the other place the
- * numbers appear, lives outside `main` in the shell's live region.
+ * A big number, by its exact text inside the "Totals" group. Exact matching only
+ * hits an element whose whole text is the figure, so "2" doesn't match "2026" or
+ * the caption "books finished"; the group keeps the bar values and the table's
+ * cells, which repeat the numbers, out of reach.
  */
 function figure(page: Page, text: string): Locator {
-  return page.getByRole('main').getByText(text, { exact: true })
+  return page.getByRole('main').getByRole('group', { name: 'Totals', exact: true }).getByText(text, { exact: true })
 }
 
 /** A caption under a big number. */
@@ -650,7 +680,7 @@ test.describe('Story 6.3 See what I finished in any period (ATDD)', () => {
   })
 })
 
-// Story 6.4 See my reading month by month (ATDD, red phase). The bars under the
+// Story 6.4 See my reading month by month (ATDD). The bars under the
 // two numbers: one per bucket, each with its value above and its period below,
 // and the same data as a table for assistive tech (period, books, pages). What
 // the server puts in each bucket (one per month up to 24 months, else per year,
@@ -674,13 +704,44 @@ async function booksAndPages(table: Locator): Promise<string[][]> {
   return (await tableRows(table)).map((row) => row.slice(1))
 }
 
+/** One column of the decorative chart, as drawn: its value, period lines, sizes and colours. */
+type ChartColumn = {
+  value: string
+  period: string[]
+  track: number
+  trackBorder: string
+  fill: number
+  fillBackground: string | null
+}
+
+/** The `aria-hidden` chart's columns, oldest first: value above, track, period below. */
+async function chartColumns(page: Page): Promise<ChartColumn[]> {
+  return page
+    .getByRole('main')
+    .locator('[aria-hidden="true"] > div')
+    .evaluateAll((columns) =>
+      columns.map((column) => {
+        const [value, track, period] = Array.from(column.children)
+        const fill = track.firstElementChild
+        return {
+          value: value.textContent ?? '',
+          period: Array.from(period.children, (line) => line.textContent ?? ''),
+          track: track.getBoundingClientRect().height,
+          trackBorder: getComputedStyle(track).borderTopWidth,
+          fill: fill === null ? 0 : fill.getBoundingClientRect().height,
+          fillBackground: fill === null ? null : getComputedStyle(fill).backgroundColor,
+        }
+      }),
+    )
+}
+
 /** Text shown on screen in `main` (the table may be visually hidden). */
 function shownText(page: Page, text: string): Locator {
   return page.getByRole('main').getByText(text, { exact: true }).filter({ visible: true })
 }
 
 test.describe('Story 6.4 See my reading month by month (ATDD)', () => {
-  test.skip('[P1] AC-2 each bar shows its pages, and the same buckets are a table of period, books and pages', async ({
+  test('[P1] AC-2 each bar shows its pages, and the same buckets are a table of period, books and pages', async ({
     page,
   }) => {
     const server = await serverAtFakeToday(page, 'stats-bars', FLOW_7)
@@ -706,7 +767,7 @@ test.describe('Story 6.4 See my reading month by month (ATDD)', () => {
     }
   })
 
-  test.skip('[P2] AC-4 a new range updates the numbers and bars at once, with no animation under reduced motion', async ({
+  test('[P2] AC-4 a new range updates the numbers and bars at once, with no animation under reduced motion', async ({
     page,
   }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' })
@@ -733,6 +794,142 @@ test.describe('Story 6.4 See my reading month by month (ATDD)', () => {
 
       // Instant: nothing is animating once the new bars are in (reduced motion).
       expect(await page.evaluate(() => document.getAnimations().length)).toBe(0)
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+
+  test('[P2] AC-3 Last year puts all 900 pages of a Book finished on 2 December in December', async ({ page }) => {
+    const server = await serverAtFakeToday(page, 'stats-bars-tome', THE_TOME)
+    try {
+      await page.goto(`${server.url}/stats`)
+      const lastYear = statsRequest(page)
+      await preset(page, 'Last year').click()
+      await (await lastYear).response()
+      const table = chartTable(page)
+
+      await expect.poll(async () => (await tableRows(table)).length).toBe(13)
+      const rows = await tableRows(table)
+      expect(rows.find((row) => row[0] === 'December 2025')).toEqual(['December 2025', '1', '900'])
+      expect(rows.find((row) => row[0] === 'November 2025')).toEqual(['November 2025', '0', '0'])
+      // 900 as the pages figure, and again as a bar value in the chart, outside Totals.
+      await expect(figure(page, '900')).toBeVisible()
+      await expect(
+        page.getByRole('main').locator('[aria-hidden="true"]').getByText('900', { exact: true }),
+      ).toBeVisible()
+      const columns = await chartColumns(page)
+      const november = columns[10]
+      const december = columns[11]
+      expect(december.value).toBe('900')
+      expect(december.fill).toBeCloseTo(december.track, 0)
+      expect(november.value).toBe('0')
+      expect(november.fill).toBe(0)
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+
+  test('[P2] AC-2 each bar is as tall as its pages against the largest, and an empty month has no fill', async ({
+    page,
+  }) => {
+    const server = await serverAtFakeToday(page, 'stats-bars-heights', FLOW_7)
+    try {
+      await page.goto(`${server.url}/stats`)
+      await expect(figure(page, '1,010')).toBeVisible()
+
+      // The chart is decorative: its columns, by their value label, in order.
+      const heights = await chartColumns(page)
+      expect(heights.map((column) => column.value)).toEqual(['0', '0', '0', '0', '0', '0', '0', '0', '400', '610'])
+      const [january] = heights
+      const september = heights[8]
+      const october = heights[9]
+      expect(january.fill).toBe(0)
+      expect(october.fill).toBeCloseTo(october.track, 0)
+      expect(september.fill / october.fill).toBeCloseTo(400 / 610, 1)
+      // The period below each bar: the first bar adds its year on a second line.
+      expect(january.period).toEqual(['Jan', '2026'])
+      expect(september.period).toEqual(['Sep'])
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+
+  test('[P2] All time with nothing finished has no bars and no table', async ({ page }) => {
+    const server = await serverAtFakeToday(page, 'stats-bars-nothing', NOTHING_FINISHED)
+    try {
+      await page.goto(`${server.url}/stats`)
+      // This year with nothing finished: ten empty months.
+      await expect.poll(async () => (await tableRows(chartTable(page))).length).toBe(11)
+
+      await preset(page, 'All time').click()
+      await expect(page.getByRole('main').getByText('No books finished yet.', { exact: true })).toBeVisible()
+      await expect(chartTable(page)).toHaveCount(0)
+      await expect(page.getByRole('main').locator('[aria-hidden="true"]')).toHaveCount(0)
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+
+  test('[P2] AC-4 editing Custom updates the table', async ({ page }) => {
+    const server = await serverAtFakeToday(page, 'stats-bars-custom', FLOW_7)
+    try {
+      await page.goto(`${server.url}/stats`)
+      await expect(figure(page, '1,010')).toBeVisible()
+      await preset(page, 'Custom').click()
+
+      const september = statsRequestFor(page, { from: '2026-09-01', to: '2026-10-28' })
+      await dateField(page, 'From').fill('2026-09-01')
+      await (await september).response()
+      const table = chartTable(page)
+      await expect
+        .poll(() => tableRows(table))
+        .toEqual([
+          ['Period', 'Books', 'Pages'],
+          ['September 2026', '1', '400'],
+          ['October 2026', '2', '610'],
+        ])
+      await expect(table.locator('caption')).toHaveText('Books and pages finished by month')
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+
+  test('[P2] AC-1 All time over 24 months shows one bar and one row per year', async ({ page }) => {
+    const server = await serverAtFakeToday(page, 'stats-bars-years', YEARS_APART)
+    try {
+      await page.goto(`${server.url}/stats`)
+      const allTime = statsRequest(page)
+      await preset(page, 'All time').click()
+      await (await allTime).response()
+      const table = chartTable(page)
+
+      await expect(table.locator('caption')).toHaveText('Books and pages finished by year')
+      await expect
+        .poll(() => tableRows(table))
+        .toEqual([
+          ['Period', 'Books', 'Pages'],
+          ['2024', '1', '412'],
+          ['2025', '0', '0'],
+          ['2026', '1', '400'],
+        ])
+      expect((await chartColumns(page)).map((column) => column.period)).toEqual([['2024'], ['2025'], ['2026']])
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+
+  test('[P2] AC-2 under forced colours the track has a border and the fill a system colour', async ({ page }) => {
+    await page.emulateMedia({ colorScheme: 'light', forcedColors: 'active' })
+    const server = await serverAtFakeToday(page, 'stats-bars-forced', FLOW_7)
+    try {
+      await page.goto(`${server.url}/stats`)
+      await expect(figure(page, '1,010')).toBeVisible()
+
+      const october = (await chartColumns(page))[9]
+      expect(october.value).toBe('610')
+      expect(october.fillBackground).not.toBeNull()
+      expect(october.fillBackground).not.toBe('rgba(0, 0, 0, 0)')
+      expect(october.trackBorder).not.toBe('0px')
     } finally {
       await stopAndRemove(server)
     }
