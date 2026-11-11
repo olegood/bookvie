@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import {
   BLOCK_NOTES,
+  blockNotes,
   CARD_NOTE_SAVED,
   cardNotesHeading,
   cardNotesPath,
@@ -65,6 +66,28 @@ describe('copy', () => {
     assert.equal(CARD_NOTE_SAVED, 'Card note saved.')
     assert.equal(NO_CARD_NOTES, 'No card notes yet.')
     assert.equal(BLOCK_NOTES, 3)
+  })
+})
+
+describe('blockNotes', () => {
+  const notes = [{ text: 'Alpha' }, { text: 'beta' }, { text: 'Gamma' }, { text: 'alphabet' }, { text: 'Delta' }]
+
+  it('shows the first three with an empty or whitespace query', () => {
+    assert.deepEqual(blockNotes(notes, ''), notes.slice(0, 3))
+    assert.deepEqual(blockNotes(notes, '   '), notes.slice(0, 3))
+  })
+
+  it('shows every match with a query, ignoring case', () => {
+    assert.deepEqual(blockNotes(notes, 'ALPHA'), [notes[0], notes[3]])
+    assert.deepEqual(blockNotes(notes, 'a'), notes)
+  })
+
+  it('shows nothing when no note matches', () => {
+    assert.deepEqual(blockNotes(notes, 'zeta'), [])
+  })
+
+  it('trims the query and keeps page order', () => {
+    assert.deepEqual(blockNotes(notes, '  alpha '), [notes[0], notes[3]])
   })
 })
 

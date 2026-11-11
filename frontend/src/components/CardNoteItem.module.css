@@ -1,0 +1,66 @@
+/* One Card note (DESIGN.md → Card notes list), on the Card notes page and in
+   Book detail's block: a `card-note` with its text in `body`, then its page ref
+   as a `chip` in `meta` / `ink-tertiary`, then its Edit. */
+.note {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: var(--hairline) solid var(--color-line);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+
+.text {
+  margin: 0;
+  font-family: var(--font-body-family);
+  font-size: var(--font-body-size);
+  font-weight: var(--font-body-weight);
+  line-height: var(--font-body-line-height);
+  color: var(--color-ink);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* Book detail's block, unsearched, shows at most 6 lines a card (the pile reads
+   the rest); while its search holds text, nothing is clamped, so every match shows. */
+.text[data-clamped='true'] {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 6;
+  line-clamp: 6;
+}
+
+/* A note's page ref: a `chip` button that opens the pile at that note (DESIGN.md → Card notes list). */
+.pageRef {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  min-height: 24px;
+  margin: 0;
+  padding: 0 var(--space-2);
+  border: var(--hairline) solid var(--color-input-border);
+  border-radius: var(--radius-full);
+  background: var(--color-surface-inset);
+  font-family: var(--font-meta-family);
+  font-size: var(--font-meta-size);
+  font-weight: var(--font-meta-weight);
+  line-height: var(--font-meta-line-height);
+  color: var(--color-ink-tertiary);
+  cursor: pointer;
+}
+
+.pageRef:hover,
+.pageRef:focus-visible {
+  color: var(--color-ink);
+}
+
+/* A note's Edit sits under its page ref, at the card's start. `margin-top: auto`
+   pins it to the bottom of an equal-height cell in Book detail's grid; in the
+   Card notes page's column a card is only as tall as its content, so it does nothing there. */
+.edit {
+  align-self: flex-start;
+  margin-top: auto;
+}

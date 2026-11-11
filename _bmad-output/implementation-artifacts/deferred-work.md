@@ -683,3 +683,12 @@
   summary: bmad-code-review offers "Start the next story" after a pipeline spec reaches `done`, not `bmad-testarch-automate`. Its "Epic boundary" fact replaces option 1 only when `story_key` is set, so the automate step (AGENTS.md "Story pipeline", step 4) can be skipped.
   evidence: `_bmad/custom/bmad-code-review.toml` (the "Epic boundary" fact). Fix: when the spec has a `- **Pipeline:**` line, replace option 1 with **Run test automation**, as for a story that didn't close its epic. Deferred because item 46's change list is build-auto only.
 
+
+## Deferred from: review of spec-epic-5-retro-item-48-shared-card-note-item (2026-11-11)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-epic-5-retro-item-48-shared-card-note-item.md`
+  summary: No test shows that the Card notes page keeps a long note unclamped. Since item 48, the page shares `CardNoteItem`'s `clamped` switch with Book detail's block, and it relies on the default `clamped = false`.
+  evidence: the only clamp test, `frontend/e2e/card-notes-pile.spec.ts:489`, opens Book detail only, and `card-notes.spec.ts` seeds short notes. If the default flipped or `Group` passed `clamped`, no test would fail. Fix: a `[P2]` case that seeds a 10-line note, opens the Card notes page and asserts the paragraph's `scrollHeight <= clientHeight`. Deferred because item 48 froze the e2e specs.
+- source_spec: `_bmad-output/implementation-artifacts/spec-epic-5-retro-item-48-shared-card-note-item.md`
+  summary: No test pins each card's **Edit** to the bottom of its cell in Book detail's 3-column grid (`margin-top: auto` on `CardNoteItem.module.css` `.edit`).
+  evidence: no e2e compares the list Edit buttons' positions; dropping the rule would misalign Edit in shorter cards unnoticed. This was untested before item 48 too. Fix: a `[P2]` layout case in `card-notes-pile.spec.ts` asserting equal bottom edges for Dune's three seeded notes.

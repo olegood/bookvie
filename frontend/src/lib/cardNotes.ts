@@ -73,6 +73,15 @@ export function noteMatches(text: string, query: string): boolean {
   return q === '' || text.toLowerCase().includes(q)
 }
 
+/**
+ * The notes Book detail's block shows: the first three in page order, or,
+ * while Search card notes holds text, every note that matches.
+ */
+export function blockNotes<T extends { text: string }>(notes: readonly T[], query: string): readonly T[] {
+  if (query.trim() === '') return notes.slice(0, BLOCK_NOTES)
+  return notes.filter((note) => noteMatches(note.text, query))
+}
+
 /** One run of a note's text, marked when it is a match. */
 export type HighlightPart = { text: string; mark: boolean }
 

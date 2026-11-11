@@ -500,7 +500,7 @@ action_items:
       (new), `frontend/src/pages/CardNotesPage.tsx`, `frontend/src/pages/BookDetailPage.tsx`,
       both pages' `.module.css`. Due: before story 6.1. (F-A1, F-A2)"
     owner: "Amelia (Dev)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-5-retro-2026-11-10.md"
   - id: "epic-5-retro-item-49-harden-the-card-note-invariants-so-a-res"
     epic: 5

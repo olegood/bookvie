@@ -8,20 +8,17 @@ import {
   type CardNotesGroup,
 } from '../api/index.ts'
 import Button from '../components/Button.tsx'
+import CardNoteItem from '../components/CardNoteItem.tsx'
 import FailureMessage from '../components/FailureMessage.tsx'
-import MarkedText from '../components/MarkedText.tsx'
 import PageHeading from '../components/PageHeading.tsx'
 import { announce, clearAnnouncements } from '../lib/announce.ts'
 import {
   cardNotesPath,
-  editNoteName,
   NO_CARD_NOTES,
   noNotesMatchCopy,
   noteMatches,
   notePrefill,
   notesMatchCopy,
-  openInPileName,
-  pageRef,
   scopeChipRemoveName,
   SEARCH_CARD_NOTES,
 } from '../lib/cardNotes.ts'
@@ -79,27 +76,14 @@ function Group({
       </h2>
       <ul className={styles.notes} role="list">
         {group.notes.map((note) => (
-          <li key={note.id} className={styles.note}>
-            <p className={styles.noteText}>
-              <MarkedText text={note.text} query={query} />
-            </p>
-            <button
-              type="button"
-              className={styles.pageRef}
-              aria-label={openInPileName(note.pageStart, note.pageEnd)}
-              onClick={() => onOpenPile(note.id)}
-            >
-              {pageRef(note.pageStart, note.pageEnd)}
-            </button>
-            <Button
-              ref={editButton(note.id)}
-              className={styles.noteEdit}
-              aria-label={editNoteName(note.pageStart, note.pageEnd)}
-              onClick={() => onEdit(note, group.bookId)}
-            >
-              Edit
-            </Button>
-          </li>
+          <CardNoteItem
+            key={note.id}
+            note={note}
+            query={query}
+            editRef={editButton(note.id)}
+            onEdit={() => onEdit(note, group.bookId)}
+            onOpenPile={() => onOpenPile(note.id)}
+          />
         ))}
       </ul>
       <p className={styles.pileLink}>
