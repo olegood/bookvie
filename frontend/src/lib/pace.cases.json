@@ -1,0 +1,14 @@
+{
+  "about": "The days-left rounding both sides must agree on, max(1, ceil(pagesLeft ÷ pace)): the pace calculator's line (src/lib/pace.test.ts) and days_left on the server (backend/tests/test_pace_calculator.py). The pace is a decimal string as typed. Every case is under 60 days, so the line is in days. 21 @ 0.7, 21 @ 1.4 and 42 @ 1.4 are exact in Fractions but a day over with a naive float ceil. Change a case here and both suites must still pass.",
+  "cases": [
+    { "pagesLeft": 412, "pace": "20", "days": 21 },
+    { "pagesLeft": 412, "pace": "12.5", "days": 33 },
+    { "pagesLeft": 400, "pace": "20", "days": 20 },
+    { "pagesLeft": 10, "pace": "30", "days": 1 },
+    { "pagesLeft": 59, "pace": "1", "days": 59 },
+    { "pagesLeft": 1, "pace": "0.5", "days": 2 },
+    { "pagesLeft": 21, "pace": "0.7", "days": 30 },
+    { "pagesLeft": 21, "pace": "1.4", "days": 15 },
+    { "pagesLeft": 42, "pace": "1.4", "days": 30 }
+  ]
+}

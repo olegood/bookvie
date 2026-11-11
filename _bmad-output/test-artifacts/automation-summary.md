@@ -1,15 +1,16 @@
 ---
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03c-aggregate', 'step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
-lastSaved: '2026-11-10'
-storyId: 'pile-arrow-key-navigation'
+lastSaved: '2026-11-11'
+storyId: '6.1'
+storyKey: '6-1-see-when-this-book-will-be-finished'
 inputDocuments:
-  - _bmad-output/implementation-artifacts/spec-pile-arrow-key-navigation.md (Intent, I/O matrix, ACs, Review Triage Log, Review Findings)
-  - _bmad-output/test-artifacts/atdd-checklist-pile-arrow-key-navigation.md
-  - _bmad-output/implementation-artifacts/deferred-work.md (code review of spec-pile-arrow-key-navigation, 2026-11-10)
+  - _bmad-output/implementation-artifacts/spec-6-1-see-when-this-book-will-be-finished.md (Intent, I/O matrix, ACs, Review Triage Log, Review Findings)
+  - _bmad-output/test-artifacts/atdd-checklist-6-1-see-when-this-book-will-be-finished.md
+  - _bmad-output/implementation-artifacts/deferred-work.md (code review of spec-6-1, 2026-11-11)
   - _bmad/tea/config.yaml
   - frontend/playwright.config.ts
-  - frontend/e2e/card-notes-pile-keys.spec.ts; frontend/e2e/card-notes-pile.spec.ts; frontend/e2e/pile.ts
+  - frontend/e2e/pace-calculator.spec.ts; frontend/src/lib/pace.test.ts; backend/tests/test_pace_calculator.py
   - knowledge/test-levels-framework.md
   - knowledge/test-priorities-matrix.md
   - knowledge/data-factories.md
@@ -21,108 +22,85 @@ inputDocuments:
   - knowledge/playwright-cli.md
 ---
 
-# Automation Summary: Pile arrow keys (spec-pile-arrow-key-navigation)
+# Automation Summary: See when this book will be finished (story 6.1)
 
-The previous version of this file held the summary for Story 5.4. It's in git history (`b654c32`).
+The previous version of this file held the summary for the pile arrow keys spec. It's in git history (`fd247de`).
 
 ## Preflight
 
-- **Stack:** `fullstack`, auto-detected. Frontend: Playwright (`frontend/playwright.config.ts`) and `node --test`. Backend: pytest. Both frameworks are in place. This change touched only the frontend.
-- **Mode:** BMad-integrated. The spec is `done` after bmad-code-review (`be51001`). It's a standalone spec with no `sprint-status.yaml` entry.
-- **Flags:**
-  - `tea_use_playwright_utils: false`, so the traditional fixture and network patterns apply (`e2e/fixtures.ts`).
-  - `tea_use_pactjs_utils: false`, and there's no contract testing.
-  - `tea_browser_automation: auto`, but `playwright-cli` isn't installed.
-- **Knowledge:** I read test-quality in full. For test-levels-framework, test-priorities-matrix, data-factories, selective-testing, ci-burn-in, fixture-architecture, network-first and playwright-cli, I read only the headings.
-- **Existing coverage:**
-  - **Keys:** `card-notes-pile-keys.spec.ts` has 8 leaves, AC-1 to AC-8, all active and green. They use Dune (4 notes) and Neuromancer (1 note) on the Card notes page.
-  - **Story 5.4:** `card-notes-pile.spec.ts` (25 leaves) holds the Tab-trap leaf, which presses ArrowRight on the radios, and the axe leaf in light and dark.
+- **Stack:** `fullstack`, auto-detected. Frontend: Playwright (`frontend/playwright.config.ts`) and `node --test`. Backend: pytest (`backend/tests/conftest.py`). Both frameworks are in place.
+- **Mode:** BMad-Integrated. The story is `done` after `bmad-code-review` (`294de05`).
+- **Config:** `tea_use_playwright_utils: true`, but `@seontechnologies/playwright-utils` isn't in `frontend/package.json`, so the gate is closed and the Traditional Patterns fragments load. `tea_use_pactjs_utils` is on, but contract testing isn't relevant (no Pact artifacts). `tea_browser_automation: auto` loads `playwright-cli.md`. Auto-heal is not enabled.
+- **Inputs:** the run covers the code review's deferred leaf (finish on Book detail → "Nothing left to read.") and the ATDD checklist's open lines (17 `[ ]`, of which the green-phase follow-ups are the open work).
 
 ## Coverage Plan
 
-**Browser exploration:** skipped. `playwright-cli` isn't installed, and the 8 keys leaves already drive the pile. The targets come from the code, the ATDD checklist's green-phase follow-ups, and the two reviews' triage logs.
+**Scope:** selective. The ATDD leaves already cover AC-1 to AC-6, and the code review added three assertions. This run adds the deferred leaf and the checklist's open follow-ups, and nothing that duplicates a lower level.
 
-**Source and API analysis:** there's no backend or contract change (spec, Never), so there are no API or backend targets.
+**Browser exploration:** skipped. The block is small, the locators are already pinned by the ATDD leaves (roles and exact names), and code analysis was enough.
 
-**Gaps and targets** (selective: only what the checklist and the reviews left open, with no duplicate coverage):
+| # | Target | Level | Priority | Where | Why at this level |
+|---|---|---|---|---|---|
+| T1 | Finish Dune on its own Book detail: the mounted calculator switches to "Nothing left to read." and drops its field (deferred from code review) | E2E | P1 | `pace-calculator.spec.ts` | Only the browser shows a mounted component getting a new `pagesLeft` from the view refetch |
+| T2 | A fractional Measured pace (100 pages over 3 days, 33.33…) prefills "33.3" and gives its result | E2E | P2 | `pace-calculator.spec.ts` | The unit test pins `pacePrefill(100/3)`, the API test the unrounded number; this joins them in the page |
+| T3 | Years in the browser: 412 pages at "0.5" → "About 2 years · January 2029" | E2E | P2 | AC-3 leaf, one more step | AC-3 checks one case per unit and lacked years |
+| T4 | A tab left open past midnight: on focus the finish date moves on a day | E2E | P2 | `pace-calculator.spec.ts` | `useNow` (AD-20) only runs in the browser |
+| T5 | A view refetch keeps the typed pace | E2E | P2 | `pace-calculator.spec.ts` | Window focus refetches the view; the typed state must survive it |
+| T6 | axe finds nothing on the block, with a result and with "Nothing left to read.", in both themes | E2E | P2 | `pace-calculator.spec.ts` | Same pattern as `pause.spec.ts` |
+| T7 | PAC-UNIT-002: one table of (pages left, pace, days), read by `pace.test.ts` and by `test_pace_calculator.py` against `days_left`. It includes the float cases from the code review (21 at 0.7, 21 and 42 at 1.4) | Unit + API-level unit | P2 | `frontend/src/lib/pace.cases.json` (new), as `pageField.cases.json` | Keeps the client's rounding and the server's from drifting apart |
 
-| # | Target | Level | Priority | Why |
-|---|---|---|---|---|
-| G1 | On Book detail's pile, Right, End and Home step, and the move is announced. It's the same component as on Card notes, so one smoke leaf is enough. | E2E | P2 | ATDD follow-up "AC-1: the keys work on Book detail's pile too". The 8 leaves only open the pile from the Card notes page. |
-| G2 | At a short viewport (360×300, where the dialog overflows) with a 30-note list behind the pile: End and Home from Next leave both `window.scrollY` and the dialog's `scrollTop` unchanged, while the note moves. Home on the focused Page order radio leaves `scrollTop` unchanged too. | E2E | P2 | ATDD follow-up "AC-6, scroll". Both reviews noted that AC-6 was proven only through `defaultPrevented`, and that the "Home on a radio doesn't scroll" result was a one-off probe. This leaf turns the probe into a regression test. |
-| G3 | Holding Right (auto-repeat keydowns) stops at "4 of 4" with no wrap. | E2E | P2 | ATDD follow-up "AC-1, held key". It's the realistic way to reach an end. |
-
-**Covered already (tick with evidence, no new test):**
-- **AC-7, axe:** the `[P2] axe` leaf in `card-notes-pile.spec.ts` ran green with the attributes in place (33/33 at build and review).
-- **AC-4, Shuffled:** the AC-4 leaf already picks Shuffled with Right, then Page order with Left, staying at "1 of 4".
-- **The build lines** (handler, `aria-keyshortcuts`, EXPERIENCE bullet, activation, 5.4 re-run): done in `c792de6`.
-
-**Not automated:**
-- AC-5's full 4-keys × 4-modifiers matrix, and a `keyTarget` unit test. Both reviews rejected these as low. AC-1, AC-2, AC-5 and AC-8 already fail on each guard or mapping mutation (verification-gap layer).
+**Not planned:**
+- **Reset when another Book opens** (`key={book.id}`): every e2e navigation is a full `page.goto`, which remounts anyway, so a browser test can't tell the key from a reload without an in-app link between two Books' pages. None exists on Book detail.
 
 ## Execution
 
 - **Mode:** `tea_execution_mode: auto` with the capability probe on. Subagents are supported and agent teams aren't, so the mode resolved to **subagent**.
 - **Workers:**
-  - **3A (API) and 3B-backend:** not launched. There are no targets, because the change touched no backend code or contract.
-  - **3B-e2e:** G1 to G3.
-- **Fixtures:** none added to `e2e/fixtures.ts`. The spec gained three local helpers:
-  - `pageRefButton` and `cardNotesBlock`, copied from `card-notes-pile.spec.ts`, where they're private.
-  - `scrollState(dialog)`, which reads `window.scrollY` and the dialog's `scrollTop` once both have stayed the same for 30 animation frames.
-- **Review of the worker's output:**
-  - The worker found that **Home on a focused Order radio scrolls an overflowing dialog**. I re-probed with a wait for the scroll to settle: `scrollTop` went 64 → 0. Both reviews had rejected this as `false` because of my earlier probe, which read the position before Chromium's smooth keyboard scroll started.
-  - Oleg chose to fix it now:
-    - `stepByKey` now `preventDefault`s Home and End on a radio and still doesn't step. The arrows stay native.
-    - G2 now asserts that the dialog doesn't scroll there.
-    - The spec has a Spec Change Log entry, and its two triage logs carry correction notes.
+  - **3A (API):** not launched. No new endpoint or view field; AC-1 already pins the book view.
+  - **3B-e2e:** T1 to T6.
+  - **3B-backend:** T7, both readers of the shared table.
+- **Fixtures:** none added to `e2e/fixtures.ts` or `home.ts`. The spec gained one local seed, `FRACTIONAL_PACE` (Dune and a 100-page Fahrenheit 451 read over 3 days).
+- **Review of the workers' output:** both workers mutated app files briefly for their fail-proofs, at overlapping times. After both finished, `git status` showed only test files changed, and every run below was made after that.
 
 ## Tests Added
 
-**E2E** (`frontend/e2e/card-notes-pile-keys.spec.ts`, describe "Pile arrow keys automate"): 3 tests, all P2.
-- "AC-1 on Book detail's pile, Right, End and Home step the pile, announced, with focus kept on Next" (:383), for G1. It also asserts that the opener in `main` is the Card notes block's own.
-- "AC-6 in an overflowing pile over a scrollable page, Home and End step without scrolling the dialog or the page, and Home on a radio neither steps nor scrolls" (:410), for G2. It uses 30 notes at 360×300, with a precondition that both the dialog and the page can scroll. Scroll is read only once it settles.
-- "AC-1 holding Right auto-repeats to the last note and stops there, with no wrap" (:455), for G3. It records `event.repeat` as `[false, true×7]`, so the test really exercises auto-repeat.
-
-**Totals:** 3 tests. `card-notes-pile-keys.spec.ts` now has 11.
-
-**Defects found: 1, fixed.** Home and End on a focused Order radio scrolled an overflowing dialog. `CardNotesPile.tsx`'s `stepByKey` now `preventDefault`s them there and still doesn't step. Oleg chose the fix.
+| File | Test | Priority | Target | Fails when (worker's fail-proof) |
+|---|---|---|---|---|
+| `frontend/e2e/pace-calculator.spec.ts:208` | finishing a never-started Book from its Book detail turns the result into "Nothing left to read." with no reload | P1 | T1 | `pagesLeft <= 0` → `< 0` in `PaceCalculator` |
+| `frontend/e2e/pace-calculator.spec.ts:229` | a fractional Measured pace prefills one decimal and the result uses the prefilled value | P2 | T2 | `pacePrefill` returns `String(measuredPace)` ("33.333333333333336") |
+| `frontend/e2e/pace-calculator.spec.ts:92` | `[P1] AC-3`, new "0.5" step → "About 2 years · January 2029" | P1 (leaf) | T3 | years threshold moved from 24 to 30 months |
+| `frontend/e2e/pace-calculator.spec.ts:245` | a tab left open past midnight moves the finish date a day when it regains focus | P2 | T4 | `useNow`'s window `focus` listener removed |
+| `frontend/e2e/pace-calculator.spec.ts:265` | a Book view refetch keeps the typed pace and its result | P2 | T5 | `key={book.id}` → `key={Math.random()}` |
+| `frontend/e2e/pace-calculator.spec.ts:286` | axe finds nothing on Book detail with a pace result and with nothing left to read, in both themes | P2 | T6 | an inline low-contrast color on the field ("light Dune: color-contrast (1)") |
+| `frontend/src/lib/pace.cases.json` (new) | the shared table: 9 cases, 3 of them float traps (21 @ 0.7, 21 @ 1.4, 42 @ 1.4) | — | T7 | — |
+| `frontend/src/lib/pace.test.ts:80` | `[P2] PAC-UNIT-002` rounds the days as the server does for the shared cases | P2 | T7 | a case changed to 31 days; or the review's float correction removed from `pace.ts` |
+| `backend/tests/test_pace_calculator.py:121` | `test_pac_unit_002_p2_days_left_agrees_with_the_pace_calculators_shared_cases` | P2 | T7 | a case changed to 31 days |
 
 ## Validation
 
-- **`TZ=Europe/Madrid npm run check`: exit 0.**
-  - pytest: 1320 passed, backend coverage 98%.
-  - Unit: 281 passed.
-  - e2e: 507 passed.
-  - ruff, Prettier, oxlint, `tsc` and the `api:gen` byte check are all clean.
-- **Stability:** the new block passed `--repeat-each=5`, 15 of 15 runs, both before and after the fix.
-- **Mutation checks:** each leaf fails with its production rule broken. Every file was restored afterwards, and the only `frontend/src` change left is the fix.
-  - G1: Home returning `index`.
-  - G2: `preventDefault` removed for handled keys (the worker's check), and the radio Home/End `preventDefault` removed (my check).
-  - G3: ArrowRight wrapping (`(index + 1) % total`).
-- **Quality checklist:**
-  - No hard waits: `scrollState` waits on animation frames, not on time.
-  - No conditionals, and explicit assertions in the test bodies.
-  - G2 and G3 carry precondition assertions.
-  - Seeded through `seededServer`, and parallel-safe.
-  - No `.only` or skips.
-- **No CLI sessions were opened.** The worker's JSON output is in this session's scratchpad, not in the repo.
+Re-run by me after both workers finished (TZ=Europe/Madrid):
+- `uv run pytest tests/test_pace_calculator.py`: 2 passed.
+- `node --test src/lib/pace.test.ts`: 5 passed.
+- `playwright test e2e/pace-calculator.spec.ts --repeat-each=3 --retries=0`: 33 passed (11 leaves × 3).
+- `npm run check`: exit 0 (format, lint, `tsc -b`, `api:gen` diff, full pytest, coverage, its e2e scope: 519 passed, smoke).
 
-## ATDD Checklist
+**Checklist validation** (`checklist.md`): the run meets it, read through the repo's conventions. These items don't apply as worded: tests live in `frontend/e2e/` and `backend/tests/`, not `tests/e2e/`; locators are roles and exact names, never `data-testid` (the ATDD checklist's "Required data-testid Attributes: None"); leaves assert one concern, not one `expect`. No Pact, auth or network mocks were needed. No playwright-cli session was opened.
 
-`atdd-checklist-pile-arrow-key-navigation.md`:
-- 10 lines ticked: 5 build lines and 5 green-phase follow-ups, each with evidence.
-- **Remaining `[ ]`: 0.**
+**ATDD checklist:** every `[ ]` line in `atdd-checklist-6-1-see-when-this-book-will-be-finished.md` is now `[x]` with its evidence. Remaining `[ ]`: **0**.
 
-## Deferred Work
+**Deferred work:** the code review's entry (finish on Book detail) has a `resolved:` line pointing at T1.
 
-- No test deferrals.
-- The code review's open entry (build-auto marked a standalone spec `done` before code review) is a workflow-customization item. It stays open.
+## Playwright Utils deviations
+
+None. The package isn't installed, so the vanilla patterns apply: T5 uses `page.waitForResponse`, registered before the `focus` that triggers the refetch. No RECOMMENDED utility was wanted.
 
 ## Assumptions and Risks
 
-- G2 depends on Chromium's smooth keyboard scrolling settling within 30 stable frames. A read that's too early would pass vacuously. The mutation checks show the leaf does catch the scroll when it happens.
-- The radio Home/End fix reads EXPERIENCE.md's "Home and End do nothing" on the radios as "not even scroll". The arrows keep their native behaviour, so AC-4 is unchanged.
+- **Reset when another Book opens** (`key={book.id}`) has no browser test: Book detail has no in-app link to another Book's page, and `page.goto` remounts anyway. T5 guards the other half of the key (a refetch keeps the typed text).
+- **The shared table covers days only** (every case under 60 days). Months and years rounding is client-only (the server has no months), and AC-6 pins it.
+- **The e2e workers' fail-proofs were run by the workers**, not re-run here. The green runs above were.
 
 ## Next
 
-The pile arrow keys have finished the pipeline: ATDD, build, code review and automate. Epic 5 was already closed by Story 5.4. Next is the **Epic 5 retrospective** (`bmad-retrospective`), then the epic's trace and gate and the spine reconciliation, before Epic 6's first story.
+- Story 6.1 is through the pipeline (ATDD, build-auto, code review, automate). Story 6.2 (`6-2-see-when-my-whole-unread-library-will-be-finished`) starts with `bmad-testarch-atdd`.
+- PAC-API-001 and PAC-E2E-001 cover Book scope; 6.2 adds library scope and Catalog. Tick the trace when both are green.

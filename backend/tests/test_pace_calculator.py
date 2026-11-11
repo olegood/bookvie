@@ -7,6 +7,10 @@ One leaf for the criterion the server decides (PAC-API-001, R-10):
   has never been started; 0 when every Reading is finished) and the
   library's Measured pace, ``null`` when there is none (FR-15, AD-6).
 
+And one shared table (PAC-UNIT-002): ``frontend/src/lib/pace.cases.json``,
+which ``days_left`` here and the calculator's line in
+``frontend/src/lib/pace.test.ts`` must both agree with.
+
 The calculator itself (the field, its prefill, the result on every
 keystroke, invalid input and "Nothing left to read.") is read in the browser
 (``frontend/e2e/pace-calculator.spec.ts``), and the duration formatter's
@@ -18,11 +22,14 @@ The test pins these names: ``BookDetailView.pagesLeft: int`` and
 rounded: the client rounds the prefill to one decimal).
 """
 
+import json
+from fractions import Fraction
 from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
+from bookvie.domain import days_left
 from tests.builder import LibraryBuilder
 from tests.helpers import api_client
 
@@ -103,3 +110,20 @@ def test_ac1_p1_the_book_view_supplies_book_scope_pages_left_and_measured_pace(
     body = _book_view(api_client(tmp_path / "no-pace", raise_server_exceptions=True), alone)
     assert body["measuredPace"] is None
     assert body["pagesLeft"] == 412
+
+
+# --- PAC-UNIT-002: the client's days agree with the server's days left ----------------
+
+PACE_CASES = Path(__file__).resolve().parents[2] / "frontend/src/lib/pace.cases.json"
+
+
+@pytest.mark.skipif(not PACE_CASES.is_file(), reason="needs the frontend checkout")
+def test_pac_unit_002_p2_days_left_agrees_with_the_pace_calculators_shared_cases() -> None:
+    # The calculator rounds its own days in floats (AD-6); this table, which
+    # src/lib/pace.test.ts also reads, keeps them from drifting off the
+    # server's exact days left.
+    cases = json.loads(PACE_CASES.read_text(encoding="utf-8"))["cases"]
+    assert cases, "the shared table has no cases"
+    for case in cases:
+        typed = f"{case['pagesLeft']} @ {case['pace']}"
+        assert days_left(case["pagesLeft"], Fraction(case["pace"])) == case["days"], typed

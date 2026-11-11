@@ -10,6 +10,7 @@
 // round(months ÷ 12), "About N years · Month YYYY".
 
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { afterEach, describe, it } from 'node:test'
 
 import { pacePrefill, paceResult } from './pace.ts'
@@ -72,6 +73,20 @@ describe('paceResult', () => {
     assert.equal(paceResult(412, ' 30 ', TODAY), 'About 14 days · 11 November')
     assert.equal(paceResult(10, '.5', TODAY), 'About 20 days · 17 November')
     assert.equal(paceResult(10, '5.', TODAY), 'About 2 days · 30 October')
+  })
+
+  // The same table backend/tests/test_pace_calculator.py reads: the line's days
+  // must be the server's exact days left, float error or not.
+  it('[P2] PAC-UNIT-002 rounds the days as the server does for the shared cases', () => {
+    const { cases } = JSON.parse(readFileSync(new URL('./pace.cases.json', import.meta.url), 'utf8')) as {
+      cases: { pagesLeft: number; pace: string; days: number }[]
+    }
+    assert.ok(cases.length > 0, 'the shared table has no cases')
+    for (const { pagesLeft, pace, days } of cases) {
+      const line = paceResult(pagesLeft, pace, TODAY)
+      const prefix = `About ${days} ${days === 1 ? 'day' : 'days'} · `
+      assert.ok(line?.startsWith(prefix), `${pagesLeft} @ ${pace}: ${line} should start with "${prefix}"`)
+    }
   })
 })
 

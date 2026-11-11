@@ -14,12 +14,14 @@
 // it isn't this year). From 60 days: months = round(days ÷ 30.4375) and
 // "About N months · Month YYYY"; from 24 months, years = round(months ÷ 12).
 
+import AxeBuilder from '@axe-core/playwright'
 import type { Locator, Page } from '@playwright/test'
 import { expect, test } from './fixtures.ts'
-import { DUNE, DUNE_ID, LEFT_HAND_ID, mainAt, serverAtFakeToday, sizeOf, stopAndRemove } from './home.ts'
+import { DUNE, DUNE_ID, FAKE_TODAY, LEFT_HAND_ID, mainAt, serverAtFakeToday, sizeOf, stopAndRemove } from './home.ts'
 
 const HEADING = 'How long until…?'
 const NOTHING_LEFT = 'Nothing left to read.'
+const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']
 
 const EMMA_ID = '2a7e4b1c-8d3f-4e5a-9b6c-7d8e9f0a1b2c'
 /** Emma, 400 pages read from 1 to 20 September (20 days inclusive): Measured pace 20 pages a day. */
@@ -35,6 +37,19 @@ const EMMA = {
 const PACED = { books: [DUNE, EMMA] }
 /** Dune alone: no finished Reading, so no Measured pace and an empty field. */
 const NO_PACE = { books: [DUNE] }
+/** Dune and Fahrenheit 451, 100 pages read from 1 to 3 September (3 days inclusive): Measured pace 100/3. */
+const FRACTIONAL_PACE = {
+  books: [
+    DUNE,
+    {
+      id: '8c4d2e6f-1a3b-4c5d-9e7f-2b3c4d5e6f70',
+      title: 'Fahrenheit 451',
+      authors: ['Ray Bradbury'],
+      pages: 100,
+      readings: [{ startDate: '2026-09-01', finishDate: '2026-09-03', finishedPages: 100, currentPage: 100 }],
+    },
+  ],
+}
 
 /** Book detail's calculator: a `region` named by its heading. */
 function calculator(page: Page): Locator {
@@ -99,6 +114,10 @@ test.describe('Story 6.1 See when this book will be finished (ATDD)', () => {
       // 412 days: round(13.54) = 14 months, 14 December 2027.
       await paceField(page).fill('1')
       await expect(result(page)).toHaveText('About 14 months · December 2027')
+
+      // 412 ÷ 0.5 = 824 days: round(27.07) = 27 months, round(2.25) = 2 years, 29 January 2029.
+      await paceField(page).fill('0.5')
+      await expect(result(page)).toHaveText('About 2 years · January 2029')
     } finally {
       await stopAndRemove(server)
     }
@@ -179,6 +198,109 @@ test.describe('Story 6.1 See when this book will be finished (ATDD)', () => {
       await expect(calculator(page).getByText(NOTHING_LEFT, { exact: true })).toBeVisible()
       await expect(calculator(page).getByRole('textbox')).toHaveCount(0)
       await expect(calculator(page).locator('output')).toHaveCount(0)
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+})
+
+test.describe('Story 6.1 See when this book will be finished (automate)', () => {
+  test('[P1] finishing a never-started Book from its Book detail turns the result into "Nothing left to read." with no reload', async ({
+    page,
+  }) => {
+    const server = await serverAtFakeToday(page, 'pace-finish-in-place', PACED)
+    try {
+      await page.goto(`${server.url}/book/${DUNE_ID}`)
+      await expect(result(page)).toHaveText('About 21 days · 18 November')
+
+      await page.getByRole('main').getByRole('button', { name: 'Mark finished', exact: true }).click()
+      const dialog = page.getByRole('dialog', { name: 'Finished Dune', exact: true })
+      await dialog.getByRole('button', { name: 'Done', exact: true }).click()
+      await expect(dialog).toHaveCount(0)
+
+      await expect(calculator(page).getByText(NOTHING_LEFT, { exact: true })).toBeVisible()
+      await expect(calculator(page).getByRole('textbox')).toHaveCount(0)
+      await expect(calculator(page).locator('output')).toHaveCount(0)
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+
+  test('[P2] a fractional Measured pace prefills one decimal and the result uses the prefilled value', async ({
+    page,
+  }) => {
+    const server = await serverAtFakeToday(page, 'pace-fractional', FRACTIONAL_PACE)
+    try {
+      await page.goto(`${server.url}/book/${DUNE_ID}`)
+
+      // 100 pages over 3 days: 33.33… shown as "33.3".
+      await expect(paceField(page)).toHaveValue('33.3')
+      // 412 ÷ 33.3 → ceil(12.37) = 13 days, 28 Oct + 13 = 10 November.
+      await expect(result(page)).toHaveText('About 13 days · 10 November')
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+
+  test('[P2] a tab left open past midnight moves the finish date a day when it regains focus', async ({ page }) => {
+    const server = await serverAtFakeToday(page, 'pace-midnight', NO_PACE)
+    try {
+      await page.clock.setFixedTime(new Date(`${FAKE_TODAY}T23:59:00+01:00`))
+      await page.goto(`${server.url}/book/${DUNE_ID}`)
+      await paceField(page).fill('30')
+      // 412 ÷ 30 → 14 days from 28 October.
+      await expect(result(page)).toHaveText('About 14 days · 11 November')
+
+      await page.clock.setFixedTime(new Date('2026-10-29T00:01:00+01:00'))
+      await page.evaluate(() => window.dispatchEvent(new Event('focus')))
+
+      // Still 14 days, now counted from 29 October.
+      await expect(result(page)).toHaveText('About 14 days · 12 November')
+      await expect(paceField(page)).toHaveValue('30')
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+
+  test('[P2] a Book view refetch keeps the typed pace and its result', async ({ page }) => {
+    const server = await serverAtFakeToday(page, 'pace-refetch', NO_PACE)
+    try {
+      await page.goto(`${server.url}/book/${DUNE_ID}`)
+      await paceField(page).fill('30')
+      await expect(result(page)).toHaveText('About 14 days · 11 November')
+
+      // Network-first: listen for the refetch before the focus that triggers it.
+      const refetch = page.waitForResponse(
+        (response) => new URL(response.url()).pathname === '/api/views/book' && response.ok(),
+      )
+      await page.evaluate(() => window.dispatchEvent(new Event('focus')))
+      await refetch
+
+      await expect(paceField(page)).toHaveValue('30')
+      await expect(result(page)).toHaveText('About 14 days · 11 November')
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+
+  test('[P2] axe finds nothing on Book detail with a pace result and with nothing left to read, in both themes', async ({
+    page,
+  }) => {
+    const server = await serverAtFakeToday(page, 'pace-axe', PACED)
+    try {
+      for (const colorScheme of ['light', 'dark'] as const) {
+        await page.emulateMedia({ colorScheme })
+
+        await page.goto(`${server.url}/book/${DUNE_ID}`)
+        await expect(result(page)).toHaveText('About 21 days · 18 November')
+        let { violations } = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze()
+        expect(violations.map(({ id, nodes }) => `${colorScheme} Dune: ${id} (${nodes.length})`)).toEqual([])
+
+        await page.goto(`${server.url}/book/${EMMA_ID}`)
+        await expect(calculator(page).getByText(NOTHING_LEFT, { exact: true })).toBeVisible()
+        ;({ violations } = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze())
+        expect(violations.map(({ id, nodes }) => `${colorScheme} Emma: ${id} (${nodes.length})`)).toEqual([])
+      }
     } finally {
       await stopAndRemove(server)
     }

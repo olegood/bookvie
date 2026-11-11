@@ -299,26 +299,26 @@ Activate one test at a time: delete its `@pytest.mark.skip(reason=RED)` line, or
 - **E2E:** `TZ=Europe/Madrid npm --prefix frontend run e2e -- e2e/pace-calculator.spec.ts -g "AC-2"` (the e2e entry builds the SPA, Epic 3 retro item 27)
 
 ### AC-1: the book view
-- [ ] `views/models.py`: `BookDetailView.pages_left: int` and `measured_pace: float | None`, with docstrings. Fill them in `views/shelf.py` `book_detail` from `current_reading` and `measured_pace`.
-- [ ] Run `npm --prefix frontend run api:gen`, and re-run `test_contract.py`.
-- [ ] Activate AC-1.
+- [x] `views/models.py`: `BookDetailView.pages_left: int` and `measured_pace: float | None`, with docstrings. Fill them in `views/shelf.py` `book_detail` from `current_reading` and `measured_pace`. (done: backend/tests/test_pace_calculator.py:53 `test_ac1_p1_the_book_view_supplies_book_scope_pages_left_and_measured_pace`)
+- [x] Run `npm --prefix frontend run api:gen`, and re-run `test_contract.py`. (done: `schema.d.ts` regenerated in bd4e0cd; `npm run check` (check:api byte compare, full pytest incl. `test_contract.py`) exit 0 on 2026-11-11)
+- [x] Activate AC-1. (done: backend/tests/test_pace_calculator.py:53, active and passing)
 
 ### AC-6: the formatter
-- [ ] `frontend/src/lib/pace.ts`: `paceResult` and the prefill helper, per the contract above.
-- [ ] Switch `pace.test.ts` to a static import, and activate AC-6.
-- [ ] EXPERIENCE.md → Pace calculator: add the months and years rule, and "About 1 day" (the decisions above).
+- [x] `frontend/src/lib/pace.ts`: `paceResult` and the prefill helper, per the contract above. (done: frontend/src/lib/pace.test.ts:30 `[P1] AC-6`, :94 `[P2] AC-2 rounds Measured pace`)
+- [x] Switch `pace.test.ts` to a static import, and activate AC-6. (done: frontend/src/lib/pace.test.ts:15 static import; :30 `[P1] AC-6` active and passing)
+- [x] EXPERIENCE.md → Pace calculator: add the months and years rule, and "About 1 day" (the decisions above). (done: EXPERIENCE.md → Pace calculator row (l.136) states months = round(days ÷ 30.4375), years = round(months ÷ 12) and "About 1 day")
 
 ### AC-2 to AC-5: the block
-- [ ] A `PaceCalculator` component: the "pages/day" field, its prefill, and the `output` showing `paceResult(pagesLeft, typed, useNow())`. With `pagesLeft` 0, it shows "Nothing left to read." instead.
-- [ ] Book detail's right column: the "How long until…?" `region` with that component.
-- [ ] Activate AC-2, AC-3, AC-4 and AC-5.
+- [x] A `PaceCalculator` component: the "pages/day" field, its prefill, and the `output` showing `paceResult(pagesLeft, typed, useNow())`. With `pagesLeft` 0, it shows "Nothing left to read." instead. (done: frontend/e2e/pace-calculator.spec.ts:70 `[P1] AC-2`, :193 `[P2] AC-5 a Main book at its last page`)
+- [x] Book detail's right column: the "How long until…?" `region` with that component. (done: frontend/e2e/pace-calculator.spec.ts:70 `[P1] AC-2` (region "How long until…?"))
+- [x] Activate AC-2, AC-3, AC-4 and AC-5. (done: frontend/e2e/pace-calculator.spec.ts:70, :92, :126, :162, all active and passing)
 
 ### Green-phase follow-ups (secondary branches, not separate red leaves)
-- [ ] **AC-2, no pace:** with `NO_PACE`, the field is empty and the `output` is empty.
-- [ ] **AC-2, a fractional pace:** a library whose pace is 17.33… prefills "17.3".
-- [ ] **AC-4 as unit cases:** `paceResult` returns `null` for "0", "-5", "abc", "" and "   ".
-- [ ] **AC-5 at the last page:** a Main book at p.330 of 330 reads "Nothing left to read." (assumption above).
-- [ ] **AC-3 across midnight:** a tab left open past midnight recomputes the date when the window regains focus (`useNow`, as Story 3.4's re-entry line).
-- [ ] **PAC-UNIT-002:** a shared fixture file of (pages left, pace) → days, read by both `test_reentry.py` and `pace.test.ts`.
-- [ ] **AC-3, years in the browser:** one e2e case of at least 24 months, for example 412 pages at "0.5" → 824 days → "About 2 years · January 2029".
-- [ ] **axe** on Book detail with the block, in both themes.
+- [x] **AC-2, no pace:** with `NO_PACE`, the field is empty and the `output` is empty. (done: frontend/e2e/pace-calculator.spec.ts:178 `[P2] AC-2 without Measured pace the field and the output are empty`)
+- [x] **AC-2, a fractional pace:** a library whose pace is 17.33… prefills "17.3". (done: frontend/src/lib/pace.test.ts:94 (`pacePrefill(17.333)` → "17.3"); in the browser frontend/e2e/pace-calculator.spec.ts:229 `[P2] a fractional Measured pace prefills one decimal` (100/3 → "33.3"))
+- [x] **AC-4 as unit cases:** `paceResult` returns `null` for "0", "-5", "abc", "" and "   ". (done: frontend/src/lib/pace.test.ts:61 `[P2] AC-4 gives no result for zero, negative, non-numeric, empty or comma input`)
+- [x] **AC-5 at the last page:** a Main book at p.330 of 330 reads "Nothing left to read." (assumption above). (done: frontend/e2e/pace-calculator.spec.ts:193 `[P2] AC-5 a Main book at its last page`)
+- [x] **AC-3 across midnight:** a tab left open past midnight recomputes the date when the window regains focus (`useNow`, as Story 3.4's re-entry line). (done: frontend/e2e/pace-calculator.spec.ts:245 `[P2] a tab left open past midnight moves the finish date a day when it regains focus`)
+- [x] **PAC-UNIT-002:** a shared fixture file of (pages left, pace) → days, read by both `test_reentry.py` and `pace.test.ts`. (done: frontend/src/lib/pace.cases.json, read by frontend/src/lib/pace.test.ts:80 `[P2] PAC-UNIT-002` and backend/tests/test_pace_calculator.py:121 `test_pac_unit_002_p2_…` (against `days_left`, in the calculator's own test file rather than `test_reentry.py`))
+- [x] **AC-3, years in the browser:** one e2e case of at least 24 months, for example 412 pages at "0.5" → 824 days → "About 2 years · January 2029". (done: frontend/e2e/pace-calculator.spec.ts:92 `[P1] AC-3`, the "0.5" step)
+- [x] **axe** on Book detail with the block, in both themes. (done: frontend/e2e/pace-calculator.spec.ts:286 `[P2] axe finds nothing on Book detail…, in both themes`)
