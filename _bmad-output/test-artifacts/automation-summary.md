@@ -2,15 +2,15 @@
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03c-aggregate', 'step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
 lastSaved: '2026-11-11'
-storyId: '6.1'
-storyKey: '6-1-see-when-this-book-will-be-finished'
+storyId: '6.2'
+storyKey: '6-2-see-when-my-whole-unread-library-will-be-finished'
 inputDocuments:
-  - _bmad-output/implementation-artifacts/spec-6-1-see-when-this-book-will-be-finished.md (Intent, I/O matrix, ACs, Review Triage Log, Review Findings)
-  - _bmad-output/test-artifacts/atdd-checklist-6-1-see-when-this-book-will-be-finished.md
-  - _bmad-output/implementation-artifacts/deferred-work.md (code review of spec-6-1, 2026-11-11)
+  - _bmad-output/implementation-artifacts/spec-6-2-see-when-my-whole-unread-library-will-be-finished.md (Intent, I/O matrix, ACs, Review Triage Log, Review Findings)
+  - _bmad-output/test-artifacts/atdd-checklist-6-2-see-when-my-whole-unread-library-will-be-finished.md
+  - _bmad-output/implementation-artifacts/deferred-work.md (code review of spec-6-2, 2026-11-11)
   - _bmad/tea/config.yaml
   - frontend/playwright.config.ts
-  - frontend/e2e/pace-calculator.spec.ts; frontend/src/lib/pace.test.ts; backend/tests/test_pace_calculator.py
+  - frontend/e2e/catalog-pace-calculator.spec.ts; frontend/e2e/bookcase.ts; frontend/e2e/library.ts; frontend/src/lib/pace.cases.json; backend/tests/test_library_pages_left.py; backend/tests/test_progress.py
   - knowledge/test-levels-framework.md
   - knowledge/test-priorities-matrix.md
   - knowledge/data-factories.md
@@ -22,85 +22,97 @@ inputDocuments:
   - knowledge/playwright-cli.md
 ---
 
-# Automation Summary: See when this book will be finished (story 6.1)
+# Automation Summary: See when my whole unread library will be finished (story 6.2)
 
-The previous version of this file held the summary for the pile arrow keys spec. It's in git history (`fd247de`).
+The previous version of this file held the summary for story 6.1. It's in git history (`110de76`).
 
 ## Preflight
 
 - **Stack:** `fullstack`, auto-detected. Frontend: Playwright (`frontend/playwright.config.ts`) and `node --test`. Backend: pytest (`backend/tests/conftest.py`). Both frameworks are in place.
-- **Mode:** BMad-Integrated. The story is `done` after `bmad-code-review` (`294de05`).
-- **Config:** `tea_use_playwright_utils: true`, but `@seontechnologies/playwright-utils` isn't in `frontend/package.json`, so the gate is closed and the Traditional Patterns fragments load. `tea_use_pactjs_utils` is on, but contract testing isn't relevant (no Pact artifacts). `tea_browser_automation: auto` loads `playwright-cli.md`. Auto-heal is not enabled.
-- **Inputs:** the run covers the code review's deferred leaf (finish on Book detail → "Nothing left to read.") and the ATDD checklist's open lines (17 `[ ]`, of which the green-phase follow-ups are the open work).
+- **Mode:** BMad-Integrated. The story is `done` after `bmad-code-review` (`d5eea8a`).
+- **Config:** `tea_use_playwright_utils: true`, but `@seontechnologies/playwright-utils` isn't in `frontend/package.json`, so that gate stays closed and the Traditional Patterns fragments load instead. `tea_use_pactjs_utils` is on, but contract testing doesn't apply (no Pact artifacts). `tea_browser_automation: auto` loads `playwright-cli.md`. Auto-heal is off.
+- **Inputs:** four test deferrals from the code review in `deferred-work.md` ("Deferred from: code review of spec-6-2-…"), plus the ATDD checklist, which is stale (the old seed with 1710, "Skipped as committed", and every line still `[ ]`).
 
 ## Coverage Plan
 
-**Scope:** selective. The ATDD leaves already cover AC-1 to AC-6, and the code review added three assertions. This run adds the deferred leaf and the checklist's open follow-ups, and nothing that duplicates a lower level.
+**Scope:** selective. The ATDD leaves and the build's `[P2]` leaves already cover AC-1 to AC-4 and every row of the I/O matrix. This run adds the code review's deferrals and nothing that a lower level already covers.
 
-**Browser exploration:** skipped. The block is small, the locators are already pinned by the ATDD leaves (roles and exact names), and code analysis was enough.
+**Browser exploration:** skipped. The row is small, the ATDD leaves already pin its locators (roles and exact names), and reading the code was enough.
 
 | # | Target | Level | Priority | Where | Why at this level |
 |---|---|---|---|---|---|
-| T1 | Finish Dune on its own Book detail: the mounted calculator switches to "Nothing left to read." and drops its field (deferred from code review) | E2E | P1 | `pace-calculator.spec.ts` | Only the browser shows a mounted component getting a new `pagesLeft` from the view refetch |
-| T2 | A fractional Measured pace (100 pages over 3 days, 33.33…) prefills "33.3" and gives its result | E2E | P2 | `pace-calculator.spec.ts` | The unit test pins `pacePrefill(100/3)`, the API test the unrounded number; this joins them in the page |
-| T3 | Years in the browser: 412 pages at "0.5" → "About 2 years · January 2029" | E2E | P2 | AC-3 leaf, one more step | AC-3 checks one case per unit and lacked years |
-| T4 | A tab left open past midnight: on focus the finish date moves on a day | E2E | P2 | `pace-calculator.spec.ts` | `useNow` (AD-20) only runs in the browser |
-| T5 | A view refetch keeps the typed pace | E2E | P2 | `pace-calculator.spec.ts` | Window focus refetches the view; the typed state must survive it |
-| T6 | axe finds nothing on the block, with a result and with "Nothing left to read.", in both themes | E2E | P2 | `pace-calculator.spec.ts` | Same pattern as `pause.spec.ts` |
-| T7 | PAC-UNIT-002: one table of (pages left, pace, days), read by `pace.test.ts` and by `test_pace_calculator.py` against `days_left`. It includes the float cases from the code review (21 at 0.7, 21 and 42 at 1.4) | Unit + API-level unit | P2 | `frontend/src/lib/pace.cases.json` (new), as `pageField.cases.json` | Keeps the client's rounding and the server's from drifting apart |
+| T1 | The expanded calculator follows a catalog view refetch: add a Book through New book on Catalog. The result moves to the new total and the typed "30" stays (deferred) | E2E | P1 | `catalog-pace-calculator.spec.ts` | Only the browser shows a mounted `LibraryPace` getting a new `pagesLeft` from the refetch |
+| T2 | Keyboard: Enter and Space on the toggle switch `aria-expanded` while focus stays on it. Expanded, Tab goes toggle → "pages/day" → the shelf (deferred: position and keyboard) | E2E | P2 | `catalog-pace-calculator.spec.ts` | Focus and Tab order exist only in the browser |
+| T3 | List view: the expanded field comes before the table in document order (deferred: position) | E2E | P2 | the List view `[P2]` leaf, one more step | The same leaf already expands the calculator in List view |
+| T4 | Expanded state: switching between Bookcase and List keeps it open, and leaving Catalog in-app and coming back collapses it (deferred) | E2E | P2 | `catalog-pace-calculator.spec.ts` | AC-3 only proves "collapsed on every visit" through a full reload, not through in-app navigation |
+| T5 | Library clamp: a Book whose Pages were edited below its Reading's page adds 0 to the library sum, never a negative number (deferred) | Unit (views) | P2 | `test_library_pages_left.py` | `test_progress.py:56` pins the Book-scope clamp. This pins the library sum, where a naive `Σpages − Σpage` would let the overshoot cancel. Planned at API level; the store refuses this state, so the leaf calls `catalog()` and `book_detail()` on a built library, as `test_progress.py` does |
 
 **Not planned:**
-- **Reset when another Book opens** (`key={book.id}`): every e2e navigation is a full `page.goto`, which remounts anyway, so a browser test can't tell the key from a reload without an in-app link between two Books' pages. None exists on Book detail.
+- **PAC-UNIT-002 8100 cases** (ATDD follow-up). `pace.cases.json` is a days-only table: its `about` says every case is under 60 days, and `pace.test.ts` checks the line's "About N days" prefix. 8,100 pages at 30 and at 17 are 270 and 477 days, so their lines are in months. AC-2 and AC-3 already pin those exact lines in the browser ("About 16 months · February 2028", "About 9 months · July 2027"), and `pace.test.ts` covers the arithmetic from days to months.
 
 ## Execution
 
 - **Mode:** `tea_execution_mode: auto` with the capability probe on. Subagents are supported and agent teams aren't, so the mode resolved to **subagent**.
 - **Workers:**
-  - **3A (API):** not launched. No new endpoint or view field; AC-1 already pins the book view.
-  - **3B-e2e:** T1 to T6.
-  - **3B-backend:** T7, both readers of the shared table.
-- **Fixtures:** none added to `e2e/fixtures.ts` or `home.ts`. The spec gained one local seed, `FRACTIONAL_PACE` (Dune and a 100-page Fahrenheit 451 read over 3 days).
-- **Review of the workers' output:** both workers mutated app files briefly for their fail-proofs, at overlapping times. After both finished, `git status` showed only test files changed, and every run below was made after that.
+  - **3A (API):** not launched. There's no new endpoint or view field, and AC-1 and AC-4 already pin the catalog view over HTTP.
+  - **3B-e2e:** T1 to T4. For its fail-proofs it changed only frontend app files.
+  - **3B-backend:** T5. It changed no app file: its fail-proof monkeypatched `bookvie.views.shelf.pages_left` in a throwaway test, which it then deleted.
+- **Fixtures:** none added. The e2e spec reuses `SWING_TIME`, `bookcase`, `spine` and `viewToggle` (`bookcase.ts`), and `openNewBook` and `fillFields` (`library.ts`). It adds one constant, `FIRST_SPINE`.
+- **Review of the workers' output:** read in full. The only change was rewrapping the new header comment in the spec, which had a line of about 140 characters. Afterwards `git status` showed only test files and test artifacts changed, and every run below was made after that.
 
 ## Tests Added
 
 | File | Test | Priority | Target | Fails when (worker's fail-proof) |
 |---|---|---|---|---|
-| `frontend/e2e/pace-calculator.spec.ts:208` | finishing a never-started Book from its Book detail turns the result into "Nothing left to read." with no reload | P1 | T1 | `pagesLeft <= 0` → `< 0` in `PaceCalculator` |
-| `frontend/e2e/pace-calculator.spec.ts:229` | a fractional Measured pace prefills one decimal and the result uses the prefilled value | P2 | T2 | `pacePrefill` returns `String(measuredPace)` ("33.333333333333336") |
-| `frontend/e2e/pace-calculator.spec.ts:92` | `[P1] AC-3`, new "0.5" step → "About 2 years · January 2029" | P1 (leaf) | T3 | years threshold moved from 24 to 30 months |
-| `frontend/e2e/pace-calculator.spec.ts:245` | a tab left open past midnight moves the finish date a day when it regains focus | P2 | T4 | `useNow`'s window `focus` listener removed |
-| `frontend/e2e/pace-calculator.spec.ts:265` | a Book view refetch keeps the typed pace and its result | P2 | T5 | `key={book.id}` → `key={Math.random()}` |
-| `frontend/e2e/pace-calculator.spec.ts:286` | axe finds nothing on Book detail with a pace result and with nothing left to read, in both themes | P2 | T6 | an inline low-contrast color on the field ("light Dune: color-contrast (1)") |
-| `frontend/src/lib/pace.cases.json` (new) | the shared table: 9 cases, 3 of them float traps (21 @ 0.7, 21 @ 1.4, 42 @ 1.4) | — | T7 | — |
-| `frontend/src/lib/pace.test.ts:80` | `[P2] PAC-UNIT-002` rounds the days as the server does for the shared cases | P2 | T7 | a case changed to 31 days; or the review's float correction removed from `pace.ts` |
-| `backend/tests/test_pace_calculator.py:121` | `test_pac_unit_002_p2_days_left_agrees_with_the_pace_calculators_shared_cases` | P2 | T7 | a case changed to 31 days |
+| `frontend/e2e/catalog-pace-calculator.spec.ts:264` | an add on Catalog refetches the view and the expanded calculator counts the new Book, keeping the typed pace | P1 | T1 | `LibraryPace` keeps `pagesLeft` from mount ("About 14 days" stays); `PaceCalculator` keyed by `pagesLeft` (typed pace lost) |
+| `frontend/e2e/catalog-pace-calculator.spec.ts:296` | the link works from the keyboard: Enter expands, Tab reaches the field then the bookcase, Space collapses | P2 | T2 | the toggle as a `div role="button"` (Enter, then Space, do nothing); `autoFocus` on the field (focus leaves the toggle); a tab stop on the `output` (the spine isn't next) |
+| `frontend/e2e/catalog-pace-calculator.spec.ts:170` | `[P2] List view…`, new step: the field comes before the table | P2 (leaf) | T3 | `<LibraryPace>` moved after the Bookcase/List branch |
+| `frontend/e2e/catalog-pace-calculator.spec.ts:330` | the expanded calculator survives a switch to List, and an in-app revisit starts collapsed | P2 | T4 | `<LibraryPace key={catalogView}>` (collapses on switch); `expanded` in a module-level variable (stays open on revisit) |
+| `backend/tests/test_library_pages_left.py:184` | `test_p2_a_book_with_pages_edited_below_its_page_adds_0_to_library_pages_left` | P2 | T5 | `pages_left` unclamped: 153, not 191 |
+
+Every mutation was reverted, and `git diff --stat -- frontend/src backend/bookvie` was empty afterwards.
 
 ## Validation
 
-Re-run by me after both workers finished (TZ=Europe/Madrid):
-- `uv run pytest tests/test_pace_calculator.py`: 2 passed.
-- `node --test src/lib/pace.test.ts`: 5 passed.
-- `playwright test e2e/pace-calculator.spec.ts --repeat-each=3 --retries=0`: 33 passed (11 leaves × 3).
-- `npm run check`: exit 0 (format, lint, `tsc -b`, `api:gen` diff, full pytest, coverage, its e2e scope: 519 passed, smoke).
+Checked against `checklist.md`:
+- **Framework:** ready.
+- **Coverage mapping:** every target maps to a deferral and an ATDD line.
+- **Duplicates:** none. T5 is at library scope, and the Book scope stays in `test_progress.py`.
+- **Quality:**
+  - no hard waits, conditionals or `.only`/`.skip`;
+  - every assertion constrains a value (exact text, `aria-expanded`, focus, document order, 191 and 0);
+  - T1 is network-first (`waitForResponse` is registered before the save);
+  - each leaf starts its own server and stops it in `finally`.
+- **Browser sessions:** no CLI sessions were opened.
+- **Temp files:** the worker JSONs are in `/tmp/tea-automate-*-2026-11-11T14-51-52-000Z.json`, the step file's paths, not `{test_artifacts}/`. They are scratch and aren't committed.
 
-**Checklist validation** (`checklist.md`): the run meets it, read through the repo's conventions. These items don't apply as worded: tests live in `frontend/e2e/` and `backend/tests/`, not `tests/e2e/`; locators are roles and exact names, never `data-testid` (the ATDD checklist's "Required data-testid Attributes: None"); leaves assert one concern, not one `expect`. No Pact, auth or network mocks were needed. No playwright-cli session was opened.
+Runs, all in this session after the workers finished:
+- `TZ=Europe/Madrid npm run check`: exit 0. That covers Prettier, ruff, oxlint, `tsc -b`, the `api:gen` byte compare, pytest (1,348 passed, coverage 98%), the node unit tests (0 skipped), 529 e2e passed (526 before this run), and the smoke check.
+- The workers' own runs, before the header rewrap: `catalog-pace-calculator.spec.ts` 10 passed, with the bookcase and list specs 41 passed; `test_library_pages_left.py` and `test_progress.py` 7 passed.
 
-**ATDD checklist:** every `[ ]` line in `atdd-checklist-6-1-see-when-this-book-will-be-finished.md` is now `[x]` with its evidence. Remaining `[ ]`: **0**.
+## ATDD Checklist
 
-**Deferred work:** the code review's entry (finish on Book detail) has a `resolved:` line pointing at T1.
+`atdd-checklist-6-2-see-when-my-whole-unread-library-will-be-finished.md` now has 0 `[ ]` lines:
+- **Ticked with evidence:** the 5 implementation lines and 8 of the 9 green-phase follow-ups.
+- **Retired:** PAC-UNIT-002's 8100 cases (reason in Not planned, above).
+- **Stale prose corrected:** the AC-4 seed row and first assertion now read Piranesi paused at p.45 (200) and 1665. A "Since then (green)" note records the build's activation and re-seed.
+
+`deferred-work.md` has 4 `resolved:` lines under "Deferred from: code review of spec-6-2": the refetch, the position, the remaining follow-ups, and the checklist. The DESIGN.md contrast row stays open for the next DESIGN.md pass.
 
 ## Playwright Utils deviations
 
-None. The package isn't installed, so the vanilla patterns apply: T5 uses `page.waitForResponse`, registered before the `focus` that triggers the refetch. No RECOMMENDED utility was wanted.
+`tea_use_playwright_utils` is true, but `@seontechnologies/playwright-utils` isn't installed, so the mandate doesn't apply. Every new e2e leaf uses the project's vanilla patterns, as Story 6.1's automate block does:
+- `frontend/e2e/catalog-pace-calculator.spec.ts:276`: `page.waitForResponse` in place of `interceptNetworkCall`.
+- `frontend/e2e/catalog-pace-calculator.spec.ts:16`: `test` comes from `./fixtures.ts`, not `support/merged-fixtures`, which doesn't exist.
+
+Recommended utilities that weren't wired: none needed. bookvie has no auth, and the e2e servers are per-test local processes.
 
 ## Assumptions and Risks
 
-- **Reset when another Book opens** (`key={book.id}`) has no browser test: Book detail has no in-app link to another Book's page, and `page.goto` remounts anyway. T5 guards the other half of the key (a refetch keeps the typed text).
-- **The shared table covers days only** (every case under 60 days). Months and years rounding is client-only (the server has no months), and AC-6 pins it.
-- **The e2e workers' fail-proofs were run by the workers**, not re-run here. The green runs above were.
+- **The library clamp is defensive.** A Reading past its Book's Pages can't be stored (invariant `reading_page_in_range`) or reached through the API (409 `pages_below_current_page`). T5 pins the sum so that a loosened invariant or a restore path doesn't make an overshoot cancel real pages left.
+- **T1's refetch wait** matches any successful `/api/views/catalog` response after it is registered. The result assertion that follows ("About 24 days · 21 November") is what proves the new view rendered.
+- **"Finishing a Book" in the live-update follow-up** has no control on Catalog, so T1 covers the add. Book detail's finish-in-place leaf (Story 6.1) covers the finish path for the same component.
 
 ## Next
 
-- Story 6.1 is through the pipeline (ATDD, build-auto, code review, automate). Story 6.2 (`6-2-see-when-my-whole-unread-library-will-be-finished`) starts with `bmad-testarch-atdd`.
-- PAC-API-001 and PAC-E2E-001 cover Book scope; 6.2 adds library scope and Catalog. Tick the trace when both are green.
+Story 6.2's pipeline is complete: ATDD, build, code review, then automate. The next step is story 6.3's ATDD (`bmad-testarch-atdd`). Epic 6 isn't closed, so no retrospective, trace or gate is due yet.

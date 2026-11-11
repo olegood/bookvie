@@ -1,7 +1,10 @@
-// Story 6.2 See when my whole unread library will be finished (ATDD). Catalog's
-// "How long until…?" link below the library meter, collapsed by default, that
-// expands Story 6.1's calculator inline with `aria-expanded`, counting down the
-// whole library. The catalog view's `pagesLeft` and `measuredPace` (AC-1, AC-4)
+// Story 6.2 See when my whole unread library will be finished (ATDD and
+// automate). Catalog's "How long until…?" link beside the library meter,
+// collapsed by default, that expands Story 6.1's calculator inline with
+// `aria-expanded`, counting down the whole library. The automate block adds
+// the calculator following a catalog view refetch, the keyboard, and the
+// expanded state across a view switch and an in-app revisit. The catalog
+// view's `pagesLeft` and `measuredPace` (AC-1, AC-4)
 // are proven in backend/tests/test_library_pages_left.py; the calculator's
 // arithmetic and formatter edges in src/lib/pace.test.ts (Story 6.1).
 //
@@ -14,7 +17,9 @@
 import AxeBuilder from '@axe-core/playwright'
 import type { Locator, Page } from '@playwright/test'
 import { expect, test } from './fixtures.ts'
+import { SWING_TIME, bookcase, spine, viewToggle } from './bookcase.ts'
 import { DUNE, mainAt, serverAtFakeToday, sizeOf, stopAndRemove } from './home.ts'
+import { fillFields, openNewBook } from './library.ts'
 
 const LINK = 'How long until…?'
 const NOTHING_LEFT = 'Nothing left to read.'
@@ -64,6 +69,9 @@ const FLOW_5 = mainAt(120, {
     },
   ],
 })
+
+/** Flow 5's first spine in sort order (first author, then title). */
+const FIRST_SPINE = 'The Count of Monte Cristo by Alexandre Dumas, not read yet'
 
 /** The collapsed calculator's toggle: a link-styled button carrying `aria-expanded`. */
 function toggle(page: Page): Locator {
@@ -173,6 +181,13 @@ test.describe('Story 6.2 See when my whole unread library will be finished (ATDD
       await expect(toggle(page)).toHaveAttribute('aria-expanded', 'true')
       await expect(paceField(page)).toHaveValue('17')
       await expect(result(page)).toHaveText('About 16 months · February 2028')
+
+      // Inline above the list, as in Bookcase view: the field comes before the table.
+      const fieldFirst = await paceField(page).evaluate(
+        (field, table) => (field.compareDocumentPosition(table as Node) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
+        await page.getByRole('main').getByRole('table').elementHandle(),
+      )
+      expect(fieldFirst).toBe(true)
     } finally {
       await stopAndRemove(server)
     }
@@ -239,6 +254,106 @@ test.describe('Story 6.2 See when my whole unread library will be finished (ATDD
           )
         }
       }
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+})
+
+test.describe('Story 6.2 See when my whole unread library will be finished (automate)', () => {
+  test('[P1] an add on Catalog refetches the view and the expanded calculator counts the new Book, keeping the typed pace', async ({
+    page,
+  }) => {
+    const server = await serverAtFakeToday(page, 'catalog-pace-refetch', NO_PACE)
+    try {
+      await page.goto(`${server.url}/catalog`)
+      await toggle(page).click()
+      await paceField(page).fill('30')
+      // 412 ÷ 30 → 14 days from 28 October.
+      await expect(result(page)).toHaveText('About 14 days · 11 November')
+
+      // Network-first: listen for the refetch before the save that triggers it.
+      const refetch = page.waitForResponse(
+        (response) => new URL(response.url()).pathname === '/api/views/catalog' && response.ok(),
+      )
+      const panel = await openNewBook(page)
+      await fillFields(panel, { ...SWING_TIME, Pages: '300' })
+      await panel.getByRole('button', { name: 'Add book', exact: true }).click()
+      await refetch
+      await expect(panel).toBeHidden()
+      // The save focuses the new spine, outside the calculator.
+      await expect(spine(page, 'Swing Time by Zadie Smith, not read yet')).toBeFocused()
+
+      // 412 + 300 = 712 ÷ 30 → ceil(23.73) = 24 days from 28 October.
+      await expect(result(page)).toHaveText('About 24 days · 21 November')
+      await expect(paceField(page)).toHaveValue('30')
+      await expect(toggle(page)).toHaveAttribute('aria-expanded', 'true')
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+
+  test('[P2] the link works from the keyboard: Enter expands, Tab reaches the field then the bookcase, Space collapses', async ({
+    page,
+  }) => {
+    const server = await serverAtFakeToday(page, 'catalog-pace-keys', FLOW_5)
+    try {
+      await page.addInitScript(() => window.localStorage.setItem('bookvie.catalogView', 'bookcase'))
+      await page.goto(`${server.url}/catalog`)
+      await expect(bookcase(page)).toBeVisible()
+
+      await toggle(page).focus()
+      await page.keyboard.press('Enter')
+      await expect(toggle(page)).toHaveAttribute('aria-expanded', 'true')
+      await expect(toggle(page)).toBeFocused()
+      await expect(paceField(page)).toHaveValue('17')
+
+      // Expanded Tab order: link → field → the bookcase's first spine.
+      await page.keyboard.press('Tab')
+      await expect(paceField(page)).toBeFocused()
+      await page.keyboard.press('Tab')
+      await expect(spine(page, FIRST_SPINE)).toBeFocused()
+
+      await page.keyboard.press('Shift+Tab')
+      await expect(paceField(page)).toBeFocused()
+      await page.keyboard.press('Shift+Tab')
+      await expect(toggle(page)).toBeFocused()
+      await page.keyboard.press('Space')
+      await expect(toggle(page)).toHaveAttribute('aria-expanded', 'false')
+      await expect(toggle(page)).toBeFocused()
+      await expect(paceField(page)).toHaveCount(0)
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+
+  test('[P2] the expanded calculator survives a switch to List, and an in-app revisit starts collapsed', async ({
+    page,
+  }) => {
+    const server = await serverAtFakeToday(page, 'catalog-pace-revisit', FLOW_5)
+    try {
+      await page.addInitScript(() => window.localStorage.setItem('bookvie.catalogView', 'bookcase'))
+      await page.goto(`${server.url}/catalog`)
+      await toggle(page).click()
+      await paceField(page).fill('30')
+      await expect(result(page)).toHaveText('About 9 months · July 2027')
+
+      // The calculator sits above the bookcase or list, so switching keeps it.
+      await viewToggle(page).getByRole('button', { name: 'List', exact: true }).click()
+      await expect(page.getByRole('main').getByRole('table')).toBeVisible()
+      await expect(toggle(page)).toHaveAttribute('aria-expanded', 'true')
+      await expect(paceField(page)).toHaveValue('30')
+      await expect(result(page)).toHaveText('About 9 months · July 2027')
+
+      // Leaving Catalog and coming back in the app, with no reload, starts collapsed.
+      const nav = page.getByRole('navigation', { name: 'Main', exact: true })
+      await nav.getByRole('link', { name: 'Home', exact: true }).click()
+      await expect(page).toHaveURL(`${server.url}/`)
+      await expect(toggle(page)).toHaveCount(0)
+      await nav.getByRole('link', { name: 'Catalog', exact: true }).click()
+      await expect(page.getByRole('main').getByRole('table')).toBeVisible()
+      await expect(toggle(page)).toHaveAttribute('aria-expanded', 'false')
+      await expect(paceField(page)).toHaveCount(0)
     } finally {
       await stopAndRemove(server)
     }

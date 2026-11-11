@@ -10,6 +10,12 @@ Two leaves for the criteria the server decides (PAC-API-001, R-10):
 - AC-4: with Readings in every state, the total matches the rule exactly, and
   a Book with both a finished and an unfinished Reading counts once.
 
+One automate leaf guards the sum's terms:
+
+- P2: a Book read past its Pages adds 0, so its overshoot can't cancel another
+  Book's pages left. The store refuses that state, so this leaf calls the views
+  directly.
+
 The calculator on Catalog (the collapsed "How long until…?" link, the
 field, the result) is read in the browser
 (``frontend/e2e/catalog-pace-calculator.spec.ts``). Its arithmetic and
@@ -27,6 +33,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
+from bookvie.views.shelf import book_detail, catalog
 from tests.builder import LibraryBuilder
 from tests.helpers import api_client
 
@@ -169,3 +176,35 @@ def test_ac4_p1_library_pages_left_matches_the_rule_for_every_reading_state(
     never_started.write(tmp_path / "up-next")
     up_next = _catalog(api_client(tmp_path / "up-next", raise_server_exceptions=True))
     assert up_next["pagesLeft"] == 412
+
+
+# --- automate: a Book read past its Pages adds 0 -------------------------------------
+
+
+def test_p2_a_book_with_pages_edited_below_its_page_adds_0_to_library_pages_left(
+    library_builder: LibraryBuilder,
+) -> None:
+    """Dune at p.450 of 412 Pages; Neuromancer paused at p.80 of 271 (191).
+
+    Summing pages and current pages separately would give 683 - 530 = 153:
+    Dune's 38-page overshoot would cancel real pages left. Each Book is clamped
+    first, so the total is 191.
+
+    The state can't be stored: editing Pages below the current page is refused
+    (409 ``pages_below_current_page``) and loading checks
+    ``reading_page_in_range``. So the views are called on the built library,
+    as ``test_progress.py`` pins the Book-scope clamp.
+    """
+    b = library_builder
+    dune = b.book(title="Dune", pages=412)
+    b.reading(dune, current_page=450)
+    neuromancer = b.book(title="Neuromancer", pages=271)
+    b.reading(neuromancer, current_page=80, paused_at="2026-10-01")
+    library = b.build()
+
+    assert catalog(library).pages_left == 191
+
+    # The over-read Book's own view says 0, not -38.
+    detail = book_detail(library, dune)
+    assert detail is not None
+    assert detail.pages_left == 0

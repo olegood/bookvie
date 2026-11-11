@@ -110,8 +110,10 @@ There is one skipped leaf per criterion, 4 in all.
 **Red check:** each leaf was un-skipped once on the current code, in a temporary copy that has since been deleted. All 4 fail, as listed below. The seeds and the server start ran cleanly first. A separate throwaway probe confirmed that the E2E seed's meter reads "1 of 11 finished" today.
 
 **Skipped as committed:**
-- `pytest tests/test_library_pages_left.py` gives 2 skipped.
-- `playwright test e2e/catalog-pace-calculator.spec.ts` gives 2 skipped.
+- `pytest tests/test_library_pages_left.py` gave 2 skipped.
+- `playwright test e2e/catalog-pace-calculator.spec.ts` gave 2 skipped.
+
+**Since then (green):** the build (7d41a10) turned every leaf on. It also re-seeded AC-4 with Piranesi as a paused Up next (200, total 1665, below), because the story's AC and FR-15 count every paused Reading, Up next included (spec Design Notes), and it added a never-started Up next library (412) to AC-4. `bmad-testarch-automate` (2026-11-11) added the automate leaves. See `automation-summary.md`.
 - `ruff format` and `ruff check` are clean on the new file, Prettier left the spec unchanged, and `oxlint` and `tsc -b` pass.
 
 ### API Tests (2 tests): `backend/tests/test_library_pages_left.py`
@@ -143,10 +145,10 @@ There is one skipped leaf per criterion, 4 in all.
 | Kindred 100 | back-filled, then re-read and paused at p.30 | 70 (not 170) |
 | The Hobbit 310 | back-filled, then a re-read paused at p.0 | 310 (not 620) |
 | Hyperion 482 | Side read waiting at p.210 | 272 |
-| Piranesi 245 | Up next, never started | 245 |
+| Piranesi 245 | Up next, paused at p.45 | 200 |
 
 **Steps:**
-1. **`pagesLeft` is 1710** (the first assertion).
+1. **`pagesLeft` is 1665** (the first assertion).
 2. Each Book's own view gives the `pagesLeft` in the table: the library scope is the sum of the Book scopes.
 
 *Red today: `KeyError: 'pagesLeft'`.*
@@ -240,21 +242,21 @@ Activate one test at a time: delete its `@pytest.mark.skip(reason=RED)` line, or
 - **E2E:** `TZ=Europe/Madrid npm --prefix frontend run e2e -- e2e/catalog-pace-calculator.spec.ts -g "AC-2"` (the e2e entry builds the SPA, Epic 3 retro item 27)
 
 ### AC-1 and AC-4: the catalog view
-- [ ] `views/models.py`: `CatalogView.pages_left: int` and `measured_pace: float | None`, with docstrings. Fill them in `views/shelf.py` `catalog` from `pages_left` summed over every Book, and `measured_pace`.
-- [ ] Run `npm --prefix frontend run api:gen`, and re-run `test_contract.py`.
-- [ ] Activate AC-1 and AC-4.
+- [x] `views/models.py`: `CatalogView.pages_left: int` and `measured_pace: float | None`, with docstrings. Fill them in `views/shelf.py` `catalog` from `pages_left` summed over every Book, and `measured_pace`. (done: backend/bookvie/views/models.py:158,164 and views/shelf.py:95-96; backend/tests/test_library_pages_left.py:57 `test_ac1_p1_…`)
+- [x] Run `npm --prefix frontend run api:gen`, and re-run `test_contract.py`. (done: `schema.d.ts` regenerated in 7d41a10 (`pagesLeft`, `measuredPace` at l.761-763); `npm run check` (check:api byte compare, full pytest incl. `test_contract.py`) exit 0 on 2026-11-11)
+- [x] Activate AC-1 and AC-4. (done: backend/tests/test_library_pages_left.py:57 and :119, active and passing)
 
 ### AC-2 and AC-3: the link on Catalog
-- [ ] A collapsed "How long until…?" button (`link` style, `aria-expanded`) after the library meter on Catalog, expanding `PaceCalculator` inline with the catalog view's `pagesLeft` and `measuredPace`.
-- [ ] Activate AC-2 and AC-3.
+- [x] A collapsed "How long until…?" button (`link` style, `aria-expanded`) after the library meter on Catalog, expanding `PaceCalculator` inline with the catalog view's `pagesLeft` and `measuredPace`. (done: frontend/src/pages/CatalogPage.tsx:78 `LibraryPace`; frontend/e2e/catalog-pace-calculator.spec.ts:96 `[P1] AC-2`)
+- [x] Activate AC-2 and AC-3. (done: frontend/e2e/catalog-pace-calculator.spec.ts:96 and :138, active and passing)
 
 ### Green-phase follow-ups (secondary branches, not separate red leaves)
-- [ ] **List view:** with `bookvie.catalogView` = "list", the meter and the button are there and the calculator expands the same way.
-- [ ] **Nothing left to read:** a library whose Books are all finished expands to "Nothing left to read.".
-- [ ] **No Measured pace:** the expanded field and `output` are empty.
-- [ ] **Empty library:** no button (with no meter).
-- [ ] **Keyboard:** Enter and Space on the focused button toggle `aria-expanded`; focus stays on it.
-- [ ] **Live update:** finishing or adding a Book refetches the catalog view and the expanded result follows the new `pagesLeft`, keeping the typed pace.
-- [ ] **Pages edited below the current page:** that Book adds 0, never a negative number, to the library sum.
-- [ ] **PAC-UNIT-002:** add 8100 at "30" (270 days) and at "17" (477 days) to `frontend/src/lib/pace.cases.json`.
-- [ ] **axe** on Catalog with the calculator expanded, in both themes.
+- [x] **List view:** with `bookvie.catalogView` = "list", the meter and the button are there and the calculator expands the same way. (done: frontend/e2e/catalog-pace-calculator.spec.ts:170 `[P2] List view has the same meter and link…`, which also asserts the field comes before the table)
+- [x] **Nothing left to read:** a library whose Books are all finished expands to "Nothing left to read.". (done: frontend/e2e/catalog-pace-calculator.spec.ts:196 `[P2] a library with only finished Books…`)
+- [x] **No Measured pace:** the expanded field and `output` are empty. (done: frontend/e2e/catalog-pace-calculator.spec.ts:209 `[P2] without a Measured pace…`)
+- [x] **Empty library:** no button (with no meter). (done: frontend/e2e/catalog-pace-calculator.spec.ts:225 `[P2] an empty library has no meter and no link`)
+- [x] **Keyboard:** Enter and Space on the focused button toggle `aria-expanded`; focus stays on it. (done: frontend/e2e/catalog-pace-calculator.spec.ts:296 `[P2] the link works from the keyboard…`, which also pins the expanded Tab order link → field → first spine)
+- [x] **Live update:** finishing or adding a Book refetches the catalog view and the expanded result follows the new `pagesLeft`, keeping the typed pace. (done: frontend/e2e/catalog-pace-calculator.spec.ts:264 `[P1] an add on Catalog refetches the view…` (adding a Book; finishing has no control on Catalog))
+- [x] **Pages edited below the current page:** that Book adds 0, never a negative number, to the library sum. (done: backend/tests/test_library_pages_left.py:184 `test_p2_a_book_with_pages_edited_below_its_page_adds_0_to_library_pages_left`, on the views directly: the store refuses the state (409 `pages_below_current_page`, invariant `reading_page_in_range`), so the clamp is defensive)
+- ~~**PAC-UNIT-002:** add 8100 at "30" (270 days) and at "17" (477 days) to `frontend/src/lib/pace.cases.json`.~~ **Retired:** `pace.cases.json` is a days-only table (its `about`: every case under 60 days; `pace.test.ts:80` checks the "About N days" prefix), and 270 and 477 days read in months. The exact 8,100 lines are pinned in the browser by frontend/e2e/catalog-pace-calculator.spec.ts:96 `[P1] AC-2` ("About 16 months · February 2028") and :138 `[P1] AC-3` ("About 9 months · July 2027")
+- [x] **axe** on Catalog with the calculator expanded, in both themes. (done: frontend/e2e/catalog-pace-calculator.spec.ts:237 `[P2] axe finds nothing on Catalog with the calculator expanded, in both views and both themes`)
