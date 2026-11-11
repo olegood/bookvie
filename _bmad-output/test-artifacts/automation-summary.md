@@ -2,15 +2,15 @@
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03c-aggregate', 'step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
 lastSaved: '2026-11-11'
-storyId: '6.3'
-storyKey: '6-3-see-what-i-finished-in-any-period'
+storyId: '6.4'
+storyKey: '6-4-see-my-reading-month-by-month'
 inputDocuments:
-  - _bmad-output/implementation-artifacts/spec-6-3-see-what-i-finished-in-any-period.md (Intent, I/O matrix, ACs, Review Triage Log, Review Findings)
-  - _bmad-output/test-artifacts/atdd-checklist-6-3-see-what-i-finished-in-any-period.md
-  - _bmad-output/implementation-artifacts/deferred-work.md (build-auto review of spec-6-3, 2026-11-11)
+  - _bmad-output/implementation-artifacts/spec-6-4-see-my-reading-month-by-month.md (Intent, I/O matrix, ACs, Review Triage Log, Review Findings)
+  - _bmad-output/test-artifacts/atdd-checklist-6-4-see-my-reading-month-by-month.md
+  - _bmad-output/implementation-artifacts/deferred-work.md (build-auto and code review of spec-6-4, 2026-11-11)
   - _bmad/tea/config.yaml
   - frontend/playwright.config.ts
-  - frontend/e2e/stats.spec.ts; frontend/src/lib/stats.test.ts; backend/tests/test_stats.py; backend/tests/test_contract.py
+  - frontend/e2e/stats.spec.ts (split this run into stats.ts and stats-bars.spec.ts); frontend/e2e/card-notes.spec.ts (token probe pattern); frontend/src/lib/stats.test.ts; backend/tests/test_stats.py
   - knowledge/test-levels-framework.md
   - knowledge/test-priorities-matrix.md
   - knowledge/data-factories.md
@@ -22,95 +22,96 @@ inputDocuments:
   - knowledge/playwright-cli.md
 ---
 
-# Automation Summary: See what I finished in any period (story 6.3)
+# Automation Summary: See my reading month by month (story 6.4)
 
-The previous version of this file held the summary for story 6.2. It's in git history (`587236f`).
+The previous version of this file held the summary for story 6.3. It's in git history (`fa9fb3a`).
 
 ## Preflight
 
 - **Stack:** `fullstack`, auto-detected. Frontend: Playwright (`frontend/playwright.config.ts`) and `node --test`. Backend: pytest (`backend/tests/conftest.py`). Both frameworks are in place.
-- **Mode:** BMad-Integrated. The story is `done` after `bmad-code-review` (`f8691aa`).
+- **Mode:** BMad-Integrated. The story is `done` after `bmad-code-review` (`a12fb25`), which closed Epic 6.
 - **Config:** `tea_use_playwright_utils: true`, but `@seontechnologies/playwright-utils` isn't in `frontend/package.json`, so that gate stays closed and the Traditional Patterns fragments load instead. `tea_use_pactjs_utils` is on, but contract testing doesn't apply (no Pact artifacts). `tea_browser_automation: auto` loads `playwright-cli.md`. Auto-heal is off.
-- **Inputs:** the only 6.3 entry in `deferred-work.md` is spine drift, which needs no test. The ATDD checklist has 19 `[ ]` lines, most of them already built by the build and the review.
+- **Inputs:** the 6.4 entries in `deferred-work.md` are spine drift (AD-6) and the field docstrings that don't reach the OpenAPI, and neither needs a test. The ATDD checklist has 21 `[ ]` lines. The build and the code review already built most of them.
 
 ## Coverage Plan
 
-**Scope:** selective. The ATDD leaves, the build's `[P1]`/`[P2]` leaves and the code review's two new leaves already cover AC-1 to AC-7 and every row of the I/O matrix. This run adds only the spec rules that no test pins yet.
+**Scope:** selective. The 4 ATDD leaves, the build's 9 backend tests and 6 e2e leaves, the 3 client unit suites and the code review's 4 tightened leaves cover AC-1 to AC-4 and every row of the I/O matrix. This run adds only the spec rules that no test pins yet.
 
-**Browser exploration:** skipped. The page is small, the existing leaves already pin its locators (roles and exact names), and reading the code was enough.
+**Browser exploration:** skipped. The page is small, the existing leaves already pin its locators (`chartColumns`, `chartTable`), and reading the code was enough.
 
 | # | Target | Level | Priority | Where | Why at this level |
 |---|---|---|---|---|---|
-| T1 | A failed background refetch keeps the shown numbers and shows no Couldn't load (spec, Failures) | E2E | P1 | `stats.spec.ts` | Only the browser shows `keepPreviousData` and `toViewState` keeping `data` after a refetch error; the review's two failure leaves cover a first load and a range change |
-| T2 | Custom starts at the range of the preset pressed before it: This month gives 2026-10-01 to 2026-10-28, Last year 2025-01-01 to 2025-12-31 (spec, Custom) | E2E | P2 | `stats.spec.ts` | The existing leaves only start Custom from This year (the default) and All time, so always starting at the default would pass |
-| T3 | A Side-read Book's earlier finish still counts (spec, "Side read marks change nothing") | API | P2 | `test_stats.py` | The AC-4 seed marks an unfinished Book as a Side read, so excluding Side-read Books would still pass |
-| T4 | `isIsoDate` accepts 29 February in a leap year and refuses it otherwise | Unit | P3 | `stats.test.ts` | The unit test pins 30 February only; a check that refused every 29 February would pass |
+| T1 | The bars use the theme's `accent` fill on an `accent-soft` track, and the value and period labels are `meta`, in light and dark (spec, "The chart"; ATDD follow-up "design tokens") | E2E | P2 | `stats-bars.spec.ts` | Only the browser resolves the tokens per theme. axe checks contrast, not which token is used, so swapping the fill and track would still pass |
+| T2 | The first bar carries its year even when it isn't January: Custom 2026-09-01..2026-10-28 reads `Sep / 2026`, then `Oct` (spec, "The period labels") | E2E | P2 | `stats-bars.spec.ts` | `barLines(…, first)` is unit-tested, but the only e2e first bar is January, which carries its year anyway. `StatsBars` could pass `false` for `first` and every test would pass |
 
 **Not planned:**
-- **The All time first bucket** (ATDD follow-up, AC-4): `buckets` is always `[]` in 6.3, and the checklist gives the period format to Story 6.4.
+- **A finish with no `finishedPages` in its own bucket** (code review, rejected). `test_p1_the_buckets_add_up_to_the_totals` already includes such a Reading, so dropping it from a bucket fails that test.
+- **Year buckets without a cap, many columns** (code review, rejected). It's cosmetic in an `aria-hidden` chart, and the spec keeps it.
 
 ## Execution
 
 - **Mode:** `tea_execution_mode: auto` with the capability probe on. Subagents are supported and agent teams aren't, so the mode resolved to **subagent**.
 - **Workers:**
-  - **3A (API):** not launched. The review added no endpoint after the build, and T3 runs through the HTTP client in pytest, which is the backend worker's.
-  - **3B-e2e:** T1, T2 and T4. For its fail-proofs it changed only frontend app files, rebuilt the bundle (e2e serves `backend/bookvie/http/static`), and rebuilt again after reverting.
-  - **3B-backend:** T3. Its fail-proof changed `views/stats.py` and restored it from a copy.
-- **Fixtures:** none added. The new leaves reuse `preset`, `dateField`, `figure`, `queryOf`, `afterAnnounceDelay`, `FLOW_7` and `COULDNT_LOAD` (`stats.spec.ts`), and `_stats`, `_finished` and `LibraryBuilder.side_read` (`test_stats.py`).
-- **Review of the workers' output:** read in full; no changes were needed. Both output JSONs report `success: true`.
+  - **3A (API):** not launched. There is no new endpoint and no API target.
+  - **3B-backend:** not launched. There is no backend target (see Not planned).
+  - **3B-e2e:** T1 and T2. For its fail-proofs it changed only `StatsBars.module.css` and `StatsBars.tsx`, and restored both from copies. The T2 mutation fails `tsc -b` (unused `index`), but Playwright's `global-setup.ts` runs `vite build` without tsc, so the mutated bundle was still served.
+- **Fixtures:** none added. The worker added two computed font sizes (`valueFontSize`, `periodFontSize`) to the `chartColumns` helper.
+- **Split for H5 (file size):** with the new leaves, `stats.spec.ts` reached 1,029 lines, over the project hook's 1,000-line limit (tea-enforce H5 HIGH). It now follows the `home.ts` / `bookcase.ts` pattern:
+  - `frontend/e2e/stats.ts` (166 lines): the shared seeds (`FLOW_7`, `NOTHING_FINISHED`, …) and locator helpers (`preset`, `dateField`, `figure`, `statsRequest`, …), now exported.
+  - `frontend/e2e/stats.spec.ts` (510 lines): Story 6.3.
+  - `frontend/e2e/stats-bars.spec.ts` (385 lines): Story 6.4, its chart helpers and its two seeds (`THE_TOME`, `YEARS_APART`).
+  - No leaf changed in the move: the two specs ran 28 passed, the same count as the single file.
+- **Review of the worker's output:** read in full; no changes were needed beyond the split. Its output JSON reports `success: true`. It is in the job's scratch directory, not `/tmp`, because this session keeps temp files there; it is scratch and isn't committed.
 
 ## Tests Added
 
 | File | Test | Priority | Target | Fails when (worker's fail-proof) |
 |---|---|---|---|---|
-| `frontend/e2e/stats.spec.ts:594` | a failed background refetch keeps the shown numbers and reports nothing | P1 | T1 | `toViewState` checks `status === 'error'` before `data` (the figures vanish) |
-| `frontend/e2e/stats.spec.ts:626` | AC-2 Custom starts at the range of the preset pressed before it: This month, then Last year | P2 | T2 | `choose` always starts Custom at This year's range (the "Custom after All time" leaf failed too) |
-| `backend/tests/test_stats.py:223` | `test_ac4_p2_a_side_read_books_earlier_finish_still_counts` | P2 | T3 | `stats()` skips Books in `side_read_book_ids` (only this test failed) |
-| `frontend/src/lib/stats.test.ts:61` | `isIsoDate` accepts 29 February in a leap year only | P3 | T4 | `isIsoDate` refuses every `-02-29` |
+| `frontend/e2e/stats-bars.spec.ts:314` | AC-2 the bars are an accent fill on an accent-soft track, with meta labels, in light and in dark | P2 | T1 | `.fill` and `.track` swap `--color-accent` and `--color-accent-soft` (expected `rgb(85, 112, 89)`, got `rgb(227, 235, 226)`; only this leaf failed) |
+| `frontend/e2e/stats-bars.spec.ts:367` | AC-2 the first bar carries its year even when it is not January | P2 | T2 | `StatsBars` passes `false` for `barLines`' `first` (the `2026` line is missing; only this leaf failed) |
 
-Every mutation was reverted. Afterwards `git diff --stat -- frontend/src backend/bookvie` lists only `frontend/src/lib/stats.test.ts`, the T4 test file.
+Every mutation was reverted. Afterwards `git diff --stat -- frontend/src backend/bookvie` is empty.
 
 ## Validation
 
 Checked against `checklist.md`:
 - **Framework:** ready.
-- **Coverage mapping:** each target maps to a spec rule that no test pinned before (Failures, Custom, "Side read marks change nothing", Custom's valid dates).
-- **Duplicates:** none. T1 is the background-refetch failure; the review's two failure leaves cover a first load and a range change.
+- **Coverage mapping:** each target maps to a spec rule that no test pinned before (the chart's tokens and `meta` labels; the first bar's year).
+- **Duplicates:** none. The forced-colours leaf checks system colours; T1 checks the theme tokens. The January leaf can't tell the first-bar rule from the January rule; T2 can.
 - **Quality:**
   - no `waitForTimeout`, conditionals or `.only`/`.skip`;
-  - every assertion constrains a value (exact figures, field values, the query, `''` in `alert`, 2 and 700);
-  - T1 is network-first: the route and `waitForResponse` are registered before the focus that refetches, and its assertions run after the failed response finished and two in-page announce delays;
-  - each leaf starts its own server and stops it in `finally`.
+  - every assertion constrains a value (resolved colours, font sizes, exact period lines);
+  - T2 is network-first: `statsRequestFor` is registered before the fill that sends the request;
+  - each leaf starts its own server and stops it in `finally`;
+  - no file over 1,000 lines after the split.
 - **Browser sessions:** no CLI sessions were opened.
-- **Temp files:** the worker JSONs are in `/tmp/tea-automate-*-2026-11-11T16-32-54-240Z.json`, the step file's paths. They are scratch and aren't committed.
 
-Runs, all in this session after the workers finished:
-- `TZ=Europe/Madrid npm run check`: exit 0. That covers Prettier, ruff, oxlint, `tsc -b`, the `api:gen` byte compare, pytest (1,375 passed, coverage 98%), the node unit tests (301 passed, 0 skipped), 547 e2e passed (545 before this run), and the smoke check.
-- The workers' own runs: `stats.spec.ts` 18 passed, the two new leaves 10 of 10 with `--repeat-each=5`; `stats.test.ts` 11 passed; `test_stats.py` 26 passed.
+Runs, in this session after the worker finished and after the split:
+- `TZ=Europe/Madrid npm run check`: exit 0. That covers Prettier, ruff, oxlint, `tsc -b`, the `api:gen` byte compare, pytest (1,390 passed, coverage 98%), the node unit tests, 557 e2e passed (555 before this run), and the smoke check.
+- `stats.spec.ts` and `stats-bars.spec.ts` together: 28 passed. The worker's runs: the two new leaves 10 of 10 with `--repeat-each=5`.
 
 ## ATDD Checklist
 
-`atdd-checklist-6-3-see-what-i-finished-in-any-period.md` now has 0 `[ ]` lines:
-- **Ticked with evidence:** the 8 implementation lines and 10 of the 11 green-phase follow-ups.
-- **Retired:** the All time first bucket (AC-4). `buckets` is `[]` in 6.3, and Story 6.4 owns the bucket contents and their `period` format.
-- **Red phase:** the section is now marked historical, with a "Since then (green)" note.
+`atdd-checklist-6-4-see-my-reading-month-by-month.md` now has 0 `[ ]` lines:
+- **Ticked with evidence:** the 9 implementation lines and all 12 green-phase follow-ups. 10 of the follow-ups were already built by the build and the code review; T1 and T2 closed the design-token and period-label lines.
+- **Retired:** none.
+- **Red phase:** the section is now marked historical, with a "Since then (green)" note. Its references to 6.4 leaves point at `stats-bars.spec.ts`.
 
-`deferred-work.md` needs no `resolved:` line: its only 6.3 entry is spine drift, which the next-epic reconciliation closes.
+`deferred-work.md` needs no `resolved:` line. Its 6.4 entries are spine drift, which the next-epic reconciliation closes, and the OpenAPI docstrings, a project-wide choice.
 
 ## Playwright Utils deviations
 
-`tea_use_playwright_utils` is true, but `@seontechnologies/playwright-utils` isn't installed, so the mandate doesn't apply. The new e2e leaves use the spec's vanilla patterns:
-- `frontend/e2e/stats.spec.ts:601`: `page.route` and `page.waitForResponse` in place of `interceptNetworkCall`.
-- `frontend/e2e/stats.spec.ts:18`: `test` comes from `./fixtures.ts`, not `support/merged-fixtures`, which doesn't exist.
+`tea_use_playwright_utils` is true, but `@seontechnologies/playwright-utils` isn't installed, so the mandate doesn't apply. The new leaves use the spec's vanilla patterns:
+- `frontend/e2e/stats-bars.spec.ts:367`: `page.waitForRequest` (via `statsRequestFor`) in place of `interceptNetworkCall`.
+- `frontend/e2e/stats-bars.spec.ts:12`: `test` comes from `./fixtures.ts`, not `support/merged-fixtures`, which doesn't exist.
 
 Recommended utilities that weren't wired: none needed. bookvie has no auth, and the e2e servers are per-test local processes.
 
 ## Assumptions and Risks
 
-- **T1 relies on the focus refetch.** If TanStack Query's focus refetch were turned off, the failed response would never arrive and `waitForResponse` would time out, so the test fails loudly rather than passing vacuously.
-- **T1's two announce delays** are in-page timers tied to `ANNOUNCE_DELAY_MS`, after the failed response finished. The T1 mutation proves the page has taken in the failure by then.
-- **The Custom swap on Tab** stays as built (code review decision, 2026-11-11), so no test pins a blur-only swap.
+- **T1 reads tokens through a probe element**, as `card-notes.spec.ts` does. If DESIGN.md ever gives `accent` and `accent-soft` the same value in a theme, T1 would no longer tell them apart. Its light/dark difference check would still catch a theme that didn't switch.
+- **T2's mutation isn't type-clean.** `tsc -b` refuses it, so CI's check would also catch that particular mutation. The leaf still guards any type-clean way of losing the first bar's year.
 
 ## Next
 
-Story 6.3's pipeline is complete: ATDD, build, code review, then automate. The next step is story 6.4's ATDD (`bmad-testarch-atdd`). Epic 6 isn't closed until 6.4 is done, so no retrospective, trace or gate is due yet.
+Story 6.4's pipeline is complete: ATDD, build, code review, then automate. 6.4 closed Epic 6, so the next step is the **Epic 6 retrospective** (`bmad-retrospective` for epic 6). Before Epic 7's first story come the retrospective, the epic's trace and gate, and the spine reconciliation of Epic 6's "spine drift" entries (AGENTS.md "Epic boundaries").

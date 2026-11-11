@@ -88,18 +88,18 @@ Every seed loaded and every server started cleanly, so no leaf fails for a seed 
 
 ## Green-phase follow-ups (secondary branches, not red leaves)
 
-- [ ] **AC-2, proportional heights:** a bar's height is `pages ÷ the range's largest pages`, measured on the rendered bars (bounding boxes) or as a unit test of the client's height function. A 0-page bar has no fill.
-- [ ] **AC-2, design tokens:** the fill is `accent` on an `accent-soft` track, and the labels are `meta`. Check the computed colours in both themes, and the `forced-colors` rule that the other fills use (DESIGN.md, forced colours).
-- [ ] **AC-2, period below each bar:** pin the format the build chooses.
-- [ ] **AC-2, empty states:** an empty range shows empty bars, with a table of zero rows (EXPERIENCE.md "Stats, empty range"). All time with nothing finished shows no bars and no table.
-- [ ] **AC-1, All time's buckets:** they run from the earliest finish's period (back-fills included) to the latest, and use `year` past 24 months (6.3's span rule).
-- [ ] **AC-1, 24 and 25 months:** 2024-01-01..2025-12-31 gives 24 month buckets, and 2024-01-01..2026-01-01 gives 3 year buckets, with the first and last years partial.
-- [ ] **AC-1, edges:** a finish on 2026-03-31 or 2026-04-01, or on a DST Sunday (2026-03-29, 2026-10-25), lands in its own month's bucket. A single-day range gives one bucket.
-- [ ] **AC-1, re-reads and side reads:** a re-read counts again in its own bucket, and a Side read mark adds nothing.
-- [ ] **AC-3, E2E:** the year's chart shows 900 above December and nothing above November (needs a seed in a year the presets reach, for example Last year at fake today 2026-10-28).
-- [ ] **AC-4, Custom:** editing Custom's dates updates the table and bars with no animation. Without reduced motion, any transition the build adds is allowed.
-- [ ] **axe** on Stats with bars, in both themes. Extend the existing 6.3 axe test.
-- [ ] **Unit (STA-UNIT-001):** if the bucket logic gets its own function in `views/stats`, test it directly with `stats(library, start, end)`, as `test_ac4_p1_a_finish_without_finished_pages_counts_as_zero_pages` does.
+- [x] **AC-2, proportional heights:** a bar's height is `pages ÷ the range's largest pages`, measured on the rendered bars (bounding boxes) or as a unit test of the client's height function. A 0-page bar has no fill. (done: frontend/e2e/stats-bars.spec.ts '[P2] AC-2 each bar is as tall as its pages against the largest, and an empty month has no fill'; frontend/src/lib/stats.test.ts `barShare`)
+- [x] **AC-2, design tokens:** the fill is `accent` on an `accent-soft` track, and the labels are `meta`. Check the computed colours in both themes, and the `forced-colors` rule that the other fills use (DESIGN.md, forced colours). (done: frontend/e2e/stats-bars.spec.ts '[P2] AC-2 the bars are an accent fill on an accent-soft track, with meta labels, in light and in dark' (tokens resolved in each theme), and '[P2] AC-2 under forced colours the track has a border and the fill a system colour' (the fill differs from its track))
+- [x] **AC-2, period below each bar:** pin the format the build chooses. (done: frontend/e2e/stats-bars.spec.ts '[P2] AC-2 each bar is as tall as its pages against the largest…' (`Jan / 2026`, `Sep`), '[P2] AC-2 the first bar carries its year even when it is not January' (`Sep / 2026`, `Oct`), '[P2] AC-1 All time over 24 months…' (`2024`, `2025`, `2026`); frontend/src/lib/stats.test.ts `barLines`)
+- [x] **AC-2, empty states:** an empty range shows empty bars, with a table of zero rows (EXPERIENCE.md "Stats, empty range"). All time with nothing finished shows no bars and no table. (done: frontend/e2e/stats-bars.spec.ts '[P2] All time with nothing finished has no bars and no table' (This year's ten zero-height bars reading "0", a table of 0 / 0 rows and "No books finished in this range.", then no chart and no table for All time))
+- [x] **AC-1, All time's buckets:** they run from the earliest finish's period (back-fills included) to the latest, and use `year` past 24 months (6.3's span rule). (done: backend/tests/test_stats.py:466 `test_p1_all_time_buckets_run_from_the_earliest_finish_to_the_latest`, :484 `test_p1_all_time_within_24_months_has_month_buckets_from_the_first_to_the_last`; frontend/e2e/stats-bars.spec.ts '[P2] AC-1 All time over 24 months shows one bar and one row per year')
+- [x] **AC-1, 24 and 25 months:** 2024-01-01..2025-12-31 gives 24 month buckets, and 2024-01-01..2026-01-01 gives 3 year buckets, with the first and last years partial. (done: backend/tests/test_stats.py:268 `test_p1_the_bucket_is_year_past_24_calendar_months` (24, 3, 1, 24), :511 `test_p1_25_months_from_1_january_is_three_partial_and_full_years`)
+- [x] **AC-1, edges:** a finish on 2026-03-31 or 2026-04-01, or on a DST Sunday (2026-03-29, 2026-10-25), lands in its own month's bucket. A single-day range gives one bucket. (done: backend/tests/test_stats.py:410 `test_p0_a_finish_on_an_edge_lands_in_its_own_month_bucket`, :423 `test_p1_the_edges_together_fill_march_april_and_october`, :498 `test_p1_a_single_day_range_is_one_bucket`)
+- [x] **AC-1, re-reads and side reads:** a re-read counts again in its own bucket, and a Side read mark adds nothing. (done: backend/tests/test_stats.py:442 `test_p1_a_re_read_counts_again_in_its_own_bucket_and_a_side_read_adds_nothing`)
+- [x] **AC-3, E2E:** the year's chart shows 900 above December and nothing above November (needs a seed in a year the presets reach, for example Last year at fake today 2026-10-28). (done: frontend/e2e/stats-bars.spec.ts '[P2] AC-3 Last year puts all 900 pages of a Book finished on 2 December in December')
+- [x] **AC-4, Custom:** editing Custom's dates updates the table and bars with no animation. Without reduced motion, any transition the build adds is allowed. (done: frontend/e2e/stats-bars.spec.ts '[P2] AC-4 editing Custom updates the table and bars, and the fills never transition')
+- [x] **axe** on Stats with bars, in both themes. Extend the existing 6.3 axe test. (done: frontend/e2e/stats.spec.ts '[P2] axe finds nothing on Stats with a result and with an empty range, in both themes' (FLOW_7's This year and the empty Last year both render bars and the table now))
+- [x] **Unit (STA-UNIT-001):** if the bucket logic gets its own function in `views/stats`, test it directly with `stats(library, start, end)`, as `test_ac4_p1_a_finish_without_finished_pages_counts_as_zero_pages` does. (done: backend/tests/test_stats.py:534 `test_p1_the_buckets_add_up_to_the_totals` calls `stats(library, start, end)` directly; the bucket logic stayed inside `stats()` (`_period`, `_periods` helpers), covered through it)
 
 ## Existing tests the build must update
 
@@ -108,7 +108,9 @@ Every seed loaded and every server started cleanly, so no leaf fails for a seed 
 - `stats.spec.ts:348`: All time with nothing finished still expects `buckets: []`. That is right, and stays as it is.
 - Re-run `test_contract.py` and `npm --prefix frontend run api:gen` if `StatsBucket`'s docstring or fields change (`check:api` compares `schema.d.ts` byte for byte).
 
-## TDD Red Phase (Current)
+## TDD Red Phase (historical)
+
+**Since then (green):** the build (7c279b3) turned on all 4 leaves and added the follow-ups above. The code review (a12fb25) and the automate run of 2026-11-11 added more; see `automation-summary.md`.
 
 There is one skipped leaf per criterion, 4 in all:
 - **API (2):** in `backend/tests/test_stats.py`, each marked `@pytest.mark.skip(reason=RED)`.
@@ -145,17 +147,17 @@ Activate one leaf at a time: delete its `@pytest.mark.skip(reason=RED)` line, or
 - **E2E:** run `npm run build` first, then `cd frontend && TZ=Europe/Madrid npx playwright test e2e/stats.spec.ts -g "Story 6.4"`.
 
 ### AC-1 and AC-3: the buckets
-- [ ] In `views/stats.py`, fill `buckets` with one entry per calendar month (or year, past 24 months) from `from` to `to`, or from the earliest finish to the latest for All time. Each `{ period, books, pages }` counts only finishes in range by `finishDate`, with the stored `finishedPages`.
-- [ ] Update `StatsBucket`'s and `StatsView.buckets`' docstrings with the `period` format. Then run `npm --prefix frontend run api:gen`.
-- [ ] Update `test_stats.py:276`, as described above.
-- [ ] Activate AC-1 and AC-3.
+- [x] In `views/stats.py`, fill `buckets` with one entry per calendar month (or year, past 24 months) from `from` to `to`, or from the earliest finish to the latest for All time. Each `{ period, books, pages }` counts only finishes in range by `finishDate`, with the stored `finishedPages`. (done: backend/bookvie/views/stats.py `stats`, `_period`, `_periods` (7c279b3); proven by the AC-1 and AC-3 leaves)
+- [x] Update `StatsBucket`'s and `StatsView.buckets`' docstrings with the `period` format. Then run `npm --prefix frontend run api:gen`. (done: backend/bookvie/views/models.py; `schema.d.ts` regenerated (7c279b3), `check:api` byte compare passes)
+- [x] Update `test_stats.py:276`, as described above. (done: backend/tests/test_stats.py:268 `test_p1_the_bucket_is_year_past_24_calendar_months`)
+- [x] Activate AC-1 and AC-3. (done: backend/tests/test_stats.py:344 and :380, no skip)
 
 ### AC-2 and AC-4: the chart
-- [ ] On `StatsPage`, below the numbers: one bar per bucket, height proportional to pages, the value above in `meta`, and the period below. Use the `accent` fill on the `accent-soft` track (`components.monthly-bar`).
-- [ ] Add the same buckets as a table with the headers Period, Books and Pages, visually hidden or visible.
-- [ ] Use no transition under `prefers-reduced-motion: reduce`.
-- [ ] Scope `figure()` in `stats.spec.ts` to the two numbers.
-- [ ] Activate AC-2 and AC-4.
+- [x] On `StatsPage`, below the numbers: one bar per bucket, height proportional to pages, the value above in `meta`, and the period below. Use the `accent` fill on the `accent-soft` track (`components.monthly-bar`). (done: frontend/src/components/StatsBars.tsx (7c279b3); frontend/e2e/stats-bars.spec.ts '[P1] AC-2 each bar shows its pages, and the same buckets are a table of period, books and pages')
+- [x] Add the same buckets as a table with the headers Period, Books and Pages, visually hidden or visible. (done: frontend/e2e/stats-bars.spec.ts '[P1] AC-2 each bar shows its pages…')
+- [x] Use no transition under `prefers-reduced-motion: reduce`. (done: frontend/e2e/stats-bars.spec.ts '[P2] AC-4 a new range updates the numbers and bars at once, with no animation under reduced motion', and '[P2] AC-4 editing Custom…' (fills at `0s` without reduced motion))
+- [x] Scope `figure()` in `stats.spec.ts` to the two numbers. (done: frontend/e2e/stats.ts `figure()` scoped to the 'Totals' group)
+- [x] Activate AC-2 and AC-4. (done: frontend/e2e/stats-bars.spec.ts both 6.4 ATDD leaves are `test(`)
 
 ## Completion
 
