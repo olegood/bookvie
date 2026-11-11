@@ -701,6 +701,7 @@
   - At l.229, rewrite the bullet: Reading ids are unique within their Book, and Card note ids are unique in the library (`unique_card_note_ids`). Drop its "Known gap" sentence.
   - Startup refuses such a `library.json` too, since startup and restore share `validate_document`.
   evidence: `ARCHITECTURE-SPINE.md:227` ("Known gap: `check_invariants()` doesn't check this, nor a non-blank `text`") and `:229` ("Reading and Card note ids are unique within their Book … Known gap: a Card note id repeated across two Books passes"); `backend/bookvie/domain/invariants.py`.
+  resolved: spine reconciliation before Epic 6 (2026-11-11). AD-18's document-shape bullet now states that a Card note's `text` is non-blank and trimmed (`str.strip()`, as both intents store it), and that `check_invariants()` enforces the `pageEnd` rule and both `text` rules (`card_note_page_end_after_start`, `card_note_text_required`, `card_note_text_trimmed`). Restore and startup share `validate_document`, so both refuse such a file. The ids bullet keeps Reading ids unique per Book and makes Card note ids unique in the library (`unique_card_note_ids`). Both "Known gap" sentences are gone.
 
 ## Deferred from: Epic 5 retro item 51, the untracked waiting-for-you flake (2026-11-11)
 
