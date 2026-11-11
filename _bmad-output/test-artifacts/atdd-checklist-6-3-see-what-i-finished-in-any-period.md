@@ -92,19 +92,21 @@ There is one red leaf per criterion: 7 in all, 2 API and 5 E2E. Each leaf's firs
 
 ## Green-phase follow-ups (secondary branches, not red leaves)
 
-- [ ] **AC-5, All time with nothing finished:** the API returns `{ books: 0, pages: 0, buckets: [] }`, and the page reads "No books finished yet.".
-- [ ] **AC-5, singular:** "1 book, N pages." (the copy is the build's decision; pin what it decides).
-- [ ] **AC-4, All time start:** the first bucket is the earliest finish's period, back-fills included (with Story 6.4's period format).
-- [ ] **AC-4, a Book read and finished twice in one range** counts 2 books.
-- [ ] **AC-7, server month and year edges (API):** finishes on 2026-03-31 and 2026-04-01 split across a March range, 2025-12-31 and 2026-01-01 across a year range, and finishes on the DST Sundays 2026-03-29 and 2026-10-25 each count in their own month.
-- [ ] **AC-2, Custom drives the request:** after the swap, the request is `from=<earlier>&to=<later>`.
-- [ ] **AC-2, Custom's starting values** (the build's decision, for example the current preset's range).
-- [ ] **AC-3, invalid query:** whatever the build decides for a bad date or a half range, with an API test for each error code.
-- [ ] **AC-1, focus and title on a direct load of `/stats`** (not only through the nav).
-- [ ] **Existing specs:** update the nav lists in `app-shell.spec.ts:122`, `backup.spec.ts:74`, `card-notes.spec.ts:112` and `home.spec.ts:56` to the five items.
-- [ ] **axe** on Stats (a result, and the empty range) in both themes.
+- [x] **AC-5, All time with nothing finished:** the API returns `{ books: 0, pages: 0, buckets: [] }`, and the page reads "No books finished yet.". (done: backend/tests/test_stats.py:244 `test_ac5_p1_all_time_with_nothing_finished_is_zero_month_and_no_buckets`; frontend/e2e/stats.spec.ts:337)
+- [x] **AC-5, singular:** "1 book, N pages." (the copy is the build's decision; pin what it decides). (done: frontend/e2e/stats.spec.ts:359; frontend/src/lib/stats.test.ts `uses the singular for 1`)
+- ~~**AC-4, All time start:** the first bucket is the earliest finish's period, back-fills included (with Story 6.4's period format).~~ **Retired:** `buckets` is always `[]` in 6.3 (spec-6-3, Boundaries), and the bucket contents and their `period` format are Story 6.4's; its ATDD carries this.
+- [x] **AC-4, a Book read and finished twice in one range** counts 2 books. (done: backend/tests/test_stats.py:194 `test_ac4_p1_a_book_finished_twice_in_one_range_counts_twice`)
+- [x] **AC-7, server month and year edges (API):** finishes on 2026-03-31 and 2026-04-01 split across a March range, 2025-12-31 and 2026-01-01 across a year range, and finishes on the DST Sundays 2026-03-29 and 2026-10-25 each count in their own month. (done: backend/tests/test_stats.py:159 `test_ac7_p0_a_finish_on_an_edge_counts_in_its_own_month_and_year`, 6 cases)
+- [x] **AC-2, Custom drives the request:** after the swap, the request is `from=<earlier>&to=<later>`. (done: frontend/e2e/stats.spec.ts:375)
+- [x] **AC-2, Custom's starting values** (the build's decision, for example the current preset's range). (done: the pressed preset's range, empty after All time: frontend/e2e/stats.spec.ts:375 (This year), frontend/e2e/stats.spec.ts:626 (This month, Last year), frontend/e2e/stats.spec.ts:528 (All time))
+- [x] **AC-3, invalid query:** whatever the build decides for a bad date or a half range, with an API test for each error code. (done: 422 `invalid_fields` naming the field, backend/tests/test_stats.py:314 `test_p1_a_bad_query_is_422_invalid_fields_naming_the_field`, 7 cases including a datetime and a Unix timestamp)
+- [x] **AC-1, focus and title on a direct load of `/stats`** (not only through the nav). (done: frontend/e2e/stats.spec.ts:419)
+- [x] **Existing specs:** update the nav lists in `app-shell.spec.ts:122`, `backup.spec.ts:74`, `card-notes.spec.ts:112` and `home.spec.ts:56` to the five items. (done: frontend/e2e/app-shell.spec.ts:122, backup.spec.ts:74, card-notes.spec.ts:112, home.spec.ts:56)
+- [x] **axe** on Stats (a result, and the empty range) in both themes. (done: frontend/e2e/stats.spec.ts:433)
 
-## TDD Red Phase (Current)
+## TDD Red Phase (historical)
+
+**Since then (green):** the build (f2cf63f) turned on all 7 leaves and added the follow-ups above. The code review (f8691aa) and the automate run of 2026-11-11 added more; see `automation-summary.md`.
 
 There is one skipped leaf per criterion, 7 in all:
 - **API (2):** in `backend/tests/test_stats.py`, each marked `@pytest.mark.skip(reason=RED)`.
@@ -150,16 +152,16 @@ Activate one leaf at a time: delete its `@pytest.mark.skip(reason=RED)` line, or
 - **E2E:** `TZ=Europe/Madrid npm --prefix frontend run e2e -- e2e/stats.spec.ts -g "AC-1"` (the e2e entry builds the SPA)
 
 ### AC-3, AC-4 and AC-6: the stats view
-- [ ] `views/stats` (FR-16 map row) and `views/models.py` `StatsView { books, pages, bucket, buckets: [{ period, books, pages }] }`. It counts finished Readings by `finishDate` in `from..to` (inclusive), and sums the stored `finishedPages`.
-- [ ] `GET /api/views/stats` with optional `from`/`to` in `http/api.py`. Decide and test what a bad date or a half range returns.
-- [ ] Run `npm --prefix frontend run api:gen`, and re-run `test_contract.py`.
-- [ ] Activate AC-4 and AC-6.
+- [x] `views/stats` (FR-16 map row) and `views/models.py` `StatsView { books, pages, bucket, buckets: [{ period, books, pages }] }`. It counts finished Readings by `finishDate` in `from..to` (inclusive), and sums the stored `finishedPages`. (done: backend/bookvie/views/stats.py:23, views/models.py:303; backend/tests/test_stats.py:84)
+- [x] `GET /api/views/stats` with optional `from`/`to` in `http/api.py`. Decide and test what a bad date or a half range returns. (done: backend/bookvie/http/api.py:393; backend/tests/test_stats.py:314)
+- [x] Run `npm --prefix frontend run api:gen`, and re-run `test_contract.py`. (done: `schema.d.ts` regenerated in f2cf63f and f8691aa; backend/tests/test_contract.py:338 and :372 list the route; `npm run check` byte compare exit 0 on 2026-11-11)
+- [x] Activate AC-4 and AC-6. (done: backend/tests/test_stats.py:84 and :122, active and passing)
 
 ### AC-1, AC-2, AC-3, AC-5 and AC-7: the page
-- [ ] The nav item **Stats** between Catalog and Card notes, the `/stats` route, `h1` "Stats" and `document.title`. Update the four nav lists named under Preflight.
-- [ ] The range picker (`group` "Range", the `ViewToggle` pattern), with presets resolved from the browser's local today. Custom has "From" and "To", swapped silently.
-- [ ] The two figures with captions, the status line "N books, M pages." and the empty-range message.
-- [ ] Activate AC-1, AC-2, AC-3, AC-5 and AC-7.
+- [x] The nav item **Stats** between Catalog and Card notes, the `/stats` route, `h1` "Stats" and `document.title`. Update the four nav lists named under Preflight. (done: frontend/src/components/AppShell.tsx:45, main.tsx:39; frontend/e2e/stats.spec.ts:185 and :419)
+- [x] The range picker (`group` "Range", the `ViewToggle` pattern), with presets resolved from the browser's local today. Custom has "From" and "To", swapped silently. (done: frontend/src/components/RangePicker.tsx; frontend/e2e/stats.spec.ts:207, :243, :310)
+- [x] The two figures with captions, the status line "N books, M pages." and the empty-range message. (done: frontend/e2e/stats.spec.ts:279 and :337)
+- [x] Activate AC-1, AC-2, AC-3, AC-5 and AC-7. (done: frontend/e2e/stats.spec.ts:185, :207, :243, :279, :310, active and passing)
 
 ## Completion
 

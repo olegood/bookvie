@@ -220,6 +220,27 @@ def test_ac4_p1_a_finish_without_finished_pages_counts_as_zero_pages(
     assert (view.books, view.pages) == (2, 412)
 
 
+def test_ac4_p2_a_side_read_books_earlier_finish_still_counts(
+    tmp_path: Path, library_builder: LibraryBuilder
+) -> None:
+    """Side read marks change nothing: a re-read Side read keeps its earlier finish."""
+    b = library_builder
+    kindred = b.book(title="Kindred", pages=300)
+    _finished(b, kindred, "2026-05-01", "2026-05-10", 300)
+    b.reading(kindred, start_date="2026-10-01", current_page=120)  # the current re-read
+    b.side_read(kindred)
+    emma = b.book(title="Emma", pages=400)
+    _finished(b, emma, "2026-09-01", "2026-09-20", 400)
+    b.write(tmp_path)
+    client = api_client(tmp_path, raise_server_exceptions=True)
+
+    this_year = _stats(client, "2026-01-01", "2026-12-31")
+    # Kindred's May finish and Emma's: 300 + 400.
+    assert (this_year["books"], this_year["pages"]) == (2, 700)
+    all_time = _stats(client)
+    assert (all_time["books"], all_time["pages"]) == (2, 700)
+
+
 def test_ac5_p1_all_time_with_nothing_finished_is_zero_month_and_no_buckets(
     tmp_path: Path, library_builder: LibraryBuilder
 ) -> None:

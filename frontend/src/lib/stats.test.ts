@@ -58,6 +58,13 @@ describe('orderedRange', () => {
   })
 })
 
+describe('isIsoDate', () => {
+  it('accepts 29 February in a leap year only', () => {
+    assert.equal(isIsoDate('2028-02-29'), true)
+    assert.equal(isIsoDate('2026-02-29'), false)
+  })
+})
+
 describe('statsLine and formatCount', () => {
   it('uses the plural', () => {
     assert.equal(statsLine(2, 610), '2 books, 610 pages.')

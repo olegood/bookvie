@@ -590,4 +590,62 @@ test.describe('Story 6.3 See what I finished in any period (ATDD)', () => {
       await stopAndRemove(server)
     }
   })
+
+  test('[P1] a failed background refetch keeps the shown numbers and reports nothing', async ({ page }) => {
+    const server = await serverAtFakeToday(page, 'stats-refetch-failed', FLOW_7)
+    try {
+      await page.goto(`${server.url}/stats`)
+      await expect(figure(page, '1,010')).toBeVisible()
+
+      // Network-first: the failure and its wait are in place before the focus that refetches.
+      await page.route('**/api/views/stats**', (route) =>
+        route.fulfill({ status: 503, contentType: 'text/plain', body: 'Service Unavailable' }),
+      )
+      const failedRefetch = page.waitForResponse(
+        (response) => new URL(response.url()).pathname === STATS_API && response.status() === 503,
+      )
+      await page.evaluate(() => window.dispatchEvent(new Event('focus')))
+      const response = await failedRefetch
+      expect(queryOf(response.request())).toEqual({ from: '2026-01-01', to: '2026-10-28' })
+      await response.finished()
+      // The first delay lets the page take in the failure (an alert would be
+      // scheduled within it); the second lets any such alert be set.
+      await afterAnnounceDelay(page)
+      await afterAnnounceDelay(page)
+
+      await expect(figure(page, '3')).toBeVisible()
+      await expect(figure(page, '1,010')).toBeVisible()
+      await expect(page.getByRole('main').getByText(COULDNT_LOAD)).toHaveCount(0)
+      await expect(page.getByRole('alert')).toHaveText('')
+      await expect(page.getByRole('button', { name: 'Try again', exact: true })).toHaveCount(0)
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+
+  test('[P2] AC-2 Custom starts at the range of the preset pressed before it: This month, then Last year', async ({
+    page,
+  }) => {
+    const server = await serverAtFakeToday(page, 'stats-custom-start', FLOW_7)
+    try {
+      await page.goto(`${server.url}/stats`)
+      await expect(figure(page, '1,010')).toBeVisible()
+
+      await preset(page, 'This month').click()
+      await expect(page.getByRole('status')).toHaveText('2 books, 610 pages.')
+      await preset(page, 'Custom').click()
+      await expect(dateField(page, 'From')).toHaveValue('2026-10-01')
+      await expect(dateField(page, 'To')).toHaveValue('2026-10-28')
+      await expect(figure(page, '610')).toBeVisible()
+
+      await preset(page, 'Last year').click()
+      await expect(page.getByRole('main').getByText('No books finished in this range.', { exact: true })).toBeVisible()
+      await preset(page, 'Custom').click()
+      await expect(dateField(page, 'From')).toHaveValue('2025-01-01')
+      await expect(dateField(page, 'To')).toHaveValue('2025-12-31')
+      await expect(figure(page, '0')).toHaveCount(2)
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
 })
