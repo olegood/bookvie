@@ -737,3 +737,21 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-2-see-when-my-whole-unread-library-will-be-finished.md`
   summary: Spine drift (AD-6, FR-15 map row), reconciled before the next epic: the spine doesn't say the catalog view carries the library-scope pages left (the sum of every Book's `pages_left`) and `measuredPace`, or that `CatalogPage` hosts `PaceCalculator` behind "How long until…?". The 6.1 entry above names only the book view; reconcile both together.
   evidence: `backend/bookvie/views/shelf.py` `catalog()` (`pages_left`, `measured_pace`); `frontend/src/pages/CatalogPage.tsx` `LibraryPace`; `ARCHITECTURE-SPINE.md` AD-6 and the Capability map's FR-15 row (Blind Hunter, build-auto review of 6.2).
+
+## Deferred from: code review of spec-6-2-see-when-my-whole-unread-library-will-be-finished (2026-11-11)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-see-when-my-whole-unread-library-will-be-finished.md`
+  summary: No test covers the expanded Catalog calculator following a catalog view refetch. `LibraryPace` reads `pagesLeft` from `view.data` on every render, so the code is right today; a change that captured it on expand would pass every current leaf. Add a leaf in `bmad-testarch-automate` for 6.2: seed `NO_PACE`, expand, type 30, add a Book through New book, then assert the new duration and that "30" stays.
+  evidence: `frontend/src/pages/CatalogPage.tsx` `LibraryPace` (l.257-259); `frontend/e2e/catalog-pace-calculator.spec.ts` (every leaf reads `pagesLeft` only at first load).
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-see-when-my-whole-unread-library-will-be-finished.md`
+  summary: Nothing asserts that the expanded calculator comes before the bookcase or list (spec: "inline, directly below that row and before the bookcase or list"). Moving it below `<Bookcase>`/`<CatalogList>` passes every leaf. Add a `compareDocumentPosition` or Tab-order leaf with the calculator expanded in `bmad-testarch-automate` for 6.2.
+  evidence: `frontend/e2e/catalog-pace-calculator.spec.ts:103-108` (meter before toggle only); `bookcase-details.spec.ts:72-91` and `bookcase.spec.ts:297` (collapsed only).
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-see-when-my-whole-unread-library-will-be-finished.md`
+  summary: Four ATDD green-phase follow-ups are still open: Enter and Space on the toggle with focus kept on it, the never-below-0 clamp at library scope, PAC-UNIT-002's 8100 cases in `pace.cases.json` (30 → 270 days, 17 → 477 days), and the expanded state across a view switch and a revisit. The code is right by construction (native `<button>`, 6.1's pinned `pages_left` clamp, the same `paceResult`, React state). Add the leaves in `bmad-testarch-automate` for 6.2.
+  evidence: ATDD checklist "Green-phase follow-ups"; `frontend/src/lib/pace.cases.json` has no 8100 case.
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-see-when-my-whole-unread-library-will-be-finished.md`
+  summary: The 6.2 ATDD checklist is stale. It still has Piranesi as a never-started Up next at 245 with `pagesLeft` 1710, the leaves "Skipped as committed", and an unchecked Implementation Checklist. The build re-seeded AC-4 to a paused Up next (200, total 1665) and turned every leaf on. `bmad-testarch-automate` for 6.2 should bring it up to date, as 6.1's did (110de76).
+  evidence: `_bmad-output/test-artifacts/atdd-checklist-6-2-see-when-my-whole-unread-library-will-be-finished.md:112-114,146-149,245`; `backend/tests/test_library_pages_left.py` (1665).
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-2-see-when-my-whole-unread-library-will-be-finished.md`
+  summary: DESIGN.md's contrast table records the library meter only against `shelf-wall`, but on Catalog it now sits on `page`. The fill (`accent`) against `page` is 4.96 (light) / 7.68 (dark), already shown in the focus-ring row, so it passes 3:1. Only the documentation row is missing; add it with the next DESIGN.md pass.
+  evidence: `DESIGN.md` contrast table (l.494-495); `frontend/src/pages/CatalogPage.tsx` `LibraryPace` outside the `shelf-wall` card.

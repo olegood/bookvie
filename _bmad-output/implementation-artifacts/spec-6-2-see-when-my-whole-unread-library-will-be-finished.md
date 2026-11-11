@@ -2,7 +2,7 @@
 title: 'Story 6.2: See when my whole unread library will be finished'
 type: 'feature'
 created: '2026-11-11'
-status: 'in-review'
+status: 'done'
 baseline_revision: '38472234bb7942d46b06e6590b1da0d96b042449'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -97,6 +97,28 @@ deferred:
 - Given Catalog in either view, when it renders, then the button "How long until…?" follows the meter, collapsed; activating it expands the calculator inline with `aria-expanded="true"`, and activating it again collapses it (ATDD AC-2).
 - Given the expanded calculator with 8,100 pages left, when I type 30, then it reads "About 9 months · July 2027", and 6.1's prefill and invalid-input rules hold (ATDD AC-3).
 - Given Home, when it renders, then its Bookcase header still shows the meter (`home-slice.spec.ts`, `finish-moment.spec.ts` pass).
+
+### Review Findings
+
+Code review (`bmad-code-review`, new session, 2026-11-11). Five layers: blind, edge, verification, acceptance, spine. None failed.
+
+- [x] [Review][Patch] README's Story 6.2 spec link says the calculator sits "below the library meter". The toggle sits next to the meter in the same row, as the spec, DESIGN.md and the Status line ("next to the library meter") say. The ATDD's AC-2 test title keeps its wording for traceability (low; acceptance) [README.md:212]
+- [x] [Review][Defer] Nothing tests the expanded Catalog calculator following a catalog view refetch. `LibraryPace` reads `pagesLeft` from `view.data` on every render, so the code is right today, but a change that captured it on expand would pass every leaf (low; verification+acceptance+blind) [frontend/src/pages/CatalogPage.tsx:257] — deferred: a leaf for `bmad-testarch-automate` of 6.2 (seed `NO_PACE`, expand, type 30, add a Book through New book, assert the new duration and that "30" stays)
+- [x] [Review][Defer] Nothing asserts that the expanded calculator comes before the bookcase or list. Moving it below `<Bookcase>`/`<CatalogList>` passes every leaf (low; verification) [frontend/src/pages/CatalogPage.tsx:257] — deferred: a `compareDocumentPosition` or Tab-order leaf for `bmad-testarch-automate` of 6.2, with the calculator expanded
+- [x] [Review][Defer] Four ATDD green-phase follow-ups are still open: Enter and Space on the toggle with focus kept on it, the never-below-0 clamp at library scope, PAC-UNIT-002's 8100 cases in `pace.cases.json` (30 → 270 days, 17 → 477 days), and the expanded state across a view switch and a revisit. The code is right by construction: a native `<button>`, 6.1's pinned `pages_left` clamp, the same `paceResult`, and React state (low; acceptance+blind) [frontend/e2e/catalog-pace-calculator.spec.ts, frontend/src/lib/pace.cases.json] — deferred: leaves for `bmad-testarch-automate` of 6.2
+- [x] [Review][Defer] The ATDD checklist is stale. It still has Piranesi as a never-started Up next at 245 and `pagesLeft` 1710 (l.146-149), the leaves "Skipped as committed", and its Implementation Checklist unchecked. The build re-seeded AC-4 to a paused Up next (200, total 1665) and turned every leaf on, and the README links the checklist (low; blind) [_bmad-output/test-artifacts/atdd-checklist-6-2-see-when-my-whole-unread-library-will-be-finished.md:146] — deferred: `bmad-testarch-automate` of 6.2 brings the checklist up to date, as 6.1's did (110de76)
+- [x] [Review][Defer] DESIGN.md's contrast table records the library meter only against `shelf-wall`. On Catalog it now sits on `page`. The fill (`accent`) against `page` is 4.96 / 7.68, already in the table's focus-ring row, so it passes 3:1. Only the row is missing (low; blind) [DESIGN.md:494] — deferred: a design-doc row with no user-facing failure; add it with the next DESIGN.md pass
+- [x] [Review][Defer] Spine drift (AD-6, FR-15 map row): the catalog view's `pagesLeft`/`measuredPace` and CatalogPage's calculator (low; spine) [backend/bookvie/views/shelf.py, frontend/src/pages/CatalogPage.tsx] — deferred: already recorded by the build in deferred-work.md and this spec's `deferred:`; reconciled before the next epic
+
+**Rejected:**
+- `false` (edge) A refetch that changes `measuredPace` while the calculator is expanded leaves the old prefill. This is by design: `PaceCalculator`'s docblock says the typed text is the state and a refetch keeps it, and the ATDD's live-update follow-up asks for the typed pace to be kept. Book detail behaves the same since 6.1.
+- `false` (blind) The axe leaf's List pass depends on stacked `addInitScript` calls. It asserts the table is visible before scanning (`catalog-pace-calculator.spec.ts:233`), so a wrong order fails loudly rather than scanning the wrong view.
+- `false` (blind) The new EXPERIENCE.md sentence reads like the whole library-scope rule. It follows "Scopes per FR-15", which carries the full rule, and it only clarifies the Up next case.
+- `false` (blind) The README's "whole unread library" overstates the scope. It is the story's and FR-15's wording, and the pages left in a partly read Book are unread pages.
+- `false` (blind) Nothing guards Bookcase rendering no meter on Catalog. A second meter in `main` breaks `bookcase.spec.ts:196`'s strict `main.getByRole('progressbar')`, and `catalog-pace-calculator.spec.ts` pins the meter-then-toggle order.
+- `low` (blind) The expanded calculator has no visible scope. The toggle "How long until…?, expanded" comes just before the field in reading and Tab order. A group label adds markup for a rare navigation path, and the build review rejected it too.
+- `low` (blind) `catalog()` repeats `float(pace)` from `book_detail`. It is a one-line conversion of the same `measured_pace` result, and the 100/3 leaf pins the two as equal. A helper adds surface for no named divergence.
+- `low` (blind) The spec's Verification commands skip `bookcase-details.spec.ts`. `npm run check` runs it (526 e2e), and the fix would edit the spec under review.
 
 ## Spec Change Log
 
