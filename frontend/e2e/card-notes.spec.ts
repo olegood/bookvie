@@ -618,14 +618,20 @@ function duneDetail(server: { url: string }): string {
 }
 
 /**
- * Installs Playwright's clock paused, before the page loads, so the search
- * pause (SEARCH_PAUSE_MS, 500 ms) and announce's 100 ms tick only run when the
- * test calls `runFor`. Nothing fires between a keystroke and the next action.
+ * Opens `url` with Playwright's clock installed, then pauses it once `loaded`
+ * shows, so the search pause (500 ms) and announce's 100 ms tick only run when
+ * the test calls `runFor`. Pausing before the page has its data could strand
+ * the first load: TanStack Query hands a result to React through a
+ * `setTimeout(0)`, which a paused clock never fires, so a view that answered
+ * after the pause left only the `h1` (Epic 6 trace flake, `deferred-work.md`).
  */
-async function pausedClock(page: Page): Promise<void> {
+async function openPaused(page: Page, url: string, loaded: Locator): Promise<void> {
   const start = new Date('2026-11-10T10:00:00+01:00')
   await page.clock.install({ time: start })
-  await page.clock.pauseAt(new Date(start.getTime() + 1_000))
+  await page.goto(url)
+  await expect(loaded).toBeVisible()
+  // A minute on: always ahead of the running clock, and still the same day.
+  await page.clock.pauseAt(new Date(start.getTime() + 60_000))
 }
 
 /** Past the search pause and announce's tick together. */
@@ -713,8 +719,7 @@ test.describe('Story 5.3 automate', () => {
     seededServer,
   }) => {
     const server = await seededServer(LIBRARY)
-    await pausedClock(page)
-    await page.goto(cardNotesPage(server))
+    await openPaused(page, cardNotesPage(server), searchField(page.getByRole('main')))
     const main = page.getByRole('main')
     const search = searchField(main)
     await expect(notes(main)).toHaveCount(7)
@@ -740,8 +745,7 @@ test.describe('Story 5.3 automate', () => {
     seededServer,
   }) => {
     const server = await seededServer(LIBRARY)
-    await pausedClock(page)
-    await page.goto(cardNotesPage(server))
+    await openPaused(page, cardNotesPage(server), searchField(page.getByRole('main')))
     const main = page.getByRole('main')
     const search = searchField(main)
     await expect(notes(main)).toHaveCount(7)
@@ -769,8 +773,7 @@ test.describe('Story 5.3 automate', () => {
     seededServer,
   }) => {
     const server = await seededServer(LIBRARY)
-    await pausedClock(page)
-    await page.goto(duneDetail(server))
+    await openPaused(page, duneDetail(server), searchField(cardNotesBlock(page, 4)))
     const block = cardNotesBlock(page, 4)
     const search = searchField(block)
     await expect(notes(block)).toHaveCount(3)
