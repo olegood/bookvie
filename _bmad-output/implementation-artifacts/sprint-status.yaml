@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-29-2026 17:21
-last_updated: 11-11-2026 22:15
+last_updated: 11-11-2026 22:16
 project: bookvie
 project_key: NOKEY
 tracking_system: file-system
@@ -592,5 +592,5 @@ action_items:
       the shared tree while a story's ATDD, build, review or automate is running.
       Changes: `AGENTS.md`. Due: before story 7.1."
     owner: "Oleg / bmad config"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-6-retro-2026-11-11.md"

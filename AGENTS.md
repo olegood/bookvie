@@ -52,6 +52,8 @@ Don't skip or merge a step. The review inside `bmad-build-auto` doesn't replace 
 
 Step 3 runs in a new session, never in the session that ran step 2, so the review is independent of the build (Epic 5 retro item 47). A compacted or resumed build session is not new: it still carries the build's summary. Re-run any probe, check or test result the review relies on. Don't cite the build's results, its Auto Run Result, or a probe from earlier in a conversation as evidence. Step 4 likewise re-runs what it relies on.
 
+Keep work outside the story out of the working tree while any of its steps runs (Epic 6 retro item 56). A story's ATDD, build, review and automate all run in the shared checkout. Other work, such as a skill change or a docs fix, goes in its own git worktree (`git worktree add`). Never `git switch` or commit in the shared tree while a story step is running. During Story 6.3, a skill session did both: a commit landed in the middle of the story, and the review ran its checks on another branch with uncommitted skill edits present.
+
 Step 2 is `bmad-build-auto`, not the interactive `bmad-build`. bmad-build stops at a story and asks; it continues only when you explicitly say to continue with bmad-build, and records that in the spec. This also applies to a standalone spec with a `- **Pipeline:**` line that names `bmad-code-review` after `bmad-build-auto`.
 
 ## Epic boundaries
