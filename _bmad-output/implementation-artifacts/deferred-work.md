@@ -664,6 +664,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-pile-arrow-key-navigation.md`
   summary: bmad-build-auto marked this standalone spec `done` before bmad-code-review ran, and its spec rewrite dropped the "Pipeline: ATDD → bmad-build-auto → bmad-code-review → bmad-testarch-automate" note. Build-auto's persistent facts treat any spec with no `story_key` as non-story work and set `done`, although a standalone spec can ask for the full story pipeline (AGENTS.md "Story pipeline"). Fix: when a spec declares the story pipeline, have build-auto end at `in-review`, without needing a `story_key`.
   evidence: commit `c792de6` sets `status: 'done'`; the spec's original Implementation Notes "Pipeline" line (commit `8c313aa`); `_bmad/custom/bmad-build-auto*.toml` persistent facts ("When `story_key` is empty, set the spec `status` to `done`"). Edge-case-hunter and blind-hunter layers. Deferred because the fix edits build-auto's customization (agent context). This review confirmed `done`, so nothing reached a user.
+  resolved: `spec-epic-5-retro-item-46-build-auto-ends-in-review-for-pipeline-specs.md` (Epic 5 retro item 46, 2026-11-11); `_bmad/custom/bmad-build-auto.toml` defines a pipeline spec: no `story_key`, and a `- **Pipeline:**` line naming `bmad-code-review` after `bmad-build-auto` (or, before the spec exists, a prompt asking for the story pipeline). It ends at `in-review` with `Status: in-review` under `## Auto Run Result` and no sprint-status write, is parked for bmad-code-review on re-invocation, and step-02 keeps its Pipeline line as the first bullet of `## Design Notes`. Its deferrals reach this file.
 
 ## Deferred from: spine reconciliation of spec-epic-5-retro-item-44-reconcile-the-spine-with-epic-5 (2026-11-10)
 
@@ -671,3 +672,13 @@
   summary: Spine drift (AD-6, AD-18, AD-19, Capability map preface), found while reconciling Epic 5 and resolved in the same pass so the record stays complete. AD-6 didn't say the pile's shuffle takes an injectable random source (story 5.4), that ties in the Card notes order keep stored order, or that Search card notes matches unnormalised text (E5-R3). AD-18 didn't name the Card note invariant gaps E5-R1 and E5-R2. AD-19's and AD-6's Binds lacked FR-17. The Capability map's preface still gave `views/card_notes` as unbuilt, and the FR-17 to FR-19 row lacked AD-7, AD-9 and AD-19.
   evidence: `frontend/src/lib/cardNotes.ts` (`shuffled`); `backend/bookvie/views/shelf.py` (`card_note_views`); `backend/bookvie/domain/invariants.py:40-45`, `:95-102`; the Blind Hunter review of item 44.
   resolved: `spec-epic-5-retro-item-44-reconcile-the-spine-with-epic-5.md` (Epic 5 retro item 44, 2026-11-10); each is stated in the spine. The invariant gaps themselves stay open as Epic 5 retro item 49.
+
+## Deferred from: review of spec-epic-5-retro-item-46-build-auto-ends-in-review-for-pipeline-specs (2026-11-11)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-epic-5-retro-item-46-build-auto-ends-in-review-for-pipeline-specs.md`
+  summary: bmad-build still marks a pipeline spec `done`. Its "Spec status ownership" fact sets `done` whenever `story_key` is empty, so a spec with a `- **Pipeline:**` line built with bmad-build skips bmad-code-review, which is the PL-2 failure through the other skill.
+  evidence: `_bmad/custom/bmad-build.toml` (the spec-status fact). Item 46 changed only `bmad-build-auto.toml`. Item 47 makes bmad-build flag that story work uses build-auto, which steers users away but doesn't guard the status. Fix: mirror the pipeline-spec facts in `bmad-build.toml`, or have bmad-build stop on a pipeline spec.
+- source_spec: `_bmad-output/implementation-artifacts/spec-epic-5-retro-item-46-build-auto-ends-in-review-for-pipeline-specs.md`
+  summary: bmad-code-review offers "Start the next story" after a pipeline spec reaches `done`, not `bmad-testarch-automate`. Its "Epic boundary" fact replaces option 1 only when `story_key` is set, so the automate step (AGENTS.md "Story pipeline", step 4) can be skipped.
+  evidence: `_bmad/custom/bmad-code-review.toml` (the "Epic boundary" fact). Fix: when the spec has a `- **Pipeline:**` line, replace option 1 with **Run test automation**, as for a story that didn't close its epic. Deferred because item 46's change list is build-auto only.
+
