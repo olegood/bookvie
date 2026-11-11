@@ -2,7 +2,7 @@
 
 :func:`check_invariants` raises :class:`InvariantViolation` for the first rule
 the library breaks. ``rule`` is a stable identifier for tests and logs;
-``message`` names the offending Book.
+``message`` names the offending Book, or the repeated id.
 """
 
 from .model import Library
@@ -37,12 +37,12 @@ def check_invariants(library: Library) -> None:
                 "unique_reading_ids",
                 f"Book {book.id} has Reading id {repeated} more than once",
             )
-        repeated = _first_repeat([note.id for note in book.card_notes])
-        if repeated is not None:
-            raise InvariantViolation(
-                "unique_card_note_ids",
-                f"Book {book.id} has Card note id {repeated} more than once",
-            )
+    # Library-wide, not per Book: the unscoped Card notes page keys each Edit by note id.
+    repeated = _first_repeat([note.id for book in library.books for note in book.card_notes])
+    if repeated is not None:
+        raise InvariantViolation(
+            "unique_card_note_ids", f"Card note id {repeated} is used more than once"
+        )
 
     ids = {book.id for book in library.books}
 
@@ -99,4 +99,22 @@ def check_invariants(library: Library) -> None:
                     "card_note_pages_in_range",
                     f"Card note {note.id} of Book {book.id} covers pages "
                     f"{note.page_start} to {end}, outside 1 to {book.pages}",
+                )
+            # One page is stored as pageEnd null; the Page parser never stores "5–5" as 5 to 5.
+            if note.page_end == note.page_start:
+                raise InvariantViolation(
+                    "card_note_page_end_after_start",
+                    f"Card note {note.id} of Book {book.id} ends on its start page "
+                    f"{note.page_start}; one page has no pageEnd",
+                )
+            # add-card-note and edit-card-note store the Note text with str.strip() applied.
+            if not note.text.strip():
+                raise InvariantViolation(
+                    "card_note_text_required",
+                    f"Card note {note.id} of Book {book.id} has no text",
+                )
+            if note.text != note.text.strip():
+                raise InvariantViolation(
+                    "card_note_text_trimmed",
+                    f"Card note {note.id} of Book {book.id} has text with whitespace around it",
                 )

@@ -511,7 +511,7 @@ action_items:
       `backend/tests/test_invariants.py`, `backend/tests/test_restore.py`. Due: before
       Epic 6. (E5-R1, E5-R2)"
     owner: "Amelia (Dev)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-5-retro-2026-11-10.md"
   - id: "epic-5-retro-item-50-run-the-epic-5-trace-and-gate-against-tr"
     epic: 5

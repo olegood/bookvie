@@ -183,12 +183,44 @@ def test_card_note_pages_out_of_range_fail(
     _fails(library_builder, "card_note_pages_in_range")
 
 
-@pytest.mark.parametrize(("start", "end"), [(1, None), (300, None), (4, 4), (1, 300)])
+@pytest.mark.parametrize(("start", "end"), [(1, None), (300, None), (4, 5), (1, 300)])
 def test_card_note_pages_in_range_pass(
     library_builder: LibraryBuilder, start: int, end: int | None
 ) -> None:
     book = library_builder.book(pages=300)
     library_builder.card_note(book, page_start=start, page_end=end)
+    _passes(library_builder)
+
+
+def test_card_note_page_end_equal_to_its_start_fails(library_builder: LibraryBuilder) -> None:
+    """One page is stored with ``pageEnd`` null; no intent stores "5–5" as 5 to 5."""
+    book = library_builder.book(pages=300)
+    library_builder.card_note(book, page_start=5, page_end=5)
+    _fails(library_builder, "card_note_page_end_after_start")
+
+
+# --- card-note text is non-blank and trimmed -------------------------------
+
+
+@pytest.mark.parametrize("text", ["", "   ", "\n\t "])
+def test_blank_card_note_text_fails(library_builder: LibraryBuilder, text: str) -> None:
+    book = library_builder.book()
+    library_builder.card_note(book, text=text)
+    _fails(library_builder, "card_note_text_required")
+
+
+@pytest.mark.parametrize("text", [" A note", "A note ", "A note\n", "\u00a0A note"])
+def test_untrimmed_card_note_text_fails(library_builder: LibraryBuilder, text: str) -> None:
+    book = library_builder.book()
+    library_builder.card_note(book, text=text)
+    _fails(library_builder, "card_note_text_trimmed")
+
+
+@pytest.mark.parametrize("text", ["A", "Line one\n\n  Line two", "Fear is the mind-killer."])
+def test_trimmed_card_note_text_passes(library_builder: LibraryBuilder, text: str) -> None:
+    """Inner whitespace and newlines are kept, as the intents keep them."""
+    book = library_builder.book()
+    library_builder.card_note(book, text=text)
     _passes(library_builder)
 
 
@@ -215,12 +247,19 @@ def test_repeated_card_note_id_in_a_book_fails(library_builder: LibraryBuilder) 
     _fails(library_builder, "unique_card_note_ids")
 
 
-def test_same_child_ids_in_different_books_pass(library_builder: LibraryBuilder) -> None:
+def test_same_reading_ids_in_different_books_pass(library_builder: LibraryBuilder) -> None:
     for _ in range(2):
         book = library_builder.book()
         library_builder.reading(book, id="r")
-        library_builder.card_note(book, id="n")
     _passes(library_builder)
+
+
+def test_repeated_card_note_id_across_books_fails(library_builder: LibraryBuilder) -> None:
+    """Card note ids are unique in the library: the unscoped Card notes page keys Edit by them."""
+    for _ in range(2):
+        book = library_builder.book()
+        library_builder.card_note(book, id="n")
+    _fails(library_builder, "unique_card_note_ids")
 
 
 def test_distinct_ids_pass(library_builder: LibraryBuilder) -> None:

@@ -692,3 +692,12 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-epic-5-retro-item-48-shared-card-note-item.md`
   summary: No test pins each card's **Edit** to the bottom of its cell in Book detail's 3-column grid (`margin-top: auto` on `CardNoteItem.module.css` `.edit`).
   evidence: no e2e compares the list Edit buttons' positions; dropping the rule would misalign Edit in shorter cards unnoticed. This was untested before item 48 too. Fix: a `[P2]` layout case in `card-notes-pile.spec.ts` asserting equal bottom edges for Dune's three seeded notes.
+
+## Deferred from: spec-epic-5-retro-item-49-harden-card-note-invariants (2026-11-11)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-epic-5-retro-item-49-harden-card-note-invariants.md`
+  summary: Spine drift, AD-18: `check_invariants()` now enforces the Card note rules that the spine lists as known gaps, and Card note ids are unique in the library rather than per Book. Reconcile before the next epic:
+  - At l.227, state the `pageEnd` rule (null, or greater than `pageStart`) as enforced (`card_note_page_end_after_start`), and add non-blank `text` (`card_note_text_required`) and trimmed `text` (`card_note_text_trimmed`, as `str.strip()`). Drop the "Known gap" sentence.
+  - At l.229, rewrite the bullet: Reading ids are unique within their Book, and Card note ids are unique in the library (`unique_card_note_ids`). Drop its "Known gap" sentence.
+  - Startup refuses such a `library.json` too, since startup and restore share `validate_document`.
+  evidence: `ARCHITECTURE-SPINE.md:227` ("Known gap: `check_invariants()` doesn't check this, nor a non-blank `text`") and `:229` ("Reading and Card note ids are unique within their Book … Known gap: a Card note id repeated across two Books passes"); `backend/bookvie/domain/invariants.py`.

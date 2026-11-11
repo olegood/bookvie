@@ -426,6 +426,40 @@ def test_failed_invariant_is_refused(tmp_path: Path) -> None:
     _refused(tmp_path, json.dumps(doc).encode(), "breaks a library rule")
 
 
+def _card_note_doc(*notes_per_book: dict) -> dict:
+    builder = LibraryBuilder()
+    for index, note in enumerate(notes_per_book):
+        book = builder.book(id=f"book-{index}", pages=300)
+        builder.card_note(book, **note)
+    return json.loads(serialize(builder.build()))
+
+
+@pytest.mark.parametrize(
+    ("notes", "message"),
+    [
+        (
+            [{"id": "n", "page_start": 5, "page_end": 5}],
+            "Card note n of Book book-0 ends on its start page 5; one page has no pageEnd",
+        ),
+        ([{"id": "n", "text": " \n "}], "Card note n of Book book-0 has no text"),
+        (
+            [{"id": "n", "text": "A note "}],
+            "Card note n of Book book-0 has text with whitespace around it",
+        ),
+        ([{"id": "n"}, {"id": "n"}], "Card note id n is used more than once"),
+    ],
+)
+def test_a_library_on_disk_with_a_card_note_no_intent_can_produce_refuses_startup(
+    tmp_path: Path, notes: list[dict], message: str
+) -> None:
+    """Epic 5 retro item 49: startup shares restore's check, with the rule's exact message."""
+    _refused(
+        tmp_path,
+        json.dumps(_card_note_doc(*notes)).encode(),
+        f"breaks a library rule: {message}",
+    )
+
+
 def test_unwritable_data_dir_is_refused(tmp_path: Path) -> None:
     data_dir = tmp_path / "data"
     data_dir.mkdir()

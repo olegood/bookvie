@@ -549,6 +549,62 @@ def test_a_library_that_breaks_an_invariant_is_422_restore_invalid(tmp_path: Pat
     _assert_refused_and_unchanged(api_client(target), target, archive)
 
 
+def _break_dune_note(doc: dict, case: str) -> None:
+    """Make Dune's Card note (or Neuromancer's copy of it) something no intent produces."""
+    books = {book["id"]: book for book in doc["books"]}
+    note = books[DUNE_ID]["cardNotes"][0]
+    if case == "page_end_equals_start":
+        note["pageEnd"] = note["pageStart"]
+    elif case == "empty_text":
+        note["text"] = ""
+    elif case == "whitespace_text":
+        note["text"] = "   "
+    elif case == "untrimmed_text":
+        note["text"] = f" {note['text']}\n"
+    elif case == "note_id_in_two_books":
+        books[NEUROMANCER_ID]["cardNotes"].append({**note, "text": "Another Book's note"})
+    else:
+        raise AssertionError(case)
+
+
+@pytest.mark.parametrize(
+    ("case", "logged"),
+    [
+        ("page_end_equals_start", "ends on its start page 19"),
+        ("empty_text", "has no text"),
+        ("whitespace_text", "has no text"),
+        ("untrimmed_text", "has text with whitespace around it"),
+        ("note_id_in_two_books", "is used more than once"),
+    ],
+)
+def test_a_card_note_no_intent_can_produce_is_422_restore_invalid(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], case: str, logged: str
+) -> None:
+    """Epic 5 retro item 49 (E5-R1, E5-R2): restore refuses these, and the library is unchanged."""
+    doc, dune_cover = _source_doc(tmp_path)
+    _break_dune_note(doc, case)
+    target = tmp_path / "target"
+    _seed_target(target)
+
+    archive = _source_with(doc, {DUNE_COVER: dune_cover})
+    _assert_refused_and_unchanged(api_client(target), target, archive)
+    err = capsys.readouterr().err
+    assert "breaks a library rule" in err
+    assert logged in err
+
+
+def test_the_unbroken_card_note_source_restores(tmp_path: Path) -> None:
+    """The control for the refusals above: the same hand-made archive, untouched, restores."""
+    doc, dune_cover = _source_doc(tmp_path)
+    target = tmp_path / "target"
+    _seed_target(target)
+
+    response = post_restore(api_client(target), _source_with(doc, {DUNE_COVER: dune_cover}))
+
+    assert response.status_code == 200
+    assert json.loads(library_bytes(target))["books"] == doc["books"]
+
+
 def test_a_zip_without_library_json_is_422_restore_invalid(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
