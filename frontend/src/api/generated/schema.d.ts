@@ -134,6 +134,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/views/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stats View
+         * @description Books and pages finished from ``from`` to ``to``, both inclusive local dates;
+         *     All time without either. 422 ``invalid_fields`` names a missing half of the
+         *     range, a value that isn't a date, or a ``to`` before ``from``.
+         */
+        get: operations["stats_view_api_views_stats_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/intents/add-book": {
         parameters: {
             query?: never;
@@ -991,6 +1013,35 @@ export interface components {
             /** Sideread */
             sideRead: boolean;
         };
+        /**
+         * StatsBucket
+         * @description One month or year of the Stats bars (Story 6.4 fills them).
+         */
+        StatsBucket: {
+            /** Period */
+            period: string;
+            /** Books */
+            books: number;
+            /** Pages */
+            pages: number;
+        };
+        /**
+         * StatsView
+         * @description What the Stats page shows for a range (FR-16, AD-6).
+         */
+        StatsView: {
+            /** Books */
+            books: number;
+            /** Pages */
+            pages: number;
+            /**
+             * Bucket
+             * @enum {string}
+             */
+            bucket: "month" | "year";
+            /** Buckets */
+            buckets: components["schemas"]["StatsBucket"][];
+        };
     };
     responses: never;
     parameters: never;
@@ -1340,6 +1391,67 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Refused by a library rule */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Invalid fields */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Couldn't save */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Couldn't save */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    stats_view_api_views_stats_get: {
+        parameters: {
+            query?: {
+                /** @description First day of the range (inclusive). */
+                from?: string | null;
+                /** @description Last day of the range (inclusive). */
+                to?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StatsView"];
                 };
             };
             /** @description Refused by a library rule */

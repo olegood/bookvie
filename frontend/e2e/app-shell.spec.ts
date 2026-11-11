@@ -118,10 +118,9 @@ test.describe('Story 1.6 app shell (ATDD)', () => {
     await page.goto('/catalog')
 
     const nav = page.getByRole('banner').getByRole('navigation')
-    // Story 3.1 put Home first, Story 5.3 added Card notes; Stats arrives later.
-    await expect(nav.getByRole('link')).toHaveText(['Home', 'Catalog', 'Card notes', 'Backup'])
+    // Story 3.1 put Home first, Story 5.3 added Card notes, Story 6.3 Stats.
+    await expect(nav.getByRole('link')).toHaveText(['Home', 'Catalog', 'Stats', 'Card notes', 'Backup'])
     await expect(nav.getByRole('link', { name: 'Catalog', exact: true })).toHaveAttribute('aria-current', 'page')
-    await expect(nav.getByRole('link', { name: 'Stats', exact: true })).toHaveCount(0)
     await expect(page.getByRole('banner')).toContainText('bookvie')
     await expect(catalogHeading(page)).toBeVisible()
 

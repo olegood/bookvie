@@ -1,0 +1,71 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-5);
+  padding: var(--space-page-top) var(--space-page-x);
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-page-title-family);
+  font-size: var(--font-page-title-size);
+  font-weight: var(--font-page-title-weight);
+  line-height: var(--font-page-title-line-height);
+  color: var(--color-ink);
+}
+
+/* Custom's From and To date fields, side by side. */
+.custom {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.failure {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+/* DESIGN.md → Stats: two big numbers in gauge-figure, each with a meta caption. */
+.totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-6);
+}
+
+.total {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.figure {
+  margin: 0;
+  font-family: var(--font-gauge-figure-family);
+  font-size: var(--font-gauge-figure-size);
+  font-weight: var(--font-gauge-figure-weight);
+  line-height: var(--font-gauge-figure-line-height);
+  letter-spacing: var(--font-gauge-figure-letter-spacing);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-ink);
+}
+
+.caption {
+  margin: 0;
+  font-family: var(--font-meta-family);
+  font-size: var(--font-meta-size);
+  font-weight: var(--font-meta-weight);
+  line-height: var(--font-meta-line-height);
+  color: var(--color-ink-secondary);
+}
+
+.empty {
+  margin: 0;
+  font-family: var(--font-body-sm-family);
+  font-size: var(--font-body-sm-size);
+  line-height: var(--font-body-sm-line-height);
+  color: var(--color-ink-secondary);
+}

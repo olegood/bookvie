@@ -24,12 +24,13 @@ the lock is taken; the exact limit is checked on the spooled file.
 import sys
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
+from datetime import date
 from typing import IO, Annotated, Any
 
 import anyio
 import anyio.lowlevel
 import anyio.to_thread
-from fastapi import APIRouter, FastAPI, File, Form, Request, UploadFile
+from fastapi import APIRouter, FastAPI, File, Form, Query, Request, UploadFile
 from fastapi.exception_handlers import (
     http_exception_handler,
     request_validation_exception_handler,
@@ -373,6 +374,28 @@ def card_notes_view(request: Request, book: str | None = None) -> views.CardNote
     if view is None:
         raise book_not_found(404)
     return view
+
+
+@router.get("/views/stats", response_model=views.StatsView)
+def stats_view(
+    request: Request,
+    start: Annotated[
+        date | None, Query(alias="from", description="First day of the range (inclusive).")
+    ] = None,
+    end: Annotated[
+        date | None, Query(alias="to", description="Last day of the range (inclusive).")
+    ] = None,
+) -> views.StatsView:
+    """Books and pages finished from ``from`` to ``to``, both inclusive local dates;
+    All time without either. 422 ``invalid_fields`` names a missing half of the
+    range, a value that isn't a date, or a ``to`` before ``from``."""
+    if start is None and end is not None:
+        raise invalid_fields([FieldError(field="from", message="Give both from and to.")])
+    if end is None and start is not None:
+        raise invalid_fields([FieldError(field="to", message="Give both from and to.")])
+    if start is not None and end is not None and end < start:
+        raise invalid_fields([FieldError(field="to", message="To is before From.")])
+    return views.stats(request.app.state.store.library, start, end)
 
 
 @router.post(

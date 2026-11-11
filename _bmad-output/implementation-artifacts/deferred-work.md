@@ -763,3 +763,13 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-2-see-when-my-whole-unread-library-will-be-finished.md`
   summary: DESIGN.md's contrast table records the library meter only against `shelf-wall`, but on Catalog it now sits on `page`. The fill (`accent`) against `page` is 4.96 (light) / 7.68 (dark), already shown in the focus-ring row, so it passes 3:1. Only the documentation row is missing; add it with the next DESIGN.md pass.
   evidence: `DESIGN.md` contrast table (l.494-495); `frontend/src/pages/CatalogPage.tsx` `LibraryPace` outside the `shelf-wall` card.
+
+## Deferred from: build-auto review of spec-6-3-see-what-i-finished-in-any-period (2026-11-11)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-3-see-what-i-finished-in-any-period.md`
+  summary: Spine drift (AD-6, AD-9, Structural Seed and the FR-16 map row), reconciled before the next epic. The spine doesn't record any of these:
+  - that the stats view is built (`views/stats`, `frontend/src/lib/stats`), though the map's preface still gives `views/stats` as an example of an unbuilt module;
+  - the bucket rule's details: calendar months touched, both ends included; All time from the earliest finish to the latest; `month` with no finishes;
+  - Custom's handling in the client: the earlier date sent as `from`, the silent swap, and no request while a field is empty;
+  - that the stats view refuses a half range, a value that isn't a date, or a `to` before `from` with 422 `invalid_fields`, while AD-9 names only 404 `book_not_found` as a view refusal.
+  evidence: `backend/bookvie/views/stats.py`; `backend/bookvie/http/api.py` `stats_view`; `frontend/src/lib/stats.ts`; `frontend/src/pages/StatsPage.tsx`; `ARCHITECTURE-SPINE.md` AD-6, AD-9, Structural Seed and the Capability map's FR-16 row (spine check, build-auto review of 6.3).

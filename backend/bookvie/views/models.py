@@ -290,3 +290,25 @@ class BackupView(_View):
 
     last_export_at: AwareDatetime | None
     """When the last complete export download finished; ``None`` before the first."""
+
+
+class StatsBucket(_View):
+    """One month or year of the Stats bars (Story 6.4 fills them)."""
+
+    period: str
+    books: int
+    pages: int
+
+
+class StatsView(_View):
+    """What the Stats page shows for a range (FR-16, AD-6)."""
+
+    books: int
+    """How many finished Readings have their ``finishDate`` in the range (re-reads count again)."""
+    pages: int
+    """The sum of those Readings' stored ``finishedPages`` (``None`` counts as 0, AD-11)."""
+    bucket: Literal["month", "year"]
+    """``year`` when the range spans more than 24 calendar months, else ``month``. All
+    time spans the earliest finish to the latest; with no finishes it is ``month``."""
+    buckets: list[StatsBucket]
+    """The bars' buckets; always empty until Story 6.4."""

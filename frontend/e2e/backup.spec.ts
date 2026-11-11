@@ -71,7 +71,7 @@ test.describe('Story 2.1 Export all data with one click (ATDD)', () => {
     await page.goto('/catalog')
     const nav = page.getByRole('banner').getByRole('navigation')
 
-    await expect(nav.getByRole('link')).toHaveText(['Home', 'Catalog', 'Card notes', 'Backup'])
+    await expect(nav.getByRole('link')).toHaveText(['Home', 'Catalog', 'Stats', 'Card notes', 'Backup'])
 
     const backup = nav.getByRole('link', { name: 'Backup', exact: true })
     await backup.click()

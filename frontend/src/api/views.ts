@@ -2,7 +2,7 @@
 // one of three states. A failed first load is `failed` with a retry; a failed
 // background refetch keeps the last data and reports nothing.
 
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { components } from './generated/schema.d.ts'
 
 type Schemas = components['schemas']
@@ -22,6 +22,8 @@ export type BackupView = Schemas['BackupView']
 export type CardNotesView = Schemas['CardNotesView']
 export type CardNotesGroup = Schemas['CardNotesGroup']
 export type CardNotesScope = Schemas['CardNotesScope']
+export type StatsView = Schemas['StatsView']
+export type StatsBucket = Schemas['StatsBucket']
 
 export interface Views {
   home: HomeView
@@ -186,4 +188,57 @@ export function useFreshBookView(id: string): BookViewState {
   // A failed fetch keeps the cached copy as `data`; that copy is what this hook avoids.
   if (query.status === 'error') return toBookViewState({ ...query, data: undefined })
   return toBookViewState(query)
+}
+
+/** A stats range: both ends inclusive, as local `YYYY-MM-DD` dates. */
+export interface DateRange {
+  from: string
+  to: string
+}
+
+/** A range to ask the stats view for: dates, or All time (no query). */
+export type StatsRange = DateRange | 'all'
+
+/**
+ * The `stats` view's key: under 'view', so every intent refetches it. All
+ * time is `['view', 'stats']`; a date range adds `from` and `to`.
+ */
+export function statsViewKey(range: StatsRange): readonly string[] {
+  return range === 'all' ? [VIEW_ROOT, 'stats'] : [VIEW_ROOT, 'stats', range.from, range.to]
+}
+
+/** GET /api/views/stats[?from=…&to=…], both inclusive local dates; no query for All time. */
+export async function fetchStatsView(range: StatsRange): Promise<StatsView> {
+  const query = range === 'all' ? '' : `?${new URLSearchParams({ from: range.from, to: range.to })}`
+  const url = `${VIEWS_BASE}/stats${query}`
+  const response = await fetch(url)
+  if (!response.ok) throw new ViewLoadError(`GET ${url}: ${response.status}`)
+  return (await response.json()) as StatsView
+}
+
+/** The stats view as shown, and the range it belongs to. */
+export interface ShownStats {
+  range: StatsRange
+  view: StatsView
+}
+
+/**
+ * The stats view of `range`, or nothing fetched for `null`. While a new range
+ * loads (or `range` is `null`), the previous range's result stays, with
+ * `current` false; `current` is true once the data is `range`'s own.
+ */
+export type StatsViewState = ViewState<ShownStats> & { current: boolean }
+
+export function useStatsView(range: StatsRange | null): StatsViewState {
+  const query = useQuery({
+    queryKey: range === null ? [VIEW_ROOT, 'stats', 'none'] : statsViewKey(range),
+    queryFn: async (): Promise<ShownStats> => {
+      if (range === null) throw new ViewLoadError('No range')
+      return { range, view: await fetchStatsView(range) }
+    },
+    enabled: range !== null,
+    placeholderData: keepPreviousData,
+  })
+  const current = range !== null && query.data !== undefined && !query.isPlaceholderData
+  return { ...toViewState<ShownStats>(query), current }
 }

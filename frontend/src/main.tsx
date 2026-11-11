@@ -13,6 +13,7 @@ import CatalogPage from './pages/CatalogPage.tsx'
 import { BareErrorPage, RouteErrorPage } from './pages/ErrorPage.tsx'
 import HomePage from './pages/HomePage.tsx'
 import NotFoundPage from './pages/NotFoundPage.tsx'
+import StatsPage from './pages/StatsPage.tsx'
 import './styles/tokens.css'
 import './styles/base.css'
 
@@ -35,6 +36,7 @@ const router = createBrowserRouter([
           { path: '/', element: <HomePage /> },
           { path: '/catalog', element: <CatalogPage /> },
           { path: '/book/:bookId', element: <BookDetailPage /> },
+          { path: '/stats', element: <StatsPage /> },
           { path: '/card-notes', element: <CardNotesPage /> },
           { path: '/backup', element: <BackupPage /> },
           { path: '*', element: <NotFoundPage /> },

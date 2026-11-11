@@ -6,20 +6,21 @@
 // finished and pages finished, announced as "N books, M pages." in the shell's
 // `status` region. What the server counts (finishDate, back-fills, re-reads,
 // stored finishedPages: AC-4, AC-6) is proven in backend/tests/test_stats.py.
-// How `bucket` is chosen and the chart belong to Story 6.4.
+// The bucket contents and the chart belong to Story 6.4.
 //
 // Dates: `serverAtFakeToday` starts `bookvie --fake-today 2026-10-28` and
 // fixes the browser clock at 10:00 that day in Europe/Madrid (TC-2, AD-20).
 // AC-7 starts its own server at fake today 2027-01-01, with the browser at
 // 00:30 Madrid, which is still 31 December in UTC (R-07).
-//
-// Activate a leaf by changing its `test.skip(` to `test(`.
 
+import AxeBuilder from '@axe-core/playwright'
 import type { Locator, Page, Request } from '@playwright/test'
 import { expect, startSeededServer, test } from './fixtures.ts'
 import { serverAtFakeToday, stopAndRemove } from './home.ts'
 
 const STATS_API = '/api/views/stats'
+const COULDNT_LOAD = "Couldn't load. Is bookvie still running?"
+const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']
 const PRESETS = ['This month', 'This year', 'Last year', 'All time', 'Custom']
 
 /**
@@ -78,6 +79,36 @@ const NEW_YEAR = {
   ],
 }
 
+/** One Book finished in October 2026, and an unfinished one: "1 book, 271 pages." for This month. */
+const ONE_BOOK = {
+  books: [
+    {
+      title: 'Neuromancer',
+      authors: ['William Gibson'],
+      pages: 271,
+      readings: [{ startDate: '2026-10-01', finishDate: '2026-10-05', finishedPages: 271, currentPage: 271 }],
+    },
+    {
+      title: 'Hyperion',
+      authors: ['Dan Simmons'],
+      pages: 482,
+      readings: [{ startDate: '2026-10-10', currentPage: 210 }],
+    },
+  ],
+}
+
+/** Nothing finished: one Reading in progress. */
+const NOTHING_FINISHED = {
+  books: [
+    {
+      title: 'Hyperion',
+      authors: ['Dan Simmons'],
+      pages: 482,
+      readings: [{ startDate: '2026-10-10', currentPage: 210 }],
+    },
+  ],
+}
+
 /** The banner's nav. */
 function nav(page: Page): Locator {
   return page.getByRole('banner').getByRole('navigation')
@@ -118,13 +149,39 @@ function statsRequest(page: Page): Promise<Request> {
   return page.waitForRequest((request) => new URL(request.url()).pathname === STATS_API)
 }
 
+/** The next request for the stats view with exactly `query`. Register it before the action. */
+function statsRequestFor(page: Page, query: Record<string, string>): Promise<Request> {
+  return page.waitForRequest(
+    (request) =>
+      new URL(request.url()).pathname === STATS_API && JSON.stringify(queryOf(request)) === JSON.stringify(query),
+  )
+}
+
+/** Every stats request's query from now on, in the order the page sends them. */
+function recordStatsRequests(page: Page): Record<string, string>[] {
+  const sent: Record<string, string>[] = []
+  page.on('request', (request) => {
+    if (new URL(request.url()).pathname === STATS_API) sent.push(queryOf(request))
+  })
+  return sent
+}
+
+/**
+ * Resolves once an announcement scheduled before this call would have been set:
+ * `announce` sets its text in a timer of ANNOUNCE_DELAY_MS (100 ms), and timers
+ * of at least that delay registered later fire after it.
+ */
+async function afterAnnounceDelay(page: Page): Promise<void> {
+  await page.evaluate(() => new Promise<void>((resolve) => setTimeout(resolve, 100)))
+}
+
 /** A request's query as a plain object, to compare the whole query at once. */
 function queryOf(request: Request): Record<string, string> {
   return Object.fromEntries(new URL(request.url()).searchParams)
 }
 
 test.describe('Story 6.3 See what I finished in any period (ATDD)', () => {
-  test.skip('[P1] AC-1 the top nav adds Stats between Catalog and Card notes, leading to a page whose h1 is "Stats"', async ({
+  test('[P1] AC-1 the top nav adds Stats between Catalog and Card notes, leading to a page whose h1 is "Stats"', async ({
     page,
   }) => {
     const server = await serverAtFakeToday(page, 'stats-nav', FLOW_7)
@@ -146,7 +203,7 @@ test.describe('Story 6.3 See what I finished in any period (ATDD)', () => {
     }
   })
 
-  test.skip('[P1] AC-2 the range picker offers five presets with This year pressed, and Custom swaps a To before From silently', async ({
+  test('[P1] AC-2 the range picker offers five presets with This year pressed, and Custom swaps a To before From silently', async ({
     page,
   }) => {
     const server = await serverAtFakeToday(page, 'stats-range', FLOW_7)
@@ -182,7 +239,7 @@ test.describe('Story 6.3 See what I finished in any period (ATDD)', () => {
     }
   })
 
-  test.skip('[P0] AC-3 the browser resolves each preset to GET /api/views/stats with from and to, and none for All time', async ({
+  test('[P0] AC-3 the browser resolves each preset to GET /api/views/stats with from and to, and none for All time', async ({
     page,
   }) => {
     const server = await serverAtFakeToday(page, 'stats-request', FLOW_7)
@@ -218,7 +275,7 @@ test.describe('Story 6.3 See what I finished in any period (ATDD)', () => {
     }
   })
 
-  test.skip('[P1] AC-5 the range shows books and pages finished as two big numbers, announced as "2 books, 610 pages."', async ({
+  test('[P1] AC-5 the range shows books and pages finished as two big numbers, announced as "2 books, 610 pages."', async ({
     page,
   }) => {
     const server = await serverAtFakeToday(page, 'stats-numbers', FLOW_7)
@@ -249,7 +306,7 @@ test.describe('Story 6.3 See what I finished in any period (ATDD)', () => {
     }
   })
 
-  test.skip('[P0] AC-7 at 00:30 on 1 January in Madrid, This year asks for 2027-01-01 alone and Last year for all of 2026', async ({
+  test('[P0] AC-7 at 00:30 on 1 January in Madrid, This year asks for 2027-01-01 alone and Last year for all of 2026', async ({
     page,
   }) => {
     await page.clock.setFixedTime(NEW_YEAR_NOW)
@@ -271,6 +328,212 @@ test.describe('Story 6.3 See what I finished in any period (ATDD)', () => {
       expect(queryOf(await lastYear)).toEqual({ from: '2026-01-01', to: '2026-12-31' })
       await expect(figure(page, '1')).toBeVisible()
       await expect(figure(page, '412')).toBeVisible()
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+
+  test('[P2] AC-5 All time with nothing finished shows 0 and 0 and reads "No books finished yet."', async ({
+    page,
+  }) => {
+    const server = await serverAtFakeToday(page, 'stats-nothing', NOTHING_FINISHED)
+    try {
+      await page.goto(`${server.url}/stats`)
+      await expect(page.getByRole('main').getByText('No books finished in this range.', { exact: true })).toBeVisible()
+
+      const allTime = statsRequest(page)
+      await preset(page, 'All time').click()
+      const response = await (await allTime).response()
+      expect(await response?.json()).toEqual({ books: 0, pages: 0, bucket: 'month', buckets: [] })
+
+      await expect(page.getByRole('main').getByText('No books finished yet.', { exact: true })).toBeVisible()
+      await expect(page.getByRole('main').getByText('No books finished in this range.', { exact: true })).toHaveCount(0)
+      await expect(figure(page, '0')).toHaveCount(2)
+      await expect(page.getByRole('status')).toHaveText('0 books, 0 pages.')
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+
+  test('[P2] AC-5 one book is announced in the singular', async ({ page }) => {
+    const server = await serverAtFakeToday(page, 'stats-singular', ONE_BOOK)
+    try {
+      await page.goto(`${server.url}/stats`)
+      await expect(figure(page, '271')).toBeVisible()
+      // No announcement on first load.
+      await expect(page.getByRole('status')).toHaveText('')
+
+      await preset(page, 'This month').click()
+      await expect(page.getByRole('status')).toHaveText('1 book, 271 pages.')
+      await expect(figure(page, '1')).toBeVisible()
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+
+  test('[P2] AC-2 Custom asks for the earlier date as from, before and after the swap', async ({ page }) => {
+    const server = await serverAtFakeToday(page, 'stats-custom', FLOW_7)
+    try {
+      await page.goto(`${server.url}/stats`)
+      await expect(figure(page, '1,010')).toBeVisible()
+
+      // Custom starts at This year's range: the same request, already shown.
+      await preset(page, 'Custom').click()
+      await expect(dateField(page, 'From')).toHaveValue('2026-01-01')
+      await expect(dateField(page, 'To')).toHaveValue('2026-10-28')
+
+      await dateField(page, 'From').fill('2026-10-15')
+      const reversed = statsRequestFor(page, { from: '2026-09-15', to: '2026-10-15' })
+      await dateField(page, 'To').fill('2026-09-15')
+      // The earlier date goes as `from` even before the swap.
+      expect(queryOf(await reversed)).toEqual({ from: '2026-09-15', to: '2026-10-15' })
+      // Emma (20 September) and Beloved (12 October).
+      await expect(page.getByRole('status')).toHaveText('2 books, 724 pages.')
+
+      await dateField(page, 'To').press('Tab')
+      await expect(dateField(page, 'From')).toHaveValue('2026-09-15')
+      await expect(dateField(page, 'To')).toHaveValue('2026-10-15')
+
+      const after = statsRequestFor(page, { from: '2026-10-01', to: '2026-10-15' })
+      await dateField(page, 'From').fill('2026-10-01')
+      expect(queryOf(await after)).toEqual({ from: '2026-10-01', to: '2026-10-15' })
+      // Beloved alone.
+      await expect(page.getByRole('status')).toHaveText('1 book, 324 pages.')
+
+      // An empty field: no request, and the last result stays.
+      const sent = recordStatsRequests(page)
+      await dateField(page, 'From').fill('')
+      await expect(figure(page, '324')).toBeVisible()
+      // Requests go out in order, so the next one being this sentinel's proves the
+      // empty field sent nothing.
+      const sentinel = statsRequestFor(page, { from: '2026-09-15', to: '2026-10-15' })
+      await dateField(page, 'From').fill('2026-09-15')
+      await sentinel
+      expect(sent).toEqual([{ from: '2026-09-15', to: '2026-10-15' }])
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+
+  test('[P2] AC-1 a direct load of /stats has the title and leaves the h1 unfocused', async ({ page }) => {
+    const server = await serverAtFakeToday(page, 'stats-direct', FLOW_7)
+    try {
+      await page.goto(`${server.url}/stats`)
+      const h1 = page.getByRole('main').getByRole('heading', { level: 1 })
+      await expect(h1).toHaveText('Stats')
+      await expect(page).toHaveTitle('Stats — bookvie')
+      await expect(figure(page, '1,010')).toBeVisible()
+      await expect(h1).not.toBeFocused()
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+
+  test('[P2] axe finds nothing on Stats with a result and with an empty range, in both themes', async ({ page }) => {
+    const server = await serverAtFakeToday(page, 'stats-axe', FLOW_7)
+    try {
+      for (const colorScheme of ['light', 'dark'] as const) {
+        await page.emulateMedia({ colorScheme })
+        await page.goto(`${server.url}/stats`)
+        await expect(figure(page, '1,010')).toBeVisible()
+        let { violations } = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze()
+        expect(violations.map(({ id, nodes }) => `result ${colorScheme}: ${id} (${nodes.length})`)).toEqual([])
+
+        await preset(page, 'Last year').click()
+        await expect(
+          page.getByRole('main').getByText('No books finished in this range.', { exact: true }),
+        ).toBeVisible()
+        ;({ violations } = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze())
+        expect(violations.map(({ id, nodes }) => `empty ${colorScheme}: ${id} (${nodes.length})`)).toEqual([])
+      }
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+
+  test("[P1] a failed first load shows Couldn't load with Try again, which refetches", async ({ page }) => {
+    const server = await serverAtFakeToday(page, 'stats-failed', FLOW_7)
+    try {
+      let down = true
+      await page.route('**/api/views/stats**', async (route) => {
+        if (!down) return route.continue()
+        down = false
+        await route.fulfill({ status: 503, contentType: 'text/plain', body: 'Service Unavailable' })
+      })
+
+      await page.goto(`${server.url}/stats`)
+      await expect(page.getByRole('alert')).toHaveText(COULDNT_LOAD)
+      await expect(page.getByRole('main').getByText(COULDNT_LOAD, { exact: true })).toBeVisible()
+
+      await page.getByRole('button', { name: 'Try again', exact: true }).click()
+      await expect(figure(page, '1,010')).toBeVisible()
+      await expect(page.getByText(COULDNT_LOAD)).toHaveCount(0)
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+
+  test('[P2] AC-2 Custom after All time starts empty and sends nothing', async ({ page }) => {
+    const server = await serverAtFakeToday(page, 'stats-custom-empty', FLOW_7)
+    try {
+      await page.goto(`${server.url}/stats`)
+      await expect(figure(page, '1,010')).toBeVisible()
+      const allTime = statsRequest(page)
+      await preset(page, 'All time').click()
+      await allTime
+      await expect(page.getByRole('status')).toHaveText('3 books, 1,010 pages.')
+
+      const sent = recordStatsRequests(page)
+      await preset(page, 'Custom').click()
+      await expect(dateField(page, 'From')).toHaveValue('')
+      await expect(dateField(page, 'To')).toHaveValue('')
+      await expect(figure(page, '3')).toBeVisible()
+      await expect(figure(page, '1,010')).toBeVisible()
+
+      // Requests go out in order: the first one being the completed range's proves
+      // that opening Custom, and a lone From, sent nothing.
+      const sentinel = statsRequestFor(page, { from: '2026-10-01', to: '2026-10-28' })
+      await dateField(page, 'From').fill('2026-10-01')
+      await dateField(page, 'To').fill('2026-10-28')
+      await sentinel
+      expect(sent).toEqual([{ from: '2026-10-01', to: '2026-10-28' }])
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+
+  test('[P2] AC-5 a background refetch announces nothing', async ({ page }) => {
+    const server = await serverAtFakeToday(page, 'stats-refetch', FLOW_7)
+    try {
+      await page.goto(`${server.url}/stats`)
+      await expect(figure(page, '1,010')).toBeVisible()
+
+      // The refetch answers with new numbers, so the page visibly takes it in.
+      await page.route('**/api/views/stats**', async (route) => {
+        const response = await route.fetch()
+        await route.fulfill({ response, json: { ...(await response.json()), books: 4, pages: 1111 } })
+      })
+      await page.evaluate(() => window.dispatchEvent(new Event('focus')))
+      await expect(figure(page, '1,111')).toBeVisible()
+      await afterAnnounceDelay(page)
+      await expect(page.getByRole('status')).toHaveText('')
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+
+  test('[P2] AC-2 leaving a reversed Custom range by clicking elsewhere swaps the dates', async ({ page }) => {
+    const server = await serverAtFakeToday(page, 'stats-custom-blur', FLOW_7)
+    try {
+      await page.goto(`${server.url}/stats`)
+      await expect(figure(page, '1,010')).toBeVisible()
+      await preset(page, 'Custom').click()
+      await dateField(page, 'From').fill('2026-10-20')
+      await dateField(page, 'To').fill('2026-10-01')
+
+      await page.getByRole('main').getByRole('heading', { level: 1 }).click()
+      await expect(dateField(page, 'From')).toHaveValue('2026-10-01')
+      await expect(dateField(page, 'To')).toHaveValue('2026-10-20')
     } finally {
       await stopAndRemove(server)
     }

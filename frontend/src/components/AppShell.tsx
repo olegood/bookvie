@@ -42,6 +42,11 @@ export default function AppShell({ children }: { children?: ReactNode }) {
               </NavLink>
             </li>
             <li className={styles.item}>
+              <NavLink to="/stats" className={styles.link}>
+                Stats
+              </NavLink>
+            </li>
+            <li className={styles.item}>
               <NavLink to="/card-notes" className={styles.link}>
                 Card notes
               </NavLink>

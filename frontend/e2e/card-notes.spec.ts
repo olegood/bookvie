@@ -108,8 +108,8 @@ test.describe('Story 5.3 Find a note across all my books', () => {
     await page.goto(server.url)
     const nav = page.getByRole('banner').getByRole('navigation')
 
-    // The criterion: Card notes in its place in the order, until Stats arrives.
-    await expect(nav.getByRole('link')).toHaveText(['Home', 'Catalog', 'Card notes', 'Backup'])
+    // The criterion: Card notes in its place in the order, after Stats (Story 6.3).
+    await expect(nav.getByRole('link')).toHaveText(['Home', 'Catalog', 'Stats', 'Card notes', 'Backup'])
 
     await nav.getByRole('link', { name: 'Card notes', exact: true }).click()
     await expect(page).toHaveURL(cardNotesPage(server))

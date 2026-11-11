@@ -16,8 +16,11 @@ from .models import (
     HomeView,
     LibraryMeter,
     ShelfBook,
+    StatsBucket,
+    StatsView,
 )
 from .shelf import book_detail, catalog, cover_path, home, home_for
+from .stats import stats
 
 __all__ = [
     "BackupView",
@@ -33,6 +36,8 @@ __all__ = [
     "HomeView",
     "LibraryMeter",
     "ShelfBook",
+    "StatsBucket",
+    "StatsView",
     "backup",
     "book_detail",
     "card_notes",
@@ -40,4 +45,5 @@ __all__ = [
     "cover_path",
     "home",
     "home_for",
+    "stats",
 ]
