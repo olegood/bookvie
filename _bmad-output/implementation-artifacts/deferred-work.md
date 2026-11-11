@@ -773,3 +773,12 @@
   - Custom's handling in the client: the earlier date sent as `from`, the silent swap, and no request while a field is empty;
   - that the stats view refuses a half range, a value that isn't a date, or a `to` before `from` with 422 `invalid_fields`, while AD-9 names only 404 `book_not_found` as a view refusal.
   evidence: `backend/bookvie/views/stats.py`; `backend/bookvie/http/api.py` `stats_view`; `frontend/src/lib/stats.ts`; `frontend/src/pages/StatsPage.tsx`; `ARCHITECTURE-SPINE.md` AD-6, AD-9, Structural Seed and the Capability map's FR-16 row (spine check, build-auto review of 6.3).
+
+## Deferred from: bookvie-new-book skill 2.0.0, the switch to the add-book API (2026-11-11)
+
+- source_spec: `.claude/skills/bookvie-new-book/SKILL.md` (version 2.0.0; no story, decided with Oleg in a Winston discussion)
+  summary: Spine drift (AD-3, AD-16), reconciled before the next epic. The cataloging skill no longer drives a browser. It saves a book with one `POST /api/intents/add-book` (multipart, `intent` JSON part plus `cover`), confirms it through `GET /api/views/book`, and reads the catalog through `GET /api/views/catalog` for its duplicate pre-check. The code follows AD-3 (one intent per action) and AD-16 (a header-less local client, which AD-16 already names as "the cataloging agent"). Two descriptive passages are out of date:
+  - the Overview's "Browsers (the user's and the cataloging agent's) are clients" should name the agent as an HTTP client of the intent API;
+  - the Structural Seed diagram's `AG[agent's automated browser] --> S` node should read as the cataloging skill calling the API.
+  FR-2 and AD-17 stay as they are: the New book form must still be fillable by its labels, and the e2e suite still enforces the Agent Label Contract. The skill is now a second client of the add-book intent body (AD-8), so a renamed intent key breaks it; the reconciliation may add one line saying so.
+  evidence: `.claude/skills/bookvie-new-book/scripts/add_book.py`; `.claude/skills/bookvie-new-book/scripts/check_catalog.py`; `ARCHITECTURE-SPINE.md` Overview paragraph and the Structural Seed diagram (`AG` node).

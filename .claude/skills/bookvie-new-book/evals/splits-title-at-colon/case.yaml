@@ -1,4 +1,4 @@
 schema_version: "1.1"
 name: splits-title-at-colon
 expected_outcome: |
-  The book is added with the title and subtitle split at the first colon, the tag added-by-skill, a cover, and the save confirmed through Search titles.
+  The book is added with the title and subtitle split at the first colon, the tag added-by-skill, a cover, and the save confirmed through the book view.

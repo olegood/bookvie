@@ -1,30 +1,30 @@
 ---
 name: bookvie-new-book
-description: Add a new book to the user's bookvie catalog (the local app at http://127.0.0.1:8765/). Starts the `bookvie` server, checks the catalog for the book first, looks up the book's metadata and front cover on amazon.com, manning.com, leanpub.com or oreilly.com, then fills and submits the Catalog's "New book" form in a hidden (headless) browser that is closed when done, tags the book `added-by-skill`, and reports the result in the terminal. Use this whenever the user asks to add, catalog, log or record a book in their catalog or library, says they need to add a book to bookvie, pastes a book link from one of those sites, or names a book and says they bought or got it, even if they don't mention bookvie, the browser or Playwright.
+description: Add a new book to the user's bookvie catalog (the local app at http://127.0.0.1:8765/). Starts the `bookvie` server, checks the catalog for the book first, looks up the book's metadata and front cover on amazon.com, manning.com, leanpub.com or oreilly.com, saves it with bookvie's add-book API call, tags it `added-by-skill`, and reports the result in the terminal. Use this whenever the user asks to add, catalog, log or record a book in their catalog or library, says they need to add a book to bookvie, pastes a book link from one of those sites, or names a book and says they bought or got it, even if they don't mention bookvie.
 metadata:
-  version: 1.1.0
+  version: 2.0.0
 ---
 
 # Add a book to the bookvie catalog
 
-bookvie is a local app for a home library. A book is added in the browser through the **New book** panel on the **Catalog** page. The form is designed for an AI operator: its labels, roles and success signals are a fixed contract (EXPERIENCE.md → "Agent Label Contract" in `_bmad-output/planning-artifacts/ux-designs/ux-bookvie-2026-10-28/`). The bundled scripts rely on that contract.
+bookvie is a local app for a home library. This skill adds one book at a time. It saves the book with the same intent the app's **New book** form sends, `POST /api/intents/add-book` (architecture spine AD-3), and tags it `added-by-skill`. The tag is the user's marker for books to come back to and review.
 
 The job has five steps: start bookvie, check the catalog, gather the metadata, add the book, and report.
 
-## Rules for the browser
+## Rules
 
-- **Never show a browser on the user's screen.** Every page this skill reads or fills goes through the bundled scripts in `scripts/`. They run a headless Chromium from the repo's own Playwright (`frontend/node_modules`) and close it when they finish, even on error, so nothing stays open.
-- **Don't use the Playwright MCP tools** (`mcp__playwright__*`). That server opens a visible browser window.
-- Start bookvie with `--no-browser`, so it doesn't open the user's browser either.
+- **bookvie is reached only through its HTTP API,** never through a browser. Don't use the Playwright MCP tools (`mcp__playwright__*`), because they open a visible window.
+- **External sites are read with `lookup.mjs`.** It runs a headless Chromium from the repo's own Playwright and closes it when done, so nothing shows on screen.
+- **Start bookvie with `--no-browser`,** so it doesn't open the user's browser.
 
 Run the scripts from the repo root. `$SKILL` below is this skill's directory, `.claude/skills/bookvie-new-book`. Each script prints JSON on stdout.
 
 | Script | Does |
 |---|---|
-| `python3 -I $SKILL/scripts/check_catalog.py --title T [--author A ...] [--isbn I]` | Lists catalog books that are duplicates (by the server's rules) or similar. Exit 0 when nothing matched, 3 when something did, 2 when bookvie is down. Uses the HTTP API only, with no browser. |
+| `python3 -I $SKILL/scripts/check_catalog.py --title T [--author A ...] [--isbn I]` | Lists catalog books that are duplicates (by the server's rules) or similar. Exit 0 when nothing matched, 3 when something did, 2 when bookvie is down. |
 | `node $SKILL/scripts/lookup.mjs --amazon-search "<query>"` | Lists Amazon's top results, each with its Paperback, Hardcover and Kindle links. |
 | `node $SKILL/scripts/lookup.mjs --page <url>` | Reads one page: its og:* tags, Amazon's product block (title, byline, Product details, full-size cover URL), or else the first 6000 characters of the page text. |
-| `node $SKILL/scripts/add_book.mjs --book <book.json> [--confirm-duplicate]` | Fills and submits the New book form, then verifies the save through **Search titles**. |
+| `python3 -I $SKILL/scripts/add_book.py --book <book.json> [--confirm-duplicate]` | Sends the add-book intent with the cover, then reads the new book back from `GET /api/views/book` to confirm it. |
 
 ## 1. Start bookvie
 
@@ -50,7 +50,7 @@ Before any lookup, check whether the book is already there. Use what the user ga
 python3 -I $SKILL/scripts/check_catalog.py --title "<title as the user gave it>" --author "<author>"
 ```
 
-- **`duplicates` isn't empty:** the book is already in the catalog. Stop. Don't look it up and don't open the form. Tell the user which book matched (title, authors, ISBN, type, year), and ask whether to add another copy anyway (for example, a different format). Continue only if they say yes, and then pass `--confirm-duplicate` in step 4.
+- **`duplicates` isn't empty:** the book is already in the catalog. Stop. Don't look it up and don't add it. Tell the user which book matched (title, authors, ISBN, type, year) and ask whether to add another copy anyway, for example in a different format. Continue only if they say yes, and then pass `--confirm-duplicate` in step 4.
 - **Only `similar` books:** the user may have typed a partial or slightly different title, as in "one minute architect" for "The One Minute Architect". Gather the metadata (step 3) and run the check again with the full title, the authors and the ISBN. If the second check finds a duplicate, handle it as above. If it finds only similar books that are clearly different (another book in a series, say), go on and mention them in the report.
 - **Nothing matched:** go on.
 
@@ -83,7 +83,7 @@ Collect each field as follows:
 | **Tags** (`tags`) | `added-by-skill`. If the user asks for other tags, add them after it, comma-separated: `added-by-skill, kubernetes`. |
 | **Cover** (`cover`) | The absolute path of the downloaded front-cover image (see below). |
 
-Leave **Finished on** (`finishedOn`) and **Spine color** (`spineColor`) empty unless the user gives them. Spine color is derived from the cover when it's empty.
+Leave **Finished on** (`finishedOn`, `YYYY-MM-DD`) and **Spine color** (`spineColor`) empty unless the user gives them. Spine color is derived from the cover when it's empty.
 
 Example: "Spec-Driven Development with BMAD: Master Agentic Workflows using Cursor, BMAD, and Context Engineering" gives Title `Spec-Driven Development with BMAD` and Subtitle `Master Agentic Workflows using Cursor, BMAD, and Context Engineering`.
 
@@ -103,11 +103,11 @@ mkdir -p "$DIR/bookvie-cover" && curl -sSL -A "Mozilla/5.0" -o "$DIR/bookvie-cov
 file "$DIR/bookvie-cover/cover.jpg"
 ```
 
-Check with `file` that the download is really a JPEG, PNG or WebP image (not an HTML error page), and that it is 20 MB or smaller. Rename the file to match its real type if needed. For any other format (AVIF, GIF), convert it with `sips -s format jpeg <in> --out <out>.jpg`. If no cover can be had, leave `cover` out, add the book without one, and say so in the report.
+Check with `file` that the download is really a JPEG, PNG or WebP image (not an HTML error page), and that it is 20 MB or smaller. Rename the file to match its real type if needed, because `add_book.py` sends the content type from the extension. For any other format (AVIF, GIF), convert it with `sips -s format jpeg <in> --out <out>.jpg`. If no cover can be had, leave `cover` out, add the book without one, and say so in the report.
 
 ## 4. Add the book
 
-Write the values to `book.json` in the same folder as the cover, and run the script:
+Write the values to `book.json` in the same folder as the cover:
 
 ```json
 {
@@ -126,28 +126,30 @@ Write the values to `book.json` in the same folder as the cover, and run the scr
 }
 ```
 
+Then run:
+
 ```bash
-node $SKILL/scripts/add_book.mjs --book "$DIR/bookvie-cover/book.json"
+python3 -I $SKILL/scripts/add_book.py --book "$DIR/bookvie-cover/book.json"
 ```
 
-It opens the Catalog in a hidden browser, clicks **New book**, fills each field by its exact label, chooses Type, sets the Cover file, presses **Add book**, reads the outcome, and closes the browser. Act on its `outcome`:
+The script turns the values into the intent's wire form: every value a string, as the form would send it, Type in lower case, and empty values left out. It posts them with the cover, and on success reads the book back. Act on its `outcome`:
 
-- **`saved`:** the status read "Added *Title*." and `verified: true` means **Search titles** found a spine named "*Title* by …". If `verified` is false, say so in the report.
-- **`duplicate`:** the server's own duplicate check matched, despite step 2. The script already clicked **Don't add** and **Cancel**, so nothing was saved. Tell the user which book matched (`message`) and ask. Rerun with `--confirm-duplicate` only if they say to add it anyway.
-- **`invalid`:** "Not saved. N fields need attention", with each failing field and its message in `fields`. Fix the values from your sources and run the script again. If the fix needs information you don't have, ask the user.
+- **`saved`:** `book` is the stored book as the book view returns it. `verified: true` means its title and tags match what was sent and the cover is there. If `verified` is false, say what differs in the report.
+- **`duplicate`:** 409 `duplicate_book`. The server's own duplicate check matched, despite step 2. Nothing was saved. Tell the user which books matched (`duplicates`) and ask. Rerun with `--confirm-duplicate` only if they say to add it anyway.
+- **`invalid`:** 422 `invalid_fields`. Each failing field and its message (the copy the app shows) is in `fields`. Fix the values from your sources and run the script again. If the fix needs information you don't have, ask the user.
 - **`failed`:** "Couldn't save. Your data wasn't changed." Report it. Don't retry in a loop.
-- **`error`:** the script itself failed (bookvie down, a label not found, a timeout). Report `message`. Don't fall back to a visible browser.
+- **`error`:** the script itself failed (bookvie down, a bad `book.json`). Report `message`.
 
 ## 5. Report in the terminal
 
 Give the result as plain text in your reply. Don't open the app, a screenshot or an artifact to show it. Include:
 
 - the outcome in one line: added, already in the catalog, or not saved and why;
-- a table of the values entered: Title, Subtitle, Author(s), Edition, Language, Publisher, Type, ISBN, Year, Pages, Tags;
+- a table of the stored values from `book`: Title, Subtitle, Author(s), Edition, Language, Publisher, Type, ISBN, Year, Pages, Tags;
 - whether a cover was attached;
 - the source URLs;
 - any field you had to guess or leave empty, and any similar books the catalog check found.
 
-When the book was already in the catalog, report the existing book's details instead of a table of entered values.
+When the book was already in the catalog, report the existing book's details instead.
 
-Leave the bookvie server running, because the user may add more books. No browser is left open: each script closes its own.
+Leave the bookvie server running, because the user may add more books.

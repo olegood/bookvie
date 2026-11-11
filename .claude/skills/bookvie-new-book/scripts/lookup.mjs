@@ -7,7 +7,30 @@
 // --amazon-search prints the top results with their format links (Paperback, Kindle, Hardcover).
 // --page prints the page title, its og:* meta tags, Amazon's product block when present
 // (title, byline, Product details, full-size cover URL), and the first 6000 characters of the page text.
-import { run, withHeadlessPage } from './lib/browser.mjs'
+//
+// The browser is a headless Chromium from the repo's own Playwright (frontend/node_modules). Nothing shows
+// on screen, and the browser is closed when the lookup ends, even on error.
+import { createRequire } from 'node:module'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..')
+const { chromium } = createRequire(path.join(repoRoot, 'frontend', 'package.json'))('playwright')
+
+const USER_AGENT =
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36'
+
+async function withHeadlessPage(work) {
+  const browser = await chromium.launch({ headless: true })
+  try {
+    const context = await browser.newContext({ userAgent: USER_AGENT, locale: 'en-US' })
+    const page = await context.newPage()
+    page.setDefaultTimeout(15000)
+    return await work(page)
+  } finally {
+    await browser.close()
+  }
+}
 
 function parseArgs(argv) {
   const args = {}
@@ -67,8 +90,14 @@ async function readPage(page, url) {
   })
 }
 
-run(async () => {
+try {
   const args = parseArgs(process.argv.slice(2))
   if (!args['amazon-search'] && !args.page) throw new Error('pass --amazon-search "<query>" or --page <url>')
-  return withHeadlessPage((page) => (args.page ? readPage(page, args.page) : amazonSearch(page, args['amazon-search'])))
-})
+  const result = await withHeadlessPage((page) =>
+    args.page ? readPage(page, args.page) : amazonSearch(page, args['amazon-search']),
+  )
+  process.stdout.write(JSON.stringify(result, null, 1) + '\n')
+} catch (error) {
+  process.stdout.write(JSON.stringify({ outcome: 'error', message: String(error?.message ?? error) }, null, 1) + '\n')
+  process.exitCode = 1
+}
