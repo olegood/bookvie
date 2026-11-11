@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-29-2026 17:21
-last_updated: 11-11-2026 21:39
+last_updated: 11-11-2026 21:49
 project: bookvie
 project_key: NOKEY
 tracking_system: file-system
@@ -568,7 +568,7 @@ action_items:
       row by row, closing R-07 and R-10. Changes: `_bmad-output/test-artifacts/traceability/epic-6-traceability-matrix.md`,
       `…/epic-6-gate-decision.json`. Due: before Epic 7."
     owner: "Murat (TEA)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-6-retro-2026-11-11.md"
   - id: "epic-6-retro-item-55-make-the-book-detail-calculator-agree-wi"
     epic: 6

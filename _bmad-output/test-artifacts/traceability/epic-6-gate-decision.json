@@ -1,0 +1,24 @@
+{
+  "schema_version": "0.1.0",
+  "evaluated_at": "2026-11-11T22:00:00.000000Z",
+  "repo": "bookvie",
+  "target": {
+    "type": "epic",
+    "id": "6",
+    "label": "Epic 6: Know how long and how much"
+  },
+  "collection_status": "COLLECTED",
+  "gate_basis": "priority_thresholds",
+  "gate_status": "PASS",
+  "rationale": "No Epic 6 scenario is P0 (n/a), P1 coverage is 100% (TR7 target: 95%; workflow default 90%), and overall coverage is 100% (minimum: 80%). The fake-Clock boundary tests for pace, ranges, month edges and local dates are green row by row, and every error code, including the stats view's 422 invalid_fields, has an API test. This trace added one e2e test (stats.spec.ts:511) for XUI-E2E-002's focus refetch on the new stats view. R-07 and R-10 are closed.",
+  "p0_status": "MET",
+  "p1_status": "MET",
+  "overall_status": "MET",
+  "critical_open": 0,
+  "links": {
+    "trace_report_path": "_bmad-output/test-artifacts/traceability/epic-6-traceability-matrix.md",
+    "trace_report_url": "",
+    "artifact_url": "",
+    "journey_evidence_url": ""
+  }
+}

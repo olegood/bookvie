@@ -1,0 +1,170 @@
+{
+  "schema_version": "0.3.0",
+  "snapshot_at": "2026-11-11T22:00:00.000000Z",
+  "repo": "bookvie",
+  "collection_mode": "contract_static",
+  "collection_status": "COLLECTED",
+  "inventory_basis": "acceptance_criteria",
+  "gate_basis": "priority_thresholds",
+  "source_sha": "e6157b93283176b5615fda102baff6ea443eb8c2",
+  "target": {
+    "type": "epic",
+    "id": "6",
+    "label": "Epic 6: Know how long and how much"
+  },
+  "decision_mode": "deterministic",
+  "evaluator": "Oleg",
+  "confidence": "high",
+  "oracle": {
+    "resolution_mode": "formal_requirements",
+    "confidence": "high",
+    "sources": [
+      "_bmad-output/test-artifacts/test-design-qa.md (PAC-API-001, PAC-UNIT-002, PAC-E2E-001, STA-*; Stats and pace surfaces of XUI-E2E-002/005)",
+      "_bmad-output/test-artifacts/test-design-architecture.md (R-07, R-10)",
+      "_bmad-output/planning-artifacts/epics.md (TR7 :154, Epic 6 gate :1857, stories 6.1-6.4)",
+      "_bmad-output/implementation-artifacts/epic-6-retro-2026-11-11.md (action 54)",
+      "_bmad-output/test-artifacts/atdd-checklist-6-1, 6-2, 6-3, 6-4 (story ACs)"
+    ],
+    "external_pointer_status": "not_used",
+    "synthetic": false
+  },
+  "coverage": {
+    "inventory": {
+      "covered": 8,
+      "total": 8,
+      "pct": 100
+    },
+    "priority_breakdown": {
+      "P0": {
+        "total": 0,
+        "covered": 0,
+        "pct": 100
+      },
+      "P1": {
+        "total": 3,
+        "covered": 3,
+        "pct": 100
+      },
+      "P2": {
+        "total": 4,
+        "covered": 4,
+        "pct": 100
+      },
+      "P3": {
+        "total": 1,
+        "covered": 1,
+        "pct": 100
+      }
+    },
+    "by_level": {
+      "e2e": {
+        "tests": 50,
+        "criteria_covered": 4
+      },
+      "api": {
+        "tests": 26,
+        "criteria_covered": 3
+      },
+      "component": {
+        "tests": 0,
+        "criteria_covered": 0
+      },
+      "unit": {
+        "tests": 23,
+        "criteria_covered": 2
+      },
+      "live": {
+        "tests": 0,
+        "criteria_covered": 0
+      },
+      "other": {
+        "tests": 0,
+        "criteria_covered": 0
+      }
+    }
+  },
+  "tests": {
+    "files": 9,
+    "cases": 99,
+    "skipped_cases": 0,
+    "fixme_cases": 0,
+    "pending_cases": 0,
+    "note": "Counts the 3 Epic 6 backend API files (test_pace_calculator, test_library_pages_left, test_stats), the unit files frontend/src/lib/pace.test.ts and stats.test.ts, and the 4 Epic 6 e2e specs (pace-calculator, catalog-pace-calculator, stats, stats-bars), including this trace's stats.spec.ts:511. P0 has no Epic 6 scenario in test-design-qa.md, so its 0/0 is reported as 100% (n/a)."
+  },
+  "risk_summary": {
+    "critical_open": 0,
+    "high_open": 0,
+    "medium_open": 2,
+    "low_open": 2
+  },
+  "heuristics": {
+    "endpoint_gaps": 0,
+    "auth_negative_path_status": "present",
+    "error_path_status": "present",
+    "ui_journey_status": "not_applicable",
+    "ui_state_status": "not_applicable"
+  },
+  "live_evidence": {
+    "present": false,
+    "results_file": "_bmad-output/test-artifacts/live-verification-results.json",
+    "freshness": "not_present",
+    "recorded_source_sha": "",
+    "current_source_sha": "e6157b93283176b5615fda102baff6ea443eb8c2",
+    "producer": "",
+    "counted": 0,
+    "stale": 0,
+    "unverifiable": 0,
+    "failed": 0,
+    "contradicted": 0,
+    "blocked": 0,
+    "skipped": 0,
+    "unmatched": 0,
+    "invalid": 0,
+    "requirements_live_only": 0
+  },
+  "blockers": [],
+  "rejected_evidence": [],
+  "recommendations": [
+    {
+      "priority": "MEDIUM",
+      "action": "Before story 7.1: retro action 55, align the Book detail calculator with Home's days left (E6-R1)",
+      "requirements": [
+        "PAC-UNIT-002"
+      ]
+    },
+    {
+      "priority": "MEDIUM",
+      "action": "Burn in and probe the new card-notes-pile.spec.ts:590 flake recorded in deferred-work.md, then fix it or close the entry",
+      "requirements": []
+    },
+    {
+      "priority": "LOW",
+      "action": "Before story 7.1: retro action 56, non-story work in its own git worktree",
+      "requirements": []
+    },
+    {
+      "priority": "LOW",
+      "action": "Run /bmad-testarch-test-review on the Epic 6 suites",
+      "requirements": []
+    }
+  ],
+  "links": {
+    "trace_report_path": "_bmad-output/test-artifacts/traceability/epic-6-traceability-matrix.md",
+    "trace_report_url": "",
+    "artifact_url": "",
+    "journey_evidence_url": ""
+  },
+  "gate_status": "PASS",
+  "gate_criteria": {
+    "p0_coverage_required": "100%",
+    "p0_coverage_actual": "n/a (no P0 scenario)",
+    "p0_status": "MET",
+    "p1_coverage_target": "95%",
+    "p1_coverage_minimum": "80%",
+    "p1_coverage_actual": "100%",
+    "p1_status": "MET",
+    "overall_coverage_minimum": "80%",
+    "overall_coverage_actual": "100%",
+    "overall_status": "MET"
+  }
+}

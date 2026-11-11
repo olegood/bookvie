@@ -16,6 +16,7 @@
 import AxeBuilder from '@axe-core/playwright'
 import { expect, startSeededServer, test } from './fixtures.ts'
 import { FAKE_TODAY, serverAtFakeToday, stopAndRemove } from './home.ts'
+import { FINISH_READING } from './intents.ts'
 import {
   afterAnnounceDelay,
   AXE_TAGS,
@@ -503,6 +504,52 @@ test.describe('Story 6.3 See what I finished in any period (ATDD)', () => {
       await expect(dateField(page, 'From')).toHaveValue('2025-01-01')
       await expect(dateField(page, 'To')).toHaveValue('2025-12-31')
       await expect(figure(page, '0')).toHaveCount(2)
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+  test('[P1] XUI-E2E-002 a Book finished in another context shows in the numbers once Stats regains focus, with no announcement', async ({
+    page,
+    browser,
+  }) => {
+    // Epic 6 trace (retro action 54): the stats view is a new view, so prove a real intent from
+    // elsewhere reaches it on focus. `AC-5 a background refetch` fakes the response instead.
+    const piranesiId = '6c1f0e2d-8a4b-4c3d-9e5f-7a6b5c4d3e21'
+    const library = {
+      books: [...FLOW_7.books, { id: piranesiId, title: 'Piranesi', authors: ['Susanna Clarke'], pages: 245 }],
+    }
+    const server = await serverAtFakeToday(page, 'stats-other-context', library)
+    try {
+      await page.goto(`${server.url}/stats`)
+      await expect(page.getByRole('main').getByRole('heading', { level: 1, name: 'Stats' })).toBeVisible()
+      await expect(figure(page, '1,010')).toBeVisible()
+
+      const otherContext = await browser.newContext()
+      try {
+        // Another context (the agent, or a second tab) finishes Piranesi today: a back-filled Reading.
+        const finished = await otherContext.request.post(`${server.url}${FINISH_READING}`, {
+          multipart: {
+            intent: JSON.stringify({
+              bookId: piranesiId,
+              finishedOn: FAKE_TODAY,
+              purposeFulfilled: null,
+              rating: null,
+            }),
+          },
+        })
+        expect(finished.status()).toBe(200)
+      } finally {
+        await otherContext.close()
+      }
+
+      // This context regains focus and the view refetches: This year is now 4 books, 1,255 pages.
+      await page.bringToFront()
+      await page.evaluate(() => window.dispatchEvent(new Event('focus')))
+      await expect(figure(page, '4')).toBeVisible()
+      await expect(figure(page, '1,255')).toBeVisible()
+      await afterAnnounceDelay(page)
+      await expect(page.getByRole('status')).toHaveText('')
+      await expect(page.getByRole('alert')).toHaveText('')
     } finally {
       await stopAndRemove(server)
     }
