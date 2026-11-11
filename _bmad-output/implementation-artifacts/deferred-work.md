@@ -724,3 +724,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-1-see-when-this-book-will-be-finished.md`
   summary: Spine drift (Structural Seed), reconciled before the next epic: the seed's `frontend/src/lib/` line omits `pace` (the calculator's arithmetic and line, AD-6).
   evidence: `frontend/src/lib/pace.ts` is new in story 6.1. `lib/today.ts` now exports `MONTHS` for it.
+
+## Deferred from: code review of spec-6-1-see-when-this-book-will-be-finished (2026-11-11)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-1-see-when-this-book-will-be-finished.md`
+  summary: No test covers the pace calculator switching to "Nothing left to read." when the Book is finished on its own Book detail page. `PaceCalculator` stays mounted (keyed by `book.id`) and reads `pagesLeft` from the refetched view on every render, so the code is right today; a change that captured `pagesLeft` at mount, as the prefill captures `measuredPace`, would pass every current leaf. Add a leaf in `bmad-testarch-automate` for 6.1: seed `PACED`, open Dune, Mark finished through the Finish dialog, then assert "Nothing left to read." and no textbox in the "How long until…?" region.
+  evidence: `frontend/src/components/PaceCalculator.tsx` (`pagesLeft <= 0` branch); `frontend/src/pages/BookDetailPage.tsx:339`; `frontend/e2e/pace-calculator.spec.ts` (every leaf reads `pagesLeft` only at first load).

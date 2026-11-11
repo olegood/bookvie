@@ -26,7 +26,8 @@ export function paceResult(pagesLeft: number, typed: string, today: Date): strin
   if (!DECIMAL.test(text) || pagesLeft <= 0) return null
   const pace = Number(text)
   if (!Number.isFinite(pace) || pace <= 0) return null
-  const days = Math.max(1, Math.ceil(pagesLeft / pace))
+  // Correct the float error first, as the server divides exactly: 21 ÷ 0.7 is 30.000000000000004.
+  const days = Math.max(1, Math.ceil(Number((pagesLeft / pace).toPrecision(12))))
   const finish = new Date(today.getFullYear(), today.getMonth(), today.getDate() + days)
   if (Number.isNaN(finish.getTime())) return null
   const month = MONTHS[finish.getMonth()]

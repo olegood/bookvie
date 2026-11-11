@@ -2,7 +2,7 @@
 title: 'Story 6.1: See when this book will be finished'
 type: 'feature'
 created: '2026-11-11'
-status: 'in-review'
+status: 'done'
 baseline_revision: '835ba013b932bb275484122229bfd7c20bf54146'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -138,6 +138,34 @@ deferred:
 - Given invalid input, when it is typed, then the output is empty, the block's text is only "How long until…?" and "pages/day", and the border is unchanged.
 - Given Emma (finished) or a Main book at its last page, when Book detail renders, then the block reads "Nothing left to read." and has no textbox.
 - Given Book detail, when the page's live regions are counted, then there is still exactly one `role="status"` (the shell's), so the existing e2e suite stays green.
+
+### Review Findings
+
+Code review (`bmad-code-review`, new session, 2026-11-11). Five layers: blind, edge, verification, acceptance, spine. None failed.
+
+- [x] [Review][Patch] `paceResult` ceils a float quotient, so a pace that isn't exact in binary adds a day: 21 pages at "0.7" gives 30.000000000000004 → "About 31 days" (the server's `days_left` gives 30 with `Fraction`), and 42 at "0.7" gives 61 days, which also tips the line from days into months. The docblock's "the server's days-left rounding" doesn't hold. Correct the float error before `ceil`, as `pacePrefill` does (medium; edge) [frontend/src/lib/pace.ts:29]
+- [x] [Review][Patch] AC-4's border check reads every border color while the field has focus, so both sides are the accent focus border and a non-focus error border would pass. Blur the field before each reading (low; acceptance) [frontend/e2e/pace-calculator.spec.ts:116]
+- [x] [Review][Patch] The Emma leaf of AC-5 doesn't assert "has no textbox": only the last-page leaf does. Assert no textbox and no `output` there too (low; acceptance) [frontend/e2e/pace-calculator.spec.ts:146]
+- [x] [Review][Patch] "Exactly one `role="status"`" is asserted only in the NO_PACE leaf, where the output is empty. Assert it in AC-2's leaf too, where the output holds a result (low; blind+acceptance) [frontend/e2e/pace-calculator.spec.ts:69]
+- [x] [Review][Patch] The README Status line still says "The Epic 1-4 retrospectives are done and all four trace and quality gates passed". The Epic 5 retrospective is done, its trace and gate passed (101fd9c), and its 8 action items are closed. Fix it with the story count at status sync (low; blind; predates this story, on the line this review edits) [README.md:8]
+- [x] [Review][Defer] Nothing tests the calculator's switch to "Nothing left to read." when a Book is finished on its own Book detail page (the mounted calculator gets a new `pagesLeft` on refetch). The code reads the prop on every render, so this guards a future slip [frontend/e2e/pace-calculator.spec.ts] — deferred: a leaf for `bmad-testarch-automate` of 6.1 (seed `PACED`, open Dune, Mark finished, assert "Nothing left to read." and no textbox)
+- [x] [Review][Defer] Spine drift ×4 (AD-6 pages left and FR-15 row; AD-6 calculator rules; Structural Seed `domain/`; Structural Seed `lib/`) [backend/bookvie/domain/progress.py, frontend/src/lib/pace.ts] — deferred: already recorded by the build in deferred-work.md and this spec's `deferred:`; reconciled before the next epic
+
+**Rejected:**
+- `false` (blind) The Auto Run Result miscounts the medium patches: the two medium findings were grouped into one entry ("same fix"), so "1 medium" and "Patched (5 entries)" (1 medium + 4 low) count entries correctly. Fixing it would edit the spec anyway.
+- `false` (blind) DESIGN.md and EXPERIENCE.md don't describe the Book detail variant: DESIGN.md l.676 puts "How long until…?: Pace calculator inline" in Book detail's right column; EXPERIENCE.md l.82 shows it always there and l.136 limits the collapsed link to the Catalog.
+- `low` (blind) A tiny typed pace ("0.001") gives "About 1128 years": the line is arithmetically right for what was typed; a ceiling is a new rule and a new branch.
+- `low` (blind) A Measured pace under 0.05 prefills "0": AC-2's rounding rule, as the build review decided; rarely met.
+- `low` (blind) "," isn't accepted from a comma-decimal keypad: the spec's I/O matrix rejects "12,5" on purpose and the platform is desktop only (EXPERIENCE.md → Platform); changing it edits the spec.
+- `false` (blind, edge, acceptance, verification) `_main_book` now passes `pages_left(book)` to `days_left`: with the Main book invariant (an unfinished Reading) the input is identical, and Pages edited below the page gave `None` before (negative) and after (0). A broken invariant now gives no days left for a finished Book, which is the correct reading. `test_reentry.py` pins `daysLeft`.
+- `false` (blind) `.row` without `flex-wrap` overflows: the calculator sits in Book detail's `1fr` column (≈ 700px at the 1024px minimum viewport, desktop only), well over the ≈ 420px the row needs.
+- `low` (blind) Screen readers say "pages slash day": the label is the spec's ("pages/day"), and every e2e selector names it.
+- `low` (blind) No test for keep-on-refetch and reset-on-another-Book: needs new e2e flows; rejected by the build review too, left to `bmad-testarch-automate`.
+- `false` (edge) A Measured pace of 1e21 or more prefills "1e+21": unreachable, since a pace is pages over at least one day.
+- `low` (edge) Left open past midnight with no focus or visibility event, the finish date is a day early: that is the shared `useNow` hook's behaviour everywhere; a midnight timer adds complexity for a rare case.
+- `low` (acceptance) `pacePrefill` doesn't use the spec's literal `String(Math.round(p * 10) / 10)`: the build review patched it on purpose so halves round up (1.45 → "1.5"); the fix would edit the spec.
+- `low` (acceptance) "With no request sent" isn't asserted: the component has no fetch path, as the build review found.
+- `low` (acceptance) The ATDD checklist's optional follow-ups are open: the spec lists them under Residual risks for `bmad-testarch-automate`.
 
 ## Review Triage Log
 

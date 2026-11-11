@@ -46,6 +46,11 @@ describe('paceResult', () => {
     assert.equal(paceResult(412, '12.5', TODAY), 'About 33 days · 30 November')
     assert.equal(paceResult(400, '20', TODAY), 'About 20 days · 17 November')
 
+    // A pace that isn't exact in binary doesn't add a day: 21 ÷ 0.7 is exactly 30
+    // (the float quotient is 30.000000000000004), and 42 ÷ 0.7 is 60, so months.
+    assert.equal(paceResult(21, '0.7', TODAY), 'About 30 days · 27 November')
+    assert.equal(paceResult(42, '0.7', TODAY), 'About 2 months · December 2026')
+
     // Today + days by calendar day, not 24-hour steps: late on 20 March, across
     // the spring change on 28 March 2027, ten days later is 30 March.
     process.env.TZ = 'Europe/Madrid'

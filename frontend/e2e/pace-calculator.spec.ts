@@ -67,6 +67,8 @@ test.describe('Story 6.1 See when this book will be finished (ATDD)', () => {
       await expect(result(page)).toHaveText('About 21 days · 18 November')
       // The output has no role of its own: the field is described by it.
       await expect(paceField(page)).toHaveAccessibleDescription('About 21 days · 18 November')
+      // With a result in the output, the shell's region is still the only `status`.
+      await expect(page.getByRole('status')).toHaveCount(1)
     } finally {
       await stopAndRemove(server)
     }
@@ -113,6 +115,8 @@ test.describe('Story 6.1 See when this book will be finished (ATDD)', () => {
       await expect(paceField(page)).toBeEditable()
       await paceField(page).fill('30')
       await expect(result(page)).toHaveText('About 14 days · 11 November')
+      // Read borders without focus, so an error border can't hide behind the focus border.
+      await paceField(page).blur()
       const validBorder = await paceField(page).evaluate((element) => getComputedStyle(element).borderColor)
 
       await paceField(page).fill('0')
@@ -123,6 +127,7 @@ test.describe('Story 6.1 See when this book will be finished (ATDD)', () => {
         await expect(result(page), typed).toHaveText('')
         await expect(paceField(page), typed).toHaveAccessibleDescription('')
         await expect(paceField(page), typed).not.toHaveAttribute('aria-invalid', 'true')
+        await paceField(page).blur()
         expect(await paceField(page).evaluate((element) => getComputedStyle(element).borderColor), typed).toBe(
           validBorder,
         )
@@ -144,6 +149,8 @@ test.describe('Story 6.1 See when this book will be finished (ATDD)', () => {
       await expect(calculator(page).getByText(NOTHING_LEFT, { exact: true })).toBeVisible()
 
       await expect(calculator(page).getByText(/^About /)).toHaveCount(0)
+      await expect(calculator(page).getByRole('textbox')).toHaveCount(0)
+      await expect(calculator(page).locator('output')).toHaveCount(0)
     } finally {
       await stopAndRemove(server)
     }
