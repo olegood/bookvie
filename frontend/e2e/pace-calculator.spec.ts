@@ -13,11 +13,25 @@
 // = today + days. Under 60 days: "About N days · D Month" (the year only when
 // it isn't this year). From 60 days: months = round(days ÷ 30.4375) and
 // "About N months · Month YYYY"; from 24 months, years = round(months ÷ 12).
+//
+// While the field's text is the prefill, pages/day is the unrounded Measured
+// pace, so the line agrees with Home's "~N days left" (Epic 6 retro item 55).
+// Any other text is the typed number.
 
 import AxeBuilder from '@axe-core/playwright'
 import type { Locator, Page } from '@playwright/test'
 import { expect, test } from './fixtures.ts'
-import { DUNE, DUNE_ID, FAKE_TODAY, LEFT_HAND_ID, mainAt, serverAtFakeToday, sizeOf, stopAndRemove } from './home.ts'
+import {
+  DUNE,
+  DUNE_ID,
+  FAKE_TODAY,
+  LEFT_HAND_ID,
+  mainAt,
+  mainBookCard,
+  serverAtFakeToday,
+  sizeOf,
+  stopAndRemove,
+} from './home.ts'
 
 const HEADING = 'How long until…?'
 const NOTHING_LEFT = 'Nothing left to read.'
@@ -37,19 +51,16 @@ const EMMA = {
 const PACED = { books: [DUNE, EMMA] }
 /** Dune alone: no finished Reading, so no Measured pace and an empty field. */
 const NO_PACE = { books: [DUNE] }
-/** Dune and Fahrenheit 451, 100 pages read from 1 to 3 September (3 days inclusive): Measured pace 100/3. */
-const FRACTIONAL_PACE = {
-  books: [
-    DUNE,
-    {
-      id: '8c4d2e6f-1a3b-4c5d-9e7f-2b3c4d5e6f70',
-      title: 'Fahrenheit 451',
-      authors: ['Ray Bradbury'],
-      pages: 100,
-      readings: [{ startDate: '2026-09-01', finishDate: '2026-09-03', finishedPages: 100, currentPage: 100 }],
-    },
-  ],
+/** Fahrenheit 451, 100 pages read from 1 to 3 September (3 days inclusive): Measured pace 100/3. */
+const FAHRENHEIT = {
+  id: '8c4d2e6f-1a3b-4c5d-9e7f-2b3c4d5e6f70',
+  title: 'Fahrenheit 451',
+  authors: ['Ray Bradbury'],
+  pages: 100,
+  readings: [{ startDate: '2026-09-01', finishDate: '2026-09-03', finishedPages: 100, currentPage: 100 }],
 }
+/** Dune and Fahrenheit 451: pages left 412 at a Measured pace of 100/3. */
+const FRACTIONAL_PACE = { books: [DUNE, FAHRENHEIT] }
 
 /** Book detail's calculator: a `region` named by its heading. */
 function calculator(page: Page): Locator {
@@ -226,7 +237,7 @@ test.describe('Story 6.1 See when this book will be finished (automate)', () => 
     }
   })
 
-  test('[P2] a fractional Measured pace prefills one decimal and the result uses the prefilled value', async ({
+  test('[P2] a fractional Measured pace prefills one decimal and the result uses the unrounded pace', async ({
     page,
   }) => {
     const server = await serverAtFakeToday(page, 'pace-fractional', FRACTIONAL_PACE)
@@ -235,8 +246,34 @@ test.describe('Story 6.1 See when this book will be finished (automate)', () => 
 
       // 100 pages over 3 days: 33.33… shown as "33.3".
       await expect(paceField(page)).toHaveValue('33.3')
-      // 412 ÷ 33.3 → ceil(12.37) = 13 days, 28 Oct + 13 = 10 November.
+      // 412 ÷ 100/3 → ceil(12.36) = 13 days, 28 Oct + 13 = 10 November (E6-R1: the exact pace while untouched).
       await expect(result(page)).toHaveText('About 13 days · 10 November')
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+
+  test("[P1] E6-R1 the untouched prefill agrees with Home's days left for the Main book, and an edit uses the typed pace", async ({
+    page,
+  }) => {
+    // Epic 6 retro item 55. The Left Hand of Darkness is Main at p.30 of 330: 300 pages left at
+    // Measured pace 100/3. Home divides exactly: 300 ÷ 100/3 = 9 days. "33.3" would give 10.
+    const server = await serverAtFakeToday(page, 'pace-agrees-with-home', mainAt(30, { others: [FAHRENHEIT] }))
+    try {
+      await page.goto(`${server.url}/`)
+      await expect(mainBookCard(page).getByText('~9 days left', { exact: true })).toBeVisible()
+
+      await page.goto(`${server.url}/book/${LEFT_HAND_ID}`)
+      await expect(paceField(page)).toHaveValue('33.3')
+      // 28 Oct + 9 = 6 November, the same 9 days as Home.
+      await expect(result(page)).toHaveText('About 9 days · 6 November')
+
+      // Typed by hand, the field's own number counts: 300 ÷ 33.3 → ceil(9.01) = 10 days.
+      await paceField(page).fill('33.30')
+      await expect(result(page)).toHaveText('About 10 days · 7 November')
+      // Back to the prefill's text, it is the exact pace again.
+      await paceField(page).fill('33.3')
+      await expect(result(page)).toHaveText('About 9 days · 6 November')
     } finally {
       await stopAndRemove(server)
     }

@@ -1,5 +1,5 @@
 {
-  "about": "The days-left rounding both sides must agree on, max(1, ceil(pagesLeft ÷ pace)): the pace calculator's line (src/lib/pace.test.ts) and days_left on the server (backend/tests/test_pace_calculator.py). The pace is a decimal string as typed. Every case is under 60 days, so the line is in days. 21 @ 0.7, 21 @ 1.4 and 42 @ 1.4 are exact in Fractions but a day over with a naive float ceil. Change a case here and both suites must still pass.",
+  "about": "The days-left rounding both sides must agree on, max(1, ceil(pagesLeft ÷ pace)): the pace calculator's line (src/lib/pace.test.ts) and days_left on the server (backend/tests/test_pace_calculator.py). The pace is a decimal string as typed. Every case is under 60 days, so the line is in days. 21 @ 0.7, 21 @ 1.4 and 42 @ 1.4 are exact in Fractions but a day over with a naive float ceil. Change a case here and both suites must still pass. prefillCases is the untouched field (Epic 6 retro item 55): measuredPace is the server's exact Measured pace as a fraction, the client gets it as a float and shows pacePrefill of it, and the line's days must be the server's days left for the exact pace.",
   "cases": [
     { "pagesLeft": 412, "pace": "20", "days": 21 },
     { "pagesLeft": 412, "pace": "12.5", "days": 33 },
@@ -10,5 +10,15 @@
     { "pagesLeft": 21, "pace": "0.7", "days": 30 },
     { "pagesLeft": 21, "pace": "1.4", "days": 15 },
     { "pagesLeft": 42, "pace": "1.4", "days": 30 }
+  ],
+  "prefillCases": [
+    { "pagesLeft": 300, "measuredPace": "100/3", "days": 9 },
+    { "pagesLeft": 400, "measuredPace": "100/3", "days": 12 },
+    { "pagesLeft": 412, "measuredPace": "100/3", "days": 13 },
+    { "pagesLeft": 60, "measuredPace": "26/25", "days": 58 },
+    { "pagesLeft": 21, "measuredPace": "7/10", "days": 30 },
+    { "pagesLeft": 19, "measuredPace": "1/3", "days": 57 },
+    { "pagesLeft": 500, "measuredPace": "12345/678", "days": 28 },
+    { "pagesLeft": 1000, "measuredPace": "12345/678", "days": 55 }
   ]
 }

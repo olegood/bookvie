@@ -127,3 +127,17 @@ def test_pac_unit_002_p2_days_left_agrees_with_the_pace_calculators_shared_cases
     for case in cases:
         typed = f"{case['pagesLeft']} @ {case['pace']}"
         assert days_left(case["pagesLeft"], Fraction(case["pace"])) == case["days"], typed
+
+
+@pytest.mark.skipif(not PACE_CASES.is_file(), reason="needs the frontend checkout")
+def test_e6_r1_p1_days_left_agrees_with_the_untouched_prefills_shared_cases() -> None:
+    # Epic 6 retro item 55: while the calculator's field holds the prefill, its
+    # line uses the Measured pace the view sends, so its days must be the
+    # server's days left for that exact pace. src/lib/pace.test.ts reads the
+    # same rows and gets the pace as the float the view serializes.
+    cases = json.loads(PACE_CASES.read_text(encoding="utf-8"))["prefillCases"]
+    assert cases, "the shared table has no prefill cases"
+    for case in cases:
+        pace = Fraction(case["measuredPace"])
+        label = f"{case['pagesLeft']} @ {case['measuredPace']}"
+        assert days_left(case["pagesLeft"], pace) == case["days"], label

@@ -222,6 +222,35 @@ test.describe('Story 6.2 See when my whole unread library will be finished (ATDD
     }
   })
 
+  test('[P2] E6-R1 the untouched prefill uses the exact library pace, and an edit uses the typed pace', async ({
+    page,
+  }) => {
+    // Epic 6 retro item 55: the rule lives in the shared calculator. Fahrenheit 451, 100 pages over
+    // 3 days, gives Measured pace 100/3; Piranesi, never started, leaves 300 pages.
+    const server = await serverAtFakeToday(page, 'catalog-pace-exact', {
+      books: [
+        { title: 'Piranesi', authors: ['Susanna Clarke'], pages: 300 },
+        {
+          title: 'Fahrenheit 451',
+          authors: ['Ray Bradbury'],
+          pages: 100,
+          readings: [{ startDate: '2026-09-01', finishDate: '2026-09-03', finishedPages: 100, currentPage: 100 }],
+        },
+      ],
+    })
+    try {
+      await page.goto(`${server.url}/catalog`)
+      await toggle(page).click()
+      await expect(paceField(page)).toHaveValue('33.3')
+      // 300 ÷ 100/3 = 9 days from 28 October; "33.3" typed by hand would give 10.
+      await expect(result(page)).toHaveText('About 9 days · 6 November')
+      await paceField(page).fill('33.30')
+      await expect(result(page)).toHaveText('About 10 days · 7 November')
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+
   test('[P2] an empty library has no meter and no link', async ({ page }) => {
     const server = await serverAtFakeToday(page, 'catalog-pace-empty', { books: [] })
     try {

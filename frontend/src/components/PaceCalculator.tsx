@@ -7,7 +7,9 @@ import styles from './PaceCalculator.module.css'
  * The pace calculator (EXPERIENCE.md → Pace calculator, DESIGN.md → Pace
  * calculator): a "pages/day" field prefilled with Measured pace to one
  * decimal (empty without one), and an `output` with "About N days · D Month"
- * for the typed pace, recomputed on every keystroke with no request. Any text
+ * for the typed pace, recomputed on every keystroke with no request. While
+ * the field holds that prefill, the line uses the unrounded Measured pace, so
+ * it agrees with Home's "~N days left" (`paceResult`). Any text
  * that isn't a positive number shows no result, no message and no error
  * styling. With nothing left to read it shows only "Nothing left to read.".
  *
@@ -48,7 +50,7 @@ export default function PaceCalculator({
         pages/day
       </label>
       <output htmlFor={fieldId} id={outputId} role="none" className={styles.result}>
-        {paceResult(pagesLeft, typed, now) ?? ''}
+        {paceResult(pagesLeft, typed, now, measuredPace) ?? ''}
       </output>
     </div>
   )

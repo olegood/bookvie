@@ -20,12 +20,25 @@ const DAYS_PER_MONTH = 30.4375
  * and from 24 months years = round(months ÷ 12): "About N years · Month YYYY".
  * `null` for anything that isn't a positive number, with nothing left, or when
  * the finish date is out of range.
+ *
+ * While the field holds the prefill of `measuredPace` (its text equals
+ * `pacePrefill(measuredPace)`), the days come from the unrounded Measured pace,
+ * so the line agrees with Home's "~N days left" for the same Book: 300 pages at
+ * 100/3 is 9 days, not the 10 that "33.3" gives (Epic 6 retro E6-R1). Any other
+ * text is the typed pace.
  */
-export function paceResult(pagesLeft: number, typed: string, today: Date): string | null {
+export function paceResult(
+  pagesLeft: number,
+  typed: string,
+  today: Date,
+  measuredPace: number | null = null,
+): string | null {
   const text = typed.trim()
   if (!DECIMAL.test(text) || pagesLeft <= 0) return null
-  const pace = Number(text)
-  if (!Number.isFinite(pace) || pace <= 0) return null
+  const typedPace = Number(text)
+  // The typed text decides whether there is a result at all: a prefill that reads "0" shows none.
+  if (!Number.isFinite(typedPace) || typedPace <= 0) return null
+  const pace = measuredPace !== null && text === pacePrefill(measuredPace) ? measuredPace : typedPace
   // Correct the float error first, as the server divides exactly: 21 ÷ 0.7 is 30.000000000000004.
   const days = Math.max(1, Math.ceil(Number((pagesLeft / pace).toPrecision(12))))
   const finish = new Date(today.getFullYear(), today.getMonth(), today.getDate() + days)
