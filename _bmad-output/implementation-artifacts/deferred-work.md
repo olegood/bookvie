@@ -790,3 +790,9 @@
   - the stats buckets' rules: `period` is `YYYY-MM` or `YYYY`; buckets come oldest first, one per calendar month (or year) from `from` to `to`, with empty ones as 0 books and 0 pages; and `[]` is only for All time with nothing finished;
   - the Stats bars' client presentation, which AD-6's list of client calculations doesn't name: each fill's height is pages over the range's largest, the chart is `aria-hidden` with a visually hidden table (Period, Books, Pages), and the bar labels read "Jan", with the year on the first bar and each January.
   evidence: `backend/bookvie/views/stats.py` `_period`, `_periods`; `backend/bookvie/views/models.py` `StatsBucket`; `frontend/src/lib/stats.ts` `barShare`, `barLines`, `periodName`; `frontend/src/components/StatsBars.tsx`; `ARCHITECTURE-SPINE.md` AD-6 (spine check, build-auto review of 6.4).
+
+## Deferred from: code review of spec-6-4-see-my-reading-month-by-month (2026-11-11)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-4-see-my-reading-month-by-month.md`
+  summary: The `StatsBucket.period` and `StatsView.buckets` field docstrings never reach the OpenAPI. `_View` doesn't set `use_attribute_docstrings`, and no view model uses `Field(description=…)`, so `schema.d.ts` still reads `/** Period */`. The `YYYY-MM` / `YYYY` format the client's `splitPeriod` depends on is documented only in Python. Turning the flag on changes every view model's schema, so it is a project-wide choice, not a story fix. The spec's Code Map assumed the docstrings would reach it.
+  evidence: `backend/bookvie/views/models.py` `_View`, `StatsBucket`, `StatsView`; `frontend/src/api/generated/schema.d.ts` `StatsBucket` (Blind Hunter and Acceptance Auditor, code review of 6.4). The AD-6 spine drift that this review's Spine Check also found is the build-auto entry above; it is not repeated here.

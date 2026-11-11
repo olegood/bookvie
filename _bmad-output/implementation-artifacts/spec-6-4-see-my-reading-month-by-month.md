@@ -3,7 +3,7 @@ title: 'Story 6.4: See my reading month by month'
 type: 'feature'
 created: '2026-11-11'
 baseline_revision: '44955bf2b11f6500b4222b6559d2b3efa3adb86c'
-status: 'in-review'
+status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -108,6 +108,34 @@ deferred:
 - Given Stats with buckets, when it renders, then there is one bar per bucket with the pages above and the period below, the heights are proportional, and the table has the columns Period, Books and Pages (ATDD AC-2).
 - Given reduced motion, when the range changes, then the table and bars show the new range and nothing animates (ATDD AC-4).
 - Given Stats with bars in either theme, when axe scans it, then there are no violations.
+
+### Review Findings
+
+Code review (bmad-code-review, new session, 2026-11-11). Layers: Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor, Spine Check. 0 decision-needed, 4 patch, 2 defer, 11 rejected; no high or medium findings.
+
+- [x] [Review][Patch] The forced-colours leaf passes even with the fill's `Highlight` rule deleted, because Chromium then paints the fill as Canvas (white on a white track), which is neither null nor transparent. Assert that the fill's background differs from the track's. [frontend/e2e/stats.spec.ts:930]
+- [x] [Review][Patch] No test can see a transition on the bars. The AC-4 leaf runs under reduced motion (base.css zeroes every transition) and October's height doesn't change. Assert that each fill's `transition-duration` is `0s` without reduced motion. [frontend/e2e/stats.spec.ts:796]
+- [x] [Review][Patch] The AC-4 Custom leaf checks the table but not the bars ("the numbers and bars update"). Assert the chart's values (now two columns, 400 and 610). [frontend/e2e/stats.spec.ts:877]
+- [x] [Review][Patch] Nothing in the browser checks that an empty range draws zero-height bars with "0" values and a table of zeros (Always rule). The nothing-finished leaf only counts the rows. [frontend/e2e/stats.spec.ts:862]
+- [x] [Review][Defer] The `period` and `buckets` field docstrings don't reach the OpenAPI (`_View` has no `use_attribute_docstrings`) [backend/bookvie/views/models.py:298] — deferred: a project-wide schema choice that predates this story; see deferred-work.md.
+- [x] [Review][Defer] Spine drift (AD-6): the bucket rules and the bars' client presentation [ARCHITECTURE-SPINE.md AD-6] — deferred: spine drift, reconciled before the next epic; already in deferred-work.md from the build-auto review.
+
+**Verification (re-run in the review session, not taken from the build):**
+- Before the patches: `TZ=Europe/Madrid uv run pytest tests/test_stats.py tests/test_contract.py` 75 passed; `TZ=Europe/Madrid npm run check` exit 0.
+- After the patches: the Stats e2e 26 passed. Deleting the forced-colours `Highlight` line and adding `transition: height 300ms` to `.fill` failed the two patched leaves (CSS then restored). `TZ=Europe/Madrid npm run check`: the first run had 1 failure in `add-card-note.spec.ts:193` (Story 5.1, not touched here), which passed 3 of 3 standalone runs; the re-run exited 0 with 555 passed.
+
+**Rejected:**
+- `low` Year buckets have no upper limit, so a range spanning many decades overlaps the labels (Blind Hunter, Edge Case Hunter): unlikely in a personal library; the chart is `aria-hidden` and the table carries the data. A cap or scroll adds a mechanism (same as the build review).
+- `low` A tiny share draws a ~2px fill that looks empty (Blind Hunter): the spec sets the fill to pages ÷ the largest, and the value label above shows the pages. A minimum height deviates from the spec.
+- `low` A finish with no `finishedPages` shows a 0-page bar while the table says 1 book (Blind Hunter): this is the spec's rule (`None` is 0). `test_p1_the_buckets_add_up_to_the_totals` includes that Reading, so dropping it from a bucket fails the sum.
+- `low` The e2e locators depend on `aria-hidden` (Blind Hunter): the spec forbids `data-testid`. A structural change fails loudly.
+- `false` The "Totals" group serves only a test (Blind Hunter): the spec requires it (Always rules, Design Notes).
+- `false` The DST Sunday backend tests test nothing (Blind Hunter): AD-20 requires the last-Sunday boundary dates in tests, and the client's preset resolution is pinned by 6.3's tests.
+- `low` Partial first and last year buckets read as whole years (Blind Hunter): the spec defines the bucket labels. A fix would edit the spec.
+- `false` Dead `finish_date is None` branches in `stats()` (Blind Hunter): they narrow the type for the checker (also logged in the 6.3 and build reviews).
+- `false` A reversed range returns `buckets: []` like All time with nothing (Blind Hunter): `stats_view` refuses `to` before `from` with 422 (`backend/bookvie/http/api.py:410`), so the view never sees one.
+- `low` `StatsBars` has no component-level test (Blind Hunter): there is no component test harness. The helpers are unit-tested, and e2e covers the component.
+- `low` The proportional-height check tolerates ±0.05 (Acceptance Auditor): `barShare` is pinned exactly by unit tests, and the CSS percentage is applied directly.
 
 ## Spec Change Log
 

@@ -710,8 +710,10 @@ type ChartColumn = {
   period: string[]
   track: number
   trackBorder: string
+  trackBackground: string
   fill: number
   fillBackground: string | null
+  fillTransition: string | null
 }
 
 /** The `aria-hidden` chart's columns, oldest first: value above, track, period below. */
@@ -728,8 +730,10 @@ async function chartColumns(page: Page): Promise<ChartColumn[]> {
           period: Array.from(period.children, (line) => line.textContent ?? ''),
           track: track.getBoundingClientRect().height,
           trackBorder: getComputedStyle(track).borderTopWidth,
+          trackBackground: getComputedStyle(track).backgroundColor,
           fill: fill === null ? 0 : fill.getBoundingClientRect().height,
           fillBackground: fill === null ? null : getComputedStyle(fill).backgroundColor,
+          fillTransition: fill === null ? null : getComputedStyle(fill).transitionDuration,
         }
       }),
     )
@@ -858,8 +862,13 @@ test.describe('Story 6.4 See my reading month by month (ATDD)', () => {
     const server = await serverAtFakeToday(page, 'stats-bars-nothing', NOTHING_FINISHED)
     try {
       await page.goto(`${server.url}/stats`)
-      // This year with nothing finished: ten empty months.
+      // This year with nothing finished: ten empty months, drawn as zero-height bars reading "0".
       await expect.poll(async () => (await tableRows(chartTable(page))).length).toBe(11)
+      expect((await booksAndPages(chartTable(page))).slice(1)).toEqual(Array.from({ length: 10 }, () => ['0', '0']))
+      const empty = await chartColumns(page)
+      expect(empty.map((column) => column.value)).toEqual(Array.from({ length: 10 }, () => '0'))
+      expect(empty.map((column) => column.fill)).toEqual(Array.from({ length: 10 }, () => 0))
+      await expect(page.getByRole('main').getByText('No books finished in this range.', { exact: true })).toBeVisible()
 
       await preset(page, 'All time').click()
       await expect(page.getByRole('main').getByText('No books finished yet.', { exact: true })).toBeVisible()
@@ -870,7 +879,7 @@ test.describe('Story 6.4 See my reading month by month (ATDD)', () => {
     }
   })
 
-  test('[P2] AC-4 editing Custom updates the table', async ({ page }) => {
+  test('[P2] AC-4 editing Custom updates the table and bars, and the fills never transition', async ({ page }) => {
     const server = await serverAtFakeToday(page, 'stats-bars-custom', FLOW_7)
     try {
       await page.goto(`${server.url}/stats`)
@@ -889,6 +898,12 @@ test.describe('Story 6.4 See my reading month by month (ATDD)', () => {
           ['October 2026', '2', '610'],
         ])
       await expect(table.locator('caption')).toHaveText('Books and pages finished by month')
+
+      // The bars follow: two columns now, and no fill has a transition (motion is not reduced here).
+      const columns = await chartColumns(page)
+      expect(columns.map((column) => column.value)).toEqual(['400', '610'])
+      expect(columns.map((column) => column.fillTransition)).toEqual(['0s', '0s'])
+      expect(await page.evaluate(() => document.getAnimations().length)).toBe(0)
     } finally {
       await stopAndRemove(server)
     }
@@ -929,6 +944,8 @@ test.describe('Story 6.4 See my reading month by month (ATDD)', () => {
       expect(october.value).toBe('610')
       expect(october.fillBackground).not.toBeNull()
       expect(october.fillBackground).not.toBe('rgba(0, 0, 0, 0)')
+      // Without the Highlight rule the fill is forced to Canvas, the same as its track, and vanishes.
+      expect(october.fillBackground).not.toBe(october.trackBackground)
       expect(october.trackBorder).not.toBe('0px')
     } finally {
       await stopAndRemove(server)
