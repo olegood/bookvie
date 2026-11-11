@@ -25,7 +25,7 @@ HOME_EMPTY = {
     "lastExportAt": None,
     "slicePriority": [],
 }
-CATALOG_EMPTY = {**SHELF_EMPTY, "tags": []}
+CATALOG_EMPTY = {**SHELF_EMPTY, "tags": [], "pagesLeft": 0, "measuredPace": None}
 EMPTY = {"home": HOME_EMPTY, "catalog": CATALOG_EMPTY}
 
 

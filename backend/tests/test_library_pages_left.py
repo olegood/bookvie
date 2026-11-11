@@ -1,6 +1,6 @@
 """Story 6.2 See when my whole unread library will be finished: the catalog view's pace numbers (API, ATDD).
 
-Two skipped leaves for the criteria the server decides (PAC-API-001, R-10):
+Two leaves for the criteria the server decides (PAC-API-001, R-10):
 
 - AC-1: ``GET /api/views/catalog`` supplies the library-scope pages left: all
   pages of owned Books never started, plus the pages left in every active or
@@ -20,8 +20,6 @@ The leaves pin these names: ``CatalogView.pagesLeft: int`` and
 view's (``bookvie.domain.pace.measured_pace``, sent unrounded). Library-scope
 pages left is the sum of every Book's Book-scope pages left
 (``bookvie.domain.progress.pages_left``), so the two scopes can't disagree.
-
-Activate a leaf by deleting its ``@pytest.mark.skip(reason=RED)`` line.
 """
 
 from pathlib import Path
@@ -31,8 +29,6 @@ from fastapi.testclient import TestClient
 
 from tests.builder import LibraryBuilder
 from tests.helpers import api_client
-
-RED = "ATDD red phase (Story 6.2): the catalog view has no pagesLeft or measuredPace yet"
 
 
 def _catalog(client: TestClient) -> dict[str, object]:
@@ -51,7 +47,6 @@ def _finished(
 # --- AC-1: library-scope pages left and Measured pace --------------------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_ac1_p1_the_catalog_view_supplies_library_scope_pages_left_and_measured_pace(
     tmp_path: Path,
 ) -> None:
@@ -98,11 +93,22 @@ def test_ac1_p1_the_catalog_view_supplies_library_scope_pages_left_and_measured_
     done.write(tmp_path / "done")
     assert _catalog(api_client(tmp_path / "done", raise_server_exceptions=True))["pagesLeft"] == 0
 
+    # A fractional pace is sent unrounded, the same value as the book view's:
+    # 100 pages from 1 to 3 October (3 days inclusive) is 100/3.
+    fractional = LibraryBuilder()
+    dune = fractional.book(title="Dune", pages=412)
+    fahrenheit = fractional.book(title="Fahrenheit 451", pages=100)
+    _finished(fractional, fahrenheit, "2026-10-01", "2026-10-03", 100)
+    fractional.write(tmp_path / "fractional")
+    client = api_client(tmp_path / "fractional", raise_server_exceptions=True)
+    pace = _catalog(client)["measuredPace"]
+    assert pace == client.get("/api/views/book", params={"id": dune}).json()["measuredPace"]
+    assert pace == pytest.approx(100 / 3)
+
 
 # --- AC-4: every Reading state, no double counting -----------------------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_ac4_p1_library_pages_left_matches_the_rule_for_every_reading_state(
     tmp_path: Path, library_builder: LibraryBuilder
 ) -> None:
@@ -137,18 +143,29 @@ def test_ac4_p1_library_pages_left_matches_the_rule_for_every_reading_state(
     hyperion = b.book(title="Hyperion", pages=482)
     b.reading(hyperion, current_page=210)
     expected[hyperion] = 272  # a Side read waiting at p.210
+    # Up next, paused at p.45: a paused Up next Book counts its pages left like
+    # every paused Reading (FR-15; Up next plays no part).
     piranesi = b.book(title="Piranesi", pages=245)
-    expected[piranesi] = 245  # Up next, never started
+    b.reading(piranesi, current_page=45, paused_at="2026-10-25")
+    expected[piranesi] = 200
     b.main(left_hand).up_next(piranesi).side_read(hyperion)
     b.write(tmp_path)
     client = api_client(tmp_path, raise_server_exceptions=True)
 
-    # 412 + 210 + 191 + 0 + 0 + 70 + 310 + 272 + 245.
-    assert _catalog(client)["pagesLeft"] == 1710
+    # 412 + 210 + 191 + 0 + 0 + 70 + 310 + 272 + 200.
+    assert _catalog(client)["pagesLeft"] == 1665
 
     # The library scope is the sum of the Book scopes: each Book's view agrees.
     for book_id, pages_left in expected.items():
         assert (
             client.get("/api/views/book", params={"id": book_id}).json()["pagesLeft"] == pages_left
         )
-    assert sum(expected.values()) == 1710
+    assert sum(expected.values()) == 1665
+
+    # A never-started Up next Book counts all its pages.
+    never_started = LibraryBuilder()
+    dune_next = never_started.book(title="Dune", pages=412)
+    never_started.up_next(dune_next)
+    never_started.write(tmp_path / "up-next")
+    up_next = _catalog(api_client(tmp_path / "up-next", raise_server_exceptions=True))
+    assert up_next["pagesLeft"] == 412

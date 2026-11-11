@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useLocation } from 'react-router'
-import { useCatalogView, type ShelfBook } from '../api/index.ts'
+import { useCatalogView, type LibraryMeter, type ShelfBook } from '../api/index.ts'
 import Button from '../components/Button.tsx'
 import FailureMessage from '../components/FailureMessage.tsx'
 import PageHeading from '../components/PageHeading.tsx'
+import PaceCalculator from '../components/PaceCalculator.tsx'
 import ViewToggle from '../components/ViewToggle.tsx'
 import { announce, clearAnnouncements } from '../lib/announce.ts'
 import { deleteHandled, deletedTitle, markDeleteHandled } from '../lib/bookDetail.ts'
@@ -13,7 +14,7 @@ import { COULDNT_LOAD } from '../lib/copy.ts'
 import { usePageTitle } from '../lib/page.ts'
 // The count is announced once typing pauses, after the same pause as Search card notes.
 import { SEARCH_PAUSE_MS } from '../lib/useSearchCount.ts'
-import Bookcase from './Bookcase.tsx'
+import Bookcase, { MeterBar } from './Bookcase.tsx'
 import shelf from './Bookcase.module.css'
 import CatalogList from './CatalogList.tsx'
 import NewBookPanel from './NewBookPanel.tsx'
@@ -65,6 +66,47 @@ export function EmptyShelf() {
 
 function prefersReducedMotion(): boolean {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
+
+/**
+ * The library meter and the collapsed "How long until…?" link on one row
+ * (DESIGN.md → Catalog, EXPERIENCE.md → Pace calculator), above the bookcase
+ * or list in both views. Activating the link expands Story 6.1's calculator
+ * inline below the row, counting down the whole library's pages left (FR-15
+ * library scope). It starts collapsed on every visit.
+ */
+function LibraryPace({
+  meter,
+  pagesLeft,
+  measuredPace,
+}: {
+  meter: LibraryMeter
+  pagesLeft: number
+  measuredPace: number | null
+}) {
+  const [expanded, setExpanded] = useState(false)
+  const calculatorId = useId()
+  return (
+    <div className={styles.pace}>
+      <div className={styles.paceRow}>
+        <MeterBar meter={meter} />
+        <button
+          type="button"
+          className={`linkButton ${styles.paceToggle}`}
+          aria-expanded={expanded}
+          aria-controls={expanded ? calculatorId : undefined}
+          onClick={() => setExpanded((open) => !open)}
+        >
+          How long until…?
+        </button>
+      </div>
+      {expanded && (
+        <div id={calculatorId}>
+          <PaceCalculator pagesLeft={pagesLeft} measuredPace={measuredPace} />
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default function CatalogPage() {
@@ -212,12 +254,14 @@ export default function CatalogPage() {
           New book
         </Button>
       </div>
+      {!empty && (
+        <LibraryPace meter={view.data.meter} pagesLeft={view.data.pagesLeft} measuredPace={view.data.measuredPace} />
+      )}
       {empty ? (
         <EmptyShelf />
       ) : catalogView === 'bookcase' ? (
         <Bookcase
           books={sorted}
-          meter={view.data.meter}
           query={query}
           highlightId={highlightId}
           focusTargets={focusTargets}

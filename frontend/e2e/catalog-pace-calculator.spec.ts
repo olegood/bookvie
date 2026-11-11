@@ -10,14 +10,27 @@
 //
 // Arithmetic (AD-6): days = max(1, ceil(pages left ÷ pages/day)), finish date
 // = today + days; from 60 days months = round(days ÷ 30.4375).
-//
-// Activate a leaf by changing its `test.skip(` to `test(`.
 
+import AxeBuilder from '@axe-core/playwright'
 import type { Locator, Page } from '@playwright/test'
 import { expect, test } from './fixtures.ts'
 import { DUNE, mainAt, serverAtFakeToday, sizeOf, stopAndRemove } from './home.ts'
 
 const LINK = 'How long until…?'
+const NOTHING_LEFT = 'Nothing left to read.'
+const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']
+
+/** Emma, 400 pages read from 1 to 20 September: finished, and a Measured pace of 20. */
+const EMMA = {
+  title: 'Emma',
+  authors: ['Jane Austen'],
+  pages: 400,
+  readings: [{ startDate: '2026-09-01', finishDate: '2026-09-20', finishedPages: 400, currentPage: 400 }],
+}
+/** Only finished Books: nothing left to read. */
+const ALL_FINISHED = { books: [EMMA] }
+/** Dune alone, never started: 412 pages left and no Measured pace. */
+const NO_PACE = { books: [DUNE] }
 
 /**
  * Flow 5 (UJ-5): 8,100 pages left at a Measured pace of 17.
@@ -72,7 +85,7 @@ function meter(page: Page): Locator {
 }
 
 test.describe('Story 6.2 See when my whole unread library will be finished (ATDD)', () => {
-  test.skip('[P1] AC-2 Catalog has a collapsed "How long until…?" link below the library meter that expands the calculator inline', async ({
+  test('[P1] AC-2 Catalog has a collapsed "How long until…?" link below the library meter that expands the calculator inline', async ({
     page,
   }) => {
     const server = await serverAtFakeToday(page, 'catalog-pace-link', FLOW_5)
@@ -114,7 +127,7 @@ test.describe('Story 6.2 See when my whole unread library will be finished (ATDD
     }
   })
 
-  test.skip('[P1] AC-3 typing 30 with 8,100 pages left reads "About 9 months · July 2027"', async ({ page }) => {
+  test('[P1] AC-3 typing 30 with 8,100 pages left reads "About 9 months · July 2027"', async ({ page }) => {
     const server = await serverAtFakeToday(page, 'catalog-pace-30', FLOW_5)
     try {
       await page.goto(`${server.url}/catalog`)
@@ -127,8 +140,8 @@ test.describe('Story 6.2 See when my whole unread library will be finished (ATDD
       // The same field rules as Story 6.1: the field is described by the result.
       await expect(paceField(page)).toHaveAccessibleDescription('About 9 months · July 2027')
 
-      // The same invalid-input rules: 0 or an empty field shows nothing, with no error state.
-      for (const typed of ['0', '']) {
+      // The same invalid-input rules: zero, negative, non-numeric or empty shows nothing, with no error state.
+      for (const typed of ['0', '-5', 'abc', '']) {
         await paceField(page).fill(typed)
         await expect(result(page)).toHaveText('')
         await expect(paceField(page)).not.toHaveAttribute('aria-invalid', 'true')
@@ -141,6 +154,91 @@ test.describe('Story 6.2 See when my whole unread library will be finished (ATDD
       await toggle(page).click()
       await expect(paceField(page)).toHaveValue('17')
       await expect(result(page)).toHaveText('About 16 months · February 2028')
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+
+  test('[P2] List view has the same meter and link, and expands the calculator the same way', async ({ page }) => {
+    await page.addInitScript(() => window.localStorage.setItem('bookvie.catalogView', 'list'))
+    const server = await serverAtFakeToday(page, 'catalog-pace-list', FLOW_5)
+    try {
+      await page.goto(`${server.url}/catalog`)
+      await expect(page.getByRole('main').getByRole('table')).toBeVisible()
+      await expect(meter(page)).toHaveAttribute('aria-valuetext', '1 of 11 finished')
+      await expect(toggle(page)).toHaveAttribute('aria-expanded', 'false')
+      await expect(paceField(page)).toHaveCount(0)
+
+      await toggle(page).click()
+      await expect(toggle(page)).toHaveAttribute('aria-expanded', 'true')
+      await expect(paceField(page)).toHaveValue('17')
+      await expect(result(page)).toHaveText('About 16 months · February 2028')
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+
+  test('[P2] a library with only finished Books expands to "Nothing left to read."', async ({ page }) => {
+    const server = await serverAtFakeToday(page, 'catalog-pace-done', ALL_FINISHED)
+    try {
+      await page.goto(`${server.url}/catalog`)
+      await toggle(page).click()
+      await expect(page.getByRole('main').getByText(NOTHING_LEFT, { exact: true })).toBeVisible()
+      await expect(paceField(page)).toHaveCount(0)
+      await expect(result(page)).toHaveCount(0)
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+
+  test('[P2] without a Measured pace the expanded field and result are empty', async ({ page }) => {
+    const server = await serverAtFakeToday(page, 'catalog-pace-none', NO_PACE)
+    try {
+      await page.goto(`${server.url}/catalog`)
+      await toggle(page).click()
+      await expect(paceField(page)).toHaveValue('')
+      await expect(result(page)).toHaveText('')
+
+      // 412 ÷ 30 → 14 days from 28 October.
+      await paceField(page).fill('30')
+      await expect(result(page)).toHaveText('About 14 days · 11 November')
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+
+  test('[P2] an empty library has no meter and no link', async ({ page }) => {
+    const server = await serverAtFakeToday(page, 'catalog-pace-empty', { books: [] })
+    try {
+      await page.goto(`${server.url}/catalog`)
+      await expect(page.getByRole('main').getByRole('button', { name: 'New book', exact: true }).first()).toBeVisible()
+      await expect(toggle(page)).toHaveCount(0)
+      await expect(page.getByRole('progressbar')).toHaveCount(0)
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+
+  test('[P2] axe finds nothing on Catalog with the calculator expanded, in both views and both themes', async ({
+    page,
+  }) => {
+    const server = await serverAtFakeToday(page, 'catalog-pace-axe', FLOW_5)
+    try {
+      for (const catalogView of ['bookcase', 'list'] as const) {
+        // Set before each load, as the List view leaf does.
+        await page.addInitScript((choice) => window.localStorage.setItem('bookvie.catalogView', choice), catalogView)
+        for (const colorScheme of ['light', 'dark'] as const) {
+          await page.emulateMedia({ colorScheme })
+          await page.goto(`${server.url}/catalog`)
+          if (catalogView === 'list') await expect(page.getByRole('main').getByRole('table')).toBeVisible()
+          await toggle(page).click()
+          await expect(result(page)).toHaveText('About 16 months · February 2028')
+          const { violations } = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze()
+          expect(violations.map(({ id, nodes }) => `${catalogView} ${colorScheme}: ${id} (${nodes.length})`)).toEqual(
+            [],
+          )
+        }
+      }
     } finally {
       await stopAndRemove(server)
     }

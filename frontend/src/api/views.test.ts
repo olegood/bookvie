@@ -13,7 +13,7 @@ import {
   type HomeView,
 } from './views.ts'
 
-const empty: CatalogView = { meter: { finished: 0, total: 0 }, books: [], tags: [] }
+const empty: CatalogView = { meter: { finished: 0, total: 0 }, books: [], tags: [], pagesLeft: 0, measuredPace: null }
 
 describe('viewKey', () => {
   it("keys every view under 'view'", () => {

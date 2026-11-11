@@ -33,7 +33,6 @@ export type { FinishMoment }
 type Shared = {
   /** Already in display order (the bookcase order). */
   books: readonly ShelfBook[]
-  meter: LibraryMeter
 }
 
 /** Catalog's full bookcase: every Book, hidden by Search titles. */
@@ -51,6 +50,8 @@ type CatalogProps = Shared & {
 /** Home's slice: up to 3 rows of the full bookcase, chosen by the server's priority (AD-6). */
 type SliceProps = Shared & {
   slice: { priority: readonly string[] }
+  /** The library meter, in the slice's header. Catalog shows it above the bookcase instead. */
+  meter: LibraryMeter
   /** This Home visit's finish moment: played once, its header line kept while it is passed. */
   finishing?: FinishMoment | null
 }
@@ -93,7 +94,8 @@ function verticalNeighbour(buttons: readonly HTMLElement[], index: number, step:
   return best
 }
 
-function MeterBar({ meter }: { meter: LibraryMeter }) {
+/** The library meter (DESIGN.md → Library meter): Home's slice header, and Catalog's row above the bookcase or list. */
+export function MeterBar({ meter }: { meter: LibraryMeter }) {
   const text = `${meter.finished} of ${meter.total} finished`
   const share = meter.total === 0 ? 0 : (meter.finished / meter.total) * 100
   return (
@@ -134,7 +136,7 @@ function MeterBar({ meter }: { meter: LibraryMeter }) {
  * passed.
  */
 export default function Bookcase(props: Props) {
-  const { books, meter } = props
+  const { books } = props
   const sliceMode = props.slice !== undefined
   const query = props.slice === undefined ? props.query : ''
   const highlightId = props.slice === undefined ? props.highlightId : null
@@ -322,7 +324,7 @@ export default function Bookcase(props: Props) {
           Bookcase
         </h2>
         {finishing !== null && <p className={styles.finishLine}>{finishLine(finishing.title, finishing.reread)}</p>}
-        <MeterBar meter={meter} />
+        {props.slice !== undefined && <MeterBar meter={props.meter} />}
         {sliceMode && (
           <Link to="/catalog" className={styles.seeAll}>
             See all in Catalog

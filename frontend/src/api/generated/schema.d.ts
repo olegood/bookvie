@@ -757,6 +757,10 @@ export interface components {
             books: components["schemas"]["ShelfBook"][];
             /** Tags */
             tags: string[];
+            /** Pagesleft */
+            pagesLeft: number;
+            /** Measuredpace */
+            measuredPace: number | null;
         };
         /**
          * CurrentReading

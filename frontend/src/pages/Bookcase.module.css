@@ -46,7 +46,7 @@
   box-shadow: var(--shadow-plank);
 }
 
-/* Header: the BOOKCASE heading, the library meter at the right. */
+/* Header: the BOOKCASE heading; on Home, the library meter at the right. */
 .header {
   display: flex;
   align-items: center;
@@ -68,11 +68,15 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  margin-left: auto;
   font-family: var(--font-meta-family);
   font-size: var(--font-meta-size);
   line-height: var(--font-meta-line-height);
   color: var(--color-ink-secondary);
+}
+
+/* In Home's slice header the meter sits at the right. */
+.header .meter {
+  margin-left: auto;
 }
 
 .bar {

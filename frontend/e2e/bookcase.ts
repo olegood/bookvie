@@ -68,9 +68,12 @@ export function bookRows(page: Page): Locator {
     .filter({ hasNot: page.getByRole('columnheader') })
 }
 
-/** Moves focus into the bookcase the way a keyboard user does: Tab from New book. */
+/**
+ * Moves focus into the bookcase the way a keyboard user does: Tab from the
+ * Tab stop before it, Catalog's collapsed "How long until…?" link (Story 6.2).
+ */
 export async function tabIntoBookcase(page: Page): Promise<void> {
-  await page.getByRole('button', { name: 'New book', exact: true }).focus()
+  await page.getByRole('main').getByRole('button', { name: 'How long until…?', exact: true }).focus()
   await page.keyboard.press('Tab')
 }
 

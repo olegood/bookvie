@@ -84,11 +84,16 @@ def catalog(library: Library) -> CatalogView:
     """Every Book, in library order (the client sorts), the meter and the tags.
 
     Tags merge ignoring case; the first spelling in library order wins.
+    Library-scope pages left is the sum of every Book's Book-scope pages left
+    (FR-15), so the two scopes can't disagree.
     """
+    pace = measured_pace(library)
     return CatalogView(
         meter=_meter(library),
         books=[_shelf_book(library, b) for b in library.books],
         tags=merge_tags(tag for b in library.books for tag in b.tags),
+        pages_left=sum(pages_left(b) for b in library.books),
+        measured_pace=None if pace is None else float(pace),
     )
 
 

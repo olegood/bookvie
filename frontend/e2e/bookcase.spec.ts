@@ -294,7 +294,8 @@ test.describe('Story 1.10 Bookcase view (ATDD)', () => {
     // Tab returns to the last focused spine; still one Tab stop.
     await page.keyboard.press('ArrowRight')
     await page.keyboard.press('Shift+Tab')
-    await expect(page.getByRole('button', { name: 'New book', exact: true })).toBeFocused()
+    // The Tab stop before the bookcase: the library meter row's "How long until…?" link (Story 6.2).
+    await expect(page.getByRole('button', { name: 'How long until…?', exact: true })).toBeFocused()
     await page.keyboard.press('Tab')
     await expect(all.nth(1)).toBeFocused()
     await expect(bookcase(page).locator('[tabindex="0"]')).toHaveCount(1)

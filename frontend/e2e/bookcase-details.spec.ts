@@ -69,7 +69,7 @@ test.describe('Story 1.10 Bookcase view details (automate)', () => {
     await page.emulateMedia({ colorScheme: 'light' })
   })
 
-  test('[P2] AC-1 Tab order is Search titles, Bookcase, List, New book, then the shelf', async ({
+  test('[P2] AC-1 Tab order is Search titles, Bookcase, List, New book, How long until…?, then the shelf', async ({
     page,
     seededServer,
   }) => {
@@ -84,6 +84,9 @@ test.describe('Story 1.10 Bookcase view details (automate)', () => {
     await expect(toggle.getByRole('button', { name: 'List', exact: true })).toBeFocused()
     await page.keyboard.press('Tab')
     await expect(page.getByRole('button', { name: 'New book', exact: true })).toBeFocused()
+    // The library meter's row: the collapsed "How long until…?" link (Story 6.2).
+    await page.keyboard.press('Tab')
+    await expect(page.getByRole('button', { name: 'How long until…?', exact: true })).toBeFocused()
     await page.keyboard.press('Tab')
     await expect(spine(page, 'Dune by Frank Herbert, not read yet')).toBeFocused()
   })

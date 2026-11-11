@@ -24,6 +24,26 @@
   margin-left: auto;
 }
 
+/* The library meter, then the "How long until…?" link, then the calculator when expanded. */
+.pace {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.paceRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-5);
+}
+
+.paceToggle {
+  font-family: var(--font-body-sm-family);
+  font-size: var(--font-body-sm-size);
+  line-height: var(--font-body-sm-line-height);
+}
+
 .failure {
   display: flex;
   flex-direction: column;

@@ -155,6 +155,15 @@ class CatalogView(_View):
     books: list[ShelfBook]
     tags: list[str]
     """Every tag in the library once, ignoring case (the Tags suggestions)."""
+    pages_left: int
+    """Library-scope pages left (FR-15): the sum of every Book's Book-scope pages left.
+    Never-started Books count all their pages, every active or paused Reading (re-reads
+    and the Up next Book's included) counts ``pages − currentPage`` (never below 0), and
+    Books with only finished Readings count 0. Side read marks change nothing. Catalog's
+    "How long until…?" calculator counts it down."""
+    measured_pace: float | None
+    """The library's Measured pace in pages a day (AD-6), not rounded, the same value as
+    the book view's. ``None`` when there is none."""
 
 
 class BookReading(_View):
