@@ -1,0 +1,165 @@
+{
+  "schema_version": "0.3.0",
+  "snapshot_at": "2026-11-11T12:00:00.000000Z",
+  "repo": "bookvie",
+  "collection_mode": "contract_static",
+  "collection_status": "COLLECTED",
+  "inventory_basis": "acceptance_criteria",
+  "gate_basis": "priority_thresholds",
+  "source_sha": "c177b6d2b96978a3cfcf258eee6f06a1e4343ac2",
+  "target": {
+    "type": "epic",
+    "id": "5",
+    "label": "Epic 5: Keep what a book gave you"
+  },
+  "decision_mode": "deterministic",
+  "evaluator": "Oleg",
+  "confidence": "high",
+  "oracle": {
+    "resolution_mode": "formal_requirements",
+    "confidence": "high",
+    "sources": [
+      "_bmad-output/test-artifacts/test-design-qa.md (CRD-*, BKP-API-001 full-data re-run, CAT-API-006 card-note share; card-note surfaces of XUI-E2E-001/002/003/005)",
+      "_bmad-output/test-artifacts/test-design-architecture.md (R-09)",
+      "_bmad-output/planning-artifacts/epics.md (TR7 :154, Epic 5 gate :1703, stories 5.1-5.4)",
+      "_bmad-output/implementation-artifacts/epic-5-retro-2026-11-10.md (action 50)",
+      "_bmad-output/test-artifacts/atdd-checklist-5-1, 5-2, 5-3, 5-4, pile-arrow-key-navigation (story ACs)"
+    ],
+    "external_pointer_status": "not_used",
+    "synthetic": false
+  },
+  "coverage": {
+    "inventory": {
+      "covered": 10,
+      "total": 10,
+      "pct": 100
+    },
+    "priority_breakdown": {
+      "P0": {
+        "total": 2,
+        "covered": 2,
+        "pct": 100
+      },
+      "P1": {
+        "total": 4,
+        "covered": 4,
+        "pct": 100
+      },
+      "P2": {
+        "total": 4,
+        "covered": 4,
+        "pct": 100
+      },
+      "P3": {
+        "total": 0,
+        "covered": 0,
+        "pct": 100
+      }
+    },
+    "by_level": {
+      "e2e": {
+        "tests": 92,
+        "criteria_covered": 7
+      },
+      "api": {
+        "tests": 23,
+        "criteria_covered": 3
+      },
+      "component": {
+        "tests": 0,
+        "criteria_covered": 0
+      },
+      "unit": {
+        "tests": 42,
+        "criteria_covered": 2
+      },
+      "live": {
+        "tests": 0,
+        "criteria_covered": 0
+      },
+      "other": {
+        "tests": 0,
+        "criteria_covered": 0
+      }
+    }
+  },
+  "tests": {
+    "files": 11,
+    "cases": 157,
+    "skipped_cases": 0,
+    "fixme_cases": 0,
+    "pending_cases": 0,
+    "note": "Counts the 4 Epic 5 backend API files (test_add_card_note, test_edit_card_note, test_card_notes_view, test_full_data_round_trip), the unit files test_note_pages.py and frontend/src/lib/cardNotes.test.ts, and the 5 Epic 5 e2e specs (add-card-note, edit-card-note, card-notes, card-notes-pile, card-notes-pile-keys), including this trace's card-notes.spec.ts:796. Epic 5 tests in shared files (test_edit_book, test_intent_routes, test_contract, test_invariants, test_restore) are mapped in the report but not counted here."
+  },
+  "risk_summary": {
+    "critical_open": 0,
+    "high_open": 0,
+    "medium_open": 0,
+    "low_open": 2
+  },
+  "heuristics": {
+    "endpoint_gaps": 0,
+    "auth_negative_path_status": "present",
+    "error_path_status": "present",
+    "ui_journey_status": "not_applicable",
+    "ui_state_status": "not_applicable"
+  },
+  "live_evidence": {
+    "present": false,
+    "results_file": "_bmad-output/test-artifacts/live-verification-results.json",
+    "freshness": "not_present",
+    "recorded_source_sha": "",
+    "current_source_sha": "c177b6d2b96978a3cfcf258eee6f06a1e4343ac2",
+    "producer": "",
+    "counted": 0,
+    "stale": 0,
+    "unverifiable": 0,
+    "failed": 0,
+    "contradicted": 0,
+    "blocked": 0,
+    "skipped": 0,
+    "unmatched": 0,
+    "invalid": 0,
+    "requirements_live_only": 0
+  },
+  "blockers": [],
+  "rejected_evidence": [],
+  "recommendations": [
+    {
+      "priority": "LOW",
+      "action": "Before Epic 6's first story: reconcile item 49's spine drift entry (AD-18) in deferred-work.md",
+      "requirements": []
+    },
+    {
+      "priority": "LOW",
+      "action": "Add the two [P2] layout tests deferred by item 48's review (unclamped long note on the Card notes page; Edit pinned to the cell bottom in Book detail's grid)",
+      "requirements": [
+        "CRD-E2E-002"
+      ]
+    },
+    {
+      "priority": "LOW",
+      "action": "Run /bmad-testarch-test-review on the Epic 5 suites",
+      "requirements": []
+    }
+  ],
+  "links": {
+    "trace_report_path": "_bmad-output/test-artifacts/traceability/epic-5-traceability-matrix.md",
+    "trace_report_url": "",
+    "artifact_url": "",
+    "journey_evidence_url": ""
+  },
+  "gate_status": "PASS",
+  "gate_criteria": {
+    "p0_coverage_required": "100%",
+    "p0_coverage_actual": "100%",
+    "p0_status": "MET",
+    "p1_coverage_target": "95%",
+    "p1_coverage_minimum": "80%",
+    "p1_coverage_actual": "100%",
+    "p1_status": "MET",
+    "overall_coverage_minimum": "80%",
+    "overall_coverage_actual": "100%",
+    "overall_status": "MET"
+  }
+}

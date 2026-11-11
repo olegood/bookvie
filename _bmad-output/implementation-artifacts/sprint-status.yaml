@@ -520,7 +520,7 @@ action_items:
       and the BKP-API-001 full-data re-run row by row. Changes: `_bmad-output/test-artifacts/traceability/epic-5-traceability-matrix.md`,
       `…/epic-5-gate-decision.json`. Due: before Epic 6. (Gate)"
     owner: "Murat (TEA)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-5-retro-2026-11-10.md"
   - id: "epic-5-retro-item-51-record-the-waiting-for-you-spec-ts-p1-ac"
     epic: 5

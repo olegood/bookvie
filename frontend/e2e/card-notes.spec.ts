@@ -12,6 +12,7 @@ import AxeBuilder from '@axe-core/playwright'
 import type { Locator, Page } from '@playwright/test'
 import { expect, test } from './fixtures.ts'
 import { DUNE, DUNE_ID, LEFT_HAND, LEFT_HAND_ID, mainAt, mainBookCard } from './home.ts'
+import { ADD_CARD_NOTE } from './intents.ts'
 
 const EMMA_ID = '9c4d2b1a-7e6f-4a5b-8c9d-0e1f2a3b4c5d'
 const SAVED = 'Card note saved.'
@@ -790,5 +791,38 @@ test.describe('Story 5.3 automate', () => {
     await page.clock.runFor(PAST_THE_PAUSE_MS)
     await expect(notePanel(page, 'Edit card note').getByRole('status')).not.toHaveText('1 note matches.')
     expect(await announced()).toEqual([])
+  })
+
+  test('[P1] XUI-E2E-002 a note added in another context shows on the Card notes page once it regains focus, with no warning', async ({
+    page,
+    browser,
+    seededServer,
+  }) => {
+    // Epic 5 trace (retro action 50): the card-notes view is a new view, so prove it refetches on focus too.
+    const server = await seededServer(LIBRARY)
+    await page.goto(cardNotesPage(server))
+    await expect(groupHeadings(page)).toHaveText(['Dune', 'Neuromancer', 'The Left Hand of Darkness'])
+
+    const otherContext = await browser.newContext()
+    try {
+      // Another context (the agent, or a second tab) adds Emma's first note.
+      const added = await otherContext.request.post(`${server.url}${ADD_CARD_NOTE}`, {
+        multipart: { intent: JSON.stringify({ bookId: EMMA_ID, text: 'Badly done, Emma!', page: '12' }) },
+      })
+      expect(added.status()).toBe(200)
+    } finally {
+      await otherContext.close()
+    }
+
+    // This context regains focus, and the view refetches: Emma gets a group in title order.
+    await page.bringToFront()
+    await page.evaluate(() => window.dispatchEvent(new Event('focus')))
+    await expect(groupHeadings(page)).toHaveText(['Dune', 'Emma', 'Neuromancer', 'The Left Hand of Darkness'])
+    const emma = page
+      .getByRole('main')
+      .locator('section')
+      .filter({ has: page.getByRole('heading', { level: 2, name: 'Emma', exact: true }) })
+    await expect(noteItem(emma, 'Badly done, Emma!').getByText('p.12', { exact: true })).toBeVisible()
+    await expect(page.getByRole('alert')).toHaveText('')
   })
 })
