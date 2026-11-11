@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-29-2026 17:21
-last_updated: 11-11-2026 20:30
+last_updated: 11-11-2026 21:02
 project: bookvie
 project_key: NOKEY
 tracking_system: file-system
@@ -85,12 +85,12 @@ development_status:
   5-4-go-through-a-book-s-notes-as-a-pile: done
   epic-5-retrospective: done
 
-  epic-6: in-progress
+  epic-6: done
   6-1-see-when-this-book-will-be-finished: done
   6-2-see-when-my-whole-unread-library-will-be-finished: done
   6-3-see-what-i-finished-in-any-period: done
   6-4-see-my-reading-month-by-month: done
-  epic-6-retrospective: optional
+  epic-6-retrospective: done
 
   epic-7: backlog
   7-1-sort-my-catalog: backlog
@@ -532,3 +532,65 @@ action_items:
     owner: "Murat (TEA)"
     status: done
     ref: "_bmad-output/implementation-artifacts/epic-5-retro-2026-11-10.md"
+  - id: "epic-6-retro-item-52-reconcile-the-spine-with-epic-6-and-add"
+    epic: 6
+    action: "Reconcile the spine with Epic 6 and add a `resolved:` line to each entry
+      it closes: AD-6 Book-scope pages left, the FR-15 row and the calculator's client
+      rules (`deferred-work.md:716`, `:719`); Structural Seed `domain/` `pages_left`
+      and `lib/` `pace` (`:722`, `:725`); the catalog view's `pagesLeft`/`measuredPace`
+      and CatalogPage's calculator (`:738`); `views/stats` and `lib/stats` built,
+      the bucket rule, Custom's client handling, AD-9's 422 `invalid_fields` on the
+      stats view, the FR-16 row, and AD-3's sanctioned pre-checks gaining Custom's
+      swap and no-request rule (`:770`, F-S2); the cataloging skill as an HTTP client
+      of the intent API in the Overview and the Seed's `AG` node (`:780`); the stats
+      buckets' rules and the bars' client presentation (`:789`). In the same docs
+      pass, add DESIGN.md's contrast row for the library meter on `page` and close
+      `:764`. Changes: `ARCHITECTURE-SPINE.md`, `_bmad-output/planning-artifacts/ux-designs/ux-bookvie-2026-10-28/DESIGN.md`,
+      `deferred-work.md`. Due: before Epic 7."
+    owner: "Winston (Architect), applied by Oleg"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-6-retro-2026-11-11.md"
+  - id: "epic-6-retro-item-53-record-the-add-card-note-spec-ts-193-p1"
+    epic: 6
+    action: "Record the `add-card-note.spec.ts:193` \"[P1] AC-1 from Book detail:
+      Page is empty with no Reading…\" flake in `deferred-work.md`, burn it in (`--repeat-each=30
+      --retries=0` on that spec), then fix the cause or close the entry with the run
+      as evidence. Changes: `_bmad-output/implementation-artifacts/deferred-work.md`,
+      `frontend/e2e/add-card-note.spec.ts`. Due: before the Epic 6 trace (action 54)."
+    owner: "Murat (TEA)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-6-retro-2026-11-11.md"
+  - id: "epic-6-retro-item-54-run-the-epic-6-trace-and-gate-against-tr"
+    epic: 6
+    action: "Run the Epic 6 trace and gate against TR7 (P0 100%, P1 ≥ 95%, every error
+      code including the stats view's 422 `invalid_fields` has an API test) and confirm
+      the fake-Clock boundary tests for pace, ranges, month edges and local dates
+      row by row, closing R-07 and R-10. Changes: `_bmad-output/test-artifacts/traceability/epic-6-traceability-matrix.md`,
+      `…/epic-6-gate-decision.json`. Due: before Epic 7."
+    owner: "Murat (TEA)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-6-retro-2026-11-11.md"
+  - id: "epic-6-retro-item-55-make-the-book-detail-calculator-agree-wi"
+    epic: 6
+    action: "Make the Book detail calculator agree with Home's days left for the same
+      Book while the field holds the untouched prefill: compute with the unrounded
+      `measuredPace` until the user edits the field, keeping the one-decimal text.
+      Add a unit case and an e2e leaf that compare Home's \"~N days left\" with the
+      calculator's line for one Main book at a pace like 100/3, and note the rule
+      in EXPERIENCE.md → Pace calculator. Changes: `frontend/src/components/PaceCalculator.tsx`,
+      `frontend/src/lib/pace.ts`, `frontend/src/lib/pace.test.ts`, `frontend/e2e/pace-calculator.spec.ts`,
+      `_bmad-output/planning-artifacts/ux-designs/ux-bookvie-2026-10-28/EXPERIENCE.md`.
+      Due: before story 7.1."
+    owner: "Amelia (Dev)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-6-retro-2026-11-11.md"
+  - id: "epic-6-retro-item-56-keep-non-story-work-out-of-the-working-t"
+    epic: 6
+    action: "Keep non-story work out of the working tree while a story step runs:
+      in AGENTS.md \"Story pipeline\", say that work outside the story (a skill, a
+      docs fix) goes in its own git worktree, never a `git switch` or a commit in
+      the shared tree while a story's ATDD, build, review or automate is running.
+      Changes: `AGENTS.md`. Due: before story 7.1."
+    owner: "Oleg / bmad config"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-6-retro-2026-11-11.md"
