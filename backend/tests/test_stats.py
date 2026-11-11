@@ -322,3 +322,74 @@ def test_p1_a_bad_query_is_422_invalid_fields_naming_the_field(
     error = response.json()["error"]
     assert (error["kind"], error["code"]) == ("refusal", "invalid_fields")
     assert [f["field"] for f in error["fields"]] == [field]
+
+
+# --- Story 6.4 See my reading month by month: the buckets (ATDD, red phase) -----------
+#
+# The bucket contents the server owns (AD-6, FR-16). ``period`` is ``YYYY-MM`` for a
+# month bucket and ``YYYY`` for a year bucket, oldest first, one per calendar month
+# (or year) the range touches, empty ones included. Each bucket counts only the
+# finishes inside the range, and all of a Reading's ``finishedPages`` land in its
+# finish month. The chart, its table and the instant update are read in the browser
+# (``frontend/e2e/stats.spec.ts``).
+
+RED = "Story 6.4 red phase: the stats view doesn't fill buckets yet"
+
+
+@pytest.mark.skip(reason=RED)
+def test_ac1_p0_a_range_gets_one_bucket_per_month_counting_only_finishes_inside_it(
+    tmp_path: Path, library_builder: LibraryBuilder
+) -> None:
+    """15 March to 31 May 2026: three month buckets, and March counts from the 15th."""
+    b = library_builder
+    _finished(b, b.book(title="Dune", pages=412), None, "2026-03-10", 412)  # before the range
+    _finished(b, b.book(title="Emma", pages=400), "2026-03-01", "2026-03-20", 400)
+    _finished(b, b.book(title="Kindred", pages=286), "2026-04-20", "2026-05-02", 286)
+    _finished(b, b.book(title="Beloved", pages=324), None, "2026-06-01", 324)  # after it
+    old = b.book(title="Good Omens", pages=300)
+    _finished(b, old, None, "2024-02-14", 300)
+    _finished(b, old, None, "2026-01-05", 300)  # a re-read, back-filled
+    b.write(tmp_path)
+    client = api_client(tmp_path, raise_server_exceptions=True)
+
+    spring = _stats(client, "2026-03-15", "2026-05-31")
+    # The criterion: one bucket per calendar month the range touches, oldest first.
+    assert [bucket["period"] for bucket in spring["buckets"]] == ["2026-03", "2026-04", "2026-05"]
+    assert spring["bucket"] == "month"
+    # March from the 15th: Emma, not Dune's back-fill on the 10th. April is empty.
+    assert spring["buckets"] == [
+        {"period": "2026-03", "books": 1, "pages": 400},
+        {"period": "2026-04", "books": 0, "pages": 0},
+        {"period": "2026-05", "books": 1, "pages": 286},
+    ]
+
+    # Over 24 months: one bucket per year, still counting only finishes inside the range.
+    years = _stats(client, "2024-03-01", "2026-03-15")
+    assert years["bucket"] == "year"
+    assert years["buckets"] == [
+        {"period": "2024", "books": 0, "pages": 0},  # Good Omens' February 2024 is outside
+        {"period": "2025", "books": 0, "pages": 0},
+        {"period": "2026", "books": 2, "pages": 712},  # the January re-read and Dune
+    ]
+
+
+@pytest.mark.skip(reason=RED)
+def test_ac3_p1_a_900_page_book_finished_on_2_december_is_900_pages_in_december(
+    tmp_path: Path, library_builder: LibraryBuilder
+) -> None:
+    """Read from 20 October to 2 December 2025: no pages spread over October or November."""
+    b = library_builder
+    tome = b.book(title="The Tome", pages=900)
+    _finished(b, tome, "2025-10-20", "2025-12-02", 900)
+    b.write(tmp_path)
+    client = api_client(tmp_path, raise_server_exceptions=True)
+
+    year = _stats(client, "2025-01-01", "2025-12-31")
+    by_period = {bucket["period"]: bucket for bucket in year["buckets"]}
+    # The criterion: every page in the finish month.
+    assert by_period["2025-12"]["pages"] == 900
+    assert by_period["2025-12"]["books"] == 1
+    assert [bucket["pages"] for bucket in year["buckets"]] == [0] * 11 + [900]
+    assert [bucket["period"] for bucket in year["buckets"]] == [
+        f"2025-{m:02d}" for m in range(1, 13)
+    ]

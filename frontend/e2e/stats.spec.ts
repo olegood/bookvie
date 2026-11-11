@@ -649,3 +649,92 @@ test.describe('Story 6.3 See what I finished in any period (ATDD)', () => {
     }
   })
 })
+
+// Story 6.4 See my reading month by month (ATDD, red phase). The bars under the
+// two numbers: one per bucket, each with its value above and its period below,
+// and the same data as a table for assistive tech (period, books, pages). What
+// the server puts in each bucket (one per month up to 24 months, else per year,
+// counting only finishes inside the range, all pages in the finish month) is
+// proven in backend/tests/test_stats.py.
+
+/** The chart's data as a table: the only table in `main`. */
+function chartTable(page: Page): Locator {
+  return page.getByRole('main').getByRole('table')
+}
+
+/** Every row of `table`, header first, as the trimmed text of each cell. */
+async function tableRows(table: Locator): Promise<string[][]> {
+  return table
+    .getByRole('row')
+    .evaluateAll((rows) => rows.map((row) => Array.from(row.children, (cell) => cell.textContent?.trim() ?? '')))
+}
+
+/** The Books and Pages columns of `table`, header first: the period's own format is the build's. */
+async function booksAndPages(table: Locator): Promise<string[][]> {
+  return (await tableRows(table)).map((row) => row.slice(1))
+}
+
+/** Text shown on screen in `main` (the table may be visually hidden). */
+function shownText(page: Page, text: string): Locator {
+  return page.getByRole('main').getByText(text, { exact: true }).filter({ visible: true })
+}
+
+test.describe('Story 6.4 See my reading month by month (ATDD)', () => {
+  test.skip('[P1] AC-2 each bar shows its pages, and the same buckets are a table of period, books and pages', async ({
+    page,
+  }) => {
+    const server = await serverAtFakeToday(page, 'stats-bars', FLOW_7)
+    try {
+      await page.goto(`${server.url}/stats`)
+      const table = chartTable(page)
+
+      // The criterion: the buckets exposed to assistive tech as a table.
+      await expect(table.getByRole('columnheader')).toHaveText(['Period', 'Books', 'Pages'])
+
+      // This year at 2026-10-28: January to October, one row each, empty months included.
+      const empty = Array.from({ length: 8 }, () => ['0', '0'])
+      await expect.poll(() => booksAndPages(table)).toEqual([['Books', 'Pages'], ...empty, ['1', '400'], ['2', '610']])
+      const periods = (await tableRows(table)).slice(1).map((row) => row[0])
+      expect(new Set(periods).size).toBe(10)
+      expect(periods.every((period) => period !== '')).toBe(true)
+
+      // Each bar's value above it, on screen: September's 400 and October's 610.
+      await expect(shownText(page, '400').first()).toBeVisible()
+      await expect(shownText(page, '610').first()).toBeVisible()
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+
+  test.skip('[P2] AC-4 a new range updates the numbers and bars at once, with no animation under reduced motion', async ({
+    page,
+  }) => {
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    const server = await serverAtFakeToday(page, 'stats-bars-update', FLOW_7)
+    try {
+      // Setup, unasserted: This year has loaded.
+      const thisYear = statsRequest(page)
+      await page.goto(`${server.url}/stats`)
+      await (await thisYear).response()
+
+      const thisMonth = statsRequest(page)
+      await preset(page, 'This month').click()
+      await (await thisMonth).response()
+      const table = chartTable(page)
+
+      // The criterion: the bars follow the range, down to October alone.
+      await expect
+        .poll(() => booksAndPages(table))
+        .toEqual([
+          ['Books', 'Pages'],
+          ['2', '610'],
+        ])
+      await expect(page.getByRole('status')).toHaveText('2 books, 610 pages.')
+
+      // Instant: nothing is animating once the new bars are in (reduced motion).
+      expect(await page.evaluate(() => document.getAnimations().length)).toBe(0)
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+})
