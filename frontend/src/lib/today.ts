@@ -4,7 +4,7 @@
 
 // Fixed English names, so the header never depends on the browser's locale data.
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-const MONTHS = [
+export const MONTHS = [
   'January',
   'February',
   'March',

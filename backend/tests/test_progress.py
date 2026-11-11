@@ -1,6 +1,7 @@
-"""``domain.progress``: the percentage rule (AD-6), the current Reading and its status (AD-19)."""
+"""``domain.progress``: the percentage rule (AD-6), the current Reading, its status (AD-19)
+and Book-scope pages left (FR-15)."""
 
-from bookvie.domain import current_reading, percent, reading_status
+from bookvie.domain import current_reading, pages_left, percent, reading_status
 from tests.builder import LibraryBuilder
 
 
@@ -36,3 +37,35 @@ def test_reading_status_is_finished_active_or_paused(library_builder: LibraryBui
     assert reading_status(library, library.books[0], rereading) == "active"
     # Paused when unfinished and not Main, with or without pausedAt.
     assert reading_status(library, library.books[1], unpaused) == "paused"
+
+
+def test_pages_left_is_book_scope(library_builder: LibraryBuilder) -> None:
+    b = library_builder
+    paused = b.book(title="Neuromancer", pages=271)
+    b.reading(paused, current_page=80, paused_at="2026-10-01")
+    active = b.book(title="The Left Hand of Darkness", pages=330)
+    b.reading(active, current_page=120)
+    b.book(title="Dune", pages=412)
+    finished = b.book(title="Emma", pages=400)
+    b.reading(finished, finish_date="2026-09-20", finished_pages=400, current_page=400)
+    reread = b.book(title="Kindred", pages=100)
+    b.reading(
+        reread, start_date=None, finish_date="2025-06-01", finished_pages=100, current_page=100
+    )
+    b.reading(reread, current_page=30, paused_at="2026-10-15")
+    # Pages edited below the current page: never negative.
+    shrunk = b.book(title="Hyperion", pages=200)
+    b.reading(shrunk, current_page=210)
+    at_end = b.book(title="Piranesi", pages=245)
+    b.reading(at_end, current_page=245)
+    b.main(active)
+    books = {book.title: book for book in b.build().books}
+    assert {title: pages_left(book) for title, book in books.items()} == {
+        "Neuromancer": 191,
+        "The Left Hand of Darkness": 210,
+        "Dune": 412,
+        "Emma": 0,
+        "Kindred": 70,
+        "Hyperion": 0,
+        "Piranesi": 0,
+    }

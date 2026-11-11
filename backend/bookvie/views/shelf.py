@@ -14,6 +14,7 @@ from bookvie.domain import (
     current_reading,
     days_left,
     measured_pace,
+    pages_left,
     percent,
     reading_status,
     title_key,
@@ -114,7 +115,7 @@ def _main_book(library: Library) -> HomeMainBook | None:
         pages=book.pages,
         current_page=page,
         percent=percent(page, book.pages),
-        days_left=days_left(book.pages - page, measured_pace(library)),
+        days_left=days_left(pages_left(book), measured_pace(library)),
         last_progress_update=reading.last_progress_update if reading else None,
         card_note_count=len(book.card_notes),
     )
@@ -287,6 +288,7 @@ def book_detail(library: Library, book_id: str) -> BookDetailView | None:
     latest = book.latest_finished()
     role, reading = _role_reading(library, book)
     side_read = book.id in library.side_read_book_ids
+    pace = measured_pace(library)
     return BookDetailView(
         id=book.id,
         title=book.title,
@@ -323,6 +325,8 @@ def book_detail(library: Library, book_id: str) -> BookDetailView | None:
         side_read=side_read,
         side_reads_full=not side_read and len(library.side_read_book_ids) >= MAX_SIDE_READS,
         card_notes=card_note_views(book),
+        pages_left=pages_left(book),
+        measured_pace=None if pace is None else float(pace),
     )
 
 

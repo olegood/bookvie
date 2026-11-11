@@ -23,6 +23,19 @@ def current_reading(book: Book) -> Reading | None:
     return next((reading for reading in book.readings if not reading.finished), None)
 
 
+def pages_left(book: Book) -> int:
+    """Book-scope pages left (FR-15): what the Book's pace calculator counts down.
+
+    With an unfinished Reading (active or paused), ``pages − currentPage``, never
+    below 0 (Pages can be edited below the current page). With no Reading at all,
+    all its pages. With only finished Readings, 0: nothing is left to read.
+    """
+    reading = current_reading(book)
+    if reading is not None:
+        return max(book.pages - reading.current_page, 0)
+    return 0 if book.readings else book.pages
+
+
 def reading_status(library: Library, book: Book, reading: Reading) -> ReadingStatus:
     """The only status function (AD-19): *finished* with a ``finishDate``, *active*
     when ``book`` is the Main book, else *paused*. ``pausedAt`` plays no part.

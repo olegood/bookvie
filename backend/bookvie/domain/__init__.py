@@ -13,7 +13,7 @@ from .note_pages import (
 )
 from .ordering import title_key
 from .pace import days_left, measured_pace
-from .progress import ReadingStatus, current_reading, percent, reading_status
+from .progress import ReadingStatus, current_reading, pages_left, percent, reading_status
 from .purpose import normalize_purpose
 
 __all__ = [
@@ -36,6 +36,7 @@ __all__ = [
     "measured_pace",
     "normalize_purpose",
     "page_range_message",
+    "pages_left",
     "parse_note_pages",
     "percent",
     "reading_status",

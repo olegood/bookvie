@@ -1,6 +1,6 @@
 """Story 6.1 See when this book will be finished: the book view's pace numbers (API, ATDD).
 
-One skipped leaf for the criterion the server decides (PAC-API-001, R-10):
+One leaf for the criterion the server decides (PAC-API-001, R-10):
 
 - AC-1: ``GET /api/views/book`` supplies the Book-scope pages left (the pages
   left in its current, active or paused, Reading, or all its pages when it
@@ -16,8 +16,6 @@ The test pins these names: ``BookDetailView.pagesLeft: int`` and
 ``BookDetailView.measuredPace: number | null``, the same Measured pace as
 ``bookvie.domain.pace.measured_pace`` (exact, sent as a JSON number, not
 rounded: the client rounds the prefill to one decimal).
-
-Activate the leaf by deleting its ``@pytest.mark.skip(reason=RED)`` line.
 """
 
 from pathlib import Path
@@ -27,8 +25,6 @@ from fastapi.testclient import TestClient
 
 from tests.builder import LibraryBuilder
 from tests.helpers import api_client
-
-RED = "ATDD red phase (Story 6.1): the book view has no pagesLeft or measuredPace yet"
 
 
 def _book_view(client: TestClient, book_id: str) -> dict[str, object]:
@@ -47,7 +43,6 @@ def _finished(
 # --- AC-1: Book-scope pages left and Measured pace ----------------------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_ac1_p1_the_book_view_supplies_book_scope_pages_left_and_measured_pace(
     tmp_path: Path, library_builder: LibraryBuilder
 ) -> None:

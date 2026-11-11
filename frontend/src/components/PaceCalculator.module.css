@@ -1,0 +1,52 @@
+/* DESIGN.md → Pace calculator: one surface-inset row holding the 80px
+   "pages/day" field (styled as a Text field, tabular figures), its label in
+   body-sm / ink-secondary, and the result in body / ink. No error styling. */
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-inset);
+}
+
+.input {
+  box-sizing: border-box;
+  width: 80px;
+  height: var(--button-height);
+  padding: 0 var(--space-3);
+  border: var(--text-field-border) solid var(--color-input-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-family: var(--font-body-family);
+  font-size: var(--font-body-size);
+  font-variant-numeric: tabular-nums;
+}
+
+.input:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 var(--text-field-halo) var(--color-focus-halo);
+}
+
+.label {
+  font-family: var(--font-body-sm-family);
+  font-size: var(--font-body-sm-size);
+  line-height: var(--font-body-sm-line-height);
+  color: var(--color-ink-secondary);
+}
+
+.result {
+  font-family: var(--font-body-family);
+  font-size: var(--font-body-size);
+  line-height: var(--font-body-line-height);
+  color: var(--color-ink);
+}
+
+.nothing {
+  margin: 0;
+  font-family: var(--font-body-sm-family);
+  font-size: var(--font-body-sm-size);
+  line-height: var(--font-body-sm-line-height);
+  color: var(--color-ink-secondary);
+}

@@ -267,6 +267,13 @@ class BookDetailView(_View):
     is disabled with "Up to 3 side reads."."""
     card_notes: list[BookCardNote]
     """The Book's Card notes in page order: ``pageStart``, then ``createdAt``."""
+    pages_left: int
+    """Book-scope pages left (FR-15): ``pages − currentPage`` of the current (active or
+    paused) Reading, never below 0; all its pages when it has never been started; 0
+    when every Reading is finished. The "How long until…?" calculator counts it down."""
+    measured_pace: float | None
+    """The library's Measured pace in pages a day (AD-6), not rounded: the client rounds
+    the calculator's prefill to one decimal. ``None`` when there is none."""
 
 
 class BackupView(_View):

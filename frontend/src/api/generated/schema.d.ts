@@ -701,6 +701,10 @@ export interface components {
             sideReadsFull: boolean;
             /** Cardnotes */
             cardNotes: components["schemas"]["BookCardNote"][];
+            /** Pagesleft */
+            pagesLeft: number;
+            /** Measuredpace */
+            measuredPace: number | null;
         };
         /** BookReading */
         BookReading: {

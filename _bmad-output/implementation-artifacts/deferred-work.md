@@ -709,3 +709,18 @@
   summary: `frontend/e2e/waiting-for-you.spec.ts` "[P1] AC-6 Cancel on a row's Start dialog returns focus to that row's Resume, and nothing is sent" failed once in one `npm run check` during Story 5.2's build and passed in every later run. It was recorded only in that spec's triage (Epic 5 retro PL-6).
   evidence: `spec-5-2…md:227`; `frontend/e2e/waiting-for-you.spec.ts:278`. The failure's output wasn't kept.
   resolved: Epic 5 retro item 51 (2026-11-11). A 30× burn-in (`--repeat-each=30 --retries=0`) reproduced it once in 450 runs: `rowTitles(pane)` read the rows with a one-shot `allTextContents()` that ran before Home had rendered them and got `[]`. The test raced, not the app. `frontend/e2e/home.ts` now has `rowLinks(pane)` (a locator), and every caller in `waiting-for-you.spec.ts`, `side-reads.spec.ts` and `set-up-next.spec.ts` asserts with the retrying `await expect(rowLinks(pane)).toHaveText([...])`. Burn-in after the fix: those three specs at `--repeat-each=30 --retries=0`, 1740 passed.
+
+## Deferred from: build-auto review of spec-6-1-see-when-this-book-will-be-finished (2026-11-11)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-1-see-when-this-book-will-be-finished.md`
+  summary: Spine drift (AD-6, FR-15 map row), reconciled before the next epic: the spine doesn't record the Book-scope pages left rule or where it lives. An unfinished Reading gives max(pages − currentPage, 0), a Book never started gives all its pages, and only finished Readings give 0. AD-6 should name `domain/progress` `pages_left` on the `book` view with `measuredPace` (story 6.1), and the FR-15 map row should name `views/shelf` (book detail), `lib/pace` and `components/PaceCalculator`.
+  evidence: `backend/bookvie/domain/progress.py` (`pages_left`); `backend/bookvie/views/models.py` (`BookDetailView.pages_left`, `measured_pace`); `ARCHITECTURE-SPINE.md` AD-6 and the Capability map's FR-15 row (spine-check review of 6.1).
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-1-see-when-this-book-will-be-finished.md`
+  summary: Spine drift (AD-6), reconciled before the next epic: the Quick pace calculator bullet omits the rules the client now owns. Months = round(days ÷ 30.4375), and years = round(months ÷ 12) from 24 months. Only plain decimals are accepted (no sign, exponent or comma). A finish date out of range gives no result. The prefill is rounded to one decimal and drops ".0". AD-6 should state them, or point to EXPERIENCE.md → Pace calculator, which now records them.
+  evidence: `frontend/src/lib/pace.ts` (`paceResult`, `pacePrefill`); `EXPERIENCE.md` → Pace calculator (spine-check review of 6.1).
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-1-see-when-this-book-will-be-finished.md`
+  summary: Spine drift (Structural Seed), reconciled before the next epic: the seed's `domain/` line lists progress (percent, current_reading, reading_status) without `pages_left`.
+  evidence: `backend/bookvie/domain/progress.py` defines and exports `pages_left` (story 6.1).
+- source_spec: `_bmad-output/implementation-artifacts/spec-6-1-see-when-this-book-will-be-finished.md`
+  summary: Spine drift (Structural Seed), reconciled before the next epic: the seed's `frontend/src/lib/` line omits `pace` (the calculator's arithmetic and line, AD-6).
+  evidence: `frontend/src/lib/pace.ts` is new in story 6.1. `lib/today.ts` now exports `MONTHS` for it.

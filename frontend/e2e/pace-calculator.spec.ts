@@ -13,12 +13,10 @@
 // = today + days. Under 60 days: "About N days · D Month" (the year only when
 // it isn't this year). From 60 days: months = round(days ÷ 30.4375) and
 // "About N months · Month YYYY"; from 24 months, years = round(months ÷ 12).
-//
-// Activate a leaf by changing its `test.skip(` to `test(`.
 
 import type { Locator, Page } from '@playwright/test'
 import { expect, test } from './fixtures.ts'
-import { DUNE, DUNE_ID, serverAtFakeToday, sizeOf, stopAndRemove } from './home.ts'
+import { DUNE, DUNE_ID, LEFT_HAND_ID, mainAt, serverAtFakeToday, sizeOf, stopAndRemove } from './home.ts'
 
 const HEADING = 'How long until…?'
 const NOTHING_LEFT = 'Nothing left to read.'
@@ -54,7 +52,7 @@ function result(page: Page): Locator {
 }
 
 test.describe('Story 6.1 See when this book will be finished (ATDD)', () => {
-  test.skip('[P1] AC-2 Book detail shows "How long until…?" with an 80px pages/day field prefilled with Measured pace and an output', async ({
+  test('[P1] AC-2 Book detail shows "How long until…?" with an 80px pages/day field prefilled with Measured pace and an output', async ({
     page,
   }) => {
     const server = await serverAtFakeToday(page, 'pace-prefill', PACED)
@@ -67,12 +65,14 @@ test.describe('Story 6.1 See when this book will be finished (ATDD)', () => {
       expect((await sizeOf(paceField(page))).width).toBe(80)
       // The prefill already gives a result: 412 ÷ 20 → 21 days.
       await expect(result(page)).toHaveText('About 21 days · 18 November')
+      // The output has no role of its own: the field is described by it.
+      await expect(paceField(page)).toHaveAccessibleDescription('About 21 days · 18 November')
     } finally {
       await stopAndRemove(server)
     }
   })
 
-  test.skip('[P1] AC-3 the result follows every keystroke as a duration plus a date', async ({ page }) => {
+  test('[P1] AC-3 the result follows every keystroke as a duration plus a date', async ({ page }) => {
     const server = await serverAtFakeToday(page, 'pace-keystrokes', NO_PACE)
     try {
       await page.goto(`${server.url}/book/${DUNE_ID}`)
@@ -88,6 +88,7 @@ test.describe('Story 6.1 See when this book will be finished (ATDD)', () => {
       // "30": 412 ÷ 30 → 14 days, 11 November, this year so no year.
       await paceField(page).press('0')
       await expect(result(page)).toHaveText('About 14 days · 11 November')
+      await expect(paceField(page)).toHaveAccessibleDescription('About 14 days · 11 November')
 
       // A decimal pace: 412 ÷ 12.5 → ceil(32.96) = 33 days.
       await paceField(page).fill('12.5')
@@ -101,7 +102,7 @@ test.describe('Story 6.1 See when this book will be finished (ATDD)', () => {
     }
   })
 
-  test.skip('[P2] AC-4 zero, negative, non-numeric or empty input shows no result, no message and no error styling', async ({
+  test('[P2] AC-4 zero, negative, non-numeric or empty input shows no result, no message and no error styling', async ({
     page,
   }) => {
     const server = await serverAtFakeToday(page, 'pace-invalid', NO_PACE)
@@ -120,6 +121,7 @@ test.describe('Story 6.1 See when this book will be finished (ATDD)', () => {
       for (const typed of ['-5', 'abc', '']) {
         await paceField(page).fill(typed)
         await expect(result(page), typed).toHaveText('')
+        await expect(paceField(page), typed).toHaveAccessibleDescription('')
         await expect(paceField(page), typed).not.toHaveAttribute('aria-invalid', 'true')
         expect(await paceField(page).evaluate((element) => getComputedStyle(element).borderColor), typed).toBe(
           validBorder,
@@ -133,7 +135,7 @@ test.describe('Story 6.1 See when this book will be finished (ATDD)', () => {
     }
   })
 
-  test.skip('[P2] AC-5 a Book with nothing left to read says "Nothing left to read."', async ({ page }) => {
+  test('[P2] AC-5 a Book with nothing left to read says "Nothing left to read."', async ({ page }) => {
     const server = await serverAtFakeToday(page, 'pace-nothing-left', PACED)
     try {
       // Emma is finished with no unfinished Reading: pages left 0.
@@ -142,6 +144,34 @@ test.describe('Story 6.1 See when this book will be finished (ATDD)', () => {
       await expect(calculator(page).getByText(NOTHING_LEFT, { exact: true })).toBeVisible()
 
       await expect(calculator(page).getByText(/^About /)).toHaveCount(0)
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+
+  test('[P2] AC-2 without Measured pace the field and the output are empty', async ({ page }) => {
+    const server = await serverAtFakeToday(page, 'pace-no-pace', NO_PACE)
+    try {
+      await page.goto(`${server.url}/book/${DUNE_ID}`)
+
+      await expect(paceField(page)).toBeVisible()
+      await expect(paceField(page)).toHaveValue('')
+      await expect(result(page)).toHaveText('')
+      // Exactly one live `status` region on the page: the shell's.
+      await expect(page.getByRole('status')).toHaveCount(1)
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+
+  test('[P2] AC-5 a Main book at its last page says "Nothing left to read." with no field', async ({ page }) => {
+    const server = await serverAtFakeToday(page, 'pace-last-page', mainAt(330))
+    try {
+      await page.goto(`${server.url}/book/${LEFT_HAND_ID}`)
+
+      await expect(calculator(page).getByText(NOTHING_LEFT, { exact: true })).toBeVisible()
+      await expect(calculator(page).getByRole('textbox')).toHaveCount(0)
+      await expect(calculator(page).locator('output')).toHaveCount(0)
     } finally {
       await stopAndRemove(server)
     }

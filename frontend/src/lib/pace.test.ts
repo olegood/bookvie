@@ -1,7 +1,5 @@
-// Story 6.1 Quick pace calculator, ATDD red phase (AC-6, PAC-UNIT-002, R-07,
-// R-10): the duration formatter at its edges, with a fixed "today" as the fake
-// clock. Skipped until `pace.ts` exists; the module is loaded inside the test so
-// `tsc` and the runner pass without it. Switch to a static import once it lands.
+// Story 6.1 Quick pace calculator (AC-6, PAC-UNIT-002, R-07, R-10): the
+// duration formatter at its edges, with a fixed "today" as the fake clock.
 //
 // The rule (AD-6, EXPERIENCE.md → Pace calculator, decided with Oleg on
 // 2026-11-11): days = max(1, ceil(pages left ÷ pages/day)), the same rounding
@@ -14,11 +12,7 @@
 import assert from 'node:assert/strict'
 import { afterEach, describe, it } from 'node:test'
 
-type Pace = {
-  /** The calculator's line for `typed` in the field, or `null` for no result (AC-4). */
-  paceResult: (pagesLeft: number, typed: string, today: Date) => string | null
-}
-const MODULE: string = './pace.ts'
+import { pacePrefill, paceResult } from './pace.ts'
 
 // Local wall-clock times, so the cases hold in any TZ (check:e2e pins Europe/Madrid).
 const at = (year: number, month: number, day: number, hour = 10, minute = 0) =>
@@ -32,9 +26,7 @@ describe('paceResult', () => {
     else process.env.TZ = hostZone
   })
 
-  it.skip('[P1] AC-6 formats the duration and date at 59/60 days, 23/24 months, a pace above the pages left and a date in next year', async () => {
-    const { paceResult } = (await import(MODULE)) as Pace
-
+  it('[P1] AC-6 formats the duration and date at 59/60 days, 23/24 months, a pace above the pages left and a date in next year', () => {
     // 59 days stays in days; 60 becomes round(1.97) = 2 months.
     assert.equal(paceResult(59, '1', TODAY), 'About 59 days · 26 December')
     assert.equal(paceResult(60, '1', TODAY), 'About 2 months · December 2026')
@@ -58,5 +50,34 @@ describe('paceResult', () => {
     // the spring change on 28 March 2027, ten days later is 30 March.
     process.env.TZ = 'Europe/Madrid'
     assert.equal(paceResult(10, '1', new Date(2027, 2, 20, 23, 30)), 'About 10 days · 30 March')
+  })
+
+  it('[P2] AC-4 gives no result for zero, negative, non-numeric, empty or comma input, or nothing left', () => {
+    for (const typed of ['0', '-5', 'abc', '', '   ', '12,5', '1e3', '0.0', '.', '+5', 'Infinity']) {
+      assert.equal(paceResult(412, typed, TODAY), null, JSON.stringify(typed))
+    }
+    assert.equal(paceResult(0, '20', TODAY), null)
+    assert.equal(paceResult(-3, '20', TODAY), null)
+    // An absurdly small pace puts the finish date out of range: no result.
+    assert.equal(paceResult(412, '0.0000000001', TODAY), null)
+  })
+
+  it('[P2] AC-3 trims whitespace and accepts a bare decimal point', () => {
+    assert.equal(paceResult(412, ' 30 ', TODAY), paceResult(412, '30', TODAY))
+    assert.equal(paceResult(412, ' 30 ', TODAY), 'About 14 days · 11 November')
+    assert.equal(paceResult(10, '.5', TODAY), 'About 20 days · 17 November')
+    assert.equal(paceResult(10, '5.', TODAY), 'About 2 days · 30 October')
+  })
+})
+
+describe('pacePrefill', () => {
+  it('[P2] AC-2 rounds Measured pace to one decimal and drops a trailing ".0"', () => {
+    assert.equal(pacePrefill(null), '')
+    assert.equal(pacePrefill(20), '20')
+    assert.equal(pacePrefill(100 / 3), '33.3')
+    assert.equal(pacePrefill(17.333), '17.3')
+    assert.equal(pacePrefill(0.04), '0')
+    assert.equal(pacePrefill(29 / 20), '1.5')
+    assert.equal(paceResult(412, pacePrefill(0.04), TODAY), null)
   })
 })

@@ -890,6 +890,9 @@ def test_book_view_returns_the_book_and_its_latest_finish(
         "sideRead": False,
         "sideReadsFull": False,
         "cardNotes": [],
+        # Finished, no unfinished Reading; 412 pages over 2 January to 10 February (40 days).
+        "pagesLeft": 0,
+        "measuredPace": 10.3,
     }
     assert sorted(readings, key=lambda r: r["id"]) == sorted(
         [

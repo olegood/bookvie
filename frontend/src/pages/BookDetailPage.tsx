@@ -15,6 +15,7 @@ import EditPurpose from '../components/EditPurpose.tsx'
 import FailureMessage from '../components/FailureMessage.tsx'
 import FinishDialog from '../components/FinishDialog.tsx'
 import Gauge from '../components/Gauge.tsx'
+import PaceCalculator from '../components/PaceCalculator.tsx'
 import PageHeading from '../components/PageHeading.tsx'
 import { announce, clearAnnouncements } from '../lib/announce.ts'
 import {
@@ -113,6 +114,7 @@ function BookDetail({ book, onDelete, onFinish, finishButton }: BookDetailProps)
   const [editing, setEditing] = useState(false)
   const readings = readingLines(book.readings)
   const readingsId = useId()
+  const paceId = useId()
   const colorId = useId()
   const currentId = useId()
   const current = book.currentReading
@@ -330,6 +332,12 @@ function BookDetail({ book, onDelete, onFinish, finishButton }: BookDetailProps)
               </ul>
             )}
           </section>
+          <section className={styles.block} aria-labelledby={paceId}>
+            <h2 id={paceId} className={styles.blockLabel}>
+              How long until…?
+            </h2>
+            <PaceCalculator key={book.id} pagesLeft={book.pagesLeft} measuredPace={book.measuredPace} />
+          </section>
           <section className={styles.block} aria-labelledby={colorId}>
             <ChangeColor book={book} level={2} headingId={colorId} />
           </section>
@@ -400,6 +408,10 @@ function BookDetail({ book, onDelete, onFinish, finishButton }: BookDetailProps)
  * next note), else the heading; nothing is announced.
  * The Readings block lists each Reading newest first: "Started … · Finished
  * …", its stars when rated, and "Purpose fulfilled: …" when answered.
+ * The "How long until…?" block, between Readings and Change color, holds the
+ * pace calculator (`components/PaceCalculator.tsx`, Story 6.1): a "pages/day"
+ * field prefilled with Measured pace and the result for the Book's pages
+ * left, or "Nothing left to read." when none are left.
  *
  * **Pause** (`lib/useDetailPause.ts`, on `lib/usePauseFlow.tsx`) sends
  * `pause` at once with no Up next, else opens the Confirm dialog naming where the Up next goes; Cancel or Esc
