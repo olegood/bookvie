@@ -300,10 +300,15 @@ test.describe('Story 4.3 Pause my Main book', () => {
     const pauses = requestsTo(page, PAUSE)
     await page.goto(`${server.url}/book/${LEFT_HAND_ID}`)
     const pause = detailButton(page, 'Pause')
-    // Placed before Mark finished.
-    const names = await page.getByRole('main').getByRole('button').allTextContents()
-    expect(names.indexOf('Pause')).toBeGreaterThanOrEqual(0)
-    expect(names.indexOf('Pause')).toBe(names.indexOf('Mark finished') - 1)
+    // Placed before Mark finished. Polled: a one-shot read can run before Book
+    // detail renders and get no buttons (Epic 6 retro item 53).
+    await expect
+      .poll(async () => {
+        const names = await page.getByRole('main').getByRole('button').allTextContents()
+        const at = names.indexOf('Pause')
+        return at < 0 ? [] : names.slice(at, at + 2)
+      })
+      .toEqual(['Pause', 'Mark finished'])
     const dialog = pauseDialog(page)
 
     await pause.click()

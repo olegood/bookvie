@@ -200,9 +200,15 @@ test.describe('Story 5.1 Add a card note while reading', () => {
 
     const main = page.getByRole('main')
     const opener = main.getByRole('button', { name: 'Add card note', exact: true })
-    // In the action stack, directly before Edit.
-    const stack = await main.getByRole('button').allTextContents()
-    expect(stack.indexOf('Edit') - stack.indexOf('Add card note')).toBe(1)
+    // In the action stack, directly before Edit. Polled: a one-shot read can run
+    // before Book detail renders and get no buttons (Epic 6 retro item 53).
+    await expect
+      .poll(async () => {
+        const stack = await main.getByRole('button').allTextContents()
+        const at = stack.indexOf('Add card note')
+        return at < 0 ? [] : stack.slice(at, at + 2)
+      })
+      .toEqual(['Add card note', 'Edit'])
     await expect(main.getByRole('region', { name: 'Card notes', exact: true })).toContainText('No card notes yet.')
 
     await opener.click()
