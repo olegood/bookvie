@@ -701,3 +701,10 @@
   - At l.229, rewrite the bullet: Reading ids are unique within their Book, and Card note ids are unique in the library (`unique_card_note_ids`). Drop its "Known gap" sentence.
   - Startup refuses such a `library.json` too, since startup and restore share `validate_document`.
   evidence: `ARCHITECTURE-SPINE.md:227` ("Known gap: `check_invariants()` doesn't check this, nor a non-blank `text`") and `:229` ("Reading and Card note ids are unique within their Book … Known gap: a Card note id repeated across two Books passes"); `backend/bookvie/domain/invariants.py`.
+
+## Deferred from: Epic 5 retro item 51, the untracked waiting-for-you flake (2026-11-11)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-5-2-edit-or-delete-a-card-note.md` (Verification, "Flaky test")
+  summary: `frontend/e2e/waiting-for-you.spec.ts` "[P1] AC-6 Cancel on a row's Start dialog returns focus to that row's Resume, and nothing is sent" failed once in one `npm run check` during Story 5.2's build and passed in every later run. It was recorded only in that spec's triage (Epic 5 retro PL-6).
+  evidence: `spec-5-2…md:227`; `frontend/e2e/waiting-for-you.spec.ts:278`. The failure's output wasn't kept.
+  resolved: Epic 5 retro item 51 (2026-11-11). A 30× burn-in (`--repeat-each=30 --retries=0`) reproduced it once in 450 runs: `rowTitles(pane)` read the rows with a one-shot `allTextContents()` that ran before Home had rendered them and got `[]`. The test raced, not the app. `frontend/e2e/home.ts` now has `rowLinks(pane)` (a locator), and every caller in `waiting-for-you.spec.ts`, `side-reads.spec.ts` and `set-up-next.spec.ts` asserts with the retrying `await expect(rowLinks(pane)).toHaveText([...])`. Burn-in after the fix: those three specs at `--repeat-each=30 --retries=0`, 1740 passed.

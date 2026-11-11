@@ -29,7 +29,7 @@ import {
   stopAndRemove,
   storedBook,
   storedLibrary,
-  rowTitles,
+  rowLinks,
   upNextPane,
   waitingHeading,
   waitingPane,
@@ -97,7 +97,7 @@ test.describe('Story 4.2 See every paused book in Waiting for you (ATDD)', () =>
     const pane = waitingPane(page)
     // In the side column, not in the Main book card; oldest pause first.
     await expect(mainBookCard(page).getByRole('region', { name: /^Waiting for you/ })).toHaveCount(0)
-    expect(await rowTitles(pane)).toEqual(['Fahrenheit 451', 'The Left Hand of Darkness'])
+    await expect(rowLinks(pane)).toHaveText(['Fahrenheit 451', 'The Left Hand of Darkness'])
     // The serif title links to Book detail.
     const title = pane.getByRole('link', { name: 'The Left Hand of Darkness', exact: true })
     await expect(title).toHaveAttribute('href', `/book/${LEFT_HAND_ID}`)
@@ -175,7 +175,7 @@ test.describe('Story 4.2 See every paused book in Waiting for you (ATDD)', () =>
 
     const pane = waitingPane(page)
     await expect(pane.getByRole('progressbar')).toHaveCount(20)
-    expect(await rowTitles(pane)).toEqual(oldestPauseFirst)
+    await expect(rowLinks(pane)).toHaveText(oldestPauseFirst)
     // No "show more": every link in the pane is a row title.
     await expect(pane.getByRole('link')).toHaveCount(20)
     // The side column grows past the Main book card, and the page scrolls to the last row.
@@ -263,7 +263,7 @@ test.describe('Story 4.2 See every paused book in Waiting for you (ATDD)', () =>
     await expect(waitingHeading(page, 1)).toBeVisible()
 
     const pane = waitingPane(page)
-    expect(await rowTitles(pane)).toEqual(['Fahrenheit 451'])
+    await expect(rowLinks(pane)).toHaveText(['Fahrenheit 451'])
     await expect(pane.getByRole('button', { name: RESUME_LEFT_HAND, exact: true })).toHaveCount(0)
     await expect(pane.getByRole('progressbar', { name: 'The Left Hand of Darkness', exact: true })).toHaveCount(0)
     // It is in Up next, with Resume.
@@ -289,7 +289,7 @@ test.describe('Story 4.2 See every paused book in Waiting for you (ATDD)', () =>
     const pane = waitingPane(page)
 
     // The first row, so focus can't land on the last row rendered by accident.
-    expect(await rowTitles(pane)).toEqual(['Fahrenheit 451', 'The Left Hand of Darkness'])
+    await expect(rowLinks(pane)).toHaveText(['Fahrenheit 451', 'The Left Hand of Darkness'])
     const resume = pane.getByRole('button', { name: 'Resume Fahrenheit 451', exact: true })
     await resume.click()
     const dialog = startDialog(page, 'Resume Fahrenheit 451?')
@@ -330,7 +330,7 @@ test.describe('Story 4.2 See every paused book in Waiting for you (ATDD)', () =>
 
     // The interrupted Dune is Up next, so not waiting; the displaced Up next is the one row.
     await expect(waitingHeading(page, 1)).toBeVisible()
-    expect(await rowTitles(waitingPane(page))).toEqual(['The Left Hand of Darkness'])
+    await expect(rowLinks(waitingPane(page))).toHaveText(['The Left Hand of Darkness'])
     await expect(upNextPane(page).getByRole('link', { name: 'Dune', exact: true })).toBeVisible()
     await expect(
       waitingPane(page).getByRole('progressbar', { name: 'The Left Hand of Darkness', exact: true }),
@@ -424,7 +424,7 @@ test.describe('Story 4.2 See every paused book in Waiting for you (ATDD)', () =>
       await page.evaluate(() => window.dispatchEvent(new Event('focus')))
       // Dune is Up next now; only Fahrenheit 451 is still waiting.
       await expect(waitingHeading(page, 1)).toBeVisible()
-      expect(await rowTitles(waitingPane(page))).toEqual(['Fahrenheit 451'])
+      await expect(rowLinks(waitingPane(page))).toHaveText(['Fahrenheit 451'])
       await expect(page.getByRole('alert')).toHaveText('')
       await expect(page.getByRole('dialog')).toHaveCount(0)
     } finally {
@@ -497,7 +497,7 @@ test.describe('Story 4.2 See every paused book in Waiting for you (automate)', (
     const pane = waitingPane(page)
     const title = pane.getByRole('link', { name: longTitle, exact: true })
     await expect(title).toBeVisible()
-    expect(await rowTitles(pane)).toEqual([longTitle, 'Fahrenheit 451'])
+    await expect(rowLinks(pane)).toHaveText([longTitle, 'Fahrenheit 451'])
 
     const lines = await title.evaluate((element) => {
       const style = getComputedStyle(element)
@@ -571,7 +571,7 @@ test.describe('Story 4.2 See every paused book in Waiting for you (automate)', (
     await expect(upNextPane(page)).toHaveCount(0)
     await expect(waitingHeading(page, 1)).toBeVisible()
     const pane = waitingPane(page)
-    expect(await rowTitles(pane)).toEqual(['Fahrenheit 451'])
+    await expect(rowLinks(pane)).toHaveText(['Fahrenheit 451'])
     await expect(pane.getByRole('button', { name: RESUME_LEFT_HAND, exact: true })).toHaveCount(0)
 
     // The row's dialog has no trade-off line, and Cancel returns to the row, not to the card's suggestion.

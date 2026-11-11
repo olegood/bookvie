@@ -19,7 +19,7 @@ import {
   fontFamily,
   libraryBytes,
   mainBookCard,
-  rowTitles,
+  rowLinks,
   serverAtFakeToday,
   startDialog,
   stopAndRemove,
@@ -268,7 +268,7 @@ test.describe('Story 4.7 Keep a few side reads', () => {
     await expect(pane).toBeVisible()
     await expect(pane.getByRole('heading', { level: 2, name: 'On the side', exact: true })).toBeVisible()
     // In sideReadBookIds order.
-    expect(await rowTitles(pane)).toEqual(['Kindred', 'The Left Hand of Darkness'])
+    await expect(rowLinks(pane)).toHaveText(['Kindred', 'The Left Hand of Darkness'])
     const link = pane.getByRole('link', { name: 'Kindred', exact: true })
     await expect(link).toHaveAttribute('href', `/book/${KINDRED_ID}`)
     expect(await fontFamily(link)).toMatch(/^ui-serif/)
@@ -279,7 +279,7 @@ test.describe('Story 4.7 Keep a few side reads', () => {
     )
     // After Waiting for you, which also lists the paused Side read.
     expect(await topOf(pane)).toBeGreaterThanOrEqual(await bottomOf(waitingPane(page)))
-    expect(await rowTitles(waitingPane(page))).toEqual(['The Left Hand of Darkness'])
+    await expect(rowLinks(waitingPane(page))).toHaveText(['The Left Hand of Darkness'])
 
     // The button opens the Start dialog; Cancel gives focus back.
     const start = pane.getByRole('button', { name: 'Start reading Kindred', exact: true })
@@ -301,7 +301,7 @@ test.describe('Story 4.7 Keep a few side reads', () => {
     const server = await seededServer({ sideReadBookIds: [KINDRED_ID], books: [DUNE, KINDRED] })
     await page.goto(`${server.url}/`)
     await expect(mainBookCard(page).getByRole('heading', { name: 'No Main book.' })).toBeVisible()
-    expect(await rowTitles(sidePane(page))).toEqual(['Kindred'])
+    await expect(rowLinks(sidePane(page))).toHaveText(['Kindred'])
   })
 
   test('[P1] a Side read that is Up next or waiting: ", on the side" on its spine, only its own marker, and both panes', async ({
@@ -326,8 +326,8 @@ test.describe('Story 4.7 Keep a few side reads', () => {
 
     await page.goto(`${server.url}/`)
     await expect(upNextPane(page).getByRole('link', { name: 'Kindred', exact: true })).toBeVisible()
-    expect(await rowTitles(waitingPane(page))).toEqual(['The Left Hand of Darkness'])
-    expect(await rowTitles(sidePane(page))).toEqual(['Kindred', 'The Left Hand of Darkness'])
+    await expect(rowLinks(waitingPane(page))).toHaveText(['The Left Hand of Darkness'])
+    await expect(rowLinks(sidePane(page))).toHaveText(['Kindred', 'The Left Hand of Darkness'])
   })
 
   test('[P0] AC-4 the Start dialog asks "Which page?" for a Side read: prefilled and focused, empty and out-of-range refused, a lower page accepted, and it leaves On the side', async ({
@@ -379,7 +379,7 @@ test.describe('Story 4.7 Keep a few side reads', () => {
     expect(stored.mainBookId).toBe(LEFT_HAND_ID)
     expect(stored.sideReadBookIds).toEqual([KINDRED_ID])
     expect(storedBook(server, LEFT_HAND_ID).readings[0].currentPage).toBe(50)
-    expect(await rowTitles(sidePane(page))).toEqual(['Kindred'])
+    await expect(rowLinks(sidePane(page))).toHaveText(['Kindred'])
     // No Finish dialog: not the last page.
     await expect(page.getByRole('dialog')).toHaveCount(0)
   })

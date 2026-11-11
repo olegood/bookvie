@@ -530,5 +530,5 @@ action_items:
       `frontend/e2e/waiting-for-you.spec.ts`. Due: before the Epic 5 trace (action
       50). (PL-6)"
     owner: "Murat (TEA)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-5-retro-2026-11-10.md"

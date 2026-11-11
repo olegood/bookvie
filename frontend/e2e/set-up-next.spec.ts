@@ -15,7 +15,7 @@ import {
   LEFT_HAND,
   LEFT_HAND_ID,
   libraryBytes,
-  rowTitles,
+  rowLinks,
   storedBook,
   storedLibrary,
   upNextPane,
@@ -239,7 +239,7 @@ test.describe('Story 4.4 Choose what to read next (ATDD)', () => {
       upNextPane(page).getByRole('button', { name: 'Resume The Left Hand of Darkness', exact: true }),
     ).toBeVisible()
     await expect(waitingHeading(page, 1)).toBeVisible()
-    expect(await rowTitles(waitingPane(page))).toEqual(['Fahrenheit 451'])
+    await expect(rowLinks(waitingPane(page))).toHaveText(['Fahrenheit 451'])
     await expect(waitingPane(page).getByRole('button', { name: 'Resume The Left Hand of Darkness' })).toHaveCount(0)
     // Only the pointer moved: the paused Reading keeps its page and its pausedAt.
     expect(storedBook(server, LEFT_HAND_ID)).toEqual(leftHandBefore)
@@ -678,7 +678,7 @@ test.describe('Epic 4 retro item 36: Set as Up next, automate', () => {
     await page.goto(`${server.url}/`)
     await expect(upNextPane(page).getByRole('link', { name: 'Neuromancer', exact: true })).toBeVisible()
     // The criterion: the earlier pause comes first.
-    expect(await rowTitles(waitingPane(page))).toEqual(['The Left Hand of Darkness', 'Fahrenheit 451'])
+    await expect(rowLinks(waitingPane(page))).toHaveText(['The Left Hand of Darkness', 'Fahrenheit 451'])
 
     await page.goto(`${server.url}/book/${FAHRENHEIT_ID}`)
     await detailButton(page, 'Set as Up next').click()
@@ -686,7 +686,7 @@ test.describe('Epic 4 retro item 36: Set as Up next, automate', () => {
 
     await page.goto(`${server.url}/`)
     await expect(upNextPane(page).getByRole('link', { name: 'Fahrenheit 451', exact: true })).toBeVisible()
-    expect(await rowTitles(waitingPane(page))).toEqual(['The Left Hand of Darkness'])
+    await expect(rowLinks(waitingPane(page))).toHaveText(['The Left Hand of Darkness'])
     // Neuromancer, never started, is back in the catalog only.
     await expect(page.getByRole('main').getByRole('region').getByRole('link', { name: 'Neuromancer' })).toHaveCount(0)
   })

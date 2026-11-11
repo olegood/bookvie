@@ -55,9 +55,13 @@ export function waitingHeading(page: Page, count: number): Locator {
   return page.getByRole('main').getByRole('heading', { name: `Waiting for you (${count})`, exact: true })
 }
 
-/** The row titles in the pane, in order: each row's one link. */
-export function rowTitles(pane: Locator): Promise<string[]> {
-  return pane.getByRole('link').allTextContents()
+/**
+ * The rows' title links in the pane, in order: each row's one link. Assert with
+ * `await expect(rowLinks(pane)).toHaveText([...])`, which retries until Home has
+ * rendered the rows (Epic 5 retro item 51: a one-shot read could run first and get []).
+ */
+export function rowLinks(pane: Locator): Locator {
+  return pane.getByRole('link')
 }
 
 /** The computed `font-family`, to tell the serif book-title face (`ui-serif…`) apart. */
