@@ -7,7 +7,7 @@ paradigm: 'server-owned domain behind an intent (command) API with server-comput
 scope: 'bookvie MVP: whole system (CLI launcher, Python server, data folder, React client)'
 status: final
 created: '2026-10-29'
-updated: '2026-11-10'
+updated: '2026-11-11'
 binds: [FR-1, FR-2, FR-3, FR-4, FR-5, FR-6, FR-7, FR-8, FR-9, FR-10, FR-11, FR-14, FR-15, FR-16, FR-17, FR-18, FR-19, FR-20, FR-21, FR-22, FR-23, FR-24, A1, A2, A3, A4, A5, A6]
 sources:
   - _bmad-output/planning-artifacts/prds/prd-bookvie-2026-10-28/prd.md
@@ -22,7 +22,7 @@ companions: []
 
 ## Design Paradigm
 
-**Server-owned domain, intent API, server-computed views.** One local Python process is the only reader and writer of the data folder. Browsers (the user's and the cataloging agent's) are clients. They send **intents** (one user action each) and render **views** (read models the server computes). The client holds no domain state of its own.
+**Server-owned domain, intent API, server-computed views.** One local Python process is the only reader and writer of the data folder. Its clients are the user's browser and the cataloging skill (`bookvie-new-book`), which calls the HTTP API directly, with no browser (skill 2.0.0, 2026-11-11). They send **intents** (one user action each) and read **views** (read models the server computes), which the browser renders. No client holds domain state of its own. The diagram shows the browser client; the skill calls `http/` the same way (Structural Seed, AD-8).
 
 ```mermaid
 flowchart LR
@@ -60,13 +60,14 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
 
 ### AD-3: Domain rules live only in the server; mutations arrive only as intents [ADOPTED]
 
-- **Binds:** FR-1, FR-3, FR-5 to FR-10, FR-14, FR-17, FR-22, FR-23, A2, A3
+- **Binds:** FR-1, FR-3, FR-5 to FR-10, FR-14, FR-16 (Custom's pre-check), FR-17, FR-22, FR-23, A2, A3
 - **Prevents:** rules duplicated in TypeScript and Python without a shared check (the sanctioned pre-checks are below); stale whole-library writes overwriting another browser's changes; one user action split across several calls that can half-fail.
-- **Rule:** Each user action is exactly one intent call: `POST /api/intents/<verb>`. An intent validates, applies **every** consequence, runs `domain.check_invariants()`, and commits once (AD-2), or it changes nothing: it returns a refusal, or, when it asks for what is already so, a 200 no-op that commits nothing and so runs no `check_invariants()` (AD-9; story 4.4). An edit is never such a no-op: `edit-book` and `edit-card-note` commit an unchanged edit (AD-9; story 5.2). No CRUD or PATCH endpoints on entities, and no whole-document write endpoint. A client may pre-check an input against a rule the server also enforces, with the server's exact copy, to refuse it without a round trip:
+- **Rule:** Each user action is exactly one intent call: `POST /api/intents/<verb>`. An intent validates, applies **every** consequence, runs `domain.check_invariants()`, and commits once (AD-2), or it changes nothing: it returns a refusal, or, when it asks for what is already so, a 200 no-op that commits nothing and so runs no `check_invariants()` (AD-9; story 4.4). An edit is never such a no-op: `edit-book` and `edit-card-note` commit an unchanged edit (AD-9; story 5.2). No CRUD or PATCH endpoints on entities, and no whole-document write endpoint. A client may pre-check an input against a rule the server also enforces, to refuse or correct it without a round trip, showing the server's exact copy whenever it shows one:
   - the page field's range check ("Page must be between 0 and N.", story 3.3, `frontend/src/lib/pageField.ts`);
-  - the Start dialog's "Which page?" (story 4.7, `frontend/src/components/StartDialog.tsx`), which the dialog asks only for a Side read. It reuses that range check, and refuses an empty value with "Which page? is required."
+  - the Start dialog's "Which page?" (story 4.7, `frontend/src/components/StartDialog.tsx`), which the dialog asks only for a Side read. It reuses that range check, and refuses an empty value with "Which page? is required.";
+  - the Stats page's Custom range (story 6.3, `frontend/src/lib/stats.ts` `orderedRange`, `frontend/src/pages/StatsPage.tsx`). It sends no request while either date is empty or invalid, sends the earlier date as `from`, and swaps a To before From in the fields silently when focus leaves them. So the user never meets the stats view's 422s for a half range or a `to` before `from` (AD-9). These have no copy shown in the app; the server still refuses such a request.
 
-  The server still refuses the same input with the same copy. A shared case table keeps the range check in step (`frontend/src/lib/pageField.cases.json`, read by both the client's unit tests and `backend/tests/test_update_page.py`). Known gap: nothing shared keeps "Which page?"'s empty-value copy in step. Each side's tests hard-code it, and the e2e test never reaches the server (open in `deferred-work.md`). A pre-check never adds a rule the server lacks. Every intent is `multipart/form-data` with a JSON part named `intent`, including those with no file (`delete-book`, `set-spine-color`), so every route parses its body one way. Intents that carry a file (`add-book`, `edit-book`, `restore`) add a file part. Each is still one call and at most one commit.
+  The server still refuses the same input; the two dialogs show its exact copy. A shared case table keeps the range check in step (`frontend/src/lib/pageField.cases.json`, read by both the client's unit tests and `backend/tests/test_update_page.py`). Known gap: nothing shared keeps "Which page?"'s empty-value copy in step. Each side's tests hard-code it, and the e2e test never reaches the server (open in `deferred-work.md`). A pre-check never adds a rule the server lacks. Every intent is `multipart/form-data` with a JSON part named `intent`, including those with no file (`delete-book`, `set-spine-color`), so every route parses its body one way. Intents that carry a file (`add-book`, `edit-book`, `restore`) add a file part. Each is still one call and at most one commit.
 - **Concurrency across tabs:** intents carry no version and no precondition. Each applies to the server's current state (AD-4 serializes them; AD-19 Targeting), so the last intent wins for every field it sends (A2). An open form keeps the values it opened with, and AD-7's refetch doesn't change them, so a stale form in one tab can undo a change made in another: an Edit panel opened before a popover color change puts the old color back on save, and a stale "Remove cover" removes a cover uploaded later. Within one tab the Edit panel is modal, so this can't happen; reloading shows the current data. This is A2 as written; the silent loss it allows (retro F-R1) is closed as an accepted deviation for single-tab use (Oleg, 2026-11-03). Revisit, with a document `revision` and an `expectedRevision` refusal, if the cataloging agent ever edits an existing Book while the app is open in a tab.
 
 ### AD-4: All writes, export and restore are serialized
@@ -86,8 +87,12 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
 - **Binds:** FR-4, FR-7, FR-11, FR-15, FR-16, FR-17, FR-18, FR-19, FR-20, FR-24
 - **Prevents:** percentage, Measured pace, days left, Waiting order, stats or library scope being computed in two places with different results.
 - **Rule:**
-  - **The server computes:** percentages (`floor(page × 100 ÷ pages)`, so 100% only at the last page; story 3.1, `domain/progress`), Measured pace, days left, pages left (per Book and library scope), Waiting for you and its order (every paused Reading except the Up next Book's, `pausedAt` oldest first with a Reading that has none before all, then the title key, then Book id; `pausedAt` itself is never sent; story 4.2), whether Home's Up next is paused (`upNext.paused`, story 4.1), each Book's role and its waiting page (Main book, then Up next, then waiting for a paused Reading; `views/shelf` `_role_reading`; stories 4.1 and 4.6), a Book's Card notes in page order (`pageStart`, then `createdAt`, ties keeping stored order; `views/shelf` `card_note_views`, story 5.1), the `card-notes` view's groups (one per Book that has notes, ordered by the title key, then Book id; `?book=<id>` scopes it to that Book's group, empty when it has none; story 5.3), the Main book's note count on Home (`cardNoteCount`, story 5.3), the Home bookcase slice's priority, stats for a requested date range including the bars, and the "X of Y finished" meter.
-  - **Stats view:** `GET /api/views/stats?from=YYYY-MM-DD&to=YYYY-MM-DD`, both inclusive local dates; omit both for All time. Response `{ books, pages, bucket: "month" | "year", buckets: [{ period, books, pages }] }`; `bucket` is `year` when the range exceeds 24 months. The browser resolves presets to dates: This month = the 1st..today, This year = 1 January..today, Last year = the full year. All time with no finished Reading returns 0 books, 0 pages and no buckets.
+  - **The server computes:** percentages (`floor(page × 100 ÷ pages)`, so 100% only at the last page; story 3.1, `domain/progress`), Measured pace, days left, pages left (per Book and library scope; below), Waiting for you and its order (every paused Reading except the Up next Book's, `pausedAt` oldest first with a Reading that has none before all, then the title key, then Book id; `pausedAt` itself is never sent; story 4.2), whether Home's Up next is paused (`upNext.paused`, story 4.1), each Book's role and its waiting page (Main book, then Up next, then waiting for a paused Reading; `views/shelf` `_role_reading`; stories 4.1 and 4.6), a Book's Card notes in page order (`pageStart`, then `createdAt`, ties keeping stored order; `views/shelf` `card_note_views`, story 5.1), the `card-notes` view's groups (one per Book that has notes, ordered by the title key, then Book id; `?book=<id>` scopes it to that Book's group, empty when it has none; story 5.3), the Main book's note count on Home (`cardNoteCount`, story 5.3), the Home bookcase slice's priority, stats for a requested date range including the bars, and the "X of Y finished" meter.
+  - **Pages left** (`domain/progress` `pages_left`, story 6.1): a Book with an unfinished Reading (active or paused) has max(pages − `currentPage`, 0) left; a Book with no Reading has all its pages; a Book whose Readings are all finished has 0, so a finished Book queued for a re-read counts 0 until the re-read starts (FR-15; Epic 6 retro E6-R2, accepted). The `book` view carries the Book's `pagesLeft`; the `catalog` view carries the library's, the sum of every Book's, so the two scopes can't disagree (story 6.2). Both carry `measuredPace` (`null` without one) for the calculator. Home's days left uses the same `pages_left`.
+  - **Stats view** (`views/stats`, stories 6.3 and 6.4): `GET /api/views/stats?from=YYYY-MM-DD&to=YYYY-MM-DD`, both inclusive local dates; omit both for All time. Response `{ books, pages, bucket: "month" | "year", buckets: [{ period, books, pages }] }`. Every finished Reading whose `finishDate` falls in the range counts once with its stored `finishedPages` (AD-11), back-fills and re-reads included; Side read marks change nothing.
+    - **Buckets:** one per calendar month the range touches, both ends included, so a range starting 15 March has a March bucket counting from the 15th. `bucket` is `year` when that is more than 24 months (exactly 24 stays `month`). `period` is `YYYY-MM`, or `YYYY` by year. Buckets come oldest first, and a period with no finishes is 0 books and 0 pages, never left out. All time spans the earliest finish to the latest; with no finished Reading it returns 0 books, 0 pages, `bucket: "month"` and `buckets: []`, the only case with no buckets.
+    - **Refusals:** a half range, a value that isn't a `YYYY-MM-DD` date (a datetime or `2026-02-30` included), or a `to` before `from` is 422 `invalid_fields` on that field (AD-9).
+    - **Presets:** the browser resolves them to dates from its local today, never UTC: This month = the 1st..today, This year = 1 January..today, Last year = the full year, All time = no dates (`lib/stats.ts` `presetRange`). Custom's range is AD-3's pre-check.
   - **The client may only apply presentation to the views it has fetched:**
     - catalog sort, using `Intl.Collator`, per the UX;
     - filter chips;
@@ -97,7 +102,8 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
     - Book detail's Card notes block showing the first three notes of the view's page order, and every matching note while its search holds text (stories 5.1 and 5.3);
     - pile order and shuffle, with an injectable random source (`lib/cardNotes.ts` `shuffled`; story 5.4);
     - copy and date formatting, including relative "N days ago" counted in local calendar days;
-    - the Quick pace calculator's arithmetic. Days to finish = max(1, ceil(pages left ÷ pages per day)), and the finish date = today + days: the same rounding and minimum as the server's days left. With nothing left to read, or a pages-per-day of zero or less, it shows no days (EXPERIENCE.md → Pace calculator).
+    - the Quick pace calculator's arithmetic and line (`lib/pace.ts`, `components/PaceCalculator.tsx`; stories 6.1 and 6.2). Book detail hosts it for the Book's `pagesLeft`, and Catalog for the library's, behind "How long until…?". Days to finish = max(1, ceil(pages left ÷ pages per day)), and the finish date = today + days by local calendar day: the same rounding and minimum as the server's days left. A shared case table keeps the two in step (`frontend/src/lib/pace.cases.json`, read by `lib/pace.test.ts` and `backend/tests/test_pace_calculator.py`). Under 60 days the line reads days; otherwise months = round(days ÷ 30.4375), and from 24 months years = round(months ÷ 12). The field takes plain decimals only (no sign, exponent or comma). Anything else, a pages-per-day of zero or less, or a finish date out of range shows no result and no message. With nothing left to read it shows "Nothing left to read." instead of the field. The field is prefilled with `measuredPace` rounded to one decimal, a trailing ".0" dropped (EXPERIENCE.md → Pace calculator);
+    - the Stats bars (`components/StatsBars.tsx`, `lib/stats.ts`; story 6.4): each bar's height is its pages over the range's largest (`barShare`), the period under it reads "Jan" with the year added on the first bar and on each January, and a year bucket reads "2026". The chart is `aria-hidden`; a visually hidden table (Period, Books, Pages) carries the same buckets.
   - **Days left** is `max(1, ceil(pages left ÷ Measured pace))`, and null when there is no Measured pace, when it is 0, or when no pages are left (story 3.4); the client then omits "~N days left".
 
 ### AD-7: The client never patches cached state
@@ -112,11 +118,11 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
 
 - **Binds:** all intents, views and error codes
 - **Prevents:** hand-written TS types drifting from the Python models.
-- **Rule:** Pydantic models define every intent body, view, success response and error code. TS types are generated from FastAPI's OpenAPI, using alias names, with `openapi-typescript` into `frontend/src/api/generated/`. They're never edited by hand. `npm run check:api` regenerates the types and fails on any diff.
+- **Rule:** Pydantic models define every intent body, view, success response and error code. TS types are generated from FastAPI's OpenAPI, using alias names, with `openapi-typescript` into `frontend/src/api/generated/`. They're never edited by hand. `npm run check:api` regenerates the types and fails on any diff. The cataloging skill is a second client with no generated types: its scripts (`.claude/skills/bookvie-new-book/scripts/`) build the `add-book` intent body, read the `catalog` and `book` views, and read the AD-9 envelope (`ok`, `ids.bookId`, and `error.code` for `duplicate_book`, `invalid_fields` and `couldnt_save` with its `duplicates`, `fields` and `message`), all by their JSON keys. Renaming one of those keys or codes breaks the skill without failing `check:api`. Known gap: the skill's duplicate pre-check (`check_catalog.py`) copies `domain/duplicates`' rule with no shared check, which AD-3 prevents for the app. It only decides what the skill asks the user; the server still refuses a duplicate `add-book` with 409 `duplicate_book` unless the intent carries `confirmDuplicate: true` (AD-10). Open in `deferred-work.md`.
 
 ### AD-9: One response contract for success and failure
 
-- **Binds:** all intents, A3, FR-2 outcome exposure
+- **Binds:** all intents, the views that refuse (`book`, `card-notes`, `stats`), A3, FR-2 outcome exposure
 - **Prevents:** endpoints inventing their own error shapes; FastAPI's default `{"detail":[…]}` reaching the client; the UI unable to tell "refused" from "not saved", or unable to report several fields at once.
 - **Rule:**
   - **Success:** HTTP 200 with `{ "ok": true, "ids"?: {<name>: <uuid>}, "reachedLastPage"?: true }`.
@@ -124,6 +130,7 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
     - HTTP 422 means field validation or a refused upload. For field validation `code` is `invalid_fields`, and `fields` lists every failing field. `start-reading`'s `page` ("Which page?") is such a field: required for a Side read, and a whole number from 0 to the Book's pages whenever it is sent (story 4.7). For uploads: a cover that isn't a supported image is a field error, and a refused restore archive is a `refusal` with one of the AD-14 codes, `restore_invalid`, `restore_newer_version` or `restore_unsafe`, with no `fields`. `restore_unsafe` shows `restore_invalid`'s copy. A restore body over the upload limit plus 64 KiB of multipart framing is 422 `restore_unsafe`: refused before anything is read when `Content-Length` says so, otherwise as soon as the counted bytes pass the limit while the form is parsed. Either way it is before the restore takes the lock (story 2.3).
     - HTTP 413 `cover_too_large` means a cover upload over 20 MB (AD-12); `fields` carries "Cover must be 20 MB or smaller."
     - HTTP 409 means a state rule (e.g. `duplicate_book`, `pages_below_current_page`). An intent whose target is no longer in a state it can act on is refused, never applied to another Book: `book_not_found` (the Book was deleted), `not_main_book` (`update-page` or `pause` for a Book that isn't Main), `reading_already_finished`, `already_main` (`start-reading` for the Main book), `main_cannot_be_up_next`, `main_cannot_be_side_read`, `side_reads_full` ("You already have 3 side reads. Remove one first."), `card_note_not_found` (`edit-card-note` or `delete-card-note` for a note the Book no longer has, another Book's note id included; checked after `book_not_found` and before the fields; story 5.2). A 409 refusal about one field (e.g. `pages_below_current_page`) includes `fields`.
+    - One view answers 422 `invalid_fields`: `GET /api/views/stats` for a half range, a value that isn't a `YYYY-MM-DD` date, or a `to` before `from`, on the `from` or `to` field (story 6.3; the copy is in `http/api.py` `stats_view`). The app never sends these (AD-3's Custom pre-check), so its copy and the envelope's summary are only seen by hand-made requests (Epic 6 retro E6-R5, accepted).
     - HTTP 404 `book_not_found` (kind `refusal`) comes from a view, not an intent: `GET /api/views/book` for an id no Book has (decided in story 1.11), and `GET /api/views/card-notes?book=<id>` likewise (story 5.3). The client shows its not-found page.
     - On an intent route, a body that can't be parsed (broken multipart, a part over 1 MB, too many fields) is 422 `invalid_fields` on `intent`, the same refusal as a malformed `intent` part (retro item 8).
   - Unknown `/api` paths aren't enveloped: a GET or HEAD 404s through the SPA route, and any other method gets Starlette's 405 `{detail}`. No real route answers `{detail}`.
@@ -319,7 +326,7 @@ flowchart TB
   subgraph prod["Installed (uv tool install)"]
     C["bookvie (CLI)"] --> S["FastAPI on 127.0.0.1:8765<br/>serves API + media + built SPA"]
     C -- opens --> B[default browser]
-    AG[agent's automated browser] --> S
+    AG["cataloging skill (HTTP client of the intent API)"] --> S
     B --> S
     S --> D[("~/bookvie-data/")]
   end
@@ -359,8 +366,8 @@ bookvie/
       instance.py           # bookvie.lock, loopback socket, health probe (AD-5)
       http/                 # FastAPI app, routes, Host/Origin guard, error handler, static/
       intents/              # one module per intent (add_book, edit_book, delete_book, set_spine_color, start_reading, edit_purpose, update_page, finish_reading, pause, set_up_next, add_card_note (its `check_card_note_fields` function is reused by edit_card_note), edit_card_note, delete_card_note, restore), except side_reads (mark-side-read and unmark-side-read), export; shared: book_form, intent_model, commit, cover (decode, downscale), contract (error enum)
-      views/                # read models: shelf (home, catalog, book detail), card_notes, backup; models (view shapes)
-      domain/               # model (entities), invariants (check_invariants), book_fields (form parser), labels (form order, shared failures), finished_on (Finished on parser, long date), spine_color (curated rotation, AD-11 resolve), duplicates (ISBN), cover_color, clock, progress (percent, current_reading, reading_status), pace (Measured pace, days left), purpose, ordering (title key), note_pages (Card note Page parser)
+      views/                # read models: shelf (home, catalog, book detail), card_notes, stats, backup; models (view shapes)
+      domain/               # model (entities), invariants (check_invariants), book_fields (form parser), labels (form order, shared failures), finished_on (Finished on parser, long date), spine_color (curated rotation, AD-11 resolve), duplicates (ISBN), cover_color, clock, progress (percent, current_reading, pages_left, reading_status), pace (Measured pace, days left), purpose, ordering (title key), note_pages (Card note Page parser)
       store/                # store.py (serialize, load/commit, covers, AD-4 lock, staging); fs.py (filesystem seam); restore.py (unpack); local_state.py; migrations/
     tests/
   frontend/
@@ -368,14 +375,14 @@ bookvie/
       api/generated/        # openapi-typescript output, never edited (AD-8)
       api/                  # fetch wrapper, AD-9 envelope, query keys, invalidate-all
       styles/tokens.css     # DESIGN.md custom properties; components use CSS Modules
-      lib/                  # client rules and presentation: pageField (+ .cases.json, AD-3), gauge, slice, cardNotes (page refs, search, highlight, pile order), useSearchCount ("N notes match.") (AD-6)
+      lib/                  # client rules and presentation: pageField (+ .cases.json, AD-3), gauge, slice, cardNotes (page refs, search, highlight, pile order), useSearchCount ("N notes match."), pace (+ .cases.json; the calculator's days, months, years and line), stats (presets, Custom's order, the bars' share and labels) (AD-6; stats also AD-3)
       pages/  components/
     e2e/                    # Playwright, label-contract driven
 ```
 
 ## Capability → Architecture Map
 
-Rows for features not built yet name their planned modules (for example `views/stats`).
+Every row below is built.
 
 | Capability / Area | Lives in | Governed by |
 | --- | --- | --- |
@@ -385,8 +392,8 @@ Rows for features not built yet name their planned modules (for example `views/s
 | FR-5 to FR-9 Main book, pause, Up next, Side reads, Purpose | `intents/start_reading`, `pause`, `set_up_next`, `side_reads` (mark, unmark), `edit_purpose`; `views/shelf` (home `upNext` with `paused`, `waiting`, `sideReads`); Home's Up next, Waiting for you and On the side panes | AD-3, AD-4, AD-6, AD-7, AD-9, AD-18, AD-19 |
 | FR-10, FR-11 Page update, re-entry | `intents/update_page`; `views/shelf` (home); `domain/pace`, `domain/progress` | AD-6, AD-7, AD-19, AD-20 |
 | FR-14 Finish | `intents/finish_reading` | AD-7, AD-11, AD-18, AD-19, AD-20 |
-| FR-15 Quick pace calculator | `views/` (pages left, Measured pace); client arithmetic | AD-6, AD-20 |
-| FR-16 Stats | `views/stats` | AD-6, AD-11, AD-20 |
+| FR-15 Quick pace calculator | `domain/progress` (`pages_left`), `domain/pace`; `views/shelf` (`book` and `catalog` views' `pagesLeft`, `measuredPace`); `lib/pace`, `components/PaceCalculator` on Book detail and Catalog | AD-6, AD-20 |
+| FR-16 Stats | `views/stats`, `GET /api/views/stats`; `lib/stats`, `pages/StatsPage`, `components/RangePicker`, `components/StatsBars` | AD-3, AD-6, AD-9, AD-11, AD-20 |
 | FR-17 to FR-19 Card notes | `intents/add_card_note`, `edit_card_note`, `delete_card_note`; `domain/note_pages`; `views/card_notes` (Card notes page), `views/shelf` (Book detail's `cardNotes`, home `cardNoteCount`); the Card notes page, Book detail's Card notes block and the pile | AD-3, AD-6, AD-7, AD-9, AD-18, AD-19 |
 | FR-21 Cover | `intents/cover` (decode, downscale); `store/store.py` (write, sweep); `intents/edit_book` (Remove cover); `/media/covers` | AD-11, AD-12 |
 | FR-22, FR-23 Export / restore | `GET /api/export` (`intents/export`), `POST /api/intents/restore` (`intents/restore`); `store/restore` (unpack), `store/store.py` (`replace_all`), `store/local_state`; `views/backup`, `views/shelf` (home's "Last export") | AD-4, AD-13, AD-14, AD-15 |

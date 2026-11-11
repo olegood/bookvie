@@ -715,15 +715,19 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-1-see-when-this-book-will-be-finished.md`
   summary: Spine drift (AD-6, FR-15 map row), reconciled before the next epic: the spine doesn't record the Book-scope pages left rule or where it lives. An unfinished Reading gives max(pages − currentPage, 0), a Book never started gives all its pages, and only finished Readings give 0. AD-6 should name `domain/progress` `pages_left` on the `book` view with `measuredPace` (story 6.1), and the FR-15 map row should name `views/shelf` (book detail), `lib/pace` and `components/PaceCalculator`.
   evidence: `backend/bookvie/domain/progress.py` (`pages_left`); `backend/bookvie/views/models.py` (`BookDetailView.pages_left`, `measured_pace`); `ARCHITECTURE-SPINE.md` AD-6 and the Capability map's FR-15 row (spine-check review of 6.1).
+  resolved: spine reconciliation before Epic 7 (Epic 6 retro item 52, 2026-11-11). AD-6 gains a Pages left bullet: the rule, `domain/progress` `pages_left`, the `book` view's `pagesLeft` and `measuredPace` (story 6.1). The FR-15 map row names `domain/progress`, `views/shelf`, `lib/pace` and `components/PaceCalculator`.
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-1-see-when-this-book-will-be-finished.md`
   summary: Spine drift (AD-6), reconciled before the next epic: the Quick pace calculator bullet omits the rules the client now owns. Months = round(days ÷ 30.4375), and years = round(months ÷ 12) from 24 months. Only plain decimals are accepted (no sign, exponent or comma). A finish date out of range gives no result. The prefill is rounded to one decimal and drops ".0". AD-6 should state them, or point to EXPERIENCE.md → Pace calculator, which now records them.
   evidence: `frontend/src/lib/pace.ts` (`paceResult`, `pacePrefill`); `EXPERIENCE.md` → Pace calculator (spine-check review of 6.1).
+  resolved: spine reconciliation before Epic 7 (Epic 6 retro item 52, 2026-11-11). AD-6's calculator bullet states the months and years rounding, plain decimals only, no result for an out-of-range finish date, and the one-decimal prefill without ".0", and still points to EXPERIENCE.md → Pace calculator.
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-1-see-when-this-book-will-be-finished.md`
   summary: Spine drift (Structural Seed), reconciled before the next epic: the seed's `domain/` line lists progress (percent, current_reading, reading_status) without `pages_left`.
   evidence: `backend/bookvie/domain/progress.py` defines and exports `pages_left` (story 6.1).
+  resolved: spine reconciliation before Epic 7 (Epic 6 retro item 52, 2026-11-11). The Seed's `domain/` line lists `pages_left` under progress.
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-1-see-when-this-book-will-be-finished.md`
   summary: Spine drift (Structural Seed), reconciled before the next epic: the seed's `frontend/src/lib/` line omits `pace` (the calculator's arithmetic and line, AD-6).
   evidence: `frontend/src/lib/pace.ts` is new in story 6.1. `lib/today.ts` now exports `MONTHS` for it.
+  resolved: spine reconciliation before Epic 7 (Epic 6 retro item 52, 2026-11-11). The Seed's `lib/` line lists `pace` (+ `.cases.json`).
 
 ## Deferred from: code review of spec-6-1-see-when-this-book-will-be-finished (2026-11-11)
 
@@ -737,6 +741,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-2-see-when-my-whole-unread-library-will-be-finished.md`
   summary: Spine drift (AD-6, FR-15 map row), reconciled before the next epic: the spine doesn't say the catalog view carries the library-scope pages left (the sum of every Book's `pages_left`) and `measuredPace`, or that `CatalogPage` hosts `PaceCalculator` behind "How long until…?". The 6.1 entry above names only the book view; reconcile both together.
   evidence: `backend/bookvie/views/shelf.py` `catalog()` (`pages_left`, `measured_pace`); `frontend/src/pages/CatalogPage.tsx` `LibraryPace`; `ARCHITECTURE-SPINE.md` AD-6 and the Capability map's FR-15 row (Blind Hunter, build-auto review of 6.2).
+  resolved: spine reconciliation before Epic 7 (Epic 6 retro item 52, 2026-11-11). AD-6's Pages left bullet says the `catalog` view carries the library's `pagesLeft`, the sum of every Book's, and `measuredPace`. The calculator bullet says Catalog hosts `PaceCalculator` behind "How long until…?", and the FR-15 row names both views.
 
 ## Deferred from: code review of spec-6-2-see-when-my-whole-unread-library-will-be-finished (2026-11-11)
 
@@ -763,6 +768,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-2-see-when-my-whole-unread-library-will-be-finished.md`
   summary: DESIGN.md's contrast table records the library meter only against `shelf-wall`, but on Catalog it now sits on `page`. The fill (`accent`) against `page` is 4.96 (light) / 7.68 (dark), already shown in the focus-ring row, so it passes 3:1. Only the documentation row is missing; add it with the next DESIGN.md pass.
   evidence: `DESIGN.md` contrast table (l.494-495); `frontend/src/pages/CatalogPage.tsx` `LibraryPace` outside the `shelf-wall` card.
+  resolved: DESIGN.md pass of Epic 6 retro item 52 (2026-11-11). The non-text contrast table adds `library-meter` fill vs `page` (4.96 / 7.68) and, for symmetry, the decorative track (`line`) vs `page` (1.21 / 1.45), computed from the tokens.
 
 ## Deferred from: build-auto review of spec-6-3-see-what-i-finished-in-any-period (2026-11-11)
 
@@ -773,6 +779,7 @@
   - Custom's handling in the client: the earlier date sent as `from`, the silent swap, and no request while a field is empty;
   - that the stats view refuses a half range, a value that isn't a date, or a `to` before `from` with 422 `invalid_fields`, while AD-9 names only 404 `book_not_found` as a view refusal.
   evidence: `backend/bookvie/views/stats.py`; `backend/bookvie/http/api.py` `stats_view`; `frontend/src/lib/stats.ts`; `frontend/src/pages/StatsPage.tsx`; `ARCHITECTURE-SPINE.md` AD-6, AD-9, Structural Seed and the Capability map's FR-16 row (spine check, build-auto review of 6.3).
+  resolved: spine reconciliation before Epic 7 (Epic 6 retro item 52, 2026-11-11). The map preface no longer calls `views/stats` unbuilt; the Seed lists `views/stats` and `lib/stats`. AD-6's Stats view bullet states the bucket rules and the presets. AD-3's pre-checks gain Custom (no request while a field is empty or invalid, the earlier date as `from`, the silent swap; Epic 6 retro F-S2). AD-9 names the stats view's 422 `invalid_fields`. The FR-16 row names the modules and adds AD-3 and AD-9.
 
 ## Deferred from: bookvie-new-book skill 2.0.0, the switch to the add-book API (2026-11-11)
 
@@ -782,6 +789,7 @@
   - the Structural Seed diagram's `AG[agent's automated browser] --> S` node should read as the cataloging skill calling the API.
   FR-2 and AD-17 stay as they are: the New book form must still be fillable by its labels, and the e2e suite still enforces the Agent Label Contract. The skill is now a second client of the add-book intent body (AD-8), so a renamed intent key breaks it; the reconciliation may add one line saying so.
   evidence: `.claude/skills/bookvie-new-book/scripts/add_book.py`; `.claude/skills/bookvie-new-book/scripts/check_catalog.py`; `ARCHITECTURE-SPINE.md` Overview paragraph and the Structural Seed diagram (`AG` node).
+  resolved: spine reconciliation before Epic 7 (Epic 6 retro item 52, 2026-11-11). The Overview names the cataloging skill as a client calling the HTTP API with no browser; the Seed's `AG` node reads "cataloging skill (HTTP client of the intent API)". AD-8 says the skill is a second client of the `add-book` body, the `catalog` and `book` views and the AD-9 envelope, so a renamed key or code breaks it without failing `check:api`. FR-2 and AD-17 are unchanged.
 
 ## Deferred from: build-auto review of spec-6-4-see-my-reading-month-by-month (2026-11-11)
 
@@ -790,9 +798,20 @@
   - the stats buckets' rules: `period` is `YYYY-MM` or `YYYY`; buckets come oldest first, one per calendar month (or year) from `from` to `to`, with empty ones as 0 books and 0 pages; and `[]` is only for All time with nothing finished;
   - the Stats bars' client presentation, which AD-6's list of client calculations doesn't name: each fill's height is pages over the range's largest, the chart is `aria-hidden` with a visually hidden table (Period, Books, Pages), and the bar labels read "Jan", with the year on the first bar and each January.
   evidence: `backend/bookvie/views/stats.py` `_period`, `_periods`; `backend/bookvie/views/models.py` `StatsBucket`; `frontend/src/lib/stats.ts` `barShare`, `barLines`, `periodName`; `frontend/src/components/StatsBars.tsx`; `ARCHITECTURE-SPINE.md` AD-6 (spine check, build-auto review of 6.4).
+  resolved: spine reconciliation before Epic 7 (Epic 6 retro item 52, 2026-11-11). AD-6's Stats view bullet states `period` (`YYYY-MM` or `YYYY`), oldest first, empty periods as 0 and 0, and `[]` only for All time with nothing finished. AD-6's client list gains the Stats bars (height share, "Jan" labels with the year on the first bar and each January, `aria-hidden` chart with a visually hidden table).
 
 ## Deferred from: code review of spec-6-4-see-my-reading-month-by-month (2026-11-11)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-4-see-my-reading-month-by-month.md`
   summary: The `StatsBucket.period` and `StatsView.buckets` field docstrings never reach the OpenAPI. `_View` doesn't set `use_attribute_docstrings`, and no view model uses `Field(description=…)`, so `schema.d.ts` still reads `/** Period */`. The `YYYY-MM` / `YYYY` format the client's `splitPeriod` depends on is documented only in Python. Turning the flag on changes every view model's schema, so it is a project-wide choice, not a story fix. The spec's Code Map assumed the docstrings would reach it.
   evidence: `backend/bookvie/views/models.py` `_View`, `StatsBucket`, `StatsView`; `frontend/src/api/generated/schema.d.ts` `StatsBucket` (Blind Hunter and Acceptance Auditor, code review of 6.4). The AD-6 spine drift that this review's Spine Check also found is the build-auto entry above; it is not repeated here.
+
+## Deferred from: spec-epic-6-retro-item-52-reconcile-the-spine-with-epic-6 (2026-11-11)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-epic-6-retro-item-52-reconcile-the-spine-with-epic-6.md`
+  summary: Spine drift (Design Paradigm, AD-6, AD-8), found by item 52's review beyond the eight entries. The Paradigm paragraph said every client renders views and showed only the browser. AD-6 didn't name `pace.cases.json` as the table that keeps the calculator's rounding in step with the server's days left. AD-8's skill sentence left out the AD-9 envelope keys and codes the skill reads, and the skill's copied duplicate rule.
+  evidence: `.claude/skills/bookvie-new-book/scripts/add_book.py` (`ok`, `ids.bookId`, `error.code`, `duplicates`, `fields`, `message`); `check_catalog.py` ("Applies the same rules as the server's duplicate check"); `frontend/src/lib/pace.test.ts` and `backend/tests/test_pace_calculator.py` both read `pace.cases.json` (Blind Hunter, item 52).
+  resolved: spine reconciliation before Epic 7 (Epic 6 retro item 52, 2026-11-11). The Paradigm says clients send intents and read views, which the browser renders, and that the skill calls `http/` like the browser. AD-6's calculator bullet names the shared case table. AD-8 lists the envelope keys and codes and records the duplicate rule as a known gap (the entry below).
+- source_spec: `_bmad-output/implementation-artifacts/spec-epic-6-retro-item-52-reconcile-the-spine-with-epic-6.md`
+  summary: The cataloging skill's duplicate pre-check (`check_catalog.py`) re-implements `domain/duplicates`' rule (ISBN normalisation, title and author-set match) with no shared check, so a change to the server's rule leaves the skill's pre-check silently different. It only decides what the skill asks the user: the server still refuses a duplicate with 409 `duplicate_book` unless `confirmDuplicate` is sent. A shared case table read by both, as `pageField.cases.json` does for AD-3, would close it. Low.
+  evidence: `.claude/skills/bookvie-new-book/scripts/check_catalog.py` docstring and `normalize_isbn`; `backend/bookvie/domain/duplicates.py`. AD-8 records it as a known gap.

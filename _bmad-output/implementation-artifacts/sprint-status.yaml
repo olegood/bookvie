@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-29-2026 17:21
-last_updated: 11-11-2026 21:02
+last_updated: 11-11-2026 21:23
 project: bookvie
 project_key: NOKEY
 tracking_system: file-system
@@ -548,7 +548,7 @@ action_items:
       `:764`. Changes: `ARCHITECTURE-SPINE.md`, `_bmad-output/planning-artifacts/ux-designs/ux-bookvie-2026-10-28/DESIGN.md`,
       `deferred-work.md`. Due: before Epic 7."
     owner: "Winston (Architect), applied by Oleg"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-6-retro-2026-11-11.md"
   - id: "epic-6-retro-item-53-record-the-add-card-note-spec-ts-193-p1"
     epic: 6

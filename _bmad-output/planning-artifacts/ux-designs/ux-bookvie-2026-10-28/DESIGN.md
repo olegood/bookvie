@@ -493,6 +493,8 @@ Non-text pairs (target 3.0):
 | Spine focus ring: `accent` band vs `shelf-wall` | 4.55 | 7.27 |
 | `library-meter` fill vs `shelf-wall` | 4.55 | 7.27 |
 | `library-meter` track (`line`) vs `shelf-wall` — decorative; "X of Y finished" carries the value | 1.11 | 1.37 |
+| `library-meter` fill vs `page` | 4.96 | 7.68 |
+| `library-meter` track (`line`) vs `page` — decorative; "X of Y finished" carries the value | 1.21 | 1.45 |
 | `accent-soft` track vs `surface` — decorative; the figure or "p.N of M" text carries the value | 1.22 | 1.29 |
 
 The marker dot is identified against its own `marker-ring`, and the focus ring by its internal `accent`-to-`page` edge, so neither depends on the spine fill (which may be any color).
