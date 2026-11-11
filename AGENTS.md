@@ -50,6 +50,10 @@ Every story gets these four steps, in this order (Epic 4 retro item 40):
 
 Don't skip or merge a step. The review inside `bmad-build-auto` doesn't replace step 3.
 
+Step 3 runs in a new session, never in the session that ran step 2, so the review is independent of the build (Epic 5 retro item 47). A compacted or resumed build session is not new: it still carries the build's summary. Re-run any probe, check or test result the review relies on. Don't cite the build's results, its Auto Run Result, or a probe from earlier in a conversation as evidence. Step 4 likewise re-runs what it relies on.
+
+Step 2 is `bmad-build-auto`, not the interactive `bmad-build`. bmad-build stops at a story and asks; it continues only when you explicitly say to continue with bmad-build, and records that in the spec. This also applies to a standalone spec with a `- **Pipeline:**` line that names `bmad-code-review` after `bmad-build-auto`.
+
 ## Epic boundaries
 
 When a story closes its epic (every other story of the epic is `done` in `sprint-status.yaml`), don't start the next epic's first story, even though the retrospective's status reads `optional`. First come test automation for that story (`bmad-testarch-automate`), the epic's retrospective (`bmad-retrospective`), and the retro's before-next-epic items: the trace and gate and the spine reconciliation. `bmad-code-review` offers the first two instead of "Start the next story" at an epic's last story (Epic 3 retro item 30).
