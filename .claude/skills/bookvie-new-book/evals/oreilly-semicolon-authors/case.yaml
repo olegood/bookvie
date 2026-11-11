@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: oreilly-semicolon-authors
+expected_outcome: |
+  The O'Reilly book is added as a Paperback with Edition 2, both authors separated by a semicolon, Publisher O'Reilly Media, and the tag added-by-skill.
