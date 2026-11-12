@@ -96,7 +96,12 @@ function ValueList({
         aria-pressed={count > 0}
         aria-expanded={open}
         aria-controls={open ? popupId : undefined}
-        onClick={() => onOpenChange(!open)}
+        // macOS Safari doesn't focus a clicked button; without focus inside the
+        // wrap, Esc never reaches `keyDown`. Focusing in code works there.
+        onClick={(event) => {
+          event.currentTarget.focus()
+          onOpenChange(!open)
+        }}
       >
         {count > 0 ? (
           `${label}: ${count}`
@@ -120,7 +125,13 @@ function ValueList({
         >
           {values.map((value) => (
             <label key={value.key} className={styles.option}>
-              <input type="checkbox" checked={checked.includes(value.key)} onChange={() => onToggle(value.key)} />
+              <input
+                type="checkbox"
+                checked={checked.includes(value.key)}
+                onChange={() => onToggle(value.key)}
+                // As the chip: keep focus in the popup after a Safari click, so Esc closes it.
+                onClick={(event) => event.currentTarget.focus()}
+              />
               {value.label}
             </label>
           ))}

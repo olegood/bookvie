@@ -293,6 +293,8 @@ test.describe('Story 7.2 Filter my catalog (ATDD)', () => {
     // The row's link and the shelf area's link; the shelf area's comes later.
     await expect(clearFilters(page)).toHaveCount(2)
     await clearFilters(page).last().click()
+    // The clicked link goes away, so focus moves to Read.
+    await expect(chip(page, 'Status', 'Read')).toBeFocused()
     await expect.poll(() => spineNames(bookcase(page))).toEqual(BY_AUTHOR)
     await expect(main(page).getByText('No books match these filters.', { exact: true })).toHaveCount(0)
   })
@@ -404,6 +406,43 @@ test.describe('Story 7.2 Filter my catalog (ATDD)', () => {
     await expect(languageChip(page)).toBeFocused()
     await expect(languageChip(page)).toHaveAttribute('aria-expanded', 'false')
   })
+
+  test('[P1] AC-2 Esc closes the Language list after clicks that move no focus, as in macOS Safari', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: FILTER_SHELF })
+    await page.goto(`${server.url}/catalog`)
+
+    // A dispatched click moves no focus, as a mouse click on a button or checkbox in Safari.
+    await languageChip(page).dispatchEvent('click')
+    await expect(languageChip(page)).toHaveAttribute('aria-expanded', 'true')
+    await expect(languageChip(page)).toBeFocused()
+    const english = page.getByRole('checkbox', { name: 'English', exact: true })
+    await english.dispatchEvent('click')
+    await expect(english).toBeChecked()
+    await expect(english).toBeFocused()
+
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('checkbox')).toHaveCount(0)
+    await expect(languageChip(page)).toBeFocused()
+    await expect(languageChip(page)).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  test('[P1] AC-2 Tab out of the open Language list closes it', async ({ page, seededServer }) => {
+    const server = await seededServer({ books: FILTER_SHELF })
+    await page.goto(`${server.url}/catalog`)
+
+    await languageChip(page).focus()
+    await page.keyboard.press('Enter')
+    await expect(page.getByRole('checkbox')).toHaveCount(4)
+    // The four checkboxes, then Tag ▾.
+    for (let i = 0; i < 5; i++) await page.keyboard.press('Tab')
+    await expect(tagChip(page)).toBeFocused()
+    await expect(page.getByRole('checkbox')).toHaveCount(0)
+    await expect(languageChip(page)).toHaveAttribute('aria-expanded', 'false')
+  })
+
   test('[P1] AC-5 in List view, filters that match nothing show "No books match these filters." with a "Clear filters" link', async ({
     page,
     seededServer,
@@ -419,6 +458,7 @@ test.describe('Story 7.2 Filter my catalog (ATDD)', () => {
     await expect(main(page).getByText('No books match these filters.', { exact: true })).toBeVisible()
     await expect(clearFilters(page)).toHaveCount(2)
     await clearFilters(page).last().click()
+    await expect(chip(page, 'Status', 'Read')).toBeFocused()
     await expect(bookRows(page)).toHaveCount(6)
     await expect(main(page).getByText('No books match these filters.', { exact: true })).toHaveCount(0)
   })

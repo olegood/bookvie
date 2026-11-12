@@ -3,7 +3,7 @@ title: 'Story 7.2: Filter my catalog'
 type: 'feature'
 created: '2026-11-12'
 baseline_revision: 'a63cd010218ea9235a72e25b2066c76706bc612b'
-status: 'in-review'
+status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: true
 context:
@@ -104,6 +104,37 @@ deferred:
 - Given a filter on, when leaving Catalog and coming back, then no filter is on, and the meter and Home's slice ignore filters (ATDD AC-7).
 - Given Read on, when Swing Time (unread) is added, then Read is unpressed, the new spine is focused and "Added Swing Time." is announced (ATDD AC-8).
 - Given text in Search titles that matches no title, with a filter on, then `No titles match “…”.` shows, not the filters line.
+
+### Review Findings
+
+Code review, 2026-11-12 (`a63cd01..7d8ce92`). Layers: Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor, Spine Check.
+
+- [x] [Review][Patch] Esc doesn't close the Language/Tag list when focus isn't inside the chip and popup. In macOS Safari a mouse click doesn't focus the chip or a checkbox, so after a mouse open Esc reaches `body`/`main` and `ValueList`'s `onKeyDown` never fires. Also covers the Acceptance Auditor's point that the closing logic was only run in Chromium. Fixed: the chip's and each checkbox's `onClick` focus their element in code, which works in Safari. A document `keydown` listener was tried first; `copy.test.mjs` forbids global key handlers, so it was dropped. New P1 leaf: dispatched clicks, which move no focus, open the list and check English, then Esc closes it. The leaf fails without the fix. [frontend/src/components/FilterChips.tsx:77]
+- [x] [Review][Patch] No test checks that Tabbing out of an open list closes it (the `blur` path). Add a P1 leaf: open Language ▾, Tab past its last checkbox onto Tag ▾, then expect no checkbox and Language `aria-expanded="false"`. [frontend/e2e/catalog-filter.spec.ts:390]
+- [x] [Review][Patch] Neither AC-5 leaf checks that the shelf's Clear filters moves focus to Read. Add `expect(chip(page, 'Status', 'Read')).toBeFocused()` after `clearFilters(page).last().click()` in both. [frontend/e2e/catalog-filter.spec.ts:295]
+- [x] [Review][Patch] Missing blank line between the Esc leaf and the List-view AC-5 leaf. [frontend/e2e/catalog-filter.spec.ts:406]
+- [x] [Review][Defer] No e2e test covers a value whose spellings differ only by case, end to end: one checkbox with the library-first spelling, matching both Books. [frontend/src/pages/CatalogPage.tsx:147] — deferred: the `filterValues` unit test pins the rule and the wrong label would only be cosmetic. Left for the automate step.
+- [x] [Review][Defer] No e2e test checks the focus fallback to Search titles when filters hide every spine while a spine has focus. [frontend/src/pages/Bookcase.tsx:153] — deferred: the code path is in place, and the ATDD checklist's green-phase "AC-6 none remain" item is the automate step's.
+- [x] [Review][Defer] Spine drift (AD-6, Structural Seed, and the FR-20 row of the Capability → Architecture Map), reconciled before the next epic. [ARCHITECTURE-SPINE.md AD-6] — deferred: confirms the build-auto entry in `deferred-work.md` and adds the FR-20 map row, which names neither `lib/catalogFilter` nor `components/FilterChips`.
+
+**Rejected:**
+- `low` The list stays open when focus leaves to nothing, such as the browser chrome (`relatedTarget` null). This was a deliberate choice in the label-text fix, and a pointer press still closes the list.
+- `low` A stale checked value turns back on if a later refetch restores it. Same reason as the build review: it needs two out-of-band edits while Catalog stays mounted.
+- `false` A pressed chip widens because of the ✓. The mockup (`key-catalog.html` `.chip.on:before`) draws the same check. "Nothing shifts" refers to the border.
+- `low` The spine popover now covers the Bookcase heading. Same reason as the build review: the popover sits above its spine by design.
+- `low` `ShelfBook.type` writes out the `Literal` instead of the domain's `BookType`. `views/models.py` deliberately imports nothing from the domain (`BookDetailView` and `Role` do the same), and the contract tests would catch any drift.
+- `low` Home's slice payload carries the three new fields. This is harmless: the slice and the catalog share `ShelfBook`.
+- `low` The document `pointerdown` listener is re-added on every render while a list is open. The cost is negligible.
+- `low` Chips have no hover style. Neither do the mockup or DESIGN.md.
+- `low` `FilterChips.module.css` uses raw px values (22, 6, 5, 11). They come from the mockup's spacing, and no tokens exist for them.
+- `low` Tag ▾ opens an empty list when no Book has tags. Same reason as the build review.
+- `low` New leaves reuse AC numbers. The automate step updates the ATDD checklist.
+- `low` The spec's Verification list, Code Map line numbers and review counts are stale. Fixing them means editing the spec.
+- `low` `shownIds` has no unit test. AC-3 tests the combined search and filters end to end in both views.
+- `false` No test checks that only one list is open at a time. AC-2's `checkboxNames` counts every checkbox on the page.
+- `low` The README says "a type". This is wording only, and the README's Status line is updated when the story closes.
+- `false` The filters' no-match line could show with no filter on. It can't today: when the search matches some Books and no filter is on, a Book is always shown.
+- `low` The client's Tag list uses `toLocaleLowerCase` where `merge_tags` uses `casefold`. Same reason as the build review: only ß/SS pairs differ. The spine part is in the defer above.
 
 ## Spec Change Log
 
