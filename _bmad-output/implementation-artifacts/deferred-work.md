@@ -199,6 +199,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-2-restore-my-library-from-an-export.md`
   summary: The Backup page reads the whole export into memory (`requestInit` → `arrayBuffer()`) before uploading; consider streaming the FormData for restore alongside Story 2.3's 1 GB limit.
   evidence: `frontend/src/api/intents.ts` encodes any file form to bytes for test visibility; an export with many covers can be hundreds of MB in the tab. Triage #38.
+  resolved: won't fix (2026-11-12, Oleg). At a library of about 400 Books the export is a few MB, and streaming the upload would need an AD-14 change.
 
 ## Deferred from: code review of spec-2-2-restore-my-library-from-an-export (2026-11-04)
 
@@ -225,6 +226,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-3-refuse-damaged-hostile-or-newer-files.md`
   summary: A `library.json` up to the 1 GiB extraction budget is read whole (`read_bytes`) and JSON-parsed in memory, which can use several GB.
   evidence: `backend/bookvie/store/restore.py` `stage_archive` (`library_path.read_bytes()`) then `load_library`. Within the spec-approved limit; a smaller `library.json` cap needs an AD-14 decision.
+  resolved: won't fix (2026-11-12, Oleg). Within the spec-approved 1 GiB budget; a library of about 400 Books gives a `library.json` well under 1 MB, and a smaller cap would need an AD-14 decision.
 - source_spec: `_bmad-output/implementation-artifacts/spec-2-3-refuse-damaged-hostile-or-newer-files.md`
   summary: Add to the AD-14 reconcile item above: the spine and `epic-2-context.md` (l.40–42) also lack the refusal precedence (not a zip → invalid; unsafe; missing library.json; unpacking; newer version; rest) and the restore body cap (422 `restore_unsafe` at upload limit + 64 KiB framing slack, before the lock).
   evidence: Pass-2 spine-check and acceptance-auditor findings; both are frozen spec rules with no spine/context edit.
