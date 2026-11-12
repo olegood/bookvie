@@ -626,6 +626,204 @@ def test_the_latest_finish_is_by_date_not_by_stored_order(
     assert by_id == {newer: "2025-06-03", older: "2019-08-14"}
 
 
+def _back_fill_after_an_earlier_reading(
+    tmp_path: Path, library_builder: LibraryBuilder
+) -> tuple[str, str, str]:
+    """Dune: A read 1-14 Aug 2019, then B, a back-fill finished 1 June 2025."""
+    dune = library_builder.book(**DUNE)
+    earlier = library_builder.reading(
+        dune,
+        start_date="2019-08-01",
+        finish_date="2019-08-14",
+        current_page=412,
+        finished_pages=412,
+    )
+    back_fill = library_builder.reading(
+        dune, start_date=None, finish_date="2025-06-01", current_page=412, finished_pages=412
+    )
+    library_builder.write(tmp_path)
+    return dune, earlier, back_fill
+
+
+def test_the_latest_finish_cannot_move_before_an_earlier_readings_finish(
+    tmp_path: Path, library_builder: LibraryBuilder
+) -> None:
+    dune, _, _ = _back_fill_after_an_earlier_reading(tmp_path, library_builder)
+    client = api_client(tmp_path)
+    form = {**DUNE_FORM, "finishedOn": "2025-06-01"}
+    before = library_bytes(tmp_path)
+
+    response = _edit(client, dune, form, finishedOn="2019-08-10")
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "invalid_fields"
+    assert field_messages(response) == {
+        "finishedOn": "Finished on can't be before 14 August 2019, when an earlier reading finished."
+    }
+    assert library_bytes(tmp_path) == before
+
+
+def test_the_latest_finish_may_move_to_an_earlier_readings_finish_day(
+    tmp_path: Path, library_builder: LibraryBuilder
+) -> None:
+    dune, earlier, back_fill = _back_fill_after_an_earlier_reading(tmp_path, library_builder)
+    client = api_client(tmp_path)
+    form = {**DUNE_FORM, "finishedOn": "2025-06-01"}
+
+    assert _edit(client, dune, form, finishedOn="2019-08-14").status_code == 200
+
+    by_id = {r["id"]: (r["startDate"], r["finishDate"]) for r in _readings(tmp_path, dune)}
+    assert by_id == {earlier: ("2019-08-01", "2019-08-14"), back_fill: (None, "2019-08-14")}
+    view = client.get("/api/views/book", params={"id": dune}).json()
+    assert view["latestFinishDate"] == "2019-08-14"
+    assert_invariants(tmp_path)
+
+
+def test_the_latest_finish_may_move_later_beside_an_earlier_reading(
+    tmp_path: Path, library_builder: LibraryBuilder
+) -> None:
+    dune, earlier, back_fill = _back_fill_after_an_earlier_reading(tmp_path, library_builder)
+    client = api_client(tmp_path)
+    form = {**DUNE_FORM, "finishedOn": "2025-06-01"}
+
+    assert _edit(client, dune, form, finishedOn="2025-07-01").status_code == 200
+
+    by_id = {r["id"]: r["finishDate"] for r in _readings(tmp_path, dune)}
+    assert by_id == {earlier: "2019-08-14", back_fill: "2025-07-01"}
+    assert_invariants(tmp_path)
+
+
+def test_before_this_readings_start_wins_over_an_earlier_readings_finish(
+    tmp_path: Path, library_builder: LibraryBuilder
+) -> None:
+    dune = library_builder.book(**DUNE)
+    library_builder.reading(
+        dune,
+        start_date="2026-01-01",
+        finish_date="2026-03-01",
+        current_page=412,
+        finished_pages=412,
+    )
+    library_builder.reading(
+        dune,
+        start_date="2026-03-12",
+        finish_date="2026-04-02",
+        current_page=412,
+        finished_pages=412,
+    )
+    library_builder.write(tmp_path)
+    client = api_client(tmp_path)
+    before = library_bytes(tmp_path)
+
+    response = _edit(
+        client, dune, {**DUNE_FORM, "finishedOn": "2026-04-02"}, finishedOn="2026-02-20"
+    )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "invalid_fields"
+    assert field_messages(response) == {
+        "finishedOn": "Finished on can't be before 12 March 2026, when this reading started."
+    }
+    assert library_bytes(tmp_path) == before
+
+
+def test_a_tied_latest_finish_cannot_move_before_the_other_finish(
+    tmp_path: Path, library_builder: LibraryBuilder
+) -> None:
+    # Two finishes on one day: the later-listed one is the latest, and the
+    # other still bounds it.
+    dune = library_builder.book(**DUNE)
+    library_builder.reading(
+        dune, start_date=None, finish_date="2025-06-01", current_page=412, finished_pages=412
+    )
+    library_builder.reading(
+        dune,
+        start_date="2025-05-01",
+        finish_date="2025-06-01",
+        current_page=412,
+        finished_pages=412,
+    )
+    library_builder.write(tmp_path)
+    client = api_client(tmp_path)
+    before = library_bytes(tmp_path)
+
+    response = _edit(
+        client, dune, {**DUNE_FORM, "finishedOn": "2025-06-01"}, finishedOn="2025-05-20"
+    )
+
+    assert response.status_code == 422
+    assert field_messages(response) == {
+        "finishedOn": "Finished on can't be before 1 June 2025, when an earlier reading finished."
+    }
+    assert library_bytes(tmp_path) == before
+
+
+def test_past_the_earlier_finish_the_current_start_still_bounds_the_latest_finish(
+    tmp_path: Path, library_builder: LibraryBuilder
+) -> None:
+    dune = library_builder.book(**DUNE)
+    library_builder.reading(
+        dune,
+        start_date="2026-01-01",
+        finish_date="2026-02-01",
+        current_page=412,
+        finished_pages=412,
+    )
+    latest = library_builder.reading(
+        dune,
+        start_date="2026-03-01",
+        finish_date="2026-04-01",
+        current_page=412,
+        finished_pages=412,
+    )
+    library_builder.reading(dune, start_date="2026-05-01", current_page=40)
+    library_builder.main(dune)
+    library_builder.write(tmp_path)
+    client = api_client(tmp_path)
+    form = {**DUNE_FORM, "finishedOn": "2026-04-01"}
+    before = library_bytes(tmp_path)
+
+    response = _edit(client, dune, form, finishedOn="2026-05-10")
+
+    assert response.status_code == 422
+    assert field_messages(response) == {
+        "finishedOn": "Finished on can't be after 1 May 2026, when the current reading started."
+    }
+    assert library_bytes(tmp_path) == before
+    # Between the earlier finish and the current start saves.
+    assert _edit(client, dune, form, finishedOn="2026-04-20").status_code == 200
+    by_id = {r["id"]: r["finishDate"] for r in _readings(tmp_path, dune)}
+    assert by_id[latest] == "2026-04-20"
+    assert_invariants(tmp_path)
+
+
+def test_an_unchanged_finish_already_before_an_earlier_finish_still_saves_other_fields(
+    tmp_path: Path, library_builder: LibraryBuilder
+) -> None:
+    # Data from before this rule: a back-fill already moved inside the earlier
+    # Reading, so that Reading is now the latest. Resending its prefilled date
+    # unchanged must not block an unrelated edit.
+    dune = library_builder.book(**DUNE)
+    library_builder.reading(
+        dune,
+        start_date="2019-08-01",
+        finish_date="2019-08-14",
+        current_page=412,
+        finished_pages=412,
+    )
+    library_builder.reading(
+        dune, start_date=None, finish_date="2019-08-10", current_page=412, finished_pages=412
+    )
+    library_builder.write(tmp_path)
+    client = api_client(tmp_path)
+
+    response = _edit(client, dune, {**DUNE_FORM, "finishedOn": "2019-08-14"}, subtitle="A Novel")
+
+    assert response.status_code == 200
+    assert stored_book(tmp_path, dune)["subtitle"] == "A Novel"
+    assert [r["finishDate"] for r in _readings(tmp_path, dune)] == ["2019-08-14", "2019-08-10"]
+
+
 def test_below_both_floors_the_higher_floor_wins(
     tmp_path: Path, library_builder: LibraryBuilder
 ) -> None:

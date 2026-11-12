@@ -823,6 +823,10 @@ So that mistakes from cataloging and back-filled finish dates can be fixed.
 **When** Finished on is set or changed to a date after that start
 **Then** nothing is saved, and the response is 422 with "Finished on can't be after 1 October 2026, when the current reading started." on Finished on; the start day itself is allowed (Epic 3 retro item 21, 2026-11-06).
 
+**Given** a Book whose most recent finish is a back-fill on 1 June 2025 and another Reading finished on 14 August 2019
+**When** Finished on is changed to a date before 14 August 2019
+**Then** nothing is saved, and the response is 422 with "Finished on can't be before 14 August 2019, when an earlier reading finished." on Finished on; 14 August 2019 itself is allowed (spec-finished-on-keeps-readings-in-order, 2026-11-12).
+
 **Given** an edit that changes Spine color
 **When** it is saved
 **Then** `spineColor` is resolved again, and edits that don't touch a color input leave it unchanged (AD-11).

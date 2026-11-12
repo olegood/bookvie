@@ -339,6 +339,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-epic-3-retro-item-21-bound-edit-finished-on.md`
   summary: Edit book can move the latest finish (for example a back-fill) before another finished Reading's finish or start, so finished Readings overlap or swap and `latestFinishDate` jumps to another Reading.
   evidence: `edit_book._finished_on_failure` checks the latest finish only against its own `startDate` and the current Reading. This predates the fix (story 1.11).
+  resolved: `spec-finished-on-keeps-readings-in-order.md` (2026-11-12); edit-book now refuses a changed latest finish before another finished Reading's `finishDate`.
 - source_spec: `_bmad-output/implementation-artifacts/spec-epic-3-retro-item-21-bound-edit-finished-on.md`
   summary: Add the "not after the current Reading's start" Finished on rule to story 1.11's ACs in `epics.md` during the Epic 3 spine reconciliation (retro action 4).
   evidence: EXPERIENCE.md now carries the rule and its copy, and `epics.md` 1.11 still lists only the "can't be removed" and "before start" rules.

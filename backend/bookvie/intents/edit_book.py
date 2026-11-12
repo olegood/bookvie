@@ -27,8 +27,10 @@ malformed intent (422 on ``intent``).
 
 Finished on in edit: with ``latest`` the finished Reading with the greatest
 ``finishDate`` (the later in list order on a tie), an empty value is refused,
-a date before ``latest``'s start is refused, and any other changed date sets
-``latest.finishDate``. With no finished Reading, a date appends a back-fill.
+a date before ``latest``'s start is refused, a changed date before another
+finished Reading's ``finishDate`` is refused (the same day is allowed), and
+any other changed date sets ``latest.finishDate``. With no finished Reading,
+a date appends a back-fill.
 Either way a stored date must be a *past* Reading's: when the Book has an
 unfinished Reading with a start date, a new or changed date after that start
 is refused (the start day itself is allowed, as a same-day re-read makes).
@@ -51,6 +53,7 @@ from bookvie.domain.duplicates import find_duplicates
 from bookvie.domain.finished_on import (
     FINISH_DATE_REMOVED_MESSAGE,
     finished_after_current_start_message,
+    finished_before_earlier_finish_message,
     finished_before_start_message,
 )
 from bookvie.domain.spine_color import resolve_spine_color
@@ -106,8 +109,25 @@ def _finished_on_failure(book: Book, finished_on: date | None) -> str | None:
     if latest.start_date is not None and finished_on < latest.start_date:
         return finished_before_start_message(latest.start_date)
     if finished_on != latest.finish_date:
-        return _after_current_start(book, finished_on)
+        return _before_earlier_finish(book, latest, finished_on) or _after_current_start(
+            book, finished_on
+        )
     return None
+
+
+def _before_earlier_finish(book: Book, latest: Reading, finished_on: date) -> str | None:
+    """Refuse moving the latest finish before another finished Reading's finish (a tie is fine)."""
+    bound = max(
+        (
+            reading.finish_date
+            for reading in book.readings
+            if reading is not latest and reading.finish_date is not None
+        ),
+        default=None,
+    )
+    if bound is None or finished_on >= bound:
+        return None
+    return finished_before_earlier_finish_message(bound)
 
 
 def _after_current_start(book: Book, finished_on: date) -> str | None:

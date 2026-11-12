@@ -50,6 +50,10 @@ def finished_after_current_start_message(start: date) -> str:
     return f"Finished on can't be after {long_date(start)}, when the current reading started."
 
 
+def finished_before_earlier_finish_message(finish: date) -> str:
+    return f"Finished on can't be before {long_date(finish)}, when an earlier reading finished."
+
+
 def _date(value: str) -> date | None:
     if not _DATE.fullmatch(value):
         return None
