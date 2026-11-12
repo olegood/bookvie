@@ -632,7 +632,7 @@ def test_shutdown_waits_for_write_lock_then_removes_lock(
 # --- Story 1.4: the one-file store ----------------------------------------
 
 EMPTY_LIBRARY = (
-    b'{\n  "schemaVersion": 2,\n  "mainBookId": null,\n  "upNextBookId": null,\n'
+    b'{\n  "schemaVersion": 3,\n  "mainBookId": null,\n  "upNextBookId": null,\n'
     b'  "sideReadBookIds": [],\n  "books": []\n}\n'
 )
 
@@ -657,13 +657,13 @@ def test_newer_library_exits_1_without_serving(
 ) -> None:
     data_dir = tmp_path / "d"
     data_dir.mkdir()
-    raw = EMPTY_LIBRARY.replace(b'"schemaVersion": 2', b'"schemaVersion": 3')
+    raw = EMPTY_LIBRARY.replace(b'"schemaVersion": 3', b'"schemaVersion": 4')
     (data_dir / "library.json").write_bytes(raw)
     assert cli.main(["--data-dir", str(data_dir), "--no-browser"]) == 1
     err = capsys.readouterr().err.strip().splitlines()
     assert err == [
-        f"bookvie: {data_dir / 'library.json'}: has schemaVersion 3, which is newer than "
-        "this bookvie supports (2); update bookvie"
+        f"bookvie: {data_dir / 'library.json'}: has schemaVersion 4, which is newer than "
+        "this bookvie supports (3); update bookvie"
     ]
     assert (data_dir / "library.json").read_bytes() == raw
     assert fake_server.instances == []

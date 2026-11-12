@@ -343,7 +343,7 @@ class RecordingFs(OsFileSystem):
 
 
 EMPTY_LIBRARY = (
-    b'{\n  "schemaVersion": 2,\n  "mainBookId": null,\n  "upNextBookId": null,\n'
+    b'{\n  "schemaVersion": 3,\n  "mainBookId": null,\n  "upNextBookId": null,\n'
     b'  "sideReadBookIds": [],\n  "books": []\n}\n'
 )
 

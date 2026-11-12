@@ -253,29 +253,25 @@ def test_ac3_p0_a_valid_export_replaces_the_library_in_ad12_order_under_one_lock
 # --- AC-5: an older schemaVersion goes through the startup migration chain -----
 
 
-def _step_to_2(doc: dict) -> dict:
-    doc["schemaVersion"] = 2
-    for book in doc["books"]:
-        book["tags"] = [*book["tags"], "migrated"]
-    return doc
-
-
 def test_ac5_p1_an_older_schema_version_is_migrated_through_the_chain_then_restored(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    # A v1 export, upgraded by a stand-in for the real step (as in test_migrations).
+    # A v1 export, upgraded by the real chain with each step counted.
     builder = LibraryBuilder()
     builder.book(id=DUNE_ID, **DUNE, tags=["sf"])
     v1_library = as_v1(builder.write(tmp_path / "v1").read_bytes())
     archive = zip_archive({"library.json": v1_library, "covers/": None})
     steps: list[int] = []
+    real_steps = dict(migrations.STEPS)
 
-    def counted_step(doc: dict) -> dict:
-        steps.append(doc["schemaVersion"])
-        return _step_to_2(doc)
+    def counted(version: int):
+        def step(doc: dict) -> dict:
+            steps.append(doc["schemaVersion"])
+            return real_steps[version](doc)
 
-    monkeypatch.setattr(migrations, "CURRENT_VERSION", 2)
-    monkeypatch.setattr(migrations, "STEPS", {1: counted_step})
+        return step
+
+    monkeypatch.setattr(migrations, "STEPS", {v: counted(v) for v in real_steps})
     target = tmp_path / "target"
     _seed_target(target)
     client = api_client(target)
@@ -284,9 +280,11 @@ def test_ac5_p1_an_older_schema_version_is_migrated_through_the_chain_then_resto
 
     assert response.status_code == 200
     restored = json.loads(library_bytes(target))
-    assert restored["schemaVersion"] == 2
-    assert [(b["title"], b["tags"]) for b in restored["books"]] == [("Dune", ["sf", "migrated"])]
-    assert steps == [1], "the archive went through the same chain, once"
+    assert restored["schemaVersion"] == migrations.CURRENT_VERSION
+    assert [(b["title"], b["tags"]) for b in restored["books"]] == [("Dune", ["sf"])]
+    assert steps == list(range(1, migrations.CURRENT_VERSION)), (
+        "the archive went through every step of the same chain, once each"
+    )
     assert covers_in(target) == {}
 
 
@@ -303,9 +301,8 @@ def test_a_failing_migration_step_is_422_restore_invalid_and_changes_nothing(
     def boom(doc: dict) -> dict:
         raise RuntimeError("step 1 broke")
 
-    monkeypatch.setattr(migrations, "CURRENT_VERSION", 2)
     client = api_client(target)
-    monkeypatch.setattr(migrations, "STEPS", {1: boom})
+    monkeypatch.setattr(migrations, "STEPS", {**migrations.STEPS, 1: boom})
     capsys.readouterr()
 
     _assert_refused_and_unchanged(client, target, archive)
@@ -542,6 +539,28 @@ def test_an_undecodable_cover_is_422_restore_invalid(
 def test_a_library_that_breaks_an_invariant_is_422_restore_invalid(tmp_path: Path) -> None:
     doc, dune_cover = _source_doc(tmp_path)
     doc["upNextBookId"] = doc["mainBookId"]  # Main book and Up next at once
+    target = tmp_path / "target"
+    _seed_target(target)
+
+    archive = _source_with(doc, {DUNE_COVER: dune_cover})
+    _assert_refused_and_unchanged(api_client(target), target, archive)
+
+
+@pytest.mark.parametrize(
+    "segment",
+    [
+        pytest.param({"startPage": 0, "endPage": 40}, id="ends-where-the-next-segment-starts"),
+        pytest.param({"startPage": 0}, id="malformed"),
+    ],
+)
+def test_a_reading_segment_no_intent_can_produce_is_422_restore_invalid(
+    tmp_path: Path, segment: dict
+) -> None:
+    doc, dune_cover = _source_doc(tmp_path)
+    (reading,) = next(b for b in doc["books"] if b["id"] == DUNE_ID)["readings"]
+    reading["startDate"] = "2026-10-01"
+    reading["startPage"] = 40
+    reading["earlierSegments"] = [segment]
     target = tmp_path / "target"
     _seed_target(target)
 

@@ -507,6 +507,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-epic-4-retro-item-35-count-only-tracked-pages.md`
   summary: Measured pace still counts pages skipped on a resume: resuming a paused Reading at a higher "Which page?" doesn't change `startPage`, so a Reading started at 0, paused at 20 and resumed at 300 counts all the pages. Lowering the page below `startPage` (a mistyped start, later corrected) undercounts in the same way.
   evidence: Item 35 stores the page a *new* Reading starts at, and its approved spec says a resume never changes `startPage`. `backend/bookvie/intents/start_reading.py` (resume branch), `backend/bookvie/domain/pace.py`. Fixing it would need the pages tracked per resume, a new decision.
+  resolved: `spec-pace-counts-only-pages-read.md` (2026-11-12). Schema v3: a resume at a page other than `currentPage` closes the segment into the Reading's new `earlierSegments` and moves `startPage` to the sent page; Measured pace sums each segment's pages (at least 0 each). The v2→v3 step adds `earlierSegments: []`, so existing Readings keep their pace; invariants `reading_segments_need_start_date` and `reading_segment_starts_at_new_page`; AD-18, AD-19 and AD-20 record the decision, replacing item 35's "a resume never changes `startPage`".
 
 ## Deferred from: code review of spec-4-4-choose-what-to-read-next, second pass (2026-11-09, retro item 43)
 

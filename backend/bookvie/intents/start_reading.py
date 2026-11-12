@@ -16,7 +16,12 @@ commit:
   finished), a new Reading is appended: ``startDate`` = today, page 0,
   ``lastProgressUpdate`` = now, every other field ``null``. A sent ``page``
   becomes that Reading's ``currentPage``, even below the paused page, and a
-  new Reading's ``startPage`` too; resuming never changes ``startPage``;
+  new Reading's ``startPage`` too. A resume at a sent page other than
+  ``currentPage`` closes the Reading's segment: ``{startPage, endPage:
+  currentPage}`` is appended to ``earlierSegments`` and ``startPage`` becomes
+  the sent page, so Measured pace counts only the pages read; a resume at the
+  same page, or with no page, keeps the segment. A new Reading has no earlier
+  segments;
 - ``mainBookId`` becomes the Book;
 - ``upNextBookId`` follows FR-7: with a Main book *Y* (another Book), it
   becomes *Y*, the interrupted Book. An earlier Up next *Z* is displaced,
@@ -38,7 +43,14 @@ import uuid
 
 from pydantic import JsonValue
 
-from bookvie.domain import Clock, Library, Reading, current_reading, normalize_purpose
+from bookvie.domain import (
+    Clock,
+    Library,
+    Reading,
+    ReadingSegment,
+    current_reading,
+    normalize_purpose,
+)
 from bookvie.store import Store
 
 from .commit import commit
@@ -109,7 +121,12 @@ def start_reading(store: Store, clock: Clock, intent: StartReadingIntent) -> boo
         reading = current_reading(book)
         if reading is not None:
             update = {"last_progress_update": now, "purpose": purpose}
-            if page is not None:
+            if page is not None and page != reading.current_page:
+                closed = ReadingSegment(
+                    start_page=reading.start_page, end_page=reading.current_page
+                )
+                update["earlier_segments"] = [*reading.earlier_segments, closed]
+                update["start_page"] = page
                 update["current_page"] = page
             resumed = reading.model_copy(update=update)
             readings = [resumed if r.id == reading.id else r for r in book.readings]
@@ -119,6 +136,7 @@ def start_reading(store: Store, clock: Clock, intent: StartReadingIntent) -> boo
                 id=str(uuid.uuid4()),
                 start_date=clock.today(),
                 start_page=start_page,
+                earlier_segments=[],
                 current_page=start_page,
                 purpose=purpose,
                 last_progress_update=now,

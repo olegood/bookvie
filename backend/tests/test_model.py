@@ -5,13 +5,13 @@ from datetime import date
 import pytest
 from pydantic import ValidationError
 
-from bookvie.domain.model import Book, Library, Reading
+from bookvie.domain.model import Book, Library, Reading, ReadingSegment
 from tests.builder import CURATED, LibraryBuilder
 
 
 def test_empty_library_is_the_current_document() -> None:
     assert Library.empty().model_dump(by_alias=True) == {
-        "schemaVersion": 2,
+        "schemaVersion": 3,
         "mainBookId": None,
         "upNextBookId": None,
         "sideReadBookIds": [],
@@ -27,9 +27,11 @@ def test_field_order_follows_ad18_and_ad19() -> None:
         "spineColor", "readings", "cardNotes",
     ]  # fmt: skip
     assert [f.alias for f in Reading.model_fields.values()] == [
-        "id", "startDate", "startPage", "currentPage", "purpose", "lastProgressUpdate",
-        "pausedAt", "finishDate", "finishedPages", "purposeFulfilled", "rating",
+        "id", "startDate", "startPage", "earlierSegments", "currentPage", "purpose",
+        "lastProgressUpdate", "pausedAt", "finishDate", "finishedPages", "purposeFulfilled",
+        "rating",
     ]  # fmt: skip
+    assert [f.alias for f in ReadingSegment.model_fields.values()] == ["startPage", "endPage"]
 
 
 def test_builder_defaults_are_valid(library_builder: LibraryBuilder) -> None:
@@ -49,7 +51,7 @@ def test_builder_defaults_are_valid(library_builder: LibraryBuilder) -> None:
 
 def test_populate_by_name_and_alias() -> None:
     by_alias = Library.model_validate_json(
-        '{"schemaVersion": 2, "mainBookId": null, "upNextBookId": null,'
+        '{"schemaVersion": 3, "mainBookId": null, "upNextBookId": null,'
         ' "sideReadBookIds": [], "books": []}'
     )
     assert by_alias == Library.empty()

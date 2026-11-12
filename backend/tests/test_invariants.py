@@ -159,6 +159,85 @@ def test_unfinished_reading_page_at_bounds_passes(
     _passes(library_builder)
 
 
+# --- resume segments: a Reading with a start date; each starts at a new page --------
+
+
+def _seg(start: int, end: int) -> dict[str, int]:
+    return {"startPage": start, "endPage": end}
+
+
+def test_segments_without_a_start_date_fail(library_builder: LibraryBuilder) -> None:
+    book = library_builder.book(pages=300)
+    library_builder.reading(
+        book,
+        start_date=None,
+        start_page=100,
+        earlier_segments=[_seg(0, 20)],
+        current_page=300,
+        finish_date="2025-05-01",
+        finished_pages=300,
+    )
+    _fails(library_builder, "reading_segments_need_start_date")
+
+
+def test_no_segments_without_a_start_date_pass(library_builder: LibraryBuilder) -> None:
+    book = library_builder.book(pages=300)
+    library_builder.reading(
+        book, start_date=None, current_page=300, finish_date="2025-05-01", finished_pages=300
+    )
+    _passes(library_builder)
+
+
+@pytest.mark.parametrize(
+    ("segments", "start_page"),
+    [
+        pytest.param([_seg(0, 20)], 20, id="ends-on-the-reading-s-start"),
+        pytest.param([_seg(0, 20), _seg(20, 50)], 100, id="ends-on-the-next-segment-s-start"),
+        pytest.param([_seg(0, 20), _seg(30, 30), _seg(30, 40)], 100, id="a-later-pair"),
+    ],
+)
+def test_a_segment_starting_where_the_one_before_ended_fails(
+    library_builder: LibraryBuilder, segments: list[dict[str, int]], start_page: int
+) -> None:
+    book = library_builder.book(pages=300)
+    library_builder.reading(
+        book, start_page=start_page, earlier_segments=segments, current_page=start_page
+    )
+    _fails(library_builder, "reading_segment_starts_at_new_page")
+
+
+@pytest.mark.parametrize(
+    ("segments", "start_page"),
+    [
+        pytest.param([_seg(0, 20)], 300, id="skip-ahead"),
+        pytest.param([_seg(300, 300)], 30, id="skip-back"),
+        pytest.param([_seg(0, 20), _seg(10, 50), _seg(60, 40)], 100, id="lowered-in-a-segment"),
+    ],
+)
+def test_segments_each_starting_at_a_new_page_pass(
+    library_builder: LibraryBuilder, segments: list[dict[str, int]], start_page: int
+) -> None:
+    book = library_builder.book(pages=300)
+    library_builder.reading(
+        book, start_page=start_page, earlier_segments=segments, current_page=start_page
+    )
+    _passes(library_builder)
+
+
+def test_segment_pages_above_the_book_s_pages_pass(library_builder: LibraryBuilder) -> None:
+    """Pages can be edited below a finished Reading's segments, as below its startPage."""
+    book = library_builder.book(pages=100)
+    library_builder.reading(
+        book,
+        start_page=300,
+        earlier_segments=[_seg(0, 250)],
+        current_page=330,
+        finish_date="2025-05-01",
+        finished_pages=330,
+    )
+    _passes(library_builder)
+
+
 def test_finished_reading_keeps_its_page_after_pages_drop(
     library_builder: LibraryBuilder,
 ) -> None:

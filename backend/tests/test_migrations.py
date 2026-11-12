@@ -8,7 +8,8 @@ import pytest
 
 from bookvie.domain.pace import measured_pace
 from bookvie.store import StartupError, Store, migrations, serialize
-from tests.builder import LibraryBuilder, as_v1
+from bookvie.views import home
+from tests.builder import LibraryBuilder, as_v1, as_v2
 from tests.helpers import api_client, library_bytes, post_restore, zip_archive
 
 
@@ -245,17 +246,20 @@ def test_a_real_v1_file_is_backed_up_and_upgraded_at_startup(tmp_path: Path) -> 
 
     assert (tmp_path / "library.v1.bak.json").read_bytes() == original
     on_disk = json.loads((tmp_path / "library.json").read_bytes())
-    assert on_disk["schemaVersion"] == 2
+    assert on_disk["schemaVersion"] == 3
     assert (tmp_path / "library.json").read_bytes() == serialize(store.library)
     before = json.loads(original)
     assert [[r["id"] for r in b["readings"]] for b in on_disk["books"]] == [
         [r["id"] for r in b["readings"]] for b in before["books"]
     ]
     assert all(r["startPage"] == 0 for b in on_disk["books"] for r in b["readings"])
-    assert list(on_disk["books"][0]["readings"][0])[:3] == ["id", "startDate", "startPage"]
+    assert all(r["earlierSegments"] == [] for b in on_disk["books"] for r in b["readings"])
+    assert list(on_disk["books"][0]["readings"][0])[:4] == [
+        "id", "startDate", "startPage", "earlierSegments",
+    ]  # fmt: skip
 
 
-def test_a_v1_export_restores_at_v2_with_the_same_pace(tmp_path: Path) -> None:
+def test_a_v1_export_restores_at_v3_with_the_same_pace(tmp_path: Path) -> None:
     builder = _library_with_readings()
     pace_before = measured_pace(builder.build())
     assert pace_before == Fraction(800, 20)
@@ -267,7 +271,7 @@ def test_a_v1_export_restores_at_v2_with_the_same_pace(tmp_path: Path) -> None:
     response = post_restore(api_client(target), archive)
 
     assert response.status_code == 200
-    assert json.loads(library_bytes(target))["schemaVersion"] == 2
+    assert json.loads(library_bytes(target))["schemaVersion"] == 3
     assert measured_pace(Store.open(target).library) == pace_before
     assert not (target / "library.v1.bak.json").exists()
 
@@ -284,11 +288,166 @@ def _reading_edit(doc: dict, edit) -> bytes:
         pytest.param(lambda r: r.pop("startPage"), id="missing"),
     ],
 )
-def test_a_hand_edited_start_page_at_v2_is_refused(tmp_path: Path, edit) -> None:
+def test_a_hand_edited_start_page_is_refused(tmp_path: Path, edit) -> None:
     doc = json.loads(serialize(_library_with_readings().build()))
     raw = _reading_edit(doc, edit)
     (tmp_path / "library.json").write_bytes(raw)
 
     with pytest.raises(StartupError, match="not a valid library"):
+        Store.open(tmp_path)
+    assert (tmp_path / "library.json").read_bytes() == raw
+
+
+# --- The real v2 -> v3 step: earlierSegments ---------------------------------------
+
+
+def _library_from_page() -> LibraryBuilder:
+    """``_library_with_readings`` plus a Book finished from page 300: 830 pages over 30 days."""
+    builder = _library_with_readings()
+    kindred = builder.book(title="Kindred", pages=330)
+    builder.reading(
+        kindred,
+        start_date="2026-08-01",
+        start_page=300,
+        finish_date="2026-08-10",
+        finished_pages=330,
+        current_page=330,
+    )
+    return builder
+
+
+def _days_left(library) -> int | None:
+    main = home(library).main_book
+    assert main is not None
+    return main.days_left
+
+
+def test_step_2_adds_empty_earlier_segments_after_start_page_and_nothing_else() -> None:
+    doc = json.loads(as_v2(serialize(_library_from_page().build())))
+
+    migrated = migrations.STEPS[2](json.loads(json.dumps(doc)))
+
+    assert migrated["schemaVersion"] == 3
+    readings = [r for book in migrated["books"] for r in book["readings"]]
+    assert len(readings) == 4
+    for reading in readings:
+        keys = list(reading)
+        assert keys[keys.index("startPage") + 1] == "earlierSegments"
+        assert reading.pop("earlierSegments") == []
+    assert {**migrated, "schemaVersion": 2} == doc
+
+
+def test_a_real_v2_file_is_backed_up_and_upgraded_at_startup_with_the_same_pace(
+    tmp_path: Path,
+) -> None:
+    builder = _library_from_page()
+    library = builder.build()
+    pace_before, days_left_before = measured_pace(library), _days_left(library)
+    assert pace_before == Fraction(830, 30)
+    path = builder.write(tmp_path)
+    original = as_v2(path.read_bytes())
+    path.write_bytes(original)
+
+    store = Store.open(tmp_path)
+
+    assert (tmp_path / "library.v2.bak.json").read_bytes() == original
+    on_disk = json.loads((tmp_path / "library.json").read_bytes())
+    assert on_disk["schemaVersion"] == 3
+    assert (tmp_path / "library.json").read_bytes() == serialize(store.library)
+    before = json.loads(original)
+    assert [[r["id"] for r in b["readings"]] for b in on_disk["books"]] == [
+        [r["id"] for r in b["readings"]] for b in before["books"]
+    ]
+    assert all(r["earlierSegments"] == [] for b in on_disk["books"] for r in b["readings"])
+    assert measured_pace(store.library) == pace_before
+    assert _days_left(store.library) == days_left_before
+
+
+def test_a_real_v1_file_reaches_v3_with_the_same_pace(tmp_path: Path) -> None:
+    builder = _library_with_readings()
+    pace_before = measured_pace(builder.build())
+    _write_v1(builder, tmp_path)
+
+    store = Store.open(tmp_path)
+
+    assert store.library.schema_version == 3
+    assert measured_pace(store.library) == pace_before
+    assert not (tmp_path / "library.v2.bak.json").exists()
+
+
+@pytest.mark.parametrize("as_older", [as_v1, as_v2], ids=["v1", "v2"])
+def test_an_older_export_restores_at_v3_with_the_same_pace(tmp_path: Path, as_older) -> None:
+    builder = _library_with_readings() if as_older is as_v1 else _library_from_page()
+    pace_before = measured_pace(builder.build())
+    archive = zip_archive({"library.json": as_older(serialize(builder.build())), "covers/": None})
+    target = tmp_path / "target"
+    LibraryBuilder().write(target)
+
+    response = post_restore(api_client(target), archive)
+
+    assert response.status_code == 200
+    restored = json.loads(library_bytes(target))
+    assert restored["schemaVersion"] == 3
+    assert all(r["earlierSegments"] == [] for b in restored["books"] for r in b["readings"])
+    assert measured_pace(Store.open(target).library) == pace_before
+
+
+@pytest.mark.parametrize(
+    "edit",
+    [
+        pytest.param(lambda r: r.pop("earlierSegments"), id="list-missing"),
+        pytest.param(lambda r: r.update(earlierSegments=None), id="list-null"),
+        pytest.param(
+            lambda r: r.update(earlierSegments=[{"startPage": -1, "endPage": 20}]),
+            id="negative-start",
+        ),
+        pytest.param(
+            lambda r: r.update(earlierSegments=[{"startPage": 0, "endPage": -1}]),
+            id="negative-end",
+        ),
+        pytest.param(lambda r: r.update(earlierSegments=[{"startPage": 0}]), id="key-missing"),
+        pytest.param(
+            lambda r: r.update(earlierSegments=[{"startPage": 0, "endPage": 20, "days": 3}]),
+            id="key-extra",
+        ),
+        pytest.param(
+            lambda r: r.update(earlierSegments=[{"startPage": "0", "endPage": 20}]),
+            id="string-page",
+        ),
+    ],
+)
+def test_a_hand_edited_segment_shape_is_refused(tmp_path: Path, edit) -> None:
+    doc = json.loads(serialize(_library_with_readings().build()))
+    raw = _reading_edit(doc, edit)
+    (tmp_path / "library.json").write_bytes(raw)
+
+    with pytest.raises(StartupError, match="not a valid library"):
+        Store.open(tmp_path)
+    assert (tmp_path / "library.json").read_bytes() == raw
+
+
+@pytest.mark.parametrize(
+    ("edit", "message"),
+    [
+        pytest.param(
+            lambda r: r.update(startDate=None, earlierSegments=[{"startPage": 0, "endPage": 20}]),
+            "has earlier segments but no start date",
+            id="no-start-date",
+        ),
+        pytest.param(
+            lambda r: r.update(startPage=20, earlierSegments=[{"startPage": 0, "endPage": 20}]),
+            "ends on page 20, where the next segment starts",
+            id="same-page-as-start",
+        ),
+    ],
+)
+def test_a_hand_edited_segment_that_breaks_a_rule_is_refused(
+    tmp_path: Path, edit, message: str
+) -> None:
+    doc = json.loads(serialize(_library_with_readings().build()))
+    raw = _reading_edit(doc, edit)
+    (tmp_path / "library.json").write_bytes(raw)
+
+    with pytest.raises(StartupError, match=f"breaks a library rule: .*{message}"):
         Store.open(tmp_path)
     assert (tmp_path / "library.json").read_bytes() == raw

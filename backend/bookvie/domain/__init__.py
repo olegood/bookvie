@@ -3,7 +3,7 @@
 from .clock import Clock, FakeClock, SystemClock
 from .cover_color import spine_color_from_pixels
 from .invariants import MAX_SIDE_READS, InvariantViolation, check_invariants
-from .model import Book, CardNote, Library, Reading
+from .model import Book, CardNote, Library, Reading, ReadingSegment
 from .note_pages import (
     ONE_RANGE_MESSAGE,
     PAGE_REQUIRED_MESSAGE,
@@ -28,6 +28,7 @@ __all__ = [
     "InvariantViolation",
     "Library",
     "Reading",
+    "ReadingSegment",
     "ReadingStatus",
     "SystemClock",
     "check_invariants",

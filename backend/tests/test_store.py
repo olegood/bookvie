@@ -14,7 +14,7 @@ from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
 from bookvie.domain import Library
-from bookvie.domain.model import SCHEMA_VERSION, Book, CardNote, Reading
+from bookvie.domain.model import SCHEMA_VERSION, Book, CardNote, Reading, ReadingSegment
 from bookvie.store import (
     CouldntSave,
     OsFileSystem,
@@ -61,7 +61,7 @@ def test_serialize_book_golden_bytes(library_builder: LibraryBuilder) -> None:
     )  # fmt: skip
     library_builder.main(book)
     expected = """{
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "mainBookId": "b1",
   "upNextBookId": null,
   "sideReadBookIds": [],
@@ -95,6 +95,7 @@ def test_serialize_book_golden_bytes(library_builder: LibraryBuilder) -> None:
           "id": "r1",
           "startDate": "2026-01-03",
           "startPage": 0,
+          "earlierSegments": [],
           "currentPage": 12,
           "purpose": null,
           "lastProgressUpdate": "2026-01-04T21:30:00+01:00",
@@ -143,11 +144,14 @@ def _model(cls, **fields: st.SearchStrategy) -> st.SearchStrategy:
     return st.fixed_dictionaries(fields).map(lambda kwargs: cls(**kwargs))
 
 
+_pages = st.integers(min_value=0, max_value=100_000)
+_segments = _model(ReadingSegment, start_page=_pages, end_page=_pages)
 _readings = _model(
     Reading,
     id=_text,
     start_date=_opt(_dates),
-    start_page=st.integers(min_value=0, max_value=100_000),
+    start_page=_pages,
+    earlier_segments=st.lists(_segments, max_size=2),
     current_page=_ints,
     purpose=_opt(_text),
     last_progress_update=_opt(_stamps),
@@ -331,7 +335,7 @@ def _valid_doc() -> dict:
 
 def test_newer_file_is_refused(tmp_path: Path) -> None:
     doc = _valid_doc()
-    doc["schemaVersion"] = 3
+    doc["schemaVersion"] = 4
     _refused(tmp_path, json.dumps(doc).encode(), "newer than this bookvie supports")
 
 
@@ -356,7 +360,7 @@ def test_invalid_file_is_refused(tmp_path: Path, raw: bytes, reason: str) -> Non
 
 def _newer() -> bytes:
     doc = _valid_doc()
-    doc["schemaVersion"] = 3
+    doc["schemaVersion"] = 4
     return json.dumps(doc).encode()
 
 
@@ -377,7 +381,7 @@ def _broken_rule() -> bytes:
         (lambda: b'{"schemaVersion": 0}', "has an unknown schemaVersion 0"),
         (
             _newer,
-            "has schemaVersion 3, which is newer than this bookvie supports (2); update bookvie",
+            "has schemaVersion 4, which is newer than this bookvie supports (3); update bookvie",
         ),
         (
             _broken_rule,

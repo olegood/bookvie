@@ -36,6 +36,8 @@ import json
 from fractions import Fraction
 from pathlib import Path
 
+import pytest
+
 from bookvie.views import home
 from tests.builder import LibraryBuilder
 from tests.helpers import FINISH_READING, START_READING, TODAY, api_client
@@ -405,3 +407,93 @@ def test_item35_p0_starting_at_page_300_and_finishing_counts_30_pages_through_th
 
     # Started and finished today: 1 day. The whole Book would be 330.
     assert measured_pace(client.app.state.store.library) == Fraction(30)
+
+
+# --- Pace counts only the pages read in each resume segment -------------------------
+
+
+def _segmented(
+    builder: LibraryBuilder,
+    book: str,
+    segments: list[tuple[int, int]],
+    start_page: int,
+    finished_pages: int,
+    start: str = "2026-10-01",
+    finish: str = "2026-10-10",
+) -> None:
+    """A finished Reading with earlier ``segments`` (start, end) and a last one from ``start_page``."""
+    builder.reading(
+        book,
+        start_date=start,
+        start_page=start_page,
+        earlier_segments=[{"startPage": s, "endPage": e} for s, e in segments],
+        finish_date=finish,
+        finished_pages=finished_pages,
+        current_page=finished_pages,
+    )
+
+
+@pytest.mark.parametrize(
+    ("segments", "start_page", "pages"),
+    [
+        pytest.param([(0, 20)], 300, 20 + 30, id="skip-ahead"),
+        pytest.param([(300, 300)], 30, 0 + 300, id="skip-back"),
+        pytest.param([(0, 20)], 10, 20 + 320, id="re-read"),
+        pytest.param([(50, 40)], 0, 0 + 330, id="segment-lowered-in-it"),
+        pytest.param([(0, 20), (100, 150)], 300, 20 + 50 + 30, id="two-resumes"),
+    ],
+)
+def test_pace_sums_the_pages_read_in_each_segment(
+    segments: list[tuple[int, int]], start_page: int, pages: int
+) -> None:
+    from bookvie.domain.pace import measured_pace
+
+    builder = LibraryBuilder()
+    kindred = builder.book(title="Kindred", pages=330)
+    _segmented(builder, kindred, segments, start_page, 330)
+
+    # 2026-10-01 to 2026-10-10: 10 days, whatever the segments.
+    assert measured_pace(builder.build()) == Fraction(pages, 10)
+
+
+def test_a_finish_below_the_last_segment_s_start_counts_0_for_it() -> None:
+    from bookvie.domain.pace import measured_pace
+
+    builder = LibraryBuilder()
+    kindred = builder.book(title="Kindred", pages=100)
+    _segmented(builder, kindred, [(0, 20)], 300, 100)
+
+    assert measured_pace(builder.build()) == Fraction(20, 10)
+
+
+def test_resuming_further_on_counts_only_the_pages_read_through_the_api(tmp_path: Path) -> None:
+    """Started at 0, paused at 20, resumed at 300, finished at 330: 50 pages."""
+    from bookvie.domain.pace import measured_pace
+
+    builder = LibraryBuilder()
+    kindred = builder.book(title="Kindred", pages=330)
+    dawn = builder.book(title="Dawn", pages=500)
+    builder.reading(
+        kindred, start_date=TODAY.isoformat(), current_page=20, paused_at=TODAY.isoformat()
+    )
+    builder.write(tmp_path)
+    client = api_client(tmp_path)
+
+    def post(path: str, intent: dict):
+        return client.post(path, files={"intent": (None, json.dumps(intent), "application/json")})
+
+    assert post(START_READING, {"bookId": kindred, "purpose": None, "page": 300}).status_code == 200
+    finish = {
+        "bookId": kindred,
+        "finishedOn": TODAY.isoformat(),
+        "purposeFulfilled": None,
+        "rating": None,
+    }
+    assert post(FINISH_READING, finish).status_code == 200
+
+    # One day; counting from page 0 made it 330.
+    assert measured_pace(client.app.state.store.library) == Fraction(50)
+    assert client.get("/api/views/catalog").json()["measuredPace"] == 50
+    # Home shows the pace as the Main book's days left: 500 pages at 50 a day.
+    assert post(START_READING, {"bookId": dawn, "purpose": None}).status_code == 200
+    assert client.get("/api/views/home").json()["mainBook"]["daysLeft"] == 10

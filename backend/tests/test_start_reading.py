@@ -420,16 +420,85 @@ def test_item35_p0_a_new_reading_without_a_page_starts_at_0(tmp_path: Path) -> N
     assert (reading["startPage"], reading["currentPage"]) == (0, 0)
 
 
-def test_item35_p0_resuming_with_a_page_keeps_the_start_page(tmp_path: Path) -> None:
+def _paused(builder: LibraryBuilder, book_id: str, start_page: int, page: int) -> None:
+    builder.reading(
+        book_id,
+        start_page=start_page,
+        current_page=page,
+        paused_at="2026-10-01",
+        earlier_segments=[{"startPage": 5, "endPage": 10}],
+    )
+
+
+@pytest.mark.parametrize(
+    ("start_page", "paused_page", "page"),
+    [
+        pytest.param(40, 120, 200, id="skip-ahead"),
+        pytest.param(300, 300, 30, id="skip-back"),
+        pytest.param(40, 120, 0, id="back-to-0"),
+    ],
+)
+def test_resuming_at_another_page_closes_the_segment_and_starts_one_there(
+    tmp_path: Path, start_page: int, paused_page: int, page: int
+) -> None:
     builder = LibraryBuilder()
     kindred = builder.book(title="Kindred", pages=330)
-    builder.reading(kindred, start_page=40, current_page=120, paused_at="2026-10-01")
+    _paused(builder, kindred, start_page, paused_page)
     builder.write(tmp_path)
 
-    assert _with_page(api_client(tmp_path), kindred, 200).status_code == 200
+    assert _with_page(api_client(tmp_path), kindred, page).status_code == 200
 
     (reading,) = stored_book(tmp_path, kindred)["readings"]
-    assert (reading["startPage"], reading["currentPage"]) == (40, 200)
+    assert reading["earlierSegments"] == [
+        {"startPage": 5, "endPage": 10},
+        {"startPage": start_page, "endPage": paused_page},
+    ]
+    assert (reading["startPage"], reading["currentPage"]) == (page, page)
+    assert list(reading)[:5] == ["id", "startDate", "startPage", "earlierSegments", "currentPage"]
+    assert_invariants(tmp_path)
+
+
+def test_resuming_at_the_same_page_keeps_the_segment(tmp_path: Path) -> None:
+    builder = LibraryBuilder()
+    kindred = builder.book(title="Kindred", pages=330)
+    _paused(builder, kindred, 40, 120)
+    builder.write(tmp_path)
+
+    assert _with_page(api_client(tmp_path), kindred, 120).status_code == 200
+
+    (reading,) = stored_book(tmp_path, kindred)["readings"]
+    assert reading["earlierSegments"] == [{"startPage": 5, "endPage": 10}]
+    assert (reading["startPage"], reading["currentPage"]) == (40, 120)
+
+
+def test_resuming_without_a_page_keeps_the_segment(tmp_path: Path) -> None:
+    builder = LibraryBuilder()
+    kindred = builder.book(title="Kindred", pages=330)
+    _paused(builder, kindred, 40, 120)
+    builder.write(tmp_path)
+
+    assert _send(api_client(tmp_path), START_READING, kindred, None).status_code == 200
+
+    (reading,) = stored_book(tmp_path, kindred)["readings"]
+    assert reading["earlierSegments"] == [{"startPage": 5, "endPage": 10}]
+    assert (reading["startPage"], reading["currentPage"]) == (40, 120)
+
+
+@pytest.mark.parametrize("page", [None, 0, 300])
+def test_a_new_reading_has_no_earlier_segments(tmp_path: Path, page: int | None) -> None:
+    builder = LibraryBuilder()
+    kindred = builder.book(title="Kindred", pages=330)
+    builder.write(tmp_path)
+
+    intent = {"bookId": kindred, "purpose": None, "page": page}
+    response = api_client(tmp_path).post(
+        START_READING, files={"intent": (None, json.dumps(intent), "application/json")}
+    )
+    assert response.status_code == 200
+
+    (reading,) = stored_book(tmp_path, kindred)["readings"]
+    assert reading["earlierSegments"] == []
+    assert reading["startPage"] == (page or 0)
 
 
 def test_item35_p1_no_view_exposes_the_start_page(tmp_path: Path) -> None:
@@ -444,4 +513,6 @@ def test_item35_p1_no_view_exposes_the_start_page(tmp_path: Path) -> None:
         response = client.get(path)
         assert response.status_code == 200, path
         assert "startPage" not in response.text, path
+        assert "earlierSegments" not in response.text, path
     assert "startPage" not in json.dumps(create_app().openapi())
+    assert "earlierSegments" not in json.dumps(create_app().openapi())

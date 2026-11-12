@@ -300,6 +300,13 @@ class ReadingPlan(RuleBasedStateMachine):
         stored_purpose = normalize_purpose(purpose)
         if resumed is not None:
             moved = {} if page is None else {"currentPage": page}
+            # A resume at another page closes the segment and starts one there.
+            if page is not None and page != resumed["currentPage"]:
+                closed = {"startPage": resumed["startPage"], "endPage": resumed["currentPage"]}
+                moved |= {
+                    "startPage": page,
+                    "earlierSegments": [*resumed["earlierSegments"], closed],
+                }
             assert now == [
                 {**r, "lastProgressUpdate": stamp, "purpose": stored_purpose, **moved}
                 if r["id"] == resumed["id"]
@@ -317,6 +324,7 @@ class ReadingPlan(RuleBasedStateMachine):
             assert {k: v for k, v in new.items() if k != "id"} == {
                 "startDate": self.today.isoformat(),
                 "startPage": page or 0,
+                "earlierSegments": [],
                 "currentPage": page or 0,
                 "purpose": stored_purpose,
                 "lastProgressUpdate": stamp,
@@ -516,6 +524,7 @@ class ReadingPlan(RuleBasedStateMachine):
             current = {
                 "startDate": None,
                 "startPage": 0,
+                "earlierSegments": [],
                 "currentPage": pages,
                 "purpose": None,
                 "lastProgressUpdate": None,
@@ -627,6 +636,7 @@ class ReadingPlan(RuleBasedStateMachine):
         assert {k: v for k, v in reading.items() if k != "id"} == {
             "startDate": None,
             "startPage": 0,
+            "earlierSegments": [],
             "currentPage": pages,
             "purpose": None,
             "lastProgressUpdate": None,
@@ -700,6 +710,7 @@ class ReadingPlan(RuleBasedStateMachine):
             assert {k: v for k, v in new.items() if k != "id"} == {
                 "startDate": None,
                 "startPage": 0,
+                "earlierSegments": [],
                 "currentPage": pages,
                 "purpose": None,
                 "lastProgressUpdate": None,

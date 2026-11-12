@@ -47,14 +47,32 @@ def _camel(overrides: dict[str, Any]) -> dict[str, Any]:
     return {to_camel(key): value for key, value in overrides.items()}
 
 
+def _dumps(doc: dict[str, Any]) -> bytes:
+    return (json.dumps(doc, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
+
+
+def as_v2(library_json: bytes) -> bytes:
+    """Current ``library.json`` bytes as schemaVersion 2 wrote them: no ``earlierSegments``.
+
+    Only for libraries whose Readings have no earlier segments, which v2 can't hold.
+    """
+    doc = json.loads(library_json)
+    doc["schemaVersion"] = 2
+    for book in doc["books"]:
+        for reading in book["readings"]:
+            if reading.pop("earlierSegments"):
+                raise ValueError(f"Reading {reading['id']} has earlier segments; v2 has none")
+    return _dumps(doc)
+
+
 def as_v1(library_json: bytes) -> bytes:
     """Current ``library.json`` bytes as schemaVersion 1 wrote them: no ``startPage``."""
-    doc = json.loads(library_json)
+    doc = json.loads(as_v2(library_json))
     doc["schemaVersion"] = 1
     for book in doc["books"]:
         for reading in book["readings"]:
             del reading["startPage"]
-    return (json.dumps(doc, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
+    return _dumps(doc)
 
 
 class LibraryBuilder:
@@ -132,6 +150,7 @@ class LibraryBuilder:
             "id": str(uuid.uuid4()),
             "startDate": _BASE_DATE.isoformat(),
             "startPage": 0,
+            "earlierSegments": [],
             "currentPage": 0,
             "purpose": None,
             "lastProgressUpdate": self._stamp(),

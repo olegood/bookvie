@@ -197,7 +197,7 @@ def test_non_oserror_in_cleanup_still_removes_the_temp_file(tmp_path: Path) -> N
     assert temp_files(tmp_path) == []
 
 
-@pytest.mark.parametrize("version", [0, 3])
+@pytest.mark.parametrize("version", [0, 4])
 def test_change_to_schema_version_commits_nothing(tmp_path: Path, version: int) -> None:
     store = seeded_store(tmp_path)
     before = (tmp_path / "library.json").read_bytes()

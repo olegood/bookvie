@@ -159,6 +159,25 @@ def check_invariants(library: Library) -> None:
                     f"Reading {reading.id} of Book {book.id} is at page "
                     f"{reading.current_page}, outside 0 to {book.pages}",
                 )
+        for reading in book.readings:
+            # start-reading closes a segment only on a resume, which only a started Reading has.
+            if reading.earlier_segments and reading.start_date is None:
+                raise InvariantViolation(
+                    "reading_segments_need_start_date",
+                    f"Reading {reading.id} of Book {book.id} has earlier segments "
+                    "but no start date",
+                )
+            # A resume at the same page keeps the segment, so a boundary always moves the page.
+            # Each segment is followed by the next one's start, the last by the Reading's own.
+            segments = reading.earlier_segments
+            starts = [s.start_page for s in segments[1:]] + [reading.start_page]
+            for segment, next_start in zip(segments, starts if segments else [], strict=True):
+                if segment.end_page == next_start:
+                    raise InvariantViolation(
+                        "reading_segment_starts_at_new_page",
+                        f"Reading {reading.id} of Book {book.id} has a segment that ends "
+                        f"on page {next_start}, where the next segment starts",
+                    )
         for note in book.card_notes:
             end = note.page_end if note.page_end is not None else note.page_start
             if not 1 <= note.page_start <= end <= book.pages:

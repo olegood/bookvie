@@ -16,7 +16,7 @@ from typing import Annotated, Literal
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 BookType = Literal["paperback", "hardcover", "ebook"]
 PurposeFulfilled = Literal["yes", "partly", "notYet"]
@@ -32,10 +32,24 @@ class _Model(BaseModel):
     )
 
 
+class ReadingSegment(_Model):
+    """A closed stretch of a Reading: read from ``startPage`` up to ``endPage``, then resumed elsewhere."""
+
+    start_page: Annotated[int, Field(ge=0)]
+    end_page: Annotated[int, Field(ge=0)]
+
+
 class Reading(_Model):
+    """One read of a Book. ``startPage`` is where its current segment starts (AD-19).
+
+    A resume at another page closes the segment into ``earlierSegments`` and
+    starts a new one at that page, so Measured pace counts only the pages read.
+    """
+
     id: str
     start_date: date | None
     start_page: Annotated[int, Field(ge=0)]
+    earlier_segments: list[ReadingSegment]
     current_page: int
     purpose: str | None
     last_progress_update: AwareDatetime | None
