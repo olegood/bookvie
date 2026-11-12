@@ -1,7 +1,7 @@
 {
   "name": "bookvie",
   "private": true,
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Local-first home library and reading tracker.",
   "license": "MIT",
   "engines": {

@@ -6,6 +6,10 @@ All notable changes to bookvie are recorded here. The format follows
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [1.0.0] - 2026-11-12
+
 The first complete version: all seven v1 epics (41 stories) are done.
 
 ### Added
@@ -76,3 +80,6 @@ The first complete version: all seven v1 epics (41 stories) are done.
 - Blank or untrimmed language and tag values are refused.
 - The Change color refusal is still announced after its popover closes.
 - The pace calculator agrees with Home's days-left figure.
+
+[Unreleased]: https://github.com/olegood/bookvie/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/olegood/bookvie/releases/tag/v1.0.0

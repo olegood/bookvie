@@ -1,6 +1,6 @@
 [project]
 name = "bookvie"
-version = "0.1.0"
+version = "1.0.0"
 description = "Local-first home library and reading tracker."
 readme = { text = "bookvie: a local-first home library and reading tracker.", content-type = "text/plain" }
 license = "MIT"
