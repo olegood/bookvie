@@ -1,16 +1,17 @@
 ---
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03c-aggregate', 'step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
-lastSaved: '2026-11-11'
-storyId: '6.4'
-storyKey: '6-4-see-my-reading-month-by-month'
+lastSaved: '2026-11-12'
+storyId: '7.1'
+storyKey: '7-1-sort-my-catalog'
 inputDocuments:
-  - _bmad-output/implementation-artifacts/spec-6-4-see-my-reading-month-by-month.md (Intent, I/O matrix, ACs, Review Triage Log, Review Findings)
-  - _bmad-output/test-artifacts/atdd-checklist-6-4-see-my-reading-month-by-month.md
-  - _bmad-output/implementation-artifacts/deferred-work.md (build-auto and code review of spec-6-4, 2026-11-11)
+  - _bmad-output/implementation-artifacts/spec-7-1-sort-my-catalog.md (Intent, I/O matrix, ACs, Review Triage Log, Review Findings)
+  - _bmad-output/test-artifacts/atdd-checklist-7-1-sort-my-catalog.md
+  - _bmad-output/implementation-artifacts/epic-7-context.md
+  - _bmad-output/implementation-artifacts/deferred-work.md (build-auto and code review of spec-7-1, 2026-11-12)
   - _bmad/tea/config.yaml
   - frontend/playwright.config.ts
-  - frontend/e2e/stats.spec.ts (split this run into stats.ts and stats-bars.spec.ts); frontend/e2e/card-notes.spec.ts (token probe pattern); frontend/src/lib/stats.test.ts; backend/tests/test_stats.py
+  - frontend/e2e/catalog-sort.spec.ts; frontend/e2e/home-slice.spec.ts and home.ts (slice oracle); frontend/e2e/bookcase.spec.ts and bookcase.ts (add highlight); frontend/e2e/catalog-list.spec.ts (status observer); frontend/src/lib/catalog.test.ts; frontend/src/lib/catalogSort.test.ts
   - knowledge/test-levels-framework.md
   - knowledge/test-priorities-matrix.md
   - knowledge/data-factories.md
@@ -22,96 +23,100 @@ inputDocuments:
   - knowledge/playwright-cli.md
 ---
 
-# Automation Summary: See my reading month by month (story 6.4)
+# Automation Summary: Sort my catalog (story 7.1)
 
-The previous version of this file held the summary for story 6.3. It's in git history (`fa9fb3a`).
+The previous version of this file held the summary for story 6.4. It's in git history (`1f5c49a`).
 
 ## Preflight
 
-- **Stack:** `fullstack`, auto-detected. Frontend: Playwright (`frontend/playwright.config.ts`) and `node --test`. Backend: pytest (`backend/tests/conftest.py`). Both frameworks are in place.
-- **Mode:** BMad-Integrated. The story is `done` after `bmad-code-review` (`a12fb25`), which closed Epic 6.
-- **Config:** `tea_use_playwright_utils: true`, but `@seontechnologies/playwright-utils` isn't in `frontend/package.json`, so that gate stays closed and the Traditional Patterns fragments load instead. `tea_use_pactjs_utils` is on, but contract testing doesn't apply (no Pact artifacts). `tea_browser_automation: auto` loads `playwright-cli.md`. Auto-heal is off.
-- **Inputs:** the 6.4 entries in `deferred-work.md` are spine drift (AD-6) and the field docstrings that don't reach the OpenAPI, and neither needs a test. The ATDD checklist has 21 `[ ]` lines. The build and the code review already built most of them.
+- **Stack:** `fullstack`, auto-detected. Frontend: Playwright (`frontend/playwright.config.ts`) and `node --test` for `src/lib`. Backend: pytest (`backend/tests/conftest.py`). Both frameworks are in place.
+- **Mode:** BMad-Integrated. Story 7.1 is `done` after `bmad-code-review` (`8898a44`), with its spec, ATDD checklist and epic context.
+- **Config:** `tea_use_playwright_utils: true`, but `@seontechnologies/playwright-utils` isn't in `package.json`, so that gate stays closed and the Traditional Patterns fragments load (`fixture-architecture`, `network-first`). No Pact artifacts, so no contract fragments. `tea_browser_automation: auto` loads `playwright-cli.md`.
+- **What exists for 7.1:**
+  - Unit: `catalog.test.ts` covers each key, each tie-break step, mixed offsets, code-unit ids, the empty author, numbers by value and no mutation. `catalogSort.test.ts` covers storage read, junk, throwing and the key written.
+  - E2E: `catalog-sort.spec.ts` has the four ATDD leaves (AC-1 to AC-4) and three `[P1] AC-3` leaves: junk storage, throwing storage, and Home reached by the nav link. `catalog-empty.spec.ts` AC-8 checks there is no Sort on an empty library. `bookcase-details.spec.ts` checks the Tab order and runs axe on Catalog in both themes with the select present.
 
 ## Coverage Plan
 
-**Scope:** selective. The 4 ATDD leaves, the build's 9 backend tests and 6 e2e leaves, the 3 client unit suites and the code review's 4 tightened leaves cover AC-1 to AC-4 and every row of the I/O matrix. This run adds only the spec rules that no test pins yet.
+Scope: **selective**. The comparator and storage are fully pinned at unit level, and the ATDD leaves cover the four criteria end to end. This run adds the browser-only branches that the ATDD checklist and both reviews left as follow-ups. Every new leaf is E2E because each one meets the rendered bookcase, Home's packer or the shell's status region, which no unit can reach. There is no backend target: story 7.1 changes no API (AD-6).
 
-**Browser exploration:** skipped. The page is small, the existing leaves already pin its locators (`chartColumns`, `chartTable`), and reading the code was enough.
+| # | Target | Level | Priority | Why |
+|---|---|---|---|---|
+| 1 | Home with a Main book across several rows: under Pages, the slice packs the 180-Book shelf in Pages order, the Main book's row comes first and differs from its Author-order row | E2E | P1 | The epic's claim that "the slice is built from the sorted shelf" and the spec's residual risk. Reuses the `expectedSlice` oracle, now shared from `home.ts` |
+| 2 | Home with storage that throws: the slice is in Author order | E2E | P2 | The Storage rule on Home's own read of the sort (code review rejected an unverified claim here) |
+| 3 | The bookcase's Tab stop stays on the last-focused Book after a sort change | E2E | P2 | Pins the roving-stop behaviour the ATDD checklist left open and the code review judged correct |
+| 4 | List view: after Search titles, a sort change keeps the filter and announces nothing | E2E | P2 | The spec's "a sort change alone announces nothing", untested until now |
+| 5 | After an add under Date added, the new spine is first, focused and ringed | E2E | P2 | EXPERIENCE.md → Highlight after add, at the new Book's place in the current sort |
 
-| # | Target | Level | Priority | Where | Why at this level |
-|---|---|---|---|---|---|
-| T1 | The bars use the theme's `accent` fill on an `accent-soft` track, and the value and period labels are `meta`, in light and dark (spec, "The chart"; ATDD follow-up "design tokens") | E2E | P2 | `stats-bars.spec.ts` | Only the browser resolves the tokens per theme. axe checks contrast, not which token is used, so swapping the fill and track would still pass |
-| T2 | The first bar carries its year even when it isn't January: Custom 2026-09-01..2026-10-28 reads `Sep / 2026`, then `Oct` (spec, "The period labels") | E2E | P2 | `stats-bars.spec.ts` | `barLines(…, first)` is unit-tested, but the only e2e first bar is January, which carries its year anyway. `StatsBars` could pass `false` for `first` and every test would pass |
-
-**Not planned:**
-- **A finish with no `finishedPages` in its own bucket** (code review, rejected). `test_p1_the_buckets_add_up_to_the_totals` already includes such a Reading, so dropping it from a bucket fails that test.
-- **Year buckets without a cap, many columns** (code review, rejected). It's cosmetic in an `aria-hidden` chart, and the spec keeps it.
+**Not automated:**
+- **Backup restore keeps the stored sort:** retired. Only `catalogView.ts`, `catalogSort.ts` and `theme.ts` touch `localStorage` in `frontend/src`, and the restore path is server-side, so nothing in a restore can reach the key.
+- **Axe with the Sort select:** already covered by `bookcase-details.spec.ts`'s Catalog axe test in both themes, which now renders the select.
+- **A sort chosen in another tab reaching a mounted page:** rejected by both reviews (rare, needs a `storage` listener); nothing to pin.
 
 ## Execution
 
 - **Mode:** `tea_execution_mode: auto` with the capability probe on. Subagents are supported and agent teams aren't, so the mode resolved to **subagent**.
 - **Workers:**
   - **3A (API):** not launched. There is no new endpoint and no API target.
-  - **3B-backend:** not launched. There is no backend target (see Not planned).
-  - **3B-e2e:** T1 and T2. For its fail-proofs it changed only `StatsBars.module.css` and `StatsBars.tsx`, and restored both from copies. The T2 mutation fails `tsc -b` (unused `index`), but Playwright's `global-setup.ts` runs `vite build` without tsc, so the mutated bundle was still served.
-- **Fixtures:** none added. The worker added two computed font sizes (`valueFontSize`, `periodFontSize`) to the `chartColumns` helper.
-- **Split for H5 (file size):** with the new leaves, `stats.spec.ts` reached 1,029 lines, over the project hook's 1,000-line limit (tea-enforce H5 HIGH). It now follows the `home.ts` / `bookcase.ts` pattern:
-  - `frontend/e2e/stats.ts` (166 lines): the shared seeds (`FLOW_7`, `NOTHING_FINISHED`, …) and locator helpers (`preset`, `dateField`, `figure`, `statsRequest`, …), now exported.
-  - `frontend/e2e/stats.spec.ts` (510 lines): Story 6.3.
-  - `frontend/e2e/stats-bars.spec.ts` (385 lines): Story 6.4, its chart helpers and its two seeds (`THE_TOME`, `YEARS_APART`).
-  - No leaf changed in the move: the two specs ran 28 passed, the same count as the single file.
-- **Review of the worker's output:** read in full; no changes were needed beyond the split. Its output JSON reports `success: true`. It is in the job's scratch directory, not `/tmp`, because this session keeps temp files there; it is scratch and isn't committed.
+  - **3B-backend:** not launched. There is no backend target (AD-6: the sort is client presentation).
+  - **3B-e2e:** targets 1–5. For its fail-proofs it changed only `HomePage.tsx`, `CatalogPage.tsx` and `catalog.ts`, and restored each one. Afterwards `git diff --stat -- frontend/src backend` is empty.
+- **Shared helpers moved (orchestrator, before dispatch):** `slice`, `sliceSpines`, `sliceSpine`, `sliceRows`, `rowCapacity` and the `expectedSlice` oracle moved from `home-slice.spec.ts` into `frontend/e2e/home.ts` as exports, so target 1 reuses the same UX-DR31 oracle. No leaf changed in the move: `home-slice.spec.ts` and `catalog-sort.spec.ts` ran 34 of 34 together.
+- **Fixtures:** none added. The worker added two spec-local helpers: `storedSort(page, key)` and `throwingStorageAfter(page, key)`.
+- **Review of the worker's output:** read in full. No changes were needed. Its output JSON reports `success: true`. It is in this session's scratch directory, not `/tmp`, and isn't committed.
 
 ## Tests Added
 
 | File | Test | Priority | Target | Fails when (worker's fail-proof) |
 |---|---|---|---|---|
-| `frontend/e2e/stats-bars.spec.ts:314` | AC-2 the bars are an accent fill on an accent-soft track, with meta labels, in light and in dark | P2 | T1 | `.fill` and `.track` swap `--color-accent` and `--color-accent-soft` (expected `rgb(85, 112, 89)`, got `rgb(227, 235, 226)`; only this leaf failed) |
-| `frontend/e2e/stats-bars.spec.ts:367` | AC-2 the first bar carries its year even when it is not January | P2 | T2 | `StatsBars` passes `false` for `barLines`' `first` (the `2026` line is missing; only this leaf failed) |
+| `frontend/e2e/catalog-sort.spec.ts:243` | AC-3 Home packs a several-row slice in the remembered Pages order, the Main book's row first | P1 | 1 | `HomeSlice` sorts by Author whatever the stored key (`sliceRows` differs from the Pages oracle) |
+| `frontend/e2e/catalog-sort.spec.ts:277` | AC-3 Home with storage that throws shows the slice in Author order | P2 | 2 | Home reads `localStorage` outside try/catch (Home crashes; no slice) |
+| `frontend/e2e/catalog-sort.spec.ts:288` | AC-2 the bookcase Tab stop stays on the last-focused Book across a sort change | P2 | 3 | `<Bookcase key={sortKey}>` resets the roving stop (Beloved not focused) |
+| `frontend/e2e/catalog-sort.spec.ts:314` | AC-4 in List view a sort change keeps Search titles' text and filter and announces nothing | P2 | 4 | `chooseSort` also announces "Sorted." (an extra status text) |
+| `frontend/e2e/catalog-sort.spec.ts:354` | AC-2 under Date added a Book just added is the first spine, focused, in view and ringed | P2 | 5 | Date added sorts oldest first (first spine is "Book 001") |
 
-Every mutation was reverted. Afterwards `git diff --stat -- frontend/src backend/bookvie` is empty.
+Every mutation was reverted.
 
 ## Validation
 
 Checked against `checklist.md`:
 - **Framework:** ready.
-- **Coverage mapping:** each target maps to a spec rule that no test pinned before (the chart's tokens and `meta` labels; the first bar's year).
-- **Duplicates:** none. The forced-colours leaf checks system colours; T1 checks the theme tokens. The January leaf can't tell the first-bar rule from the January rule; T2 can.
+- **Coverage mapping:** each target maps to a spec rule or an ATDD follow-up that no test pinned before.
+- **Duplicates:** none. The existing Home leaves use a one-row slice, so they can't tell packing order from display order; target 1 can. The existing throwing-storage leaf covers Catalog only; target 2 covers Home's own read.
 - **Quality:**
-  - no `waitForTimeout`, conditionals or `.only`/`.skip`;
-  - every assertion constrains a value (resolved colours, font sizes, exact period lines);
-  - T2 is network-first: `statsRequestFor` is registered before the fill that sends the request;
-  - each leaf starts its own server and stops it in `finally`;
-  - no file over 1,000 lines after the split.
-- **Browser sessions:** no CLI sessions were opened.
+  - no `waitForTimeout`, conditionals, `.only` or `.skip`;
+  - each assertion constrains a value (exact spine names, oracle rows, status texts);
+  - target 4 uses a later search's announcement as a fence, so a late sort announcement can't slip past the observer;
+  - every leaf seeds its own server through `seededServer`;
+  - `catalog-sort.spec.ts` is 387 lines.
+- **Browser sessions:** no CLI sessions were opened or left running.
 
-Runs, in this session after the worker finished and after the split:
-- `TZ=Europe/Madrid npm run check`: exit 0. That covers Prettier, ruff, oxlint, `tsc -b`, the `api:gen` byte compare, pytest (1,390 passed, coverage 98%), the node unit tests, 557 e2e passed (555 before this run), and the smoke check.
-- `stats.spec.ts` and `stats-bars.spec.ts` together: 28 passed. The worker's runs: the two new leaves 10 of 10 with `--repeat-each=5`.
+Runs:
+- Worker: the five new leaves 25 of 25 with `--repeat-each=5 --retries=0`. `catalog-sort` and `home-slice` together 34 of 34.
+- `TZ=Europe/Madrid npm run check`, after the worker finished: exit 0. That covers Prettier, ruff, oxlint, `tsc -b`, the `api:gen` byte compare, pytest (1,391 passed, coverage 98%), the node unit tests (325 passed), 572 e2e passed (567 before this run) and the smoke check.
 
 ## ATDD Checklist
 
-`atdd-checklist-6-4-see-my-reading-month-by-month.md` now has 0 `[ ]` lines:
-- **Ticked with evidence:** the 9 implementation lines and all 12 green-phase follow-ups. 10 of the follow-ups were already built by the build and the code review; T1 and T2 closed the design-token and period-label lines.
-- **Retired:** none.
-- **Red phase:** the section is now marked historical, with a "Since then (green)" note. Its references to 6.4 leaves point at `stats-bars.spec.ts`.
+`atdd-checklist-7-1-sort-my-catalog.md` now has 0 `[ ]` lines:
+- **Ticked with evidence:** the 13 implementation lines and 7 of the 9 green-phase follow-ups. The unit and Catalog storage follow-ups were built by the build and code review; targets 1–5 closed the rest.
+- **Retired (2):** the Sort select's look (axe is covered by `bookcase-details.spec.ts:408`; the CSS mirrors the Text field's tokens) and Backup restore (no client storage code runs in a restore).
+- **Red phase:** the section is now marked historical, with a "Since then (green)" note.
 
-`deferred-work.md` needs no `resolved:` line. Its 6.4 entries are spine drift, which the next-epic reconciliation closes, and the OpenAPI docstrings, a project-wide choice.
+`deferred-work.md` needs no `resolved:` line. Its 7.1 entries are spine drift, which the Epic 7 reconciliation closes.
 
 ## Playwright Utils deviations
 
 `tea_use_playwright_utils` is true, but `@seontechnologies/playwright-utils` isn't installed, so the mandate doesn't apply. The new leaves use the spec's vanilla patterns:
-- `frontend/e2e/stats-bars.spec.ts:367`: `page.waitForRequest` (via `statsRequestFor`) in place of `interceptNetworkCall`.
-- `frontend/e2e/stats-bars.spec.ts:12`: `test` comes from `./fixtures.ts`, not `support/merged-fixtures`, which doesn't exist.
+- `frontend/e2e/catalog-sort.spec.ts:20`: `test` comes from `./fixtures.ts`, not `support/merged-fixtures`, which doesn't exist.
+- No network intercepts: every leaf runs against the real seeded server.
 
 Recommended utilities that weren't wired: none needed. bookvie has no auth, and the e2e servers are per-test local processes.
 
 ## Assumptions and Risks
 
-- **T1 reads tokens through a probe element**, as `card-notes.spec.ts` does. If DESIGN.md ever gives `accent` and `accent-soft` the same value in a theme, T1 would no longer tell them apart. Its light/dark difference check would still catch a theme that didn't switch.
-- **T2's mutation isn't type-clean.** `tsc -b` refuses it, so CI's check would also catch that particular mutation. The leaf still guards any type-clean way of losing the first bar's year.
+- **Target 3 pins current behaviour:** the Tab stop stays on the last-focused Book after a sort change. EXPERIENCE.md is silent on this, and the code review judged it the standard roving-tabindex pattern. If Story 7.2 decides otherwise for filters, update this leaf with it.
+- **Target 5 was fail-proofed on position only**, not on focus or the ring. `bookcase.spec.ts` AC-9 guards those under Author.
+- **Target 1 depends on the 1280px width** fitting at least 10 spines per row, as `home-slice.spec.ts` does; it asserts that up front.
 
 ## Next
 
-Story 6.4's pipeline is complete: ATDD, build, code review, then automate. 6.4 closed Epic 6, so the next step is the **Epic 6 retrospective** (`bmad-retrospective` for epic 6). Before Epic 7's first story come the retrospective, the epic's trace and gate, and the spine reconciliation of Epic 6's "spine drift" entries (AGENTS.md "Epic boundaries").
+Story 7.1's pipeline is complete: ATDD, build, code review, then automate. Story 7.2 (Filter my catalog) is next, starting with its ATDD (`bmad-testarch-atdd`), per AGENTS.md "Story pipeline".

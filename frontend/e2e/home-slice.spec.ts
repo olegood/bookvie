@@ -22,10 +22,15 @@ import { expect, test } from './fixtures.ts'
 import {
   DUNE,
   DUNE_ID,
+  expectedSlice,
   LEFT_HAND,
   LEFT_HAND_ID,
   mainAt,
   mainBookCard,
+  rowCapacity,
+  slice,
+  sliceRows,
+  sliceSpine,
   startDialog,
   storedBook,
   storedLibrary,
@@ -58,64 +63,6 @@ function bookId(n: number): string {
 
 function homeBookcase(page: Page): Locator {
   return page.getByRole('main').getByRole('region', { name: 'Bookcase', exact: true })
-}
-
-function slice(page: Page): Locator {
-  return page.getByRole('main').getByRole('list', { name: /^Bookcase slice, \d+ rows?$/ })
-}
-
-function sliceSpines(page: Page): Locator {
-  return slice(page).getByRole('button')
-}
-
-function sliceSpine(page: Page, title: string): Locator {
-  return slice(page).getByRole('button', { name: new RegExp(`^${title} by `) })
-}
-
-/** The slice's spine titles grouped into rows as displayed (same bottom edge = one plank). */
-async function sliceRows(page: Page): Promise<string[][]> {
-  const spines = await sliceSpines(page).evaluateAll((elements) =>
-    elements.map((element) => ({
-      title: (element.getAttribute('aria-label') ?? '').split(' by ')[0],
-      bottom: Math.round(element.getBoundingClientRect().bottom),
-    })),
-  )
-  const rows: string[][] = []
-  spines.forEach((spine, index) => {
-    if (index === 0 || spine.bottom !== spines[index - 1].bottom) rows.push([])
-    rows.at(-1)!.push(spine.title)
-  })
-  return rows
-}
-
-/** How many spines fit on one plank of the slice at the current width. */
-async function rowCapacity(page: Page): Promise<number> {
-  return slice(page).evaluate((list) => {
-    const style = getComputedStyle(list)
-    const width = list.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight)
-    const [first, second] = Array.from(list.querySelectorAll('button')).map((b) => b.getBoundingClientRect())
-    const gap = second.left - first.right
-    return Math.floor((width + gap) / (first.width + gap))
-  })
-}
-
-/**
- * The test's oracle for UX-DR31: pack `titles` (bookcase order) into rows of
- * `k`, choose up to 3 rows (Main's, Up next's, then the finishes' in the
- * server's priority order, else the first rows), display Main's row first and
- * the rest in bookcase order.
- */
-function expectedSlice(titles: string[], k: number, priority: string[], hasMain: boolean): string[][] {
-  const rows = Array.from({ length: Math.ceil(titles.length / k) }, (_, r) => titles.slice(r * k, (r + 1) * k))
-  const chosen: number[] = []
-  for (const title of priority) {
-    const row = Math.floor(titles.indexOf(title) / k)
-    if (!chosen.includes(row) && chosen.length < 3) chosen.push(row)
-  }
-  for (let row = 0; row < rows.length && chosen.length < 3; row++) if (!chosen.includes(row)) chosen.push(row)
-  const [first, ...rest] = chosen
-  const order = hasMain ? [first, ...rest.sort((a, b) => a - b)] : [...chosen].sort((a, b) => a - b)
-  return order.map((row) => rows[row])
 }
 
 type Column = { pixels: RGB[]; stripBottom: number; stripTop: number }

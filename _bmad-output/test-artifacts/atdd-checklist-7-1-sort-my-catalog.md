@@ -101,7 +101,7 @@ Every seed loaded and every server started cleanly, so no leaf fails for a seed 
 
 ## Green-phase follow-ups (secondary branches, not red leaves)
 
-- [ ] **Unit, the comparator (`lib/catalog.test.ts`):**
+- [x] **Unit, the comparator (`lib/catalog.test.ts`):** (done: `frontend/src/lib/catalog.test.ts`: each key :74, tie by title :102, by `createdAt` older first :112, by id :129 and :140, collator cases :31 and :48, case and accent :81, numbers by value :92, Pages ties :149, empty author :158, no mutation :167)
   - Each key's order.
   - Each tie-break step on its own: equal first author, then equal title, then equal `createdAt`, then the id. Pin the `createdAt` direction here.
   - The collator cases the existing `sortBooks` tests cover (`bell hooks`, `Émile Zola`), kept under Author.
@@ -109,14 +109,14 @@ Every seed loaded and every server started cleanly, so no leaf fails for a seed 
   - Pages ties.
   - A Book with no author (`firstAuthor: ''`) under Author.
   - The function doesn't mutate its input.
-- [ ] **Unit, storage (`lib/catalogSort.test.ts` or similar, mirroring `catalogView.test.ts`):** a stored key is read back. Nothing stored, or junk, gives Author. Storage that throws gives Author, and a write doesn't throw. The key and value are written as the build chooses.
-- [ ] **E2E, AC-3 storage faults:** a junk stored sort opens Author. With storage that throws, Catalog opens in Author and the select still reorders the shelf for the visit (mirror `bookcase.spec.ts` '[P1] AC-1 a junk stored view…' and '…storage that throws…').
-- [ ] **E2E, AC-3 Home with a Main book:** the slice's chosen rows are in the remembered sort's bookcase order, and the Main book's row stays first. Needs a library over 3 rows (`home-slice.spec.ts`'s `bigShelf`). Pick a sort that moves the Main book to another row.
-- [ ] **E2E, AC-2 focus across a sort change:** the focused spine keeps focus, or the Tab stop stays on that Book, when the order changes. EXPERIENCE.md says nothing explicit, so pin what the build does.
-- [ ] **E2E, after an add:** the new spine is scrolled into view and ringed at its place in the current sort (EXPERIENCE.md → Highlight after add). For example, under Date added the new Book is first.
-- [ ] **E2E, AC-4 in List view:** the search still applies after a sort change, and the "N books match." count is not announced again for a sort change alone.
-- [ ] **E2E, the Sort select's look:** it is styled as a Text field, with the label to its left in `body-sm`/`ink-secondary` (DESIGN.md → Sort select). Check axe on Catalog in both themes; extend an existing Catalog axe test.
-- [ ] **Backup:** the sort is a local preference, so restore neither brings nor replaces it (EXPERIENCE.md → Backup page). A restore leaves the stored sort in place.
+- [x] **Unit, storage (`lib/catalogSort.test.ts` or similar, mirroring `catalogView.test.ts`):** a stored key is read back. Nothing stored, or junk, gives Author. Storage that throws gives Author, and a write doesn't throw. The key and value are written as the build chooses. (done: `frontend/src/lib/catalogSort.test.ts:23`, `:30`, `:39`, `:48`)
+- [x] **E2E, AC-3 storage faults:** a junk stored sort opens Author. With storage that throws, Catalog opens in Author and the select still reorders the shelf for the visit (mirror `bookcase.spec.ts` '[P1] AC-1 a junk stored view…' and '…storage that throws…'). (done: `frontend/e2e/catalog-sort.spec.ts:174` junk, `:184` throwing on Catalog, `:277` throwing on Home)
+- [x] **E2E, AC-3 Home with a Main book:** the slice's chosen rows are in the remembered sort's bookcase order, and the Main book's row stays first. Needs a library over 3 rows (`home-slice.spec.ts`'s `bigShelf`). Pick a sort that moves the Main book to another row. (done: `frontend/e2e/catalog-sort.spec.ts:243`, Pages reverses a 180-Book shelf)
+- [x] **E2E, AC-2 focus across a sort change:** the focused spine keeps focus, or the Tab stop stays on that Book, when the order changes. EXPERIENCE.md says nothing explicit, so pin what the build does. (done: `frontend/e2e/catalog-sort.spec.ts:288`: the Tab stop stays on the last-focused Book, and the arrows go on in the new order)
+- [x] **E2E, after an add:** the new spine is scrolled into view and ringed at its place in the current sort (EXPERIENCE.md → Highlight after add). For example, under Date added the new Book is first. (done: `frontend/e2e/catalog-sort.spec.ts:354`; the ring's fade is `bookcase.spec.ts` AC-9)
+- [x] **E2E, AC-4 in List view:** the search still applies after a sort change, and the "N books match." count is not announced again for a sort change alone. (done: `frontend/e2e/catalog-sort.spec.ts:314`)
+- ~~**E2E, the Sort select's look:** it is styled as a Text field, with the label to its left in `body-sm`/`ink-secondary` (DESIGN.md → Sort select). Check axe on Catalog in both themes; extend an existing Catalog axe test.~~ **Retired:** axe is covered: `frontend/e2e/bookcase-details.spec.ts:408` runs axe on a non-empty Catalog, which now renders the select, in both themes. The look is a copy of `TextField.module.css` `.input` with the same tokens (`frontend/src/components/SortSelect.module.css`), checked in the build and code reviews (spec Review Triage Log); no computed-style leaf is planned.
+- ~~**Backup:** the sort is a local preference, so restore neither brings nor replaces it (EXPERIENCE.md → Backup page). A restore leaves the stored sort in place.~~ **Retired:** only `catalogView.ts`, `catalogSort.ts` and `theme.ts` touch `localStorage` in `frontend/src`, and restore is a server-side intent with no client storage code, so a restore can't reach `bookvie.catalogSort` (automation summary, Not automated).
 
 ## Existing tests the build must update
 
@@ -125,7 +125,9 @@ Every seed loaded and every server started cleanly, so no leaf fails for a seed 
 - `frontend/e2e/bookcase.spec.ts` AC-5 ("named list in sort order") and `catalog-list.spec.ts` AC-9 assert the default Author order. They should pass unchanged. A seed in either with two Books that tie on author and title would now order by `createdAt`, then id.
 - `home-slice.spec.ts` `expectedSlice` computes the slice from Author order (`shelfOf`, one author, titles in order). It is unaffected while the default stays Author.
 
-## TDD Red Phase (current)
+## TDD Red Phase (historical)
+
+**Since then (green):** the build turned all four leaves on (`catalog-sort.spec.ts:84`, `:106`, `:140`, `:160`). The line numbers in the table below are from the red phase.
 
 There is one skipped leaf per criterion, 4 in all, in `frontend/e2e/catalog-sort.spec.ts`, inside the `Story 7.1 Sort my catalog (ATDD)` describe. Each is a `test.skip(`, and each title carries exactly one `[P*] AC-n`.
 
@@ -157,22 +159,22 @@ There is one skipped leaf per criterion, 4 in all, in `frontend/e2e/catalog-sort
 Activate one leaf at a time: change `test.skip(` to `test(`. Watch it fail, implement, then watch it pass. Run `npm run build` first, then `cd frontend && TZ=Europe/Madrid npx playwright test e2e/catalog-sort.spec.ts`.
 
 ### AC-2: the four orders
-- [ ] In `lib/catalog.ts`, give the sort a key (Author, Title, Date added, Pages), with the tie-breaks title, then `createdAt`, then id. Widen `ListedBook` with `id`, `pages` and `createdAt`.
-- [ ] Add the unit cases above to `catalog.test.ts`.
-- [ ] Activate AC-2.
+- [x] In `lib/catalog.ts`, give the sort a key (Author, Title, Date added, Pages), with the tie-breaks title, then `createdAt`, then id. Widen `ListedBook` with `id`, `pages` and `createdAt`. (done: `frontend/src/lib/catalog.ts` `sortBooks(books, key)`; the build added a separate `SortableBook` instead of widening `ListedBook`, per the spec)
+- [x] Add the unit cases above to `catalog.test.ts`. (done: see the comparator follow-up above)
+- [x] Activate AC-2. (done: `frontend/e2e/catalog-sort.spec.ts:106`)
 
 ### AC-1: the select
-- [ ] Add the Sort select to the Catalog toolbar, between Search titles and the view toggle, with a visible "Sort" label to its left and no empty option. Hide it with the other controls on an empty library, if the build decides to.
-- [ ] Activate AC-1.
+- [x] Add the Sort select to the Catalog toolbar, between Search titles and the view toggle, with a visible "Sort" label to its left and no empty option. Hide it with the other controls on an empty library, if the build decides to. (done: `frontend/src/components/SortSelect.tsx`, `CatalogPage.tsx`; hidden on an empty library, `catalog-empty.spec.ts:72`)
+- [x] Activate AC-1. (done: `frontend/e2e/catalog-sort.spec.ts:84`)
 
 ### AC-3: remember it and share it with Home
-- [ ] Add a `catalogView.ts`-style module to read and write the key in `localStorage` inside try/catch, defaulting to Author.
-- [ ] `CatalogPage` starts from the stored key, and `HomePage` sorts `view.books` with it.
-- [ ] Activate AC-3.
+- [x] Add a `catalogView.ts`-style module to read and write the key in `localStorage` inside try/catch, defaulting to Author. (done: `frontend/src/lib/catalogSort.ts`)
+- [x] `CatalogPage` starts from the stored key, and `HomePage` sorts `view.books` with it. (done: `CatalogPage.tsx` and `HomePage.tsx` `HomeSlice`)
+- [x] Activate AC-3. (done: `frontend/e2e/catalog-sort.spec.ts:140`)
 
 ### AC-4: search with sort
-- [ ] Keep `query` across a sort change. `Bookcase` and `CatalogList` keep filtering the sorted array.
-- [ ] Activate AC-4.
+- [x] Keep `query` across a sort change. `Bookcase` and `CatalogList` keep filtering the sorted array. (done: `CatalogPage.tsx`; `catalog-sort.spec.ts:160` and `:314`)
+- [x] Activate AC-4. (done: `frontend/e2e/catalog-sort.spec.ts:160`)
 
 ## Completion
 
