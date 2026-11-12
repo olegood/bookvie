@@ -242,6 +242,122 @@ def test_trimmed_language_and_tags_pass(
     _passes(library_builder)
 
 
+# --- a Book's title, authors, publisher, tags and coverFile -----------------
+# (the deferred-work entries from Story 2.2's and item 60's reviews)
+
+
+@pytest.mark.parametrize("title", ["", " ", "\n\t "])
+def test_blank_title_fails(library_builder: LibraryBuilder, title: str) -> None:
+    library_builder.book(title=title)
+    _fails(library_builder, "book_title_required")
+
+
+@pytest.mark.parametrize("title", [" Dune", "Dune ", "Dune\n", "\u00a0Dune"])
+def test_untrimmed_title_fails(library_builder: LibraryBuilder, title: str) -> None:
+    library_builder.book(title=title)
+    _fails(library_builder, "book_title_trimmed")
+
+
+def test_no_authors_fails(library_builder: LibraryBuilder) -> None:
+    library_builder.book(authors=[])
+    _fails(library_builder, "book_authors_required")
+
+
+@pytest.mark.parametrize("author", ["", " ", "\t"])
+def test_blank_author_fails(library_builder: LibraryBuilder, author: str) -> None:
+    library_builder.book(authors=["A", author])
+    _fails(library_builder, "book_author_required")
+
+
+@pytest.mark.parametrize("author", [" A", "A ", "A\n", "\u00a0A"])
+def test_untrimmed_author_fails(library_builder: LibraryBuilder, author: str) -> None:
+    library_builder.book(authors=[author])
+    _fails(library_builder, "book_author_trimmed")
+
+
+@pytest.mark.parametrize("author", ["A; B", "A;B", "A;"])
+def test_author_with_a_semicolon_fails(library_builder: LibraryBuilder, author: str) -> None:
+    """The Edit form joins authors with "; ", so such an author splits on the next edit."""
+    library_builder.book(authors=[author])
+    _fails(library_builder, "book_author_no_semicolon")
+
+
+@pytest.mark.parametrize("publisher", ["", " ", "\n"])
+def test_blank_publisher_fails(library_builder: LibraryBuilder, publisher: str) -> None:
+    library_builder.book(publisher=publisher)
+    _fails(library_builder, "book_publisher_required")
+
+
+@pytest.mark.parametrize("publisher", [" Ace", "Ace ", "Ace\n", "\u00a0Ace"])
+def test_untrimmed_publisher_fails(library_builder: LibraryBuilder, publisher: str) -> None:
+    library_builder.book(publisher=publisher)
+    _fails(library_builder, "book_publisher_trimmed")
+
+
+@pytest.mark.parametrize("tag", ["a,b", "a, b", "novel,"])
+def test_tag_with_a_comma_fails(library_builder: LibraryBuilder, tag: str) -> None:
+    """The Edit form joins tags with ", ", so such a tag splits on the next edit."""
+    library_builder.book(tags=[tag])
+    _fails(library_builder, "book_tag_no_comma")
+
+
+@pytest.mark.parametrize(
+    "tags", [["novel", "novel"], ["Novel", "novel"], ["to read", "TO READ"], ["Straße", "STRASSE"]]
+)
+def test_a_tag_repeated_ignoring_case_fails(
+    library_builder: LibraryBuilder, tags: list[str]
+) -> None:
+    """merge_tags compares with casefold(), so such tags show twice on Book detail."""
+    library_builder.book(tags=tags)
+    _fails(library_builder, "book_tags_unique")
+
+
+@pytest.mark.parametrize(
+    "cover_file",
+    [
+        "elsewhere/x.jpg",
+        "covers/",
+        "covers/a/b.jpg",
+        "covers/..",
+        "covers/.",
+        "covers/a\\b.jpg",
+        "covers/../library.json",
+        "covers/a\0.jpg",
+        "",
+        "/covers/x.jpg",
+    ],
+)
+def test_cover_file_outside_covers_fails(library_builder: LibraryBuilder, cover_file: str) -> None:
+    library_builder.book(cover_file=cover_file)
+    _fails(library_builder, "book_cover_file_in_covers")
+
+
+@pytest.mark.parametrize(
+    "cover_file", [None, "covers/b-0f0e0d0c-0b0a-4908-8706-050403020100.jpg", "covers/x.png"]
+)
+def test_cover_file_in_covers_passes(
+    library_builder: LibraryBuilder, cover_file: str | None
+) -> None:
+    library_builder.book(cover_file=cover_file)
+    _passes(library_builder)
+
+
+def test_inner_spaces_in_title_authors_publisher_and_tags_pass(
+    library_builder: LibraryBuilder,
+) -> None:
+    """Inner whitespace is kept, as the intents keep it: str.strip() trims only the ends."""
+    library_builder.book(
+        title="The Left Hand of Darkness",
+        authors=["Ursula K. Le Guin", "Second Author"],
+        publisher="Ace Books",
+        tags=["science fiction", "to read"],
+    )
+    library_builder.book(
+        title="Dune\nMessiah", publisher="Ace\u00a0Books", authors=["Le\u00a0Guin"]
+    )
+    _passes(library_builder)
+
+
 # --- card-note text is non-blank and trimmed -------------------------------
 
 

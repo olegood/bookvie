@@ -36,7 +36,7 @@ from fastapi.testclient import TestClient
 from PIL import Image
 
 from bookvie.intents.contract import ErrorCode
-from bookvie.store import OsFileSystem, StartupError, Store
+from bookvie.store import OsFileSystem, StartupError, Store, serialize
 from tests.builder import CURATED, LibraryBuilder
 from tests.helpers import (
     ADD_BOOK,
@@ -757,16 +757,20 @@ def test_ac7_head_is_served_and_media_needs_a_store(tmp_path: Path) -> None:
 def test_ac7_a_hand_edited_cover_file_outside_covers_is_never_served_or_deleted(
     tmp_path: Path,
 ) -> None:
+    """Such a coverFile now breaks ``book_cover_file_in_covers``, so startup refuses the file."""
     data_dir = tmp_path / "data"
+    data_dir.mkdir()
     builder = LibraryBuilder()
     builder.book(id=DUNE_ID, **DUNE, cover_file="covers/../library.json")
-    builder.write(data_dir)
-    client = api_client(data_dir)
+    raw = serialize(builder.build())
+    (data_dir / "library.json").write_bytes(raw)
+    with pytest.raises(StartupError, match="has a coverFile that isn't covers/<name>"):
+        Store.open(data_dir)
+    assert (data_dir / "library.json").read_bytes() == raw
 
-    assert client.get("/media/covers/..%2Flibrary.json").status_code == 404
-    response = _edit_with_cover(client, DUNE_ID, image_bytes())
-    assert response.status_code == 200
-    assert (data_dir / "library.json").is_file()
+    # The media route still never reaches outside covers/.
+    seed_dune_with_cover(data_dir / "clean")
+    assert api_client(data_dir / "clean").get("/media/covers/..%2Flibrary.json").status_code == 404
 
 
 def test_ac8_a_replaced_cover_recomputes_the_color_and_an_edit_without_one_leaves_it(

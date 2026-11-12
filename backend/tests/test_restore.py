@@ -618,6 +618,40 @@ def test_a_language_or_tag_no_intent_can_produce_is_422_restore_invalid(
     assert logged in err
 
 
+@pytest.mark.parametrize(
+    ("fields", "logged"),
+    [
+        ({"title": ""}, "has no title"),
+        ({"title": "Dune "}, "has a title with whitespace around it"),
+        ({"authors": []}, "has no authors"),
+        ({"authors": ["Frank Herbert", " "]}, "has a blank author"),
+        ({"authors": [" Frank Herbert"]}, "has an author with whitespace around it"),
+        ({"authors": ["Herbert; Frank"]}, "has an author with a semicolon"),
+        ({"publisher": " "}, "has no publisher"),
+        ({"publisher": " Ace"}, "has a publisher with whitespace around it"),
+        ({"tags": ["science fiction,classic"]}, "has a tag with a comma"),
+        ({"tags": ["Novel", "novel"]}, "has a tag more than once, ignoring case"),
+        ({"coverFile": "elsewhere/x.jpg"}, "has a coverFile that isn't covers/<name>"),
+        ({"coverFile": "covers/.."}, "has a coverFile that isn't covers/<name>"),
+        ({"coverFile": ""}, "has a coverFile that isn't covers/<name>"),
+    ],
+)
+def test_a_book_field_no_intent_can_produce_is_422_restore_invalid(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], fields: dict, logged: str
+) -> None:
+    """The deferred-work entries from Story 2.2's and item 60's reviews: restore refuses these."""
+    doc, dune_cover = _source_doc(tmp_path)
+    next(book for book in doc["books"] if book["id"] == DUNE_ID).update(fields)
+    target = tmp_path / "target"
+    _seed_target(target)
+
+    archive = _source_with(doc, {DUNE_COVER: dune_cover})
+    _assert_refused_and_unchanged(api_client(target), target, archive)
+    err = capsys.readouterr().err
+    assert "breaks a library rule" in err
+    assert logged in err
+
+
 def test_the_unbroken_card_note_source_restores(tmp_path: Path) -> None:
     """The control for the refusals above: the same hand-made archive, untouched, restores."""
     doc, dune_cover = _source_doc(tmp_path)

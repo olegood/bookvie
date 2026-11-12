@@ -5,6 +5,7 @@ the library breaks. ``rule`` is a stable identifier for tests and logs;
 ``message`` names the offending Book, or the repeated id.
 """
 
+from .cover_file import cover_name
 from .model import Library
 
 MAX_SIDE_READS = 3
@@ -74,14 +75,46 @@ def check_invariants(library: Library) -> None:
         )
 
     for book in library.books:
-        # add-book and edit-book store the language and each tag with str.strip() applied,
-        # the language required and empty tags dropped; Catalog's filter lists show them as is.
+        # add-book and edit-book store every field with str.strip() applied, the title,
+        # authors, language and publisher required and empty tags dropped (domain/book_fields).
+        # Catalog's filter lists show the language and tags as is; the title, authors and
+        # publisher drive sort and search, and must round-trip through the Edit form.
+        if not book.title.strip():
+            raise InvariantViolation("book_title_required", f"Book {book.id} has no title")
+        if book.title != book.title.strip():
+            raise InvariantViolation(
+                "book_title_trimmed", f"Book {book.id} has a title with whitespace around it"
+            )
+        if not book.authors:
+            raise InvariantViolation("book_authors_required", f"Book {book.id} has no authors")
+        for author in book.authors:
+            if not author.strip():
+                raise InvariantViolation(
+                    "book_author_required", f"Book {book.id} has a blank author"
+                )
+            if author != author.strip():
+                raise InvariantViolation(
+                    "book_author_trimmed",
+                    f"Book {book.id} has an author with whitespace around it",
+                )
+            # The Edit form joins authors with "; " and split_authors splits on ";".
+            if ";" in author:
+                raise InvariantViolation(
+                    "book_author_no_semicolon", f"Book {book.id} has an author with a semicolon"
+                )
         if not book.language.strip():
             raise InvariantViolation("book_language_required", f"Book {book.id} has no language")
         if book.language != book.language.strip():
             raise InvariantViolation(
                 "book_language_trimmed",
                 f"Book {book.id} has a language with whitespace around it",
+            )
+        if not book.publisher.strip():
+            raise InvariantViolation("book_publisher_required", f"Book {book.id} has no publisher")
+        if book.publisher != book.publisher.strip():
+            raise InvariantViolation(
+                "book_publisher_trimmed",
+                f"Book {book.id} has a publisher with whitespace around it",
             )
         for tag in book.tags:
             if not tag.strip():
@@ -90,6 +123,23 @@ def check_invariants(library: Library) -> None:
                 raise InvariantViolation(
                     "book_tag_trimmed", f"Book {book.id} has a tag with whitespace around it"
                 )
+            # The Edit form joins tags with ", " and split_tags splits on ",".
+            if "," in tag:
+                raise InvariantViolation(
+                    "book_tag_no_comma", f"Book {book.id} has a tag with a comma"
+                )
+        # merge_tags drops a tag equal to an earlier one ignoring case.
+        if _first_repeat([tag.casefold() for tag in book.tags]) is not None:
+            raise InvariantViolation(
+                "book_tags_unique", f"Book {book.id} has a tag more than once, ignoring case"
+            )
+        # mint_cover_file names covers/<book-id>-<uuid>.<ext>; a value that isn't
+        # covers/<plain name> names no file in covers/ (cover_name returns None).
+        if book.cover_file is not None and cover_name(book.cover_file) is None:
+            raise InvariantViolation(
+                "book_cover_file_in_covers",
+                f"Book {book.id} has a coverFile that isn't covers/<name>",
+            )
 
         unfinished = [r for r in book.readings if not r.finished]
         if len(unfinished) > 1:

@@ -478,6 +478,32 @@ def test_a_library_on_disk_with_a_language_or_tag_no_intent_can_produce_refuses_
     _refused(tmp_path, serialize(builder.build()), f"breaks a library rule: {message}")
 
 
+@pytest.mark.parametrize(
+    ("fields", "message"),
+    [
+        ({"title": " "}, "Book book-0 has no title"),
+        ({"title": "Dune "}, "Book book-0 has a title with whitespace around it"),
+        ({"authors": []}, "Book book-0 has no authors"),
+        ({"authors": ["A", " "]}, "Book book-0 has a blank author"),
+        ({"authors": [" A"]}, "Book book-0 has an author with whitespace around it"),
+        ({"authors": ["A; B"]}, "Book book-0 has an author with a semicolon"),
+        ({"publisher": ""}, "Book book-0 has no publisher"),
+        ({"publisher": " Ace"}, "Book book-0 has a publisher with whitespace around it"),
+        ({"tags": ["a,b"]}, "Book book-0 has a tag with a comma"),
+        ({"tags": ["Novel", "novel"]}, "Book book-0 has a tag more than once, ignoring case"),
+        ({"cover_file": "elsewhere/x.jpg"}, "Book book-0 has a coverFile that isn't covers/<name>"),
+        ({"cover_file": "covers/a/b.jpg"}, "Book book-0 has a coverFile that isn't covers/<name>"),
+    ],
+)
+def test_a_library_on_disk_with_a_book_field_no_intent_can_produce_refuses_startup(
+    tmp_path: Path, fields: dict, message: str
+) -> None:
+    """The deferred-work entries from Story 2.2's and item 60's reviews."""
+    builder = LibraryBuilder()
+    builder.book(id="book-0", **fields)
+    _refused(tmp_path, serialize(builder.build()), f"breaks a library rule: {message}")
+
+
 def test_unwritable_data_dir_is_refused(tmp_path: Path) -> None:
     data_dir = tmp_path / "data"
     data_dir.mkdir()

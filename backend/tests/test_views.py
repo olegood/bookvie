@@ -321,7 +321,6 @@ def test_cover_path_finds_only_referenced_existing_files(
 ) -> None:
     library_builder.book(title="Dune", cover_file="covers/dune.jpg")
     library_builder.book(title="Emma", cover_file="covers/missing.jpg")
-    library_builder.book(title="Odd", cover_file="covers/../library.json")
     library_builder.write(tmp_path)
     (tmp_path / "covers").mkdir()
     (tmp_path / "covers" / "dune.jpg").write_bytes(b"jpeg")

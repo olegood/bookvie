@@ -17,7 +17,7 @@ it, in this order:
    that way from one already in ``covers/``, a cover name over
    :data:`MAX_COVER_NAME_BYTES`, or any entry other than ``library.json``,
    the ``covers/`` directory and ``covers/<name>`` (a plain name, as
-   :func:`~bookvie.store.store.cover_name` rules).
+   :func:`~bookvie.domain.cover_file.cover_name` rules).
 4. A missing ``library.json`` raises :class:`ArchiveRefused`.
 5. Entries are unpacked. The bytes actually written are counted, never the
    header sizes: the chunk that would take the total past

@@ -23,6 +23,7 @@ from typing import Final, Literal
 
 from pydantic import ValidationError
 
+from bookvie.domain.cover_file import COVERS_DIR, cover_name
 from bookvie.domain.invariants import InvariantViolation, check_invariants
 from bookvie.domain.model import Library
 
@@ -32,7 +33,6 @@ from .local_state import LOCAL_STATE_NAME, LOCAL_STATE_TEMP_PREFIX, local_state_
 
 LIBRARY_NAME = "library.json"
 TEMP_PREFIX = "library.json.tmp"
-COVERS_DIR = "covers"
 STAGING_DIR = ".staging"
 
 
@@ -55,21 +55,6 @@ Unchanged = Literal[_Unchanged.UNCHANGED]
 
 def _log(message: str) -> None:
     print(f"bookvie: {message}", file=sys.stderr, flush=True)
-
-
-def cover_name(cover_file: str) -> str | None:
-    """The file name in ``covers/`` that ``cover_file`` names, or ``None`` if it names none.
-
-    Only ``covers/<name>`` with a plain name counts, so a hand-edited
-    ``coverFile`` can never reach a file outside ``covers/``.
-    """
-    prefix = f"{COVERS_DIR}/"
-    if not cover_file.startswith(prefix):
-        return None
-    name = cover_file[len(prefix) :]
-    if not name or name in (".", "..") or "/" in name or "\\" in name or "\0" in name:
-        return None
-    return name
 
 
 def _has_covers(covers: Path) -> bool:
