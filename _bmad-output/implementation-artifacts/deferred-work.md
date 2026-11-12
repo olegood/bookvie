@@ -583,6 +583,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-epic-4-retro-item-42-refusal-reads-after-edit-purpose-unmounts.md`
   summary: `ChangeColor`'s unmount cleanup has the same shape as the Edit Purpose race: when a refusal's refetch closes the popover or removes the Book within 100 ms of `announce`, `if (failed.current) clearAnnouncements()` can cancel the message. Found by reading the code, not reproduced.
   evidence: `frontend/src/components/ChangeColor.tsx:44`, `:70-72`; the cause is in `spec-epic-4-retro-item-42-refusal-reads-after-edit-purpose-unmounts.md`.
+  resolved: `spec-change-color-refusal-reads-after-unmount.md` (2026-11-12). The unmount cleanup clears only a couldn't-save line, so a refusal survives the popover closing, and a pick that resolves after the block is gone announces a non-ok result, as Edit Purpose does. On the baseline, the new leaves in `spine-popover.spec.ts` failed 3 of 3.
 
 ## Deferred from: spec-epic-4-retro-item-36-last-page-finish-for-the-started-book (2026-11-10)
 

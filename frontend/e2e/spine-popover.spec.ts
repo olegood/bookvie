@@ -8,14 +8,16 @@
 import AxeBuilder from '@axe-core/playwright'
 import type { Locator, Page } from '@playwright/test'
 import { expect, test } from './fixtures.ts'
-import { SET_SPINE_COLOR, attachCover, intentOf, requestsTo } from './intents.ts'
+import { DELETE_BOOK, SET_SPINE_COLOR, attachCover, intentOf, requestsTo } from './intents.ts'
 import { DUNE_ID, rgbOf } from './library.ts'
+import { libraryBytes } from './home.ts'
 import { finished, search, shelfOf, spine, spines } from './bookcase.ts'
 
 const COULDNT_SAVE = "Couldn't save. Your data wasn't changed."
 const COULDNT_SAVE_BODY = JSON.stringify({
   error: { kind: 'couldnt_save', code: 'couldnt_save', message: COULDNT_SAVE },
 })
+const BOOK_GONE = "This book isn't in your catalog anymore."
 const SWATCH_NAMES = ['Sage', 'Slate', 'Clay', 'Ochre', 'Plum', 'Teal', 'Moss', 'Stone']
 const SAGE = '#749076'
 const TEAL = '#4B7C7B'
@@ -68,6 +70,12 @@ function popover(page: Page, title: string): Locator {
 
 function swatch(scope: Locator, name: string): Locator {
   return scope.getByRole('button', { name, exact: true })
+}
+
+/** Deletes a Book as another tab would: straight to the server, bypassing this page's cache. */
+async function deleteElsewhere(page: Page, url: string, bookId: string): Promise<void> {
+  const deleted = await page.request.post(`${url}${DELETE_BOOK}`, { multipart: { intent: JSON.stringify({ bookId }) } })
+  expect(deleted.status()).toBe(200)
 }
 
 /** Book detail's Change color block: the section under its "Change color" heading. */
@@ -573,6 +581,79 @@ test.describe('Story 1.14 Change a book’s color from the shelf (follow-ups)', 
     await expect(swatch(block, 'Plum')).toHaveAttribute('aria-pressed', 'true')
     await expect(swatch(block, 'Moss')).toHaveAttribute('aria-pressed', 'false')
     await expect(block.getByText('Color: set by you', { exact: true })).toBeVisible()
+  })
+
+  test('[P1] a pick refused because the Book was deleted elsewhere still reads the refusal in alert after the popover closes', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: [DUNE, NEUROMANCER] })
+    await page.goto(`${server.url}/catalog`)
+    await spine(page, DUNE_SPINE).click()
+    const card = popover(page, 'Dune')
+    await expect(card).toBeVisible()
+    await deleteElsewhere(page, server.url, DUNE_ID)
+    const before = libraryBytes(server)
+
+    const answered = page.waitForResponse((response) => new URL(response.url()).pathname === SET_SPINE_COLOR)
+    await swatch(card, 'Teal').click()
+    expect((await answered).status()).toBe(409)
+
+    // The refetched Catalog drops Dune, so the popover closes; the refusal still reaches `alert`.
+    await expect(page.getByRole('alert')).toHaveText(BOOK_GONE)
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    expect(libraryBytes(server)).toBe(before)
+  })
+
+  test("[P2] a pick that couldn't be saved after the popover was closed still reads in alert", async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: [DUNE, NEUROMANCER] })
+    let release!: () => void
+    const held = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    await page.route(`**${SET_SPINE_COLOR}`, async (route) => {
+      await held
+      await route.fulfill({ status: 503, contentType: 'application/json', body: COULDNT_SAVE_BODY })
+    })
+    const sent = requestsTo(page, SET_SPINE_COLOR)
+    await page.goto(`${server.url}/catalog`)
+    await spine(page, DUNE_SPINE).click()
+    const card = popover(page, 'Dune')
+
+    await swatch(card, 'Teal').click()
+    await expect.poll(() => sent.length).toBe(1)
+    await page.keyboard.press('Escape')
+    await expect(card).toBeHidden()
+    release()
+
+    // The block is gone, so the reason is only an announcement (as Edit Purpose does).
+    await expect(page.getByRole('alert')).toHaveText(COULDNT_SAVE)
+  })
+
+  // On Book detail the refetched `missing` view can unmount the block before
+  // `sendIntent` resolves, so `pick` announces from its unmounted branch.
+  test('[P1] a pick refused on Book detail because the Book was deleted elsewhere still reads the refusal in alert after the block goes', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: [DUNE, NEUROMANCER] })
+    await page.goto(`${server.url}/book/${DUNE_ID}`)
+    const block = changeColor(page)
+    await expect(block).toBeVisible()
+    await deleteElsewhere(page, server.url, DUNE_ID)
+    const before = libraryBytes(server)
+
+    const answered = page.waitForResponse((response) => new URL(response.url()).pathname === SET_SPINE_COLOR)
+    await swatch(block, 'Teal').click()
+    expect((await answered).status()).toBe(409)
+
+    // The refetched view finds the Book missing, so the block goes; the refusal still reaches `alert`.
+    await expect(page.getByRole('alert')).toHaveText(BOOK_GONE)
+    await expect(block).toHaveCount(0)
+    expect(libraryBytes(server)).toBe(before)
   })
 
   test('[P1] AC-4 on Book detail with a cover, From cover comes first and is pressed; a swatch, then From cover, send their colors', async ({

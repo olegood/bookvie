@@ -29,7 +29,8 @@ export default function ChangeColor({ book, level, headingId }: Props) {
   // A pick while one is in flight is ignored even before anything renders.
   const inFlight = useRef(false)
   const mounted = useRef(true)
-  const failed = useRef(false)
+  // The last failure was a couldn't-save, not a refusal.
+  const couldntSave = useRef(false)
   // The saved pick, announced once the refetched view shows it pressed.
   const awaiting = useRef<string | null>(null)
   const [saved, setSaved] = useState(0)
@@ -41,7 +42,9 @@ export default function ChangeColor({ book, level, headingId }: Props) {
     return () => {
       mounted.current = false
       // A couldn't-save line must not outlive the block (the popover closing).
-      if (failed.current) clearAnnouncements()
+      // A refusal's refetch may be what removed the block (the Book deleted
+      // elsewhere): its message is still waiting to reach `alert`.
+      if (couldntSave.current) clearAnnouncements()
     }
   }, [])
 
@@ -56,18 +59,23 @@ export default function ChangeColor({ book, level, headingId }: Props) {
     inFlight.current = true
     // A pick whose refetch never showed it is not announced later.
     awaiting.current = null
-    failed.current = false
+    couldntSave.current = false
     clearAnnouncements()
     setFailure(null)
     const result = await sendColor(book.id, value === '' ? null : value)
     inFlight.current = false
-    if (!mounted.current) return
+    if (!mounted.current) {
+      // The block went before the answer (the Book was deleted elsewhere, or the
+      // user closed it): a pick that didn't save still says why in `alert`, as Edit Purpose does.
+      if (result.kind !== 'ok') announce('alert', result.message)
+      return
+    }
     if (result.kind === 'ok') {
       awaiting.current = value
       setSaved((count) => count + 1)
       return
     }
-    failed.current = true
+    couldntSave.current = result.kind !== 'refusal'
     setFailure(result.message)
     announce('alert', result.message)
   }
