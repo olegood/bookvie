@@ -58,6 +58,7 @@ def _shelf_book(library: Library, book: Book) -> ShelfBook:
         author_count=len(book.authors),
         authors=list(book.authors),
         pages=book.pages,
+        edition=book.edition,
         year=book.year,
         created_at=book.created_at,
         spine_color=book.spine_color,

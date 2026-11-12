@@ -74,3 +74,17 @@ def test_story_7_2_catalog_books_carry_type_language_and_tags(
         ("Candide", "ebook", "French", ["Classic", "satire"]),
         ("Flights", "hardcover", "Polish", []),
     ]
+
+
+def test_catalog_and_home_books_carry_the_edition(
+    tmp_path: Path, library_builder: LibraryBuilder
+) -> None:
+    """Twin spines are told apart by edition first, so both views carry it as stored."""
+    library_builder.book(title="Dune", authors=["Frank Herbert"], edition=1)
+    library_builder.book(title="Dune", authors=["Frank Herbert"], edition=2)
+    library_builder.write(tmp_path)
+
+    client = api_client(tmp_path, raise_server_exceptions=True)
+    for view in ("catalog", "home"):
+        body = client.get(f"/api/views/{view}").json()
+        assert [(b["title"], b["edition"]) for b in body["books"]] == [("Dune", 1), ("Dune", 2)]

@@ -888,6 +888,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-10-see-the-library-as-a-bookcase.md` (spine naming), seen in `epic-7-retro-2026-11-12.md` (Behavior verification, observation d)
   summary: Two editions with the same title and authors get identical spine names ("Dune by Frank Herbert, not read yet"), so a screen reader can't tell them apart on the bookcase. The List view and Book detail do tell them apart. One fix: when two shown spines share a name, add the edition or year to the name. Low.
   evidence: `frontend/src/lib/catalog.ts` `spineName` (`catalog.test.ts:202-217`); reproduced live in the Epic 7 retro's behavior check with Dune ed. 1 (hardcover, 412 pages) and ed. 2 (paperback, 500 pages).
+  resolved: `spec-spine-names-tell-editions-apart.md` (2026-11-12). The bookcase names twin spines (equal full names, over every Book, so the name is the same on Catalog under any search or filter and on Home) with "edition N", else the year, else "N pages" between the author part and the status. `ShelfBook` carries `edition`; `spineNames` in `frontend/src/lib/catalog.ts`; EXPERIENCE.md's Spine row states the rule.
 
 ## Deferred from: Epic 7 retro item 59, the browser decision (2026-11-12)
 
@@ -923,3 +924,12 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-last-page-finish-opens-for-the-saved-book.md`
   summary: The page field's last-page Finish has no other-dialog guard. If a Start or Pause dialog is opened while the save is in flight, the Finish dialog opens on top of it, and Home renders both. This predates the change, since the old `openFinish` also set `finishing` unconditionally. Item 36's start path drops its hand-off in that case. Low; found by reading, not reproduced.
   evidence: `frontend/src/pages/HomePage.tsx`: the item-36 block checks `otherDialog`, and the `lastPageSave` block does not.
+
+## Deferred from: build-auto review of spec-spine-names-tell-editions-apart (2026-11-12)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-spine-names-tell-editions-apart.md`
+  summary: Spine drift (AD-6), reconciled before the next epic: AD-6's list of client presentation rules doesn't name `lib/catalog` `spineNames` (twin spine names over every Book, so Catalog and Home agree whatever the search, filter or slice), and the FR-4 row of the Capability → Architecture Map doesn't list `ShelfBook.edition` next to `type`, `language` and `tags`.
+  evidence: Spine check of the build-auto review (2026-11-12); `ARCHITECTURE-SPINE.md` is unedited by the change; `frontend/src/pages/Bookcase.tsx` `spineNames(books)`, `backend/bookvie/views/models.py` `ShelfBook.edition`.
+- source_spec: `_bmad-output/implementation-artifacts/spec-spine-names-tell-editions-apart.md`
+  summary: The finish line and status ("Finished Dune."), the Spine popover heading and the Start dialog name a Book by title only, so two editions still sound alike there, although their spines are now told apart. Low.
+  evidence: `frontend/src/lib/catalog.ts` `finishLine` and `finishStatus` take only the title; pre-existing, outside the spine-name fix.

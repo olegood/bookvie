@@ -65,6 +65,14 @@ export interface NamedSpine extends ListedBook {
   sideRead: boolean
 }
 
+/** The fields of a catalog Book that tell twin spines apart (`spineNames`). */
+export interface TwinSpine extends NamedSpine {
+  id: string
+  edition: number
+  year: number | null
+  pages: number
+}
+
 /** The status part of a spine's name, from EXPERIENCE.md's Book states table. */
 function spineStatus(book: NamedSpine): string {
   const read = book.finished ? 'finished' : 'not read yet'
@@ -106,13 +114,53 @@ export function spineMarker(book: Pick<NamedSpine, 'role'>): SpineMarker | null 
  * Reading in progress, and "Up next, paused at page 120" ("finished, Up
  * next, paused at page 40") with a paused one. A Side read adds ", on the
  * side" after the status ("waiting for you, page 120, on the side").
+ * A `qualifier` ("edition 2", from `spineNames`) goes between the author
+ * part and the status; without one the name is exactly as above.
  */
-export function spineName(book: NamedSpine): string {
+export function spineName(book: NamedSpine, qualifier = ''): string {
   const others = book.authorCount - 1
   const more = others === 1 ? ' and 1 other' : others > 1 ? ` and ${others} others` : ''
   const by = book.firstAuthor === '' ? '' : ` by ${book.firstAuthor}${more}`
+  const told = qualifier === '' ? '' : `, ${qualifier}`
   const side = book.sideRead ? ', on the side' : ''
-  return `${book.title}${by}, ${spineStatus(book)}${side}`
+  return `${book.title}${by}${told}, ${spineStatus(book)}${side}`
+}
+
+const pageCount = new Intl.NumberFormat('en-GB')
+
+/** The fields that tell twins apart, in order: edition, else year, else pages. */
+const TIE_BREAKERS: { value: (book: TwinSpine) => number | null; words: (book: TwinSpine) => string }[] = [
+  { value: (book) => book.edition, words: (book) => `edition ${book.edition}` },
+  { value: (book) => book.year, words: (book) => (book.year === null ? 'no year' : String(book.year)) },
+  { value: (book) => book.pages, words: (book) => `${pageCount.format(book.pages)} pages` },
+]
+
+/**
+ * Every spine's accessible name, by Book id. Spines whose names would be
+ * equal (twins: same title, author part and status) are told apart in
+ * rounds, edition, then year, then pages: each group still equal whose
+ * members don't all share that field gets it appended ("Dune by Frank
+ * Herbert, edition 1, 1965, not read yet"). A spine with no twin keeps
+ * `spineName`'s name; twins equal in all three keep the same name. Pass the
+ * whole bookcase, so a name never depends on a search, a filter or a slice.
+ */
+export function spineNames(books: readonly TwinSpine[]): Map<string, string> {
+  const qualifiers = new Map<string, string[]>(books.map((book) => [book.id, []]))
+  const name = (book: TwinSpine) => spineName(book, qualifiers.get(book.id)!.join(', '))
+  for (const field of TIE_BREAKERS) {
+    const groups = new Map<string, TwinSpine[]>()
+    for (const book of books) {
+      const key = name(book)
+      const group = groups.get(key)
+      if (group) group.push(book)
+      else groups.set(key, [book])
+    }
+    for (const group of groups.values()) {
+      const values = new Set(group.map(field.value))
+      if (values.size > 1) for (const book of group) qualifiers.get(book.id)!.push(field.words(book))
+    }
+  }
+  return new Map(books.map((book) => [book.id, name(book)]))
 }
 
 /**

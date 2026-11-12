@@ -29,6 +29,8 @@ class ShelfBook(_View):
     author_count: int
     authors: list[str]
     pages: int
+    edition: int
+    """The Book's edition as stored; tells twin spines apart in their names."""
     year: int | None
     created_at: AwareDatetime
     spine_color: str

@@ -335,7 +335,9 @@ test.describe('Story 1.10 Bookcase view details (automate)', () => {
   }) => {
     const server = await seededServer({
       books: [
-        { title: 'Dune', authors: ['Frank Herbert'] },
+        // The same edition, year and pages as the copy added below, so both spines
+        // keep the plain name (twins differing in any of them are told apart).
+        { title: 'Dune', authors: ['Frank Herbert'], pages: 412 },
         { title: 'Neuromancer', authors: ['William Gibson'] },
       ],
     })

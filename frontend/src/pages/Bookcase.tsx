@@ -13,7 +13,7 @@ import { Link } from 'react-router'
 import type { LibraryMeter, ShelfBook } from '../api/index.ts'
 import SpinePopover from '../components/SpinePopover.tsx'
 import StartDialog from '../components/StartDialog.tsx'
-import { bookcaseName, finishLine, sliceName, spineMarker, spineName, type SpineMarker } from '../lib/catalog.ts'
+import { bookcaseName, finishLine, sliceName, spineMarker, spineNames, type SpineMarker } from '../lib/catalog.ts'
 import { nearestVisible, spineHeight } from '../lib/spine.ts'
 import { useFinishMoment, type FinishMoment } from '../lib/useFinishMoment.ts'
 import { useSliceRows } from '../lib/useSliceRows.ts'
@@ -155,6 +155,9 @@ export default function Bookcase(props: Props) {
     [shown, ids, books],
   )
   const visible = useMemo(() => new Set(visibleIds), [visibleIds])
+  // Named over every Book, shown or not, so a twin's name never changes with
+  // a search, a filter or the slice's rows.
+  const names = useMemo(() => spineNames(books), [books])
 
   const { spineMoment } = useFinishMoment({
     finishing,
@@ -257,7 +260,7 @@ export default function Bookcase(props: Props) {
         className={classes.join(' ')}
         style={style}
         tabIndex={book.id === stop ? 0 : -1}
-        aria-label={spineName(book)}
+        aria-label={names.get(book.id)}
         aria-haspopup="dialog"
         aria-expanded={book.id === openId ? 'true' : 'false'}
         onFocus={() => {

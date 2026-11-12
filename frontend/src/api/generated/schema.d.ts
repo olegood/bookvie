@@ -985,6 +985,8 @@ export interface components {
             authors: string[];
             /** Pages */
             pages: number;
+            /** Edition */
+            edition: number;
             /** Year */
             year: number | null;
             /**

@@ -34,6 +34,7 @@ import {
   shelfRows,
   look,
 } from './bookcase.ts'
+import { sliceSpines } from './home.ts'
 
 test.describe('Story 1.10 Bookcase view (ATDD)', () => {
   test.beforeEach(async ({ page }) => {
@@ -550,5 +551,42 @@ test.describe('Story 1.10 Bookcase view (ATDD)', () => {
     await expect(spines(page)).toHaveCount(3)
     await tabIntoBookcase(page)
     await expect(spine(page, `Blue Moon by ${author}, not read yet`)).toBeFocused()
+  })
+
+  test('[P1] twin editions get edition N in their spine names, on Catalog under a filter and on Home', async ({
+    page,
+    seededServer,
+  }) => {
+    const herbert = ['Frank Herbert']
+    const server = await seededServer({
+      books: [
+        { title: 'Dune', authors: herbert, edition: 1, type: 'hardcover', year: 1965, pages: 412 },
+        { title: 'Dune', authors: herbert, edition: 2, type: 'paperback', year: 1965, pages: 500 },
+        { title: 'Neuromancer', authors: ['William Gibson'] },
+      ],
+    })
+    const first = 'Dune by Frank Herbert, edition 1, not read yet'
+    const second = 'Dune by Frank Herbert, edition 2, not read yet'
+    const neuromancer = 'Neuromancer by William Gibson, not read yet'
+    await page.goto(`${server.url}/catalog`)
+
+    await expect(spines(page)).toHaveCount(3)
+    await expect(spine(page, first)).toBeVisible()
+    await expect(spine(page, second)).toBeVisible()
+    await expect(spine(page, neuromancer)).toBeVisible()
+
+    // Hardcover hides edition 2; the shown Dune keeps its qualifier.
+    const type = page.getByRole('main').getByRole('group', { name: 'Type', exact: true })
+    await type.getByRole('button', { name: 'Hardcover', exact: true }).click()
+    await expect(spines(page)).toHaveCount(1)
+    await expect(spine(page, first)).toBeVisible()
+
+    // Home's slice names the same Books the same way.
+    await page.goto(server.url)
+    const named = (name: string) => sliceSpines(page).and(page.getByRole('button', { name, exact: true }))
+    await expect(sliceSpines(page)).toHaveCount(3)
+    await expect(named(first)).toHaveCount(1)
+    await expect(named(second)).toHaveCount(1)
+    await expect(named(neuromancer)).toHaveCount(1)
   })
 })

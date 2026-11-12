@@ -14,9 +14,11 @@ import {
   sortBooks,
   spineMarker,
   spineName,
+  spineNames,
   tagSuggestions,
   type NamedSpine,
   type SortableBook,
+  type TwinSpine,
 } from './catalog.ts'
 import { CATALOG_SORTS } from './catalogSort.ts'
 
@@ -275,6 +277,119 @@ describe('spineName', () => {
       spineName({ ...paused, finished: true, currentPage: 40 }),
       'Dune by Frank Herbert, finished, Up next, paused at page 40',
     )
+  })
+})
+
+describe('spineNames', () => {
+  /** An unread Dune by Frank Herbert, edition 1, 1965, 412 pages, unless given. */
+  function twin(id: string, fields: Partial<TwinSpine> = {}): TwinSpine {
+    return {
+      id,
+      title: 'Dune',
+      firstAuthor: 'Frank Herbert',
+      authorCount: 1,
+      finished: false,
+      role: null,
+      currentPage: null,
+      percent: null,
+      waitingPage: null,
+      sideRead: false,
+      edition: 1,
+      year: 1965,
+      pages: 412,
+      ...fields,
+    }
+  }
+
+  const named = (books: TwinSpine[]) => [...spineNames(books).values()]
+
+  it('leaves a name with no twin exactly as spineName gives it', () => {
+    const books = [twin('a'), twin('b', { title: 'Neuromancer', firstAuthor: 'William Gibson', sideRead: true })]
+    assert.deepEqual(
+      named(books),
+      books.map((book) => spineName(book)),
+    )
+  })
+
+  it('tells editions apart', () => {
+    assert.deepEqual(named([twin('a'), twin('b', { edition: 2 })]), [
+      'Dune by Frank Herbert, edition 1, not read yet',
+      'Dune by Frank Herbert, edition 2, not read yet',
+    ])
+  })
+
+  it('tells the same edition apart by year, a missing one as "no year"', () => {
+    assert.deepEqual(named([twin('a'), twin('b', { year: 1984 })]), [
+      'Dune by Frank Herbert, 1965, not read yet',
+      'Dune by Frank Herbert, 1984, not read yet',
+    ])
+    assert.deepEqual(named([twin('a'), twin('b', { year: null })]), [
+      'Dune by Frank Herbert, 1965, not read yet',
+      'Dune by Frank Herbert, no year, not read yet',
+    ])
+  })
+
+  it('tells the same edition and year apart by pages, grouped en-GB', () => {
+    assert.deepEqual(named([twin('a'), twin('b', { pages: 1412 })]), [
+      'Dune by Frank Herbert, 412 pages, not read yet',
+      'Dune by Frank Herbert, 1,412 pages, not read yet',
+    ])
+  })
+
+  it('adds a year only to the twins one edition leaves equal', () => {
+    assert.deepEqual(named([twin('a'), twin('b', { year: 1984 }), twin('c', { edition: 2, year: 1990 })]), [
+      'Dune by Frank Herbert, edition 1, 1965, not read yet',
+      'Dune by Frank Herbert, edition 1, 1984, not read yet',
+      'Dune by Frank Herbert, edition 2, not read yet',
+    ])
+  })
+
+  it('skips a round that tells nobody apart and lets pages break the tie', () => {
+    assert.deepEqual(named([twin('a'), twin('b', { pages: 500 }), twin('c', { edition: 2 })]), [
+      'Dune by Frank Herbert, edition 1, 412 pages, not read yet',
+      'Dune by Frank Herbert, edition 1, 500 pages, not read yet',
+      'Dune by Frank Herbert, edition 2, not read yet',
+    ])
+  })
+
+  it('compares the author part: other authors are not twins, co-authored twins keep "and 1 other"', () => {
+    const books = [twin('a'), twin('b', { firstAuthor: 'Brian Herbert', edition: 2 }), twin('c', { authorCount: 2 })]
+    assert.deepEqual(
+      named(books),
+      books.map((book) => spineName(book)),
+    )
+    const omens = { title: 'Good Omens', firstAuthor: 'Terry Pratchett', authorCount: 2 }
+    assert.deepEqual(named([twin('a', omens), twin('b', { ...omens, edition: 2 })]), [
+      'Good Omens by Terry Pratchett and 1 other, edition 1, not read yet',
+      'Good Omens by Terry Pratchett and 1 other, edition 2, not read yet',
+    ])
+  })
+
+  it('adds nothing when the status already tells them apart', () => {
+    assert.deepEqual(named([twin('a', { finished: true }), twin('b', { edition: 2 })]), [
+      'Dune by Frank Herbert, finished',
+      'Dune by Frank Herbert, not read yet',
+    ])
+  })
+
+  it('keeps one name for twins equal in edition, year and pages', () => {
+    assert.deepEqual(named([twin('a'), twin('b')]), [
+      'Dune by Frank Herbert, not read yet',
+      'Dune by Frank Herbert, not read yet',
+    ])
+  })
+
+  it('puts the qualifier before the status and ", on the side" with no author', () => {
+    const anon = { firstAuthor: '', authorCount: 0, sideRead: true }
+    assert.deepEqual(named([twin('a', anon), twin('b', { ...anon, edition: 2 })]), [
+      'Dune, edition 1, not read yet, on the side',
+      'Dune, edition 2, not read yet, on the side',
+    ])
+    // A Side read and a plain one already differ: no qualifier.
+    assert.deepEqual(named([twin('a', { firstAuthor: '', authorCount: 0 }), twin('b', { ...anon, edition: 2 })]), [
+      'Dune, not read yet',
+      'Dune, not read yet, on the side',
+    ])
   })
 })
 
