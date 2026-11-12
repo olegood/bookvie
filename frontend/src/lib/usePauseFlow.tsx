@@ -1,8 +1,13 @@
 // Pause, from the Main book card's "⋯" menu or from Book detail
-// (EXPERIENCE.md → Pause). A press sends `pause` at once when the home view
-// has no Up next; with one, it opens the Confirm dialog, which states where
-// the displaced Up next goes first (FR-7). Either way the owner moves focus
-// and announces once the refetched views have rendered (`onPaused`).
+// (EXPERIENCE.md → Pause). A press first fetches the home view (a cached
+// copy may predate another tab's change of the Main book or Up next) and
+// decides from that: with an Up next, it opens the Confirm dialog, which
+// states where the displaced Up next goes first (FR-7); without one, or when
+// the Book isn't Main any more, it sends `pause` at once (a stale tab's
+// `not_main_book` refusal then takes the refusal path below). Nothing shows while
+// that fetch is out; when it fails, nothing is sent and the couldn't-save
+// line shows below the opener. Either way the owner moves focus and
+// announces once the refetched views have rendered (`onPaused`).
 //
 // A refusal from a stale tab (another tab already paused or finished the
 // Book) refetches views in which the Book isn't Main, so the opener goes.
@@ -10,7 +15,7 @@
 // line shows in the slot the owner renders below it.
 
 import { useEffect, useRef, useState, type ReactNode, type RefCallback, type RefObject } from 'react'
-import { useHomeView, usePause, type HomeUpNext } from '../api/index.ts'
+import { COULDNT_SAVE_MESSAGE, useFetchFreshHomeView, usePause, type HomeUpNext } from '../api/index.ts'
 import ConfirmDialog from '../components/ConfirmDialog.tsx'
 import { announce, clearAnnouncements } from './announce.ts'
 import { displacementLine, pauseHeading } from './pause.ts'
@@ -33,7 +38,7 @@ type Options = {
 }
 
 type PauseFlow = {
-  /** The opener's press: ignored until the home view is in, and while a request is out. */
+  /** The opener's press: ignored while its home view check or a request is out. */
   request: () => void
   /** A request is out on the immediate path (no dialog). */
   busy: boolean
@@ -60,7 +65,7 @@ type Confirming = { book: PauseBook; upNext: HomeUpNext }
 type Failure = { bookId: string; refused: boolean; moved: boolean }
 
 export function usePauseFlow({ book, opener, fallback, onPaused }: Options): PauseFlow {
-  const home = useHomeView()
+  const fetchHome = useFetchFreshHomeView()
   const sendPause = usePause()
   const [confirming, setConfirming] = useState<Confirming | null>(null)
   const [busy, setBusy] = useState(false)
@@ -68,6 +73,15 @@ export function usePauseFlow({ book, opener, fallback, onPaused }: Options): Pau
   const [showAlert, setShowAlert] = useState(false)
   const [failure, setFailure] = useState<Failure | null>(null)
   const { isInFlight, run } = useIntentRequest()
+  // The press's home view check is out: further presses are ignored, as in flight.
+  const checking = useRef(false)
+  const mounted = useRef(true)
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+    }
+  }, [])
   const fallbackRef = useRef(fallback)
   fallbackRef.current = fallback
   // Set when the dialog is cancelled, so focus returns to the opener once it has unmounted.
@@ -136,17 +150,39 @@ export function usePauseFlow({ book, opener, fallback, onPaused }: Options): Pau
     announce('alert', result.message)
   }
 
-  const request = () => {
-    if (isInFlight() || book === null || home.status !== 'ready') return
-    setFailure(null)
-    const upNext = home.data.upNext
-    // The Main book is never Up next, so any Up next is displaced.
-    if (upNext !== null && upNext.id !== book.id) {
-      setShowAlert(false)
-      setConfirming({ book, upNext })
+  const decide = async (pressed: PauseBook): Promise<void> => {
+    checking.current = true
+    const home = await fetchHome()
+    checking.current = false
+    if (!mounted.current) return
+    if (home === null) {
+      // Nothing was sent: say so below the opener with focus kept there.
+      setFailure({ bookId: pressed.id, refused: false, moved: false })
+      opener.current?.focus()
+      announce('alert', COULDNT_SAVE_MESSAGE)
       return
     }
-    void send(book, false)
+    const main = home.mainBook
+    // No longer Main: send anyway, so the server's refusal takes the stale-tab path.
+    if (main === null || main.id !== pressed.id) {
+      void send(pressed, false)
+      return
+    }
+    const target: PauseBook = { id: main.id, title: main.title, currentPage: main.currentPage, percent: main.percent }
+    const upNext = home.upNext
+    // The Main book is never Up next, so any Up next is displaced.
+    if (upNext !== null && upNext.id !== target.id) {
+      setShowAlert(false)
+      setConfirming({ book: target, upNext })
+      return
+    }
+    void send(target, false)
+  }
+
+  const request = () => {
+    if (isInFlight() || checking.current || book === null) return
+    setFailure(null)
+    void decide(book)
   }
 
   const cancel = () => {

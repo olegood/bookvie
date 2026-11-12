@@ -352,6 +352,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-epic-3-retro-item-22-stale-client-hand-offs.md`
   summary: The Start dialog's "This pauses *Y* at p.N (P%)." line reads `useHomeView()`, which can be a stale cached copy when the dialog opens from Book detail or Catalog after another tab changed the Main book. It should wait for a home view fetched after it opens, as it now does for the `book` view.
   evidence: `StartDialog.tsx` passes `home.data.mainBook` straight through. Only active views refetch after an intent (`api/intents.ts:53`), and the home view is inactive away from Home.
+  resolved: `spec-dialogs-wait-for-a-fresh-home-view.md` (2026-11-12); the Start dialog waits for a home view fetched after it opens (`useFreshHomeView`), with `e2e/stale-home-view.spec.ts` covering a Main book changed in a second browser context.
 
 ## Deferred from: review of spec-reconcile-architecture-spine-with-epic-3 (2026-11-06)
 
@@ -601,6 +602,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-epic-4-retro-item-38-reconcile-the-spine-with-epic-4.md`
   summary: The Start dialog's displacement line (`upNext.id`, `upNext.paused`) and the Pause Confirm dialog read the home view as cached, so a dialog opened away from Home after another tab changed Up next can name the wrong Up next. The Pause flow can also skip or show its Confirm wrongly. This widens the Epic 3 entry on the Start dialog's "This pauses *Y*…" line, which covers only `mainBook`. The intent still applies to the current state (A2), so only the copy is wrong. Low.
   evidence: `frontend/src/components/StartDialog.tsx` (`home.data.upNext`); `frontend/src/lib/usePauseFlow.tsx` `request()`. AD-7 records it as a known gap. The spine drift entries for 4.1 and 4.3 closed only the spine wording.
+  resolved: `spec-dialogs-wait-for-a-fresh-home-view.md` (2026-11-12); the Start dialog waits for a fresh home view (`useFreshHomeView`), and Pause fetches one on the press and decides its Confirm from it (`useFetchFreshHomeView`), with `e2e/stale-home-view.spec.ts` covering Up next set or removed in a second browser context.
 
 ## Deferred from: spec-epic-4-retro-item-41-split-book-detail-flows-into-hooks (2026-11-10)
 
@@ -904,3 +906,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-restore-refuses-dangling-covers-and-odd-book-fields.md`
   summary: `subtitle`, `isbn`, `year` and the spine-color fields can still hold values no intent produces (a blank or untrimmed subtitle or ISBN, a malformed ISBN or year, a non-hex color), and `check_invariants` accepts them at startup and restore. Rules in the same style (`book_subtitle_trimmed`, …) with startup and restore cases would close it. Low.
   evidence: `backend/bookvie/domain/book_fields.py` `parse_book_fields` stores subtitle and ISBN trimmed or null and checks the ISBN, Year and Spine color formats; `backend/bookvie/domain/invariants.py` checks none of them. Neither source entry of the spec listed these fields (Blind Hunter, Edge Case Hunter). The real library has no blank or untrimmed subtitle or ISBN (scan, 2026-11-12).
+
+## Deferred from: build-auto review of spec-dialogs-wait-for-a-fresh-home-view (2026-11-12)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-dialogs-wait-for-a-fresh-home-view.md`
+  summary: Spine drift (AD-7, AD-19), reconciled before the next epic: AD-7's "Dialogs read fresh views" bullet says only the `book` view is fetched after a dialog opens, and its known gap, like the Deferred section's "Stale confirmation guard" trigger, still says the Start and Pause dialogs read the cached home view. The code now waits for a fresh home view in the Start dialog and fetches one on Pause's press. Low.
+  evidence: `frontend/src/api/views.ts` (`useFreshHomeView`, `useFetchFreshHomeView`); `frontend/src/components/StartDialog.tsx`; `frontend/src/lib/usePauseFlow.tsx` (`decide`); Spine Check, build-auto review of this spec.

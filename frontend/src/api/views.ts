@@ -190,6 +190,38 @@ export function useFreshBookView(id: string): BookViewState {
   return toBookViewState(query)
 }
 
+/**
+ * The home view as fetched after the caller mounted: `loading` until then,
+ * even when an older copy is cached (it may predate another tab's change of
+ * the Main book or Up next), `failed` when that fetch fails. Later refetches
+ * still come through. For a dialog that names the Main book and Up next from
+ * its first render (`useFreshBookView`'s pattern).
+ */
+export function useFreshHomeView(): ViewState<HomeView> {
+  // 'always': refetch on mount even if a later default makes cached data count as fresh.
+  const query = useQuery({ queryKey: viewKey('home'), queryFn: () => fetchView('home'), refetchOnMount: 'always' })
+  if (!query.isFetchedAfterMount) return { status: 'loading' }
+  // A failed fetch keeps the cached copy as `data`; that copy is what this hook avoids.
+  if (query.status === 'error') return toViewState<HomeView>({ ...query, data: undefined })
+  return toViewState<HomeView>(query)
+}
+
+/**
+ * Fetches the home view now into the shared home cache (so Home shows it
+ * too) and resolves it, or `null` when the fetch fails. For a press that
+ * decides from the Main book and Up next as the server has them.
+ */
+export function useFetchFreshHomeView(): () => Promise<HomeView | null> {
+  const client = useQueryClient()
+  return async () => {
+    try {
+      return await client.fetchQuery({ queryKey: viewKey('home'), queryFn: () => fetchView('home'), staleTime: 0 })
+    } catch {
+      return null
+    }
+  }
+}
+
 /** A stats range: both ends inclusive, as local `YYYY-MM-DD` dates. */
 export interface DateRange {
   from: string

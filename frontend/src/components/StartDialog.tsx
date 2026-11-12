@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router'
 import {
   useFreshBookView,
-  useHomeView,
+  useFreshHomeView,
   useStartReading,
   type BookDetailView,
   type HomeMainBook,
@@ -41,9 +41,9 @@ type OpenProps = {
   book: BookDetailView
   /** The first `book` view fetched after opening: it decides Start or Resume and the prefill. */
   opened: BookDetailView
-  /** The home view's Main book: the trade-off line's title, page and percent (AD-6). */
+  /** The home view's Main book (fetched after opening, then kept current): the trade-off line's title, page and percent (AD-6). */
   mainBook: HomeMainBook | null
-  /** The home view's Up next: the displacement line's *Z*, and whether it is paused or a Side read. */
+  /** The home view's Up next (as `mainBook`): the displacement line's *Z*, and whether it is paused or a Side read. */
   upNext: HomeUpNext | null
   onCancel: () => void
 }
@@ -252,14 +252,19 @@ function OpenStartDialog({ book, opened, mainBook, upNext, onCancel }: OpenProps
  *
  * It reads the `book` and `home` views itself, so any opener (Book detail,
  * the spine popover, Home's Up next pane and empty Main book card) passes
- * only the Book's id; it shows once both are in.
+ * only the Book's id. It shows once both are in as fetched after it opened
+ * (nothing shows meanwhile), so its two lines never name a Main book or Up
+ * next another tab has changed since the opener's page cached them; a later
+ * home refetch still updates them. Either fetch failing cancels it silently.
  */
 export default function StartDialog({ bookId, onCancel }: Props) {
   // Fetched after opening, never a cached view of an earlier visit: another
   // tab or a restore may have paused or started it since (Start vs Resume,
   // the Purpose prefill).
   const book = useFreshBookView(bookId)
-  const home = useHomeView()
+  // Likewise the home view: a cached copy (Book detail, the Catalog) may name
+  // a Main book or Up next another tab has since changed.
+  const home = useFreshHomeView()
   // Fixed from the first fresh view: a later refetch never flips Start to Resume.
   const [atOpen, setAtOpen] = useState<BookDetailView | null>(null)
   if (atOpen === null && book.status === 'ready') setAtOpen(book.data)
