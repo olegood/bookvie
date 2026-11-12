@@ -837,3 +837,9 @@
   - AD-6's client presentation names only "catalog sort, using `Intl.Collator`". It doesn't record the four keys (Author, Title, Date added newest first, Pages fewest first), the tie-break chain (title, then `createdAt` older first as instants, then Book id by code unit), or that Home's slice packs its rows in the remembered Catalog sort before `slicePriority` picks them. AD-6's other client rules name their module and story; this one names none (`lib/catalog.ts` `sortBooks`, `lib/catalogSort.ts`, story 7.1).
   - The Seed's `frontend/src/lib/` line omits `catalogSort` (and, before this story, `catalog` and `catalogView`).
   evidence: `frontend/src/lib/catalog.ts` `sortBooks`, `PRIMARY`; `frontend/src/lib/catalogSort.ts`; `frontend/src/pages/HomePage.tsx` `HomeSlice`; `ARCHITECTURE-SPINE.md` AD-6 and Structural Seed (spine check, build-auto review of 7.1).
+
+## Deferred from: code review of spec-7-1-sort-my-catalog (2026-11-12)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-7-1-sort-my-catalog.md`
+  summary: Spine drift (AD-6, Structural Seed), reconciled before the next epic. The code review's spine check confirmed the entry above ("Deferred from: build-auto review of spec-7-1-sort-my-catalog") and found nothing new; reconcile both together.
+  evidence: Spine check, code review of 7.1 (2026-11-12): `ARCHITECTURE-SPINE.md` AD-6 and the Structural Seed's `frontend/src/lib/` line are unedited in `a7f8d76..6689ecc`.

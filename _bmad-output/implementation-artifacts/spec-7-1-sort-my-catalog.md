@@ -3,7 +3,7 @@ title: 'Story 7.1: Sort my catalog'
 type: 'feature'
 created: '2026-11-12'
 baseline_revision: 'a7f8d766a90928b3c1700aaaeea18f0866d6adb7'
-status: 'in-review'
+status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -94,6 +94,32 @@ deferred:
 - Given Title was chosen, when Catalog is loaded again and then Home is opened, then Title is checked, the spines are in Title order, and Home's one-row slice shows the five spines in Title order (ATDD AC-3).
 - Given "d" in Search titles, when Pages is chosen, then the four matching spines are in Pages order, the field still holds "d" and Emma stays hidden (ATDD AC-4).
 - Given junk in `bookvie.catalogSort`, or storage that throws, when Catalog loads, then Author is selected, and with throwing storage choosing Pages still reorders the spines.
+
+### Review Findings
+
+Code review 2026-11-12 (bmad-code-review): 22 raw findings from 5 layers (Blind Hunter, Edge Case Hunter, Verification Gap: none, Acceptance Auditor, Spine Check). After grouping: 1 decision-needed, 1 patch, 1 defer, 16 rejected.
+
+- [x] [Review][Patch] Titles and authors with numbers sort as text — `new Intl.Collator(undefined)` has no `numeric: true`, so "Volume 10" sorts before "Volume 2" under Title, Author and every title tie-break, on Catalog and on Home's slice. Decision (Oleg, 2026-11-12): sort numbers by value — pass `{ numeric: true }` and add a unit case. (blind-hunter) [frontend/src/lib/catalog.ts:20]
+- [x] [Review][Patch] README says the sort is "remembered on this computer", but it lives in `localStorage`, so it is per browser (epic context: "Sort is remembered per browser") [README.md:8]
+- [x] [Review][Defer] Spine drift (AD-6, Structural Seed): AD-6 records no sort keys, tie-break chain or the Home slice's use of the remembered sort; the Seed's `frontend/src/lib/` line omits `catalogSort` [ARCHITECTURE-SPINE.md AD-6] — deferred: spine drift, reconciled before the next epic; already recorded in `deferred-work.md` by the build-auto review (spine-check)
+
+**Rejected:**
+- `low` Home and a remounted Catalog fall back to Author when `setItem` throws, though Catalog re-sorted for the visit (blind-hunter+edge-case-hunter): real, but storage that throws is rare in a local app, the spec's "re-sorts for the visit" holds on Catalog, `catalogView` behaves the same, and the fix adds module-level state.
+- `low` A mounted Home or Catalog doesn't follow a sort changed in another tab; Home reads the sort once per mount (edge-case-hunter+acceptance-auditor): the spec task asks for a once-per-mount read; already rejected in the build-auto triage for the same reason (a `storage` listener for a rare case).
+- `low` Leading articles ("The", "A") aren't ignored under Title (blind-hunter): the spec says collator A–Z; stripping articles is new, locale-dependent behavior and a spec change.
+- `low` An empty author sorts first under Author (blind-hunter): the spec's I/O matrix states this order explicitly; changing it means editing the spec.
+- `low` `subtitle` isn't a tie-break (blind-hunter): the spec fixes the tie-break chain (title, `createdAt`, id); adding one means editing the spec.
+- `false` `catalogSort.test.ts` would miss a wrong read key (blind-hunter): the e2e AC-3 reload leaf writes through the UI and reads back after a reload, so a read/write key mismatch fails there. With `setItem` throwing, nothing can be written, so the test name holds.
+- `low` The Verification section's targeted Playwright command omits `catalog-empty` and `bookcase-details` (blind-hunter): the fix is a spec edit, and `npm run check` ran both.
+- `false` The bookcase's roving Tab stop stays on the last-focused Book after a sort change (blind-hunter): keeping the roving stop on the last-focused item is the standard roving-tabindex pattern, and the spec's Code Map says `Bookcase.tsx` needs no change.
+- `false` The select has no focus indicator in forced-colors mode (blind-hunter): the select doesn't suppress `outline`, so the global `:focus-visible` ring in `base.css` applies, and its forced-colors rule sets it to `Highlight`.
+- `low` The deferred record's `location` names only AD-6, and `deferred-work.md` mentions older Seed drift under the 7.1 heading (blind-hunter): the fix edits the spec's frontmatter; the `deferred-work.md` note is accurate context.
+- `false` `CATALOG_SORTS` and `CATALOG_SORT_LABELS` can be mutated at runtime (blind-hunter): no code mutates them, so the harm never happens.
+- `false` `bookcase-details.spec.ts` was edited outside the task list (acceptance-auditor): the toolbar-order constraint requires it, and the Auto Run Result records it.
+- `low` The storage-fault e2e leaves visit only Catalog, not Home (acceptance-auditor): Home goes through the same unit-tested `readCatalogSort`; it's listed as an automate follow-up.
+- `low` Nothing tests "a sort change alone announces nothing" (acceptance-auditor): `chooseSort` calls no `announce`; it's an automate follow-up in the ATDD checklist.
+- `false` `SortSelect.module.css` omits `.input`'s `aria-invalid` and `::placeholder` rules (acceptance-auditor): neither applies to a select that has no error state and no placeholder.
+- `false` The ascending `byCreatedAt` step after Date added is redundant (acceptance-auditor): it only runs when the primary returns 0, so it never changes the order.
 
 ## Spec Change Log
 

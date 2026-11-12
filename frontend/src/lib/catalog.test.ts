@@ -89,6 +89,16 @@ describe('sortBooks', () => {
     assert.deepEqual(titles(sortBooks(books, 'title')), ['and then', 'Éclipse', 'émile', 'Ulysses', 'Zazie'])
   })
 
+  it('sorts numbers in titles and authors by value, not as text', () => {
+    const books = [
+      book({ id: '1', title: 'Volume 10', firstAuthor: 'Author 10' }),
+      book({ id: '2', title: 'Volume 2', firstAuthor: 'Author 2' }),
+      book({ id: '3', title: 'Volume 1', firstAuthor: 'Author 1' }),
+    ]
+    assert.deepEqual(titles(sortBooks(books, 'title')), ['Volume 1', 'Volume 2', 'Volume 10'])
+    assert.deepEqual(titles(sortBooks(books, 'author')), ['Volume 1', 'Volume 2', 'Volume 10'])
+  })
+
   it('breaks a primary tie by title first', () => {
     const books = [
       book({ id: '1', title: 'Beta', pages: 200, createdAt: '2026-01-01T10:00:00+00:00' }),

@@ -17,7 +17,8 @@ export interface SortableBook extends ListedBook {
   createdAt: string
 }
 
-const collator = new Intl.Collator(undefined)
+// Numbers by value: "Volume 2" before "Volume 10".
+const collator = new Intl.Collator(undefined, { numeric: true })
 
 type Compare = (a: SortableBook, b: SortableBook) => number
 
@@ -36,7 +37,7 @@ const PRIMARY: Record<CatalogSortKey, Compare> = {
 
 /**
  * The Catalog order for `key` (FR-20); a new array. Author: first author
- * with `Intl.Collator`. Title: A–Z with the collator. Date added: newest
+ * with `Intl.Collator` (numbers by value). Title: A–Z with the collator. Date added: newest
  * `createdAt` first. Pages: fewest first. Every key then breaks ties by
  * title, then `createdAt` (older first), then Book id, so the order is
  * always stable.
