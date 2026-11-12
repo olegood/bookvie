@@ -18,6 +18,7 @@ import {
   viewToggle,
 } from './bookcase.ts'
 import { expect, test } from './fixtures.ts'
+import { DELETE_BOOK } from './intents.ts'
 
 // DESIGN.md `accent-soft`, light theme (#E3EBE2).
 const ACCENT_SOFT = 'rgb(227, 235, 226)'
@@ -796,5 +797,47 @@ test.describe('Story 7.2 Filter my catalog (ATDD)', () => {
         .analyze()
       expect(violations.map(({ id, nodes }) => `${colorScheme}: ${id} (${nodes.length})`)).toEqual([])
     }
+  })
+
+  test('[P1] XUI-E2E-002 Books deleted in another context leave the filtered shelf once Catalog regains focus, and a checked value no Book has any more stops counting', async ({
+    page,
+    browser,
+    seededServer,
+  }) => {
+    // Epic 7 trace (retro action 58): the filters must re-apply to the view's fresh data, not
+    // to a stored copy. No other test brings a real intent from elsewhere to a filtered Catalog.
+    const server = await seededServer({ books: FILTER_SHELF })
+    await page.goto(`${server.url}/catalog`)
+    await languageChip(page).click()
+    await page.getByRole('checkbox', { name: 'English', exact: true }).check()
+    await page.getByRole('checkbox', { name: 'Polish', exact: true }).check()
+    await page.keyboard.press('Escape')
+    await expect(languageChip(page)).toHaveText(/^Language: 2/)
+    await expect.poll(() => spineNames(bookcase(page))).toEqual([BLEAK_HOUSE, DUBLINERS, EMMA, FLIGHTS])
+
+    const otherContext = await browser.newContext()
+    try {
+      // Another context (the agent, or a second tab) deletes Emma and Flights, the only Polish Book.
+      for (const id of [bookId(6), bookId(3)]) {
+        const deleted = await otherContext.request.post(`${server.url}${DELETE_BOOK}`, {
+          multipart: { intent: JSON.stringify({ bookId: id }) },
+        })
+        expect(deleted.status()).toBe(200)
+      }
+    } finally {
+      await otherContext.close()
+    }
+
+    // This context regains focus and the catalog view refetches: the same filters apply to the new data.
+    await page.bringToFront()
+    await page.evaluate(() => window.dispatchEvent(new Event('focus')))
+    await expect.poll(() => spineNames(bookcase(page))).toEqual([BLEAK_HOUSE, DUBLINERS])
+    // Polish is gone from the library, so it no longer counts as checked.
+    await expect(languageChip(page)).toHaveText(/^Language: 1/)
+    await languageChip(page).click()
+    await expect.poll(() => checkboxNames(page)).toEqual(['English', 'French', 'German'])
+    await expect(page.getByRole('checkbox', { name: 'English', exact: true })).toBeChecked()
+    await expect(clearFilters(page)).toHaveCount(1)
+    await expect(page.getByRole('alert')).toHaveText('')
   })
 })

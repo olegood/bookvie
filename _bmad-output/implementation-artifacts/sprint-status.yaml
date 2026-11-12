@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-29-2026 17:21
-last_updated: 11-12-2026 13:55
+last_updated: 11-12-2026 14:06
 project: bookvie
 project_key: NOKEY
 tracking_system: file-system
@@ -623,7 +623,7 @@ action_items:
       `…/epic-7-gate-decision.json`, `…/epic-7-e2e-trace-summary.json`. Due: now,
       after action 57."
     owner: "Murat (TEA)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-7-retro-2026-11-12.md"
   - id: "epic-7-retro-item-59-write-down-the-browser-decision-where-bu"
     epic: 7

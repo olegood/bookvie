@@ -1,0 +1,164 @@
+{
+  "schema_version": "0.3.0",
+  "snapshot_at": "2026-11-12T13:06:22.000000Z",
+  "repo": "bookvie",
+  "collection_mode": "contract_static",
+  "collection_status": "COLLECTED",
+  "inventory_basis": "acceptance_criteria",
+  "gate_basis": "priority_thresholds",
+  "source_sha": "13f9ebeb17a1076d612b1c8676ee60776f07cd46",
+  "target": {
+    "type": "epic",
+    "id": "7",
+    "label": "Epic 7: Organize the catalog"
+  },
+  "decision_mode": "deterministic",
+  "evaluator": "Oleg",
+  "confidence": "high",
+  "oracle": {
+    "resolution_mode": "formal_requirements",
+    "confidence": "high",
+    "sources": [
+      "_bmad-output/test-artifacts/test-design-qa.md (ORG-E2E-001, ORG-E2E-002; Catalog sort and filter surfaces of XUI-E2E-002/005)",
+      "_bmad-output/planning-artifacts/epics.md (TR7 :154, Epic 7 gate, stories 7.1-7.2)",
+      "_bmad-output/implementation-artifacts/epic-7-retro-2026-11-12.md (action 58)",
+      "_bmad-output/test-artifacts/atdd-checklist-7-1, 7-2 (story ACs)"
+    ],
+    "external_pointer_status": "not_used",
+    "synthetic": false
+  },
+  "coverage": {
+    "inventory": {
+      "covered": 4,
+      "total": 4,
+      "pct": 100
+    },
+    "priority_breakdown": {
+      "P0": {
+        "total": 0,
+        "covered": 0,
+        "pct": 100
+      },
+      "P1": {
+        "total": 1,
+        "covered": 1,
+        "pct": 100
+      },
+      "P2": {
+        "total": 2,
+        "covered": 2,
+        "pct": 100
+      },
+      "P3": {
+        "total": 1,
+        "covered": 1,
+        "pct": 100
+      }
+    },
+    "by_level": {
+      "e2e": {
+        "tests": 37,
+        "criteria_covered": 4
+      },
+      "api": {
+        "tests": 2,
+        "criteria_covered": 1
+      },
+      "component": {
+        "tests": 0,
+        "criteria_covered": 0
+      },
+      "unit": {
+        "tests": 33,
+        "criteria_covered": 1
+      },
+      "live": {
+        "tests": 0,
+        "criteria_covered": 0
+      },
+      "other": {
+        "tests": 0,
+        "criteria_covered": 0
+      }
+    }
+  },
+  "tests": {
+    "files": 7,
+    "cases": 72,
+    "skipped_cases": 0,
+    "fixme_cases": 0,
+    "pending_cases": 0,
+    "note": "Counts the 2 Epic 7 backend tests (test_bookcase_view.py test_story_7_2_catalog_books_carry_type_language_and_tags; test_views.py test_seeded_library, extended), the unit files catalogSort.test.ts and catalogFilter.test.ts and the sortBooks block of catalog.test.ts, and the 2 Epic 7 e2e specs (catalog-sort, catalog-filter), including this trace's catalog-filter.spec.ts:802. ORG-E2E-002 maps to the Epic 3 tests home.spec.ts:155 and :326, not counted here. P0 has no Epic 7 scenario in test-design-qa.md, so its 0/0 is reported as 100% (n/a)."
+  },
+  "risk_summary": {
+    "critical_open": 0,
+    "high_open": 0,
+    "medium_open": 0,
+    "low_open": 4
+  },
+  "heuristics": {
+    "endpoint_gaps": 0,
+    "auth_negative_path_status": "not_applicable",
+    "error_path_status": "present",
+    "ui_journey_status": "not_applicable",
+    "ui_state_status": "not_applicable"
+  },
+  "live_evidence": {
+    "present": false,
+    "results_file": "_bmad-output/test-artifacts/live-verification-results.json",
+    "freshness": "not_present",
+    "recorded_source_sha": "",
+    "current_source_sha": "13f9ebeb17a1076d612b1c8676ee60776f07cd46",
+    "producer": "",
+    "counted": 0,
+    "stale": 0,
+    "unverifiable": 0,
+    "failed": 0,
+    "contradicted": 0,
+    "blocked": 0,
+    "skipped": 0,
+    "unmatched": 0,
+    "invalid": 0,
+    "requirements_live_only": 0
+  },
+  "blockers": [],
+  "rejected_evidence": [],
+  "recommendations": [
+    {
+      "priority": "LOW",
+      "action": "Retro action 60: refuse blank or untrimmed Language and Tag values (E7-R1)",
+      "requirements": [
+        "ORG-E2E-001"
+      ]
+    },
+    {
+      "priority": "LOW",
+      "action": "Retro action 59: write down the Chrome-only browser decision",
+      "requirements": []
+    },
+    {
+      "priority": "LOW",
+      "action": "Run /bmad-testarch-test-review on the Epic 7 suites",
+      "requirements": []
+    }
+  ],
+  "links": {
+    "trace_report_path": "_bmad-output/test-artifacts/traceability/epic-7-traceability-matrix.md",
+    "trace_report_url": "",
+    "artifact_url": "",
+    "journey_evidence_url": ""
+  },
+  "gate_status": "PASS",
+  "gate_criteria": {
+    "p0_coverage_required": "100%",
+    "p0_coverage_actual": "n/a (no P0 scenario)",
+    "p0_status": "MET",
+    "p1_coverage_target": "95%",
+    "p1_coverage_minimum": "80%",
+    "p1_coverage_actual": "100%",
+    "p1_status": "MET",
+    "overall_coverage_minimum": "80%",
+    "overall_coverage_actual": "100%",
+    "overall_status": "MET"
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "schema_version": "0.1.0",
+  "evaluated_at": "2026-11-12T13:06:22.000000Z",
+  "repo": "bookvie",
+  "target": {
+    "type": "epic",
+    "id": "7",
+    "label": "Epic 7: Organize the catalog"
+  },
+  "collection_status": "COLLECTED",
+  "gate_basis": "priority_thresholds",
+  "gate_status": "PASS",
+  "rationale": "No Epic 7 scenario is P0 (n/a), P1 coverage is 100% (TR7 target: 95%; workflow default 90%), and overall coverage is 100% (minimum: 80%). Epic 7 added no error code; every existing code keeps its API test. check:api is clean and the coverage gates hold (domain 100.00%, intents+store 98.06%). This trace added one e2e test (catalog-filter.spec.ts:802) for XUI-E2E-002 on the filtered Catalog, with two mutation checks and a 10x burn-in.",
+  "p0_status": "MET",
+  "p1_status": "MET",
+  "overall_status": "MET",
+  "critical_open": 0,
+  "links": {
+    "trace_report_path": "_bmad-output/test-artifacts/traceability/epic-7-traceability-matrix.md",
+    "trace_report_url": "",
+    "artifact_url": "",
+    "journey_evidence_url": ""
+  }
+}
