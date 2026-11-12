@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-29-2026 17:21
-last_updated: 12-11-2026 13:01
+last_updated: 11-12-2026 13:45
 project: bookvie
 project_key: NOKEY
 tracking_system: file-system
@@ -92,10 +92,10 @@ development_status:
   6-4-see-my-reading-month-by-month: done
   epic-6-retrospective: done
 
-  epic-7: in-progress
+  epic-7: done
   7-1-sort-my-catalog: done
   7-2-filter-my-catalog: done
-  epic-7-retrospective: optional
+  epic-7-retrospective: done
 action_items:
   - id: "epic-1-retro-item-1-run-an-epic-1-trace-and-gate-against-tr7"
     epic: 1
@@ -594,3 +594,59 @@ action_items:
     owner: "Oleg / bmad config"
     status: done
     ref: "_bmad-output/implementation-artifacts/epic-6-retro-2026-11-11.md"
+  - id: "epic-7-retro-item-57-reconcile-the-spine-with-epic-7-and-add"
+    epic: 7
+    action: "Reconcile the spine with Epic 7 and add a `resolved:` line to each entry
+      it closes: AD-6's client presentation gains the four sort keys (Author by first
+      author string, Title A–Z, Date added newest first, Pages fewest first), the
+      numeric collator, the tie-break chain (title, `createdAt` older first as instants,
+      Book id by code unit), that Home's slice packs rows in the remembered sort before
+      `slicePriority`, and the filter rules (OR within a group, AND across groups
+      and with Search titles, Read is finished, an untagged Book never matches a Tag
+      filter, checked values no Book has are ignored, filters are page state only,
+      the client builds the Language and Tag lists with a `toLocaleLowerCase` key
+      against the server's `casefold`) (`deferred-work.md:833`, `:841`, `:847`, `:853`);
+      the Structural Seed's `frontend/src/lib/` line gains `catalog`, `catalogView`,
+      `catalogSort`, `catalogFilter`, and an entry names `components/FilterChips`
+      and `SortSelect`; the FR-20 row of the Capability → Architecture Map names `lib/catalogSort`,
+      `lib/catalogFilter` and `components/FilterChips` (`:853`). Changes: `_bmad-output/planning-artifacts/architecture/architecture-bookvie-2026-10-29/ARCHITECTURE-SPINE.md`,
+      `_bmad-output/implementation-artifacts/deferred-work.md`. Due: now, before the
+      plan is called complete."
+    owner: "Winston (Architect), applied by Oleg"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-7-retro-2026-11-12.md"
+  - id: "epic-7-retro-item-58-run-the-epic-7-trace-and-gate-against-tr"
+    epic: 7
+    action: "Run the Epic 7 trace and gate against TR7 (P0 100%, P1 ≥ 95%, `check:api`
+      clean, coverage ≥ 90% `domain/` and ≥ 80% `intents/` + `store/`). This retro's
+      run already shows the coverage and `check:api` parts green. Changes: `_bmad-output/test-artifacts/traceability/epic-7-traceability-matrix.md`,
+      `…/epic-7-gate-decision.json`, `…/epic-7-e2e-trace-summary.json`. Due: now,
+      after action 57."
+    owner: "Murat (TEA)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-7-retro-2026-11-12.md"
+  - id: "epic-7-retro-item-59-write-down-the-browser-decision-where-bu"
+    epic: 7
+    action: "Write down the browser decision where builds and reviews read it: bookvie
+      supports desktop Chrome (Chromium) only, the e2e suite runs Chromium only, and
+      a finding that only Safari or Firefox would show is out of scope and rejected
+      with that reason unless Oleg reopens it. Cite the Epic 4 decision (`deferred-work.md:419`).
+      Note in `deferred-work.md` under 7.2 that `0383cbc`'s Safari intent stays unverified
+      and is kept because focus on click is also correct in Chromium. Changes: `AGENTS.md`,
+      `_bmad-output/planning-artifacts/ux-designs/ux-bookvie-2026-10-28/DESIGN.md`
+      (Viewport), `_bmad-output/implementation-artifacts/deferred-work.md`. Due: now."
+    owner: "Oleg / bmad config"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-7-retro-2026-11-12.md"
+  - id: "epic-7-retro-item-60-keep-blank-and-padded-language-and-tag-v"
+    epic: 7
+    action: "Keep blank and padded Language and Tag values out of the filter lists:
+      refuse an empty or untrimmed `language` or tag in `domain/invariants.py` (so
+      a restore of such a file is refused like any other invariant break, and Book
+      detail is covered too), with a pytest case per field; and have `filterValues`
+      skip an empty key as a guard, with a unit case. Changes: `backend/bookvie/domain/invariants.py`,
+      `backend/tests/test_invariants.py`, `frontend/src/lib/catalogFilter.ts`, `frontend/src/lib/catalogFilter.test.ts`.
+      Due: now, before the plan is called complete."
+    owner: "Amelia (Dev)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-7-retro-2026-11-12.md"
