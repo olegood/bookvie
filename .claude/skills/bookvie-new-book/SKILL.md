@@ -1,6 +1,13 @@
 ---
 name: bookvie-new-book
-description: Add a new book to the user's bookvie catalog (the local app at http://127.0.0.1:8765/). Starts the `bookvie` server, checks the catalog for the book first, looks up the book's metadata and front cover on amazon.com, manning.com, leanpub.com or oreilly.com, saves it with bookvie's add-book API call, tags it `added-by-skill`, and reports the result in the terminal. Use this whenever the user asks to add, catalog, log or record a book in their catalog or library, says they need to add a book to bookvie, pastes a book link from one of those sites, or names a book and says they bought or got it, even if they don't mention bookvie.
+description: >
+  Add a new book to the user's bookvie catalog (the local app at http://127.0.0.1:8765/). 
+  Starts the `bookvie` server, checks the catalog for the book first, 
+  looks up the book's metadata and front cover on amazon.com, manning.com, leanpub.com or oreilly.com, 
+  saves it with bookvie's add-book API call, tags it `added-by-skill`, and reports the result in the terminal. 
+  Use this whenever the user asks to add, catalog, log or record a book in their catalog or library, 
+  says they need to add a book to bookvie, pastes a book link from one of those sites, 
+  or names a book and says they bought or got it, even if they don't mention bookvie.
 metadata:
   version: 2.0.0
 ---

@@ -1,6 +1,11 @@
 ---
 name: bookvie-notes-summary
-description: Turn the card notes of any book in the user's bookvie catalog into a printable one-page Word (.docx) summary of what they learned from it. The book can be in progress, paused, a side read or finished: the user names it by title (or author), and when they don't, the current Main book is used. The book must have a reading purpose and at least one card note. Reads the book and its notes from the local bookvie app (http://127.0.0.1:8765/), read-only, groups the notes by theme into short takeaways without page numbers, builds the .docx, checks how it renders and saves it to ~/Documents. Use this whenever the user asks to summarize, recap, digest or print their card notes, highlights or "what I learned" from a book in bookvie, or wants a handout or study sheet from their reading notes, even if they don't say "Word" or "bookvie".
+description: >
+  Turn the card notes of any book in the user's bookvie catalog into a printable one-page Word (.docx) summary of what they learned from it.
+  The book can be in progress, paused, a side read or finished: the user names it by title (or author), and when they don't, the current Main book is used.
+  The book must have a reading purpose and at least one card note.
+  Reads the book and its notes from the local bookvie app (http://127.0.0.1:8765/), read-only, groups the notes by theme into short takeaways without page numbers, builds the .docx, checks how it renders and saves it to ~/Documents.
+  Use this whenever the user asks to summarize, recap, digest or print their card notes, highlights or "what I learned" from a book in bookvie, or wants a handout or study sheet from their reading notes, even if they don't say "Word" or "bookvie".
 metadata:
   version: 1.1.0
 ---
