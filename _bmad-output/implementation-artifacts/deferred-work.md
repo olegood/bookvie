@@ -837,24 +837,28 @@
   - AD-6's client presentation names only "catalog sort, using `Intl.Collator`". It doesn't record the four keys (Author, Title, Date added newest first, Pages fewest first), the tie-break chain (title, then `createdAt` older first as instants, then Book id by code unit), or that Home's slice packs its rows in the remembered Catalog sort before `slicePriority` picks them. AD-6's other client rules name their module and story; this one names none (`lib/catalog.ts` `sortBooks`, `lib/catalogSort.ts`, story 7.1).
   - The Seed's `frontend/src/lib/` line omits `catalogSort` (and, before this story, `catalog` and `catalogView`).
   evidence: `frontend/src/lib/catalog.ts` `sortBooks`, `PRIMARY`; `frontend/src/lib/catalogSort.ts`; `frontend/src/pages/HomePage.tsx` `HomeSlice`; `ARCHITECTURE-SPINE.md` AD-6 and Structural Seed (spine check, build-auto review of 7.1).
+  resolved: spine reconciliation with Epic 7 (Epic 7 retro item 57, 2026-11-12). AD-6's catalog sort bullet records the four keys, the numeric collator, the tie-break chain (title, `createdAt` older first as instants, Book id by code unit), the remembered choice (AD-15) and Home's slice packing its rows in it before `slicePriority`, naming `lib/catalog.ts` `sortBooks`, `lib/catalogSort.ts`, `components/SortSelect.tsx` and story 7.1. The Seed's `lib/` line names `catalog`, `catalogSort` and `catalogView`.
 
 ## Deferred from: code review of spec-7-1-sort-my-catalog (2026-11-12)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-7-1-sort-my-catalog.md`
   summary: Spine drift (AD-6, Structural Seed), reconciled before the next epic. The code review's spine check confirmed the entry above ("Deferred from: build-auto review of spec-7-1-sort-my-catalog") and found nothing new; reconcile both together.
   evidence: Spine check, code review of 7.1 (2026-11-12): `ARCHITECTURE-SPINE.md` AD-6 and the Structural Seed's `frontend/src/lib/` line are unedited in `a7f8d76..6689ecc`.
+  resolved: with the entry above (Epic 7 retro item 57, 2026-11-12).
 
 ## Deferred from: build-auto review of spec-7-2-filter-my-catalog (2026-11-12)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-7-2-filter-my-catalog.md`
   summary: Spine drift (AD-6, Structural Seed), reconciled before the next epic. AD-6's client presentation says only "filter chips". It doesn't record the rules (OR within a group, AND across groups and with Search titles, Read is `finished`, an untagged Book never matches a Tag filter, checked values no Book has are ignored), that the client builds the Language and Tag value lists itself with a `toLocaleLowerCase` key (the server's `merge_tags` uses `casefold`, so ß/SS pairs can differ), or that filters are page state only. The Seed's `frontend/src/lib/` line omits `catalogFilter`, and no entry names `components/FilterChips`.
   evidence: `frontend/src/lib/catalogFilter.ts` (`filterKey`, `filterValues`, `matchesFilters`, `liveFilters`); `frontend/src/components/FilterChips.tsx`; `backend/bookvie/domain/book_fields.py` `merge_tags`; `ARCHITECTURE-SPINE.md` AD-6 and Structural Seed (spine check, build-auto review of 7.2).
+  resolved: spine reconciliation with Epic 7 (Epic 7 retro item 57, 2026-11-12). AD-6's filter chips bullet records the rules (OR within a group, AND across groups and with Search titles, Read is `finished`, an untagged Book never matches a Tag filter, checked values no Book has are ignored), the client-built value lists with their `toLocaleLowerCase` key against `merge_tags`' `casefold`, and filters as page state only that never reach Home's slice or the meter, naming `lib/catalogFilter.ts`, `components/FilterChips.tsx` and story 7.2. The Seed's `lib/` line names `catalogFilter`, and its `components/` comment names `FilterChips` and `SortSelect`.
 
 ## Deferred from: code review of spec-7-2-filter-my-catalog (2026-11-12)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-7-2-filter-my-catalog.md`
   summary: Spine drift (AD-6, Structural Seed), reconciled before the next epic. The code review's spine check confirmed the entry above ("Deferred from: build-auto review of spec-7-2-filter-my-catalog"). It also found that the FR-20 row of the Capability → Architecture Map says only "client presentation" and names neither `lib/catalogFilter` nor `components/FilterChips`, while the FR-15 and FR-16 rows name their modules. Reconcile both together.
   evidence: Spine check, code review of 7.2 (2026-11-12): `ARCHITECTURE-SPINE.md` AD-6, the Structural Seed's `frontend/src/lib/` line and the FR-20 map row are unedited in `a63cd01..7d8ce92`.
+  resolved: with the build-auto entry above (Epic 7 retro item 57, 2026-11-12). The FR-4, FR-20, FR-24 row of the Capability → Architecture Map names `lib/catalog`, `lib/catalogSort`, `lib/catalogFilter`, `components/SortSelect`, `components/FilterChips` and `pages/CatalogPage`, and `ShelfBook`'s filter fields.
 - source_spec: `_bmad-output/implementation-artifacts/spec-7-2-filter-my-catalog.md`
   summary: Test gaps for the automate step. (1) No e2e test seeds a Language or Tag value whose spellings differ only by case, so nothing checks end to end that the list shows one checkbox with the library-first spelling and that checking it matches both Books. (2) No e2e test checks that focus falls back to Search titles when the filters hide every spine while a spine has focus (the ATDD checklist's green-phase "AC-6 none remain" item).
   evidence: `frontend/src/pages/CatalogPage.tsx` `languages`/`tags` memos; `frontend/src/pages/Bookcase.tsx` `visibleIds`; `frontend/e2e/catalog-filter.spec.ts` (`FILTER_SHELF` has no values that differ only by case).
