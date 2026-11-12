@@ -460,6 +460,24 @@ def test_a_library_on_disk_with_a_card_note_no_intent_can_produce_refuses_startu
     )
 
 
+@pytest.mark.parametrize(
+    ("fields", "message"),
+    [
+        ({"language": " "}, "Book book-0 has no language"),
+        ({"language": "English "}, "Book book-0 has a language with whitespace around it"),
+        ({"tags": ["novel", ""]}, "Book book-0 has a blank tag"),
+        ({"tags": [" novel"]}, "Book book-0 has a tag with whitespace around it"),
+    ],
+)
+def test_a_library_on_disk_with_a_language_or_tag_no_intent_can_produce_refuses_startup(
+    tmp_path: Path, fields: dict, message: str
+) -> None:
+    """Epic 7 retro item 60: such a value would show as an unnamed or doubled filter checkbox."""
+    builder = LibraryBuilder()
+    builder.book(id="book-0", **fields)
+    _refused(tmp_path, serialize(builder.build()), f"breaks a library rule: {message}")
+
+
 def test_unwritable_data_dir_is_refused(tmp_path: Path) -> None:
     data_dir = tmp_path / "data"
     data_dir.mkdir()

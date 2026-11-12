@@ -43,13 +43,15 @@ export function filterKey(value: string): string {
 
 /**
  * Each value once, ignoring case, keeping the first spelling in `values`'
- * order (library order), sorted with the Catalog's `Intl.Collator`.
+ * order (library order), sorted with the Catalog's `Intl.Collator`. A blank
+ * value is skipped, since its checkbox would have no name. The server refuses
+ * one (AD-18), so this is only a guard.
  */
 export function filterValues(values: Iterable<string>): FilterValue[] {
   const byKey = new Map<string, FilterValue>()
   for (const label of values) {
     const key = filterKey(label)
-    if (!byKey.has(key)) byKey.set(key, { key, label })
+    if (key.trim() !== '' && !byKey.has(key)) byKey.set(key, { key, label })
   }
   return [...byKey.values()].sort((a, b) => collator.compare(a.label, b.label))
 }

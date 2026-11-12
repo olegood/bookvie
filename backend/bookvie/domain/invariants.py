@@ -74,6 +74,23 @@ def check_invariants(library: Library) -> None:
         )
 
     for book in library.books:
+        # add-book and edit-book store the language and each tag with str.strip() applied,
+        # the language required and empty tags dropped; Catalog's filter lists show them as is.
+        if not book.language.strip():
+            raise InvariantViolation("book_language_required", f"Book {book.id} has no language")
+        if book.language != book.language.strip():
+            raise InvariantViolation(
+                "book_language_trimmed",
+                f"Book {book.id} has a language with whitespace around it",
+            )
+        for tag in book.tags:
+            if not tag.strip():
+                raise InvariantViolation("book_tag_required", f"Book {book.id} has a blank tag")
+            if tag != tag.strip():
+                raise InvariantViolation(
+                    "book_tag_trimmed", f"Book {book.id} has a tag with whitespace around it"
+                )
+
         unfinished = [r for r in book.readings if not r.finished]
         if len(unfinished) > 1:
             raise InvariantViolation(

@@ -593,6 +593,31 @@ def test_a_card_note_no_intent_can_produce_is_422_restore_invalid(
     assert logged in err
 
 
+@pytest.mark.parametrize(
+    ("fields", "logged"),
+    [
+        ({"language": " "}, "has no language"),
+        ({"language": "English "}, "has a language with whitespace around it"),
+        ({"tags": ["science fiction", ""]}, "has a blank tag"),
+        ({"tags": ["science fiction "]}, "has a tag with whitespace around it"),
+    ],
+)
+def test_a_language_or_tag_no_intent_can_produce_is_422_restore_invalid(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], fields: dict, logged: str
+) -> None:
+    """Epic 7 retro item 60 (E7-R1): restore refuses these, and the library is unchanged."""
+    doc, dune_cover = _source_doc(tmp_path)
+    next(book for book in doc["books"] if book["id"] == DUNE_ID).update(fields)
+    target = tmp_path / "target"
+    _seed_target(target)
+
+    archive = _source_with(doc, {DUNE_COVER: dune_cover})
+    _assert_refused_and_unchanged(api_client(target), target, archive)
+    err = capsys.readouterr().err
+    assert "breaks a library rule" in err
+    assert logged in err
+
+
 def test_the_unbroken_card_note_source_restores(tmp_path: Path) -> None:
     """The control for the refusals above: the same hand-made archive, untouched, restores."""
     doc, dune_cover = _source_doc(tmp_path)

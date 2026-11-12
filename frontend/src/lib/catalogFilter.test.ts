@@ -88,6 +88,10 @@ describe('filterValues', () => {
     )
   })
 
+  it('skips a blank value, which would give a checkbox with no name', () => {
+    assert.deepEqual(filterValues(['', 'English', '  ']), [{ key: 'english', label: 'English' }])
+  })
+
   it('does not mutate its input', () => {
     const values = ['b', 'a']
     filterValues(values)

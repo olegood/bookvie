@@ -199,6 +199,49 @@ def test_card_note_page_end_equal_to_its_start_fails(library_builder: LibraryBui
     _fails(library_builder, "card_note_page_end_after_start")
 
 
+# --- a Book's language and tags are non-blank and trimmed ------------------
+
+
+@pytest.mark.parametrize("language", ["", "   ", "\n\t "])
+def test_blank_language_fails(library_builder: LibraryBuilder, language: str) -> None:
+    library_builder.book(language=language)
+    _fails(library_builder, "book_language_required")
+
+
+@pytest.mark.parametrize("language", [" English", "English ", "English\n", "\u00a0English"])
+def test_untrimmed_language_fails(library_builder: LibraryBuilder, language: str) -> None:
+    library_builder.book(language=language)
+    _fails(library_builder, "book_language_trimmed")
+
+
+@pytest.mark.parametrize("tag", ["", "   ", "\t"])
+def test_blank_tag_fails(library_builder: LibraryBuilder, tag: str) -> None:
+    library_builder.book(tags=["novel", tag])
+    _fails(library_builder, "book_tag_required")
+
+
+@pytest.mark.parametrize("tag", [" novel", "novel ", "novel\n", "\u00a0novel"])
+def test_untrimmed_tag_fails(library_builder: LibraryBuilder, tag: str) -> None:
+    library_builder.book(tags=[tag])
+    _fails(library_builder, "book_tag_trimmed")
+
+
+@pytest.mark.parametrize(
+    ("language", "tags"),
+    [
+        ("English", []),
+        ("Brazilian Portuguese", ["science fiction", "to read"]),
+        ("de", ["Klassiker"]),
+    ],
+)
+def test_trimmed_language_and_tags_pass(
+    library_builder: LibraryBuilder, language: str, tags: list[str]
+) -> None:
+    """Inner spaces are kept, as the intents keep them; a Book may have no tags."""
+    library_builder.book(language=language, tags=tags)
+    _passes(library_builder)
+
+
 # --- card-note text is non-blank and trimmed -------------------------------
 
 
