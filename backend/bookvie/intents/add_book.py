@@ -20,7 +20,7 @@ import uuid
 
 from bookvie.domain import Book, Clock, Library
 from bookvie.domain.duplicates import find_duplicates
-from bookvie.domain.spine_color import curated_spine_color, resolve_spine_color
+from bookvie.domain.spine_color import next_curated_spine_color, resolve_spine_color
 from bookvie.store import Store
 
 from .book_form import (
@@ -63,7 +63,9 @@ def add_book(
     def change(library: Library) -> None:
         # Inside the commit, so the check sees committed state under the store lock.
         refuse_duplicates(find_duplicates(library.books, fields), intent.confirm_duplicate)
-        curated = curated_spine_color(len(library.books))
+        # library.books is in creation order (add appends; delete and edit keep order).
+        last = library.books[-1].spine_color_curated if library.books else None
+        curated = next_curated_spine_color(last)
         readings = []
         if fields.finished_on is not None:
             readings.append(backfill_reading(reading_id, fields.finished_on, fields.pages))

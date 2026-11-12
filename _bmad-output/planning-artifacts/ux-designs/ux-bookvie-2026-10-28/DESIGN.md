@@ -431,7 +431,7 @@ Read spines use the book's own color, identical in both themes. Precedence, high
 
 **Cover rule.** Computed once when a cover is added or replaced, then stored on the Book. Downscale the cover to about 64px, ignore near-neutral pixels (HSL saturation < 0.15, or lightness < 0.10 or > 0.90), group the rest into 24 hue bins, and take the average color of the fullest bin: the dominant non-neutral color. Soften it by capping HSL saturation at 0.45. The result is used as is (no lightness change). A cover with no non-neutral pixels (black-and-white) falls back to the curated color.
 
-**Curated rule.** A curated color is assigned when the Book is created (cycling through the eight in order) and stored on the Book, so it survives export and restore and never changes between visits.
+**Curated rule.** A curated color is assigned when the Book is created and stored on the Book, so it survives export and restore and never changes between visits. The new Book takes the color after the last Book's curated color (the most recently created Book still in the library) in the order of the eight, wrapping from Stone to Sage. The first Book takes Sage, and so does a new Book whose last Book's curated color isn't one of the eight. So a new Book's curated color never repeats the one created just before it, even after a delete; deleting the most recent Book frees its color for the next.
 
 **Exact color.** Every read spine shows its color exactly — user-set, cover-derived, or curated. No lightness nudge, no clamp: a pale yellow the user picks is shown pale yellow, a near-black is shown near-black. The stored value is the color itself; the hex field shows it. Accessibility never depends on the fill; it comes from two fixed parts drawn on every read spine:
 

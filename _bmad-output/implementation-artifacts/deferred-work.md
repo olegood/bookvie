@@ -165,6 +165,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-epic-1-trace-and-gate.md`
   summary: Rotate the curated spine color from the last Book's curated color, not `len(library.books)`, and add a test that deletes a Book before an add (retro F-R4).
   evidence: `backend/bookvie/intents/add_book.py:65` passes the Book count, which shrinks on delete, so the next new Book can repeat a neighbour's color. `backend/tests/test_add_book.py:523` pins the count only on a library that already has Books. The retro deferred F-R4 but never recorded it here; the Story 1.7 checklist line is retired to this entry. Low, cosmetic.
+  resolved: `_bmad-output/implementation-artifacts/spec-curated-color-follows-the-last-book.md` (add-book follows the last Book's curated color; delete-then-add tests in `backend/tests/test_add_book.py`).
 - source_spec: `_bmad-output/implementation-artifacts/spec-epic-1-trace-and-gate.md`
   summary: Add an on-load animation guard (`document.getAnimations()` is empty right after load) once something animates, with Epic 3's finish fill.
   evidence: Story 1.6 checklist (AC-14 and the AC-10 follow-up) planned it; no test exists at `06014dc`. Today the only animation is the popover fade, which runs on user action. Low.

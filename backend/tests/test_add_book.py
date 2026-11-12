@@ -33,6 +33,7 @@ from tests.helpers import (
     ADD_BOOK,
     BASE_URL,
     COULDNT_SAVE_BODY,
+    DELETE_BOOK,
     TODAY,
     VALID,
     FaultyFs,
@@ -516,14 +517,73 @@ def test_dst_day_today_keeps_its_local_date(data_dir: Path, day: date) -> None:
     assert _add(client, finishedOn=tomorrow).status_code == 422
 
 
-def test_curated_rotation_counts_existing_books(tmp_path: Path) -> None:
+def test_curated_rotation_follows_the_last_book(tmp_path: Path) -> None:
     builder = LibraryBuilder()
-    for _ in range(3):
-        builder.book()
+    builder.book()
+    builder.book(spine_color_curated=CURATED[5])  # Teal; the count would give Clay
     builder.write(tmp_path)
     response = _add(api_client(tmp_path))
     book = stored_book(tmp_path, response.json()["ids"]["bookId"])
-    assert book["spineColorCurated"] == CURATED[3]
+    assert book["spineColorCurated"] == CURATED[6]  # Moss
+
+
+def _delete(client: TestClient, book_id: str):
+    intent = {"bookId": book_id}
+    return client.post(
+        DELETE_BOOK, files={"intent": (None, json.dumps(intent), "application/json")}
+    )
+
+
+def _added_curated(data_dir: Path, client: TestClient) -> str:
+    response = _add(client, title="The New One")
+    assert response.status_code == 200
+    return stored_book(data_dir, response.json()["ids"]["bookId"])["spineColorCurated"]
+
+
+def test_deleting_a_middle_book_never_repeats_a_neighbours_color(tmp_path: Path) -> None:
+    builder = LibraryBuilder()
+    ids = [builder.book() for _ in range(3)]  # Sage, Slate, Clay
+    builder.write(tmp_path)
+    client = api_client(tmp_path)
+    assert _delete(client, ids[1]).status_code == 200  # Slate
+    assert _added_curated(tmp_path, client) == CURATED[3]  # Ochre, not Clay again
+
+
+def test_deleting_the_last_book_follows_the_new_last_book(tmp_path: Path) -> None:
+    builder = LibraryBuilder()
+    ids = [builder.book() for _ in range(3)]  # Sage, Slate, Clay
+    builder.write(tmp_path)
+    client = api_client(tmp_path)
+    assert _delete(client, ids[2]).status_code == 200  # Clay
+    assert _added_curated(tmp_path, client) == CURATED[2]  # Clay, after Slate
+
+
+@pytest.mark.parametrize(
+    "own_color",
+    [{"spine_color_user": "#1A2B3C"}, {"spine_color_from_cover": "#A85A4A"}],
+    ids=["user-color", "cover-color"],
+)
+def test_a_custom_color_on_the_last_book_doesnt_change_the_rotation(
+    tmp_path: Path, own_color: dict[str, str]
+) -> None:
+    builder = LibraryBuilder()
+    builder.book(spine_color_curated=CURATED[4], **own_color)  # Plum
+    builder.write(tmp_path)
+    assert _added_curated(tmp_path, api_client(tmp_path)) == CURATED[5]  # Teal
+
+
+@pytest.mark.parametrize(
+    ("last_curated", "expected"),
+    [("#123456", CURATED[0]), (CURATED[1].lower(), CURATED[2])],
+    ids=["unknown-starts-at-sage", "lower-case-slate-gives-clay"],
+)
+def test_the_last_books_curated_color_is_matched_without_case(
+    tmp_path: Path, last_curated: str, expected: str
+) -> None:
+    builder = LibraryBuilder()
+    builder.book(spine_color_curated=last_curated)
+    builder.write(tmp_path)
+    assert _added_curated(tmp_path, api_client(tmp_path)) == expected
 
 
 def test_a_broken_library_rule_on_add_is_500_and_commits_nothing(

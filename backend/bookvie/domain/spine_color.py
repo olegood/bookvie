@@ -1,7 +1,7 @@
 """Spine colors: the curated rotation, the ``#RRGGBB`` rule, and which color a new Book gets.
 
-Pure. A Book's spine color is the user's, else the cover's, else the next
-curated color in rotation by the Book count (AD-11).
+Pure. A Book's spine color is the user's, else the cover's, else its curated
+color: the palette color after the last Book's curated color (AD-11).
 """
 
 import re
@@ -28,9 +28,17 @@ def is_hex_color(value: str) -> bool:
     return _HEX_COLOR.fullmatch(value) is not None
 
 
-def curated_spine_color(book_count: int) -> str:
-    """The curated color of the next Book, in rotation by the Book count."""
-    return CURATED_SPINE_COLORS[book_count % len(CURATED_SPINE_COLORS)]
+def next_curated_spine_color(last: str | None) -> str:
+    """The curated color after ``last`` (the last Book's curated color), wrapping.
+
+    Sage when there is no last Book or its curated color isn't in the palette.
+    The match ignores letter case. Following the last Book, not the Book count,
+    means deleting a Book never makes the next one repeat a neighbour's color.
+    """
+    palette = [color.upper() for color in CURATED_SPINE_COLORS]
+    if last is None or last.upper() not in palette:
+        return CURATED_SPINE_COLORS[0]
+    return CURATED_SPINE_COLORS[(palette.index(last.upper()) + 1) % len(CURATED_SPINE_COLORS)]
 
 
 def resolve_spine_color(user: str | None, from_cover: str | None, curated: str) -> str:
