@@ -1,6 +1,8 @@
-// Client-side shaping of the catalog view: the List view order, the title
+// Client-side shaping of the catalog view: the Catalog sort, the title
 // search, its copy, the Date added format, and the Tags suggestions. The
 // server computes every domain number; these only sort, search and format.
+
+import type { CatalogSortKey } from './catalogSort.ts'
 
 /** The fields of a catalog Book these helpers read. */
 export interface ListedBook {
@@ -8,11 +10,40 @@ export interface ListedBook {
   firstAuthor: string
 }
 
+/** The fields of a catalog Book the sort reads (all from the server). */
+export interface SortableBook extends ListedBook {
+  id: string
+  pages: number
+  createdAt: string
+}
+
 const collator = new Intl.Collator(undefined)
 
-/** By first author with `Intl.Collator`, then by title; a new array. */
-export function sortBooks<B extends ListedBook>(books: readonly B[]): B[] {
-  return [...books].sort((a, b) => collator.compare(a.firstAuthor, b.firstAuthor) || collator.compare(a.title, b.title))
+type Compare = (a: SortableBook, b: SortableBook) => number
+
+const byTitle: Compare = (a, b) => collator.compare(a.title, b.title)
+// Instants, not strings: offsets can differ.
+const byCreatedAt: Compare = (a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt)
+// Plain code-unit comparison, so the order never depends on the locale.
+const byId: Compare = (a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
+
+const PRIMARY: Record<CatalogSortKey, Compare> = {
+  author: (a, b) => collator.compare(a.firstAuthor, b.firstAuthor),
+  title: byTitle,
+  dateAdded: (a, b) => byCreatedAt(b, a),
+  pages: (a, b) => a.pages - b.pages,
+}
+
+/**
+ * The Catalog order for `key` (FR-20); a new array. Author: first author
+ * with `Intl.Collator`. Title: A–Z with the collator. Date added: newest
+ * `createdAt` first. Pages: fewest first. Every key then breaks ties by
+ * title, then `createdAt` (older first), then Book id, so the order is
+ * always stable.
+ */
+export function sortBooks<B extends SortableBook>(books: readonly B[], key: CatalogSortKey): B[] {
+  const primary = PRIMARY[key]
+  return [...books].sort((a, b) => primary(a, b) || byTitle(a, b) || byCreatedAt(a, b) || byId(a, b))
 }
 
 /** Whether `title` contains the search text, ignoring case. Empty text matches all. */

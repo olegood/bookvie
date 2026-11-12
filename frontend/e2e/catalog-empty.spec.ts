@@ -84,6 +84,8 @@ test.describe('Story 1.6 Catalog states (ATDD)', () => {
       await expect(main.getByRole('button').filter({ hasNotText: 'New book' })).toHaveCount(0)
       await expect(main.getByRole('textbox')).toHaveCount(0)
       await expect(main.getByRole('searchbox')).toHaveCount(0)
+      // The Sort select (Story 7.1) hides with Search titles.
+      await expect(main.getByRole('combobox')).toHaveCount(0)
       await expect(main.getByRole('progressbar')).toHaveCount(0)
     } finally {
       expect(await server.stop()).toBe('')

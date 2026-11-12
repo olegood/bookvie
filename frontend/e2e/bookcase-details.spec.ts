@@ -69,7 +69,7 @@ test.describe('Story 1.10 Bookcase view details (automate)', () => {
     await page.emulateMedia({ colorScheme: 'light' })
   })
 
-  test('[P2] AC-1 Tab order is Search titles, Bookcase, List, New book, How long until…?, then the shelf', async ({
+  test('[P2] AC-1 Tab order is Search titles, Sort, Bookcase, List, New book, How long until…?, then the shelf', async ({
     page,
     seededServer,
   }) => {
@@ -78,6 +78,9 @@ test.describe('Story 1.10 Bookcase view details (automate)', () => {
     const toggle = viewToggle(page)
 
     await search(page).focus()
+    // The Sort select (Story 7.1) sits between Search titles and the view toggle.
+    await page.keyboard.press('Tab')
+    await expect(page.getByRole('main').getByRole('combobox', { name: 'Sort', exact: true })).toBeFocused()
     await page.keyboard.press('Tab')
     await expect(toggle.getByRole('button', { name: 'Bookcase', exact: true })).toBeFocused()
     await page.keyboard.press('Tab')

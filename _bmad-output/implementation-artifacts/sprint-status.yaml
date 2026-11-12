@@ -92,8 +92,8 @@ development_status:
   6-4-see-my-reading-month-by-month: done
   epic-6-retrospective: done
 
-  epic-7: backlog
-  7-1-sort-my-catalog: backlog
+  epic-7: in-progress
+  7-1-sort-my-catalog: review
   7-2-filter-my-catalog: backlog
   epic-7-retrospective: optional
 action_items:

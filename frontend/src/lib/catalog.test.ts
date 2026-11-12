@@ -16,33 +16,151 @@ import {
   spineName,
   tagSuggestions,
   type NamedSpine,
+  type SortableBook,
 } from './catalog.ts'
+import { CATALOG_SORTS } from './catalogSort.ts'
+
+/** A sortable Book; every field not given is the same for all. */
+function book(fields: Partial<SortableBook> & { title: string }): SortableBook {
+  return { id: 'a', firstAuthor: 'X', pages: 100, createdAt: '2026-01-01T10:00:00+00:00', ...fields }
+}
+
+const titles = (books: readonly SortableBook[]) => books.map((entry) => entry.title)
 
 describe('sortBooks', () => {
   it('orders by first author with the collator, then by title', () => {
     const books = [
-      { title: 'The Dispossessed', firstAuthor: 'Ursula K. Le Guin' },
-      { title: 'Nana', firstAuthor: 'Émile Zola' },
-      { title: 'Dune', firstAuthor: 'Frank Herbert' },
-      { title: 'All About Love', firstAuthor: 'bell hooks' },
-      { title: 'A Wizard of Earthsea', firstAuthor: 'Ursula K. Le Guin' },
+      book({ id: '1', title: 'The Dispossessed', firstAuthor: 'Ursula K. Le Guin' }),
+      book({ id: '2', title: 'Nana', firstAuthor: 'Émile Zola' }),
+      book({ id: '3', title: 'Dune', firstAuthor: 'Frank Herbert' }),
+      book({ id: '4', title: 'All About Love', firstAuthor: 'bell hooks' }),
+      book({ id: '5', title: 'A Wizard of Earthsea', firstAuthor: 'Ursula K. Le Guin' }),
     ]
-    assert.deepEqual(
-      sortBooks(books).map((book) => book.title),
-      ['All About Love', 'Nana', 'Dune', 'A Wizard of Earthsea', 'The Dispossessed'],
-    )
+    assert.deepEqual(titles(sortBooks(books, 'author')), [
+      'All About Love',
+      'Nana',
+      'Dune',
+      'A Wizard of Earthsea',
+      'The Dispossessed',
+    ])
   })
 
   it('breaks author ties by title ignoring case, and does not mutate', () => {
-    const books = [
-      { title: 'B', firstAuthor: 'X' },
-      { title: 'a', firstAuthor: 'X' },
-    ]
-    assert.deepEqual(
-      sortBooks(books).map((book) => book.title),
-      ['a', 'B'],
-    )
+    const books = [book({ id: '1', title: 'B' }), book({ id: '2', title: 'a' })]
+    assert.deepEqual(titles(sortBooks(books, 'author')), ['a', 'B'])
     assert.equal(books[0].title, 'B')
+  })
+
+  // Each key orders these differently.
+  const shelf = [
+    book({
+      id: '1',
+      title: 'Kindred',
+      firstAuthor: 'Octavia E. Butler',
+      pages: 286,
+      createdAt: '2026-01-10T10:00:00+00:00',
+    }),
+    book({ id: '2', title: 'Emma', firstAuthor: 'Jane Austen', pages: 474, createdAt: '2026-03-01T10:00:00+00:00' }),
+    book({ id: '3', title: 'Dune', firstAuthor: 'Frank Herbert', pages: 412, createdAt: '2026-02-01T09:00:00+00:00' }),
+    book({
+      id: '5',
+      title: 'Beloved',
+      firstAuthor: 'Toni Morrison',
+      pages: 324,
+      createdAt: '2026-04-15T10:00:00+00:00',
+    }),
+  ]
+
+  it('gives each key its own order', () => {
+    assert.deepEqual(titles(sortBooks(shelf, 'author')), ['Dune', 'Emma', 'Kindred', 'Beloved'])
+    assert.deepEqual(titles(sortBooks(shelf, 'title')), ['Beloved', 'Dune', 'Emma', 'Kindred'])
+    assert.deepEqual(titles(sortBooks(shelf, 'dateAdded')), ['Beloved', 'Emma', 'Dune', 'Kindred'])
+    assert.deepEqual(titles(sortBooks(shelf, 'pages')), ['Kindred', 'Beloved', 'Dune', 'Emma'])
+  })
+
+  it('sorts Title A–Z with the collator, whatever the first letter’s case or accent', () => {
+    const books = [
+      book({ id: '1', title: 'Zazie' }),
+      book({ id: '2', title: 'émile' }),
+      book({ id: '3', title: 'Ulysses' }),
+      book({ id: '4', title: 'and then' }),
+      book({ id: '5', title: 'Éclipse' }),
+    ]
+    assert.deepEqual(titles(sortBooks(books, 'title')), ['and then', 'Éclipse', 'émile', 'Ulysses', 'Zazie'])
+  })
+
+  it('breaks a primary tie by title first', () => {
+    const books = [
+      book({ id: '1', title: 'Beta', pages: 200, createdAt: '2026-01-01T10:00:00+00:00' }),
+      book({ id: '2', title: 'Alpha', pages: 200, createdAt: '2026-05-01T10:00:00+00:00' }),
+    ]
+    for (const key of ['author', 'pages'] as const) {
+      assert.deepEqual(titles(sortBooks(books, key)), ['Alpha', 'Beta'])
+    }
+  })
+
+  it('breaks a title tie by createdAt, older first, compared as instants', () => {
+    // 09:30+02:00 is 07:30Z, before 08:00Z, though its string sorts later.
+    const older = book({ id: '9', title: 'Dune', createdAt: '2026-02-01T09:30:00+02:00' })
+    const newer = book({ id: '1', title: 'Dune', createdAt: '2026-02-01T08:00:00+00:00' })
+    for (const key of ['author', 'title', 'pages'] as const) {
+      assert.deepEqual(
+        sortBooks([newer, older], key).map((entry) => entry.id),
+        ['9', '1'],
+      )
+    }
+    // Date added still puts the newer first, by its primary key.
+    assert.deepEqual(
+      sortBooks([older, newer], 'dateAdded').map((entry) => entry.id),
+      ['1', '9'],
+    )
+  })
+
+  it('breaks a tie on everything else by Book id, under every key', () => {
+    const four = book({ id: '00000000-0000-4000-8000-000000000004', title: 'Dune' })
+    const three = book({ id: '00000000-0000-4000-8000-000000000003', title: 'Dune' })
+    for (const key of CATALOG_SORTS) {
+      assert.deepEqual(
+        sortBooks([four, three], key).map((entry) => entry.id),
+        [three.id, four.id],
+      )
+    }
+  })
+
+  it('compares ids by code unit, not by locale', () => {
+    const upper = book({ id: 'B', title: 'Dune' })
+    const lower = book({ id: 'a', title: 'Dune' })
+    assert.deepEqual(
+      sortBooks([lower, upper], 'title').map((entry) => entry.id),
+      ['B', 'a'],
+    )
+  })
+
+  it('breaks Pages ties by title', () => {
+    const books = [
+      book({ id: '1', title: 'Kindred', pages: 300 }),
+      book({ id: '2', title: 'Beloved', pages: 300 }),
+      book({ id: '3', title: 'Emma', pages: 100 }),
+    ]
+    assert.deepEqual(titles(sortBooks(books, 'pages')), ['Emma', 'Beloved', 'Kindred'])
+  })
+
+  it('puts a Book with no author before named authors, then by title', () => {
+    const books = [
+      book({ id: '1', title: 'Dune', firstAuthor: 'Frank Herbert' }),
+      book({ id: '2', title: 'Zohar', firstAuthor: '' }),
+      book({ id: '3', title: 'Beowulf', firstAuthor: '' }),
+    ]
+    assert.deepEqual(titles(sortBooks(books, 'author')), ['Beowulf', 'Zohar', 'Dune'])
+  })
+
+  it('returns a new array and leaves its input alone, under every key', () => {
+    const before = titles(shelf)
+    for (const key of CATALOG_SORTS) {
+      const sorted = sortBooks(shelf, key)
+      assert.notEqual(sorted, shelf)
+      assert.deepEqual(titles(shelf), before)
+    }
   })
 })
 

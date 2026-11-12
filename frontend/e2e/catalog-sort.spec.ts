@@ -68,7 +68,7 @@ function homeSlice(page: Page): Locator {
 }
 
 test.describe('Story 7.1 Sort my catalog (ATDD)', () => {
-  test.skip('[P1] AC-1 the Catalog toolbar has a native select labeled "Sort" offering Author (default), Title, Date added and Pages', async ({
+  test('[P1] AC-1 the Catalog toolbar has a native select labeled "Sort" offering Author (default), Title, Date added and Pages', async ({
     page,
     seededServer,
   }) => {
@@ -90,7 +90,7 @@ test.describe('Story 7.1 Sort my catalog (ATDD)', () => {
     await expect(viewToggle(page).getByRole('button', { name: 'Bookcase', exact: true })).toBeFocused()
   })
 
-  test.skip('[P0] AC-2 each sort key reorders the bookcase spines and the List rows, ties break by title, createdAt, then id, and the keyboard follows', async ({
+  test('[P0] AC-2 each sort key reorders the bookcase spines and the List rows, ties break by title, createdAt, then id, and the keyboard follows', async ({
     page,
     seededServer,
   }) => {
@@ -124,7 +124,7 @@ test.describe('Story 7.1 Sort my catalog (ATDD)', () => {
     await expect(page.getByRole('button', { name: EMMA, exact: true })).toBeFocused()
   })
 
-  test.skip('[P1] AC-3 the chosen sort is remembered on the next visit and Home’s slice uses the same order', async ({
+  test('[P1] AC-3 the chosen sort is remembered on the next visit and Home’s slice uses the same order', async ({
     page,
     seededServer,
   }) => {
@@ -144,7 +144,7 @@ test.describe('Story 7.1 Sort my catalog (ATDD)', () => {
     await expect.poll(() => spineNames(homeSlice(page))).toEqual(BY_TITLE)
   })
 
-  test.skip('[P1] AC-4 Search titles still applies after the sort changes', async ({ page, seededServer }) => {
+  test('[P1] AC-4 Search titles still applies after the sort changes', async ({ page, seededServer }) => {
     const server = await seededServer({ books: SORT_SHELF })
     await page.setViewportSize({ width: 1280, height: 900 })
     await page.goto(`${server.url}/catalog`)
@@ -156,5 +156,55 @@ test.describe('Story 7.1 Sort my catalog (ATDD)', () => {
     await expect.poll(() => spineNames(bookcase(page))).toEqual([KINDRED, BELOVED, DUNE_UNREAD, DUNE_FINISHED])
     await expect(search(page)).toHaveValue('d')
     await expect(page.getByRole('button', { name: EMMA, exact: true })).toBeHidden()
+  })
+
+  test('[P1] AC-3 a junk stored sort opens Author', async ({ page, seededServer }) => {
+    const server = await seededServer({ books: SORT_SHELF })
+    await page.setViewportSize({ width: 1280, height: 900 })
+    await page.addInitScript(() => window.localStorage.setItem('bookvie.catalogSort', 'shelves'))
+    await page.goto(`${server.url}/catalog`)
+
+    await expect(sortSelect(page).locator('option:checked')).toHaveText('Author')
+    await expect.poll(() => spineNames(bookcase(page))).toEqual(BY_AUTHOR)
+  })
+
+  test('[P1] AC-3 storage that throws opens Author and choosing a key still reorders', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: SORT_SHELF })
+    await page.setViewportSize({ width: 1280, height: 900 })
+    await page.addInitScript(() => {
+      const fail = () => {
+        throw new DOMException('denied', 'SecurityError')
+      }
+      Storage.prototype.getItem = fail
+      Storage.prototype.setItem = fail
+    })
+    await page.goto(`${server.url}/catalog`)
+    const sort = sortSelect(page)
+
+    await expect(sort.locator('option:checked')).toHaveText('Author')
+    await expect.poll(() => spineNames(bookcase(page))).toEqual(BY_AUTHOR)
+    await sort.selectOption({ label: 'Pages' })
+    await expect(sort.locator('option:checked')).toHaveText('Pages')
+    await expect.poll(() => spineNames(bookcase(page))).toEqual(BY_PAGES)
+  })
+
+  test('[P1] AC-3 Home’s slice follows a sort chosen moments ago, reached in the app without a reload', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: SORT_SHELF })
+    await page.setViewportSize({ width: 1280, height: 900 })
+    await page.goto(`${server.url}/catalog`)
+    await sortSelect(page).selectOption({ label: 'Pages' })
+    await expect.poll(() => spineNames(bookcase(page))).toEqual(BY_PAGES)
+
+    const nav = page.getByRole('navigation', { name: 'Main', exact: true })
+    await nav.getByRole('link', { name: 'Home', exact: true }).click()
+    await expect(page).toHaveURL(`${server.url}/`)
+    await expect(homeSlice(page)).toHaveAccessibleName('Bookcase slice, 1 row')
+    await expect.poll(() => spineNames(homeSlice(page))).toEqual(BY_PAGES)
   })
 })

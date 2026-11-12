@@ -5,10 +5,12 @@ import Button from '../components/Button.tsx'
 import FailureMessage from '../components/FailureMessage.tsx'
 import PageHeading from '../components/PageHeading.tsx'
 import PaceCalculator from '../components/PaceCalculator.tsx'
+import SortSelect from '../components/SortSelect.tsx'
 import ViewToggle from '../components/ViewToggle.tsx'
 import { announce, clearAnnouncements } from '../lib/announce.ts'
 import { deleteHandled, deletedTitle, markDeleteHandled } from '../lib/bookDetail.ts'
 import { matchCountCopy, matchesTitle, sortBooks } from '../lib/catalog.ts'
+import { readCatalogSort, writeCatalogSort, type CatalogSortKey } from '../lib/catalogSort.ts'
 import { readCatalogView, writeCatalogView, type CatalogViewChoice } from '../lib/catalogView.ts'
 import { COULDNT_LOAD } from '../lib/copy.ts'
 import { usePageTitle } from '../lib/page.ts'
@@ -114,7 +116,9 @@ export default function CatalogPage() {
   const view = useCatalogView()
   const failed = view.status === 'failed'
   const books = view.status === 'ready' ? view.data.books : NO_BOOKS
-  const sorted = useMemo(() => sortBooks(books), [books])
+  const [sortKey, setSortKey] = useState<CatalogSortKey>(readCatalogSort)
+  // Re-applied to every refetch, never stored as a derived copy.
+  const sorted = useMemo(() => sortBooks(books, sortKey), [books, sortKey])
 
   const location = useLocation()
   // Read once: arriving from Home's empty state opens the panel.
@@ -243,12 +247,19 @@ export default function CatalogPage() {
     writeCatalogView(next)
   }
 
+  // A failed write still re-sorts for this visit.
+  const chooseSort = (next: CatalogSortKey) => {
+    setSortKey(next)
+    writeCatalogSort(next)
+  }
+
   const empty = view.data.books.length === 0
   return (
     <div className={styles.page}>
       <PageHeading className={styles.title}>Catalog</PageHeading>
       <div className={styles.toolbar}>
         {!empty && <SearchTitles value={query} onChange={search} inputRef={searchRef} />}
+        {!empty && <SortSelect value={sortKey} onChange={chooseSort} />}
         {!empty && <ViewToggle value={catalogView} onChange={chooseView} />}
         <Button ref={newBookRef} variant="primary" className={styles.newBook} onClick={openPanel}>
           New book

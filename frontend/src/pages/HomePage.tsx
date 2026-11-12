@@ -12,6 +12,7 @@ import UpNextPane from '../components/UpNextPane.tsx'
 import WaitingPane from '../components/WaitingPane.tsx'
 import { announce, clearAnnouncements } from '../lib/announce.ts'
 import { finishStatus, sortBooks } from '../lib/catalog.ts'
+import { readCatalogSort } from '../lib/catalogSort.ts'
 import { COULDNT_LOAD } from '../lib/copy.ts'
 import { usePageTitle } from '../lib/page.ts'
 import { pausedStatus } from '../lib/pause.ts'
@@ -64,9 +65,10 @@ function clearHandOffState(): void {
   window.history.replaceState({ ...rest, usr: null }, '')
 }
 
-/** The bookcase slice below the grid, in Catalog's order (Author). */
+/** The bookcase slice below the grid, in Catalog's remembered sort (read once per visit). */
 function HomeSlice({ view, finishing }: { view: HomeView; finishing: FinishMoment | null }) {
-  const sorted = useMemo(() => sortBooks(view.books), [view.books])
+  const [sortKey] = useState(readCatalogSort)
+  const sorted = useMemo(() => sortBooks(view.books, sortKey), [view.books, sortKey])
   const slice = useMemo(() => ({ priority: view.slicePriority }), [view.slicePriority])
   return (
     <div className={styles.slice}>
@@ -91,7 +93,7 @@ function HomeSlice({ view, finishing }: { view: HomeView; finishing: FinishMomen
  * Esc returns focus to the button that opened it while it is still on the
  * page, else to the Up next pane's or the suggestion's button, the "No Main
  * book." heading or `main`. The bookcase slice below is the full bookcase
- * in Catalog's order, up to 3 rows chosen by the view's `slicePriority`.
+ * in Catalog's remembered sort, up to 3 rows chosen by the view's `slicePriority`.
  * "Last export" sits at the right end of the header line only while there is
  * no Main book; with one it sits in the card's re-entry line, which reads the
  * same `now`.
