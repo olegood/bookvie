@@ -114,10 +114,12 @@ function HomeSlice({ view, finishing }: { view: HomeView; finishing: FinishMomen
  * sees it.
  *
  * Home hosts the Finish dialog the page field opens on `reachedLastPage`,
- * so a refetch that empties the card (a finish or delete in another tab)
- * leaves the dialog, its answers and its alert line in place. Cancel or Esc
- * returns focus to the page field, or, once the card is empty, to its
- * suggestion button, else the "No Main book." heading.
+ * for the saved Book and only when the view rendered after the save still
+ * shows it as Main (another tab may have changed the Main book), so a
+ * refetch that empties the card (a finish or delete in another tab) leaves
+ * the dialog, its answers and its alert line in place. Cancel or Esc returns
+ * focus to the page field, or, once the card is empty, to its suggestion
+ * button, else the "No Main book." heading.
  *
  * Home hosts the pause flow (`lib/usePauseFlow.tsx`) for the Main book card's
  * "⋯" menu: **Pause** sends `pause` at once with no Up next, else opens the
@@ -232,6 +234,18 @@ export default function HomePage() {
     if (lastPageMain.currentPage === lastPageMain.pages && !otherDialog)
       setFinishing({ bookId: lastPage.bookId, key: location.key, savedLine: lastPage.savedLine })
   }
+  // A last-page save from the page field, taken once in the render after the
+  // save resolved (its refetch has run, so this view is the save's answer):
+  // the Finish dialog opens for the saved Book only on the history entry the
+  // save was made on and only while this view shows that Book as Main.
+  // Another tab may have changed the Main book meanwhile; a failed refetch
+  // keeps the old view, where the saved Book is still Main, so it opens there.
+  const [lastPageSave, setLastPageSave] = useState<{ bookId: string; key: string; savedLine: string } | null>(null)
+  if (lastPageSave !== null) {
+    setLastPageSave(null)
+    if (lastPageSave.key === location.key && mainId === lastPageSave.bookId)
+      setFinishing({ bookId: lastPageSave.bookId, key: location.key, savedLine: lastPageSave.savedLine })
+  }
 
   // After a pause: focus first (the empty card's Resume), then the line. While
   // the view still shows the paused Book as Main, the refetch hasn't rendered;
@@ -246,10 +260,8 @@ export default function HomePage() {
     announce('status', pending.line)
   }, [pauses, view, noMain])
   const openFinish = useCallback(
-    (savedLine: string) => {
-      if (mainId !== null) setFinishing({ bookId: mainId, key: location.key, savedLine })
-    },
-    [mainId, location.key],
+    (bookId: string, savedLine: string) => setLastPageSave({ bookId, key: location.key, savedLine }),
+    [location.key],
   )
   const cancelFinish = useCallback(() => {
     setFinishing(null)

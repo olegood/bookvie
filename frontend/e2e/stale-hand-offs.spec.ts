@@ -25,7 +25,7 @@ import {
   storedBook,
   storedLibrary,
 } from './home.ts'
-import { EDIT_PURPOSE, FINISH_READING, START_READING } from './intents.ts'
+import { EDIT_PURPOSE, FINISH_READING, START_READING, UPDATE_PAGE } from './intents.ts'
 
 const PURPOSE = 'To see how Le Guin builds a world'
 const FINISH_DIALOG = 'Finished The Left Hand of Darkness'
@@ -206,6 +206,69 @@ test.describe('Epic 3 retro: stale client hand-offs', () => {
 
       await expect(page.getByRole('alert')).toHaveText(ALREADY_FINISHED)
       await expect(field).toHaveCount(0)
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+
+  test('[P1] a last-page save that lands after another tab changed the Main book opens no Finish dialog', async ({
+    page,
+  }) => {
+    const server = await serverAtFakeToday(
+      page,
+      'stale-last-page-save',
+      mainAt(300, { reading: { startDate: '2026-10-01' }, others: [DUNE] }),
+    )
+    try {
+      await page.goto(`${server.url}/`)
+      const card = mainBookCard(page)
+      const field = card.getByRole('spinbutton', { name: 'Page', exact: true })
+      await expect(field).toHaveValue('300')
+      // The save lands; before its answer reaches the page, another tab makes Dune Main.
+      await page.route(`**${UPDATE_PAGE}`, async (route) => {
+        const response = await route.fetch()
+        // Guards the premise: 330 is the fixture's last page.
+        expect(await response.json()).toMatchObject({ reachedLastPage: true })
+        await elsewhere(page, server, START_READING, { bookId: DUNE_ID, purpose: null })
+        await route.fulfill({ response })
+      })
+      await field.fill('330')
+      await field.press('Enter')
+
+      // The refetched view shows Dune as Main, and the save has settled.
+      await expect(card.getByRole('link', { name: 'Dune', exact: true })).toBeVisible()
+      await expect(card.getByRole('button', { name: 'Update', exact: true })).not.toHaveAttribute('aria-disabled')
+      // The criterion: no Finish dialog, for the saved Book or for Dune.
+      await expect(page.getByRole('dialog')).toHaveCount(0)
+      expect(storedLibrary(server).mainBookId).toBe(DUNE_ID)
+      expect(storedBook(server, LEFT_HAND_ID).readings[0]).toMatchObject({ currentPage: 330, finishDate: null })
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+
+  test('[P1] a last-page save whose refetch fails still opens the Finish dialog for the saved Book', async ({
+    page,
+  }) => {
+    const server = await serverAtFakeToday(
+      page,
+      'last-page-save-refetch-fails',
+      mainAt(300, { reading: { startDate: '2026-10-01' }, others: [DUNE] }),
+    )
+    try {
+      await page.goto(`${server.url}/`)
+      const card = mainBookCard(page)
+      const field = card.getByRole('spinbutton', { name: 'Page', exact: true })
+      await expect(field).toHaveValue('300')
+      // The save lands, but the refetch fails: the view keeps the saved Book as Main.
+      await page.route('**/api/views/home', (route) => route.fulfill({ status: 503, body: '{}' }))
+      await field.fill('330')
+      await field.press('Enter')
+
+      const dialog = page.getByRole('dialog', { name: FINISH_DIALOG, exact: true })
+      await expect(dialog).toBeVisible()
+      await expect(dialog).toHaveAccessibleDescription('Page 330 of 330, 100%.')
+      expect(storedBook(server, LEFT_HAND_ID).readings[0]).toMatchObject({ currentPage: 330, finishDate: null })
     } finally {
       await stopAndRemove(server)
     }

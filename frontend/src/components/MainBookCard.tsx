@@ -77,7 +77,7 @@ export default function MainBookCard({
   now: Date
   titleRef?: Ref<HTMLAnchorElement>
   emptyHeadingRef?: Ref<HTMLHeadingElement>
-  onReachedLastPage?: (savedLine: string) => void
+  onReachedLastPage?: (bookId: string, savedLine: string) => void
   pageFieldRef?: Ref<HTMLInputElement>
   onPause?: () => void
   moreRef?: Ref<HTMLButtonElement>

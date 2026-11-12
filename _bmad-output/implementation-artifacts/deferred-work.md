@@ -589,6 +589,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-epic-4-retro-item-36-last-page-finish-for-the-started-book.md`
   summary: The other last-page path has the same shape as F-R5: `openFinish`, which the Main book card's page field calls on `reachedLastPage`, opens Finish for whatever `mainId` the view shows, not the Book the save was for. It needs another tab to change Main between the save landing and Home's refetch rendering. Low, predates this change; `PageField` already has the `bookId` to pass.
   evidence: `frontend/src/pages/HomePage.tsx` (`openFinish`); `frontend/src/components/PageField.tsx:146`.
+  resolved: `spec-last-page-finish-opens-for-the-saved-book.md` (2026-11-12). The page field passes the saved Book's id, and Home opens Finish for it only when the view rendered after the save still shows it as Main. On the baseline, the closure opened Finish for the saved Book, not the view's Main book; the new leaf in `stale-hand-offs.spec.ts` fails there.
 
 ## Deferred from: spec-epic-4-retro-item-38-reconcile-the-spine-with-epic-4 (2026-11-10)
 
@@ -912,3 +913,12 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-dialogs-wait-for-a-fresh-home-view.md`
   summary: Spine drift (AD-7, AD-19), reconciled before the next epic: AD-7's "Dialogs read fresh views" bullet says only the `book` view is fetched after a dialog opens, and its known gap, like the Deferred section's "Stale confirmation guard" trigger, still says the Start and Pause dialogs read the cached home view. The code now waits for a fresh home view in the Start dialog and fetches one on Pause's press. Low.
   evidence: `frontend/src/api/views.ts` (`useFreshHomeView`, `useFetchFreshHomeView`); `frontend/src/components/StartDialog.tsx`; `frontend/src/lib/usePauseFlow.tsx` (`decide`); Spine Check, build-auto review of this spec.
+
+## Deferred from: build-auto review of spec-last-page-finish-opens-for-the-saved-book (2026-11-12)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-last-page-finish-opens-for-the-saved-book.md`
+  summary: Spine drift (AD-7, AD-19), reconciled before the next epic: AD-7's "Last-page start" bullet records item 36's rule for the start hand-off, but nothing records the page-field save's rule. Home now opens the Finish dialog for the saved Book only when the view rendered after the save still shows it as Main, with no at-last-page check, so a failed refetch still opens it. AD-19's Finishing bullet still says "The client then opens the Finish dialog for that Book (AD-7)" with no condition. Low.
+  evidence: `frontend/src/pages/HomePage.tsx` (`lastPageSave`, `openFinish`); `frontend/src/components/PageField.tsx` (`onReachedLastPage(bookId, savedLine)`); Spine Check, build-auto review of this spec.
+- source_spec: `_bmad-output/implementation-artifacts/spec-last-page-finish-opens-for-the-saved-book.md`
+  summary: The page field's last-page Finish has no other-dialog guard. If a Start or Pause dialog is opened while the save is in flight, the Finish dialog opens on top of it, and Home renders both. This predates the change, since the old `openFinish` also set `finishing` unconditionally. Item 36's start path drops its hand-off in that case. Low; found by reading, not reproduced.
+  evidence: `frontend/src/pages/HomePage.tsx`: the item-36 block checks `otherDialog`, and the `lastPageSave` block does not.

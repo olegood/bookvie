@@ -26,9 +26,10 @@ type Props = {
   percent: number
   /**
    * A save answered `reachedLastPage`: the owner (Home) opens the Finish
-   * dialog, passing on the saved-page line the dialog's opening would silence.
+   * dialog for the saved Book (`bookId`) while its view still shows it as
+   * Main, passing on the saved-page line the dialog's opening would silence.
    */
-  onReachedLastPage?: (savedLine: string) => void
+  onReachedLastPage?: (bookId: string, savedLine: string) => void
   /** The page input, which the owner focuses when the Finish dialog is cancelled. */
   fieldRef?: Ref<HTMLInputElement>
 }
@@ -54,10 +55,12 @@ type Props = {
  * changed it), the field resets to the view's page.
  *
  * A save that answers `reachedLastPage` calls `onReachedLastPage` with the
- * "Page M of M, 100%." line, which the dialog keeps as its description (its
- * opening empties the live regions, so `status` can't carry it); Home
- * hosts the Finish dialog, so it outlives this field when a refetch empties
- * the card. Each such save calls it again, so the same page reopens it.
+ * saved Book's id and the "Page M of M, 100%." line, which the dialog keeps
+ * as its description (its opening empties the live regions, so `status`
+ * can't carry it). Home opens the dialog only if the view rendered after the
+ * save still shows that Book as Main. Home hosts the Finish dialog, so it
+ * outlives this field when a refetch empties the card. Each such save calls
+ * it again, so the same page reopens it.
  */
 export default function PageField({ bookId, currentPage, pages, percent, onReachedLastPage, fieldRef }: Props) {
   const fieldId = useId()
@@ -143,7 +146,7 @@ export default function PageField({ bookId, currentPage, pages, percent, onReach
       setSaves((count) => count + 1)
       // The last page is 100% (AD-6: `percent` is 100 only at page = pages, and
       // `reachedLastPage` is exactly that), so the line needs no refetched number.
-      if (result.reachedLastPage) onReachedLastPage?.(pageSavedCopy(page, pages, 100))
+      if (result.reachedLastPage) onReachedLastPage?.(bookId, pageSavedCopy(page, pages, 100))
       return
     }
     const pageError = result.kind === 'refusal' ? result.fields.find((f) => f.field === PAGE_FIELD) : undefined
