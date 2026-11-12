@@ -16,7 +16,7 @@ Mocks illustrate this spine; they are not the contract. If a mock and a spine di
 
 ## Foundation
 
-- **Platform.** Web app in a desktop or laptop browser. Minimum viewport 1024px; below that the page scrolls horizontally. No phone or tablet layout (PRD §6.3) (documented deviation: Accessibility Floor → Reflow).
+- **Platform.** Web app in desktop Chrome on a desktop or laptop (DESIGN.md → Viewport; AGENTS.md → Supported browser). Minimum viewport 1024px; below that the page scrolls horizontally. No phone or tablet layout (PRD §6.3) (documented deviation: Accessibility Floor → Reflow).
 - **UI system.** None named. Plain, semantic HTML controls styled by DESIGN.md tokens. Native elements (`button`, `input`, `select`, `dialog`) are preferred so roles and names come for free.
 - **Local-first.** All data lives on this computer; no account, no network (PRD §5). No sync or connection status is shown. There is no loading indicator: before a page's first view response, only the header and nav render (no spinner, no skeleton). A view that can't be loaded shows "Couldn't load" (see State Patterns); a failed background refetch keeps the last data silently. The only busy states are Export and Restore (see Backup page). A save that fails is never silent (see State Patterns → Couldn't save).
 - **One store, two operators.** The user's browser and the cataloging skill's browser must see the same data (PRD §5: a Book saved from any browser on this machine appears in every other). How they share it is an architecture decision (prd-deltas → For architecture, A1). UX rule for two open tabs or browsers: last write wins; reloading shows the current data. No cross-tab warning is shown.

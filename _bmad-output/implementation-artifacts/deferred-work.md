@@ -869,3 +869,10 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-10-see-the-library-as-a-bookcase.md` (spine naming), seen in `epic-7-retro-2026-11-12.md` (Behavior verification, observation d)
   summary: Two editions with the same title and authors get identical spine names ("Dune by Frank Herbert, not read yet"), so a screen reader can't tell them apart on the bookcase. The List view and Book detail do tell them apart. One fix: when two shown spines share a name, add the edition or year to the name. Low.
   evidence: `frontend/src/lib/catalog.ts` `spineName` (`catalog.test.ts:202-217`); reproduced live in the Epic 7 retro's behavior check with Dune ed. 1 (hardcover, 412 pages) and ed. 2 (paperback, 500 pages).
+
+## Deferred from: Epic 7 retro item 59, the browser decision (2026-11-12)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-7-2-filter-my-catalog.md` (Review Findings, the Esc patch) and `spec-epic-7-retro-item-59-write-down-the-browser-decision.md`
+  summary: Commit `0383cbc` ("close the filter lists on Esc after a Safari click", story 7.2) focuses the chip and each checkbox on click so that Esc reaches the list in macOS Safari, where a click doesn't focus a button. The Safari behavior it targets was never run in WebKit, and Safari is out of scope (AGENTS.md → Supported browser). Its leaves `catalog-filter.spec.ts:471` and `:582` model a focusless click with `dispatchEvent` in Chromium.
+  evidence: Epic 7 retro PL-2; `f711d290` 13:01:20 ("only run in Chromium"); `frontend/src/components/FilterChips.tsx` (`onClick` focusing the chip and checkboxes); the Epic 4 decision under "Deferred from: implementation of spec-4-3-pause-my-main-book".
+  resolved: kept as it is (Epic 7 retro item 59, 2026-11-12). Focusing the pressed control on click is also correct in Chromium, the change is small, and both leaves pass. AGENTS.md → Supported browser lists them as kept, not as a precedent. Nothing is left to verify while Chrome is the only supported browser.

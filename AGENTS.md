@@ -59,3 +59,11 @@ Step 2 is `bmad-build-auto`, not the interactive `bmad-build`. bmad-build stops 
 ## Epic boundaries
 
 When a story closes its epic (every other story of the epic is `done` in `sprint-status.yaml`), don't start the next epic's first story, even though the retrospective's status reads `optional`. First come test automation for that story (`bmad-testarch-automate`), the epic's retrospective (`bmad-retrospective`), and the retro's before-next-epic items: the trace and gate and the spine reconciliation. `bmad-code-review` offers the first two instead of "Start the next story" at an epic's last story (Epic 3 retro item 30).
+
+## Supported browser
+
+bookvie supports desktop Chrome only, and the e2e suite runs Chromium only (`projects` in `frontend/playwright.config.ts`). Oleg uses Chrome. That was decided in the Epic 4 retro (`deferred-work.md`, "Deferred from: implementation of spec-4-3-pause-my-main-book") and confirmed in the Epic 7 retro (item 59), after both of Story 7.2's reviews raised Safari mouse-focus behavior that no one could run (Epic 7 retro PL-2).
+
+- **When building or reviewing,** treat behavior that only Safari or Firefox would show as out of scope. This includes a macOS Safari click that doesn't focus the button it presses. Don't add a workaround or a test for it. In a review, reject such a finding with that reason and cite this section, unless Oleg reopens the decision.
+- **Behavior that Chromium shows too** is in scope as usual, even when someone first noticed it while thinking about another browser.
+- **Kept from before this rule:** Story 7.2's focus-on-click in `FilterChips.tsx` (commit `0383cbc`) and its two tests that model a focusless click, `catalog-filter.spec.ts:471` and `:582`. They stay, because focusing the pressed control is also correct in Chromium. They aren't a precedent for more.

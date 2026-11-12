@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-29-2026 17:21
-last_updated: 11-12-2026 14:06
+last_updated: 11-12-2026 14:15
 project: bookvie
 project_key: NOKEY
 tracking_system: file-system
@@ -636,7 +636,7 @@ action_items:
       `_bmad-output/planning-artifacts/ux-designs/ux-bookvie-2026-10-28/DESIGN.md`
       (Viewport), `_bmad-output/implementation-artifacts/deferred-work.md`. Due: now."
     owner: "Oleg / bmad config"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-7-retro-2026-11-12.md"
   - id: "epic-7-retro-item-60-keep-blank-and-padded-language-and-tag-v"
     epic: 7

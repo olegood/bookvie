@@ -544,7 +544,7 @@ All UI text is English. Spine labels rotate every script the same way (`text-ori
 
 Scale: 4 / 8 / 12 / 16 / 20 / 24 / 32 / 36 (`{spacing.1}`–`{spacing.8}`). Component sizes (card padding `28px 32px`, pane padding `20px 22px`, panel and popover widths, gauge radius, plank height, marker size) are fixed component dimensions, not spacing steps; they are listed as literal values in the component tokens on purpose.
 
-- **Viewport.** Desktop browser only. Design target and minimum width `{spacing.min-viewport}` (1024px); below that the page scrolls horizontally. No phone layout (documented deviation: EXPERIENCE.md → Accessibility Floor → Reflow). The spine popover is capped at `calc(100vw - 32px)`.
+- **Viewport.** Desktop Chrome only (AGENTS.md → Supported browser; Epic 7 retro item 59). Design target and minimum width `{spacing.min-viewport}` (1024px); below that the page scrolls horizontally. No phone layout (documented deviation: EXPERIENCE.md → Accessibility Floor → Reflow). The spine popover is capped at `calc(100vw - 32px)`.
 - **Top nav.** Full-width bar, `{spacing.topbar-height}` tall: a "Skip to content" link (visible on focus only), wordmark, nav items, theme toggle pushed right.
 - **Page.** `{spacing.page-x}` side padding, `{spacing.page-top}` top padding.
 - **Home.** A header line (the date in `page-header`, for example, "Wednesday, 28 October"; no greeting) above a two-column grid: Main book card (fluid) beside a `{spacing.side-column}` (320px) column of section panes; gap `{spacing.6}`. Below the grid, full width, the bookcase slice (up to 3 shelf rows, the Main book's row first). Mock: [key-home](mockups/key-home.html).
