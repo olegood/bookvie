@@ -1,13 +1,16 @@
-import type { RefObject } from 'react'
+import type { ReactNode, RefObject } from 'react'
 import { Link } from 'react-router'
 import type { ShelfBook } from '../api/index.ts'
-import { formatDateAdded, matchesTitle, noMatchCopy } from '../lib/catalog.ts'
+import { formatDateAdded } from '../lib/catalog.ts'
 import styles from './CatalogList.module.css'
 
 type Props = {
   /** Already in display order. */
   books: readonly ShelfBook[]
-  query: string
+  /** The ids of the Books that pass Search titles and the filters; the rest are hidden. */
+  shown: ReadonlySet<string>
+  /** What shows in place of the table when no Book is shown. */
+  noMatch: ReactNode
   /** The Book whose row carries the highlight ring, if any. */
   highlightId: string | null
   /** What gets focus after an add, by Book id: here, the title links. */
@@ -18,15 +21,15 @@ const pages = new Intl.NumberFormat('en-GB')
 
 /**
  * The List view (DESIGN.md → List view): Title, Author, Pages, Status, Date
- * added, in that fixed order. Rows whose titles don't match Search titles are
- * `hidden`. Each title is a link to its Book detail.
+ * added, in that fixed order. Rows of Books that Search titles or the filter
+ * chips leave out are `hidden`. Each title is a link to its Book detail.
  */
-export default function CatalogList({ books, query, highlightId, focusTargets }: Props) {
-  const matches = books.filter((book) => matchesTitle(book.title, query))
+export default function CatalogList({ books, shown, noMatch, highlightId, focusTargets }: Props) {
+  const none = !books.some((book) => shown.has(book.id))
   return (
     <>
-      {matches.length === 0 && <p className={styles.noMatch}>{noMatchCopy(query)}</p>}
-      <table className={styles.table} hidden={matches.length === 0}>
+      {none && <p className={styles.noMatch}>{noMatch}</p>}
+      <table className={styles.table} hidden={none}>
         <thead>
           <tr>
             <th scope="col">Title</th>
@@ -42,7 +45,7 @@ export default function CatalogList({ books, query, highlightId, focusTargets }:
           {books.map((book) => (
             <tr
               key={book.id}
-              hidden={!matchesTitle(book.title, query)}
+              hidden={!shown.has(book.id)}
               className={book.id === highlightId ? styles.highlight : undefined}
             >
               <td className={styles.title}>

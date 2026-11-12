@@ -3,13 +3,22 @@ import { useLocation } from 'react-router'
 import { useCatalogView, type LibraryMeter, type ShelfBook } from '../api/index.ts'
 import Button from '../components/Button.tsx'
 import FailureMessage from '../components/FailureMessage.tsx'
+import FilterChips from '../components/FilterChips.tsx'
 import PageHeading from '../components/PageHeading.tsx'
 import PaceCalculator from '../components/PaceCalculator.tsx'
 import SortSelect from '../components/SortSelect.tsx'
 import ViewToggle from '../components/ViewToggle.tsx'
 import { announce, clearAnnouncements } from '../lib/announce.ts'
 import { deleteHandled, deletedTitle, markDeleteHandled } from '../lib/bookDetail.ts'
-import { matchCountCopy, matchesTitle, sortBooks } from '../lib/catalog.ts'
+import { matchCountCopy, matchesTitle, noMatchCopy, sortBooks } from '../lib/catalog.ts'
+import {
+  filterValues,
+  filtersOn,
+  liveFilters,
+  matchesFilters,
+  NO_FILTERS,
+  type CatalogFilters,
+} from '../lib/catalogFilter.ts'
 import { readCatalogSort, writeCatalogSort, type CatalogSortKey } from '../lib/catalogSort.ts'
 import { readCatalogView, writeCatalogView, type CatalogViewChoice } from '../lib/catalogView.ts'
 import { COULDNT_LOAD } from '../lib/copy.ts'
@@ -24,6 +33,7 @@ import SearchTitles from './SearchTitles.tsx'
 import styles from './CatalogPage.module.css'
 
 export const EMPTY_SHELF = 'Your shelf is empty. Add your first book.'
+const NO_FILTER_MATCH = 'No books match these filters.'
 const EMPTY_PLANKS = 3
 // DESIGN.md → Highlight ring: how long the new spine or row keeps it.
 const HIGHLIGHT_MS = 2000
@@ -63,6 +73,13 @@ export function EmptyShelf() {
         ))}
       </div>
     </section>
+  )
+}
+
+/** The ids of the Books that pass Search titles and the filters, in `books`' order. */
+function shownIds(books: readonly ShelfBook[], query: string, filters: CatalogFilters): Set<string> {
+  return new Set(
+    books.filter((book) => matchesTitle(book.title, query) && matchesFilters(book, filters)).map((book) => book.id),
   )
 }
 
@@ -124,6 +141,14 @@ export default function CatalogPage() {
   // Read once: arriving from Home's empty state opens the panel.
   const [panelOpen, setPanelOpen] = useState(() => wantsNewBook(location.state))
   const [query, setQuery] = useState('')
+  // Not remembered: plain page state, so leaving Catalog or reloading turns them off.
+  const [rawFilters, setFilters] = useState<CatalogFilters>(NO_FILTERS)
+  // The values in this view, each once ignoring case, in collator order.
+  const languages = useMemo(() => filterValues(books.map((book) => book.language)), [books])
+  const tags = useMemo(() => filterValues(books.flatMap((book) => book.tags)), [books])
+  // A checked value no Book has any more is ignored by matching and the chip count.
+  const filters = useMemo(() => liveFilters(rawFilters, languages, tags), [rawFilters, languages, tags])
+  const shown = useMemo(() => shownIds(sorted, query, filters), [sorted, query, filters])
   const [catalogView, setCatalogView] = useState<CatalogViewChoice>(readCatalogView)
   const [added, setAdded] = useState<{ id: string; title: string } | null>(null)
   const [highlightId, setHighlightId] = useState<string | null>(null)
@@ -131,15 +156,16 @@ export default function CatalogPage() {
   const focusTargets = useRef(new Map<string, HTMLElement>())
   const searchRef = useRef<HTMLInputElement | null>(null)
   const newBookRef = useRef<HTMLButtonElement | null>(null)
+  const readChipRef = useRef<HTMLButtonElement | null>(null)
   const deleted = deletedTitle(location.state)
   // The location key whose delete hand-off this mount has handled; across
   // remounts and reloads, sessionStorage remembers (deleteHandled).
   const handledDelete = useRef<string | null>(null)
   const countTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   // What the pending count reads when it fires.
-  const latest = useRef({ sorted, query })
+  const latest = useRef({ sorted, query, filters })
   useEffect(() => {
-    latest.current = { sorted, query }
+    latest.current = { sorted, query, filters }
   })
 
   const cancelCount = () => {
@@ -223,9 +249,22 @@ export default function CatalogPage() {
     if (value.trim() === '') return
     countTimer.current = setTimeout(() => {
       countTimer.current = undefined
-      const { sorted: current, query: text } = latest.current
-      announce('status', matchCountCopy(current.filter((book) => matchesTitle(book.title, text)).length))
+      const { sorted: current, query: text, filters: on } = latest.current
+      announce('status', matchCountCopy(shownIds(current, text, on).size))
     }, SEARCH_PAUSE_MS)
+  }
+
+  // A filter change announces the count at once (search AND filters).
+  const changeFilters = (next: CatalogFilters) => {
+    cancelCount()
+    setFilters(next)
+    announce('status', matchCountCopy(shownIds(sorted, query, liveFilters(next, languages, tags)).size))
+  }
+
+  // Either Clear filters: every chip off, the search kept, focus to Read (the link goes away).
+  const clearFilters = () => {
+    changeFilters(NO_FILTERS)
+    readChipRef.current?.focus()
   }
 
   const openPanel = () => {
@@ -235,9 +274,10 @@ export default function CatalogPage() {
   }
 
   const onSaved = (id: string, title: string) => {
-    // Clear a search that could hide the new Book, then close the panel.
+    // Clear a search or filters that could hide the new Book, then close the panel.
     cancelCount()
     setQuery('')
+    setFilters(NO_FILTERS)
     setPanelOpen(false)
     setAdded({ id, title })
   }
@@ -254,6 +294,19 @@ export default function CatalogPage() {
   }
 
   const empty = view.data.books.length === 0
+  const filtering = filtersOn(filters)
+  // The search alone matching nothing keeps its own line; otherwise the filters' line and link.
+  const searchMatches = sorted.some((book) => matchesTitle(book.title, query))
+  const noMatch = searchMatches ? (
+    <>
+      <span>{NO_FILTER_MATCH}</span>{' '}
+      <button type="button" className="linkButton" onClick={clearFilters}>
+        Clear filters
+      </button>
+    </>
+  ) : (
+    noMatchCopy(query)
+  )
   return (
     <div className={styles.page}>
       <PageHeading className={styles.title}>Catalog</PageHeading>
@@ -266,6 +319,17 @@ export default function CatalogPage() {
         </Button>
       </div>
       {!empty && (
+        <FilterChips
+          filters={filters}
+          languages={languages}
+          tags={tags}
+          onChange={changeFilters}
+          onClear={clearFilters}
+          on={filtering}
+          readRef={readChipRef}
+        />
+      )}
+      {!empty && (
         <LibraryPace meter={view.data.meter} pagesLeft={view.data.pagesLeft} measuredPace={view.data.measuredPace} />
       )}
       {empty ? (
@@ -273,13 +337,20 @@ export default function CatalogPage() {
       ) : catalogView === 'bookcase' ? (
         <Bookcase
           books={sorted}
-          query={query}
+          shown={shown}
+          noMatch={noMatch}
           highlightId={highlightId}
           focusTargets={focusTargets}
           searchRef={searchRef}
         />
       ) : (
-        <CatalogList books={sorted} query={query} highlightId={highlightId} focusTargets={focusTargets} />
+        <CatalogList
+          books={sorted}
+          shown={shown}
+          noMatch={noMatch}
+          highlightId={highlightId}
+          focusTargets={focusTargets}
+        />
       )}
       {panelOpen && <NewBookPanel tags={view.data.tags} onClose={() => setPanelOpen(false)} onSaved={onSaved} />}
     </div>

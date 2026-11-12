@@ -6,22 +6,14 @@ import {
   useState,
   type CSSProperties,
   type KeyboardEvent,
+  type ReactNode,
   type RefObject,
 } from 'react'
 import { Link } from 'react-router'
 import type { LibraryMeter, ShelfBook } from '../api/index.ts'
 import SpinePopover from '../components/SpinePopover.tsx'
 import StartDialog from '../components/StartDialog.tsx'
-import {
-  bookcaseName,
-  finishLine,
-  matchesTitle,
-  noMatchCopy,
-  sliceName,
-  spineMarker,
-  spineName,
-  type SpineMarker,
-} from '../lib/catalog.ts'
+import { bookcaseName, finishLine, sliceName, spineMarker, spineName, type SpineMarker } from '../lib/catalog.ts'
 import { nearestVisible, spineHeight } from '../lib/spine.ts'
 import { useFinishMoment, type FinishMoment } from '../lib/useFinishMoment.ts'
 import { useSliceRows } from '../lib/useSliceRows.ts'
@@ -35,10 +27,13 @@ type Shared = {
   books: readonly ShelfBook[]
 }
 
-/** Catalog's full bookcase: every Book, hidden by Search titles. */
+/** Catalog's full bookcase: every Book, hidden by Search titles and the filter chips. */
 type CatalogProps = Shared & {
   slice?: undefined
-  query: string
+  /** The ids of the Books that pass Search titles and the filters; the rest are hidden. */
+  shown: ReadonlySet<string>
+  /** What the shelf area shows when no Book is shown (the line, and a link for filters). */
+  noMatch: ReactNode
   /** The Book whose spine carries the highlight ring, if any. */
   highlightId: string | null
   /** What gets focus after an add, by Book id: here, the spine buttons. */
@@ -124,7 +119,8 @@ export function MeterBar({ meter }: { meter: LibraryMeter }) {
  * by priority (`spineMarker`): Main, then Up next (sky), then Waiting for you
  * (sand); the legend names all three. One Tab stop with roving tabindex.
  *
- * On Catalog, Search titles hides spines and the shelf closes up. With
+ * On Catalog, Search titles and the filter chips hide spines (`shown`) and
+ * the shelf closes up. With
  * `slice` (Home), the bookcase is packed into rows at the list's measured
  * width and up to 3 are shown (`sliceRows`), one `li` per row; it recomputes
  * on resize, never filters and never scrolls, and the keys follow the rows as
@@ -138,7 +134,7 @@ export function MeterBar({ meter }: { meter: LibraryMeter }) {
 export default function Bookcase(props: Props) {
   const { books } = props
   const sliceMode = props.slice !== undefined
-  const query = props.slice === undefined ? props.query : ''
+  const shown = props.slice === undefined ? props.shown : null
   const highlightId = props.slice === undefined ? props.highlightId : null
   const priority = props.slice?.priority
   const finishing = props.slice === undefined ? null : (props.finishing ?? null)
@@ -155,8 +151,8 @@ export default function Bookcase(props: Props) {
 
   const { rows, ids, byId } = useSliceRows({ books, priority, sliceMode, shelfRef })
   const visibleIds = useMemo(
-    () => (sliceMode ? ids : books.filter((book) => matchesTitle(book.title, query)).map((book) => book.id)),
-    [sliceMode, ids, books, query],
+    () => (shown === null ? ids : books.filter((book) => shown.has(book.id)).map((book) => book.id)),
+    [shown, ids, books],
   )
   const visible = useMemo(() => new Set(visibleIds), [visibleIds])
 
@@ -331,7 +327,7 @@ export default function Bookcase(props: Props) {
           </Link>
         )}
       </div>
-      {!sliceMode && visibleIds.length === 0 && <p className={styles.noMatch}>{noMatchCopy(query)}</p>}
+      {props.slice === undefined && visibleIds.length === 0 && <p className={styles.noMatch}>{props.noMatch}</p>}
       {sliceMode ? (
         <ul
           ref={shelfRef}

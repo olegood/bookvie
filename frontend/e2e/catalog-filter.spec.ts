@@ -154,7 +154,7 @@ test.describe('Story 7.2 Filter my catalog (ATDD)', () => {
     await page.setViewportSize({ width: 1280, height: 900 })
   })
 
-  test.skip('[P1] AC-1 the toolbar’s second row has Status and Type chip groups plus Language ▾ and Tag ▾, toggle buttons that show selection with a fill, a 2px accent border and a check', async ({
+  test('[P1] AC-1 the toolbar’s second row has Status and Type chip groups plus Language ▾ and Tag ▾, toggle buttons that show selection with a fill, a 2px accent border and a check', async ({
     page,
     seededServer,
   }) => {
@@ -195,7 +195,7 @@ test.describe('Story 7.2 Filter my catalog (ATDD)', () => {
     await expect(chip(page, 'Status', 'Unread')).toHaveAttribute('aria-pressed', 'false')
   })
 
-  test.skip('[P1] AC-2 Language ▾ and Tag ▾ list the library’s values as checkboxes in alphabetical order, and the chip counts the checked ones', async ({
+  test('[P1] AC-2 Language ▾ and Tag ▾ list the library’s values as checkboxes in alphabetical order, and the chip counts the checked ones', async ({
     page,
     seededServer,
   }) => {
@@ -212,7 +212,7 @@ test.describe('Story 7.2 Filter my catalog (ATDD)', () => {
     await expect.poll(() => checkboxNames(page)).toEqual(['classic', 'novel', 'stories'])
   })
 
-  test.skip('[P0] AC-3 chips OR within a group and AND across groups and Search titles, hide non-matching Books in both views, and announce "N books match."', async ({
+  test('[P0] AC-3 chips OR within a group and AND across groups and Search titles, hide non-matching Books in both views, and announce "N books match."', async ({
     page,
     seededServer,
   }) => {
@@ -244,10 +244,7 @@ test.describe('Story 7.2 Filter my catalog (ATDD)', () => {
     await expect(bookRows(page)).toHaveText([/^Dubliners/])
   })
 
-  test.skip('[P1] AC-4 "Clear filters" at the end of the row turns every filter off', async ({
-    page,
-    seededServer,
-  }) => {
+  test('[P1] AC-4 "Clear filters" at the end of the row turns every filter off', async ({ page, seededServer }) => {
     const server = await seededServer({ books: FILTER_SHELF })
     await page.goto(`${server.url}/catalog`)
 
@@ -255,8 +252,16 @@ test.describe('Story 7.2 Filter my catalog (ATDD)', () => {
     await chip(page, 'Type', 'Ebook').click()
     await languageChip(page).click()
     await page.getByRole('checkbox', { name: 'French', exact: true }).check()
+    // Clear filters isn't a search clear: "e" stays.
+    await search(page).fill('e')
     await clearFilters(page).click()
 
+    // Focus goes to Read (the clicked link is gone); the count is the search's alone.
+    await expect(chip(page, 'Status', 'Read')).toBeFocused()
+    await expect(search(page)).toHaveValue('e')
+    await expect(page.getByRole('status')).toHaveText('5 books match.')
+    await expect.poll(() => spineNames(bookcase(page))).toEqual([BLEAK_HOUSE, DUBLINERS, EMMA, CANDIDE, AUSTERLITZ])
+    await search(page).fill('')
     await expect.poll(() => spineNames(bookcase(page))).toEqual(BY_AUTHOR)
     await expect(chip(page, 'Status', 'Read')).toHaveAttribute('aria-pressed', 'false')
     await expect(chip(page, 'Type', 'Ebook')).toHaveAttribute('aria-pressed', 'false')
@@ -271,7 +276,7 @@ test.describe('Story 7.2 Filter my catalog (ATDD)', () => {
     await expect(clearFilters(page)).toBeFocused()
   })
 
-  test.skip('[P1] AC-5 filters that match nothing show "No books match these filters." with a "Clear filters" link', async ({
+  test('[P1] AC-5 filters that match nothing show "No books match these filters." with a "Clear filters" link', async ({
     page,
     seededServer,
   }) => {
@@ -292,7 +297,7 @@ test.describe('Story 7.2 Filter my catalog (ATDD)', () => {
     await expect(main(page).getByText('No books match these filters.', { exact: true })).toHaveCount(0)
   })
 
-  test.skip('[P1] AC-6 when the focused spine is filtered out, the bookcase’s Tab stop moves to its nearest remaining neighbor in sort order', async ({
+  test('[P1] AC-6 when the focused spine is filtered out, the bookcase’s Tab stop moves to its nearest remaining neighbor in sort order', async ({
     page,
     seededServer,
   }) => {
@@ -314,7 +319,7 @@ test.describe('Story 7.2 Filter my catalog (ATDD)', () => {
     await expect.poll(() => spineNames(bookcase(page))).toEqual([BLEAK_HOUSE, EMMA, AUSTERLITZ])
   })
 
-  test.skip('[P1] AC-7 filters are off after leaving Catalog and coming back, and never apply to the meter or Home’s slice', async ({
+  test('[P1] AC-7 filters are off after leaving Catalog and coming back, and never apply to the meter or Home’s slice', async ({
     page,
     seededServer,
   }) => {
@@ -341,7 +346,7 @@ test.describe('Story 7.2 Filter my catalog (ATDD)', () => {
     await expect.poll(() => spineNames(slice)).toEqual(BY_AUTHOR)
   })
 
-  test.skip('[P1] AC-8 adding a Book the filters would hide clears them, so the new spine is focused and announced', async ({
+  test('[P1] AC-8 adding a Book the filters would hide clears them, so the new spine is focused and announced', async ({
     page,
     seededServer,
   }) => {
@@ -364,5 +369,78 @@ test.describe('Story 7.2 Filter my catalog (ATDD)', () => {
     await expect(panel).toBeHidden()
     await expect(bookcase(page).getByRole('button')).toHaveCount(7)
     await expect(page.getByRole('status')).toHaveText('Added Swing Time.')
+  })
+
+  test('[P1] AC-5 a search that alone matches nothing keeps "No titles match “…”." while a filter is on', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: FILTER_SHELF })
+    await page.goto(`${server.url}/catalog`)
+
+    await chip(page, 'Status', 'Read').click()
+    await search(page).fill('zzz')
+
+    await expect(main(page).getByText('No titles match “zzz”.', { exact: true })).toBeVisible()
+    await expect(main(page).getByText('No books match these filters.', { exact: true })).toHaveCount(0)
+    // Only the row's Clear filters.
+    await expect(clearFilters(page)).toHaveCount(1)
+  })
+
+  test('[P1] AC-2 Esc closes the Language list and returns focus to its chip', async ({ page, seededServer }) => {
+    const server = await seededServer({ books: FILTER_SHELF })
+    await page.goto(`${server.url}/catalog`)
+
+    await languageChip(page).focus()
+    await page.keyboard.press('Enter')
+    await expect(languageChip(page)).toHaveAttribute('aria-expanded', 'true')
+    await page.keyboard.press('Tab')
+    await expect(page.getByRole('checkbox', { name: 'English', exact: true })).toBeFocused()
+    await page.keyboard.press('Space')
+    await expect(languageChip(page)).toHaveText(/^Language: 1/)
+
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('checkbox')).toHaveCount(0)
+    await expect(languageChip(page)).toBeFocused()
+    await expect(languageChip(page)).toHaveAttribute('aria-expanded', 'false')
+  })
+  test('[P1] AC-5 in List view, filters that match nothing show "No books match these filters." with a "Clear filters" link', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: FILTER_SHELF })
+    await page.goto(`${server.url}/catalog`)
+    await viewToggle(page).getByRole('button', { name: 'List', exact: true }).click()
+
+    await chip(page, 'Type', 'Ebook').click()
+    await languageChip(page).click()
+    await page.getByRole('checkbox', { name: 'Polish', exact: true }).check()
+
+    await expect(main(page).getByText('No books match these filters.', { exact: true })).toBeVisible()
+    await expect(clearFilters(page)).toHaveCount(2)
+    await clearFilters(page).last().click()
+    await expect(bookRows(page)).toHaveCount(6)
+    await expect(main(page).getByText('No books match these filters.', { exact: true })).toHaveCount(0)
+  })
+
+  test('[P1] AC-2 a mouse click on a value’s label text checks it and keeps the list open; a click outside closes it', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: FILTER_SHELF })
+    await page.goto(`${server.url}/catalog`)
+
+    await languageChip(page).click()
+    const french = page.getByRole('checkbox', { name: 'French', exact: true })
+    // The label's text, not the box: near the label's right end.
+    const label = (await french.locator('xpath=ancestor::label').boundingBox())!
+    await page.mouse.click(label.x + label.width - 6, label.y + label.height / 2)
+
+    await expect(languageChip(page)).toHaveText(/^Language: 1/)
+    await expect(french).toBeChecked()
+    await expect(page.getByRole('checkbox')).toHaveCount(4)
+
+    await main(page).getByRole('heading', { name: 'Catalog', level: 1 }).click()
+    await expect(page.getByRole('checkbox')).toHaveCount(0)
   })
 })

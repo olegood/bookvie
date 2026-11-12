@@ -187,10 +187,11 @@ test.describe('Story 1.14 Change a book’s color from the shelf (ATDD)', () => 
     await expect(card).toBeHidden()
     await expect(dune).toBeFocused()
 
-    // An outside click on something that takes no focus.
+    // An outside click on something that takes no focus: the legend below the
+    // shelf (the popover opens above the spine, over the Bookcase heading).
     await page.keyboard.press('Enter')
     await expect(card).toBeVisible()
-    await page.getByRole('heading', { name: 'Bookcase', exact: true }).click()
+    await page.getByRole('main').getByText('waiting for you', { exact: true }).click()
     await expect(card).toBeHidden()
     await expect(dune).toBeFocused()
     await expect(page.getByRole('dialog')).toHaveCount(0)

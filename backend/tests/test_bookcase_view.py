@@ -56,3 +56,21 @@ def test_ac2_p0_catalog_view_supplies_spine_inputs_and_the_meter(
         ("Emma", "Jane Austen", 1, "#B48A45", False),
         ("The Science of Discworld", "Terry Pratchett", 3, "#7A6283", False),
     ]
+
+
+def test_story_7_2_catalog_books_carry_type_language_and_tags(
+    tmp_path: Path, library_builder: LibraryBuilder
+) -> None:
+    """Story 7.2: Catalog's filter chips read each Book's type, language and tags as stored."""
+    library_builder.book(
+        title="Candide", type="ebook", language="French", tags=["Classic", "satire"]
+    )
+    library_builder.book(title="Flights", type="hardcover", language="Polish", tags=[])
+    library_builder.write(tmp_path)
+
+    body = api_client(tmp_path, raise_server_exceptions=True).get("/api/views/catalog").json()
+
+    assert [(b["title"], b["type"], b["language"], b["tags"]) for b in body["books"]] == [
+        ("Candide", "ebook", "French", ["Classic", "satire"]),
+        ("Flights", "hardcover", "Polish", []),
+    ]

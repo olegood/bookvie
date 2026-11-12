@@ -85,6 +85,9 @@ def test_seeded_library(tmp_path: Path, library_builder: LibraryBuilder, view: s
             "percent": None,
             "waitingPage": None,
             "sideRead": False,
+            "type": "paperback",
+            "language": "English",
+            "tags": [],
         },
         {
             "id": ids["omens"],
@@ -106,6 +109,9 @@ def test_seeded_library(tmp_path: Path, library_builder: LibraryBuilder, view: s
             "percent": None,
             "waitingPage": None,
             "sideRead": False,
+            "type": "paperback",
+            "language": "English",
+            "tags": ["Fantasy", "humor"],
         },
         {
             "id": ids["emma"],
@@ -128,6 +134,9 @@ def test_seeded_library(tmp_path: Path, library_builder: LibraryBuilder, view: s
             "percent": 3,
             "waitingPage": 10,
             "sideRead": False,
+            "type": "paperback",
+            "language": "English",
+            "tags": ["fantasy", "Classics"],
         },
     ]
     if view == "catalog":

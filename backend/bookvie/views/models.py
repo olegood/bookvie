@@ -48,6 +48,12 @@ class ShelfBook(_View):
     """The paused Reading's current page; set only when ``role`` is ``waiting``."""
     side_read: bool
     """Whether the Book is a Side read (``sideReadBookIds``): ", on the side" in its spine name."""
+    type: Literal["paperback", "hardcover", "ebook"]
+    """The Book's type as stored; read by Catalog's Type filter chips."""
+    language: str
+    """The Book's language as stored; read by Catalog's Language filter."""
+    tags: list[str]
+    """The Book's tags as stored; read by Catalog's Tag filter."""
 
 
 class HomeMainBook(_View):

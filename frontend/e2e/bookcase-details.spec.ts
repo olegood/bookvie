@@ -69,7 +69,7 @@ test.describe('Story 1.10 Bookcase view details (automate)', () => {
     await page.emulateMedia({ colorScheme: 'light' })
   })
 
-  test('[P2] AC-1 Tab order is Search titles, Sort, Bookcase, List, New book, How long until…?, then the shelf', async ({
+  test('[P2] AC-1 Tab order is Search titles, Sort, Bookcase, List, New book, the filter chips, How long until…?, then the shelf', async ({
     page,
     seededServer,
   }) => {
@@ -87,6 +87,11 @@ test.describe('Story 1.10 Bookcase view details (automate)', () => {
     await expect(toggle.getByRole('button', { name: 'List', exact: true })).toBeFocused()
     await page.keyboard.press('Tab')
     await expect(page.getByRole('button', { name: 'New book', exact: true })).toBeFocused()
+    // Toolbar row 2: the filter chips (Story 7.2), none on, so no Clear filters.
+    for (const name of ['Read', 'Unread', 'Paperback', 'Hardcover', 'Ebook', 'Language', 'Tag']) {
+      await page.keyboard.press('Tab')
+      await expect(page.getByRole('main').getByRole('button', { name, exact: true })).toBeFocused()
+    }
     // The library meter's row: the collapsed "How long until…?" link (Story 6.2).
     await page.keyboard.press('Tab')
     await expect(page.getByRole('button', { name: 'How long until…?', exact: true })).toBeFocused()

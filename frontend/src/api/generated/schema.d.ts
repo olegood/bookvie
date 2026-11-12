@@ -1012,6 +1012,15 @@ export interface components {
             waitingPage: number | null;
             /** Sideread */
             sideRead: boolean;
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "paperback" | "hardcover" | "ebook";
+            /** Language */
+            language: string;
+            /** Tags */
+            tags: string[];
         };
         /**
          * StatsBucket

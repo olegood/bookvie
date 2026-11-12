@@ -94,7 +94,7 @@ development_status:
 
   epic-7: in-progress
   7-1-sort-my-catalog: done
-  7-2-filter-my-catalog: backlog
+  7-2-filter-my-catalog: review
   epic-7-retrospective: optional
 action_items:
   - id: "epic-1-retro-item-1-run-an-epic-1-trace-and-gate-against-tr7"

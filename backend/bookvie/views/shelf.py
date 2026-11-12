@@ -70,6 +70,9 @@ def _shelf_book(library: Library, book: Book) -> ShelfBook:
         percent=percent(reading.current_page, book.pages) if reading else None,
         waiting_page=waiting_page,
         side_read=book.id in library.side_read_book_ids,
+        type=book.type,
+        language=book.language,
+        tags=list(book.tags),
     )
 
 

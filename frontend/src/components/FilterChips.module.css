@@ -1,0 +1,114 @@
+/* Catalog's toolbar row 2 (DESIGN.md → Filter chips, `components.chip`).
+   Spacing from key-catalog.html: 6px within a group, 22px between groups. */
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) 22px;
+}
+
+.group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.groupName {
+  margin-right: var(--space-1);
+  font-family: var(--font-meta-family);
+  font-size: var(--font-meta-size);
+  line-height: var(--font-meta-line-height);
+  color: var(--color-ink-tertiary);
+}
+
+.chip {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  margin: 0;
+  padding: 0 var(--space-3);
+  border: var(--hairline) solid var(--color-input-border);
+  border-radius: var(--radius-full);
+  background: var(--color-surface-inset);
+  color: var(--color-ink);
+  font-family: var(--font-meta-family);
+  font-size: var(--font-meta-size);
+  font-weight: var(--font-meta-weight);
+  line-height: var(--font-meta-line-height);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* Selected: the fill, a 2px accent border on every side (1px less padding, so
+   nothing shifts) and a leading check kept out of the name and text. */
+.chip[aria-pressed='true'] {
+  padding: 0 calc(var(--space-3) - 1px);
+  border: var(--indicator-width) solid var(--color-accent);
+  background: var(--color-accent-soft);
+}
+
+.chip[aria-pressed='true']::before {
+  content: '✓' / '';
+  color: var(--color-accent);
+  font-size: 11px;
+}
+
+/* Language ▾ and Tag ▾: the popup sits below its chip. */
+.wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.popup {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  left: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 100%;
+  max-height: 320px;
+  overflow-y: auto;
+  padding: var(--space-1) 0;
+  border: var(--hairline) solid var(--color-line);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-overlay);
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  font-family: var(--font-body-sm-family);
+  font-size: var(--font-body-sm-size);
+  line-height: var(--font-body-sm-line-height);
+  color: var(--color-ink);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.option input {
+  margin: 0;
+  accent-color: var(--color-accent);
+}
+
+.clear {
+  font-family: var(--font-body-sm-family);
+  font-size: var(--font-body-sm-size);
+  line-height: var(--font-body-sm-line-height);
+}
+
+@media (forced-colors: active) {
+  .chip[aria-pressed='true'] {
+    border-color: Highlight;
+  }
+
+  .chip[aria-pressed='true']::before {
+    color: CanvasText;
+  }
+}

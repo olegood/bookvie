@@ -843,3 +843,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-7-1-sort-my-catalog.md`
   summary: Spine drift (AD-6, Structural Seed), reconciled before the next epic. The code review's spine check confirmed the entry above ("Deferred from: build-auto review of spec-7-1-sort-my-catalog") and found nothing new; reconcile both together.
   evidence: Spine check, code review of 7.1 (2026-11-12): `ARCHITECTURE-SPINE.md` AD-6 and the Structural Seed's `frontend/src/lib/` line are unedited in `a7f8d76..6689ecc`.
+
+## Deferred from: build-auto review of spec-7-2-filter-my-catalog (2026-11-12)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-7-2-filter-my-catalog.md`
+  summary: Spine drift (AD-6, Structural Seed), reconciled before the next epic. AD-6's client presentation says only "filter chips". It doesn't record the rules (OR within a group, AND across groups and with Search titles, Read is `finished`, an untagged Book never matches a Tag filter, checked values no Book has are ignored), that the client builds the Language and Tag value lists itself with a `toLocaleLowerCase` key (the server's `merge_tags` uses `casefold`, so ß/SS pairs can differ), or that filters are page state only. The Seed's `frontend/src/lib/` line omits `catalogFilter`, and no entry names `components/FilterChips`.
+  evidence: `frontend/src/lib/catalogFilter.ts` (`filterKey`, `filterValues`, `matchesFilters`, `liveFilters`); `frontend/src/components/FilterChips.tsx`; `backend/bookvie/domain/book_fields.py` `merge_tags`; `ARCHITECTURE-SPINE.md` AD-6 and Structural Seed (spine check, build-auto review of 7.2).

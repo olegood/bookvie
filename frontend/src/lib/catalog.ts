@@ -18,7 +18,7 @@ export interface SortableBook extends ListedBook {
 }
 
 // Numbers by value: "Volume 2" before "Volume 10".
-const collator = new Intl.Collator(undefined, { numeric: true })
+export const collator = new Intl.Collator(undefined, { numeric: true })
 
 type Compare = (a: SortableBook, b: SortableBook) => number
 
