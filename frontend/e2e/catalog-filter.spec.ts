@@ -4,6 +4,7 @@
 // state, focus when the focused spine is filtered out, filters not being
 // remembered or applied to Home and the meter, and an add clearing them.
 
+import AxeBuilder from '@axe-core/playwright'
 import type { Locator, Page } from '@playwright/test'
 import {
   ACCENT,
@@ -20,6 +21,12 @@ import { expect, test } from './fixtures.ts'
 
 // DESIGN.md `accent-soft`, light theme (#E3EBE2).
 const ACCENT_SOFT = 'rgb(227, 235, 226)'
+// DESIGN.md `accent-soft` and `accent`, dark theme (#2C3A2E, #93B597).
+const ACCENT_SOFT_DARK = 'rgb(44, 58, 46)'
+const ACCENT_DARK = 'rgb(147, 181, 151)'
+
+// The only keys the app keeps in localStorage (lib/catalogSort, catalogView, theme).
+const APP_STORAGE_KEYS = ['bookvie.catalogSort', 'bookvie.catalogView', 'bookvie.theme']
 
 /** A stable v4-shaped id for the n-th seeded Book. */
 function bookId(n: number): string {
@@ -148,6 +155,60 @@ function checkboxNames(page: Page): Promise<string[]> {
 function anySpine(page: Page, name: string): Locator {
   return bookcase(page).locator(`button[aria-label="${name}"]`)
 }
+
+function sortSelect(page: Page): Locator {
+  return main(page).getByRole('combobox', { name: 'Sort', exact: true })
+}
+
+/** The keys in localStorage and sessionStorage, sorted. */
+function storageKeys(page: Page): Promise<{ local: string[]; session: string[] }> {
+  return page.evaluate(() => ({
+    local: Object.keys(window.localStorage).sort(),
+    session: Object.keys(window.sessionStorage).sort(),
+  }))
+}
+
+/**
+ * Records every text the `status` region shows from now on, empty ones
+ * included, so an announcement repeated word for word shows up as a new one.
+ */
+async function recordStatus(page: Page): Promise<() => Promise<string[]>> {
+  await page.getByRole('status').evaluate((region) => {
+    const seen: string[] = []
+    ;(window as Window & { statusTexts?: string[] }).statusTexts = seen
+    new MutationObserver(() => seen.push(region.textContent ?? '')).observe(region, {
+      childList: true,
+      characterData: true,
+      subtree: true,
+    })
+  })
+  return async () => (await page.evaluate(() => (window as Window & { statusTexts?: string[] }).statusTexts)) ?? []
+}
+
+/** Adds Swing Time (unread, English, Paperback, no tags) from the New book panel. */
+async function addSwingTime(page: Page): Promise<void> {
+  await page.getByRole('button', { name: 'New book', exact: true }).click()
+  const panel = page.getByRole('dialog', { name: 'New book', exact: true })
+  for (const [label, value] of Object.entries(SWING_TIME)) {
+    await panel.getByLabel(label, { exact: true }).fill(value)
+  }
+  await panel.getByRole('combobox', { name: 'Type', exact: true }).selectOption('Paperback')
+  await panel.getByRole('button', { name: 'Add book', exact: true }).click()
+  await expect(panel).toBeHidden()
+}
+
+const SWING = 'Swing Time by Zadie Smith, not read yet'
+
+/**
+ * "Classic" on the first Book in library order, "classic" on a later one
+ * whose author sorts first, so library order and the Author sort disagree
+ * about which spelling comes first.
+ */
+const TAG_CASE_SHELF = [
+  { id: bookId(1), title: 'Orlando', authors: ['Virginia Woolf'], tags: ['Classic'] },
+  { id: bookId(2), title: 'Agnes Grey', authors: ['Anne Brontë'], tags: ['classic'] },
+  { id: bookId(3), title: 'Dubliners', authors: ['James Joyce'], tags: ['stories'] },
+]
 
 test.describe('Story 7.2 Filter my catalog (ATDD)', () => {
   test.beforeEach(async ({ page }) => {
@@ -482,5 +543,258 @@ test.describe('Story 7.2 Filter my catalog (ATDD)', () => {
 
     await main(page).getByRole('heading', { name: 'Catalog', level: 1 }).click()
     await expect(page.getByRole('checkbox')).toHaveCount(0)
+  })
+
+  test('[P1] AC-6 filters that hide every spine leave focus on the control that hid them, and after Clear filters Tab lands on the moved stop', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: FILTER_SHELF })
+    await page.goto(`${server.url}/catalog`)
+    // Flights, the 4th spine, holds the Tab stop.
+    await tabIntoBookcase(page)
+    await page.keyboard.press('ArrowRight')
+    await page.keyboard.press('ArrowRight')
+    await page.keyboard.press('ArrowRight')
+    await expect(spine(page, FLIGHTS)).toBeFocused()
+
+    // A chip click takes focus, so no spine has it while the filters change:
+    // Ebook hides Flights (the stop moves to Emma), Polish hides the rest.
+    const ebook = chip(page, 'Type', 'Ebook')
+    await ebook.click()
+    await expect(ebook).toBeFocused()
+    await languageChip(page).click()
+    const polish = page.getByRole('checkbox', { name: 'Polish', exact: true })
+    await polish.check()
+
+    // Not yanked to Search titles: focus stays where the user is.
+    await expect(polish).toBeFocused()
+    await expect(main(page).getByText('No books match these filters.', { exact: true })).toBeVisible()
+    await expect(bookcase(page)).toBeHidden()
+    await expect(page.getByRole('status')).toHaveText('0 books match.')
+
+    await clearFilters(page).last().click()
+    await expect(chip(page, 'Status', 'Read')).toBeFocused()
+    await tabIntoBookcase(page)
+    await expect(spine(page, EMMA)).toBeFocused()
+  })
+
+  test('[P1] AC-6 a chip click that moves no focus, as in macOS Safari, and hides the focused spine and every other one moves focus to Search titles', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: FILTER_SHELF })
+    await page.goto(`${server.url}/catalog`)
+    // French leaves Candide alone; focus it.
+    await languageChip(page).click()
+    await page.getByRole('checkbox', { name: 'French', exact: true }).check()
+    await page.keyboard.press('Escape')
+    await tabIntoBookcase(page)
+    await expect(spine(page, CANDIDE)).toBeFocused()
+
+    // A dispatched click moves no focus, as a mouse click on a chip in Safari:
+    // the spine still has real focus when Unread hides it, and none remain.
+    await chip(page, 'Status', 'Unread').dispatchEvent('click')
+
+    await expect(chip(page, 'Status', 'Unread')).toHaveAttribute('aria-pressed', 'true')
+    await expect(bookcase(page)).toBeHidden()
+    await expect(search(page)).toBeFocused()
+  })
+
+  test('[P2] AC-6 Clear filters keeps the bookcase’s Tab stop where it moved, not on the spine that was filtered out', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: FILTER_SHELF })
+    await page.goto(`${server.url}/catalog`)
+    // Focus Flights, the 4th spine.
+    await tabIntoBookcase(page)
+    await page.keyboard.press('ArrowRight')
+    await page.keyboard.press('ArrowRight')
+    await page.keyboard.press('ArrowRight')
+    await expect(spine(page, FLIGHTS)).toBeFocused()
+
+    // "novel" hides Flights: the stop moves to Emma.
+    await tagChip(page).click()
+    await page.getByRole('checkbox', { name: 'novel', exact: true }).check()
+    await page.keyboard.press('Escape')
+    await clearFilters(page).click()
+    await expect.poll(() => spineNames(bookcase(page))).toEqual(BY_AUTHOR)
+
+    // EXPERIENCE.md "Keep a moved stop": Flights is back, the stop stays on Emma.
+    await tabIntoBookcase(page)
+    await expect(spine(page, EMMA)).toBeFocused()
+    await expect(spine(page, FLIGHTS)).toHaveAttribute('tabindex', '-1')
+  })
+
+  test('[P2] AC-3 each filter change announces its count again, even word for word the same, by emptying the status region first', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: FILTER_SHELF })
+    await page.goto(`${server.url}/catalog`)
+    await expect.poll(() => spineNames(bookcase(page))).toEqual(BY_AUTHOR)
+    const announced = await recordStatus(page)
+    const unread = chip(page, 'Status', 'Unread')
+
+    // Unread off and back on: the same 3 Books, so the same words.
+    await unread.click()
+    await expect.poll(announced).toEqual(['3 books match.'])
+    await unread.click()
+    await expect.poll(announced).toEqual(['3 books match.', '', '6 books match.'])
+    await unread.click()
+    await expect.poll(announced).toEqual(['3 books match.', '', '6 books match.', '', '3 books match.'])
+    // English keeps all 3 unread Books: the identical count right after itself.
+    await languageChip(page).click()
+    await page.getByRole('checkbox', { name: 'English', exact: true }).check()
+    await expect
+      .poll(announced)
+      .toEqual(['3 books match.', '', '6 books match.', '', '3 books match.', '', '3 books match.'])
+  })
+
+  test('[P2] AC-2 Tag ▾ lists a tag spelled in two cases once, in the spelling that comes first in the library, and it matches both Books', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: TAG_CASE_SHELF })
+    await page.goto(`${server.url}/catalog`)
+    const agnesGrey = 'Agnes Grey by Anne Brontë, not read yet'
+    const orlando = 'Orlando by Virginia Woolf, not read yet'
+    // The Author sort puts "classic" (Brontë) before "Classic" (Woolf).
+    await expect
+      .poll(() => spineNames(bookcase(page)))
+      .toEqual([agnesGrey, 'Dubliners by James Joyce, not read yet', orlando])
+
+    await tagChip(page).click()
+    await expect.poll(() => checkboxNames(page)).toEqual(['Classic', 'stories'])
+    await page.getByRole('checkbox', { name: 'Classic', exact: true }).check()
+
+    await expect(tagChip(page)).toHaveText(/^Tag: 1/)
+    await expect.poll(() => spineNames(bookcase(page))).toEqual([agnesGrey, orlando])
+    await expect(page.getByRole('status')).toHaveText('2 books match.')
+  })
+
+  test('[P2] AC-7 a reload of Catalog starts with no filter on, and no filter is kept in storage', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: FILTER_SHELF })
+    await page.goto(`${server.url}/catalog`)
+    await expect.poll(() => spineNames(bookcase(page))).toEqual(BY_AUTHOR)
+    const before = await storageKeys(page)
+
+    await chip(page, 'Status', 'Unread').click()
+    await chip(page, 'Type', 'Ebook').click()
+    await tagChip(page).click()
+    await page.getByRole('checkbox', { name: 'novel', exact: true }).check()
+    await expect.poll(() => spineNames(bookcase(page))).toEqual([EMMA])
+    expect(await storageKeys(page)).toEqual(before)
+
+    await page.reload()
+    await expect.poll(() => spineNames(bookcase(page))).toEqual(BY_AUTHOR)
+    await expect(chip(page, 'Status', 'Unread')).toHaveAttribute('aria-pressed', 'false')
+    await expect(chip(page, 'Type', 'Ebook')).toHaveAttribute('aria-pressed', 'false')
+    await expect(tagChip(page)).toHaveText(/^Tag\s*▾$/)
+    await expect(clearFilters(page)).toHaveCount(0)
+    const after = await storageKeys(page)
+    expect(after).toEqual(before)
+    // Only the app's own keys, none of them a filter.
+    for (const key of after.local) expect(APP_STORAGE_KEYS).toContain(key)
+  })
+
+  test('[P2] AC-7 a filter leaves the remembered sort alone, and a sort change keeps the filters', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: FILTER_SHELF })
+    await page.goto(`${server.url}/catalog`)
+    const storedSort = () => page.evaluate(() => window.localStorage.getItem('bookvie.catalogSort'))
+    const read = chip(page, 'Status', 'Read')
+
+    await sortSelect(page).selectOption({ label: 'Title' })
+    await expect.poll(storedSort).toBe('title')
+    await read.click()
+    await expect.poll(() => spineNames(bookcase(page))).toEqual([AUSTERLITZ, CANDIDE, FLIGHTS])
+    expect(await storedSort()).toBe('title')
+    await expect(sortSelect(page).locator('option:checked')).toHaveText('Title')
+
+    // The same 3 Books, now by author.
+    await sortSelect(page).selectOption({ label: 'Author' })
+    await expect.poll(() => spineNames(bookcase(page))).toEqual([FLIGHTS, CANDIDE, AUSTERLITZ])
+    await expect(read).toHaveAttribute('aria-pressed', 'true')
+    await expect(clearFilters(page)).toHaveCount(1)
+    await expect.poll(storedSort).toBe('author')
+  })
+
+  test('[P2] AC-8 an add clears the filters even when they would keep the new Book visible', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: FILTER_SHELF })
+    await page.goto(`${server.url}/catalog`)
+    // Unread and English both keep Swing Time (unread, English).
+    await chip(page, 'Status', 'Unread').click()
+    await languageChip(page).click()
+    await page.getByRole('checkbox', { name: 'English', exact: true }).check()
+    await page.keyboard.press('Escape')
+    await expect.poll(() => spineNames(bookcase(page))).toEqual([BLEAK_HOUSE, DUBLINERS, EMMA])
+
+    await addSwingTime(page)
+
+    await expect(spine(page, SWING)).toBeFocused()
+    await expect(chip(page, 'Status', 'Unread')).toHaveAttribute('aria-pressed', 'false')
+    await expect(languageChip(page)).toHaveText(/^Language\s*▾$/)
+    await expect(clearFilters(page)).toHaveCount(0)
+    await expect(bookcase(page).getByRole('button')).toHaveCount(7)
+    await expect(page.getByRole('status')).toHaveText('Added Swing Time.')
+  })
+
+  test('[P2] AC-8 an add with Search titles text and a filter both hiding the new Book clears both', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: FILTER_SHELF })
+    await page.goto(`${server.url}/catalog`)
+    // "u" (Austerlitz, Bleak House, Dubliners) and Read each hide Swing Time.
+    await search(page).fill('u')
+    await chip(page, 'Status', 'Read').click()
+    await expect.poll(() => spineNames(bookcase(page))).toEqual([AUSTERLITZ])
+
+    await addSwingTime(page)
+
+    await expect(spine(page, SWING)).toBeFocused()
+    await expect(search(page)).toHaveValue('')
+    await expect(chip(page, 'Status', 'Read')).toHaveAttribute('aria-pressed', 'false')
+    await expect(clearFilters(page)).toHaveCount(0)
+    await expect(bookcase(page).getByRole('button')).toHaveCount(7)
+    await expect(page.getByRole('status')).toHaveText('Added Swing Time.')
+  })
+
+  test('[P2] AC-1 with a chip on and the Language list open, axe finds nothing in both themes, and the dark chip uses the dark accent tokens', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: FILTER_SHELF })
+    const read = chip(page, 'Status', 'Read')
+    const themes = [
+      { colorScheme: 'light', fill: ACCENT_SOFT, border: ACCENT },
+      { colorScheme: 'dark', fill: ACCENT_SOFT_DARK, border: ACCENT_DARK },
+    ] as const
+    for (const { colorScheme, fill, border } of themes) {
+      await page.emulateMedia({ colorScheme })
+      await page.goto(`${server.url}/catalog`)
+      await read.click()
+      await languageChip(page).click()
+      await expect(page.getByRole('checkbox')).toHaveCount(4)
+
+      await expect(read).toHaveCSS('background-color', fill)
+      for (const side of ['top', 'right', 'bottom', 'left']) {
+        await expect(read).toHaveCSS(`border-${side}-color`, border)
+      }
+      const { violations } = await new AxeBuilder({ page })
+        .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
+        .analyze()
+      expect(violations.map(({ id, nodes }) => `${colorScheme}: ${id} (${nodes.length})`)).toEqual([])
+    }
   })
 })

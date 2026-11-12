@@ -112,21 +112,21 @@ Every seed loaded and every server started cleanly, so no leaf fails for a seed 
 
 ## Green-phase follow-ups (secondary branches, not red leaves)
 
-- [ ] **API, the catalog view (`backend/tests/test_bookcase_view.py`):** every `books[]` entry carries `type`, `language` and `tags` as stored, and the contract test or the generated `schema.d.ts` picks them up (`npm --prefix frontend run api:gen`).
-- [ ] **Unit, the filter (`lib/catalog.test.ts` or a new `lib/catalogFilter.test.ts`):** OR within a group, AND across groups. An empty group means no constraint. Read is `finished`, and Unread is `!finished`, so a re-read finished Book counts as Read. A Book with no tags never matches a Tag filter. The distinct, alphabetical value lists use `Intl.Collator`. Case handling for tags and languages, whichever the build picks. The function doesn't mutate its input.
-- [ ] **E2E, AC-6 none remain:** a filter change that hides every spine moves real focus to Search titles when a spine had real focus. With focus on a chip or checkbox, only the Tab stop is affected. Pin what the build does, since chips take focus when clicked.
-- [ ] **E2E, AC-6 restore:** after Clear filters, the Tab stop stays where it moved, as Search titles already does ("Keep a moved stop").
-- [ ] **E2E, AC-3 repeated count:** toggling a chip off and on again with the same result announces "N books match." again (the region is emptied first, about 100 ms tick).
-- [ ] **E2E, AC-3 single value:** one Book shows "1 book matches.".
-- [ ] **E2E, AC-5 in List view:** the same "No books match these filters." line and Clear filters link replace the table.
-- [ ] **E2E, AC-5 search plus filters:** pin which no-match line shows when both are active.
-- [ ] **E2E, AC-1 dark theme and axe:** the selected chip's fill and border use the dark tokens. Extend the Catalog axe test in `bookcase-details.spec.ts` with a chip on and the Language list open, in both themes.
-- [ ] **E2E, AC-2 keyboard:** the Language and Tag lists open and close from the keyboard (Enter or Space on the chip, Esc closes and returns focus to the chip), and Tab reaches the checkboxes.
-- [ ] **E2E, AC-2 Tag case:** a library with "Classic" and "classic" lists one value.
-- [ ] **E2E, AC-7 reload:** a reload of Catalog also starts with no filters on, and no filter key appears in `localStorage`.
-- [ ] **E2E, AC-7 sort kept:** a filter doesn't change the remembered sort, and a sort change keeps the filters.
-- [ ] **E2E, AC-8 matching add:** pin whether adding a Book that the filters keep visible leaves them on.
-- [ ] **E2E, AC-8 with a search:** with Search titles text and a filter both hiding the new Book, both are cleared.
+- [x] **API, the catalog view (`backend/tests/test_bookcase_view.py`):** every `books[]` entry carries `type`, `language` and `tags` as stored, and the contract test or the generated `schema.d.ts` picks them up (`npm --prefix frontend run api:gen`). (done: `backend/tests/test_bookcase_view.py:61` `test_story_7_2_catalog_books_carry_type_language_and_tags`; `check:api` compares the regenerated `schema.d.ts`)
+- [x] **Unit, the filter (`lib/catalog.test.ts` or a new `lib/catalogFilter.test.ts`):** OR within a group, AND across groups. An empty group means no constraint. Read is `finished`, and Unread is `!finished`, so a re-read finished Book counts as Read. A Book with no tags never matches a Tag filter. The distinct, alphabetical value lists use `Intl.Collator`. Case handling for tags and languages, whichever the build picks. The function doesn't mutate its input. (done: `frontend/src/lib/catalogFilter.test.ts` `matchesFilters`, `filterValues`, `filtersOn`, `toggleValue` and `liveFilters`; case handling is the `toLocaleLowerCase` key with the first spelling)
+- [x] **E2E, AC-6 none remain:** a filter change that hides every spine moves real focus to Search titles when a spine had real focus. With focus on a chip or checkbox, only the Tab stop is affected. Pin what the build does, since chips take focus when clicked. (done: `frontend/e2e/catalog-filter.spec.ts:548` focus stays on the control that hid the last spine; `frontend/e2e/catalog-filter.spec.ts:582` a click that moves no focus hides the focused spine and focus moves to Search titles)
+- [x] **E2E, AC-6 restore:** after Clear filters, the Tab stop stays where it moved, as Search titles already does ("Keep a moved stop"). (done: `frontend/e2e/catalog-filter.spec.ts:604`)
+- [x] **E2E, AC-3 repeated count:** toggling a chip off and on again with the same result announces "N books match." again (the region is emptied first, about 100 ms tick). (done: `frontend/e2e/catalog-filter.spec.ts:630`)
+- [x] **E2E, AC-3 single value:** one Book shows "1 book matches.". (done: `frontend/e2e/catalog-filter.spec.ts:301`, the AC-3 leaf's "1 book matches.")
+- [x] **E2E, AC-5 in List view:** the same "No books match these filters." line and Clear filters link replace the table. (done: `frontend/e2e/catalog-filter.spec.ts:507`)
+- [x] **E2E, AC-5 search plus filters:** pin which no-match line shows when both are active. (done: `frontend/e2e/catalog-filter.spec.ts:437`, the search's own line wins)
+- [x] **E2E, AC-1 dark theme and axe:** the selected chip's fill and border use the dark tokens. Extend the Catalog axe test in `bookcase-details.spec.ts` with a chip on and the Language list open, in both themes. (done: `frontend/e2e/catalog-filter.spec.ts:773`, in this spec rather than `bookcase-details.spec.ts`)
+- [x] **E2E, AC-2 keyboard:** the Language and Tag lists open and close from the keyboard (Enter or Space on the chip, Esc closes and returns focus to the chip), and Tab reaches the checkboxes. (done: `frontend/e2e/catalog-filter.spec.ts:453` Enter opens, Tab reaches the checkboxes, Esc closes and returns focus; `frontend/e2e/catalog-filter.spec.ts:493` Tab out closes; `frontend/e2e/catalog-filter.spec.ts:471` Esc after clicks that move no focus)
+- [x] **E2E, AC-2 Tag case:** a library with "Classic" and "classic" lists one value. (done: `frontend/e2e/catalog-filter.spec.ts:655`)
+- [x] **E2E, AC-7 reload:** a reload of Catalog also starts with no filters on, and no filter key appears in `localStorage`. (done: `frontend/e2e/catalog-filter.spec.ts:677`)
+- [x] **E2E, AC-7 sort kept:** a filter doesn't change the remembered sort, and a sort change keeps the filters. (done: `frontend/e2e/catalog-filter.spec.ts:705`)
+- [x] **E2E, AC-8 matching add:** pin whether adding a Book that the filters keep visible leaves them on. (done: `frontend/e2e/catalog-filter.spec.ts:729`, an add always clears the filters)
+- [x] **E2E, AC-8 with a search:** with Search titles text and a filter both hiding the new Book, both are cleared. (done: `frontend/e2e/catalog-filter.spec.ts:752`)
 
 ## Existing tests the build must update
 
@@ -136,7 +136,9 @@ Every seed loaded and every server started cleanly, so no leaf fails for a seed 
 - `backend/tests/test_contract.py` and `frontend/src/api/generated/schema.d.ts` change when `ShelfBook` gains fields. Regenerate the schema; `check:api` compares it byte for byte.
 - `frontend/e2e/bookcase-details.spec.ts:408` runs axe on a non-empty Catalog, which will now render the chips in both themes.
 
-## TDD Red Phase (Current)
+## TDD Red Phase (historical)
+
+Since then (green): the build turned all 8 leaves on, the reviews added 6 P1 leaves and the automate run added 10 more (`automation-summary.md`).
 
 There is one skipped leaf per criterion, 8 in all, in `frontend/e2e/catalog-filter.spec.ts`, inside the `Story 7.2 Filter my catalog (ATDD)` describe. Each is a `test.skip(`, and each title carries exactly one `[P*] AC-n`.
 
@@ -174,36 +176,36 @@ There is one skipped leaf per criterion, 8 in all, in `frontend/e2e/catalog-filt
 Activate one leaf at a time: change `test.skip(` to `test(`. Watch it fail, implement, then watch it pass. Run `npm run build` first, then `cd frontend && TZ=Europe/Madrid npx playwright test e2e/catalog-filter.spec.ts`.
 
 ### Backend: the view fields
-- [ ] Add `type`, `language` and `tags` to `ShelfBook` and fill them in `views/shelf.py`. Add the pytest above and regenerate `schema.d.ts`.
+- [x] Add `type`, `language` and `tags` to `ShelfBook` and fill them in `views/shelf.py`. Add the pytest above and regenerate `schema.d.ts`. (done: `backend/bookvie/views/models.py:51`, `views/shelf.py`, `test_bookcase_view.py:61`)
 
 ### AC-1: the chips
-- [ ] Add toolbar row 2 with the Status and Type groups and the Language ▾ and Tag ▾ chips, in the chip style (DESIGN.md → Filter chips).
-- [ ] Activate AC-1.
+- [x] Add toolbar row 2 with the Status and Type groups and the Language ▾ and Tag ▾ chips, in the chip style (DESIGN.md → Filter chips). (done: `frontend/src/components/FilterChips.tsx`, rendered in `CatalogPage.tsx`)
+- [x] Activate AC-1. (done: `frontend/e2e/catalog-filter.spec.ts:218`)
 
 ### AC-2: Language and Tag lists
-- [ ] Derive the distinct values from the view's Books, sorted with the collator, and show them as checkboxes in a small `surface` list. Show the count on the chip.
-- [ ] Activate AC-2.
+- [x] Derive the distinct values from the view's Books, sorted with the collator, and show them as checkboxes in a small `surface` list. Show the count on the chip. (done: `CatalogPage.tsx:147-148` `filterValues`; `FilterChips.tsx` `ValueList`)
+- [x] Activate AC-2. (done: `frontend/e2e/catalog-filter.spec.ts:259`)
 
 ### AC-3: apply the filters
-- [ ] Filter the sorted array (OR within a group, AND across groups and the search) in both views, re-applied to every refetch. Announce "N books match." after a filter change, and make the search's count use the filtered result.
-- [ ] Add the unit cases above.
-- [ ] Activate AC-3.
+- [x] Filter the sorted array (OR within a group, AND across groups and the search) in both views, re-applied to every refetch. Announce "N books match." after a filter change, and make the search's count use the filtered result. (done: `CatalogPage.tsx:80` `shownIds`, `:261` `changeFilters`, `:253` the search count)
+- [x] Add the unit cases above. (done: `frontend/src/lib/catalogFilter.test.ts`)
+- [x] Activate AC-3. (done: `frontend/e2e/catalog-filter.spec.ts:276`)
 
 ### AC-4 and AC-5: Clear filters and no matches
-- [ ] Add Clear filters at the row's end while any filter is on. Show "No books match these filters." with its own Clear filters in the shelf area.
-- [ ] Activate AC-4 and AC-5.
+- [x] Add Clear filters at the row's end while any filter is on. Show "No books match these filters." with its own Clear filters in the shelf area. (done: `FilterChips.tsx` Clear filters; `CatalogPage.tsx` `noMatch`)
+- [x] Activate AC-4 and AC-5. (done: `frontend/e2e/catalog-filter.spec.ts:308`, `frontend/e2e/catalog-filter.spec.ts:340`)
 
 ### AC-6: focus
-- [ ] Feed the filtered visibility into `Bookcase`'s `visible` set, so the `nearestVisible` Tab stop and the Search titles fallback work for filters as they do for the search.
-- [ ] Activate AC-6.
+- [x] Feed the filtered visibility into `Bookcase`'s `visible` set, so the `nearestVisible` Tab stop and the Search titles fallback work for filters as they do for the search. (done: `Bookcase.tsx:137` `shown` feeds `visibleIds`)
+- [x] Activate AC-6. (done: `frontend/e2e/catalog-filter.spec.ts:363`)
 
 ### AC-7: not remembered
-- [ ] Keep the filters in `CatalogPage` state only, so leaving Catalog drops them. Don't apply them to the meter or `HomePage`.
-- [ ] Activate AC-7.
+- [x] Keep the filters in `CatalogPage` state only, so leaving Catalog drops them. Don't apply them to the meter or `HomePage`. (done: `CatalogPage.tsx` `useState(NO_FILTERS)`, no storage)
+- [x] Activate AC-7. (done: `frontend/e2e/catalog-filter.spec.ts:385`)
 
 ### AC-8: an add clears them
-- [ ] In `onSaved`, clear the filters with the search, before the new spine is focused.
-- [ ] Activate AC-8.
+- [x] In `onSaved`, clear the filters with the search, before the new spine is focused. (done: `CatalogPage.tsx:280`)
+- [x] Activate AC-8. (done: `frontend/e2e/catalog-filter.spec.ts:412`)
 
 ## Completion
 
