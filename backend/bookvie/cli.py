@@ -124,7 +124,12 @@ def _show(url: str, no_browser: bool) -> None:
         webbrowser.open(url)
 
 
-def _port_conflict(port: int, data_dir: Path, pid: int, no_browser: bool) -> int:
+def _port_conflict(port: int, data_dir: Path, pid: int, no_browser: bool) -> tuple[int, bool]:
+    """Return the exit code, and whether to skip releasing ``bookvie.lock``.
+
+    True on the same-folder branch: after a hand-over the lock names the
+    running server, and with no live pid to hand it to the lock is left as is.
+    """
     reported = instance.probe_health(port)
     if reported is None:
         _say(
@@ -136,14 +141,17 @@ def _port_conflict(port: int, data_dir: Path, pid: int, no_browser: bool) -> int
         running = instance.probe_pid(port)
         if running is not None and instance.pid_alive(running):
             instance.hand_over_lock(data_dir, pid, instance.LockInfo(running, port))
+        # With no live pid (a pre-1.2 bookvie) there is no one to hand the lock
+        # to. Leave it rather than delete it; it names this launch, so it goes
+        # stale when this launch exits and a later launch takes it over.
         _show(f"http://{HOST}:{port}/", no_browser)
-        return 0
+        return 0, True
     else:
         _say(
             f"bookvie is already running for {reported} on port {port}. "
             f"Stop it, or start bookvie with --port <number> to use a different port."
         )
-    return 1
+    return 1, False
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -164,11 +172,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 1
 
     pid = os.getpid()
+    keep_lock = False
     try:
         try:
             sock = instance.bind_socket(args.port)
         except OSError:
-            return _port_conflict(args.port, data_dir, pid, args.no_browser)
+            code, keep_lock = _port_conflict(args.port, data_dir, pid, args.no_browser)
+            return code
 
         # After the bind: a launch that loses to a live server never sweeps
         # that server's temp files.
@@ -215,7 +225,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             if opener is not None:
                 opener.join(timeout=1)
     finally:
-        instance.release_lock(data_dir, pid)
+        if not keep_lock:
+            instance.release_lock(data_dir, pid)
     return 0
 
 

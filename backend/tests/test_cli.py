@@ -421,7 +421,31 @@ def test_port_held_by_bookvie_for_same_folder_opens_it(
     )
     assert opened == [f"http://127.0.0.1:{port}/"]
     assert fake_server.instances == []
-    assert not (data_dir / LOCK_NAME).exists()
+    # No pid to hand the lock to: it is kept rather than deleted.
+    assert json.loads((data_dir / LOCK_NAME).read_text()) == {"pid": os.getpid(), "port": port}
+
+
+def test_port_held_by_bookvie_for_same_folder_with_dead_pid_keeps_lock(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    fake_server: type[FakeServer],
+    opened: list[str],
+) -> None:
+    """Health reports a pid that is not alive: no hand-over, and the lock stays."""
+    monkeypatch.setattr(cli.instance, "bind_socket", REAL_BIND)
+    data_dir = tmp_path / "d"
+    monkeypatch.setattr(instance, "probe_health", lambda port, timeout=0.5: str(data_dir))
+    monkeypatch.setattr(instance, "probe_pid", lambda port, timeout=0.5: 424242)
+    monkeypatch.setattr(instance, "pid_alive", lambda p: p == os.getpid())
+    holder = REAL_BIND(0)
+    port = holder.getsockname()[1]
+    try:
+        assert cli.main(["--data-dir", str(data_dir), "--port", str(port)]) == 0
+    finally:
+        holder.close()
+    assert opened == [f"http://127.0.0.1:{port}/"]
+    assert fake_server.instances == []
+    assert json.loads((data_dir / LOCK_NAME).read_text()) == {"pid": os.getpid(), "port": port}
 
 
 def test_port_held_by_bookvie_for_same_folder_gets_its_lock_back(
