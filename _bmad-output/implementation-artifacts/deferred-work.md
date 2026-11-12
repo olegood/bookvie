@@ -268,6 +268,7 @@
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-2-start-reading-a-book.md`
   summary: README's "Test automation summary (currently story 2.3)" pointer (README.md:180) is stale; `automation-summary.md` is at story 3.1. Pre-existing. Pass 2 also re-raised the Up next/Side-read start and spine-drift items above; they stay as recorded.
+  resolved: README.md's pointer no longer names a story (it went stale after every automate pass); `automation-summary.md`'s title names the story it covers.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-3-catch-up-with-one-page-update.md`
   summary: ARCHITECTURE-SPINE.md AD-3/AD-9 say domain rules and refusal copy live only on the server, but story 3.3's page field pre-validates the page range and holds its own "Page must be between 0 and N." copy (`frontend/src/lib/pageField.ts`), as the story requires.
@@ -300,6 +301,7 @@
   resolved: spine part only, by `spec-reconcile-architecture-spine-with-epic-3.md` (Epic 3 retro item 23, 2026-11-06). The README story count stays open (Epic 3 retro action 6).
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-4-see-where-i-left-off-and-how-long-is-left.md`
   summary: README's "Test automation summary (currently story 3.2)" pointer (README.md:182) is stale; `automation-summary.md` is at story 3.3. Pre-existing.
+  resolved: README.md's pointer no longer names a story (it went stale after every automate pass); `automation-summary.md`'s title names the story it covers.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-5-see-my-reading-on-home-s-shelf.md`
   summary: ARCHITECTURE-SPINE AD-6 says the server picks "which Books form the Home bookcase slice and in what row priority"; Story 3.5 sends a Book-id `slicePriority` and the client chooses, fills and orders rows.

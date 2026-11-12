@@ -223,7 +223,7 @@ Catalog entry happens through my own AI skills rather than an in-app importer or
 - [Epic 3 retrospective](_bmad-output/implementation-artifacts/epic-3-retro-2026-11-06.md): what Epic 3 delivered against its gate, the findings, and the action items that came out of it
 - [Epic 3 traceability matrix](_bmad-output/test-artifacts/traceability/epic-3-traceability-matrix.md): every Epic 3 acceptance criterion traced to its tests, with the quality gate decision against TR7 (PASS)
 - Epic 3 retro fixes: [Finished on bound](_bmad-output/implementation-artifacts/spec-epic-3-retro-item-21-bound-edit-finished-on.md), [stale client hand-offs](_bmad-output/implementation-artifacts/spec-epic-3-retro-item-22-stale-client-hand-offs.md), [e2e builds the SPA](_bmad-output/implementation-artifacts/spec-epic-3-retro-item-27-e2e-builds-the-spa.md) and [spine reconciliation](_bmad-output/implementation-artifacts/spec-reconcile-architecture-spine-with-epic-3.md)
-- [Test automation summary](_bmad-output/test-artifacts/automation-summary.md): the latest test automation pass (currently story 3.7): what was covered and the tests it added
+- [Test automation summary](_bmad-output/test-artifacts/automation-summary.md): the latest test automation pass (the story is named in its title): what was covered and the tests it added
 - [CI](docs/ci.md): the GitHub Actions jobs, quality gates, burn-in and artifacts
 - [Deferred work](_bmad-output/implementation-artifacts/deferred-work.md): review findings deferred to later stories, each marked with the story that resolved it once done
 - [Brainstorm intent](_bmad-output/brainstorming/brainstorm-personal-library-tracker-2026-10-27/brainstorm-intent.md): the brainstorm's problem statement, pillars and decisions
