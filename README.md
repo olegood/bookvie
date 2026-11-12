@@ -128,6 +128,7 @@ The repo ships two Claude Code skills in [`.claude/skills/`](.claude/skills/). B
 - [CI](docs/ci.md): the GitHub Actions jobs, quality gates, burn-in and artifacts
 - [Releasing](docs/release.md): keeping the changelog current with `scripts/changelog.sh` and releasing with `scripts/release.sh`
 - [Changelog](CHANGELOG.md): what changed in each release
+- [Ideas](docs/ideas.md): feature ideas waiting to be thought through, each with a status
 - [Deferred work](_bmad-output/implementation-artifacts/deferred-work.md): review findings deferred to later stories, each marked with the story that resolved it once done
 - [Brainstorm intent](_bmad-output/brainstorming/brainstorm-personal-library-tracker-2026-10-27/brainstorm-intent.md): the brainstorm's problem statement, pillars and decisions
 - [Brainstorm session](_bmad-output/brainstorming/brainstorm-personal-library-tracker-2026-10-27/brainstorm.html): the full session record
