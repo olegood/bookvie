@@ -59,6 +59,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-7-accept-a-new-book-only-when-it-is-complete.md`
   summary: The ATDD checklist's green-phase follow-up — a Hypothesis property test that any accepted add-book leaves a library `check_invariants()` accepts and that round-trips through `serialize` — was not added. Not a spec task; pick up with `bmad-testarch-automate`.
   evidence: no such test in `backend/tests/test_add_book.py`; listed in `_bmad-output/test-artifacts/atdd-checklist-1-7-accept-a-new-book-only-when-it-is-complete.md`.
+  note: partly done by Epic 4 retro item 36 (`a773997`): the `add` rule in `backend/tests/test_reading_state_machine.py` checks `check_invariants()` and the on-disk round trip after every accepted add-book, but it varies only Pages and Finished on; fuzzing the other fields (ISBN, tags, spine color, year, subtitle) remains.
 
 ## Deferred from: build review of spec-1-8-add-a-book-with-the-new-book-panel (2026-10-30)
 
@@ -115,12 +116,14 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-14-change-a-book-s-color-from-the-shelf.md`
   summary: Verify the Spine popover's "press inside" focus branch (`SpinePopover.tsx` `blur`, the `pressing` check) in a browser that doesn't focus a pressed button (WebKit/Safari).
   evidence: Unverified; medium if true. `playwright.config.ts` defines only a Chromium project, and Chromium focuses a clicked button, so `relatedTarget` is inside the card and the branch never runs. Without it, a swatch click in Safari would close the popover before the pick lands. Settle it by adding a WebKit project (a repo-wide CI decision), or with a test that sends `focusout` with no related target while a press is active.
+  resolved: moot, Epic 7 retro item 59 (`e5cc01c`): `AGENTS.md` → Supported browser makes bookvie Chrome-only and puts a Safari click that doesn't focus the pressed button out of scope, so the `pressing` branch needs no WebKit check.
 
 ## Deferred from: code review of spec-1-14-change-a-book-s-color-from-the-shelf.md (2026-11-02)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-1-14-change-a-book-s-color-from-the-shelf.md`
   summary: Run the Spine popover's AC-1 checks (inside the viewport, at most 992px wide, pointer at the spine, shifted inward at the edges) on Home's bookcase slice.
   evidence: Home's bookcase is still a placeholder until Stories 3.1/3.5, so `e2e/spine-popover.spec.ts` opens spines on Catalog (`/`) only. The checklist line "AC-1 (deferred): the same checks on Home's slice" is unticked. Close it when Story 3.1 or 3.5 renders the slice, by running the same geometry checks there.
+  note: partly done by Story 3.5: `frontend/e2e/home-slice.spec.ts` opens a slice popover, closes it with Esc and follows its spine on resize; the AC-1 geometry checks (inside the viewport, at most 992px, pointer at the spine, inward shift) on Home's slice remain.
 
 - source_spec: none
   summary: Fsync the parent folder after `mkdir` of the data folder, `covers/` and `.staging/` (Epic 1 retro action item 3, part b; same as the 2026-11-01 entry above).
@@ -165,6 +168,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-epic-1-trace-and-gate.md`
   summary: Add an on-load animation guard (`document.getAnimations()` is empty right after load) once something animates, with Epic 3's finish fill.
   evidence: Story 1.6 checklist (AC-14 and the AC-10 follow-up) planned it; no test exists at `06014dc`. Today the only animation is the popover fade, which runs on user action. Low.
+  note: partly done by the Story 3.7 tests: `frontend/e2e/finish-moment.spec.ts` "[P1] AC-2 once played, the finish moment never plays again…" checks the finished spine doesn't animate after a reload, and `stats-bars.spec.ts` asserts no animations after a range change; a page-wide `document.getAnimations()`-empty-on-load guard remains.
 - source_spec: `_bmad-output/implementation-artifacts/spec-epic-1-trace-and-gate.md`
   summary: Add one e2e that adds a Book through the New book panel with every optional field (Subtitle, ISBN with spaces, Year, Tags, Spine color, Finished on) and reads each value back.
   evidence: Story 1.8 checklist AC-5. The UI add tests fill only the required fields plus Tags (`frontend/e2e/new-book-panel.spec.ts:213`); the optional fields are pinned at the API (`backend/tests/test_add_book.py:362`) and in edit mode. Low; CAT-E2E-002 itself is covered.
@@ -287,6 +291,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-4-see-where-i-left-off-and-how-long-is-left.md`
   summary: README status line still says "19 of 41 stories done" though stories 3.1–3.3 are done (20).
   evidence: Blind-hunter review of 3.4 (BH2); epics 1 and 2 have 14 + 3 stories and sprint-status shows 3.1–3.3 done; the count wasn't changed when 3.3 was marked done.
+  resolved: `e783831` (docs: bring the README up to Epic 3 done); README.md's status line now counts stories correctly (41 of 41).
 
 ## Deferred from: code review of spec-3-4-see-where-i-left-off-and-how-long-is-left (2026-11-05)
 
@@ -322,6 +327,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-3-7-see-the-finish-on-the-shelf.md`
   summary: Automate the ATDD checklist's remaining green-phase follow-ups for the finish moment: the ring and fill in dark theme and under forced colors; a second `browser.newContext()`; Back to Book detail and Forward to Home playing nothing; a 503 on the first Done, then the moment once after the retry; the re-read finished from Book detail's Mark finished; focusing "No Main book." not scrolling the spine back out of view; the AC-5 tone checks under reduced motion and on a re-read; pixel-sampling "from its current fill".
   evidence: `_bmad-output/test-artifacts/atdd-checklist-3-7-see-the-finish-on-the-shelf.md` → Green-Phase Follow-ups. The 3.7 leaves cover the scroll order, the smooth default, the `fromPercent` start (keyframe, not pixels) and the same-mount refetch; the rest has no test. Run `bmad-testarch-automate` for 3.7.
+  note: partly done by the Story 3.7 automate pass (`9cd094d`): `frontend/e2e/finish-moment.spec.ts` covers the below-the-fold scroll and the forced-colors ring; that pass's automation summary declined the rest with reasons (dark theme, a second `newContext`, Back/Forward, 503-then-retry, the re-read from Mark finished, the AC-5 tone checks, pixel sampling).
 
 ## Deferred from: review of spec-epic-3-retro-item-21-bound-edit-finished-on (2026-11-06)
 
@@ -561,6 +567,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-4-7-keep-a-few-side-reads.md`
   summary: For retro item 41 (F-A2): `useOneClickFlow` lives in `useSetUpNextFlow.ts`, returns `SetUpNextFlow`, takes `SetUpNextBook` and calls its callback `onSet`, while Side reads use it for mark and remove. Neutral names and its own module would stop the next one-click intent inheriting them.
   evidence: `frontend/src/lib/useSetUpNextFlow.ts:36`, `:53`.
+  resolved: Epic 4 retro item 41 (`09976ce`): the hook moved to `frontend/src/lib/useOneClickFlow.ts` with neutral names (`OneClickBook`, `OneClickFlow`, an `onDone` callback).
 
 ## Deferred from: spec-epic-4-retro-item-42-refusal-reads-after-edit-purpose-unmounts (2026-11-10)
 
