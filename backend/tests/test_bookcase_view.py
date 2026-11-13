@@ -10,6 +10,8 @@ it never derives read status or counts from Readings itself.
 
 from pathlib import Path
 
+import pytest
+
 from tests.builder import LibraryBuilder
 from tests.helpers import api_client
 
@@ -88,3 +90,33 @@ def test_catalog_and_home_books_carry_the_edition(
     for view in ("catalog", "home"):
         body = client.get(f"/api/views/{view}").json()
         assert [(b["title"], b["edition"]) for b in body["books"]] == [("Dune", 1), ("Dune", 2)]
+
+
+# --- Story 8.1 See my catalog as covers: the tiles' cover file (ATDD, red phase) ------
+#
+# The Tiles view draws each cover from the catalog view alone (AD-6), so every
+# ``ShelfBook`` names its stored cover file, as Home's and Book detail's views
+# already do. The tiles themselves are read in the browser
+# (``frontend/e2e/catalog-tiles.spec.ts``).
+
+RED_8_1 = "Story 8.1 red phase: the catalog view's books don't carry coverFile yet"
+
+
+@pytest.mark.skip(reason=RED_8_1)
+def test_ac1_p0_catalog_books_carry_their_cover_file_or_null(
+    tmp_path: Path, library_builder: LibraryBuilder
+) -> None:
+    """Story 8.1: every catalog Book carries ``coverFile``, ``None`` without a cover."""
+    library_builder.book(title="Dune", authors=["Frank Herbert"], cover_file="covers/dune.png")
+    library_builder.book(title="Emma", authors=["Jane Austen"])
+    library_builder.write(tmp_path)
+
+    body = api_client(tmp_path, raise_server_exceptions=True).get("/api/views/catalog").json()
+
+    # The criterion: the stored file name, exactly as library.json and the other views name it.
+    assert [(b["title"], b.get("coverFile", "missing")) for b in body["books"]] == [
+        ("Dune", "covers/dune.png"),
+        ("Emma", None),
+    ]
+    # hasCover stays, and agrees with it.
+    assert [b["hasCover"] for b in body["books"]] == [True, False]

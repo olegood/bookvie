@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { afterEach, describe, it } from 'node:test'
-import { readCatalogView, writeCatalogView } from './catalogView.ts'
+import { CATALOG_VIEWS, readCatalogView, writeCatalogView } from './catalogView.ts'
 
 const scope = globalThis as { window?: unknown }
 
@@ -39,5 +39,20 @@ describe('catalog view choice', () => {
     withStorage({ setItem: (key: string, value: string) => void written.push([key, value]) })
     writeCatalogView('list')
     assert.deepEqual(written, [['bookvie.catalogView', 'list']])
+  })
+})
+
+// Story 8.1 See my catalog as covers (ATDD, red phase): Tiles is the third view.
+describe('catalog view choice with Tiles', () => {
+  it.skip('[P1] AC-11 reads a stored Tiles choice and offers Bookcase, List and Tiles in that order', () => {
+    withStorage({ getItem: () => 'tiles' })
+    // The criterion: "tiles" is a choice now, not junk that falls back to Bookcase.
+    assert.equal(readCatalogView(), 'tiles')
+    assert.deepEqual(CATALOG_VIEWS, ['bookcase', 'list', 'tiles'])
+    // Bookcase and List read as before, and junk still means Bookcase.
+    withStorage({ getItem: () => 'list' })
+    assert.equal(readCatalogView(), 'list')
+    withStorage({ getItem: () => 'mosaic' })
+    assert.equal(readCatalogView(), 'bookcase')
   })
 })
