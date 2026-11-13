@@ -2,7 +2,7 @@
 name: bookvie
 description: Personal, local-first desktop web app for one reader's home library and reading. Birch Morning direction — bright, flat, Nordic; a pale birch bookcase where read books are colored and unread books are outlined.
 status: final
-updated: 2026-10-29
+updated: 2026-11-13
 colors:
   # Light theme (default tokens). Dark twins carry the -dark suffix.
   page: '#F6F4EF'
@@ -348,6 +348,43 @@ components:
     divider: '1px solid {colors.line}'
     text: '{typography.body-sm}'
     title: '{typography.book-title-sm}'
+  catalog-tile:
+    cover-min-width: 140px
+    cover-ratio: '2 / 3'
+    column-gap: '{spacing.6}'
+    row-gap: '{spacing.7}'
+    caption-gap: '{spacing.2}'
+    cover-radius: '{rounded.cover}'
+    cover-edge: '1px solid {colors.line}'
+    cover-loading: '{colors.surface-inset}'
+    title: '{typography.book-title-sm}'
+    title-weight: '600'
+    title-color: '{colors.ink}'
+    author: '{typography.body-sm}'
+    author-color: '{colors.ink-secondary}'
+    max-caption-lines: 1
+    caption-overflow: ellipsis
+    ribbon-width: 16px
+    ribbon-height: 24px
+    ribbon-notch: 6px
+    ribbon-inset: 10px
+    ribbon-edge: '1px solid {colors.spine-edge}'
+    ribbon-halo: '1.5px solid {colors.spine-label-strip}'
+    reading-bar-height: 5px
+    reading-bar-gap: 6px
+    reading-bar-slot: 11px
+    reading-bar-track: '{colors.accent-soft}'
+    reading-bar-fill: '{colors.accent}'
+    typeset-edge: '1px solid {colors.spine-edge}'
+    typeset-plate: '{colors.spine-label-strip}'
+    typeset-plate-inset: 10px
+    typeset-plate-top: 34px
+    typeset-plate-radius: 2px
+    typeset-title: '{typography.book-title-sm}'
+    typeset-text: '{colors.spine-label}'
+    typeset-unread-fill: '{colors.spine-unread-fill}'
+    typeset-unread-outline: '1.5px solid {colors.spine-unread-outline}'
+    typeset-unread-text: '{colors.spine-unread-text}'
   monthly-bar:
     fill: '{colors.accent}'
     track: '{colors.accent-soft}'
@@ -509,6 +546,8 @@ Under `forced-colors: active`:
 - Markers get a `CanvasText` ring.
 - Selected options keep their border indicator.
 
+- Catalog tiles: the finished ribbon and the reading bar's fill use `forced-color-adjust: none` with `CanvasText`, the bar's track becomes `Canvas` with a `CanvasText` outline, the typeset cover becomes `Canvas` with a `CanvasText` border, its text `CanvasText`, and the cover hairline and the loading box's border become `CanvasText`.
+
 Read and unread stay distinct.
 
 ## Typography
@@ -548,10 +587,11 @@ Scale: 4 / 8 / 12 / 16 / 20 / 24 / 32 / 36 (`{spacing.1}`–`{spacing.8}`). Comp
 - **Top nav.** Full-width bar, `{spacing.topbar-height}` tall: a "Skip to content" link (visible on focus only), wordmark, nav items, theme toggle pushed right.
 - **Page.** `{spacing.page-x}` side padding, `{spacing.page-top}` top padding.
 - **Home.** A header line (the date in `page-header`, for example, "Wednesday, 28 October"; no greeting) above a two-column grid: Main book card (fluid) beside a `{spacing.side-column}` (320px) column of section panes; gap `{spacing.6}`. Below the grid, full width, the bookcase slice (up to 3 shelf rows, the Main book's row first). Mock: [key-home](mockups/key-home.html).
-- **Catalog.** Full width: `h1` "Catalog"; toolbar row 1 (Search titles with its visible label, Sort select, view toggle, **New book** at the right); toolbar row 2 (filter chips, "Clear filters" link when any filter is on); the library meter; the collapsed pace calculator link; then the bookcase or the list. Mock: [key-catalog](mockups/key-catalog.html).
+- **Catalog.** Full width: `h1` "Catalog"; toolbar row 1 (Search titles with its visible label, Sort select, view toggle, **New book** at the right); toolbar row 2 (filter chips, "Clear filters" link when any filter is on); the library meter; the collapsed pace calculator link; then the bookcase, the list or the tiles. Mocks: [key-catalog](mockups/key-catalog.html), [key-catalog-tiles](mockups/key-catalog-tiles.html).
 - **Book detail.** One `surface` card, two columns (see Components → Book detail). Mock: [key-book-detail](mockups/key-book-detail.html).
 - **Bookcase.** Shelf rows `{spacing.shelf-row-height}` tall, spines bottom-aligned on the plank, `{spacing.spine-gap}` between spines, 12px inner padding at row ends. About 35 spines fit one plank at 1280px; the row count follows the viewport width.
 - **Spine sizing.** Width is always `{spacing.spine-width}` (28px). Height doesn't have to fit the title, but it still grows with it, so a shelf of mixed titles has mixed heights: **height = `{spacing.spine-height-min}` + `{components.spine.height-title-ratio}` × the title's rendered one-line length in `spine-label`**, rounded up to the next `{spacing.spine-height-step}` (8px) and capped at `{spacing.spine-height-max}` (120–200px). Examples: *Dune* (about 29px of text) → 136px; *Persuasion* (about 60px) → 144px; *The Left Hand of Darkness* (about 146px) → 168px; *The Visual Display of Quantitative Information* (about 250px) → 200px. Measure the rendered title, not a character count, so user text-spacing overrides grow the spine. The label itself is capped by the label strip (Components → Spine) and never wraps; the full title is always in the accessible name and the popover. Unread spines place their label at the same position and cap, without the strip.
+- **Tiles.** A grid on the plain `page` background (no card, no planks): `repeat(auto-fill, minmax({components.catalog-tile.cover-min-width}, 1fr))`, `{components.catalog-tile.column-gap}` between columns and `{components.catalog-tile.row-gap}` between rows. That gives 5 columns at 1024px, 7 at 1280px and 8 at 1440px. Each tile's cover box is the column width at 2:3, so every box in the grid has the same size and the grid never moves while covers load. Covers sit at the bottom of the box, so a row of mixed shapes shares one bottom line. Reference: [catalog-tiles-reference](imports/catalog-tiles-reference.png).
 - **Side panel.** Anchored to the right edge over the current page (Catalog for New book, Book detail for Edit book), full height below the top nav. The panel body sets `scroll-padding-bottom` to the sticky footer's height, so a focused field is never hidden behind the footer.
 
 ## Elevation & Depth
@@ -591,7 +631,7 @@ Visual specs. Behavior lives in EXPERIENCE.md → Component Patterns, under the 
 | **Text field** | `{components.text-field}`. Visible label above in `body-sm`/`ink-secondary`; "(required)" sits after the label element in `meta`/`ink-tertiary` and is not part of the label. Focus: `accent` border plus `focus-halo`. Invalid: 2px `ink` border and a one-line message below in `body-sm`/`ink`. Never red. Applies to every field, select, date field and the page field. |
 | **Main book card** | See [Main book card](#main-book-card) below. |
 | **Main book card — empty** | Same card frame and size. "No Main book." in `panel-heading`/`ink`. Up next suggestion below it: a 44×64 cover thumbnail (or placeholder), serif title in `book-title-md`, author, and **Start reading** (or **Resume**) as `button-primary`. Catalog suggestion: a `link` "Choose a book in the Catalog". Which one shows: EXPERIENCE.md → State Patterns. No illustration. |
-| **No-cover placeholder** | `surface-inset` fill, 1.5px dashed `spine-unread-outline` border, two short horizontal bars in `spine-unread-outline` suggesting a title. Same size as the cover it stands in for. |
+| **No-cover placeholder** | `surface-inset` fill, 1.5px dashed `spine-unread-outline` border, two short horizontal bars in `spine-unread-outline` suggesting a title. Same size as the cover it stands in for. Catalog tiles use the Typeset cover instead (Components → Catalog tile). |
 | **Gauge** | `{components.gauge}`. Above the track: percentage in `gauge-figure` left, "p.N of M" in `ink-secondary` right. Below: tick labels 0 · half · total in `meta`/`ink-tertiary`; the half tick is rounded to a whole page and dropped when the Book has fewer than 4 pages. |
 | **Page field** | `{components.page-field}` inside a `surface-inset` container: label "Page", the field, "of M" in `ink-tertiary`, and the **Update** `button-primary` pushed right. Focus and invalid as Text field. |
 | **Re-entry line** | `{components.re-entry-line}`. Short facts separated by 6px `ink-tertiary` dots: "Last updated N days ago", "~N days left", "Last export: N days ago". Muted, never colored. |
@@ -602,8 +642,9 @@ Visual specs. Behavior lives in EXPERIENCE.md → Component Patterns, under the 
 | **Filter chips** | See [Filter chips](#filter-chips) below. |
 | **Spine** | See [Spine](#spine) below. |
 | **Spine popover** | See [Spine popover](#spine-popover) below. |
-| **Catalog view toggle** | Two-option segmented control (Bookcase · List), same visual as the theme toggle. |
+| **Catalog view toggle** | Three-option segmented control (Bookcase · List · Tiles), same visual as the theme toggle. |
 | **List view** | Compact table: Title (`book-title-sm`), Author, Pages, Status, Date added. `{components.list-view-row}`; header in `section-label`. Status shown as text plus a mini spine glyph (colored or outlined). |
+| **Catalog tile** | See [Catalog tile](#catalog-tile) below. |
 | **Search field** | Text field with a leading magnifier glyph and a visible label in `body-sm`/`ink-secondary` to its left: "Search titles" (Catalog) or "Search card notes" (Card notes). No placeholder text. |
 | **Book detail** | See [Book detail](#book-detail) below. |
 | **New book panel** | `{components.side-panel}` with `side-panel` shadow. Header: "New book" (or "Edit book") in `panel-heading`, close "×" icon button. Body: one column of Text fields in Agent Label Contract order; Finished on is a date field; Tags is a text field with a suggestion list (`surface`, `rounded.lg`, `body-sm`). Spine color row: hex field plus the "From cover" chip and the eight swatches. Sticky footer: **Add book** (or **Save changes**) `button-primary`, **Cancel** `button-secondary`. |
@@ -665,6 +706,20 @@ Visual specs. Behavior lives in EXPERIENCE.md → Component Patterns, under the 
 - **Change color block:** a "From cover" chip with the derived color dot, and the eight curated swatches (16px circles, each with its name as accessible name). Selected swatch or chip: 2px `accent` border plus `focus-halo` and a check glyph. On an unread book the block heading adds "· shown once read" in `ink-tertiary`.
 - **Close:** "×" at the top right in `ink-tertiary`.
 
+### Catalog tile
+
+`{components.catalog-tile}`. Grid layout: Layout & Spacing → Tiles. Mock: [key-catalog-tiles](mockups/key-catalog-tiles.html). Reference: [catalog-tiles-reference](imports/catalog-tiles-reference.png); spines win over the reference where they differ (serif titles, no shadows).
+
+- **Cover box:** 2:3, the column's width. The cover keeps its own shape inside it (`object-fit: contain`), at the bottom (`object-position: bottom`), with `{components.catalog-tile.cover-radius}` corners and a `{components.catalog-tile.cover-edge}` hairline so a white cover still has an edge on the page. Until the image arrives the box shows a flat `{components.catalog-tile.cover-loading}` fill with the same hairline, so the empty box still reads as a cover's place. No shadow, no crop, no dimming: a cover is shown as is.
+- **Caption:** `{components.catalog-tile.caption-gap}` below the reading-bar slot. Every tile reserves the `{components.catalog-tile.reading-bar-slot}` slot under its box (the bar's gap plus its height), empty when there is no bar, so captions line up across a row. Line 1: the title in `book-title-sm` at weight 600, `ink`. Line 2: the first author in `body-sm`, `ink-secondary`, with "and N others" dropped (the accessible name carries it). Each is one line, cut with an ellipsis.
+- **Finished ribbon:** on a Book with a finished Reading. A bookmark shape `{components.catalog-tile.ribbon-width}` × `{components.catalog-tile.ribbon-height}` with a `{components.catalog-tile.ribbon-notch}` V-notch at its lower end, hanging from the cover's top edge `{components.catalog-tile.ribbon-inset}` in from its right edge. It is filled with the Book's exact spine color, has the `{components.catalog-tile.ribbon-edge}` line on its sides and notch, and a `{components.catalog-tile.ribbon-halo}` outside that line, light in both themes like a spine's label strip. The spine color often matches the cover's own color (From cover), so the edge and the light halo, not the fill, keep the shape visible on any cover, dark or light. No glyph or text on it (text never sits straight on a book's color); its shape is the indicator. It sits on the visible cover, not on the empty part of the box.
+- **Reading bar:** on a Book with an unfinished Reading (Main or paused). A bar the cover box's width, `{components.catalog-tile.reading-bar-height}` tall, inside the reading-bar slot, `{components.catalog-tile.reading-bar-gap}` below the box, `{components.catalog-tile.reading-bar-track}` track with `{components.catalog-tile.reading-bar-fill}` fill to current page ÷ pages, square ends. A re-read shows the ribbon and the bar.
+- **Unread:** no mark.
+- **Typeset cover, read:** fills the whole box. The Book's exact spine color, `{components.catalog-tile.typeset-edge}` all round, `{components.catalog-tile.cover-radius}` corners. A `{components.catalog-tile.typeset-plate}` plate inset `{components.catalog-tile.typeset-plate-inset}` from the sides, starting `{components.catalog-tile.typeset-plate-top}` from the top so it clears the ribbon, with `{components.catalog-tile.typeset-plate-radius}` corners, holds the title (`book-title-sm` at its own weight 400, up to 4 lines, `{components.catalog-tile.typeset-text}`) and the first author (`meta`, 1 line). Like a spine's label strip, the plate keeps the text legible on any color.
+- **Typeset cover, unread:** `{components.catalog-tile.typeset-unread-fill}` with `{components.catalog-tile.typeset-unread-outline}`, the title and author in `{components.catalog-tile.typeset-unread-text}`, no plate. It reads as an unread spine seen from the front.
+- **Focus and highlight:** the whole tile is one link; the `{components.focus-ring}` (and the `{components.highlight-ring}` after an add) goes around the cover box, not the visible cover, so every ring in the grid has the same size.
+- **Dark theme:** same layout. Ribbon fills, the ribbon halo, read typeset fills and the plate are the same in both themes; `spine-edge`, the chrome colors and the unread typeset cover's `spine-unread-*` colors take their dark twins, as on unread spines.
+
 ### Book detail
 
 Accepted layout; mock [key-book-detail](mockups/key-book-detail.html). Mirrors the Main book card.
@@ -694,6 +749,7 @@ Accepted layout; mock [key-book-detail](mockups/key-book-detail.html). Mirrors t
 | Flat surfaces, hairlines, tone | Shadows for hierarchy |
 | Muted text for status facts and failures ("Couldn't save. Your data wasn't changed.") | Red, orange, warning icons, or alarm styling anywhere |
 | One quiet fill on finish | Confetti, sound, bouncing, replays |
+| Show a tile's cover as is, with status by ribbon and bar | Dim, desaturate, crop or tint covers to show status |
 | Same layout in light and dark; read spine fills and label strips identical in both (only `spine-edge` has a dark twin) | Theme-specific layouts or recolored read spines |
 
 ## Direction history
