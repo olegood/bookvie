@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-29-2026 17:21
-last_updated: 11-13-2026 16:56
+last_updated: 11-13-2026 17:42
 project: bookvie
 project_key: NOKEY
 tracking_system: file-system
@@ -101,7 +101,7 @@ development_status:
   8-1-see-my-catalog-as-covers: done
   8-2-see-what-i-ve-read-and-what-i-m-reading-on-the-tiles: done
   8-3-give-books-without-a-cover-a-typeset-cover: done
-  epic-8-retrospective: optional
+  epic-8-retrospective: done
 action_items:
   - id: "epic-1-retro-item-1-run-an-epic-1-trace-and-gate-against-tr7"
     epic: 1
@@ -656,3 +656,78 @@ action_items:
     owner: "Amelia (Dev)"
     status: done
     ref: "_bmad-output/implementation-artifacts/epic-7-retro-2026-11-12.md"
+  - id: "epic-8-retro-item-61-reconcile-the-spine-with-epic-8-and-add"
+    epic: 8
+    action: "Reconcile the spine with Epic 8 and add a `resolved:` line to each entry
+      it closes (`deferred-work.md:948`, `:958`, `:964`, `:970`). **AD-6:** the Tiles
+      bullet loses \"Epic 8, planned\". The cover URL becomes `/media/<coverFile>`,
+      with `coverFile` the stored `covers/<name>`. Add the typeset cover (read = `finished`:
+      spine-color fill with a plate; unread: `spine-unread-*`), which also replaces
+      a cover that fails to load, in Tiles only. **Structural Seed:** `lib/catalogView`
+      lists Bookcase · List · Tiles, and `pages/CatalogTiles` is named. **FR-25 row:**
+      built, naming `pages/CatalogTiles` and `/media/<coverFile>`. **Deferred → Cover
+      thumbnails:** record that Epic 8's check passed (median 58 ms against about
+      1 s, zero layout shift), so thumbnails stay deferred. **`epic-8-context.md:52`:**
+      fix the same URL. Changes: `_bmad-output/planning-artifacts/architecture/architecture-bookvie-2026-10-29/ARCHITECTURE-SPINE.md`,
+      `_bmad-output/implementation-artifacts/deferred-work.md`, `_bmad-output/implementation-artifacts/epic-8-context.md`.
+      Due: now, before the plan is called complete."
+    owner: "Winston (Architect), applied by Oleg"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-8-retro-2026-11-13.md"
+  - id: "epic-8-retro-item-62-run-the-epic-8-trace-and-gate-against-tr"
+    epic: 8
+    action: "Run the Epic 8 trace and gate against TR7: P0 100%, P1 ≥ 95%, `check:api`
+      clean, coverage ≥ 90% on `domain/` and ≥ 80% on `intents/` + `store/`. This
+      retro's run already shows the coverage and `check:api` parts green. Changes:
+      `_bmad-output/test-artifacts/traceability/epic-8-traceability-matrix.md`, `…/epic-8-gate-decision.json`,
+      `…/epic-8-e2e-trace-summary.json`. Due: now, after action 61."
+    owner: "Murat (TEA)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-8-retro-2026-11-13.md"
+  - id: "epic-8-retro-item-63-have-bmad-code-review-re-run-the-full-np"
+    epic: 8
+    action: "Have `bmad-code-review` re-run the full `npm run check` after it applies
+      any patch, however small, before it marks a story `done` and commits. Its commit
+      type must follow the files it changes, so a commit that touches a test or source
+      file isn't labelled `docs:`. Changes: `_bmad/custom/bmad-code-review.toml`,
+      `AGENTS.md` (\"Story pipeline\", step 3). Due: before the next story."
+    owner: "Oleg / bmad config"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-8-retro-2026-11-13.md"
+  - id: "epic-8-retro-item-64-forbid-tree-wide-git-state-changes-in-st"
+    epic: 8
+    action: "Forbid tree-wide git state changes in story steps. No `git stash`, `git
+      checkout -- <path>`, `git restore` or `git reset` in ATDD, build, review or
+      automate, including their subagents. A mutation or baseline test edits the file
+      and reverts that edit, or runs in a `git worktree`. Changes: `AGENTS.md` (\"\
+      Story pipeline\"), `_bmad/custom/bmad-build-auto.toml`. Due: before the next
+      story."
+    owner: "Oleg / bmad config"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-8-retro-2026-11-13.md"
+  - id: "epic-8-retro-item-65-move-the-tiles-e2e-helpers-into-one-modu"
+    epic: 8
+    action: "Move the Tiles e2e helpers into one module. Put `bookId`, `tiles`, `tileLinks`,
+      `tile`, `storeTiles`, `tileNames`, `coverBox`, `ringRect`, `sameRect` and `openTiles`
+      in `frontend/e2e/tile-marks.ts` (or a new `frontend/e2e/tiles.ts` that it re-exports).
+      Import the spine-label colors from `bookcase.ts`, and `WIDE_COVER` from one
+      place. Have `coversLoaded` require at least one image and wait for the visible
+      (loaded) cover, not `complete` alone (E8-R2). Make the move pure: no leaf changes
+      its assertions. Changes: `frontend/e2e/catalog-tiles.spec.ts`, `frontend/e2e/catalog-tiles-automate.spec.ts`,
+      `frontend/e2e/tile-marks.ts`, `frontend/e2e/typeset-covers.ts`, `frontend/e2e/catalog-tile-marks-automate.spec.ts`,
+      `frontend/e2e/catalog-typeset-covers-automate.spec.ts`. Due: now, before the
+      plan is called complete."
+    owner: "Amelia (Dev)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-8-retro-2026-11-13.md"
+  - id: "epic-8-retro-item-66-have-atdd-prove-that-every-new-measuring"
+    epic: 8
+    action: "Have ATDD prove that every new measuring helper (pixel sampling, geometry,
+      a wait) gives the expected value on a known-good input before the red run, and
+      that no leaf reads the page before it has rendered. This catches helper bugs
+      that \"fails at its first assertion\" can't. Record the probe in the ATDD checklist.
+      Changes: `_bmad/custom/bmad-testarch-atdd.toml` (new override). Due: before
+      the next story."
+    owner: "Murat (TEA)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-8-retro-2026-11-13.md"

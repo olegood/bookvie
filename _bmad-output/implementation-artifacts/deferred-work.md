@@ -976,3 +976,9 @@
   summary: Nothing tests the typeset cover's `overflow: hidden` guard. Removing it from `.typeset` leaves every leaf green, because at default fonts the plate never reaches the box bottom; under a large minimum font or user text spacing the plate would paint over the reading bar and caption unnoticed. For `bmad-testarch-automate`: an `[automate]` leaf in `catalog-typeset-covers.spec.ts` with a large-font / text-spacing stylesheet (as in `bookcase-details.spec.ts:43-45`) asserting the plate's paint stays inside the 2:3 box. Low.
   evidence: `frontend/src/pages/CatalogTiles.module.css` `.typeset` (`overflow: hidden`); no font-size or text-spacing override in the Tiles specs (Verification Gap layer, code review of Story 8.3).
   resolved: bmad-testarch-automate for Story 8.3 (2026-11-13): `frontend/e2e/catalog-typeset-covers-automate.spec.ts:175` (a 120px font on the box text; every caption line and the bar slot hit-test outside the box), failing when `overflow: hidden` is removed from `.typeset`.
+
+## Deferred from: Epic 8 retrospective (2026-11-13)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-8-3-give-books-without-a-cover-a-typeset-cover.md`
+  summary: Two editions of a Book without a cover look identical in Tiles: the typeset cover and the caption show the same title and first author, and only the link's accessible name carries the edition. It extends the twin-names entry above (finish line, popover heading and Start dialog name a Book by title only) to the visible tiles. Low.
+  evidence: `frontend/src/pages/CatalogTiles.tsx:69-72,186-189`; the Epic 8 retro behavior check (two Persuasion editions) and E8-R5 in `epic-8-retro-2026-11-13.md`.
