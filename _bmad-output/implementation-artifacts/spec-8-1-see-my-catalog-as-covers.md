@@ -3,7 +3,7 @@ title: 'Story 8.1: See my catalog as covers'
 type: 'feature'
 created: '2026-11-13'
 baseline_revision: '91e7cbaf4a1fa61630750194ad064178b4983ee0'
-status: 'in-review'
+status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -117,6 +117,34 @@ deferred:
 - Given an add, a delete or the Tab key in Tiles, then the add focuses the new tile and rings its cover box, the delete focuses Search titles, and Tab visits one stop per tile, ringed on the box, with Enter opening Book detail.
 - Given 500 Books with 1200px covers, when Tiles opens at 1280px, then the first screen's covers are decoded within 1200 ms and scrolling shows zero layout shift. If this fails, record the measurement and open a thumbnail follow-up in `deferred-work.md`.
 - Given the existing tests, when the story lands, then they assert three options, and Bookcase and List behave as before.
+
+### Review Findings
+
+Code review, 2026-11-13. A new session; it re-ran `npm run check` itself. 27 findings from 5 layers: 1 decision-needed (resolved: deferred, accepted as designed), 0 patch, 4 deferred (10 findings), 17 rejected.
+
+- [x] [Review][Defer] Every tile fails WCAG 2.5.3 Label in Name — the visible caption "Dune" / "Frank Herbert" isn't a word run of the link's name "Dune by Frank Herbert, not read yet", so axe's `label-content-name-mismatch` is turned off for the tile links (`catalog-pace-calculator.spec.ts`), and the second scoped pass checks almost nothing on Tiles. No story in Epic 8 owns the fix. Medium. Sources: blind-hunter + acceptance-auditor. [frontend/src/pages/CatalogTiles.tsx:78] — deferred (Oleg's decision in this review): accepted as designed. A single-user app whose user doesn't use voice control; the caption stays title + first author as DESIGN.md has it, and the rule stays off for the tile links only.
+- [x] [Review][Defer] Nothing tests the Tiles forced-colors rules (the `CanvasText` hairlines, the `Highlight` rings) [frontend/src/pages/CatalogTiles.module.css:120] — deferred: the ATDD checklist's open "E2E, AC-4 forced colors" item, for `bmad-testarch-automate`.
+- [x] [Review][Defer] The cover URL is written as `/media/covers/<coverFile>` in `epic-8-context.md` (and in this spec's Code Map); the code builds `/media/<coverFile>`, which is right [_bmad-output/implementation-artifacts/epic-8-context.md] — deferred: fix with the Epic 8 spine reconciliation, alongside AD-6's same wording, so Stories 8.2 and 8.3 don't copy it.
+- [x] [Review][Defer] Spine drift: AD-6 (Tiles "planned", cover URL), AD-15 Seed (`catalogView` Bookcase · List), the FR-25 and FR-4 map rows, Deferred → Cover thumbnails [ARCHITECTURE-SPINE.md:102,382,395-396,415] — deferred: already recorded by the build in `deferred-work.md` and this spec's `deferred:` block; spine drift, reconciled before the next epic.
+
+**Rejected:**
+- `false` Empty `firstAuthor` collapses a caption (blind, edge) — `invariants.py:88` refuses a Book with no authors, so `shelf.py:57`'s `""` fallback is never reached by a valid library.
+- `false` A tile could get no name if `spineNames` skips an id (blind) — `catalog.ts:163` maps every input Book.
+- `false` The restore check reads storage mid-navigation (edge) — `BackupPage.tsx:155` awaits `navigate('/')` before it announces "Restored.", so the status assertion waits for the navigation.
+- `low` Small covers aren't scaled up to the box (edge) — 2 of the 410 covers in the real library are narrower than a tile's ~148px box, by a few px; scaling them means an `img` that fills the box, which moves the hairline off the visible cover (DESIGN.md → Cover box).
+- `low` A transient load error shows the placeholder until the next visit (edge) — a local server; a retry path adds state for a case not seen in use.
+- `low` In forced colors the highlight ring looks like the focus ring (blind) — the same plain `Highlight` outline `CatalogList.module.css:92` uses.
+- `low` No `@ts-expect-error` pins `Cover`'s `fill` union (blind) — `tsc -b` already refuses the wrong call; a typecheck-only test adds a harness for a narrow case.
+- `low` The tile link's inline ref callback re-runs every render (blind) — the `CatalogList` pattern; a few `Map` operations per Book per keystroke.
+- `low` AC-10 counts `naturalWidth > 0`, not paint, and is costly (blind) — 58 ms against a 1200 ms budget, and the leaf took 4.1 s in this review's run; the limit is recorded as a residual risk.
+- `low` The `tiles` restore check doesn't open Catalog (blind) — opening in Tiles from the stored value is AC-2's leaf; this check only needs the value kept.
+- `low` The AC-5 leaf can't tell 1.5px from 1px at DPR 1 (auditor) — Chromium snaps the width; the placeholder's CSS is the unchanged `Cover` rule.
+- `low` The checklist ticks "the export holds no view key" for Tiles (auditor) — the earlier block asserts the key's absence, which doesn't depend on its value.
+- `low` No e2e for junk or throwing storage (auditor) — `catalogView.test.ts` covers both on the code path the page uses; the open checklist item goes to automate.
+- `low` The checklist under-reports and names no owner for open items (blind) — `bmad-testarch-automate` resolves the checklist next, by rule.
+- `low` `hasCover` duplicates `coverFile` (blind) — both come from `book.cover_file` in one builder; no caller diverges.
+- `reject` The spec's `review_loop_iteration` and a README line number are off (blind) — the fix edits the spec under review.
+- `reject` The spec's Code Map cover URL (auditor) — same; the `epic-8-context.md` half is deferred above.
 
 ## Spec Change Log
 

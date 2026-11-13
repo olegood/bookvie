@@ -5,7 +5,7 @@
 
 A personal, local-first web app for organizing my home library and tracking my reading. It replaces a paper reading diary as the single source of truth for reading progress. The diary can stay on the nightstand for quick notes; I catch up in the app on my next visit by entering the page I reached.
 
-> **Status:** v1 is feature-complete: Epics 1-7 are done (41 of 41 stories), with all retrospectives, trace and quality gates passed and every retro action item closed. Epic 8 is in progress: the Catalog can now also be shown as a grid of covers (Tiles). See [Sprint status](_bmad-output/implementation-artifacts/sprint-status.yaml) for details.
+> **Status:** v1 is feature-complete: Epics 1-7 are done, with all retrospectives, trace and quality gates passed and every retro action item closed. Epic 8 is in progress (42 of 44 stories done): the Catalog can now also be shown as a grid of covers (Tiles). See [Sprint status](_bmad-output/implementation-artifacts/sprint-status.yaml) for details.
 
 ## Why
 
