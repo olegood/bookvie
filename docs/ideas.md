@@ -57,3 +57,20 @@ Use cases:
 Notes:
 
 - The first two are thin wrappers over existing API calls; the last three need the agent to reason over the catalog (topics, purposes, notes, pace), so the MCP mostly has to expose good read tools.
+
+## Faster card note entry
+
+**Status:** new
+
+Make the "Add card note" dialog quicker to use when adding several notes in a row. Today each note means saving, then pressing "Add card note" again to reopen the dialog.
+
+Suggestions:
+
+- **Cmd+Enter to save:** while typing the note, Cmd+Enter does what the "Save note" button does.
+- **"Add another" checkbox:** when it's checked, saving keeps the dialog open with an empty field, ready for the next note.
+
+Notes:
+
+- Decide whether "Add another" is remembered between visits or resets each time the dialog opens.
+- With "Add another" on, show that the note was saved (for example a brief confirmation or a running count) and put focus back in the empty field.
+- Decide which fields carry over to the next note (for example the page number) and which are cleared.
