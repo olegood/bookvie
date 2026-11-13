@@ -3,7 +3,7 @@ title: "Story 8.2: See what I've read and what I'm reading on the tiles"
 type: 'feature'
 created: '2026-11-13'
 baseline_revision: '357ed27f890e1aa7e25e4bd13724854953f5e226'
-status: 'in-review'
+status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -111,6 +111,33 @@ deferred:
 - Given the dark theme, when tiles render, then the ribbon fill and halo are unchanged, the edge is dark `spine-edge`, and the bar uses dark `accent` on dark `accent-soft`.
 - Given forced colors, when tiles render, then the ribbon and bar fill are `CanvasText`, the halo and track are `Canvas`, the track has a `CanvasText` outline, and the cover hairline is `CanvasText`.
 - Given Story 8.1's tests, when this story lands, then they all still pass, AC-10's zero layout shift included.
+
+### Review Findings
+
+Code review 2026-11-13 (`bmad-code-review`, diff `357ed27..2d38a37`, 5 layers): 4 patch, 1 defer, 15 rejected.
+
+- [x] [Review][Patch] Cover centering moved from the `img` to `.frame`, and no test checks it. Losing `.frame`'s horizontal auto margins puts every narrow cover bottom-left, and the suite stays green. Add a left/right-gap check (±1px) to the large-cover leaf, where Villette's 300×900 cover is narrower than its box [frontend/e2e/catalog-tile-marks.spec.ts:823]
+- [x] [Review][Patch] The ribbon's top and height are loosely pinned. `.ribbon { top: 4px }` or `--catalog-tile-ribbon-height: 32px` (the shape letterboxed 4px down) both pass AC-1, AC-3, AC-6 and AC-7. Sample the fill 1px below the cover's top, no fill 1px above it, and the fill just above the notch apex [frontend/e2e/catalog-tile-marks.spec.ts:356]
+- [x] [Review][Patch] The checklist's ticked Tokens item says "matched by `app-shell.spec.ts`", but that file compares only primitives and never reads `components.catalog-tile` [_bmad-output/test-artifacts/atdd-checklist-8-2-see-what-i-ve-read-and-what-i-m-reading-on-the-tiles.md:112]
+- [x] [Review][Patch] `--catalog-tile-ribbon-notch` is used nowhere, and changing it does nothing because the notch is literal in the SVG. Note that next to the token [frontend/src/styles/tokens.css:187]
+- [x] [Review][Defer] Spine drift: AD-6's Tiles bullet and the FR-25 map row still say "planned / not built" [ARCHITECTURE-SPINE.md AD-6] — deferred: spine drift, reconciled before the next epic. Already recorded in `deferred-work.md` and the spec's `deferred:` front matter by build-auto, so it is not added again.
+
+**Rejected:**
+- `low` A wide cover under ~26px tall lets the ribbon hang past the box's bottom into the slot. That needs an aspect ratio over ~5.7:1, which no real cover has. A fix adds clipping or sizing rules (Edge, Blind).
+- `low` On covers under ~20px wide the halo, and under 16px the fill, cross the cover's left edge. Same refutation as build-auto's triage: no real cover is that narrow, and the matrix row says "where it can be" (Edge, Auditor, Blind).
+- `low` The held route's `route.continue()` could reject after a failed test. This happens only on the failure path, after `release()` in `finally`, and it is test noise at worst (Edge).
+- `low` The loading leaf compares the box only relative to the `li`. 8.1's AC-10 leaf already measures zero layout shift page-wide (Edge, Blind).
+- `false` The ATDD leaves were weakened via `lookOf`. Every expected value and comparison is unchanged, and the sampling fixes put samples where the leaves meant them (Auditor).
+- `low` An 8.1 leaf now uses `expect.poll`. It checks the same equality, fixes a recorded race, and is documented in the checklist. Reverting it brings the flake back (Auditor).
+- `reject` The triage-log counts don't match its rows (7 false, not 10). The fix is an edit to the spec under review (Blind).
+- `false` The `percent: 100` leaf doesn't match "re-read at last page, unfinished". Austerlitz is unfinished at 100% in that leaf, which is the boundary AC-2 needs (Blind).
+- `low` Mark presence is checked by pixels only. This is deliberate (the file header), so the leaves don't depend on how the marks are drawn (Blind).
+- `false` The ribbon on the placeholder isn't checked against the placeholder's art. The matrix puts it at the box's top-right on the placeholder, and the broken-cover leaf checks exactly that (Blind).
+- `false` The forced-colors bar outline paints into the caption's area. It adds 1px into the caption's `space-2` top margin and touches no text (Blind).
+- `reject` A Design Note still reads as an open fallback instruction. The fix is an edit to the spec under review (Blind).
+- `reject` Line references in the spec and checklist are inconsistent or will go stale. The fix is an edit to the spec under review (Blind).
+- `false` The deferred-work evidence path breaks the file's format. The 8.1 entry (`deferred-work.md:949`) cites bare `ARCHITECTURE-SPINE.md` the same way (Blind).
+- `false` The README describes the marks while the story is in review. The README update belongs to the build commit by the pipeline's convention, and the count stays unchanged until done (Blind).
 
 ## Spec Change Log
 

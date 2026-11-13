@@ -184,6 +184,7 @@
   --catalog-tile-reading-bar-slot: 11px;
   --catalog-tile-ribbon-width: 16px;
   --catalog-tile-ribbon-height: 24px;
+  /* Mirrors DESIGN.md only: the notch is fixed in the ribbon's SVG geometry (CatalogTiles.tsx), so changing this does nothing. */
   --catalog-tile-ribbon-notch: 6px;
   --catalog-tile-ribbon-inset: 10px;
   --catalog-tile-ribbon-halo: 1.5px;

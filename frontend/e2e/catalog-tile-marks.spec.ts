@@ -192,6 +192,11 @@ type TileLook = {
   ribbonMiddle: Rgb
   /** Same x, 9px below the box's top: differs from ribbonMiddle only when the cover is shorter than the box. */
   boxTopMiddle: Rgb
+  /** On the ribbon's center line, 1px above and 1px below the visible cover's top: where the ribbon starts. */
+  aboveRibbon: Rgb
+  ribbonTop: Rgb
+  /** On the center line, 2px above the notch's apex (18px down): still the fill if the ribbon is 24px tall. */
+  aboveApex: Rgb
   /** Inside the V-notch, 1px above the ribbon's lower end, on its center line. */
   notch: Rgb
   /** From the ribbon's center line rightward, every half pixel for 16px, at the ribbon's middle. */
@@ -298,6 +303,9 @@ async function lookOf(item: Locator, find: Rgb | null = null): Promise<TileLook>
         cover,
         ribbonMiddle: at(center, middle),
         boxTopMiddle: at(center, box.y + 9),
+        aboveRibbon: at(center, cover.y - 1),
+        ribbonTop: at(center, cover.y + 1),
+        aboveApex: at(center, cover.y + ribbon.height - ribbon.notch - 2),
         notch: at(center, cover.y + ribbon.height - 1),
         scanRight,
         barRow,
@@ -370,6 +378,10 @@ test.describe("Story 8.2 See what I've read and what I'm reading on the tiles (A
       expect(look.cover.y, 'the wide cover starts below the box top').toBeGreaterThan(look.box.y + 40)
       // Not on the empty part of the box above the cover.
       expect(near(look.boxTopMiddle, RED.rgb, 60)).toBe(false)
+      // It hangs from the cover's very top, and reaches down to the notch's apex.
+      expect(near(look.aboveRibbon, RED.rgb, 60)).toBe(false)
+      expect(near(look.ribbonTop, RED.rgb, 24)).toBe(true)
+      expect(near(look.aboveApex, RED.rgb, 24)).toBe(true)
       // The V-notch: the cover shows through at the ribbon's lower end.
       expect(near(look.notch, RED.rgb, 60)).toBe(false)
       expect(near(look.notch, WIDE_COVER_RGB, 60)).toBe(true)
@@ -866,6 +878,11 @@ test.describe("Story 8.2 See what I've read and what I'm reading on the tiles (s
         expect(cover.y, title).toBeGreaterThanOrEqual(box.y - 1)
         expect(cover.x + cover.width, title).toBeLessThanOrEqual(box.x + box.width + 1)
         expect(Math.abs(cover.y + cover.height - (box.y + box.height)), title).toBeLessThanOrEqual(1)
+        // Centered: Villette's tall cover is narrower than its box, with equal gaps left and right.
+        const leftGap = cover.x - box.x
+        const rightGap = box.x + box.width - (cover.x + cover.width)
+        expect(Math.abs(leftGap - rightGap), title).toBeLessThanOrEqual(1)
+        if (title === 'Villette') expect(cover.width, 'narrower than its box').toBeLessThan(box.width - 20)
         if (title === 'Villette') expect(marksOf(look, RED.rgb, LIGHT).ribbon).toBe(true)
       }
     } finally {

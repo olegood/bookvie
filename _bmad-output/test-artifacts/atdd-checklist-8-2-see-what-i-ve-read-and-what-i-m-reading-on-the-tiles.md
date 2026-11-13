@@ -109,7 +109,7 @@ No leaf failed in setup. The seed, the two cover files and the route ran cleanly
 - [ ] **E2E, AC-4 Up next, never started, and Side read without a Reading:** no mark (EXPERIENCE.md → Status marks: those states are only in the name).
 - [ ] **E2E, AC-5 axe on Tiles** in both themes with marks on screen (extend `catalog-pace-calculator.spec.ts`'s Tiles pass).
 - [ ] **E2E, AC-6/AC-7 the highlight and focus rings** still sit around the box with the ribbon on it, and the ribbon isn't clipped by the ring.
-- [x] **Tokens:** `components.catalog-tile.ribbon-*` and `reading-bar-*` in `tokens.css`, matched by `app-shell.spec.ts`.
+- [x] **Tokens:** `components.catalog-tile.ribbon-*` and `reading-bar-*` copied into `tokens.css` by hand. No test matches them: `app-shell.spec.ts` compares only DESIGN.md's primitives (colors, typography, rounded, spacing). The AC-1 leaf pins the ribbon's top and its depth to the notch's apex by pixels instead (code review of Story 8.2).
 
 ## TDD Red Phase
 
