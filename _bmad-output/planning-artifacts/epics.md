@@ -9,13 +9,14 @@ inputDocuments:
   - _bmad-output/planning-artifacts/ux-designs/ux-bookvie-2026-10-28/EXPERIENCE.md
   - _bmad-output/planning-artifacts/ux-designs/ux-bookvie-2026-10-28/prd-deltas.md
   - _bmad-output/test-artifacts/test-design/bookvie-handoff.md
+  - _bmad-output/planning-artifacts/catalog-tiles-plan-2026-11-13.md
 ---
 
 # bookvie - Epic Breakdown
 
 ## Overview
 
-This document breaks bookvie's PRD, UX design (DESIGN.md, EXPERIENCE.md) and architecture spine into seven epics of implementable stories. Each story names the requirement IDs it satisfies and lists Given/When/Then acceptance criteria.
+This document breaks bookvie's PRD, UX design (DESIGN.md, EXPERIENCE.md) and architecture spine into eight epics of implementable stories. Each story names the requirement IDs it satisfies and lists Given/When/Then acceptance criteria.
 
 **How to read it.** The Epic List gives the build order and what each epic delivers. Each epic section starts with its gate. Every story follows the conventions in "Conventions for every story", just before Epic 1. The Requirements Inventory is a lookup table; the source documents stay authoritative.
 
@@ -40,6 +41,7 @@ Gates are in each epic's section.
 | 5. Keep what a book gave you | Card notes with a page or range on any Book, the pile, and note search. | FR-17, FR-18, FR-19 |
 | 6. Know how long and how much | Pace to finish for a Book or the whole unread library, and Stats for any period with monthly bars. | FR-15, FR-16 |
 | 7. Organize the catalog | Sort, and filter chips that close up the bookcase; Home's slice follows the sort. | FR-20 |
+| 8. See the catalog as covers | A third Catalog view, Tiles: a grid of covers in the current sort and filters, a spine-color ribbon on read Books, a progress bar on Books being read, and a typeset cover for Books without one; each tile opens its Book. | FR-25 |
 
 ## Requirements Inventory
 
@@ -90,6 +92,8 @@ FR-22 [Must]: One-click export. One action exports all data to a single file: Bo
 FR-23 [Must]: Restore from export. The user can restore bookvie from an export file. Restore replaces current data after explicit confirmation. Export then restore reproduces identical data. This is the only way to import data.
 
 FR-24 [Must]: Bookcase. The main screen shows a slice of the bookcase and the catalog shows the full bookcase: one spine per Book, in catalog sort order (Author by default). The slice is up to 3 shelf rows: the Main book's row, then the Up next Book's, then rows with the most recent finishes; filters never apply to it. Unread Books are outlined; read Books show their spine color exactly as stored. Up next and Waiting for you Books carry markers. The Main book's spine is filled to its reading percentage; a re-read keeps its full-color spine and gets the Main-book marker. An overall meter shows "X of Y finished". Not ordered by physical location.
+
+FR-25 [Should]: Catalog tiles. The user can see the catalog as tiles: one tile per Book with its cover, title and author, as a third view next to the bookcase and the list. Bookcase (default) · List · Tiles; the last choice is remembered on this computer and isn't exported. The cover keeps its own shape and the covers in a row share a bottom line; under it the title and first author, one line each, cut short when too long. A read Book carries a bookmark ribbon in its spine color; a Book with an unfinished Reading shows a progress bar for its current page; a re-read shows both; an unread Book has no mark. Status never depends on color alone, and each tile's accessible name includes it. A Book without a cover shows a typeset cover (on its spine color if read, outlined if unread). Search by title, sort and filters apply; opening a tile opens the Book. With 500 Books that have covers, the first screen of tiles appears in about 1 second and the grid doesn't jump while covers load.
 
 ### NonFunctional Requirements
 
@@ -143,6 +147,9 @@ From ARCHITECTURE-SPINE.md and the TEA handoff. Each line names the source decis
 - AR21 (Consistency Conventions): CLI flags, stderr logging, no outbound network calls.
 - AR22 (Stack, Structural Seed): Build into `backend/bookvie/http/static/`, shipped in the hatchling wheel, install with `uv tool install`, Vite dev proxy; React Router 8.5 and CSS Modules over one `tokens.css`.
 - AR23 (AD-17): The Agent Label Contract is a public interface; e2e drives it by exact accessible names, with no `data-testid`.
+- AR24 (AD-6): The Tiles view is client presentation over the same sorted, filtered array as the bookcase and List. The ribbon reads the view's `finished`; the reading bar shows only when `percent` is not null and fills to `percent`, never recomputed; the tile's accessible name comes from the spine's name builder.
+- AR25 (AD-8, AD-12): `ShelfBook.coverFile` is added in the Python model first, then `api:gen`. Tiles load covers from `/media/covers/<coverFile>` at their stored size, lazily.
+- AR26 (AD-15, Deferred → Cover thumbnails): The remembered Catalog view gains `tiles`. No thumbnails unless Epic 8's 500-cover check fails; that follow-up would amend AD-12 and AD-14.
 
 **Test harness and quality gates (TEA handoff).**
 - TR1 (TC-1): `LibraryBuilder` fixture and pre-start seeding of a data folder.
@@ -227,6 +234,13 @@ Each line names the UX section that holds the full requirement. D = DESIGN.md, E
 - UX-DR52: Stats page (E → Component Patterns; D → Components)
 - UX-DR53: Backup page (E → State Patterns, Component Patterns)
 
+**Catalog tiles (FR-25)**
+- UX-DR54: Catalog view toggle with three options, Bookcase · List · Tiles (D → Components; E → Component Patterns)
+- UX-DR55: Tiles grid and cover box: 140px minimum, 24/32px gaps, 2:3 box, bottom-aligned covers, one-line caption, reserved reading-bar slot; values in `components.catalog-tile`, no new primitive tokens (D → Layout & Spacing → Tiles, Catalog tile)
+- UX-DR56: Finished ribbon with its light halo, and the reading bar, including dark theme and forced colors (D → Catalog tile, Forced colors)
+- UX-DR57: Typeset cover, read and unread, also used when a cover fails to load (D → Catalog tile; E → State Patterns: No cover)
+- UX-DR58: Tiles behavior: one link per tile with the spine's name, a list named "Tiles, N books", lazy covers with no layout shift, highlight after add, focus after delete, empty and no-match states (E → Tiles)
+
 ### FR Coverage Map
 
 FR-1: Epic 1 - Book fields, create/edit/delete, Finished on back-fill, tags field, spine color
@@ -251,6 +265,7 @@ FR-21: Epic 3 - Cover on the main screen
 FR-22: Epic 2 - Export; Epic 3 - Last export on Home
 FR-23: Epic 2 - Restore
 FR-24: Epic 1 - Catalog bookcase (spines, colors, meter, popover, keyboard); Epic 3 - Home slice and Main-book fill; Epic 4 - Up next / Waiting markers
+FR-25: Epic 8 - Tiles view: grid, covers, ribbon, reading bar, typeset covers
 
 ## Conventions for every story
 
@@ -2070,3 +2085,140 @@ So that I can find the right Book for the moment.
 **Given** I add a Book that the current filters would hide
 **When** the panel closes
 **Then** the filters are cleared first, so the new spine can be highlighted.
+
+## Epic 8: See the catalog as covers
+
+The user can switch the Catalog to Tiles, a third view next to the bookcase and the list: a grid of covers in the current sort and filters. Read Books carry a ribbon in their spine color, Books being read show a progress bar, and Books without a cover get a typeset cover. Each tile opens its Book.
+
+**Gate:** per-epic quality gates (TR7), plus the 500-cover speed check in Story 8.1. If that check fails, a follow-up story for cover thumbnails (ARCHITECTURE-SPINE → Deferred, amending AD-12 and AD-14) is opened; it does not block the epic.
+
+### Story 8.1: See my catalog as covers
+
+As Oleg,
+I want to switch the Catalog to a grid of covers,
+So that I can find a Book by its cover rather than its title.
+
+**Requirements:** FR-25, NFR7, AR24, AR25, AR26, UX-DR54, UX-DR55, UX-DR58
+
+**Acceptance Criteria:**
+
+**Given** the catalog view
+**When** it is fetched
+**Then** every `ShelfBook` carries `coverFile` (the stored cover file name, `null` without a cover), added to the Python model first and then to the generated schema with `api:gen`, and `check:api` passes (AR25).
+
+**Given** the Catalog toolbar
+**When** it renders
+**Then** the "Catalog view" group offers Bookcase (default) · List · Tiles as three toggle buttons with `aria-pressed`, in the theme toggle's look (UX-DR54)
+**And** choosing Tiles is remembered in `localStorage` under `bookvie.catalogView` (try/catch); an unknown stored value still falls back to Bookcase, and a restore neither brings nor replaces the choice (AR26).
+
+**Given** Tiles is chosen
+**When** the Catalog renders
+**Then** the Books appear as a `list` named "Tiles, N books" on the plain page background, packed with `repeat(auto-fill, minmax(140px, 1fr))`, 24px between columns and 32px between rows, so a 1280px window shows 7 columns (UX-DR55)
+**And** each tile is one link to Book detail, holding a 2:3 cover box, an 11px reserved reading-bar slot, the title in `book-title-sm` at weight 600 and the first author in `body-sm` `ink-secondary`, each on one line cut with an ellipsis
+**And** the link's accessible name is the spine's name, built by the same function: "*Title* by *First author*, *status*", with the same "and N others" rule and twin disambiguation (AR24, UX-DR58).
+
+**Given** a Book with a cover
+**When** its tile renders
+**Then** the cover is `/media/covers/<coverFile>` with `loading="lazy"`, `decoding="async"` and empty `alt`, shown whole (`object-fit: contain`) at the bottom of the box with 4px corners and a 1px `line` hairline, never cropped, dimmed or shadowed
+**And** until it loads the box shows a flat `surface-inset` fill with the same hairline, and the box never changes size, so nothing in the grid moves as covers arrive.
+
+**Given** a Book without a cover, or a cover that fails to load
+**When** its tile renders
+**Then** the box shows the existing no-cover placeholder at the box size (Story 8.3 replaces it with the typeset cover).
+
+**Given** Search titles text, a sort or filter chips
+**When** they change in Tiles
+**Then** tiles follow the same sorted array as the bookcase and List, non-matching tiles are `hidden` and the grid closes up, and the `status` region reads "N books match." as in the other views (AR24)
+**And** "No titles match “query”.", "No books match these filters." with "Clear filters", and the empty shelf with **New book** show in place of the grid.
+
+**Given** Tiles is showing
+**When** I add a Book with the New book panel
+**Then** the new tile is scrolled into view in the current sort, focused and given the highlight ring around its cover box (instant under reduced motion), and a search or filter that would hide it is cleared first.
+
+**Given** I delete a Book from its page
+**When** I land back on the Catalog in Tiles
+**Then** focus goes to **Search titles**, as in the other views.
+
+**Given** a tile
+**When** I Tab through the grid and press Enter
+**Then** each tile is one Tab stop in sort order with the 2px accent focus ring around its cover box, and Enter opens Book detail.
+
+**Given** a seeded library of 500 Books, each with a 1200px cover
+**When** I switch to Tiles in Chromium at 1280px
+**Then** the grid and the first screen of covers render in about 1 second, and scrolling to the end shows no layout shift (FR-25, NFR7)
+**And** if this fails, the story records the measurement and a follow-up story for cover thumbnails is opened (AR26).
+
+**Given** the existing unit and e2e tests that assume two view options
+**When** this story lands
+**Then** they cover the three options, and Bookcase and List behave as before.
+
+### Story 8.2: See what I've read and what I'm reading on the tiles
+
+As Oleg,
+I want each tile to show whether I've read the Book and how far I am in it,
+So that the grid of covers also tells me where my reading stands.
+
+**Requirements:** FR-25, AR24, UX-DR56
+
+**Acceptance Criteria:**
+
+**Given** a Book whose catalog view has `finished: true`
+**When** its tile renders
+**Then** a bookmark ribbon 16×24px with a 6px V-notch hangs from the visible cover's top edge, 10px in from its right edge, filled with the Book's exact `spineColor`, with a 1px `spine-edge` line on its sides and notch and a 1.5px `spine-label-strip` halo outside that line, and no glyph or text on it (UX-DR56)
+**And** it sits on the visible cover, not on the empty part of the box.
+
+**Given** a Book whose catalog view has a non-null `percent`
+**When** its tile renders
+**Then** a 5px reading bar sits in the reserved slot 6px below the box, the box's width, `accent-soft` track and `accent` fill to `percent`, square ends; it is never recomputed from `currentPage` and `pages` (AR24)
+**And** a Book with `percent: null` shows no bar, and the slot stays empty so captions still line up across the row.
+
+**Given** a finished Book being re-read
+**When** its tile renders
+**Then** it shows both the ribbon and the bar.
+
+**Given** an unread Book with no Reading
+**When** its tile renders
+**Then** it has no mark.
+
+**Given** any tile
+**When** a screen reader reads it
+**Then** the ribbon and the bar are `aria-hidden`, and the status is in the link's name from Story 8.1 ("finished", "Main book, 64%", "finished, waiting for you, page 40"), so status never depends on color or shape alone.
+
+**Given** the dark theme
+**When** tiles render
+**Then** the ribbon fill, its halo and the bar keep their meaning; only `spine-edge` and chrome colors take their dark twins.
+
+**Given** `forced-colors: active`
+**When** tiles render
+**Then** the ribbon and the bar's fill use `forced-color-adjust: none` with `CanvasText`, the bar's track becomes `Canvas` with a `CanvasText` outline, the ribbon halo becomes `Canvas`, and the cover hairline becomes `CanvasText`.
+
+### Story 8.3: Give books without a cover a typeset cover
+
+As Oleg,
+I want a Book without a cover to look like a book in the grid,
+So that the tiles don't read as broken where a cover is missing.
+
+**Requirements:** FR-25, UX-DR57
+
+**Acceptance Criteria:**
+
+**Given** a read Book without a cover
+**When** its tile renders
+**Then** the box is filled with the Book's exact `spineColor`, with a 1px `spine-edge` border and 4px corners, and a `spine-label-strip` plate inset 10px from the sides and starting 34px from the top holds the title (`book-title-sm` at weight 400, up to 4 lines, `spine-label` color) and the first author (`meta`, one line) (UX-DR57)
+**And** no text sits straight on the Book's color, and the ribbon from Story 8.2 hangs clear of the plate.
+
+**Given** an unread Book without a cover
+**When** its tile renders
+**Then** the box is `spine-unread-fill` with a 1.5px `spine-unread-outline` border, the title and author in `spine-unread-text`, and no plate, like an unread spine seen from the front.
+
+**Given** a Book whose cover image fails to load
+**When** its tile renders
+**Then** the typeset cover for its read state replaces the image.
+
+**Given** the dark theme or `forced-colors: active`
+**When** typeset covers render
+**Then** the read fill and plate are the same in both themes while `spine-edge` and the unread colors take their dark twins, and under forced colors the typeset cover is `Canvas` with a `CanvasText` border and `CanvasText` text.
+
+**Given** the Main book card, the Up next thumbnail or Book detail
+**When** a Book has no cover
+**Then** they keep the existing no-cover placeholder; the typeset cover applies to catalog tiles only.
