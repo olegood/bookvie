@@ -128,18 +128,18 @@ One leaf failed in setup on the first run: AC-8 used `getByRole('dialog')`, but 
 - [x] **API, `check:api`:** the regenerated `schema.d.ts` has `coverFile: string | null` on `ShelfBook`, and `test_contract.py` passes.
 - [x] **Unit, the name builder:** not applicable: the tiles reuse `spineNames` directly, with no helper of their own. (Was: if the build adds a tile-name helper rather than reusing `spineNames`, test that it returns `spineNames`' output (the AC says "built by the same function").)
 - [x] **E2E, AC-2 restore:** after a restore, `bookvie.catalogView` is unchanged (Tiles stays Tiles, and List stays List), and the export holds no view key. `restore.spec.ts:123` already sets `list` before a restore, so extend it with `tiles`.
-- [ ] **E2E, AC-2 unknown value and throwing storage:** `mosaic` stored opens Bookcase, and `localStorage` that throws still lets Tiles switch for the visit.
-- [ ] **E2E, AC-2 keyboard:** Tab reaches Tiles after List, and Space or Enter presses it.
+- [x] **E2E, AC-2 unknown value and throwing storage:** `mosaic` stored opens Bookcase, and `localStorage` that throws still lets Tiles switch for the visit. (done: frontend/e2e/catalog-tiles-automate.spec.ts:331 and :342)
+- [x] **E2E, AC-2 keyboard:** Tab reaches Tiles after List, and Space or Enter presses it. (done: Tab in `frontend/e2e/bookcase-details.spec.ts:72`; Space and Enter in frontend/e2e/catalog-tiles-automate.spec.ts:373)
 - [x] **E2E, AC-3 widths:** 5 columns at 1024px and 8 at 1440px (DESIGN.md → Layout → Tiles). Covered by `catalog-tiles.spec.ts` "[P2] AC-3 the grid packs 5 columns at 1024px and 8 at 1440px".
-- [ ] **E2E, AC-3 dark theme and axe:** run axe on Tiles in both themes, and check the caption colors' dark twins.
-- [ ] **E2E, AC-4 forced colors:** the cover hairline and the loading box's border become `CanvasText` (DESIGN.md line 549).
-- [ ] **E2E, AC-6 List and Bookcase parity:** with the same search and filters, the visible tile names equal the visible spine names, in the same order, under every sort.
+- [x] **E2E, AC-3 dark theme and axe:** run axe on Tiles in both themes, and check the caption colors' dark twins. (done: axe in `frontend/e2e/catalog-pace-calculator.spec.ts:271`, with `label-content-name-mismatch` off for the tile links as accepted in the code review; dark twins in frontend/e2e/catalog-tiles-automate.spec.ts:302)
+- [x] **E2E, AC-4 forced colors:** the cover hairline and the loading box's border become `CanvasText` (DESIGN.md line 549). (done: frontend/e2e/catalog-tiles-automate.spec.ts:244; the `Highlight` rings in :274)
+- [x] **E2E, AC-6 List and Bookcase parity:** with the same search and filters, the visible tile names equal the visible spine names, in the same order, under every sort. (done: frontend/e2e/catalog-tiles-automate.spec.ts:394)
 - [x] **E2E, AC-3 twins under a filter:** with the Hardcover chip hiding Dune (edition 2), the shown tile keeps "edition 1" in its name, like `bookcase.spec.ts`'s twin leaf. Covered by `catalog-tiles.spec.ts` "[P1] AC-3 a twin tile keeps its edition in its name when a filter hides the other twin".
-- [ ] **E2E, AC-6 focus fallback:** when a focused tile is hidden by a filter change, pin where focus goes (the bookcase moves it to the nearest visible spine, and the List doesn't move it).
-- [ ] **E2E, AC-7 reduced motion:** with `reducedMotion: 'reduce'`, the scroll is instant (`behavior: 'auto'`).
-- [ ] **E2E, AC-7 filters:** with a filter on that would hide the new Book, the filter is cleared too (Story 7.2's `onSaved` already clears both).
-- [ ] **E2E, AC-7 ring timing:** the highlight ring is gone after `HIGHLIGHT_MS`.
-- [ ] **E2E, AC-9 mouse:** clicking a tile's cover or caption opens Book detail, and the cover `img` isn't a second Tab stop.
+- ~~**E2E, AC-6 focus fallback:** when a focused tile is hidden by a filter change, pin where focus goes (the bookcase moves it to the nearest visible spine, and the List doesn't move it).~~ **Retired:** unreachable in Chromium, since Search titles, the chips and Clear filters take focus when used, so a focused tile can't be hidden (the build review's rejected row in `spec-8-1-see-my-catalog-as-covers.md` Review Triage Log); a focusless click is Safari-only and out of scope (AGENTS.md "Supported browser").
+- [x] **E2E, AC-7 reduced motion:** with `reducedMotion: 'reduce'`, the scroll is instant (`behavior: 'auto'`). (done: frontend/e2e/catalog-tiles-automate.spec.ts:425, both `reduce` and `no-preference`)
+- [x] **E2E, AC-7 filters:** with a filter on that would hide the new Book, the filter is cleared too (Story 7.2's `onSaved` already clears both). (done: frontend/e2e/catalog-tiles-automate.spec.ts:451)
+- [x] **E2E, AC-7 ring timing:** the highlight ring is gone after `HIGHLIGHT_MS`. (done: frontend/e2e/catalog-tiles-automate.spec.ts:473)
+- [x] **E2E, AC-9 mouse:** clicking a tile's cover or caption opens Book detail, and the cover `img` isn't a second Tab stop. (done: clicks in frontend/e2e/catalog-tiles-automate.spec.ts:499; one Tab stop per tile in `frontend/e2e/catalog-tiles.spec.ts:550`)
 - [x] **E2E, AC-10 repeat:** run the speed check three times and record the median. Don't put a burn-in loop in CI. Measured in the build (2026-11-13, Chromium at 1280px): 57, 58 and 58 ms, median **58 ms** against the 1200 ms budget, and a total layout shift of **0** on every run. It passes, so no thumbnail follow-up.
 - [x] **Docs:** not needed: AC-10 passed (median 58 ms, zero layout shift). (Was: if AC-10 fails, record the measurement in the story spec and open the cover-thumbnail story (ARCHITECTURE-SPINE → Deferred).)
 
@@ -152,7 +152,9 @@ One leaf failed in setup on the first run: AC-8 used `getByRole('dialog')`, but 
 - `frontend/e2e/app-shell.spec.ts` compares `tokens.css` with DESIGN.md, so any `catalog-tile` tokens added must match it character for character.
 - `tabIntoBookcase` (`bookcase.ts`) assumes the Tab stop before the bookcase is "How long until…?". AC-9 relies on the same being true for the grid.
 
-## TDD Red Phase (current)
+## TDD Red Phase (historical)
+
+Since then (green): the build turned every leaf on (Green Phase below), and `bmad-testarch-automate` (2026-11-13) added 12 leaves in `frontend/e2e/catalog-tiles-automate.spec.ts` for the follow-ups above.
 
 There is one skipped leaf per criterion, 11 in all:
 - **API (1):** in `backend/tests/test_bookcase_view.py`, marked `@pytest.mark.skip(reason=RED_8_1)`.

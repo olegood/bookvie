@@ -1,18 +1,19 @@
 ---
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03c-aggregate', 'step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
-lastSaved: '2026-11-12'
-storyId: '7.2'
-storyKey: '7-2-filter-my-catalog'
+lastSaved: '2026-11-13'
+storyId: '8.1'
+storyKey: '8-1-see-my-catalog-as-covers'
 inputDocuments:
-  - _bmad-output/implementation-artifacts/spec-7-2-filter-my-catalog.md (Intent, Always rules, I/O matrix, ACs, Review Triage Log, Review Findings)
-  - _bmad-output/test-artifacts/atdd-checklist-7-2-filter-my-catalog.md
-  - _bmad-output/implementation-artifacts/epic-7-context.md
-  - _bmad-output/implementation-artifacts/deferred-work.md (build-auto and code review of spec-7-2, 2026-11-12)
+  - _bmad-output/implementation-artifacts/spec-8-1-see-my-catalog-as-covers.md (Intent, Always rules, I/O matrix, ACs, Review Triage Log, Review Findings)
+  - _bmad-output/test-artifacts/atdd-checklist-8-1-see-my-catalog-as-covers.md
+  - _bmad-output/implementation-artifacts/epic-8-context.md
+  - _bmad-output/implementation-artifacts/deferred-work.md (build-auto review and code review of spec-8-1, 2026-11-13)
+  - _bmad-output/planning-artifacts/ux-designs/ux-bookvie-2026-10-28/DESIGN.md (Catalog tile, Layout → Tiles)
   - _bmad/tea/config.yaml
   - frontend/playwright.config.ts
-  - frontend/e2e/catalog-filter.spec.ts; frontend/e2e/bookcase.ts; frontend/e2e/bookcase-details.spec.ts (Tab order, axe); frontend/src/lib/catalogFilter.test.ts; backend/tests/test_bookcase_view.py
-  - frontend/src/pages/CatalogPage.tsx, Bookcase.tsx, CatalogList.tsx; frontend/src/components/FilterChips.tsx; frontend/src/lib/catalogFilter.ts
+  - frontend/e2e/catalog-tiles.spec.ts; frontend/e2e/bookcase-details.spec.ts (Tab order, reduced-motion scroll, ring fade); frontend/e2e/catalog-pace-calculator.spec.ts (axe on Tiles); frontend/src/lib/catalogView.test.ts
+  - frontend/src/pages/CatalogTiles.tsx, CatalogTiles.module.css, CatalogPage.tsx; frontend/src/components/Cover.tsx; frontend/src/lib/catalogView.ts
   - knowledge/test-levels-framework.md
   - knowledge/test-priorities-matrix.md
   - knowledge/data-factories.md
@@ -24,9 +25,9 @@ inputDocuments:
   - knowledge/playwright-cli.md
 ---
 
-# Automation Summary: Filter my catalog (story 7.2)
+# Automation Summary: See my catalog as covers (story 8.1)
 
-The previous version of this file held the summary for story 7.1. It's in git history (`985ac50`).
+The previous version of this file held the summary for story 7.2. It's in git history (`b45cae8`).
 
 ## Preflight
 
@@ -34,77 +35,66 @@ The previous version of this file held the summary for story 7.1. It's in git hi
   - Frontend: Playwright (`frontend/playwright.config.ts`) and `node --test` for `src/lib`.
   - Backend: pytest (`backend/tests/conftest.py`).
   - Both frameworks are in place.
-- **Mode:** BMad-Integrated. Story 7.2 is `done` after `bmad-code-review` (`0383cbc`). The spec, the ATDD checklist and the epic context are all present.
+- **Mode:** BMad-Integrated. Story 8.1 is `done` after `bmad-code-review` (`093ee0c`). The spec, the ATDD checklist and the epic context are all present.
 - **Config:**
-  - `tea_use_playwright_utils: true`, but `@seontechnologies/playwright-utils` isn't in `package.json`, so the Traditional Patterns fragments load (`fixture-architecture`, `network-first`).
+  - `tea_use_playwright_utils: false` in `_bmad/tea/config.yaml`, and `@seontechnologies/playwright-utils` isn't in `package.json`, so the Traditional Patterns fragments load (`fixture-architecture`, `network-first`).
   - There are no Pact artifacts, so no contract fragments load.
   - `tea_browser_automation: auto` loads `playwright-cli.md`, but `playwright-cli` isn't on PATH. Browser exploration is skipped; targets come from the code and the docs.
-- **What exists for 7.2:**
-  - **Unit:** `catalogFilter.test.ts` covers OR, AND, an empty group, Read and Unread both on, a re-read as Read, case-insensitive Language and Tag matching, no tags, `filterValues` (case merge with the first spelling, collator order, numbers by value, no mutation), `filtersOn`, `toggleValue` and `liveFilters`.
-  - **API:** `test_bookcase_view.py:61` checks that `books[]` carries `type`, `language` and `tags` as stored. `check:api` compares the regenerated `schema.d.ts`.
-  - **E2E:** `catalog-filter.spec.ts` has the 8 ATDD leaves plus 6 P1 leaves:
-    - the search-only no-match;
-    - Esc returning focus;
-    - Esc after clicks that move no focus (Safari);
-    - Tab out closing the list;
-    - the List-view no-match;
-    - clicking a label's text, and clicking outside.
-
-    `bookcase-details.spec.ts:72` covers the Tab order through the chips. Its axe test runs Catalog with the chips rendered, but none pressed.
+- **What exists for 8.1:**
+  - **API:** `test_bookcase_view.py` (AC-1, `coverFile` on `ShelfBook`), `test_views.py`'s snapshot, and `check:api`'s schema comparison.
+  - **Unit:** `catalogView.test.ts` covers `tiles`, a junk value and storage that throws; `catalog.test.ts` covers `tilesName`.
+  - **E2E:** `catalog-tiles.spec.ts` has the 9 ATDD leaves (AC-2 to AC-10) plus 2 review leaves (5 and 8 columns; a twin under a filter). `bookcase-details.spec.ts:72` covers the Tab order through Bookcase, List and Tiles. `catalog-pace-calculator.spec.ts` runs axe on Tiles in both themes. `restore.spec.ts` keeps `tiles` across a restore.
 
 ## Coverage Plan
 
-Scope: **selective**. The rules are fully covered at unit level, and the ATDD and review leaves cover every criterion end to end. This run closes the ATDD checklist's remaining green-phase follow-ups and the two test gaps the code review deferred. Every target is E2E because each one meets the rendered bookcase, real focus, the shell's status region, storage or the add flow, which no unit can reach. There is no new backend target: the view fields already have their pytest.
+Scope: **selective**. The storage rules are covered at unit level, and the ATDD leaves cover every criterion end to end. This run closes the ATDD checklist's open green-phase follow-ups and the forced-colors gap the code review deferred. Every target is E2E: each one depends on the rendered grid, computed styles under an emulated media feature, real focus, the add flow or storage seen by the page, which no unit can reach. There is no backend target.
 
 | # | Target | Level | Priority | Why |
 |---|---|---|---|---|
-| 1 | Filters hiding every spine while a spine has real focus move focus to Search titles | E2E | P1 | AC-6's "or to Search titles when none remain". Deferred by the code review |
-| 2 | After Clear filters, the bookcase Tab stop stays on the neighbor it moved to | E2E | P2 | ATDD follow-up "AC-6 restore" (EXPERIENCE.md "Keep a moved stop") |
-| 3 | Toggling a chip off and back on with the same result announces "N books match." again | E2E | P2 | ATDD follow-up "AC-3 repeated count": the region must be emptied so a repeated text is read again |
-| 4 | "Classic" and "classic" on different Books give one Tag checkbox with the library-first spelling, and checking it shows both Books | E2E | P2 | ATDD follow-up "AC-2 Tag case". Deferred by the code review |
-| 5 | A reload of Catalog starts with no filters, and no filter key is written to `localStorage` | E2E | P2 | ATDD follow-up "AC-7 reload" (AD-1: no browser storage of domain state) |
-| 6 | A filter doesn't change the remembered sort, and a sort change keeps the filters | E2E | P2 | ATDD follow-up "AC-7 sort kept": the 7.1 and 7.2 boundary |
-| 7 | Adding a Book the filters keep visible still clears them | E2E | P2 | ATDD follow-up "AC-8 matching add" (the spec chose "an add always clears filters") |
-| 8 | With Search titles text and a filter both hiding the new Book, an add clears both | E2E | P2 | ATDD follow-up "AC-8 with a search" |
-| 9 | With a chip on and the Language list open, axe finds nothing in both themes, and the pressed chip uses the dark `accent-soft` and `accent` | E2E | P2 | ATDD follow-up "AC-1 dark theme and axe" |
+| 1 | Under forced colors, the loading box's and the loaded cover's hairlines are `CanvasText`, and the focus and highlight rings on the cover box are `Highlight` | E2E | P2 | ATDD follow-up "AC-4 forced colors"; deferred by the code review (spec Always rule) |
+| 2 | In the dark theme, the caption's title and author and the loading box use DESIGN.md's dark twins | E2E | P2 | ATDD follow-up "AC-3 dark theme and axe" (axe in both themes is already in `catalog-pace-calculator.spec.ts`) |
+| 3 | A junk stored view opens Bookcase; with `localStorage` that throws, Catalog opens in Bookcase and pressing Tiles still switches for the visit | E2E | P2 | ATDD follow-up "AC-2 unknown value and throwing storage" (I/O matrix row) |
+| 4 | Space and Enter on the focused Tiles button press it | E2E | P3 | ATDD follow-up "AC-2 keyboard"; the Tab half is `bookcase-details.spec.ts:72` |
+| 5 | Under every sort, with a search and a filter on, the shown tile names equal the shown spine names in the same order | E2E | P2 | ATDD follow-up "AC-6 List and Bookcase parity" |
+| 6 | An add under reduced motion scrolls the new tile's `li` with `behavior: 'auto'`, and without it `'smooth'` | E2E | P2 | ATDD follow-up "AC-7 reduced motion" |
+| 7 | An add with a filter on that would hide the new Book clears the filter, and the new tile is focused and ringed | E2E | P2 | ATDD follow-up "AC-7 filters" |
+| 8 | The highlight ring on the new tile's cover box is gone after `HIGHLIGHT_MS` | E2E | P2 | ATDD follow-up "AC-7 ring timing" |
+| 9 | A click on a tile's cover box, and one on its caption, opens Book detail | E2E | P2 | ATDD follow-up "AC-9 mouse"; "one Tab stop per tile" is AC-9's leaf |
 
-**Already covered (ticked in the ATDD checklist, not re-tested):**
-- the API fields (`test_bookcase_view.py:61`);
-- the unit rules (`catalogFilter.test.ts`);
-- "1 book matches." (AC-3, `catalog-filter.spec.ts:240`);
-- the List-view no-match (the List-view AC-5 leaf);
-- search plus filters (the search-only no-match leaf);
-- the keyboard open, Esc and Tab (the Esc and Tab-out leaves).
+**Not automated:**
+- **"AC-6 focus fallback"** is retired. In Chromium every control that changes `shown` (Search titles, the chips, Clear filters) takes focus when used, so a focused tile can't be hidden; the build review rejected the same case on that ground. A click that moves no focus happens only in Safari, which is out of scope (AGENTS.md "Supported browser").
+
+**Already covered (ticked in the ATDD checklist, not re-tested):** the API field and the schema; the unit storage rules; the restore; the 5- and 8-column widths; twins under a filter; AC-10's speed check; axe on Tiles in both themes.
 
 ## Execution
 
 - **Mode:** `tea_execution_mode: auto` with the capability probe on. Subagents are supported and agent teams aren't, so the mode resolved to **subagent**.
 - **Workers:**
-  - **3A (API):** not launched. There is no new endpoint; the view fields already have their pytest.
+  - **3A (API):** not launched. There is no new endpoint; `coverFile` already has its pytest and `check:api`.
   - **3B-backend:** not launched. There is no backend target.
-  - **3B-e2e:** targets 1–9. For its fail-proofs it changed only `frontend/src`, and restored each change. Afterwards `git diff --stat -- frontend/src backend` is empty.
-- **Fixtures:** none added. The worker added spec-local helpers:
-  - `sortSelect`, `storageKeys` and `addSwingTime`;
-  - `recordStatus`, a copy of `card-notes.spec.ts`'s that also keeps the empty texts;
-  - `TAG_CASE_SHELF`, `APP_STORAGE_KEYS` and the dark accent constants.
-- **Review of the worker's output:** read in full. No changes were needed. Its output JSON reports `success: true` with `test_count: 10`. It is in this session's scratch directory, not `/tmp`, and isn't committed.
+  - **3B-e2e:** targets 1–9. For its fail-proofs it changed only `frontend/src` and restored each change with `git checkout`. Afterwards `git diff --stat -- frontend/src backend` is empty.
+- **New file:** the leaves went into `frontend/e2e/catalog-tiles-automate.spec.ts` (526 lines), because adding them to `catalog-tiles.spec.ts` (663 lines) would have passed the 1000-line limit.
+- **Fixtures:** none added. The new file copies the helpers it needs from `catalog-tiles.spec.ts` (`tiles`, `tileLinks`, `tile`, `storeTiles`, `tileNames`, `coverBox`, `ringRect`, `sameRect`, `bookId`) rather than moving them to a shared module, so the ATDD spec stays untouched. It adds `systemColor`, `holdCover`, `addSwingTime`, `ringedCoverBox`, `spineNames`, `typeChip` and `viewButton`. If a third tiles spec appears (Stories 8.2, 8.3), move the shared helpers into an `e2e/tiles.ts` module, like `bookcase.ts`.
+- **Review of the worker's output:** read in full. No changes were needed. Its output JSON reports `success: true` with `test_count: 12`. It is in this session's scratch directory, not `/tmp`, and isn't committed.
 
 ## Tests Added
 
-All 10 are in `frontend/e2e/catalog-filter.spec.ts`. Target 1 has two leaves, because what is reachable depends on whether a click moves focus.
+All 12 are in `frontend/e2e/catalog-tiles-automate.spec.ts`, in `Story 8.1 See my catalog as covers (automate)`.
 
 | Line | Test | Priority | Target | Fails when (worker's fail-proof) |
 |---|---|---|---|---|
-| 548 | AC-6 filters that hide every spine leave focus on the control that hid them, and after Clear filters Tab lands on the moved stop | P1 | 1 | The real-focus effect in `Bookcase.tsx` loses its "the focused element is a hidden spine" guard |
-| 582 | AC-6 a chip click that moves no focus, as in macOS Safari, and hides the focused spine and every other one moves focus to Search titles | P1 | 1 | The fallback `searchRef.current` becomes `null` |
-| 604 | AC-6 Clear filters keeps the bookcase's Tab stop where it moved | P2 | 2 | The "Keep a moved stop" `setStopId(stop)` is removed |
-| 630 | AC-3 each filter change announces its count again, even word for word the same | P2 | 3 | `announce()` skips `clearAnnouncements()` |
-| 655 | AC-2 Tag ▾ lists a tag spelled in two cases once, in the library-first spelling, and it matches both Books | P2 | 4 | The Tag values are built from `sorted` instead of `books` |
-| 677 | AC-7 a reload of Catalog starts with no filter on, and no filter is kept in storage | P2 | 5 | The filters are written to `sessionStorage` (or read back on load) |
-| 705 | AC-7 a filter leaves the remembered sort alone, and a sort change keeps the filters | P2 | 6 | `chooseSort` clears the filters, or `changeFilters` writes the sort |
-| 729 | AC-8 an add clears the filters even when they would keep the new Book visible | P2 | 7 | `onSaved` no longer clears the filters |
-| 752 | AC-8 an add with Search titles text and a filter both hiding the new Book clears both | P2 | 8 | `onSaved` drops `setQuery('')` or `setFilters` |
-| 773 | AC-1 with a chip on and the Language list open, axe finds nothing in both themes, and the dark chip uses the dark accent tokens | P2 | 9 | The pressed fill or border is hard-coded to light values, or `.option` ink is hard-coded (axe color-contrast in dark) |
+| 244 | AC-4 forced colors: the loading box and the loaded cover keep a CanvasText hairline | P2 | 1 | The forced-colors `.loading, .cover` border rule is removed, or narrowed to `.loading` |
+| 274 | AC-4 forced colors: the focus ring and the post-add highlight ring on the cover box are Highlight outlines | P2 | 1 | The forced `outline-color: Highlight` on focus, or the forced `.highlight .box` outline, is removed |
+| 302 | AC-3 dark theme: the caption is dark ink and ink-secondary, the loading box the dark fill and hairline | P2 | 2 | `.title`, `.author` or the `.loading` fill or hairline is hard-coded to its light value |
+| 331 | AC-2 a junk stored view opens Catalog in Bookcase | P2 | 3 | `readCatalogView` returns the stored value unchecked |
+| 342 | AC-2 with storage that throws, Catalog opens in Bookcase and Tiles still shows for the visit | P2 | 3 | The try/catch in `readCatalogView` or `writeCatalogView` is removed |
+| 373 | AC-2 the view toggle works from the keyboard: Space presses Tiles, Enter presses List | P3 | 4 | A toggle `<button>` becomes a `<span role="button" tabIndex={0}>` |
+| 394 | AC-6 with a search and a filter on, every Sort shows the same Books in the same order in Tiles as in Bookcase | P2 | 5 | Tiles reverse `books`, or drop `hidden` on the `li` |
+| 425 | AC-7 an add in Tiles with reduced motion "reduce" scrolls the new tile's list item with behavior "auto" | P2 | 6 | The scroll is always `'smooth'`, or scrolls the link instead of `closest('li')` |
+| 425 | AC-7 an add in Tiles with reduced motion "no-preference" scrolls the new tile's list item with behavior "smooth" | P2 | 6 | The scroll is always `'auto'`, or scrolls the link |
+| 451 | AC-7 an add in Tiles clears a filter that would hide the new Book, then focuses and rings its tile | P2 | 7 | `onSaved` no longer clears the filters |
+| 473 | AC-7 the highlight ring stays on the new cover box for HIGHLIGHT_MS, then fades off | P2 | 8 | The highlight timeout is a no-op, `HIGHLIGHT_MS` is cut to 700, or the fade never ends |
+| 499 | AC-9 a click on a tile's cover box or on its caption opens that Book's detail | P2 | 9 | A click on the cover box, or on the caption, is prevented |
 
 Every mutation was reverted.
 
@@ -112,43 +102,37 @@ Every mutation was reverted.
 
 Checked against `checklist.md`:
 - **Framework:** ready.
-- **Coverage mapping:** each target maps to an ATDD follow-up or a code-review deferral that no test pinned before.
+- **Coverage mapping:** each target maps to an open ATDD follow-up, and target 1 also to the code review's forced-colors deferral.
 - **Duplicates:** none. Each "already covered" item above was ticked from its existing test, not re-tested.
 - **Quality:**
   - no `waitForTimeout`, `.only` or `.skip`, and no flow conditionals;
-  - each assertion constrains a value (exact spine names, status text sequences, storage keys, CSS colors, axe violations);
-  - every leaf seeds its own server through `seededServer`;
-  - `catalog-filter.spec.ts` is 800 lines, under the 1000-line limit.
+  - each assertion constrains a value (exact names and orders, computed colors, outline widths, scroll options, URLs, page errors);
+  - every leaf seeds its own server (`seededServer`, or `startSeededServer` with cover files);
+  - the new file is 526 lines.
+  - One `page.route` holds the static cover file `/media/covers/dune.png` so the loading state can be read. It is a media request, not an app API call, the same hold AC-4's ATDD leaf uses.
 - **Browser sessions:** `playwright-cli` isn't installed, so no CLI sessions were opened.
 - **Temp artifacts:** the worker JSON stays in the session scratch directory and isn't committed.
 
 Runs:
-- Worker: the spec 24 of 24. The 10 new leaves 50 of 50 with `--repeat-each=5 --retries=0`. Prettier, `tsc -b` and oxlint are clean.
-- `TZ=Europe/Madrid npm run check`, after the worker finished: exit 0. That covers pytest (1,392 passed), the node unit tests, 596 e2e passed (586 before this run) and the smoke check.
+- Worker: the two tiles specs 23 of 23. The 12 new leaves 60 of 60 with `--repeat-each=5 --retries=0`. Prettier and `tsc -b` are clean, and oxlint reports nothing in the new file.
+- `TZ=Europe/Madrid npm run check`, after the worker finished: exit 0. That covers ruff, pytest (1,573 passed, coverage gates ok), the node unit tests, 632 e2e passed (620 before this run) and the smoke check.
 
 ## ATDD Checklist
 
-`atdd-checklist-7-2-filter-my-catalog.md` now has 0 `[ ]` lines:
-- **Ticked with evidence:** the 15 green-phase follow-ups and the 16 task lines, each with its test or source line.
+`atdd-checklist-8-1-see-my-catalog-as-covers.md` now has 0 `[ ]` lines:
+- **Ticked with evidence:** 9 green-phase follow-ups, each with its test line.
+- **Retired:** "AC-6 focus fallback", for the reason under Coverage Plan.
 - **Red phase:** the section is now marked historical, with a "Since then (green)" note.
 
-`deferred-work.md`: the code review's 7.2 "test gaps for the automate step" entry has a `resolved:` line. The 7.2 spine drift entries stay open for the Epic 7 spine reconciliation.
-
-## Playwright Utils deviations
-
-`tea_use_playwright_utils` is true, but `@seontechnologies/playwright-utils` isn't installed, so the mandate doesn't apply. The new leaves use the spec's vanilla patterns:
-- `frontend/e2e/catalog-filter.spec.ts:20`: `test` comes from `./fixtures.ts`, not `support/merged-fixtures`, which doesn't exist.
-- No network intercepts: every leaf runs against the real seeded server.
-- `expect.poll` is used instead of `recurse`, as in the rest of the suite.
-
-Recommended utilities that weren't wired: none needed. bookvie has no auth, and the e2e servers are per-test local processes.
+`deferred-work.md`: the code review's 8.1 forced-colors entry has a `resolved:` line. The 8.1 `epic-8-context.md` cover-URL entry and the spine drift entry stay open for the Epic 8 spine reconciliation. The label-in-name entry stays as Oleg's recorded decision (accepted as designed).
 
 ## Assumptions and Risks
 
-- **Safari is modelled, not run.** Only Chromium is installed. Two leaves use a dispatched click, which moves no focus, to model a macOS Safari mouse click: `:582` here, and the code review's `:471`. Real Safari might move focus to `main` (which has tabindex -1) on mousedown instead. In that case `:582`'s Search-titles fallback would not trigger in real use. Behaviour in real Safari and Firefox is still unverified.
-- **Target 1's AC wording versus what's reachable:** in Chromium a chip click always takes focus, so "focus moves to Search titles when none remain" can't happen through the UI there. `:548` pins what users get instead: focus stays where they are.
-- **Target 9's dark values** are DESIGN.md's `accent-soft` and `accent` for dark, read from the tokens. A token change needs this leaf updated.
+- **Forced colors are emulated.** `emulateMedia({ forcedColors: 'active' })` in Chromium resolves `CanvasText` and `Highlight` to its own palette, and the leaves read those values from a probe rather than pinning them. Real Windows High Contrast themes weren't run.
+- **Dark-theme values** are DESIGN.md's dark `ink`, `ink-secondary`, `surface-inset` and `line`, copied from the tokens. A token change needs `:302` updated.
+- **Ring timing** checks that the ring lasts at least `HIGHLIGHT_MS / 2` after it is first seen, and is gone by `HIGHLIGHT_MS` plus 3 s. A slow machine can't fail it early, but a shorter `HIGHLIGHT_MS` above 1000 ms wouldn't be caught.
+- **The label-in-name gap stays:** the Tiles axe pass keeps `label-content-name-mismatch` off for the tile links, as decided in the code review.
 
 ## Next
 
-Story 7.2's pipeline is complete: ATDD, build, code review, then automate. It closes Epic 7, the last epic in `epics.md`. Next come the Epic 7 retrospective (`bmad-retrospective`), the epic's trace and gate (`bmad-testarch-trace`), and the AD-6 and Structural Seed spine reconciliation for 7.1 and 7.2 (AGENTS.md "Epic boundaries").
+Story 8.1's pipeline is complete: ATDD, build, code review, then automate. Epic 8 continues with Story 8.2 (`8-2-see-what-i-ve-read-and-what-i-m-reading-on-the-tiles`, backlog): its ATDD (`bmad-testarch-atdd`) comes first.
