@@ -108,17 +108,17 @@ These assert the 8.1/8.2 placeholder or the link's text, and will go red once th
 
 ## Green-phase follow-ups (secondary branches, not red leaves)
 
-- [ ] **E2E, AC-1 a light spine color** (for example the pale yellow `#F2D35B`): the plate and edge keep the text legible, and the edge still shows against the page.
+- [x] **E2E, AC-1 a light spine color** (for example the pale yellow `#F2D35B`): the plate and edge keep the text legible, and the edge still shows against the page. (done: frontend/e2e/catalog-typeset-covers-automate.spec.ts:348 "[P3] AC-1 a pale spine color keeps the spine-edge hairline…")
 - [x] **E2E, AC-1 a Book with no author:** only the title on the plate. The store refuses a Book without authors (`invariants.py:88`), so the leaf `[P3] AC-1 a view with an empty first author puts only the title on the plate` (automate describe in `catalog-typeset-covers.spec.ts`) forces `firstAuthor: ''` into the catalog view with `page.route`. It was red against a build that rendered an empty author line.
-- [ ] **E2E, AC-1/AC-2 user text spacing or a 200% zoom:** the plate grows and the text stays inside it, within the box.
-- [ ] **E2E, AC-1 the color changes from Book detail** (Change color): back on Tiles, the typeset fill follows.
-- [ ] **E2E, AC-1/AC-2 finishing a Book** moves its tile from the unread to the read typeset cover after the view refetch.
-- [ ] **E2E, AC-3 a cover request that fails at the network** (`route.abort()`), not only a file that isn't an image.
+- [x] **E2E, AC-1/AC-2 user text spacing or a 200% zoom:** the plate grows and the text stays inside it, within the box. (done: frontend/e2e/catalog-typeset-covers-automate.spec.ts:133 WCAG text spacing, and frontend/e2e/catalog-typeset-covers-automate.spec.ts:175 a much larger font clipped to the box)
+- [x] **E2E, AC-1 the color changes from Book detail** (Change color): back on Tiles, the typeset fill follows. (done: frontend/e2e/catalog-typeset-covers-automate.spec.ts:275)
+- [x] **E2E, AC-1/AC-2 finishing a Book** moves its tile from the unread to the read typeset cover after the view refetch. (done: frontend/e2e/catalog-typeset-covers-automate.spec.ts:305)
+- [x] **E2E, AC-3 a cover request that fails at the network** (`route.abort()`), not only a file that isn't an image. (done: frontend/e2e/catalog-typeset-covers-automate.spec.ts:218)
 - [x] **E2E, AC-3 the loading state** (added in the build, `catalog-typeset-covers.spec.ts` automate describe, red-then-green against a build that typesets while loading): while a cover is loading the box is the flat loading fill (8.1), not a typeset cover, and the box doesn't move when it loads or fails.
-- [ ] **E2E, AC-3 removing a cover** from Book detail turns the tile into its typeset cover.
-- [ ] **E2E, AC-4 axe on Tiles** in both themes with typeset covers on screen (extend `catalog-pace-calculator.spec.ts`'s Tiles pass). Contrast: `spine-label` on the plate and `spine-unread-text` on `spine-unread-fill` are DESIGN.md's checked pairs.
-- [ ] **E2E, AC-4 the highlight and focus rings** around a typeset box (after an add with no cover).
-- [ ] **E2E, AC-5 the empty Main book card's suggestion thumbnail** keeps the placeholder too.
+- [x] **E2E, AC-3 removing a cover** from Book detail turns the tile into its typeset cover. (done: frontend/e2e/catalog-typeset-covers-automate.spec.ts:243)
+- [x] **E2E, AC-4 axe on Tiles** in both themes with typeset covers on screen (extend `catalog-pace-calculator.spec.ts`'s Tiles pass). Contrast: `spine-label` on the plate and `spine-unread-text` on `spine-unread-fill` are DESIGN.md's checked pairs. (done: frontend/e2e/catalog-pace-calculator.spec.ts:266 "[P2] axe finds nothing on Catalog…": FLOW_5 has no covers, so every tile is a typeset cover, read and unread, in both themes)
+- [x] **E2E, AC-4 the highlight and focus rings** around a typeset box (after an add with no cover). (done: frontend/e2e/catalog-tile-marks-automate.spec.ts:348, Swing Time added finished with no cover, the read typeset box; frontend/e2e/catalog-tiles-automate.spec.ts:473, Swing Time unread)
+- [x] **E2E, AC-5 the empty Main book card's suggestion thumbnail** keeps the placeholder too. (done: frontend/e2e/up-next.spec.ts:197, the 44×64 "No cover")
 - [x] **Tokens:** `components.catalog-tile.typeset-*` copied into `tokens.css` by hand (not compared by `app-shell.spec.ts`).
 
 ## TDD Red Phase
@@ -138,7 +138,7 @@ These assert the 8.1/8.2 placeholder or the link's text, and will go red once th
 ## Data Factories, Fixtures and Mocks
 
 - **No new shared factory or fixture.** The leaves use `startSeededServer` with `stopAndRemove`, `finished()`, and from `tile-marks.ts`: `solidPng`, `storeTiles`, `tileItem`, `lookOf`, `near`, `inOrder`, `MARGIN`, and the colors.
-- **Local to the spec:** `TYPESET_SHELF`, `typesetServer`, `boxFacts` (the text and backgrounds in the box), `pixelsAt` (samples points from a tile screenshot, as `lookOf` does), `typesetOf` (the pixel samples and the plate), `inside`, `count`, `forcedPalette`.
+- **Local to the spec:** `TYPESET_SHELF`, `typesetServer`, `boxFacts` (the text and backgrounds in the box), `pixelsAt` (samples points from a tile screenshot, as `lookOf` does), `typesetOf` (the pixel samples and the plate), `inside`, `count`, `forcedPalette`. Moved by `bmad-testarch-automate` (2026-11-13) into `frontend/e2e/typeset-covers.ts`, unchanged apart from `export`, for `catalog-typeset-covers-automate.spec.ts`; `forcedPalette` stays local.
 - **Mocks:** none. The broken cover is a real file that isn't an image.
 - **No `data-testid`, no class names:** tiles by role and name, the box by geometry, the cover by pixels and computed styles, and the placeholder elsewhere by its `img` role "No cover".
 
