@@ -969,3 +969,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-8-3-give-books-without-a-cover-a-typeset-cover.md`
   summary: Spine drift (AD-6), reconciled before the next epic. AD-6's Tiles bullet lists what a tile reads from the catalog view (packing, the ribbon from `finished`, the bar from `percent`, the name, the cover URL) and says nothing of Story 8.3's typeset cover, its read = `finished` rule, or the failed-cover fallback. The code follows AD-6 (client presentation only). Low.
   evidence: ARCHITECTURE-SPINE.md AD-6 Tiles bullet; `frontend/src/pages/CatalogTiles.tsx` `TypesetCover` (reads `finished`, `spineColor`, `title`, `firstAuthor` as is) (spine check, build-auto review of Story 8.3).
+
+## Deferred from: code review of spec-8-3-give-books-without-a-cover-a-typeset-cover (2026-11-13)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-8-3-give-books-without-a-cover-a-typeset-cover.md`
+  summary: Nothing tests the typeset cover's `overflow: hidden` guard. Removing it from `.typeset` leaves every leaf green, because at default fonts the plate never reaches the box bottom; under a large minimum font or user text spacing the plate would paint over the reading bar and caption unnoticed. For `bmad-testarch-automate`: an `[automate]` leaf in `catalog-typeset-covers.spec.ts` with a large-font / text-spacing stylesheet (as in `bookcase-details.spec.ts:43-45`) asserting the plate's paint stays inside the 2:3 box. Low.
+  evidence: `frontend/src/pages/CatalogTiles.module.css` `.typeset` (`overflow: hidden`); no font-size or text-spacing override in the Tiles specs (Verification Gap layer, code review of Story 8.3).

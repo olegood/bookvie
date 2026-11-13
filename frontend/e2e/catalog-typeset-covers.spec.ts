@@ -458,7 +458,7 @@ test.describe('Story 8.3 Give books without a cover a typeset cover (ATDD)', () 
       const look = await typesetOf(kindred, UNREAD.light.fill)
       // spine-unread-fill, never the Book's own color.
       expect(near(look.sideFill, UNREAD.light.fill, 2)).toBe(true)
-      expect(look.backgrounds).not.toContain('rgb(122, 78, 140)')
+      expect(look.backgrounds).not.toContain(`rgb(${PURPLE.rgb.join(', ')})`)
       // A solid (not dashed) 1.5px spine-unread-outline border.
       expect(look.leftRun.every((pixel) => near(pixel, UNREAD.light.outline, 24))).toBe(true)
       const outline = count(look.leftEdge, UNREAD.light.outline, 24)

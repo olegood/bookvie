@@ -3,7 +3,7 @@ title: 'Story 8.3: Give books without a cover a typeset cover'
 type: 'feature'
 created: '2026-11-13'
 baseline_revision: '88ee0276f27770606f90b13168fa9e0298a4682c'
-status: 'in-review'
+status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -114,6 +114,37 @@ deferred:
 - Given the Main book card, Up next or Book detail, when a Book has no cover, then they show the old "No cover" placeholder at 200×300 / 44×64 / 200×300.
 - Given any tile, when a screen reader reads it, then the link's accessible name is still the spine name, unchanged by the typeset text.
 - Given Stories 8.1 and 8.2's tests, when this story lands, then they pass, with only the superseded leaves listed above changed.
+
+### Review Findings
+
+Code review, 2026-11-13 (5 layers: Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor, Spine Check). 25 findings: 2 patch (both applied; `catalog-typeset-covers.spec.ts` 7 of 7 passed after), 2 defer, 21 rejected. Status: done.
+
+- [x] [Review][Patch] README Status line says every no-cover Book gets "a typeset cover in their spine color", but unread ones use `spine-unread-fill` [README.md:8]
+- [x] [Review][Patch] AC-2 hard-codes Kindred's purple as `'rgb(122, 78, 140)'` instead of deriving it from `PURPLE.rgb`, so a palette change would leave the "never the Book's own color" check silently passing [frontend/e2e/catalog-typeset-covers.spec.ts:461]
+- [x] [Review][Defer] Spine drift, AD-6 (including the bullet's stale "Epic 8, planned") [ARCHITECTURE-SPINE.md AD-6] — deferred: already recorded in deferred-work.md (build-auto reviews of 8.2 and 8.3), reconciled before the next epic
+- [x] [Review][Defer] Nothing tests `.typeset { overflow: hidden }`: removing it leaves every leaf green, since at default fonts the plate never reaches the box bottom [frontend/src/pages/CatalogTiles.module.css:145] — deferred: needs a large-font / text-spacing harness for Tiles (model: `bookcase-details.spec.ts:43-45`); for `bmad-testarch-automate`
+
+**Rejected**
+
+- `false` Blind: README "43 of 44 stories done" is stale — it is right while 8.3 is in review; the count moves when the story is marked done.
+- `false` Blind: the unread 1.5px and the 4-line clamp should be tokens — the spec says to write the 1.5px as a literal with a DESIGN.md comment and adds only the three plate literals ("no new primitive token").
+- `false` Blind + Edge: the "Chromium floors border widths" comment may be wrong at DPR 2 — the ATDD checklist records the measurement: `border: 1.5px` computed to 1px at device scale 2 and AC-2/AC-4 failed.
+- `low` Blind + Edge + Acceptance: the 8.1 AC-7 fade check accepts any all-inset shadow list on any element — a ring regressing to an inset shadow is hypothetical (the ring is outset); scoping the exemption adds selector logic; the change was proven by a run and recorded.
+- `low` Blind: Emma's link-text regex accepts the text with or without the hidden copy — the accessible-name check stays separately; the regex still pins that the text ends with the caption.
+- `false` Blind: nothing checks Emma's reading bar on her typeset tile — `catalog-tile-marks.spec.ts:197,376,414` assert Emma's bar (no cover, so on the typeset cover) in light, dark and forced colors.
+- `low` Blind + Edge: title and author appear twice in the page text (find-in-page, copy) — DESIGN.md puts the text on the typeset cover; the accessible name is unchanged; `user-select` would not change find-in-page.
+- `low` Blind: the "2:3 box as wide as the column" lookup is repeated in three helpers — test-only duplication with no named divergence; extracting it is a refactor beyond a direct correction.
+- `false` Blind: `coverBox().fills` keeps placeholder-era border fields — the loading-box check uses them (`catalog-tiles.spec.ts:357-362`).
+- `false` Blind: the plate can overrun the box at narrow widths — the box is at least 140×210 (`--catalog-tile-cover-min-width`), and the plate tops out near 150px at default fonts; larger fonts are the deferred overflow item.
+- `low` Blind: no unit test for `TypesetCover` — components are covered by e2e in this repo (Vitest covers `src/lib`); every branch, including the empty author, has a leaf.
+- `false` Blind: the read cover won't update when the spine color changes while Tiles is open — `TileCover` is keyed by `coverFile` only for its load state; `spineColor` is a prop and re-renders with the view.
+- `false` Edge: `.at(-2)` crashes or picks the typeset title when a caption has no author — every Book has an author (`invariants.py:88`), so the caption always has two leaves after the box.
+- `low` Acceptance: the unread outline is a 1px border plus a 0.5px inset shadow, not `border: 1.5px` — the fix is an edit to the spec under review; departure documented in Auto Run Result.
+- `low` Acceptance: under forced colors the unread outline is 1px — the AC asks for a `CanvasText` border, which is drawn; recorded as a residual risk.
+- `false` Acceptance: more 8.1 leaves changed than listed — the Tasks allow changes a run proves superseded, and each is recorded in the checklist.
+- `low` Acceptance: the no-author row has a leaf although the Tasks say to record none — the fix is an edit to the spec under review.
+- `false` Acceptance: the rewritten 8.1 AC-5 checks only unread covers — the read failed path is ATDD AC-3 (Middlemarch).
+- (Spine Check and Verification Gap filed no other findings; the Acceptance Auditor's README-wording note is the first patch.)
 
 ## Spec Change Log
 
