@@ -957,3 +957,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-8-1-see-my-catalog-as-covers.md`
   summary: `epic-8-context.md`'s Covers line (and Story 8.1's Code Map) writes the cover URL as `/media/covers/<coverFile>`; `coverFile` is the stored `covers/<name>`, and `lib/bookDetail.ts` `coverSrc` builds `/media/<coverFile>`, which is right. Fix it with the Epic 8 spine reconciliation, next to AD-6's same wording (the spine drift entry above), so Stories 8.2 and 8.3 don't copy it. Low.
   evidence: `_bmad-output/implementation-artifacts/epic-8-context.md` (Covers, Source); `frontend/src/lib/bookDetail.ts:75` (Blind Hunter and Acceptance Auditor, code review of Story 8.1).
+
+## Deferred from: build-auto review of spec-8-2-see-what-i-ve-read-and-what-i-m-reading-on-the-tiles (2026-11-13)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-8-2-see-what-i-ve-read-and-what-i-m-reading-on-the-tiles.md`
+  summary: Spine drift (AD-6, Capability map FR-25), reconciled before the next epic. The spine still calls the Tiles view "Epic 8, planned" and the FR-25 row "not built", while Stories 8.1 and 8.2 have built the tiles, the finished ribbon and the reading bar. Low.
+  evidence: ARCHITECTURE-SPINE.md AD-6 Tiles bullet and the FR-25 map row; `frontend/src/pages/CatalogTiles.tsx` (`Ribbon` from `finished`, `ReadingBar` from `percent` as is) (spine check, build-auto review of Story 8.2).

@@ -99,7 +99,7 @@ development_status:
 
   epic-8: in-progress
   8-1-see-my-catalog-as-covers: done
-  8-2-see-what-i-ve-read-and-what-i-m-reading-on-the-tiles: backlog
+  8-2-see-what-i-ve-read-and-what-i-m-reading-on-the-tiles: review
   8-3-give-books-without-a-cover-a-typeset-cover: backlog
   epic-8-retrospective: optional
 action_items:

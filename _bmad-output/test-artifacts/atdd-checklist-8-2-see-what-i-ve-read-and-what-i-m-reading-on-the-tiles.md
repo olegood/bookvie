@@ -100,18 +100,18 @@ No leaf failed in setup. The seed, the two cover files and the route ran cleanly
 ## Green-phase follow-ups (secondary branches, not red leaves)
 
 - [ ] **E2E, AC-1 ribbon after a cover change:** editing a finished Book's cover to a different shape moves the ribbon with the visible cover.
-- [ ] **E2E, AC-1 cover that fails to load:** a finished Book with a broken cover file gets the ribbon at the placeholder's top (8.1's Kindred-style broken file).
+- [x] **E2E, AC-1 cover that fails to load:** a finished Book with a broken cover file gets the ribbon at the placeholder's top (8.1's Kindred-style broken file).
 - [ ] **E2E, AC-1 notch depth and width:** sample 16×24 and the 6px notch more finely (left leg, notch apex at `top + 18`).
 - [ ] **E2E, AC-2 the bar follows a page update:** after Update page on Home, the Catalog tile's bar grows (view refetch), with no recompute in the client.
-- [ ] **E2E, AC-2 the boundaries:** `percent: 0` shows a full track and no fill. `percent: 100` (re-read at the last page, unfinished) shows a full fill.
+- [x] **E2E, AC-2 the boundaries:** `percent: 0` shows a full track and no fill. `percent: 100` (re-read at the last page, unfinished) shows a full fill.
 - [ ] **E2E, AC-2 an Up next Book paused at a page:** "Up next, paused at page N" also shows its bar (unfinished Reading).
 - [ ] **E2E, AC-3 a Main re-read:** "finished, re-reading, 12%" shows both marks, as the paused re-read does.
 - [ ] **E2E, AC-4 Up next, never started, and Side read without a Reading:** no mark (EXPERIENCE.md → Status marks: those states are only in the name).
 - [ ] **E2E, AC-5 axe on Tiles** in both themes with marks on screen (extend `catalog-pace-calculator.spec.ts`'s Tiles pass).
 - [ ] **E2E, AC-6/AC-7 the highlight and focus rings** still sit around the box with the ribbon on it, and the ribbon isn't clipped by the ring.
-- [ ] **Tokens:** `components.catalog-tile.ribbon-*` and `reading-bar-*` in `tokens.css`, matched by `app-shell.spec.ts`.
+- [x] **Tokens:** `components.catalog-tile.ribbon-*` and `reading-bar-*` in `tokens.css`, matched by `app-shell.spec.ts`.
 
-## TDD Red Phase (current)
+## TDD Red Phase
 
 7 skipped leaves in `frontend/e2e/catalog-tile-marks.spec.ts`, inside the `Story 8.2 See what I've read and what I'm reading on the tiles (ATDD)` describe, each a `test.skip(` carrying exactly one `[P*] AC-n`.
 
@@ -127,6 +127,28 @@ No leaf failed in setup. The seed, the two cover files and the route ran cleanly
 
 **Skipped as committed** (run in this session): `TZ=Europe/Madrid npx playwright test e2e/catalog-tile-marks.spec.ts` gives 7 skipped. Prettier, `tsc -b` and oxlint are clean.
 
+## Green Phase
+
+All 7 leaves are on and pass. Three sampling fixes in `lookOf` were needed. They don't change any assertion:
+- **Screenshot past the tile.** An element screenshot stops at the `li`, which is exactly the box's width. That means the "3px outside the box" samples clamped onto the bar's own edge, adding about 2% to every `barPercent`. `lookOf` now screenshots the page with an 8px margin around the tile.
+- **Whole-pixel origin.** At 1280px the row sits at y 282.5, and Chromium paints it on the whole pixel it rounds to. Samples now map from the rounded tile origin, and the clip is on whole CSS pixels.
+- **The half-open box range.** `barRow` runs from `box.left - 3` to `box.right + 3` inclusive, so the in-box samples are `slice(6, -7)`, not `slice(6, -6)`. The old last sample sat on `box.right`, outside the box.
+
+**8.1 AC-10 regression caught and fixed.** The new frame around the `img` made 8.1's zero-layout-shift leaf fail under load, at 0.02–0.08 in 5 of 8 runs. Before load, the `img`'s 1px hairline made the frame 2×2, and Chromium counts a non-empty rect that grows as a shift. The hairline now applies only once the cover has loaded (`.coverLoaded`), so the frame is 0×0 until then. That passed 12 of 12 runs with 4 workers.
+
+Five spec-matrix leaves were added in a second describe:
+- no ribbon while the cover loads
+- a broken cover
+- `percent` 0 and 100
+- a cover 20px wide
+- a large wide cover (600×300) and a large cover taller than 2:3 (300×900), each whole inside its box and bottom-aligned
+
+Each one went red against a mutated build before going green. The large-cover leaf failed with `max-height: 150cqw` removed.
+
+**Story 8.1 test touched:** in `frontend/e2e/catalog-tiles.spec.ts`, the twin-name read right after `goto` is now an `expect.poll`. That fixes a race, unrelated to the marks, where the grid hadn't rendered yet. The assertion is the same.
+
+**Follow-ups:** the unticked green-phase follow-ups above are left for `bmad-testarch-automate`.
+
 ## Data Factories, Fixtures and Mocks
 
 - **No new shared factory or fixture.** The leaves use `startSeededServer` with `stopAndRemove`, `COVER_PNG` and `finished()`.
@@ -139,24 +161,24 @@ No leaf failed in setup. The seed, the two cover files and the route ran cleanly
 Activate one leaf at a time: change `test.skip(` to `test(`, watch it fail, implement, watch it pass. Run `npm run build` first, then `cd frontend && TZ=Europe/Madrid npx playwright test e2e/catalog-tile-marks.spec.ts`.
 
 ### Tokens
-- [ ] Copy `components.catalog-tile`'s `ribbon-*` and `reading-bar-*` tokens into `tokens.css` (DESIGN.md 367–377).
+- [x] Copy `components.catalog-tile`'s `ribbon-*` and `reading-bar-*` tokens into `tokens.css` (DESIGN.md 367–377).
 
 ### The reading bar (AC-2, AC-4)
-- [ ] In `CatalogTiles.tsx`, render an `aria-hidden` bar inside `.slot` when `book.percent !== null`: 6px below the box, 5px tall, `accent-soft` track, `accent` fill to `percent`%, square ends. Never derive it from `currentPage`/`pages`.
-- [ ] Activate AC-2.
+- [x] In `CatalogTiles.tsx`, render an `aria-hidden` bar inside `.slot` when `book.percent !== null`: 6px below the box, 5px tall, `accent-soft` track, `accent` fill to `percent`%, square ends. Never derive it from `currentPage`/`pages`.
+- [x] Activate AC-2.
 
 ### The ribbon (AC-1, AC-3, AC-4)
-- [ ] Render the ribbon when `book.finished`, positioned on the visible cover: the loaded `img`'s top and right, or the box for the placeholder. The `img` is sized to its own shape, so a wrapper hugging the `img` works. Fill `spineColor`, a 1px `spine-edge` line on its sides and notch, a 1.5px `spine-label-strip` halo outside it. No text.
-- [ ] Activate AC-1, then AC-3 and AC-4.
+- [x] Render the ribbon when `book.finished`, positioned on the visible cover: the loaded `img`'s top and right, or the box for the placeholder. The `img` is sized to its own shape, so a wrapper hugging the `img` works. Fill `spineColor`, a 1px `spine-edge` line on its sides and notch, a 1.5px `spine-label-strip` halo outside it. No text.
+- [x] Activate AC-1, then AC-3 and AC-4.
 
 ### Accessibility, dark, forced colors (AC-5, AC-6, AC-7)
-- [ ] Keep the ribbon inside the `aria-hidden` box and mark the bar (or the slot) `aria-hidden`.
-- [ ] Dark: nothing to do if the colors come from tokens. `spine-label-strip` has no dark twin.
-- [ ] `@media (forced-colors: active)`: `forced-color-adjust: none` on the ribbon and the bar fill, with `CanvasText`. Track `Canvas` with a `CanvasText` outline, halo `Canvas`.
-- [ ] Activate AC-5, AC-6 and AC-7.
+- [x] Keep the ribbon inside the `aria-hidden` box and mark the bar (or the slot) `aria-hidden`.
+- [x] Dark: nothing to do if the colors come from tokens. `spine-label-strip` has no dark twin.
+- [x] `@media (forced-colors: active)`: `forced-color-adjust: none` on the ribbon and the bar fill, with `CanvasText`. Track `Canvas` with a `CanvasText` outline, halo `Canvas`.
+- [x] Activate AC-5, AC-6 and AC-7.
 
 ## Completion
 
-- **Test file:** `frontend/e2e/catalog-tile-marks.spec.ts` (new, 7 skipped leaves).
-- **Checklist:** this file. **Story key:** `8-2-see-what-i-ve-read-and-what-i-m-reading-on-the-tiles`. **Story:** `epics.md` Story 8.2. There's no spec file yet, and `sprint-status.yaml` still reads `backlog`.
-- **Next:** `bmad-build-auto` for story 8.2. Then `bmad-code-review` in a new session, then `bmad-testarch-automate`.
+- **Phase:** green. All 7 ATDD leaves in `frontend/e2e/catalog-tile-marks.spec.ts` are on and pass, along with 5 spec-matrix leaves.
+- **Checklist:** this file. **Story key:** `8-2-see-what-i-ve-read-and-what-i-m-reading-on-the-tiles`. **Story:** `epics.md` Story 8.2. **Spec:** `_bmad-output/implementation-artifacts/spec-8-2-see-what-i-ve-read-and-what-i-m-reading-on-the-tiles.md`.
+- **Next:** `bmad-code-review`, then `bmad-testarch-automate` for the unticked follow-ups.

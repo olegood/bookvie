@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, type ReactNode, type RefObject } from 'react'
+import { useCallback, useMemo, useState, type CSSProperties, type ReactNode, type RefObject } from 'react'
 import { Link } from 'react-router'
 import type { ShelfBook } from '../api/index.ts'
 import Cover from '../components/Cover.tsx'
@@ -21,13 +21,46 @@ type Props = {
 
 type CoverState = 'loading' | 'loaded' | 'failed'
 
+/** The ribbon's outline without its top: where the edge line and the halo run. */
+const RIBBON_SIDES = 'M0 0V24L8 18L16 24V0'
+
+/**
+ * The finished ribbon (DESIGN.md → Catalog tile → Finished ribbon): a 16×24
+ * bookmark with a 6px V-notch in the Book's exact spine color, a `spine-edge`
+ * line on its sides and notch, and a `spine-label-strip` halo outside that
+ * line. Drawn as the halo stroke, the fill over its inner half, then the
+ * edge. No text, and `aria-hidden`: the status is in the link's name.
+ */
+function Ribbon({ color }: { color: string }) {
+  const style: CSSProperties & Record<'--ribbon-color', string> = { '--ribbon-color': color }
+  return (
+    <svg className={styles.ribbon} viewBox="0 0 16 24" aria-hidden="true" focusable="false" style={style}>
+      <path className={styles.ribbonHalo} d={RIBBON_SIDES} />
+      <polygon className={styles.ribbonFill} points="0,0 16,0 16,24 8,18 0,24" />
+      <path className={styles.ribbonEdge} d={RIBBON_SIDES} />
+    </svg>
+  )
+}
+
+type TileCoverProps = {
+  coverFile: string | null
+  title: string
+  /** The catalog view's `finished`, as is: draws the ribbon. */
+  finished: boolean
+  spineColor: string
+}
+
 /**
  * The cover inside a tile's box: the stored cover, shown whole at the bottom
  * of the box once it loads (flat `surface-inset` with a hairline until then),
  * or the no-cover placeholder without a cover or when the file isn't an
  * image. Keyed by `coverFile`, so a new cover starts loading again.
+ *
+ * A finished Book's ribbon hangs from the visible cover's top: the frame that
+ * hugs the loaded `img`, or the box for the placeholder. No ribbon while the
+ * cover is loading, since there's no visible cover yet.
  */
-function TileCover({ coverFile, title }: { coverFile: string | null; title: string }) {
+function TileCover({ coverFile, title, finished, spineColor }: TileCoverProps) {
   const [state, setState] = useState<CoverState>('loading')
   // A cached cover can finish before React listens for `load`.
   const imageRef = useCallback((img: HTMLImageElement | null) => {
@@ -37,22 +70,40 @@ function TileCover({ coverFile, title }: { coverFile: string | null; title: stri
     return (
       <div className={styles.box} aria-hidden="true">
         <Cover coverFile={null} title={title} size="fill" />
+        {finished && <Ribbon color={spineColor} />}
       </div>
     )
   }
   const loaded = state === 'loaded'
   return (
     <div className={loaded ? styles.box : `${styles.box} ${styles.loading}`} aria-hidden="true">
-      <img
-        ref={imageRef}
-        className={loaded ? `${styles.cover} ${styles.coverLoaded}` : styles.cover}
-        src={coverSrc(coverFile)}
-        alt=""
-        loading="lazy"
-        decoding="async"
-        onLoad={() => setState('loaded')}
-        onError={() => setState('failed')}
-      />
+      {/* Exactly the img's rectangle, so the ribbon can hang from the visible cover. */}
+      <span className={styles.frame}>
+        <img
+          ref={imageRef}
+          className={loaded ? `${styles.cover} ${styles.coverLoaded}` : styles.cover}
+          src={coverSrc(coverFile)}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          onLoad={() => setState('loaded')}
+          onError={() => setState('failed')}
+        />
+        {loaded && finished && <Ribbon color={spineColor} />}
+      </span>
+    </div>
+  )
+}
+
+/**
+ * The reading bar (DESIGN.md → Catalog tile → Reading bar): an `accent-soft`
+ * track the box's width, filled with `accent` from the left to the catalog
+ * view's `percent`, as is (never recomputed from the pages).
+ */
+function ReadingBar({ percent }: { percent: number }) {
+  return (
+    <div className={styles.bar}>
+      <div className={styles.barFill} style={{ width: `${percent}%` }} />
     </div>
   )
 }
@@ -61,7 +112,9 @@ function TileCover({ coverFile, title }: { coverFile: string | null; title: stri
  * The Tiles view (DESIGN.md → Catalog tile, Layout → Tiles): a grid of
  * covers in the Catalog's sort, each tile one link to its Book detail, named
  * like its spine. Tiles of Books that Search titles or the filter chips leave
- * out are `hidden`, and the grid closes up.
+ * out are `hidden`, and the grid closes up. A finished Book carries a ribbon
+ * and a Book with a `percent` a reading bar; both are `aria-hidden`, since
+ * the link's name already says the status.
  */
 export default function CatalogTiles({ books, shown, noMatch, highlightId, focusTargets }: Props) {
   // Named over every Book, shown or not, so a twin's name never changes with a search or a filter.
@@ -85,8 +138,16 @@ export default function CatalogTiles({ books, shown, noMatch, highlightId, focus
                 }
               }}
             >
-              <TileCover key={book.coverFile ?? ''} coverFile={book.coverFile} title={book.title} />
-              <div className={styles.slot} />
+              <TileCover
+                key={book.coverFile ?? ''}
+                coverFile={book.coverFile}
+                title={book.title}
+                finished={book.finished}
+                spineColor={book.spineColor}
+              />
+              <div className={styles.slot} aria-hidden="true">
+                {book.percent !== null && <ReadingBar percent={book.percent} />}
+              </div>
               <div className={styles.caption}>
                 <span className={styles.title}>{book.title}</span>
                 <span className={styles.author}>{book.firstAuthor}</span>

@@ -31,6 +31,8 @@
   width: 100%;
   box-sizing: border-box;
   border-radius: var(--radius-cover);
+  /* The cover's caps are in `cqw` of the box, so the frame around it can hug it. */
+  container-type: inline-size;
 }
 
 /* DESIGN.md → Highlight ring, on a newly added tile's cover box: on at once, fading off. */
@@ -44,24 +46,38 @@
   border: var(--hairline) solid var(--color-line);
 }
 
-/* The cover keeps its own shape, bottom-centered in the box, shown as is. */
-.cover {
+/*
+ * The cover keeps its own shape, bottom-centered in the box, shown as is. The
+ * frame hugs it, so its rectangle is the visible cover's. Until the image
+ * loads the img has no hairline, so the frame is truly 0×0: an empty rect
+ * that grows isn't a layout shift (a 2×2 one, from the hairline, would be).
+ */
+.frame {
   position: absolute;
   inset: 0;
-  box-sizing: border-box;
+  display: block;
   margin: auto auto 0;
-  max-width: 100%;
-  max-height: 100%;
+  width: fit-content;
+  height: fit-content;
+}
+
+.cover {
+  display: block;
+  box-sizing: border-box;
+  max-width: 100cqw;
+  /* 150cqw is the 2:3 box's height. */
+  max-height: 150cqw;
   width: auto;
   height: auto;
   object-fit: contain;
   object-position: 50% 100%;
-  border: var(--hairline) solid var(--color-line);
+  border: 0 solid var(--color-line);
   border-radius: var(--radius-cover);
   opacity: 0;
 }
 
 .coverLoaded {
+  border-width: var(--hairline);
   opacity: 1;
 }
 
@@ -76,9 +92,56 @@
     0 0 0 4px var(--color-accent);
 }
 
-/* The reading bar's place (Story 8.2), empty here, so captions line up across a row. */
+/*
+ * DESIGN.md → Catalog tile → Finished ribbon: hangs from the visible cover's
+ * top, 10px in from its right, kept inside a narrow cover's left edge where
+ * it can be. The 6px notch is in the SVG's geometry.
+ */
+.ribbon {
+  position: absolute;
+  top: 0;
+  right: clamp(0px, var(--catalog-tile-ribbon-inset), 100% - var(--catalog-tile-ribbon-width));
+  display: block;
+  width: var(--catalog-tile-ribbon-width);
+  height: var(--catalog-tile-ribbon-height);
+  overflow: visible;
+}
+
+/* Straddles the outline; the fill hides its inner half, leaving the halo outside the edge line. */
+.ribbonHalo {
+  fill: none;
+  stroke: var(--color-spine-label-strip);
+  stroke-width: calc(var(--hairline) + 2 * var(--catalog-tile-ribbon-halo));
+  stroke-linejoin: round;
+}
+
+.ribbonFill {
+  fill: var(--ribbon-color);
+}
+
+.ribbonEdge {
+  fill: none;
+  stroke: var(--color-spine-edge);
+  stroke-width: var(--hairline);
+}
+
+/* The reading bar's place, always there so captions line up across a row. */
 .slot {
+  /* Keeps the bar's top margin from collapsing through the 11px slot. */
+  display: flow-root;
   height: var(--catalog-tile-reading-bar-slot);
+}
+
+/* DESIGN.md → Catalog tile → Reading bar: 5px, 6px below the box, square ends. */
+.bar {
+  margin-top: var(--catalog-tile-reading-bar-gap);
+  height: var(--catalog-tile-reading-bar-height);
+  background: var(--color-accent-soft);
+}
+
+.barFill {
+  height: 100%;
+  background: var(--color-accent);
 }
 
 .caption {
@@ -130,5 +193,32 @@
   .loading,
   .cover {
     border-color: CanvasText;
+  }
+
+  .ribbon {
+    forced-color-adjust: none;
+  }
+
+  .ribbonHalo {
+    stroke: Canvas;
+  }
+
+  .ribbonFill {
+    fill: CanvasText;
+  }
+
+  .ribbonEdge {
+    stroke: CanvasText;
+  }
+
+  .bar {
+    forced-color-adjust: none;
+    background: Canvas;
+    outline: var(--hairline) solid CanvasText;
+  }
+
+  .barFill {
+    forced-color-adjust: none;
+    background: CanvasText;
   }
 }

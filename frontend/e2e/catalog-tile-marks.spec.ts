@@ -205,14 +205,34 @@ type TileLook = {
   belowSlot: Rgb
   /** The page's background color. */
   page: Rgb
+  /** At the ribbon's middle, every half pixel from 6px left of the visible cover to 6px right of it. */
+  coverRow: Rgb[]
+  /** How many device pixels of the tile are within 24 of `find` (lookOf's second argument), else 0. */
+  found: number
 }
 
-/** Screenshots the tile and samples its pixels where DESIGN.md puts the ribbon and the bar. */
-async function lookOf(item: Locator): Promise<TileLook> {
+/**
+ * How far around the tile `lookOf` screenshots, so the samples 3px outside
+ * the box are real page pixels (an element screenshot stops at the tile).
+ */
+const MARGIN = 8
+
+/** Screenshots the tile (plus MARGIN around it) and samples its pixels where DESIGN.md puts the ribbon and the bar. */
+async function lookOf(item: Locator, find: Rgb | null = null): Promise<TileLook> {
   await item.scrollIntoViewIfNeeded()
-  const png = (await item.screenshot({ animations: 'disabled' })).toString('base64')
+  const bounds = (await item.boundingBox())!
+  // On whole CSS pixels: a fractional clip is rounded, which would shift every sample.
+  const x = Math.floor(bounds.x) - MARGIN
+  const y = Math.floor(bounds.y) - MARGIN
+  const clip = {
+    x,
+    y,
+    width: Math.ceil(bounds.x + bounds.width) + MARGIN - x,
+    height: Math.ceil(bounds.y + bounds.height) + MARGIN - y,
+  }
+  const png = (await item.page().screenshot({ clip, animations: 'disabled' })).toString('base64')
   return item.evaluate(
-    async (li, { png, ribbon, bar }) => {
+    async (li, { png, ribbon, bar, clip, find }) => {
       const origin = li.getBoundingClientRect()
       const relative = (r: DOMRect) => ({ x: r.x - origin.x, y: r.y - origin.y, width: r.width, height: r.height })
       const boxNode = Array.from(li.querySelectorAll('*')).find((node) => {
@@ -233,10 +253,14 @@ async function lookOf(item: Locator): Promise<TileLook> {
       canvas.height = image.height
       const context = canvas.getContext('2d')!
       context.drawImage(image, 0, 0)
-      const scale = image.width / origin.width
+      const scale = image.width / clip.width
+      // Tile coordinates to the screenshot's. The tile can sit on a half pixel
+      // (y 282.5 at 1280px), and Chromium paints it on the whole pixel it rounds to.
+      const dx = Math.round(origin.x) - clip.x
+      const dy = Math.round(origin.y) - clip.y
       const at = (x: number, y: number): [number, number, number] => {
-        const px = Math.min(image.width - 1, Math.max(0, Math.floor(x * scale)))
-        const py = Math.min(image.height - 1, Math.max(0, Math.floor(y * scale)))
+        const px = Math.min(image.width - 1, Math.max(0, Math.floor((x + dx) * scale)))
+        const py = Math.min(image.height - 1, Math.max(0, Math.floor((y + dy) * scale)))
         const [r, g, b] = context.getImageData(px, py, 1, 1).data
         return [r!, g!, b!]
       }
@@ -251,6 +275,23 @@ async function lookOf(item: Locator): Promise<TileLook> {
         at(box.x - 3 + n / 2, barMiddle),
       )
       const device = 1 / scale
+      const coverRow = Array.from({ length: Math.round((cover.width + 12) * 2) + 1 }, (_, n) =>
+        at(cover.x - 6 + n / 2, middle),
+      )
+      let found = 0
+      if (find) {
+        const left = Math.floor(dx * scale)
+        const top = Math.floor(dy * scale)
+        const { data } = context.getImageData(
+          left,
+          top,
+          Math.round(origin.width * scale),
+          Math.round(origin.height * scale),
+        )
+        for (let n = 0; n < data.length; n += 4) {
+          if (Math.hypot(data[n]! - find[0], data[n + 1]! - find[1], data[n + 2]! - find[2]) <= 24) found += 1
+        }
+      }
       const pageColor = getComputedStyle(document.body).backgroundColor.match(/\d+/g)!.map(Number)
       return {
         box,
@@ -264,9 +305,11 @@ async function lookOf(item: Locator): Promise<TileLook> {
         aboveBar: at(box.x + box.width / 2, box.y + box.height + 3),
         belowSlot: at(box.x + box.width / 2, barTop + bar.height + 2),
         page: [pageColor[0]!, pageColor[1]!, pageColor[2]!],
+        coverRow,
+        found,
       } as TileLook
     },
-    { png, ribbon: RIBBON, bar: BAR },
+    { png, ribbon: RIBBON, bar: BAR, clip, find },
   )
 }
 
@@ -310,7 +353,7 @@ test.describe("Story 8.2 See what I've read and what I'm reading on the tiles (A
     await page.setViewportSize({ width: 1280, height: 900 })
   })
 
-  test.skip("[P0] AC-1 a finished Book's tile carries a ribbon in its spine color, hanging from the visible cover's top", async ({
+  test("[P0] AC-1 a finished Book's tile carries a ribbon in its spine color, hanging from the visible cover's top", async ({
     page,
   }, testInfo) => {
     const server = await markServer(page, testInfo)
@@ -344,7 +387,7 @@ test.describe("Story 8.2 See what I've read and what I'm reading on the tiles (A
     }
   })
 
-  test.skip('[P0] AC-2 a Book with a percent shows a reading bar filled to that percent, never recomputed, and a null percent leaves the slot empty', async ({
+  test('[P0] AC-2 a Book with a percent shows a reading bar filled to that percent, never recomputed, and a null percent leaves the slot empty', async ({
     page,
   }, testInfo) => {
     const server = await markServer(page, testInfo)
@@ -366,7 +409,8 @@ test.describe("Story 8.2 See what I've read and what I'm reading on the tiles (A
       expect(barPercent(look, LIGHT)).toBeLessThanOrEqual(26)
 
       // 6px below the box, 5px tall, the box's width, accent fill from the left, accent-soft track to the right.
-      const inBox = look.barRow.slice(6, -6)
+      // barRow runs from box.left - 3 to box.right + 3 inclusive: the samples in [box.left, box.right).
+      const inBox = look.barRow.slice(6, -7)
       expect(near(inBox[0]!, LIGHT.accent)).toBe(true)
       expect(near(inBox.at(-1)!, LIGHT.accentSoft)).toBe(true)
       expect(near(look.barRow[0]!, LIGHT.accent) || near(look.barRow[0]!, LIGHT.accentSoft)).toBe(false)
@@ -403,7 +447,7 @@ test.describe("Story 8.2 See what I've read and what I'm reading on the tiles (A
     }
   })
 
-  test.skip('[P1] AC-3 a finished Book being re-read shows both the ribbon and the bar', async ({ page }, testInfo) => {
+  test('[P1] AC-3 a finished Book being re-read shows both the ribbon and the bar', async ({ page }, testInfo) => {
     const server = await markServer(page, testInfo)
     try {
       await storeTiles(page)
@@ -423,7 +467,7 @@ test.describe("Story 8.2 See what I've read and what I'm reading on the tiles (A
     }
   })
 
-  test.skip('[P1] AC-4 an unread Book with no Reading has no mark, while the others carry theirs', async ({
+  test('[P1] AC-4 an unread Book with no Reading has no mark, while the others carry theirs', async ({
     page,
   }, testInfo) => {
     const server = await markServer(page, testInfo)
@@ -458,7 +502,7 @@ test.describe("Story 8.2 See what I've read and what I'm reading on the tiles (A
     }
   })
 
-  test.skip('[P1] AC-5 the ribbon and the bar are hidden from screen readers, and the status is in the link name', async ({
+  test('[P1] AC-5 the ribbon and the bar are hidden from screen readers, and the status is in the link name', async ({
     page,
   }, testInfo) => {
     const server = await markServer(page, testInfo)
@@ -516,7 +560,7 @@ test.describe("Story 8.2 See what I've read and what I'm reading on the tiles (A
     }
   })
 
-  test.skip('[P2] AC-6 in the dark theme the ribbon fill, its halo and the bar keep their meaning; spine-edge and chrome take their dark twins', async ({
+  test('[P2] AC-6 in the dark theme the ribbon fill, its halo and the bar keep their meaning; spine-edge and chrome take their dark twins', async ({
     page,
   }, testInfo) => {
     const server = await markServer(page, testInfo)
@@ -544,7 +588,7 @@ test.describe("Story 8.2 See what I've read and what I'm reading on the tiles (A
     }
   })
 
-  test.skip('[P2] AC-7 under forced colors the ribbon and the bar draw in CanvasText and Canvas', async ({
+  test('[P2] AC-7 under forced colors the ribbon and the bar draw in CanvasText and Canvas', async ({
     page,
   }, testInfo) => {
     const server = await markServer(page, testInfo)
@@ -576,7 +620,7 @@ test.describe("Story 8.2 See what I've read and what I'm reading on the tiles (A
       // The bar: CanvasText fill to the percent, a Canvas track, outlined in CanvasText.
       const emma = await lookOf(tileItem(page, EMMA))
       expect(Math.abs(barPercent(emma, { accent: canvasText!, accentSoft: canvas! })! - 64)).toBeLessThanOrEqual(1.5)
-      const inBox = emma.barRow.slice(6, -6)
+      const inBox = emma.barRow.slice(6, -7)
       expect(near(inBox.at(-2)!, canvas!)).toBe(true)
       const trackEdge = await tileItem(page, EMMA).evaluate(
         (li, { bar }) => {
@@ -613,6 +657,217 @@ test.describe("Story 8.2 See what I've read and what I'm reading on the tiles (A
       // The cover hairline is CanvasText (Story 8.1 already does this).
       const hairline = await bleakHouse.locator('img').evaluate((img) => getComputedStyle(img).borderTopColor)
       expect(hairline).toBe(`rgb(${canvasText!.join(', ')})`)
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+})
+
+/** A finished Book whose cover file isn't an image, and one whose cover is narrower than the ribbon plus its inset. */
+const BROKEN_COVER = 'covers/broken.png'
+const NARROW_COVER = 'covers/narrow.png'
+const EDGE_SHELF = {
+  books: [
+    {
+      id: bookId(11),
+      title: 'Middlemarch',
+      authors: ['George Eliot'],
+      pages: 330,
+      coverFile: BROKEN_COVER,
+      spineColorUser: RED.hex,
+      readings: finished(330),
+    },
+    {
+      id: bookId(12),
+      title: 'Nostromo',
+      authors: ['Joseph Conrad'],
+      pages: 330,
+      coverFile: NARROW_COVER,
+      spineColorUser: RED.hex,
+      readings: finished(330),
+    },
+  ],
+}
+const MIDDLEMARCH = 'Middlemarch by George Eliot, finished'
+const NOSTROMO = 'Nostromo by Joseph Conrad, finished'
+
+test.describe("Story 8.2 See what I've read and what I'm reading on the tiles (spec matrix)", () => {
+  test.use({ deviceScaleFactor: 2 })
+
+  test.beforeEach(async ({ page }) => {
+    await page.emulateMedia({ colorScheme: 'light' })
+    await page.setViewportSize({ width: 1280, height: 900 })
+  })
+
+  test("[P1] AC-1 no ribbon while a finished Book's cover loads; it appears with the cover, and the box doesn't move", async ({
+    page,
+  }, testInfo) => {
+    const server = await markServer(page, testInfo)
+    // Hold Bleak House's cover back until the loading tile has been read.
+    let release: () => void = () => {}
+    const held = new Promise<void>((resolve) => (release = resolve))
+    try {
+      await page.route(`**/media/${WIDE_COVER}`, async (route) => {
+        await held
+        await route.continue()
+      })
+      await storeTiles(page)
+      await page.goto(`${server.url}/catalog`)
+      const bleakHouse = tileItem(page, BLEAK_HOUSE)
+      await expect(bleakHouse.locator('img')).toHaveCount(1)
+
+      // Loading: no spine-red pixel anywhere in the tile.
+      const loading = await lookOf(bleakHouse, RED.rgb)
+      expect(loading.found).toBe(0)
+      expect(marksOf(loading, RED.rgb, LIGHT).ribbon).toBe(false)
+
+      release()
+      await coversLoaded(page)
+      await expect.poll(async () => marksOf(await lookOf(bleakHouse), RED.rgb, LIGHT).ribbon).toBe(true)
+      const loaded = await lookOf(bleakHouse)
+      expect(loaded.box).toEqual(loading.box)
+      // On the cover, which sits below the box's top.
+      expect(loaded.cover.y).toBeGreaterThan(loaded.box.y + 40)
+    } finally {
+      release()
+      await stopAndRemove(server)
+    }
+  })
+
+  test("[P1] AC-1 a finished Book whose cover file isn't an image gets the ribbon at the box's top", async ({
+    page,
+  }, testInfo) => {
+    const narrow = await solidPng(page, 20, 60, WIDE_COVER_RGB)
+    const server = await startSeededServer(testInfo, 'tile-marks-edge', EDGE_SHELF, {
+      [BROKEN_COVER]: 'not an image',
+      [NARROW_COVER]: narrow,
+    })
+    try {
+      await storeTiles(page)
+      await page.goto(`${server.url}/catalog`)
+      const middlemarch = tileItem(page, MIDDLEMARCH)
+      // Once the file fails, the placeholder: no img left.
+      await expect(middlemarch.locator('img')).toHaveCount(0)
+
+      await expect.poll(async () => near((await lookOf(middlemarch)).ribbonMiddle, RED.rgb, 24)).toBe(true)
+      const look = await lookOf(middlemarch)
+      expect(look.cover).toEqual(look.box)
+      expect(inOrder(look.scanRight, [RED.rgb, LIGHT.spineEdge, SPINE_LABEL_STRIP])).toBe(true)
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+
+  test('[P1] AC-2 percent 0 shows a full track and no fill; percent 100 a full fill', async ({ page }, testInfo) => {
+    const server = await markServer(page, testInfo)
+    try {
+      await page.route('**/api/views/catalog', async (route) => {
+        const response = await route.fetch()
+        const view = await response.json()
+        for (const book of view.books) {
+          if (book.id === EMMA_ID) book.percent = 0
+          if (book.id === bookId(6)) book.percent = 100
+        }
+        await route.fulfill({ response, json: view })
+      })
+      await storeTiles(page)
+      await page.goto(`${server.url}/catalog`)
+      await coversLoaded(page)
+      const byTitle = (title: string) =>
+        tiles(page)
+          .getByRole('listitem')
+          .filter({ has: page.getByRole('link', { name: new RegExp(`^${title} by `) }) })
+
+      // Emma at 0%: the whole track, not one accent pixel.
+      await expect.poll(async () => barPercent(await lookOf(byTitle('Emma')), LIGHT)).toBe(0)
+      const emma = (await lookOf(byTitle('Emma'))).barRow.slice(6, -7)
+      expect(emma.every((pixel) => near(pixel, LIGHT.accentSoft))).toBe(true)
+
+      // Austerlitz at 100%: the whole fill, not one track pixel.
+      const austerlitz = await lookOf(byTitle('Austerlitz'))
+      expect(Math.abs(barPercent(austerlitz, LIGHT)! - 100)).toBeLessThanOrEqual(1)
+      expect(austerlitz.barRow.slice(6, -7).every((pixel) => near(pixel, LIGHT.accent))).toBe(true)
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+
+  test("[P2] AC-1 on a cover narrower than the ribbon plus its inset, the ribbon stays inside the cover's left edge", async ({
+    page,
+  }, testInfo) => {
+    const narrow = await solidPng(page, 20, 60, WIDE_COVER_RGB)
+    const server = await startSeededServer(testInfo, 'tile-marks-edge', EDGE_SHELF, {
+      [BROKEN_COVER]: 'not an image',
+      [NARROW_COVER]: narrow,
+    })
+    try {
+      await storeTiles(page)
+      await page.goto(`${server.url}/catalog`)
+      await coversLoaded(page)
+      const nostromo = tileItem(page, NOSTROMO)
+
+      // The ribbon is on the 20px cover...
+      await expect
+        .poll(async () => (await lookOf(nostromo)).coverRow.some((pixel) => near(pixel, RED.rgb, 24)))
+        .toBe(true)
+      const look = await lookOf(nostromo)
+      expect(look.cover.width).toBeLessThan(RIBBON.width + RIBBON.inset)
+      // ...and no fill pixel sits left of the cover's left edge (coverRow starts 6px left of it).
+      const firstFill = look.coverRow.findIndex((pixel) => near(pixel, RED.rgb, 24))
+      expect(firstFill / 2 - 6).toBeGreaterThanOrEqual(0)
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+
+  test('[P1] AC-1 a large wide cover and a large cover taller than 2:3 stay whole inside their boxes, bottom-aligned', async ({
+    page,
+  }, testInfo) => {
+    const wide = await solidPng(page, 600, 300, WIDE_COVER_RGB)
+    const tall = await solidPng(page, 300, 900, WIDE_COVER_RGB)
+    const server = await startSeededServer(
+      testInfo,
+      'tile-marks-large',
+      {
+        books: [
+          {
+            id: bookId(21),
+            title: 'Ulysses',
+            authors: ['James Joyce'],
+            pages: 330,
+            coverFile: 'covers/large-wide.png',
+          },
+          {
+            id: bookId(22),
+            title: 'Villette',
+            authors: ['Charlotte Bronte'],
+            pages: 330,
+            coverFile: 'covers/large-tall.png',
+            spineColorUser: RED.hex,
+            readings: finished(330),
+          },
+        ],
+      },
+      { 'covers/large-wide.png': wide, 'covers/large-tall.png': tall },
+    )
+    try {
+      await storeTiles(page)
+      await page.goto(`${server.url}/catalog`)
+      await coversLoaded(page)
+      for (const title of ['Ulysses', 'Villette']) {
+        const look = await lookOf(
+          tiles(page)
+            .getByRole('listitem')
+            .filter({ has: page.getByRole('link', { name: new RegExp(`^${title} by `) }) }),
+        )
+        const { box, cover } = look
+        expect(cover, title).not.toEqual(box)
+        expect(cover.x, title).toBeGreaterThanOrEqual(box.x - 1)
+        expect(cover.y, title).toBeGreaterThanOrEqual(box.y - 1)
+        expect(cover.x + cover.width, title).toBeLessThanOrEqual(box.x + box.width + 1)
+        expect(Math.abs(cover.y + cover.height - (box.y + box.height)), title).toBeLessThanOrEqual(1)
+        if (title === 'Villette') expect(marksOf(look, RED.rgb, LIGHT).ribbon).toBe(true)
+      }
     } finally {
       await stopAndRemove(server)
     }

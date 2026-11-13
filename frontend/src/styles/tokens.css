@@ -182,6 +182,13 @@
   --swatch-size: 16px;
   --catalog-tile-cover-min-width: 140px;
   --catalog-tile-reading-bar-slot: 11px;
+  --catalog-tile-ribbon-width: 16px;
+  --catalog-tile-ribbon-height: 24px;
+  --catalog-tile-ribbon-notch: 6px;
+  --catalog-tile-ribbon-inset: 10px;
+  --catalog-tile-ribbon-halo: 1.5px;
+  --catalog-tile-reading-bar-height: 5px;
+  --catalog-tile-reading-bar-gap: 6px;
 }
 
 :root[data-theme="dark"] {

@@ -5,7 +5,7 @@
 
 A personal, local-first web app for organizing my home library and tracking my reading. It replaces a paper reading diary as the single source of truth for reading progress. The diary can stay on the nightstand for quick notes; I catch up in the app on my next visit by entering the page I reached.
 
-> **Status:** v1 is feature-complete: Epics 1-7 are done, with all retrospectives, trace and quality gates passed and every retro action item closed. Epic 8 is in progress (42 of 44 stories done): the Catalog can now also be shown as a grid of covers (Tiles). See [Sprint status](_bmad-output/implementation-artifacts/sprint-status.yaml) for details.
+> **Status:** v1 is feature-complete: Epics 1-7 are done, with all retrospectives, trace and quality gates passed and every retro action item closed. Epic 8 is in progress (42 of 44 stories done): the Catalog can now also be shown as a grid of covers (Tiles), where read Books carry a ribbon in their spine color and Books being read show a reading bar. See [Sprint status](_bmad-output/implementation-artifacts/sprint-status.yaml) for details.
 
 ## Why
 
@@ -132,6 +132,8 @@ The repo ships two Claude Code skills in [`.claude/skills/`](.claude/skills/). B
 - [Deferred work](_bmad-output/implementation-artifacts/deferred-work.md): review findings deferred to later stories, each marked with the story that resolved it once done
 - [Story 8.1 spec](_bmad-output/implementation-artifacts/spec-8-1-see-my-catalog-as-covers.md): Tiles, the Catalog's grid of covers
 - [Story 8.1 ATDD checklist](_bmad-output/test-artifacts/atdd-checklist-8-1-see-my-catalog-as-covers.md): the story's acceptance tests and green-phase follow-ups
+- [Story 8.2 spec](_bmad-output/implementation-artifacts/spec-8-2-see-what-i-ve-read-and-what-i-m-reading-on-the-tiles.md): the finished ribbon and the reading bar on the tiles
+- [Story 8.2 ATDD checklist](_bmad-output/test-artifacts/atdd-checklist-8-2-see-what-i-ve-read-and-what-i-m-reading-on-the-tiles.md): the story's acceptance tests and green-phase follow-ups
 - [Brainstorm intent](_bmad-output/brainstorming/brainstorm-personal-library-tracker-2026-10-27/brainstorm-intent.md): the brainstorm's problem statement, pillars and decisions
 - [Brainstorm session](_bmad-output/brainstorming/brainstorm-personal-library-tracker-2026-10-27/brainstorm.html): the full session record
 

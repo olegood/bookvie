@@ -318,7 +318,8 @@ test.describe('Story 8.1 See my catalog as covers (ATDD)', () => {
       ],
     })
     await page.goto(`${server.url}/catalog`)
-    expect(await tileNames(page)).toEqual([DUNE_1, DUNE_2, EMMA])
+    // The grid renders after the catalog view arrives, so wait for it.
+    await expect.poll(() => tileNames(page)).toEqual([DUNE_1, DUNE_2, EMMA])
 
     // Hardcover hides edition 2; the shown Dune keeps its qualifier.
     const type = page.getByRole('main').getByRole('group', { name: 'Type', exact: true })
