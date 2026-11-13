@@ -74,3 +74,18 @@ Notes:
 - Decide whether "Add another" is remembered between visits or resets each time the dialog opens.
 - With "Add another" on, show that the note was saved (for example a brief confirmation or a running count) and put focus back in the empty field.
 - Decide which fields carry over to the next note (for example the page number) and which are cleared.
+
+## Home bookcase ordered by recent use
+
+**Status:** new
+
+Order the bookcase on Home by when each Book was last touched or opened, so the Books in use right now are at hand.
+
+The Books must be sorted by their last touch, most recently touched first.
+
+Notes:
+
+- This is side information, not library data. Keep it outside the main data, for example in the browser's local storage, so it is never exported and doesn't count as part of the library. The Tiles view's remembered choice (FR-25) already works this way.
+- Today the Home slice (FR-24) shows the Main book's row, then the Up next Book's, then rows with the most recent finishes, with the Books in bookcase (catalog sort) order. Decide whether recent use replaces that, only orders the Books within it, or is a Home-only option.
+- Define "touch": opening the Book's detail, logging a page, adding a card note, editing it?
+- Local storage is per browser, so the order won't follow you to another computer and resets if site data is cleared. That's acceptable for a convenience, but the app has to work when it's empty.
