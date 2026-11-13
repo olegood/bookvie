@@ -7,14 +7,15 @@ paradigm: 'server-owned domain behind an intent (command) API with server-comput
 scope: 'bookvie MVP: whole system (CLI launcher, Python server, data folder, React client)'
 status: final
 created: '2026-10-29'
-updated: '2026-11-12'
-binds: [FR-1, FR-2, FR-3, FR-4, FR-5, FR-6, FR-7, FR-8, FR-9, FR-10, FR-11, FR-14, FR-15, FR-16, FR-17, FR-18, FR-19, FR-20, FR-21, FR-22, FR-23, FR-24, A1, A2, A3, A4, A5, A6]
+updated: '2026-11-13'
+binds: [FR-1, FR-2, FR-3, FR-4, FR-5, FR-6, FR-7, FR-8, FR-9, FR-10, FR-11, FR-14, FR-15, FR-16, FR-17, FR-18, FR-19, FR-20, FR-21, FR-22, FR-23, FR-24, FR-25, A1, A2, A3, A4, A5, A6]
 sources:
   - _bmad-output/planning-artifacts/prds/prd-bookvie-2026-10-28/prd.md
   - _bmad-output/planning-artifacts/prds/prd-bookvie-2026-10-28/addendum.md
   - _bmad-output/planning-artifacts/ux-designs/ux-bookvie-2026-10-28/EXPERIENCE.md
   - _bmad-output/planning-artifacts/ux-designs/ux-bookvie-2026-10-28/DESIGN.md
   - _bmad-output/planning-artifacts/ux-designs/ux-bookvie-2026-10-28/prd-deltas.md
+  - _bmad-output/planning-artifacts/catalog-tiles-plan-2026-11-13.md
 companions: []
 ---
 
@@ -84,7 +85,7 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
 
 ### AD-6: The server owns domain numbers and selections; the client owns presentation [ADOPTED]
 
-- **Binds:** FR-4, FR-7, FR-11, FR-15, FR-16, FR-17, FR-18, FR-19, FR-20, FR-24
+- **Binds:** FR-4, FR-7, FR-11, FR-15, FR-16, FR-17, FR-18, FR-19, FR-20, FR-24, FR-25
 - **Prevents:** percentage, Measured pace, days left, Waiting order, stats or library scope being computed in two places with different results.
 - **Rule:**
   - **The server computes:** percentages (`floor(page × 100 ÷ pages)`, so 100% only at the last page; story 3.1, `domain/progress`), Measured pace, days left, pages left (per Book and library scope; below), Waiting for you and its order (every paused Reading except the Up next Book's, `pausedAt` oldest first with a Reading that has none before all, then the title key, then Book id; `pausedAt` itself is never sent; story 4.2), whether Home's Up next is paused (`upNext.paused`, story 4.1), each Book's role and its waiting page (Main book, then Up next, then waiting for a paused Reading; `views/shelf` `_role_reading`; stories 4.1 and 4.6), a Book's Card notes in page order (`pageStart`, then `createdAt`, ties keeping stored order; `views/shelf` `card_note_views`, story 5.1), the `card-notes` view's groups (one per Book that has notes, ordered by the title key, then Book id; `?book=<id>` scopes it to that Book's group, empty when it has none; story 5.3), the Main book's note count on Home (`cardNoteCount`, story 5.3), the Home bookcase slice's priority, stats for a requested date range including the bars, and the "X of Y finished" meter.
@@ -97,6 +98,7 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
     - the catalog sort (`lib/catalog.ts` `sortBooks`, `lib/catalogSort.ts`, `components/SortSelect.tsx`; story 7.1): Author sorts by the first listed author string, Title A–Z, Date added newest `createdAt` first, Pages fewest first. Names compare with one `Intl.Collator` with `numeric: true`, so "Volume 2" comes before "Volume 10" (7.1 review). Every key then breaks ties by title, then `createdAt` older first (compared as instants, since offsets can differ), then Book id by code unit, so the order is total and equal keys never swap between fetches. The collator uses the browser's default locale. The bookcase spines, the List rows and the bookcase keyboard order all follow one sorted array. The choice is a UI preference (AD-15: `bookvie.catalogSort`, default Author). Home's slice reads it when it mounts and packs its rows in that order before `slicePriority` picks them (below);
     - the catalog filter chips (`lib/catalogFilter.ts`, `components/FilterChips.tsx`; story 7.2): Status (Read is the view's `finished`, so a finished Book queued for a re-read is Read), Type, Language and Tag. Chips in a group combine with OR; groups combine with each other and with Search titles with AND; an empty group is no constraint. Type, Language and Tag compare the Book's stored `type`, `language` and `tags`, which the catalog view's `ShelfBook` carries as stored; Language and Tag ignore case, and a Book with no tags never matches a Tag filter. The client builds the Language and Tag value lists itself from the catalog view's Books: each value once, keyed by `toLocaleLowerCase` with the first spelling in library order as its label, in collator order. The server's `merge_tags` keys by `casefold`, so a pair such as ß/SS can merge on one side only (story 7.2 review, accepted). Each filter change announces the combined search and filter count, "N books match." (`lib/catalog.ts` `matchCountCopy`), and the filters apply to the bookcase and the List alike. Checked values that no Book has any more after a refetch are ignored (`liveFilters`). Filters are page state only: never stored, reset when Catalog unmounts or a Book is added, and never applied to Home's slice or the "X of Y finished" meter;
     - packing spines into rows by viewport width, and on Home choosing up to 3 of those rows from the view's `slicePriority` (Book ids: the Main book, then Up next, then finishes newest first; story 3.5): free slots up to 3 are filled from the first bookcase rows, priority ids not on the shelf are ignored, and the Main book's row comes first with the others in bookcase order, which is the remembered catalog sort (`frontend/src/lib/slice.ts`);
+    - the catalog Tiles view (FR-25; Epic 8, planned): packing tiles into columns by viewport width, in the same sorted and filtered array as the bookcase and the List. A tile's marks read the catalog view as is: the finished ribbon is the view's `finished`, and the reading bar shows only when `percent` is not null and fills to `percent` (never recomputed from `currentPage` and `pages`). The tile's accessible name comes from the same builder as the spine's name, so the two can't disagree. The cover is `/media/covers/<coverFile>` (AD-12), with `coverFile` on the catalog view's `ShelfBook` (added in Python first, then `api:gen`, AD-8);
     - the gauge's ticks: 0 · round(pages ÷ 2) · pages, the half tick dropped under 4 pages (story 3.1);
     - case-insensitive substring text search (Search titles, Search card notes). It compares the text as stored, with no Unicode normalisation (unlike the server's title key), so a decomposed accent can fall outside a match (Epic 5 retro E5-R3, accepted). Search card notes wraps each match in `<mark>` and counts the matching notes itself for "N notes match." (`lib/cardNotes.ts`, `lib/useSearchCount.ts`; story 5.3);
     - Book detail's Card notes block showing the first three notes of the view's page order, and every matching note while its search holds text (stories 5.1 and 5.3);
@@ -204,7 +206,7 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
 
 ### AD-15: State that is not exported [ADOPTED]
 
-- **Binds:** A6, FR-22 "Last export", FR-20 and FR-24 (the remembered Sort and Bookcase · List)
+- **Binds:** A6, FR-22 "Last export", FR-20, FR-24 and FR-25 (the remembered Sort and Bookcase · List · Tiles)
 - **Prevents:** "Last export" disagreeing between browsers; UI preferences polluting the export.
 - **Rule:** The last-export timestamp is stored in `local-state.json` in the data folder, as `{"lastExportAt": "<ISO-8601 with offset>"}`. It's outside the export, and restore never touches it (an archive entry with that name is `restore_unsafe`). It is written like a commit (temp `local-state.json.tmp*`, fsync, rename, folder fsync) but outside the AD-4 lock (AD-4); a write failure is only logged, because the download already succeeded. Its readers are `views/backup` and `views/shelf` (home, story 3.1). A missing file reads as no export yet; an unreadable or malformed one is logged and read the same way, and the next export overwrites it (story 2.1). UI preferences (theme, catalog view, sort) live in browser `localStorage`, per browser, wrapped in try/catch with defaults.
 
@@ -383,13 +385,14 @@ bookvie/
 
 ## Capability → Architecture Map
 
-Every row below is built.
+Every row below is built, except a row marked planned.
 
 | Capability / Area | Lives in | Governed by |
 | --- | --- | --- |
 | FR-1 Book fields, FR-3 Duplicate | `intents/add_book`, `edit_book`, `delete_book`, `set_spine_color`; `domain/` | AD-3, AD-9, AD-10, AD-11, AD-12, AD-18 |
 | FR-2 Agent-friendly form | `frontend` New book panel | AD-9, AD-16, AD-17 |
 | FR-4, FR-20, FR-24 Catalog, filter/sort, bookcase | `views/shelf`, `views/models` (`ShelfBook`'s `type`, `language`, `tags` for the filters); `lib/catalog` (`sortBooks`), `lib/catalogSort`, `lib/catalogFilter`, `lib/catalogView`, `components/SortSelect`, `components/FilterChips`, `components/ViewToggle`, `pages/CatalogPage`, `pages/Bookcase`, `pages/CatalogList`; Home's slice via `lib/slice` | AD-6, AD-11, AD-15 |
+| FR-25 Catalog tiles *(planned, Epic 8; not built)* | `views/models` (`ShelfBook.coverFile`), `views/shelf`; `lib/catalogView` (`tiles`), `components/ViewToggle`, `pages/CatalogPage`, a new tiles grid page component; covers from `/media/covers` | AD-6, AD-8, AD-12, AD-15 |
 | FR-5 to FR-9 Main book, pause, Up next, Side reads, Purpose | `intents/start_reading`, `pause`, `set_up_next`, `side_reads` (mark, unmark), `edit_purpose`; `views/shelf` (home `upNext` with `paused`, `waiting`, `sideReads`); Home's Up next, Waiting for you and On the side panes | AD-3, AD-4, AD-6, AD-7, AD-9, AD-18, AD-19 |
 | FR-10, FR-11 Page update, re-entry | `intents/update_page`; `views/shelf` (home); `domain/pace`, `domain/progress` | AD-6, AD-7, AD-19, AD-20 |
 | FR-14 Finish | `intents/finish_reading` | AD-7, AD-11, AD-18, AD-19, AD-20 |
@@ -408,4 +411,5 @@ Every row below is built.
 - **CI provider:** none is required. pytest, Playwright, `check:api` and the install smoke test run locally until a CI is chosen.
 - **Later features** (Shelves, Goals, Sequences, Donation, Wishlist): each adds fields under a new `schemaVersion` plus a migration (AD-13). No structure is reserved now.
 - **Stale confirmation guard (a version precondition on intents):** not built (AD-3, AD-19, A2; retro F-R1). The shape would be a document `revision` returned by every view and an `expectedRevision` that intents send and the server refuses on mismatch. Revisit if a stale Start dialog ever pauses the wrong book in practice, if a stale Start or Pause dialog's displacement line names the wrong Up next (they read the cached home view, AD-7), or if the cataloging agent edits an existing Book while the app is open in a tab.
+- **Cover thumbnails:** not built. The Tiles view (FR-25) loads each cover at its stored size (long edge up to 1200px, AD-12), lazily, from `/media/covers` with immutable caching. Revisit only if Epic 8's check fails: 500 Books with covers, the first screen of tiles in about 1 second in Chromium with no layout shift. The fix would mint a thumbnail beside each cover under its own immutable name, which amends AD-12 (upload, Remove cover, the sweep) and AD-14 (export carries thumbnails or restore regenerates them), and needs a migration to backfill existing covers (AD-13).
 - **Performance:** the full rewrite per intent and in-memory views are sized for about 500 Books and a few thousand Card notes. Revisit if `library.json` grows past roughly 10 MB.
