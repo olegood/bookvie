@@ -28,6 +28,7 @@ import { SEARCH_PAUSE_MS } from '../lib/useSearchCount.ts'
 import Bookcase, { MeterBar } from './Bookcase.tsx'
 import shelf from './Bookcase.module.css'
 import CatalogList from './CatalogList.tsx'
+import CatalogTiles from './CatalogTiles.tsx'
 import NewBookPanel from './NewBookPanel.tsx'
 import SearchTitles from './SearchTitles.tsx'
 import styles from './CatalogPage.module.css'
@@ -35,7 +36,7 @@ import styles from './CatalogPage.module.css'
 export const EMPTY_SHELF = 'Your shelf is empty. Add your first book.'
 const NO_FILTER_MATCH = 'No books match these filters.'
 const EMPTY_PLANKS = 3
-// DESIGN.md → Highlight ring: how long the new spine or row keeps it.
+// DESIGN.md → Highlight ring: how long the new spine, row or tile keeps it.
 const HIGHLIGHT_MS = 2000
 
 const NO_BOOKS: readonly ShelfBook[] = []
@@ -89,8 +90,8 @@ function prefersReducedMotion(): boolean {
 
 /**
  * The library meter and the collapsed "How long until…?" link on one row
- * (DESIGN.md → Catalog, EXPERIENCE.md → Pace calculator), above the bookcase
- * or list in both views. Activating the link expands Story 6.1's calculator
+ * (DESIGN.md → Catalog, EXPERIENCE.md → Pace calculator), above the bookcase,
+ * list or tiles in every view. Activating the link expands Story 6.1's calculator
  * inline below the row, counting down the whole library's pages left (FR-15
  * library scope). It starts collapsed on every visit.
  */
@@ -152,7 +153,7 @@ export default function CatalogPage() {
   const [catalogView, setCatalogView] = useState<CatalogViewChoice>(readCatalogView)
   const [added, setAdded] = useState<{ id: string; title: string } | null>(null)
   const [highlightId, setHighlightId] = useState<string | null>(null)
-  // The new Book's spine or title cell, whichever view is showing.
+  // The new Book's spine, title link or tile link, whichever view is showing.
   const focusTargets = useRef(new Map<string, HTMLElement>())
   const searchRef = useRef<HTMLInputElement | null>(null)
   const newBookRef = useRef<HTMLButtonElement | null>(null)
@@ -185,8 +186,8 @@ export default function CatalogPage() {
 
   useEffect(clearNewBookState, [])
 
-  // After an add: the refetched view has rendered, so scroll the new spine
-  // or row into view, focus it, ring it, and only then announce.
+  // After an add: the refetched view has rendered, so scroll the new spine,
+  // row or tile into view, focus it, ring it, and only then announce.
   useEffect(() => {
     if (!added) return
     const target = focusTargets.current.get(added.id)
@@ -343,8 +344,16 @@ export default function CatalogPage() {
           focusTargets={focusTargets}
           searchRef={searchRef}
         />
-      ) : (
+      ) : catalogView === 'list' ? (
         <CatalogList
+          books={sorted}
+          shown={shown}
+          noMatch={noMatch}
+          highlightId={highlightId}
+          focusTargets={focusTargets}
+        />
+      ) : (
+        <CatalogTiles
           books={sorted}
           shown={shown}
           noMatch={noMatch}

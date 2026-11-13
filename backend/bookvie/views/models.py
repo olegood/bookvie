@@ -39,6 +39,8 @@ class ShelfBook(_View):
     spine_color_from_cover: str | None
     has_cover: bool
     """Whether the Book has a cover (the Spine popover's "From cover" swatch)."""
+    cover_file: str | None
+    """``covers/<name>``, served at ``/media/<coverFile>``; ``None`` without a cover (Catalog's Tiles)."""
     finished: bool
     role: Role
     """The Book's place in the reading plan, as ``BookDetailView.role`` defines it."""

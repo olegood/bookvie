@@ -42,9 +42,9 @@ describe('catalog view choice', () => {
   })
 })
 
-// Story 8.1 See my catalog as covers (ATDD, red phase): Tiles is the third view.
+// Story 8.1 See my catalog as covers: Tiles is the third view.
 describe('catalog view choice with Tiles', () => {
-  it.skip('[P1] AC-11 reads a stored Tiles choice and offers Bookcase, List and Tiles in that order', () => {
+  it('[P1] AC-11 reads a stored Tiles choice and offers Bookcase, List and Tiles in that order', () => {
     withStorage({ getItem: () => 'tiles' })
     // The criterion: "tiles" is a choice now, not junk that falls back to Bookcase.
     assert.equal(readCatalogView(), 'tiles')

@@ -1,14 +1,14 @@
 import { CATALOG_VIEWS, type CatalogViewChoice } from '../lib/catalogView.ts'
 import styles from './ViewToggle.module.css'
 
-const LABELS: Record<CatalogViewChoice, string> = { bookcase: 'Bookcase', list: 'List' }
+const LABELS: Record<CatalogViewChoice, string> = { bookcase: 'Bookcase', list: 'List', tiles: 'Tiles' }
 
 type Props = {
   value: CatalogViewChoice
   onChange: (value: CatalogViewChoice) => void
 }
 
-/** The Bookcase · List segmented control, with the theme toggle's look. */
+/** The Bookcase · List · Tiles segmented control, with the theme toggle's look. */
 export default function ViewToggle({ value, onChange }: Props) {
   return (
     <div role="group" aria-label="Catalog view" className={styles.group}>

@@ -10,8 +10,6 @@ it never derives read status or counts from Readings itself.
 
 from pathlib import Path
 
-import pytest
-
 from tests.builder import LibraryBuilder
 from tests.helpers import api_client
 
@@ -92,17 +90,14 @@ def test_catalog_and_home_books_carry_the_edition(
         assert [(b["title"], b["edition"]) for b in body["books"]] == [("Dune", 1), ("Dune", 2)]
 
 
-# --- Story 8.1 See my catalog as covers: the tiles' cover file (ATDD, red phase) ------
+# --- Story 8.1 See my catalog as covers: the tiles' cover file -----------------------
 #
 # The Tiles view draws each cover from the catalog view alone (AD-6), so every
 # ``ShelfBook`` names its stored cover file, as Home's and Book detail's views
 # already do. The tiles themselves are read in the browser
 # (``frontend/e2e/catalog-tiles.spec.ts``).
 
-RED_8_1 = "Story 8.1 red phase: the catalog view's books don't carry coverFile yet"
 
-
-@pytest.mark.skip(reason=RED_8_1)
 def test_ac1_p0_catalog_books_carry_their_cover_file_or_null(
     tmp_path: Path, library_builder: LibraryBuilder
 ) -> None:

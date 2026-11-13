@@ -16,6 +16,7 @@ import {
   spineName,
   spineNames,
   tagSuggestions,
+  tilesName,
   type NamedSpine,
   type SortableBook,
   type TwinSpine,
@@ -406,6 +407,13 @@ describe('bookcaseName', () => {
   it('counts one book in the singular', () => {
     assert.equal(bookcaseName(1), 'Bookcase, 1 book')
     assert.equal(bookcaseName(500), 'Bookcase, 500 books')
+  })
+})
+
+describe('tilesName', () => {
+  it('counts every book, one in the singular', () => {
+    assert.equal(tilesName(1), 'Tiles, 1 book')
+    assert.equal(tilesName(9), 'Tiles, 9 books')
   })
 })
 

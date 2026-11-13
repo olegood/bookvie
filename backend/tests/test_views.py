@@ -80,6 +80,7 @@ def test_seeded_library(tmp_path: Path, library_builder: LibraryBuilder, view: s
             "spineColorUser": "#112233",
             "spineColorFromCover": None,
             "hasCover": False,
+            "coverFile": None,
             "finished": False,
             "role": None,
             "currentPage": None,
@@ -105,6 +106,7 @@ def test_seeded_library(tmp_path: Path, library_builder: LibraryBuilder, view: s
             "spineColorUser": None,
             "spineColorFromCover": None,
             "hasCover": False,
+            "coverFile": None,
             "finished": True,
             "role": None,
             "currentPage": None,
@@ -130,6 +132,7 @@ def test_seeded_library(tmp_path: Path, library_builder: LibraryBuilder, view: s
             "spineColorUser": None,
             "spineColorFromCover": None,
             "hasCover": False,
+            "coverFile": None,
             "finished": False,
             # An unfinished Reading of a Book that isn't Main is paused (AD-19).
             "role": "waiting",
@@ -247,8 +250,9 @@ def test_book_view_carries_the_cover_file_and_its_color(
     assert (body["coverFile"], body["spineColorFromCover"]) == ("covers/dune.jpg", "#A85A4A")
     body = client.get("/api/views/book", params={"id": bare}).json()
     assert (body["coverFile"], body["spineColorFromCover"]) == (None, None)
-    # The shelf views don't carry covers (later stories), only whether one exists.
-    assert "coverFile" not in client.get("/api/views/catalog").json()["books"][0]
+    # The shelf views carry the stored cover file too, for Catalog's Tiles (Story 8.1).
+    shelf = {b["id"]: b["coverFile"] for b in client.get("/api/views/catalog").json()["books"]}
+    assert shelf == {covered: "covers/dune.jpg", bare: None}
 
 
 # --- The Spine popover's fields (Story 1.14) -----------------------------------

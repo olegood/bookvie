@@ -65,6 +65,7 @@ def _shelf_book(library: Library, book: Book) -> ShelfBook:
         spine_color_user=book.spine_color_user,
         spine_color_from_cover=book.spine_color_from_cover,
         has_cover=_has_cover(book),
+        cover_file=book.cover_file,
         finished=_finished(book),
         role=role,
         current_page=reading.current_page if reading else None,

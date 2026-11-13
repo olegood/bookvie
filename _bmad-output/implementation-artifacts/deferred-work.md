@@ -937,3 +937,12 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-spine-names-tell-editions-apart.md`
   summary: The finish line and status ("Finished Dune."), the Spine popover heading and the Start dialog name a Book by title only, so two editions still sound alike there, although their spines are now told apart. Low.
   evidence: `frontend/src/lib/catalog.ts` `finishLine` and `finishStatus` take only the title; pre-existing, outside the spine-name fix.
+
+## Deferred from: build-auto review of spec-8-1-see-my-catalog-as-covers (2026-11-13)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-8-1-see-my-catalog-as-covers.md`
+  summary: A tile's visible caption (title, then the first author on its own line) isn't a contiguous word run of the link's accessible name, the spine's name ("Dune by Frank Herbert, not read yet"), so axe's `label-content-name-mismatch` (WCAG 2.5.3, Label in Name) flags every tile. DESIGN.md (caption: first author only, no "by") and EXPERIENCE.md (name: the spine's name) together can't satisfy the rule; a visually hidden " by " doesn't help, since axe reads only on-screen text. The build disabled that one rule for the Tiles pass of the Catalog axe test. Options: show "by" in the caption, drop the author from the visible caption's text run, or accept the finding. Needs a design decision. Medium.
+  evidence: `frontend/e2e/catalog-pace-calculator.spec.ts` (`disableRules(['label-content-name-mismatch'])` for `tiles`); `frontend/src/pages/CatalogTiles.tsx` (the caption); `axe-core` `isLabelContainedInName`.
+- source_spec: `_bmad-output/implementation-artifacts/spec-8-1-see-my-catalog-as-covers.md`
+  summary: Spine drift (AD-6, AD-15, Structural Seed, Capability map FR-25, Deferred → Cover thumbnails), reconciled before the next epic. The spine still calls the Tiles view planned and not built. It writes the cover URL as `/media/covers/<coverFile>`, although `coverFile` is the stored `covers/<name>` served at `/media/<coverFile>` (as in Home's and Book detail's views). It lists only Bookcase · List for `lib/catalogView` in the Seed, omits `pages/CatalogTiles`, and doesn't record that Epic 8's cover speed check passed (median 58 ms, zero layout shift). Low.
+  evidence: ARCHITECTURE-SPINE.md lines 102, 382, 395-396 and 415; `backend/bookvie/views/models.py` `ShelfBook.cover_file`; `frontend/src/pages/CatalogTiles.tsx` (`coverSrc`); `frontend/src/lib/catalogView.ts` (spine check, build-auto review of Story 8.1).

@@ -141,6 +141,15 @@ test.describe('Story 2.2 Restore my library from an export (ATDD)', () => {
       // "Last export" and the browser's preferences stay this machine's own (AD-15).
       expect(readFileSync(localState, 'utf8')).toBe(EARLIER_EXPORT)
       expect(await preferences(page)).toEqual(preferencesBefore)
+
+      // Tiles (Story 8.1) is kept the same way: a restore neither brings nor replaces the Catalog view.
+      await page.goto(`${target.url}/backup`)
+      await page.evaluate(() => window.localStorage.setItem('bookvie.catalogView', 'tiles'))
+      await expect(restoreButton(page)).toBeEnabled()
+      await pickFile(page, archive)
+      await confirmDialog(page).getByRole('button', { name: REPLACE_ALL, exact: true }).click()
+      await expect(page.getByRole('status')).toHaveText(RESTORED)
+      expect(await page.evaluate(() => window.localStorage.getItem('bookvie.catalogView'))).toBe('tiles')
     } finally {
       expect(await target.stop()).toBe('')
       rmSync(target.dataDir, { recursive: true, force: true })

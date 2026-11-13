@@ -57,7 +57,7 @@ test.describe('Story 1.10 Bookcase view (ATDD)', () => {
     const listButton = toggle.getByRole('button', { name: 'List', exact: true })
 
     await expect(bookcaseButton).toHaveAttribute('aria-pressed', 'true')
-    await expect(toggle.getByRole('button')).toHaveText(['Bookcase', 'List'])
+    await expect(toggle.getByRole('button')).toHaveText(['Bookcase', 'List', 'Tiles'])
     await expect(listButton).toHaveAttribute('aria-pressed', 'false')
     await expect(bookcase(page)).toBeVisible()
     await expect(page.getByRole('table')).toBeHidden()

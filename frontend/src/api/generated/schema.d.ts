@@ -1002,6 +1002,8 @@ export interface components {
             spineColorFromCover: string | null;
             /** Hascover */
             hasCover: boolean;
+            /** Coverfile */
+            coverFile: string | null;
             /** Finished */
             finished: boolean;
             /** Role */

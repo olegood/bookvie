@@ -185,7 +185,7 @@ test.describe('Story 8.1 See my catalog as covers (ATDD)', () => {
     await page.setViewportSize({ width: 1280, height: 900 })
   })
 
-  test.skip('[P1] AC-2 the Catalog view toggle offers Bookcase, List and Tiles, and remembers Tiles', async ({
+  test('[P1] AC-2 the Catalog view toggle offers Bookcase, List and Tiles, and remembers Tiles', async ({
     page,
     seededServer,
   }) => {
@@ -221,7 +221,7 @@ test.describe('Story 8.1 See my catalog as covers (ATDD)', () => {
     await expect(tiles(page)).toBeVisible()
   })
 
-  test.skip('[P0] AC-3 Tiles show the Books as a list of tiles, 7 to a row at 1280px, each one link named like its spine', async ({
+  test('[P0] AC-3 Tiles show the Books as a list of tiles, 7 to a row at 1280px, each one link named like its spine', async ({
     page,
   }) => {
     await storeTiles(page)
@@ -290,7 +290,44 @@ test.describe('Story 8.1 See my catalog as covers (ATDD)', () => {
     }
   })
 
-  test.skip('[P1] AC-4 a cover is shown whole at the bottom of a box that never changes size, flat until it loads', async ({
+  test('[P2] AC-3 the grid packs 5 columns at 1024px and 8 at 1440px', async ({ page, seededServer }) => {
+    await storeTiles(page)
+    const server = await seededServer({ books: TILE_SHELF.map(withoutCover) })
+    await page.goto(`${server.url}/catalog`)
+    const columns = () =>
+      tiles(page).evaluate((element) => getComputedStyle(element).gridTemplateColumns.split(' ').length)
+
+    // DESIGN.md → Layout → Tiles.
+    await page.setViewportSize({ width: 1024, height: 900 })
+    await expect.poll(columns).toBe(5)
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await expect.poll(columns).toBe(8)
+  })
+
+  test('[P1] AC-3 a twin tile keeps its edition in its name when a filter hides the other twin', async ({
+    page,
+    seededServer,
+  }) => {
+    await storeTiles(page)
+    const herbert = ['Frank Herbert']
+    const server = await seededServer({
+      books: [
+        { title: 'Dune', authors: herbert, edition: 1, type: 'hardcover' },
+        { title: 'Dune', authors: herbert, edition: 2, type: 'paperback' },
+        { title: 'Emma', authors: ['Jane Austen'], type: 'paperback' },
+      ],
+    })
+    await page.goto(`${server.url}/catalog`)
+    expect(await tileNames(page)).toEqual([DUNE_1, DUNE_2, EMMA])
+
+    // Hardcover hides edition 2; the shown Dune keeps its qualifier.
+    const type = page.getByRole('main').getByRole('group', { name: 'Type', exact: true })
+    await type.getByRole('button', { name: 'Hardcover', exact: true }).click()
+    await expect(tiles(page).locator('li[hidden]')).toHaveCount(2)
+    expect(await tileNames(page)).toEqual([DUNE_1])
+  })
+
+  test('[P1] AC-4 a cover is shown whole at the bottom of a box that never changes size, flat until it loads', async ({
     page,
   }) => {
     await storeTiles(page)
@@ -366,18 +403,27 @@ test.describe('Story 8.1 See my catalog as covers (ATDD)', () => {
     }
   })
 
-  test.skip('[P1] AC-5 a Book without a cover, or with a cover that fails to load, shows the no-cover placeholder at the box size', async ({
+  test('[P1] AC-5 a Book without a cover, or with a cover that fails to load, shows the no-cover placeholder at the box size', async ({
     page,
   }) => {
     await storeTiles(page)
     const server = await startSeededServer(test.info(), 'tiles-no-cover', { books: TILE_SHELF }, TILE_FILES)
     try {
       await page.goto(`${server.url}/catalog`)
+      // Chromium snaps a border's computed width to device pixels, so read what 1.5px computes to here.
+      const onePointFive = await page.evaluate(() => {
+        const probe = document.createElement('div')
+        probe.style.border = '1.5px dashed'
+        document.body.append(probe)
+        const width = getComputedStyle(probe).borderTopWidth
+        probe.remove()
+        return width
+      })
       // The placeholder: surface-inset fill and the 1.5px dashed spine-unread-outline border, filling the box.
       const placeholder = expect.objectContaining({
         background: SURFACE_INSET,
         borderStyle: 'dashed',
-        borderWidth: '1.5px',
+        borderWidth: onePointFive,
         borderColor: SPINE_UNREAD_OUTLINE,
       })
 
@@ -395,7 +441,7 @@ test.describe('Story 8.1 See my catalog as covers (ATDD)', () => {
     }
   })
 
-  test.skip('[P0] AC-6 Search, Sort and filters reorder and hide tiles, announce the count, and the empty states replace the grid', async ({
+  test('[P0] AC-6 Search, Sort and filters reorder and hide tiles, announce the count, and the empty states replace the grid', async ({
     page,
     seededServer,
   }) => {
@@ -448,7 +494,7 @@ test.describe('Story 8.1 See my catalog as covers (ATDD)', () => {
     await expect(tiles(page)).toHaveCount(0)
   })
 
-  test.skip('[P1] AC-7 a Book added in Tiles is cleared into view, scrolled to, focused and ringed around its cover box', async ({
+  test('[P1] AC-7 a Book added in Tiles is cleared into view, scrolled to, focused and ringed around its cover box', async ({
     page,
     seededServer,
   }) => {
@@ -474,13 +520,16 @@ test.describe('Story 8.1 See my catalog as covers (ATDD)', () => {
     await expect(added).toBeInViewport()
     await expect(page.getByRole('status')).toHaveText('Added Swing Time.')
     // The highlight ring goes around the cover box, not the whole tile.
-    const { box } = await coverBox(added)
-    await expect.poll(async () => (await ringRect(added, ACCENT)) !== null).toBe(true)
-    const ring = (await ringRect(added, ACCENT))!
-    expect(sameRect(ring, box)).toBe(true)
+    // Both read on each try: a smooth scroll can still be settling its last pixels.
+    await expect
+      .poll(async () => {
+        const ring = await ringRect(added, ACCENT)
+        return ring !== null && sameRect(ring, (await coverBox(added)).box)
+      })
+      .toBe(true)
   })
 
-  test.skip('[P1] AC-8 after a delete, Catalog comes back in Tiles with Search titles focused', async ({
+  test('[P1] AC-8 after a delete, Catalog comes back in Tiles with Search titles focused', async ({
     page,
     seededServer,
   }) => {
@@ -498,7 +547,7 @@ test.describe('Story 8.1 See my catalog as covers (ATDD)', () => {
     expect(await tileNames(page)).toEqual(['Dune by Frank Herbert, not read yet', AUSTERLITZ])
   })
 
-  test.skip('[P1] AC-9 each tile is one Tab stop in sort order, ringed around its cover box, and Enter opens Book detail', async ({
+  test('[P1] AC-9 each tile is one Tab stop in sort order, ringed around its cover box, and Enter opens Book detail', async ({
     page,
     seededServer,
   }) => {
@@ -526,7 +575,7 @@ test.describe('Story 8.1 See my catalog as covers (ATDD)', () => {
     await expect(page.getByRole('heading', { level: 1, name: 'Dune', exact: true })).toBeVisible()
   })
 
-  test.skip('[P1] AC-10 with 500 Books with 1200px covers, Tiles shows its first screen of covers in about 1 second, and scrolling shifts nothing', async ({
+  test('[P1] AC-10 with 500 Books with 1200px covers, Tiles shows its first screen of covers in about 1 second, and scrolling shifts nothing', async ({
     page,
   }, testInfo) => {
     test.setTimeout(240_000)

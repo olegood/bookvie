@@ -180,6 +180,8 @@
   --dialog-width: 440px;
   --side-panel-footer-height: 74px;
   --swatch-size: 16px;
+  --catalog-tile-cover-min-width: 140px;
+  --catalog-tile-reading-bar-slot: 11px;
 }
 
 :root[data-theme="dark"] {
