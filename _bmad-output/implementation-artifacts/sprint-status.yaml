@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-29-2026 17:21
-last_updated: 11-13-2026 17:42
+last_updated: 11-13-2026 17:48
 project: bookvie
 project_key: NOKEY
 tracking_system: file-system
@@ -672,7 +672,7 @@ action_items:
       `_bmad-output/implementation-artifacts/deferred-work.md`, `_bmad-output/implementation-artifacts/epic-8-context.md`.
       Due: now, before the plan is called complete."
     owner: "Winston (Architect), applied by Oleg"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-8-retro-2026-11-13.md"
   - id: "epic-8-retro-item-62-run-the-epic-8-trace-and-gate-against-tr"
     epic: 8

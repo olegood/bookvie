@@ -49,7 +49,7 @@ Add **Tiles**, a third Catalog view next to Bookcase and List: a grid of book co
   - Examples: "finished", "Main book, 64%", "finished, waiting for you, page 40".
 - **Remembered view:** `lib/catalogView` gains the `tiles` value under the `localStorage` key `bookvie.catalogView`, with reads and writes wrapped in try/catch. `components/ViewToggle` becomes three options.
 - **Covers:**
-  - Source: `/media/covers/<coverFile>` at the stored size (up to 1200px), served with immutable caching.
+  - Source: `/media/<coverFile>` (`coverFile` is the stored `covers/<name>`; `lib/bookDetail` `coverSrc`) at the stored size (up to 1200px), served with immutable caching.
   - Load with `loading="lazy"`, `decoding="async"` and empty `alt`.
   - **No thumbnails.** Thumbnails stay deferred unless the speed check fails. Adding them would amend the cover-storage and export/restore decisions (AD-12 and AD-14) and need a backfill migration.
 - **Code layout:**

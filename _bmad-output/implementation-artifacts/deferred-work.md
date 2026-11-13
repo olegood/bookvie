@@ -947,6 +947,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-8-1-see-my-catalog-as-covers.md`
   summary: Spine drift (AD-6, AD-15, Structural Seed, Capability map FR-25, Deferred → Cover thumbnails), reconciled before the next epic. The spine still calls the Tiles view planned and not built. It writes the cover URL as `/media/covers/<coverFile>`, although `coverFile` is the stored `covers/<name>` served at `/media/<coverFile>` (as in Home's and Book detail's views). It lists only Bookcase · List for `lib/catalogView` in the Seed, omits `pages/CatalogTiles`, and doesn't record that Epic 8's cover speed check passed (median 58 ms, zero layout shift). Low.
   evidence: ARCHITECTURE-SPINE.md lines 102, 382, 395-396 and 415; `backend/bookvie/views/models.py` `ShelfBook.cover_file`; `frontend/src/pages/CatalogTiles.tsx` (`coverSrc`); `frontend/src/lib/catalogView.ts` (spine check, build-auto review of Story 8.1).
+  resolved: Epic 8 retro item 61 (2026-11-13): AD-6's Tiles bullet is built and gives the cover as `/media/<coverFile>` with `coverFile` the stored `covers/<name>`; the Seed's `lib/` line names Bookcase · List · Tiles for `catalogView` and the `pages/` line names `CatalogTiles`; the FR-25 map row is built; Deferred → Cover thumbnails records the passed check (median 58 ms, zero layout shift). AD-15's Binds already named Tiles, and AD-12's `/media/covers/<file>` (a bare name) was already right.
 
 ## Deferred from: code review of spec-8-1-see-my-catalog-as-covers (2026-11-13)
 
@@ -957,18 +958,21 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-8-1-see-my-catalog-as-covers.md`
   summary: `epic-8-context.md`'s Covers line (and Story 8.1's Code Map) writes the cover URL as `/media/covers/<coverFile>`; `coverFile` is the stored `covers/<name>`, and `lib/bookDetail.ts` `coverSrc` builds `/media/<coverFile>`, which is right. Fix it with the Epic 8 spine reconciliation, next to AD-6's same wording (the spine drift entry above), so Stories 8.2 and 8.3 don't copy it. Low.
   evidence: `_bmad-output/implementation-artifacts/epic-8-context.md` (Covers, Source); `frontend/src/lib/bookDetail.ts:75` (Blind Hunter and Acceptance Auditor, code review of Story 8.1).
+  resolved: Epic 8 retro item 61 (2026-11-13): `epic-8-context.md`'s Covers line now reads `/media/<coverFile>`. Story 8.1's spec is a closed story record and stays as written; Stories 8.2 and 8.3 kept `coverSrc` and built no cover URL.
 
 ## Deferred from: build-auto review of spec-8-2-see-what-i-ve-read-and-what-i-m-reading-on-the-tiles (2026-11-13)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-8-2-see-what-i-ve-read-and-what-i-m-reading-on-the-tiles.md`
   summary: Spine drift (AD-6, Capability map FR-25), reconciled before the next epic. The spine still calls the Tiles view "Epic 8, planned" and the FR-25 row "not built", while Stories 8.1 and 8.2 have built the tiles, the finished ribbon and the reading bar. Low.
   evidence: ARCHITECTURE-SPINE.md AD-6 Tiles bullet and the FR-25 map row; `frontend/src/pages/CatalogTiles.tsx` (`Ribbon` from `finished`, `ReadingBar` from `percent` as is) (spine check, build-auto review of Story 8.2).
+  resolved: Epic 8 retro item 61 (2026-11-13): AD-6 no longer calls the Tiles view planned, and the FR-25 map row is built and names `pages/CatalogTiles` (ribbon, reading bar).
 
 ## Deferred from: build-auto review of spec-8-3-give-books-without-a-cover-a-typeset-cover (2026-11-13)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-8-3-give-books-without-a-cover-a-typeset-cover.md`
   summary: Spine drift (AD-6), reconciled before the next epic. AD-6's Tiles bullet lists what a tile reads from the catalog view (packing, the ribbon from `finished`, the bar from `percent`, the name, the cover URL) and says nothing of Story 8.3's typeset cover, its read = `finished` rule, or the failed-cover fallback. The code follows AD-6 (client presentation only). Low.
   evidence: ARCHITECTURE-SPINE.md AD-6 Tiles bullet; `frontend/src/pages/CatalogTiles.tsx` `TypesetCover` (reads `finished`, `spineColor`, `title`, `firstAuthor` as is) (spine check, build-auto review of Story 8.3).
+  resolved: Epic 8 retro item 61 (2026-11-13): AD-6's Tiles bullet adds the typeset cover (read = `finished`: the exact `spineColor` with a plate; unread: `spine-unread-*`, no plate), the failed-cover fallback, and that it applies in Tiles only.
 
 ## Deferred from: code review of spec-8-3-give-books-without-a-cover-a-typeset-cover (2026-11-13)
 
