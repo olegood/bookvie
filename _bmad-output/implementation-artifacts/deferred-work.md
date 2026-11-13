@@ -916,12 +916,14 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-dialogs-wait-for-a-fresh-home-view.md`
   summary: Spine drift (AD-7, AD-19), reconciled before the next epic: AD-7's "Dialogs read fresh views" bullet says only the `book` view is fetched after a dialog opens, and its known gap, like the Deferred section's "Stale confirmation guard" trigger, still says the Start and Pause dialogs read the cached home view. The code now waits for a fresh home view in the Start dialog and fetches one on Pause's press. Low.
   evidence: `frontend/src/api/views.ts` (`useFreshHomeView`, `useFetchFreshHomeView`); `frontend/src/components/StartDialog.tsx`; `frontend/src/lib/usePauseFlow.tsx` (`decide`); Spine Check, build-auto review of this spec.
+  resolved: spine reconciled before Epic 8 (2026-11-13): AD-7 "Dialogs read fresh views" records the Start dialog's fresh home view and Pause's fetch on press, and Deferred → Stale confirmation guard's trigger now names only a change between that fetch and the intent.
 
 ## Deferred from: build-auto review of spec-last-page-finish-opens-for-the-saved-book (2026-11-12)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-last-page-finish-opens-for-the-saved-book.md`
   summary: Spine drift (AD-7, AD-19), reconciled before the next epic: AD-7's "Last-page start" bullet records item 36's rule for the start hand-off, but nothing records the page-field save's rule. Home now opens the Finish dialog for the saved Book only when the view rendered after the save still shows it as Main, with no at-last-page check, so a failed refetch still opens it. AD-19's Finishing bullet still says "The client then opens the Finish dialog for that Book (AD-7)" with no condition. Low.
   evidence: `frontend/src/pages/HomePage.tsx` (`lastPageSave`, `openFinish`); `frontend/src/components/PageField.tsx` (`onReachedLastPage(bookId, savedLine)`); Spine Check, build-auto review of this spec.
+  resolved: spine reconciled before Epic 8 (2026-11-13): AD-7 "Last-page start" records the page-field save's rule (still Main in the rendered view, no at-last-page check, no other-dialog guard), and AD-19's Finishing bullet points to it.
 - source_spec: `_bmad-output/implementation-artifacts/spec-last-page-finish-opens-for-the-saved-book.md`
   summary: The page field's last-page Finish has no other-dialog guard. If a Start or Pause dialog is opened while the save is in flight, the Finish dialog opens on top of it, and Home renders both. This predates the change, since the old `openFinish` also set `finishing` unconditionally. Item 36's start path drops its hand-off in that case. Low; found by reading, not reproduced.
   evidence: `frontend/src/pages/HomePage.tsx`: the item-36 block checks `otherDialog`, and the `lastPageSave` block does not.
@@ -931,6 +933,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-spine-names-tell-editions-apart.md`
   summary: Spine drift (AD-6), reconciled before the next epic: AD-6's list of client presentation rules doesn't name `lib/catalog` `spineNames` (twin spine names over every Book, so Catalog and Home agree whatever the search, filter or slice), and the FR-4 row of the Capability → Architecture Map doesn't list `ShelfBook.edition` next to `type`, `language` and `tags`.
   evidence: Spine check of the build-auto review (2026-11-12); `ARCHITECTURE-SPINE.md` is unedited by the change; `frontend/src/pages/Bookcase.tsx` `spineNames(books)`, `backend/bookvie/views/models.py` `ShelfBook.edition`.
+  resolved: spine reconciled before Epic 8 (2026-11-13): AD-6's client presentation names `spineName`/`spineNames` over every Book (bookcase, Home's slice and the Tiles view share names), and the FR-4 map row lists `ShelfBook.edition`.
 - source_spec: `_bmad-output/implementation-artifacts/spec-spine-names-tell-editions-apart.md`
   summary: The finish line and status ("Finished Dune."), the Spine popover heading and the Start dialog name a Book by title only, so two editions still sound alike there, although their spines are now told apart. Low.
   evidence: `frontend/src/lib/catalog.ts` `finishLine` and `finishStatus` take only the title; pre-existing, outside the spine-name fix.
