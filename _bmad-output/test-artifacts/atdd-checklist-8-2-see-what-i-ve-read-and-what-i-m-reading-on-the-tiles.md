@@ -99,16 +99,16 @@ No leaf failed in setup. The seed, the two cover files and the route ran cleanly
 
 ## Green-phase follow-ups (secondary branches, not red leaves)
 
-- [ ] **E2E, AC-1 ribbon after a cover change:** editing a finished Book's cover to a different shape moves the ribbon with the visible cover.
+- [x] **E2E, AC-1 ribbon after a cover change:** editing a finished Book's cover to a different shape moves the ribbon with the visible cover. (done: frontend/e2e/catalog-tile-marks-automate.spec.ts:148)
 - [x] **E2E, AC-1 cover that fails to load:** a finished Book with a broken cover file gets the ribbon at the placeholder's top (8.1's Kindred-style broken file).
-- [ ] **E2E, AC-1 notch depth and width:** sample 16×24 and the 6px notch more finely (left leg, notch apex at `top + 18`).
-- [ ] **E2E, AC-2 the bar follows a page update:** after Update page on Home, the Catalog tile's bar grows (view refetch), with no recompute in the client.
+- [x] **E2E, AC-1 notch depth and width:** sample 16×24 and the 6px notch more finely (left leg, notch apex at `top + 18`). (done: frontend/e2e/catalog-tile-marks-automate.spec.ts:203; the ribbon's top and the apex's upper side since the code review, catalog-tile-marks.spec.ts AC-1)
+- [x] **E2E, AC-2 the bar follows a page update:** after Update page on Home, the Catalog tile's bar grows (view refetch), with no recompute in the client. (done: frontend/e2e/catalog-tile-marks-automate.spec.ts:243)
 - [x] **E2E, AC-2 the boundaries:** `percent: 0` shows a full track and no fill. `percent: 100` (re-read at the last page, unfinished) shows a full fill.
-- [ ] **E2E, AC-2 an Up next Book paused at a page:** "Up next, paused at page N" also shows its bar (unfinished Reading).
-- [ ] **E2E, AC-3 a Main re-read:** "finished, re-reading, 12%" shows both marks, as the paused re-read does.
-- [ ] **E2E, AC-4 Up next, never started, and Side read without a Reading:** no mark (EXPERIENCE.md → Status marks: those states are only in the name).
-- [ ] **E2E, AC-5 axe on Tiles** in both themes with marks on screen (extend `catalog-pace-calculator.spec.ts`'s Tiles pass).
-- [ ] **E2E, AC-6/AC-7 the highlight and focus rings** still sit around the box with the ribbon on it, and the ribbon isn't clipped by the ring.
+- [x] **E2E, AC-2 an Up next Book paused at a page:** "Up next, paused at page N" also shows its bar (unfinished Reading). (done: frontend/e2e/catalog-tile-marks-automate.spec.ts:268)
+- [x] **E2E, AC-3 a Main re-read:** "finished, re-reading, 12%" shows both marks, as the paused re-read does. (done: frontend/e2e/catalog-tile-marks-automate.spec.ts:284)
+- [x] **E2E, AC-4 Up next, never started, and Side read without a Reading:** no mark (EXPERIENCE.md → Status marks: those states are only in the name). (done: frontend/e2e/catalog-tile-marks-automate.spec.ts:306)
+- [x] **E2E, AC-5 axe on Tiles** in both themes with marks on screen (extend `catalog-pace-calculator.spec.ts`'s Tiles pass). (done: frontend/e2e/catalog-pace-calculator.spec.ts:266, whose Flow 5 seed already shows a finished Book's ribbon (Fahrenheit 451) and two bars, in both themes; no new leaf)
+- [x] **E2E, AC-6/AC-7 the highlight and focus rings** still sit around the box with the ribbon on it, and the ribbon isn't clipped by the ring. (done: frontend/e2e/catalog-tile-marks-automate.spec.ts:348)
 - [x] **Tokens:** `components.catalog-tile.ribbon-*` and `reading-bar-*` copied into `tokens.css` by hand. No test matches them: `app-shell.spec.ts` compares only DESIGN.md's primitives (colors, typography, rounded, spacing). The AC-1 leaf pins the ribbon's top and its depth to the notch's apex by pixels instead (code review of Story 8.2).
 
 ## TDD Red Phase
