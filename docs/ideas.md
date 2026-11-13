@@ -10,7 +10,7 @@ How to use it:
 
 ## Tiles view in the catalog
 
-**Status:** new
+**Status:** planned (Epic 8, see [the plan](../_bmad-output/planning-artifacts/catalog-tiles-plan-2026-11-13.md))
 
 Add a grid view to catalog mode: a tile per book with its cover and title, as an alternative to the current list.
 
