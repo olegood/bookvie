@@ -109,17 +109,17 @@ These assert the 8.1/8.2 placeholder or the link's text, and will go red once th
 ## Green-phase follow-ups (secondary branches, not red leaves)
 
 - [ ] **E2E, AC-1 a light spine color** (for example the pale yellow `#F2D35B`): the plate and edge keep the text legible, and the edge still shows against the page.
-- [ ] **E2E, AC-1 a Book with no author:** only the title on the plate.
+- [x] **E2E, AC-1 a Book with no author:** only the title on the plate. The store refuses a Book without authors (`invariants.py:88`), so the leaf `[P3] AC-1 a view with an empty first author puts only the title on the plate` (automate describe in `catalog-typeset-covers.spec.ts`) forces `firstAuthor: ''` into the catalog view with `page.route`. It was red against a build that rendered an empty author line.
 - [ ] **E2E, AC-1/AC-2 user text spacing or a 200% zoom:** the plate grows and the text stays inside it, within the box.
 - [ ] **E2E, AC-1 the color changes from Book detail** (Change color): back on Tiles, the typeset fill follows.
 - [ ] **E2E, AC-1/AC-2 finishing a Book** moves its tile from the unread to the read typeset cover after the view refetch.
 - [ ] **E2E, AC-3 a cover request that fails at the network** (`route.abort()`), not only a file that isn't an image.
-- [ ] **E2E, AC-3 the loading state:** while a cover is loading the box is the flat loading fill (8.1), not a typeset cover, and the box doesn't move when it loads or fails.
+- [x] **E2E, AC-3 the loading state** (added in the build, `catalog-typeset-covers.spec.ts` automate describe, red-then-green against a build that typesets while loading): while a cover is loading the box is the flat loading fill (8.1), not a typeset cover, and the box doesn't move when it loads or fails.
 - [ ] **E2E, AC-3 removing a cover** from Book detail turns the tile into its typeset cover.
 - [ ] **E2E, AC-4 axe on Tiles** in both themes with typeset covers on screen (extend `catalog-pace-calculator.spec.ts`'s Tiles pass). Contrast: `spine-label` on the plate and `spine-unread-text` on `spine-unread-fill` are DESIGN.md's checked pairs.
 - [ ] **E2E, AC-4 the highlight and focus rings** around a typeset box (after an add with no cover).
 - [ ] **E2E, AC-5 the empty Main book card's suggestion thumbnail** keeps the placeholder too.
-- [ ] **Tokens:** `components.catalog-tile.typeset-*` copied into `tokens.css` by hand (not compared by `app-shell.spec.ts`).
+- [x] **Tokens:** `components.catalog-tile.typeset-*` copied into `tokens.css` by hand (not compared by `app-shell.spec.ts`).
 
 ## TDD Red Phase
 
@@ -147,32 +147,47 @@ These assert the 8.1/8.2 placeholder or the link's text, and will go red once th
 Activate one leaf at a time: change `test.skip(` to `test(`, watch it fail, implement, watch it pass. Run `npm run build` first, then `cd frontend && TZ=Europe/Madrid npx playwright test e2e/catalog-typeset-covers.spec.ts`.
 
 ### Tokens
-- [ ] Copy `components.catalog-tile`'s `typeset-*` tokens into `tokens.css` (DESIGN.md 378–387).
+- [x] Copy `components.catalog-tile`'s `typeset-*` tokens into `tokens.css` (DESIGN.md 378–387).
 
 ### The read typeset cover (AC-1)
-- [ ] In `CatalogTiles.tsx`, replace `<Cover … size="fill" />` with a typeset cover when `coverFile` is null or the cover failed: the spine color fill, a 1px `spine-edge` border, 4px corners, a `spine-label-strip` plate 10px from the sides and 34px from the top, the title (`book-title-sm` 400, clamped at 4 lines) and `firstAuthor` (`meta`, one line, ellipsis), both in `spine-label`. Keep it inside the `aria-hidden` box, with the ribbon drawn over it.
-- [ ] Activate AC-1.
+- [x] In `CatalogTiles.tsx`, replace `<Cover … size="fill" />` with a typeset cover when `coverFile` is null or the cover failed: the spine color fill, a 1px `spine-edge` border, 4px corners, a `spine-label-strip` plate 10px from the sides and 34px from the top, the title (`book-title-sm` 400, clamped at 4 lines) and `firstAuthor` (`meta`, one line, ellipsis), both in `spine-label`. Keep it inside the `aria-hidden` box, with the ribbon drawn over it.
+- [x] Activate AC-1.
 
 ### The unread typeset cover and failures (AC-2, AC-3)
-- [ ] When `!book.finished`: `spine-unread-fill`, a 1.5px solid `spine-unread-outline` border, the text in `spine-unread-text`, no plate.
-- [ ] The failed-cover path (`state === 'failed'`) uses the same component.
-- [ ] Activate AC-2 and AC-3.
+- [x] When `!book.finished`: `spine-unread-fill`, a 1.5px solid `spine-unread-outline` border, the text in `spine-unread-text`, no plate.
+- [x] The failed-cover path (`state === 'failed'`) uses the same component.
+- [x] Activate AC-2 and AC-3.
 
 ### Dark and forced colors (AC-4)
-- [ ] Dark: nothing to do if the colors come from tokens.
-- [ ] `@media (forced-colors: active)`: the typeset box gets a `Canvas` background, a `CanvasText` border and `CanvasText` text.
-- [ ] Activate AC-4.
+- [x] Dark: nothing to do if the colors come from tokens.
+- [x] `@media (forced-colors: active)`: the typeset box gets a `Canvas` background, a `CanvasText` border and `CanvasText` text.
+- [x] Activate AC-4.
 
 ### Tiles only (AC-5)
-- [ ] Leave `Cover.tsx`'s placeholder for the Main book card, Up next and Book detail. If `size="fill"` is no longer used, remove it.
-- [ ] Activate AC-5.
+- [x] Leave `Cover.tsx`'s placeholder for the Main book card, Up next and Book detail. If `size="fill"` is no longer used, remove it.
+- [x] Activate AC-5.
 
 ### Superseded leaves
-- [ ] Update the 8.1/8.2 leaves listed under "Existing leaves this story changes".
+- [x] Update the 8.1/8.2 leaves listed under "Existing leaves this story changes".
+
+## Green Phase
+
+- **All 5 ATDD leaves on and green**, unchanged, plus 2 automate leaves in a second `describe` of the same file: the loading state, and an empty first author forced into the view with `page.route`. 7 passed.
+- **The unread 1.5px outline:** Chromium floors border widths to whole CSS pixels, even at device scale 2 (`border: 1.5px` computes to `1px`), so AC-2/AC-4's 3-device-pixel outline failed with a plain border. The unread cover draws it as the 1px border plus a 0.5px inset `box-shadow` in the same color. Under forced colors the shadow drops and the 1px `CanvasText` border stays. The plate offset subtracts the 1px border for both covers.
+- **Superseded leaves changed** (assert the old placeholder or the link's text; the typeset text in the `aria-hidden` box now duplicates the caption):
+  - `catalog-tiles.spec.ts` AC-5: rewritten to the typeset cover (no `img`, box at a covered tile's size, the title in the box), same priority, renamed "typeset cover".
+  - `catalog-tile-marks.spec.ts` AC-2: the caption title is the second-to-last leaf text element.
+  - `catalog-tile-marks.spec.ts` AC-5: Emma's link text is `'EmmaJane AustenEmmaJane Austen'` (typeset, then caption). The accessible-name checks are unchanged.
+  - **Not listed in the build spec, proven superseded by a run** (strict-mode duplicates, or the unread outline's inset shadow):
+    - `catalog-tiles.spec.ts` AC-3: Good Omens' author and Tufte's title take `.last()` (the caption's).
+    - `catalog-tiles-automate.spec.ts` AC-9: the caption clicks take `.last()`.
+    - `catalog-tiles-automate.spec.ts` AC-7: the "ring faded" check ignores inset shadows (the ring is never inset; Swing Time's unread typeset cover carries one).
+  - Comments that said "placeholder" for Tiles now say "typeset cover" (`catalog-tile-marks.spec.ts`, `catalog-tile-marks-automate.spec.ts`, `tile-marks.ts`). The ribbon-over-cover checks passed unchanged.
+- `Cover`'s `fill` size is removed; `main` and `thumb` are unchanged, and `cover.spec.ts`, `home.spec.ts`, `up-next.spec.ts` stay green.
 
 ## Completion
 
-- **Phase:** red. 5 skipped leaves in `frontend/e2e/catalog-typeset-covers.spec.ts`, each confirmed to fail at its first assertion against today's build.
+- **Phase:** green. The 5 leaves in `frontend/e2e/catalog-typeset-covers.spec.ts` (each confirmed red at its first assertion before the build) now pass, with 2 automate leaves beside them (the loading state, and the route-forced empty first author). 7 passed.
 - **Checklist:** this file. **Story key:** `8-3-give-books-without-a-cover-a-typeset-cover`. **Story:** `epics.md` Story 8.3.
 - **Assumption to confirm:** "read" = `finished` (Emma, Main and never finished, gets the unread typeset cover).
 - **Next:** `bmad-build-auto` for Story 8.3, then `bmad-code-review` in a new session, then `bmad-testarch-automate`.

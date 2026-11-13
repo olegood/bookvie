@@ -1,7 +1,7 @@
 // Story 8.1 See my catalog as covers: the third Catalog view, Tiles (FR-25,
 // UX-DR54, UX-DR55, UX-DR58). The toggle's three options and the remembered
 // choice, the grid and its tiles, covers loading without moving the grid,
-// the no-cover placeholder, search, sort and filters in Tiles, the add and
+// the typeset cover (Story 8.3) in place of a missing one, search, sort and filters in Tiles, the add and
 // delete hand-offs, the keyboard, and the 500-cover speed check (NFR7).
 // The catalog view's `coverFile` is pinned at API level
 // (backend/tests/test_bookcase_view.py), the stored choice in
@@ -28,7 +28,7 @@ import { COVER_PNG } from './intents.ts'
 const LINE = 'rgb(228, 223, 213)'
 const SURFACE_INSET = 'rgb(250, 249, 246)'
 const INK_SECONDARY = 'rgb(95, 99, 92)'
-const SPINE_UNREAD_OUTLINE = 'rgb(138, 130, 115)'
+const SPINE_UNREAD_TEXT = 'rgb(119, 113, 106)'
 
 const DUNE_COVER = 'covers/dune.png'
 // Not an image: the browser fails to decode it, so the tile falls back.
@@ -123,7 +123,7 @@ type Rect = { x: number; y: number; width: number; height: number }
 type BoxLook = {
   /** The cover box: the outermost element in the tile, as wide as its column, at 2:3. */
   box: Rect
-  /** Every element filling the box (the box itself, and an image or placeholder at its size). */
+  /** Every element filling the box (the box itself, and an image or typeset cover at its size). */
   fills: { tag: string; background: string; borderStyle: string; borderWidth: string; borderColor: string }[]
 }
 
@@ -267,13 +267,15 @@ test.describe('Story 8.1 See my catalog as covers (ATDD)', () => {
       await expect(title).toHaveCSS('font-weight', '600')
       // The first author only: "and 1 other" is in the name, not the caption.
       const omens = tile(page, GOOD_OMENS)
-      await expect(omens.getByText('Terry Pratchett', { exact: true })).toBeVisible()
+      // Good Omens has no cover, so its typeset cover writes the author first: the caption's is the last.
+      await expect(omens.getByText('Terry Pratchett', { exact: true }).last()).toBeVisible()
       await expect(omens).not.toContainText('Neil Gaiman')
-      const author = omens.getByText('Terry Pratchett', { exact: true })
+      const author = omens.getByText('Terry Pratchett', { exact: true }).last()
       await expect(author).toHaveCSS('font-size', '14px')
       await expect(author).toHaveCSS('color', INK_SECONDARY)
       // One line each, cut with an ellipsis.
-      const tufteTitle = tile(page, TUFTE_NAME).getByText(TUFTE, { exact: true })
+      // Tufte has no cover either: the caption's title is the last.
+      const tufteTitle = tile(page, TUFTE_NAME).getByText(TUFTE, { exact: true }).last()
       for (const line of [tufteTitle, author]) {
         await expect(line).toHaveCSS('white-space', 'nowrap')
         await expect(line).toHaveCSS('text-overflow', 'ellipsis')
@@ -404,38 +406,52 @@ test.describe('Story 8.1 See my catalog as covers (ATDD)', () => {
     }
   })
 
-  test('[P1] AC-5 a Book without a cover, or with a cover that fails to load, shows the no-cover placeholder at the box size', async ({
+  test('[P1] AC-5 a Book without a cover, or with a cover that fails to load, shows the typeset cover at the box size', async ({
     page,
   }) => {
     await storeTiles(page)
     const server = await startSeededServer(test.info(), 'tiles-no-cover', { books: TILE_SHELF }, TILE_FILES)
     try {
       await page.goto(`${server.url}/catalog`)
-      // Chromium snaps a border's computed width to device pixels, so read what 1.5px computes to here.
-      const onePointFive = await page.evaluate(() => {
-        const probe = document.createElement('div')
-        probe.style.border = '1.5px dashed'
-        document.body.append(probe)
-        const width = getComputedStyle(probe).borderTopWidth
-        probe.remove()
-        return width
-      })
-      // The placeholder: surface-inset fill and the 1.5px dashed spine-unread-outline border, filling the box.
-      const placeholder = expect.objectContaining({
-        background: SURFACE_INSET,
-        borderStyle: 'dashed',
-        borderWidth: onePointFive,
-        borderColor: SPINE_UNREAD_OUTLINE,
-      })
+      // Story 8.3 replaced the no-cover placeholder in Tiles with the typeset cover (its look is pinned in
+      // catalog-typeset-covers.spec.ts): here, the title is written in the box, with no image, at the box size.
+      const boxText = (link: Locator) =>
+        link.evaluate((element) => {
+          const width = (element.closest('li') ?? element).getBoundingClientRect().width
+          const box = Array.from(element.querySelectorAll('*')).find((node) => {
+            const r = node.getBoundingClientRect()
+            return Math.abs(r.width - width) <= 1 && Math.abs(r.height - r.width * 1.5) <= 1.5
+          })
+          return box?.textContent ?? ''
+        })
+      // The color of the title written in the box: spine-label on a read Book's plate, spine-unread-text on an unread one.
+      const titleColor = (link: Locator, title: string) =>
+        link.evaluate((element, title) => {
+          const width = (element.closest('li') ?? element).getBoundingClientRect().width
+          const box = Array.from(element.querySelectorAll('*')).find((node) => {
+            const r = node.getBoundingClientRect()
+            return Math.abs(r.width - width) <= 1 && Math.abs(r.height - r.width * 1.5) <= 1.5
+          })
+          const leaf = Array.from(box?.querySelectorAll('*') ?? []).find(
+            (node) => node.children.length === 0 && (node.textContent ?? '').trim() === title,
+          )
+          return leaf ? getComputedStyle(leaf).color : null
+        }, title)
 
-      await expect.poll(async () => (await coverBox(tile(page, DUNE_2))).fills).toContainEqual(placeholder)
+      await expect.poll(() => boxText(tile(page, DUNE_2))).toContain('Dune')
       await expect(tile(page, DUNE_2).locator('img')).toHaveCount(0)
-      // Kindred's file is there but isn't an image: once it fails, the same placeholder, and no broken image.
-      await expect.poll(async () => (await coverBox(tile(page, KINDRED))).fills).toContainEqual(placeholder)
+      // Dune 2 is unread: the unread typeset cover.
+      expect(await titleColor(tile(page, DUNE_2), 'Dune')).toBe(SPINE_UNREAD_TEXT)
+      // Kindred's file is there but isn't an image: once it fails, the typeset cover, and no broken image.
+      await expect.poll(() => boxText(tile(page, KINDRED))).toContain('Kindred')
       await expect(tile(page, KINDRED).locator('img:visible')).toHaveCount(0)
+      // Kindred is unread too.
+      expect(await titleColor(tile(page, KINDRED), 'Kindred')).toBe(SPINE_UNREAD_TEXT)
       // Same box as a covered tile's.
       const dune = await coverBox(tile(page, DUNE_1))
+      const dune2 = await coverBox(tile(page, DUNE_2))
       const kindred = await coverBox(tile(page, KINDRED))
+      expect([dune2.box.width, dune2.box.height]).toEqual([dune.box.width, dune.box.height])
       expect([kindred.box.width, kindred.box.height]).toEqual([dune.box.width, dune.box.height])
     } finally {
       await stopAndRemove(server)

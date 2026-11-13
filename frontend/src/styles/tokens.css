@@ -190,6 +190,9 @@
   --catalog-tile-ribbon-halo: 1.5px;
   --catalog-tile-reading-bar-height: 5px;
   --catalog-tile-reading-bar-gap: 6px;
+  --catalog-tile-typeset-plate-inset: 10px;
+  --catalog-tile-typeset-plate-top: 34px;
+  --catalog-tile-typeset-plate-radius: 2px;
 }
 
 :root[data-theme="dark"] {

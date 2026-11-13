@@ -125,6 +125,82 @@
   stroke-width: var(--hairline);
 }
 
+/*
+ * DESIGN.md → Catalog tile → Typeset cover: fills the box exactly. Read is
+ * the Book's spine color with a 1px `spine-edge` hairline; unread is an
+ * unread spine from the front, with DESIGN.md's 1.5px `typeset-unread-outline`
+ * (not `--text-field-border`, which means a field). Chromium floors border
+ * widths to whole CSS pixels, so that 1.5px is the 1px border plus a 0.5px
+ * inset shadow of the same color; under forced colors the shadow drops and
+ * the 1px border stays.
+ */
+.typeset {
+  --typeset-border: var(--hairline);
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  border: var(--typeset-border) solid;
+  border-radius: var(--radius-cover);
+  /* A large minimum font size or user text spacing never paints the plate over the bar and caption. */
+  overflow: hidden;
+}
+
+.typesetRead {
+  background: var(--typeset-color);
+  border-color: var(--color-spine-edge);
+  color: var(--color-spine-label);
+}
+
+.typesetUnread {
+  background: var(--color-spine-unread-fill);
+  border-color: var(--color-spine-unread-outline);
+  box-shadow: inset 0 0 0 calc(1.5px - var(--typeset-border)) var(--color-spine-unread-outline);
+  color: var(--color-spine-unread-text);
+}
+
+/*
+ * The plate: 10px in from the box's sides and 34px down from its top,
+ * measured from the box's outer edge, so the border comes off (absolute
+ * children sit inside it). Clear of the ribbon. Unread uses the same layout
+ * with no plate painted.
+ */
+.plate {
+  position: absolute;
+  top: calc(var(--catalog-tile-typeset-plate-top) - var(--typeset-border));
+  left: calc(var(--catalog-tile-typeset-plate-inset) - var(--typeset-border));
+  right: calc(var(--catalog-tile-typeset-plate-inset) - var(--typeset-border));
+  padding: var(--space-2);
+  border-radius: var(--catalog-tile-typeset-plate-radius);
+}
+
+.plateRead {
+  background: var(--color-spine-label-strip);
+}
+
+.typesetTitle {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  font-family: var(--font-book-title-sm-family);
+  font-size: var(--font-book-title-sm-size);
+  font-weight: var(--font-book-title-sm-weight);
+  line-height: var(--font-book-title-sm-line-height);
+}
+
+.typesetAuthor {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--font-meta-family);
+  font-size: var(--font-meta-size);
+  font-weight: var(--font-meta-weight);
+  line-height: var(--font-meta-line-height);
+}
+
 /* The reading bar's place, always there so captions line up across a row. */
 .slot {
   /* Keeps the bar's top margin from collapsing through the 11px slot. */
@@ -193,6 +269,16 @@
   .loading,
   .cover {
     border-color: CanvasText;
+  }
+
+  .typeset {
+    background: Canvas;
+    border-color: CanvasText;
+    color: CanvasText;
+  }
+
+  .plateRead {
+    background: Canvas;
   }
 
   .ribbon {

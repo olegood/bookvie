@@ -88,7 +88,7 @@ const MARK_SHELF = {
     },
     // Unread, no Reading: no mark.
     { id: bookId(4), title: 'Kindred', authors: ['Octavia E. Butler'], pages: 330, spineColorUser: PURPLE.hex },
-    // Finished, no cover: the ribbon hangs from the placeholder's top.
+    // Finished, no cover: the ribbon hangs from the typeset cover's top.
     {
       id: bookId(5),
       title: 'Good Omens',
@@ -168,7 +168,7 @@ test.describe("Story 8.2 See what I've read and what I'm reading on the tiles (A
       // Nothing written on it: the link holds only the caption's text.
       await expect(tileItem(page, BLEAK_HOUSE).getByRole('link')).toHaveText('Bleak HouseCharles Dickens')
 
-      // A finished Book without a cover: the ribbon hangs from the top of the box (the placeholder).
+      // A finished Book without a cover: the ribbon hangs from the top of the box (the typeset cover).
       const goodOmens = await lookOf(tileItem(page, GOOD_OMENS))
       expect(near(goodOmens.ribbonMiddle, OLIVE.rgb, 24)).toBe(true)
       expect(goodOmens.cover).toEqual(goodOmens.box)
@@ -225,9 +225,10 @@ test.describe("Story 8.2 See what I've read and what I'm reading on the tiles (A
         .evaluateAll((items) =>
           items.map((item) => {
             const link = item.querySelector('a')!
-            const title = Array.from(link.querySelectorAll('*')).find(
-              (node) => node.children.length === 0 && (node.textContent ?? '').trim() !== '',
-            )!
+            // The caption's title: the second-to-last leaf with text (a typeset cover's own text comes first).
+            const title = Array.from(link.querySelectorAll('*'))
+              .filter((node) => node.children.length === 0 && (node.textContent ?? '').trim() !== '')
+              .at(-2)!
             return Math.round(title.getBoundingClientRect().top)
           }),
         )
@@ -284,7 +285,7 @@ test.describe("Story 8.2 See what I've read and what I'm reading on the tiles (A
           [AUSTERLITZ]: { ribbon: false, bar: true },
         })
 
-      // Kindred's box and slot look as in Story 8.1: the placeholder, and an empty slot.
+      // Kindred's box and slot: no ribbon over its (unread) typeset cover, and an empty slot.
       const kindred = await lookOf(tileItem(page, KINDRED))
       expect(kindred.barRow.every((pixel) => near(pixel, kindred.page))).toBe(true)
     } finally {
@@ -344,7 +345,8 @@ test.describe("Story 8.2 See what I've read and what I'm reading on the tiles (A
       }
       // The marks add no text to the link.
       await expect(tileItem(page, DUNE).getByRole('link')).toHaveText('DuneFrank Herbert')
-      await expect(tileItem(page, EMMA).getByRole('link')).toHaveText('EmmaJane Austen')
+      // Emma has no cover: the text ends with the caption, after at most one copy from her aria-hidden typeset cover.
+      await expect(tileItem(page, EMMA).getByRole('link')).toHaveText(/^(?:EmmaJane Austen)?EmmaJane Austen$/)
     } finally {
       await stopAndRemove(server)
     }
@@ -536,7 +538,7 @@ test.describe("Story 8.2 See what I've read and what I'm reading on the tiles (s
       await storeTiles(page)
       await page.goto(`${server.url}/catalog`)
       const middlemarch = tileItem(page, MIDDLEMARCH)
-      // Once the file fails, the placeholder: no img left.
+      // Once the file fails, the typeset cover: no img left.
       await expect(middlemarch.locator('img')).toHaveCount(0)
 
       await expect.poll(async () => near((await lookOf(middlemarch)).ribbonMiddle, RED.rgb, 24)).toBe(true)

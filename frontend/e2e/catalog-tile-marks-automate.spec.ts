@@ -295,7 +295,7 @@ test.describe("Story 8.2 See what I've read and what I'm reading on the tiles (a
       const look = await lookOf(persuasion)
       // The re-read's percent: p.40 of 330 is 12%.
       expect(Math.abs(barPercent(look, LIGHT)! - 12)).toBeLessThanOrEqual(1.5)
-      // No cover: the ribbon hangs from the placeholder's top.
+      // No cover: the ribbon hangs from the typeset cover's top.
       expect(look.cover).toEqual(look.box)
       expect(near(look.ribbonTop, RED.rgb, 24)).toBe(true)
     } finally {

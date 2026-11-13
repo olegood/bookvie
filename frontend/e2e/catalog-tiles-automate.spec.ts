@@ -490,8 +490,17 @@ test.describe('Story 8.1 See my catalog as covers (automate)', () => {
       added.evaluate((element) =>
         [element, ...Array.from(element.querySelectorAll('*'))].map((node) => getComputedStyle(node).boxShadow),
       )
+    // The ring is never inset: an unread typeset cover's inset shadow is part of its 1.5px outline, not the ring.
     await expect
-      .poll(async () => (await shadows()).every((shadow) => shadow === 'none'), { timeout: FADE_MS + 3000 })
+      .poll(
+        async () =>
+          (await shadows()).every(
+            (shadow) => shadow === 'none' || shadow.split(/,(?![^(]*\))/).every((one) => one.includes('inset')),
+          ),
+        {
+          timeout: FADE_MS + 3000,
+        },
+      )
       .toBe(true)
     await expect(added).toBeFocused()
   })
@@ -513,13 +522,13 @@ test.describe('Story 8.1 See my catalog as covers (automate)', () => {
 
     await page.goBack()
     await expect(tiles(page)).toBeVisible()
-    // The caption: the title, then the author line.
-    await tile(page, EMMA).getByText('Emma', { exact: true }).click()
+    // The caption: the title, then the author line (the last of each, after the typeset cover's own text).
+    await tile(page, EMMA).getByText('Emma', { exact: true }).last().click()
     await expect(page).toHaveURL(`${server.url}/book/${bookId(1)}`)
     await expect(heading).toBeVisible()
 
     await page.goBack()
-    await tile(page, EMMA).getByText('Jane Austen', { exact: true }).click()
+    await tile(page, EMMA).getByText('Jane Austen', { exact: true }).last().click()
     await expect(page).toHaveURL(`${server.url}/book/${bookId(1)}`)
     await expect(heading).toBeVisible()
   })

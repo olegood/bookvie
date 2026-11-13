@@ -84,7 +84,7 @@ export type Rect = { x: number; y: number; width: number; height: number }
 export type TileLook = {
   /** The 2:3 cover box. */
   box: Rect
-  /** The visible cover: the loaded `img`'s rectangle, else the box (placeholder). */
+  /** The visible cover: the loaded `img`'s rectangle, else the box (typeset cover). */
   cover: Rect
   /** At the ribbon's middle, 9px below the visible cover's top. */
   ribbonMiddle: Rgb
@@ -93,7 +93,7 @@ export type TileLook = {
   /** On the ribbon's center line, 1px above and 1px below the visible cover's top: where the ribbon starts. */
   aboveRibbon: Rgb
   ribbonTop: Rgb
-  /** On the center line, 3px above the visible cover's top: where a focus or highlight ring runs over a placeholder. */
+  /** On the center line, 3px above the visible cover's top: where a focus or highlight ring runs over a typeset cover. */
   ringAbove: Rgb
   /** On the center line, 2px above the notch's apex (18px down): still the fill if the ribbon is 24px tall. */
   aboveApex: Rgb

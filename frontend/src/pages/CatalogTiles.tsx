@@ -1,7 +1,6 @@
 import { useCallback, useMemo, useState, type CSSProperties, type ReactNode, type RefObject } from 'react'
 import { Link } from 'react-router'
 import type { ShelfBook } from '../api/index.ts'
-import Cover from '../components/Cover.tsx'
 import { coverSrc } from '../lib/bookDetail.ts'
 import { spineNames, tilesName } from '../lib/catalog.ts'
 import styles from './CatalogTiles.module.css'
@@ -42,10 +41,44 @@ function Ribbon({ color }: { color: string }) {
   )
 }
 
+type TypesetCoverProps = {
+  title: string
+  /** The first author; an empty one leaves its line out. */
+  author: string
+  /** The catalog view's `finished`, as is: read or unread. */
+  finished: boolean
+  color: string
+}
+
+/**
+ * The typeset cover (DESIGN.md → Catalog tile → Typeset cover), for a Book
+ * without a cover or whose cover fails to load. Read: the Book's exact spine
+ * color, a `spine-edge` hairline, and a `spine-label-strip` plate holding the
+ * title and the first author, so no text sits straight on the color. Unread:
+ * an unread spine seen from the front, the same text in `spine-unread-text`
+ * with no plate. Inside the tile's `aria-hidden` box, so the link's name
+ * doesn't change.
+ */
+function TypesetCover({ title, author, finished, color }: TypesetCoverProps) {
+  const style: CSSProperties & Record<'--typeset-color', string> = { '--typeset-color': color }
+  return (
+    <div
+      className={`${styles.typeset} ${finished ? styles.typesetRead : styles.typesetUnread}`}
+      style={finished ? style : undefined}
+    >
+      <div className={finished ? `${styles.plate} ${styles.plateRead}` : styles.plate}>
+        <span className={styles.typesetTitle}>{title}</span>
+        {author !== '' && <span className={styles.typesetAuthor}>{author}</span>}
+      </div>
+    </div>
+  )
+}
+
 type TileCoverProps = {
   coverFile: string | null
   title: string
-  /** The catalog view's `finished`, as is: draws the ribbon. */
+  firstAuthor: string
+  /** The catalog view's `finished`, as is: draws the ribbon and picks the typeset cover. */
   finished: boolean
   spineColor: string
 }
@@ -53,14 +86,14 @@ type TileCoverProps = {
 /**
  * The cover inside a tile's box: the stored cover, shown whole at the bottom
  * of the box once it loads (flat `surface-inset` with a hairline until then),
- * or the no-cover placeholder without a cover or when the file isn't an
- * image. Keyed by `coverFile`, so a new cover starts loading again.
+ * or the typeset cover without a cover or when the file isn't an image.
+ * Keyed by `coverFile`, so a new cover starts loading again.
  *
  * A finished Book's ribbon hangs from the visible cover's top: the frame that
- * hugs the loaded `img`, or the box for the placeholder. No ribbon while the
- * cover is loading, since there's no visible cover yet.
+ * hugs the loaded `img`, or the box over the typeset cover. No ribbon while
+ * the cover is loading, since there's no visible cover yet.
  */
-function TileCover({ coverFile, title, finished, spineColor }: TileCoverProps) {
+function TileCover({ coverFile, title, firstAuthor, finished, spineColor }: TileCoverProps) {
   const [state, setState] = useState<CoverState>('loading')
   // A cached cover can finish before React listens for `load`.
   const imageRef = useCallback((img: HTMLImageElement | null) => {
@@ -69,7 +102,7 @@ function TileCover({ coverFile, title, finished, spineColor }: TileCoverProps) {
   if (coverFile === null || state === 'failed') {
     return (
       <div className={styles.box} aria-hidden="true">
-        <Cover coverFile={null} title={title} size="fill" />
+        <TypesetCover title={title} author={firstAuthor} finished={finished} color={spineColor} />
         {finished && <Ribbon color={spineColor} />}
       </div>
     )
@@ -114,7 +147,8 @@ function ReadingBar({ percent }: { percent: number }) {
  * like its spine. Tiles of Books that Search titles or the filter chips leave
  * out are `hidden`, and the grid closes up. A finished Book carries a ribbon
  * and a Book with a `percent` a reading bar; both are `aria-hidden`, since
- * the link's name already says the status.
+ * the link's name already says the status. A Book without a cover, or whose
+ * cover fails to load, gets a typeset cover instead.
  */
 export default function CatalogTiles({ books, shown, noMatch, highlightId, focusTargets }: Props) {
   // Named over every Book, shown or not, so a twin's name never changes with a search or a filter.
@@ -142,6 +176,7 @@ export default function CatalogTiles({ books, shown, noMatch, highlightId, focus
                 key={book.coverFile ?? ''}
                 coverFile={book.coverFile}
                 title={book.title}
+                firstAuthor={book.firstAuthor}
                 finished={book.finished}
                 spineColor={book.spineColor}
               />

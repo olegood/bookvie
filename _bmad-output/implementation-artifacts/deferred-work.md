@@ -963,3 +963,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-8-2-see-what-i-ve-read-and-what-i-m-reading-on-the-tiles.md`
   summary: Spine drift (AD-6, Capability map FR-25), reconciled before the next epic. The spine still calls the Tiles view "Epic 8, planned" and the FR-25 row "not built", while Stories 8.1 and 8.2 have built the tiles, the finished ribbon and the reading bar. Low.
   evidence: ARCHITECTURE-SPINE.md AD-6 Tiles bullet and the FR-25 map row; `frontend/src/pages/CatalogTiles.tsx` (`Ribbon` from `finished`, `ReadingBar` from `percent` as is) (spine check, build-auto review of Story 8.2).
+
+## Deferred from: build-auto review of spec-8-3-give-books-without-a-cover-a-typeset-cover (2026-11-13)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-8-3-give-books-without-a-cover-a-typeset-cover.md`
+  summary: Spine drift (AD-6), reconciled before the next epic. AD-6's Tiles bullet lists what a tile reads from the catalog view (packing, the ribbon from `finished`, the bar from `percent`, the name, the cover URL) and says nothing of Story 8.3's typeset cover, its read = `finished` rule, or the failed-cover fallback. The code follows AD-6 (client presentation only). Low.
+  evidence: ARCHITECTURE-SPINE.md AD-6 Tiles bullet; `frontend/src/pages/CatalogTiles.tsx` `TypesetCover` (reads `finished`, `spineColor`, `title`, `firstAuthor` as is) (spine check, build-auto review of Story 8.3).

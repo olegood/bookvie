@@ -376,7 +376,7 @@ test.describe('Story 8.3 Give books without a cover a typeset cover (ATDD)', () 
     await page.setViewportSize({ width: 1280, height: 900 })
   })
 
-  test.skip('[P0] AC-1 a read Book without a cover gets its spine color with a paper plate holding the title and the first author, clear of the ribbon', async ({
+  test('[P0] AC-1 a read Book without a cover gets its spine color with a paper plate holding the title and the first author, clear of the ribbon', async ({
     page,
   }, testInfo) => {
     const server = await typesetServer(page, testInfo)
@@ -438,7 +438,7 @@ test.describe('Story 8.3 Give books without a cover a typeset cover (ATDD)', () 
     }
   })
 
-  test.skip('[P1] AC-2 an unread Book without a cover gets the unread typeset cover: unread fill, solid outline, unread text, no plate', async ({
+  test('[P1] AC-2 an unread Book without a cover gets the unread typeset cover: unread fill, solid outline, unread text, no plate', async ({
     page,
   }, testInfo) => {
     const server = await typesetServer(page, testInfo)
@@ -479,7 +479,7 @@ test.describe('Story 8.3 Give books without a cover a typeset cover (ATDD)', () 
     }
   })
 
-  test.skip('[P1] AC-3 a cover image that fails to load is replaced by the typeset cover for its read state', async ({
+  test('[P1] AC-3 a cover image that fails to load is replaced by the typeset cover for its read state', async ({
     page,
   }, testInfo) => {
     const server = await typesetServer(page, testInfo)
@@ -518,7 +518,7 @@ test.describe('Story 8.3 Give books without a cover a typeset cover (ATDD)', () 
     }
   })
 
-  test.skip('[P2] AC-4 in the dark theme the read fill and plate stay while spine-edge and the unread colors take their dark twins; under forced colors the typeset cover is Canvas and CanvasText', async ({
+  test('[P2] AC-4 in the dark theme the read fill and plate stay while spine-edge and the unread colors take their dark twins; under forced colors the typeset cover is Canvas and CanvasText', async ({
     page,
   }, testInfo) => {
     const server = await typesetServer(page, testInfo)
@@ -565,7 +565,7 @@ test.describe('Story 8.3 Give books without a cover a typeset cover (ATDD)', () 
     }
   })
 
-  test.skip('[P1] AC-5 the Main book card, the Up next thumbnail and Book detail keep the no-cover placeholder; the typeset cover is for tiles only', async ({
+  test('[P1] AC-5 the Main book card, the Up next thumbnail and Book detail keep the no-cover placeholder; the typeset cover is for tiles only', async ({
     page,
   }, testInfo) => {
     const server = await typesetServer(page, testInfo)
@@ -595,6 +595,78 @@ test.describe('Story 8.3 Give books without a cover a typeset cover (ATDD)', () 
           detail: { width: 200, height: 300 },
           tile: 'typeset',
         })
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+})
+
+test.describe('Story 8.3 Give books without a cover a typeset cover (automate)', () => {
+  test.use({ deviceScaleFactor: 2 })
+
+  test.beforeEach(async ({ page }) => {
+    await page.emulateMedia({ colorScheme: 'light' })
+    await page.setViewportSize({ width: 1280, height: 900 })
+  })
+
+  test('[P2] AC-3 while a cover is loading its box is the flat loading fill, not a typeset cover, and the cover shows once it arrives', async ({
+    page,
+  }, testInfo) => {
+    // Hold Bleak House's cover back until the loading box has been read.
+    let release: () => void = () => {}
+    const held = new Promise<void>((resolve) => (release = resolve))
+    await page.route(`**/media/${WIDE_COVER}`, async (route) => {
+      await held
+      await route.continue()
+    })
+    const server = await typesetServer(page, testInfo)
+    try {
+      await storeTiles(page)
+      await page.goto(`${server.url}/catalog`)
+      const bleakHouse = tileItem(page, BLEAK_HOUSE)
+      await expect(bleakHouse.locator('img')).toHaveCount(1)
+
+      // Loading: the flat surface-inset box (#FAF9F6), with no typeset text and nothing painted inside.
+      const loading = await boxFacts(bleakHouse)
+      expect(loading.texts).toEqual([])
+      expect(loading.backgrounds).toEqual([])
+      expect(loading.visibleImg).toBe(false)
+      const [side] = await pixelsAt(bleakHouse, [[loading.box.x + 5, loading.box.y + loading.box.height * 0.85]])
+      expect(near(side!, [250, 249, 246], 1)).toBe(true)
+
+      // Loaded: the cover shows, still with no typeset text, in the same box.
+      release()
+      await expect.poll(async () => (await boxFacts(bleakHouse)).visibleImg).toBe(true)
+      const loaded = await boxFacts(bleakHouse)
+      expect(loaded.texts).toEqual([])
+      expect(loaded.box).toEqual(loading.box)
+    } finally {
+      release()
+      await stopAndRemove(server)
+    }
+  })
+
+  test('[P3] AC-1 a view with an empty first author puts only the title on the plate', async ({ page }, testInfo) => {
+    // The store refuses a Book without authors (invariants.py), so the view's '' fallback is forced here.
+    const server = await typesetServer(page, testInfo)
+    try {
+      await page.route('**/api/views/catalog', async (route) => {
+        const response = await route.fetch()
+        const view = await response.json()
+        for (const book of view.books) if (book.id === GOOD_OMENS_ID) book.firstAuthor = ''
+        await route.fulfill({ response, json: view })
+      })
+      await storeTiles(page)
+      await page.goto(`${server.url}/catalog`)
+      const goodOmens = page.getByRole('listitem').filter({ hasText: 'Good Omens' })
+
+      await expect.poll(async () => (await boxFacts(goodOmens)).texts.map((text) => text.text)).toEqual(['Good Omens'])
+      const look = await typesetOf(goodOmens, OLIVE.rgb)
+      expect(look.plate).not.toBeNull()
+      for (const text of look.texts) expect(inside(text.rect, look.plate!), text.text).toBe(true)
+      // No empty author line: the plate holds the title's lines and its padding only.
+      const [title] = look.texts as [TextLook]
+      expect(look.plate!.height).toBeLessThan(title.rect.height + 20)
     } finally {
       await stopAndRemove(server)
     }
