@@ -2,7 +2,7 @@
 title: bookvie PRD
 status: final
 created: 2026-10-28
-updated: 2026-10-29
+updated: 2026-11-13
 inputs:
   - _bmad-output/brainstorming/brainstorm-personal-library-tracker-2026-10-27/brainstorm-intent.md
   - _bmad-output/planning-artifacts/ux-designs/ux-bookvie-2026-10-28/prd-deltas.md
@@ -60,6 +60,7 @@ Anyone other than the single user.
 - **Purpose**: one sentence written when a Reading starts, answering "what do I need to be able to do with this knowledge?"
 - **Catch-up**: entering, on a later visit, the current page reached.
 - **Bookcase**: a row of Book spines. Unread Books are outlined; read Books show their spine color.
+- **Tiles**: a grid of Book covers, a third way to see the catalog next to the bookcase and the list (FR-25).
 - **Spine color**: a read Book's color on the bookcase. It's the user's choice, else derived from the cover, else taken from a curated palette.
 - **Quick pace calculator**: takes a pages/day value and shows an estimated finish date.
 - **Measured pace**: total pages read in finished Readings, counted from each Reading's starting page and, after a resume at another page, from that page (pages skipped on a resume don't count), divided by the total days from their start dates to their finish dates. Both the start and the finish day count, so a same-day start and finish is 1 day. Back-filled Readings are excluded.
@@ -104,7 +105,7 @@ When a new Book matches an existing one, bookvie warns before saving.
   - When editing a Book, the check runs only if the title, an author, or the ISBN changed.
 
 #### FR-4: Browse the catalog
-The user can list Books, search them by title, and open them.
+The user can list Books, search them by title, and open them. The catalog shows them as a bookcase (FR-24), a list, or tiles (FR-25).
 
 ### 4.2 Main book, Readings, and pausing *(Must, plus Should where marked)*
 Nothing starts automatically; the user always chooses. Realizes UJ-3.
@@ -233,8 +234,18 @@ The user can open a separate Card notes view that shows all Card notes, grouped 
 #### FR-20: Filter and sort
 The user can filter and sort the catalog.
 - **Consequences:**
-  - **Sort:** Author (default), Title, Date added, or Pages. The bookcase (FR-24) reorders its spines to match.
-  - **Filter chips:** Read / Unread, Type, Language, and Tag. Books that don't match are hidden and the bookcase closes up; they aren't dimmed.
+  - **Sort:** Author (default), Title, Date added, or Pages. The bookcase (FR-24) reorders its spines and the tiles (FR-25) reorder to match.
+  - **Filter chips:** Read / Unread, Type, Language, and Tag. Books that don't match are hidden and the bookcase or the tiles close up; they aren't dimmed.
+
+#### FR-25: Catalog tiles
+The user can see the catalog as tiles: one tile per Book with its cover, title, and author, so a Book can be found by its cover. Tiles is a third view next to the bookcase and the list.
+- **Consequences:**
+  - **View choice:** Bookcase (default), List, or Tiles. The last choice is remembered on this computer and isn't part of an export, like the theme and the sort.
+  - **Tile:** the cover keeps its own shape, and the covers in a row stand on a shared bottom line, like books on a shelf. Under each cover are the title and the first author, each on one line and cut short when too long.
+  - **Status:** a read Book carries a bookmark ribbon in its spine color. A Book with an unfinished Reading shows a progress bar for its current page. A re-read shows both. An unread Book has no mark. Status never depends on color alone, and each tile's accessible name includes it ("finished", or "reading, page N of M").
+  - **No cover:** a Book without a cover shows a typeset cover with its title and author: on its spine color if read, outlined if unread.
+  - Search by title (FR-4), sort, and filters (FR-20) apply to tiles as they do to the bookcase. Opening a tile opens the Book.
+  - **Speed:** with 500 Books that have covers, the first screen of tiles appears in about 1 second, and the grid doesn't jump while covers load.
 
 #### FR-21: Cover on the main screen
 The main screen shows the Main book's uploaded cover, or the placeholder.
@@ -273,7 +284,7 @@ Each item below is a one-line summary; the addendum has the full rules.
 - **Sequences:** Topic, Marathon, and Weekend sprint, plus pace and deadline calculations per Sequence.
 - **Donation and the Past shelf:** physical Books only, with the Book's history kept.
 - **Wishlist:** a separate list. Ownership stays owned or donated.
-- **Progress visuals:** beyond the MVP bookcase (FR-24): a cover that fills with color as you read, an outline for wishlisted Books, a dust layer on long-unread Books, and a re-read badge.
+- **Progress visuals:** beyond the MVP bookcase (FR-24) and the tiles' progress bar (FR-25): a cover that fills with color as you read, an outline for wishlisted Books, a dust layer on long-unread Books, and a re-read badge.
 - **Organizing extras:** smart shelves, author and publisher groups, and publisher series.
 - **Card note extras:** shuffling Card notes across scopes, and Card note export.
 - **Resuming:** review pages, resume with rewind, and a pause note.

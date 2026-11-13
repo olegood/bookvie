@@ -95,7 +95,7 @@ Entered by hand only, with quick chips (+15m, +30m, +1h). It's approximate and j
 A separate list, not an Ownership state. Buying a wishlisted book moves it into the catalog.
 
 ### Progress visuals
-The MVP bookcase of spines (FR-24) already shows outlined unread Books, full-color read Books, and the Main book's spine filled to its percentage. Later adds:
+The MVP bookcase of spines (FR-24) already shows outlined unread Books, full-color read Books, and the Main book's spine filled to its percentage. The catalog tiles (FR-25, 2026-11-13) show a progress bar under the cover of a Book being read and a spine-color ribbon on a read Book; the cover itself is shown as is. Later adds:
 - a cover that fills with color as you read
 - an outline for a wishlisted book
 - a dust layer on long-unread Books
