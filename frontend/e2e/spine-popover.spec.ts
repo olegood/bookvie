@@ -349,6 +349,9 @@ test.describe('Story 1.14 Change a book’s color from the shelf (follow-ups)', 
     await page.setViewportSize({ width: 1024, height: 900 })
     const server = await seededServer({ books: [DUNE, NEUROMANCER, ...shelfOf(60)] })
     await page.goto(`${server.url}/catalog`)
+    // Wait for the whole shelf before reading its boxes once: right after
+    // `goto` the read can run before the spines render and see none.
+    await expect(spines(page)).toHaveCount(62)
 
     // The first spine (top row, left edge), the last spine of the second row
     // (right edge), Dune (above) and the very last spine.
