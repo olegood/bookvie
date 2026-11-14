@@ -49,7 +49,7 @@ type FieldErrors = Partial<Record<FieldKey, string>>
  * Page). Any other failure shows its `alert` line inside the panel, above
  * the buttons, with both values kept. **Save note** is `aria-disabled` while
  * the request is out, and Esc is ignored then. Cancel and Esc send nothing.
- * Cmd+Enter or Ctrl+Enter in Note or Page (Story 9.1) submits the form
+ * In add and edit mode, Cmd+Enter or Ctrl+Enter in Note or Page (Story 9.1) submits the form
  * through `requestSubmit()`, so it takes exactly Save note's path, in-flight
  * guard included; Save note names both keys in `aria-keyshortcuts`.
  *

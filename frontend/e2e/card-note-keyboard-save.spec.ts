@@ -245,6 +245,11 @@ test.describe('Story 9.1 Save a card note with Cmd+Enter (ATDD)', () => {
     await expect(panel).toBeVisible()
     await expect(cancel).toBeFocused()
     expect(await submitsSoFar(page)).toBe(0)
+
+    await page.keyboard.press('Control+Enter')
+    await expect(panel).toBeVisible()
+    await expect(cancel).toBeFocused()
+    expect(await submitsSoFar(page)).toBe(0)
     expect(sent).toEqual([])
   })
 

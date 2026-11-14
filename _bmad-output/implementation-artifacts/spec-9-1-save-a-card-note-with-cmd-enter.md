@@ -3,7 +3,7 @@ title: 'Story 9.1: Save a card note with Cmd+Enter'
 type: 'feature'
 created: '2026-11-14'
 baseline_revision: '48370cf8f9b50274c5deb9a79f1b85d98f0b9359'
-status: 'in-review'
+status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -76,6 +76,31 @@ deferred: []
 - Given a save is out, when I press Cmd+Enter again, hold it, or press Save note, Cancel, Delete or Esc, then exactly one request is sent, the panel stays open until the result, and Save note and Delete stay focusable with `aria-disabled="true"` described "Saving the card note."
 - Given the panel renders in either mode, then Save note carries `aria-keyshortcuts="Meta+Enter Control+Enter"` and no visible text names a key.
 - Given Add another doesn't exist yet, when the Epic 5 card note e2e specs run, then they pass unchanged.
+
+### Review Findings
+
+Code review (`bmad-code-review`, new session, 2026-11-14) of `48370cf..7a70f01`; layers: Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor, Spine Check.
+
+- [x] [Review][Patch] The Cancel leaf's title names Cmd+Enter and Ctrl+Enter but presses only `Meta+Enter`, so Ctrl+Enter on a focused button is never exercised (Verification Gap + Edge Case Hunter + Blind Hunter + Acceptance Auditor) [frontend/e2e/card-note-keyboard-save.spec.ts:242]
+- [x] [Review][Patch] The doc comment's keyboard-save sentence sits in the add-mode paragraph and doesn't say it works in edit mode too (Blind Hunter) [frontend/src/components/CardNotePanel.tsx:52]
+- [x] [Review][Defer] A held Cmd+Enter auto-repeats after a 422 or couldn't-save returns and re-sends the request; in 9.1 only refused requests repeat, but Story 9.2's stay-open panel would save duplicates. The risk sat only in this spec's prose (Edge Case Hunter + Blind Hunter) [frontend/src/components/CardNotePanel.tsx:136] — deferred: for Story 9.2, which must guard repeats
+- [x] [Review][Defer] `epic-9-context.md` Test risks still tells 9.2 to press `ControlOrMeta+Enter`, which 9.1's ATDD rejected (one key per machine) (Blind Hunter) [_bmad-output/implementation-artifacts/epic-9-context.md:25] — deferred: the fix edits another story's context
+- [x] [Review][Defer] Spine drift (Capability → Architecture Map FR-17 to FR-19 row, Structural Seed `lib/`, AD-15): the spine already lists Add another and `lib/cardNoteAddAnother` as built (Spine Check) [ARCHITECTURE-SPINE.md:402] — deferred: pre-existing (`450510a`), spine drift, reconciled before the next epic
+
+- Full check after the patches (2026-11-14, this review session): `npm run check` exit 0 — pytest 1573 passed, unit 354 passed, e2e 673 passed, smoke ok.
+
+**Rejected:**
+- `low` The spec's Verification says "5 passed" while 7 leaves run (Edge Case Hunter + Blind Hunter + Acceptance Auditor) — the fix edits the spec under review.
+- `low` Design Notes says held-key repeats send nothing, which contradicts Residual risks (Edge Case Hunter + Blind Hunter) — the fix edits the spec under review; the real hazard is deferred above.
+- `low` Build triage rows say "the fix edits this spec" but the spec wasn't edited (Blind Hunter) — that row wording is the skill's reject reason, not a promise; the fix would edit the spec anyway.
+- `low` Tasks say "README.md -- no change" and "remove `test.skip(`" only, while the diff deletes the Status line and adds two leaves (Acceptance Auditor) — the fix edits the spec; both deviations are recorded in Code Map and Auto Run Result.
+- `low` The Code Map's line numbers are stale (Acceptance Auditor + Blind Hunter) — the fix edits the spec; the symbols still locate the code.
+- `false` The target guard is tested on Cancel only, not on Save note or Delete (Blind Hunter) — the handler returns for every non-field target, so buttons keep native behavior by design (spec Never: "No handling for keys on the panel's buttons"); the Cancel leaf already fails if the guard is deleted.
+- `low` The ATDD checklist isn't updated for the two added leaves and its follow-ups aren't done (Blind Hunter) — those are its "Green-phase follow-ups", owned by `bmad-testarch-automate`; stale line numbers there harm nothing.
+- `low` The README Status-line deletion is bundled into the story's `feat:` commit (Blind Hunter) — Oleg directed it during the build and it is already committed; rewriting history isn't worth it.
+- `false` The IME leaf doesn't prove the composing event reached the React handler (Blind Hunter) — the dispatched event bubbles from Note through the same form `onKeyDown` as a real key; without the `isComposing` check the handler calls `preventDefault()`, so `notPrevented` would be false and the leaf fails.
+- `low` Only two of the four key/field pairs are tested (Acceptance Auditor) — the handler is symmetric; the other pairs are listed as automate follow-ups in the ATDD checklist.
+- `false` The tests press `Meta+Enter` and `Control+Enter` by name instead of `ControlOrMeta+Enter` (Acceptance Auditor) — deliberate (ATDD Test Strategy): both keys are promised on every platform.
 
 ## Spec Change Log
 
