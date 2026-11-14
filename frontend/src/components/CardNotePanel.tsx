@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { useAddCardNote, useDeleteCardNote, useEditCardNote } from '../api/index.ts'
 import { announce, clearAnnouncements } from '../lib/announce.ts'
 import {
@@ -49,6 +49,9 @@ type FieldErrors = Partial<Record<FieldKey, string>>
  * Page). Any other failure shows its `alert` line inside the panel, above
  * the buttons, with both values kept. **Save note** is `aria-disabled` while
  * the request is out, and Esc is ignored then. Cancel and Esc send nothing.
+ * Cmd+Enter or Ctrl+Enter in Note or Page (Story 9.1) submits the form
+ * through `requestSubmit()`, so it takes exactly Save note's path, in-flight
+ * guard included; Save note names both keys in `aria-keyshortcuts`.
  *
  * Edit mode (`note`, Story 5.2): headed "Edit card note", Note and Page
  * prefilled from the note ("96" or "42–45"), Save note sends
@@ -129,6 +132,14 @@ export default function CardNotePanel({ bookId, initialPage = '', note, onCancel
     void save()
   }
 
+  // Cmd+Enter or Ctrl+Enter in Note or Page: the same submit as Save note.
+  const saveFromKeys = (event: KeyboardEvent<HTMLFormElement>) => {
+    if (event.key !== 'Enter' || !(event.metaKey || event.ctrlKey) || event.nativeEvent.isComposing) return
+    if (event.target !== noteField.current && event.target !== pageField.current) return
+    event.preventDefault()
+    event.currentTarget.requestSubmit()
+  }
+
   // The Delete card note Confirm dialog, stacked over the panel (edit mode).
   const [confirming, setConfirming] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -180,7 +191,7 @@ export default function CardNotePanel({ bookId, initialPage = '', note, onCancel
   return (
     <>
       <dialog ref={dialog} {...dialogProps} className={styles.panel} aria-labelledby={headingId}>
-        <form onSubmit={submit} noValidate>
+        <form onSubmit={submit} onKeyDown={saveFromKeys} noValidate>
           <h2 id={headingId} className={styles.heading}>
             {note ? 'Edit card note' : 'Card note'}
           </h2>
@@ -225,7 +236,12 @@ export default function CardNotePanel({ bookId, initialPage = '', note, onCancel
                 Delete
               </Button>
             )}
-            <Button type="submit" variant="primary" disabledReason={reason}>
+            <Button
+              type="submit"
+              variant="primary"
+              disabledReason={reason}
+              aria-keyshortcuts="Meta+Enter Control+Enter"
+            >
               Save note
             </Button>
             <Button onClick={dismiss}>Cancel</Button>

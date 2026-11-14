@@ -95,7 +95,7 @@ test.describe('Story 9.1 Save a card note with Cmd+Enter (ATDD)', () => {
     await page.emulateMedia({ colorScheme: 'light' })
   })
 
-  test.skip('[P0] AC-1 Cmd+Enter in Note and Ctrl+Enter in Page save exactly like Save note, in add and edit mode, through the form submit', async ({
+  test('[P0] AC-1 Cmd+Enter in Note and Ctrl+Enter in Page save exactly like Save note, in add and edit mode, through the form submit', async ({
     page,
     seededServer,
   }) => {
@@ -156,7 +156,7 @@ test.describe('Story 9.1 Save a card note with Cmd+Enter (ATDD)', () => {
     expect(spice).toMatchObject({ text: 'He who controls the spice.', pageStart: 97, pageEnd: 98 })
   })
 
-  test.skip('[P1] AC-2 plain Enter and Shift+Enter in Note make new lines and send nothing; Cmd+Enter then saves all three lines', async ({
+  test('[P1] AC-2 plain Enter and Shift+Enter in Note make new lines and send nothing; Cmd+Enter then saves all three lines', async ({
     page,
     seededServer,
   }) => {
@@ -183,7 +183,72 @@ test.describe('Story 9.1 Save a card note with Cmd+Enter (ATDD)', () => {
     expect(notes.map(({ text }) => text)).toEqual(['Line one\nLine two\nLine three'])
   })
 
-  test.skip("[P1] AC-3 Cmd+Enter with a refused field shows Save note's messages, aria-invalid, alert and focus; a couldn't-save keeps the panel open", async ({
+  test('[P2] I/O matrix: Cmd+Enter while an input method is composing sends nothing; the next Cmd+Enter saves', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer(mainAt(212))
+    await countSubmits(page)
+    const sent = requestsTo(page, ADD_CARD_NOTE)
+    await page.goto(`${server.url}/`)
+
+    await addCardNote(page).click()
+    const panel = cardNotePanel(page)
+    const note = panel.getByRole('textbox', { name: 'Note', exact: true })
+    await expect(note).toBeFocused()
+    await page.keyboard.type('Ice.')
+    // Playwright can't drive an IME, so the composing key press is dispatched.
+    const notPrevented = await note.evaluate((element) =>
+      element.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'Enter',
+          metaKey: true,
+          isComposing: true,
+          bubbles: true,
+          cancelable: true,
+        }),
+      ),
+    )
+
+    expect(notPrevented).toBe(true)
+    await expect(panel).toBeVisible()
+    expect(await submitsSoFar(page)).toBe(0)
+    await expect(note).toHaveValue('Ice.')
+
+    await page.keyboard.press('Meta+Enter')
+    await expect(page.getByRole('status')).toHaveText(SAVED)
+    await expect(panel).toBeHidden()
+    expect(await submitsSoFar(page)).toBe(1)
+    expect(sent.map((request) => intentOf(request).text)).toEqual(['Ice.'])
+  })
+
+  test('[P2] I/O matrix: Cmd+Enter or Ctrl+Enter with focus on Cancel sends nothing', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer(mainAt(212))
+    await countSubmits(page)
+    const sent = requestsTo(page, ADD_CARD_NOTE)
+    await page.goto(`${server.url}/`)
+
+    await addCardNote(page).click()
+    const panel = cardNotePanel(page)
+    const note = panel.getByRole('textbox', { name: 'Note', exact: true })
+    await expect(note).toBeFocused()
+    await page.keyboard.type('Ice.')
+    const cancel = panel.getByRole('button', { name: 'Cancel', exact: true })
+    await cancel.focus()
+    await expect(cancel).toBeFocused()
+    await page.keyboard.press('Meta+Enter')
+
+    // Chromium doesn't activate a focused button on Meta+Enter (probed): the panel stays open.
+    await expect(panel).toBeVisible()
+    await expect(cancel).toBeFocused()
+    expect(await submitsSoFar(page)).toBe(0)
+    expect(sent).toEqual([])
+  })
+
+  test("[P1] AC-3 Cmd+Enter with a refused field shows Save note's messages, aria-invalid, alert and focus; a couldn't-save keeps the panel open", async ({
     page,
     seededServer,
   }) => {
@@ -248,7 +313,7 @@ test.describe('Story 9.1 Save a card note with Cmd+Enter (ATDD)', () => {
     expect(libraryBytes(server)).toBe(before)
   })
 
-  test.skip('[P1] AC-4 while a save is out, a second Ctrl+Enter, a held Cmd+Enter, Save note, Cancel, Delete and Esc send nothing more and keep the panel open', async ({
+  test('[P1] AC-4 while a save is out, a second Ctrl+Enter, a held Cmd+Enter, Save note, Cancel, Delete and Esc send nothing more and keep the panel open', async ({
     page,
     seededServer,
   }) => {
@@ -309,7 +374,7 @@ test.describe('Story 9.1 Save a card note with Cmd+Enter (ATDD)', () => {
     expect(notes.find(({ id }) => id === SPICE_ID)).toMatchObject({ text: 'Once.', pageStart: 96 })
   })
 
-  test.skip('[P2] AC-5 Save note carries aria-keyshortcuts "Meta+Enter Control+Enter" in add and edit mode, with no on-screen hint', async ({
+  test('[P2] AC-5 Save note carries aria-keyshortcuts "Meta+Enter Control+Enter" in add and edit mode, with no on-screen hint', async ({
     page,
     seededServer,
   }) => {
