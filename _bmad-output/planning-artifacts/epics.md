@@ -10,13 +10,14 @@ inputDocuments:
   - _bmad-output/planning-artifacts/ux-designs/ux-bookvie-2026-10-28/prd-deltas.md
   - _bmad-output/test-artifacts/test-design/bookvie-handoff.md
   - _bmad-output/planning-artifacts/catalog-tiles-plan-2026-11-13.md
+  - _bmad-output/planning-artifacts/card-note-entry-plan-2026-11-14.md
 ---
 
 # bookvie - Epic Breakdown
 
 ## Overview
 
-This document breaks bookvie's PRD, UX design (DESIGN.md, EXPERIENCE.md) and architecture spine into eight epics of implementable stories. Each story names the requirement IDs it satisfies and lists Given/When/Then acceptance criteria.
+This document breaks bookvie's PRD, UX design (DESIGN.md, EXPERIENCE.md) and architecture spine into nine epics of implementable stories. Each story names the requirement IDs it satisfies and lists Given/When/Then acceptance criteria.
 
 **How to read it.** The Epic List gives the build order and what each epic delivers. Each epic section starts with its gate. Every story follows the conventions in "Conventions for every story", just before Epic 1. The Requirements Inventory is a lookup table; the source documents stay authoritative.
 
@@ -42,6 +43,7 @@ Gates are in each epic's section.
 | 6. Know how long and how much | Pace to finish for a Book or the whole unread library, and Stats for any period with monthly bars. | FR-15, FR-16 |
 | 7. Organize the catalog | Sort, and filter chips that close up the bookcase; Home's slice follows the sort. | FR-20 |
 | 8. See the catalog as covers | A third Catalog view, Tiles: a grid of covers in the current sort and filters, a spine-color ribbon on read Books, a progress bar on Books being read, and a typeset cover for Books without one; each tile opens its Book. | FR-25 |
+| 9. Add card notes faster | Save a card note with Cmd+Enter or Ctrl+Enter, and add several in a row with a remembered Add another that keeps the panel open, keeps the page and shows a running count. | FR-17 (keyboard save, Add another) |
 
 ## Requirements Inventory
 
@@ -77,7 +79,7 @@ FR-15 [Must]: Pace to finish date. On a Book or in the catalog, the user types a
 
 FR-16 [Must]: Stats for any period. The user chooses any date range and sees the number of Books finished and pages finished; UX presets This month, This year, Last year, All time, plus custom, with a bar per month. All of a Reading's pages count in the period it finished in; a finish counts by its local date; a back-filled Reading counts in the period of its Finished on date. "All time" starts at the earliest finished Reading. Re-reads count again; Side reads never count.
 
-FR-17 [Must]: Add Card notes to any Book. The user can add, edit and delete a Card note on any Book at any time. A Card note needs text and a page or page range (p.42 or pp.42–45), shown below the text. A page or range outside the Book's page count is refused.
+FR-17 [Must]: Add Card notes to any Book. The user can add, edit and delete a Card note on any Book at any time. A Card note needs text and a page or page range (p.42 or pp.42–45), shown below the text. A page or range outside the Book's page count is refused. A keyboard shortcut saves a note from its text. The user can add several notes in a row without closing the note form: after each save it stays open for the next note, keeping the page; whether it stays open is the user's choice, remembered on this computer and not exported. Leaving the form keeps every note already saved; only an unsaved note is dropped.
 
 FR-18 [Must]: Review a Book's Card notes as a pile, one at a time: page order or shuffled, next/previous, and jump straight to a particular Card note.
 
@@ -150,6 +152,7 @@ From ARCHITECTURE-SPINE.md and the TEA handoff. Each line names the source decis
 - AR24 (AD-6): The Tiles view is client presentation over the same sorted, filtered array as the bookcase and List. The ribbon reads the view's `finished`; the reading bar shows only when `percent` is not null and fills to `percent`, never recomputed; the tile's accessible name comes from the spine's name builder.
 - AR25 (AD-8, AD-12): `ShelfBook.coverFile` is added in the Python model first, then `api:gen`. Tiles load covers from `/media/covers/<coverFile>` at their stored size, lazily.
 - AR26 (AD-15, Deferred → Cover thumbnails): The remembered Catalog view gains `tiles`. No thumbnails unless Epic 8's 500-cover check fails; that follow-up would amend AD-12 and AD-14.
+- AR27 (AD-15): The Card note panel's Add another choice is a `localStorage` UI preference, `bookvie.cardNoteAddAnother`, read and written by `lib/cardNoteAddAnother` inside try/catch. Off by default and whenever storage is empty, junk or unreadable; never exported, and a restore neither brings nor replaces it.
 
 **Test harness and quality gates (TEA handoff).**
 - TR1 (TC-1): `LibraryBuilder` fixture and pre-start seeding of a data folder.
@@ -241,6 +244,12 @@ Each line names the UX section that holds the full requirement. D = DESIGN.md, E
 - UX-DR57: Typeset cover, read and unread, also used when a cover fails to load (D → Catalog tile; E → State Patterns: No cover)
 - UX-DR58: Tiles behavior: one link per tile with the spine's name, a list named "Tiles, N books", lazy covers with no layout shift, highlight after add, focus after delete, empty and no-match states (E → Tiles)
 
+**Faster card note entry (FR-17)**
+- UX-DR59: Keyboard save: Cmd+Enter or Ctrl+Enter in Note or Page saves exactly as **Save note**; `aria-keyshortcuts="Meta+Enter Control+Enter"` on **Save note**; while a save is out, **Save note** (and **Delete**) are `aria-disabled` described "Saving the card note.", and further presses, **Cancel** and Esc are ignored (E → Card note panel, Interaction Primitives)
+- UX-DR60: Checkbox: the native checkbox, 16px, tinted with `accent` via `accent-color`, label in `body-sm`/`ink`, focus ring on the box, forced colors left to the system (D → Components → Checkbox, `components.checkbox`)
+- UX-DR61: Add another (add mode only): after a save the panel stays open, Note empties, Page keeps what was typed, errors clear, focus returns to Note, `status` announces "Card note saved."; Cancel or Esc after saves keeps the saved notes; an edit save always closes; failures never close the panel (E → Card note panel, Focus after close, Flow 6 variant)
+- UX-DR62: Running count: "N notes saved" in `meta`/`ink-tertiary` on the checkbox's line, right-aligned, plain text (not a live region), empty at each opening (D → Card note panel, `components.card-note.saved-count`; E → Card note panel)
+
 ### FR Coverage Map
 
 FR-1: Epic 1 - Book fields, create/edit/delete, Finished on back-fill, tags field, spine color
@@ -257,7 +266,7 @@ FR-11: Epic 3 - Re-entry info and days left
 FR-14: Epic 3 - Finishing the Main book, prompts, finish moment, re-read; Epic 4 - marking any non-Main Reading finished from Book detail
 FR-15: Epic 6 - Quick pace calculator
 FR-16: Epic 6 - Stats
-FR-17: Epic 5 - Add/edit/delete Card notes
+FR-17: Epic 5 - Add/edit/delete Card notes; Epic 9 - Keyboard save and Add another
 FR-18: Epic 5 - Card notes pile
 FR-19: Epic 5 - Card notes view and search
 FR-20: Epic 7 - Filter and sort
@@ -2222,3 +2231,92 @@ So that the tiles don't read as broken where a cover is missing.
 **Given** the Main book card, the Up next thumbnail or Book detail
 **When** a Book has no cover
 **Then** they keep the existing no-cover placeholder; the typeset cover applies to catalog tiles only.
+
+## Epic 9: Add card notes faster
+
+The user can save a Card note from the keyboard and add several in a row: with **Add another** checked, the Card note panel stays open after each save with the page kept, and a running count shows how many notes this opening has saved.
+
+**Gate:** per-epic quality gates (TR7), and the existing card note e2e specs pass unchanged with Add another off.
+
+### Story 9.1: Save a card note with Cmd+Enter
+
+As Oleg,
+I want to save a card note from the keyboard while I'm typing it,
+So that catching a line doesn't need a reach for the mouse.
+
+**Requirements:** FR-17, UX-DR59
+
+**Acceptance Criteria:**
+
+**Given** the Card note panel in add or edit mode
+**When** I press Cmd+Enter or Ctrl+Enter with focus in Note or in Page
+**Then** the panel does exactly what **Save note** does: it sends `add-card-note` (or `edit-card-note`) with both values as typed, and on success it closes, focus returns to the opener and the `status` region reads "Card note saved."
+**And** the keys submit the form through the same path as **Save note** (`requestSubmit()`), so there is one save path to test.
+
+**Given** focus in Note
+**When** I press Enter without Cmd or Ctrl
+**Then** a new line is inserted and nothing is sent.
+
+**Given** an empty Note, or a Page outside 1 to the Book's page count
+**When** I press Cmd+Enter
+**Then** nothing is saved, and the same field messages, `aria-invalid`, `alert` announcement and focus on the first invalid field appear as with **Save note**
+**And** a couldn't-save keeps the panel open with both values kept and the line above the buttons, as with **Save note**.
+
+**Given** a save is out
+**When** I press Cmd+Enter again, hold it down, press **Save note**, **Cancel** or Esc
+**Then** exactly one request is sent and the panel stays open until the result is in
+**And** **Save note** (and **Delete** in edit mode) stay focusable with `aria-disabled="true"`, described "Saving the card note."
+
+**Given** the Card note panel
+**When** it renders
+**Then** **Save note** carries `aria-keyshortcuts="Meta+Enter Control+Enter"`, and there is no on-screen hint.
+
+### Story 9.2: Add several card notes in a row
+
+As Oleg,
+I want the card to stay open after a save when I'm catching several lines,
+So that I can keep reading and noting without reopening the panel and retyping the page.
+
+**Requirements:** FR-17, AR27, UX-DR60, UX-DR61, UX-DR62
+
+**Acceptance Criteria:**
+
+**Given** the Card note panel in add mode
+**When** it renders
+**Then** an **Add another** checkbox sits under Page, above the buttons: the native checkbox, 16px, tinted with `accent` through `accent-color`, its label "Add another" in `body-sm`/`ink` and clickable, with the focus ring on the box (UX-DR60)
+**And** in edit mode there is no checkbox and no count.
+
+**Given** I check or uncheck **Add another**
+**When** the box changes
+**Then** the choice is stored at once in `localStorage` under `bookvie.cardNoteAddAnother` by `lib/cardNoteAddAnother` (try/catch), and the next opening, also after a reload, shows the same state
+**And** storage that is empty, holds anything else, or throws reads as off and the panel still works; a write that fails still toggles the box for this opening, with no message
+**And** the choice is not in an export, and a restore neither brings nor replaces it (AR27).
+
+**Given** **Add another** is on
+**When** a save succeeds, from **Save note** or from Cmd+Enter
+**Then** the panel stays open as the modal, Note empties, Page keeps exactly what was typed ("212–213" stays "212–213"), field errors and the couldn't-save line clear, and focus returns to Note
+**And** the `status` region reads "Card note saved." after every save, announced again on the second save
+**And** the counts behind the panel ("See card notes · N", Book detail's Card notes block) update as after any save (UX-DR61).
+
+**Given** **Add another** is on
+**When** the first save of this opening succeeds, then the second
+**Then** a line on the checkbox's line, right-aligned in `meta`/`ink-tertiary`, reads "1 note saved", then "2 notes saved"
+**And** the line is plain text, not a live region, and it is empty each time the panel opens (UX-DR62).
+
+**Given** three notes saved in this opening and a fourth half typed
+**When** I press **Cancel** or Esc
+**Then** the panel closes, the three notes exist and the fourth doesn't, focus returns to the opener, and nothing more is announced
+**And** the button is labelled **Cancel** throughout.
+
+**Given** **Add another** is on
+**When** a save is refused (422) or can't be written
+**Then** the panel stays open with both values kept and the message shown as before, and the count doesn't change.
+
+**Given** **Add another** is off, or the panel is in edit mode while the stored choice is on
+**When** a save succeeds
+**Then** the panel closes and focus returns to the opener, as before this story
+**And** the existing card note e2e specs pass unchanged.
+
+**Given** the dark theme or `forced-colors: active`
+**When** the checkbox renders
+**Then** it shows the dark unchecked box and the `accent` dark twin in the dark theme, and the system colors under forced colors, with no custom drawing.
