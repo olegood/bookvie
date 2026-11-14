@@ -7,7 +7,7 @@ paradigm: 'server-owned domain behind an intent (command) API with server-comput
 scope: 'bookvie MVP: whole system (CLI launcher, Python server, data folder, React client)'
 status: final
 created: '2026-10-29'
-updated: '2026-11-13'
+updated: '2026-11-14'
 binds: [FR-1, FR-2, FR-3, FR-4, FR-5, FR-6, FR-7, FR-8, FR-9, FR-10, FR-11, FR-14, FR-15, FR-16, FR-17, FR-18, FR-19, FR-20, FR-21, FR-22, FR-23, FR-24, FR-25, A1, A2, A3, A4, A5, A6]
 sources:
   - _bmad-output/planning-artifacts/prds/prd-bookvie-2026-10-28/prd.md
@@ -207,9 +207,9 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
 
 ### AD-15: State that is not exported [ADOPTED]
 
-- **Binds:** A6, FR-22 "Last export", FR-20, FR-24 and FR-25 (the remembered Sort and Bookcase · List · Tiles)
+- **Binds:** A6, FR-22 "Last export", FR-20, FR-24 and FR-25 (the remembered Sort and Bookcase · List · Tiles), FR-17 (the remembered card note Add another)
 - **Prevents:** "Last export" disagreeing between browsers; UI preferences polluting the export.
-- **Rule:** The last-export timestamp is stored in `local-state.json` in the data folder, as `{"lastExportAt": "<ISO-8601 with offset>"}`. It's outside the export, and restore never touches it (an archive entry with that name is `restore_unsafe`). It is written like a commit (temp `local-state.json.tmp*`, fsync, rename, folder fsync) but outside the AD-4 lock (AD-4); a write failure is only logged, because the download already succeeded. Its readers are `views/backup` and `views/shelf` (home, story 3.1). A missing file reads as no export yet; an unreadable or malformed one is logged and read the same way, and the next export overwrites it (story 2.1). UI preferences (theme, catalog view, sort) live in browser `localStorage`, per browser, wrapped in try/catch with defaults.
+- **Rule:** The last-export timestamp is stored in `local-state.json` in the data folder, as `{"lastExportAt": "<ISO-8601 with offset>"}`. It's outside the export, and restore never touches it (an archive entry with that name is `restore_unsafe`). It is written like a commit (temp `local-state.json.tmp*`, fsync, rename, folder fsync) but outside the AD-4 lock (AD-4); a write failure is only logged, because the download already succeeded. Its readers are `views/backup` and `views/shelf` (home, story 3.1). A missing file reads as no export yet; an unreadable or malformed one is logged and read the same way, and the next export overwrites it (story 2.1). UI preferences (theme, catalog view, sort, the Card note panel's Add another) live in browser `localStorage`, per browser, wrapped in try/catch with defaults.
 
 ### AD-16: Stable loopback address, local trust
 
@@ -379,7 +379,7 @@ bookvie/
       api/generated/        # openapi-typescript output, never edited (AD-8)
       api/                  # fetch wrapper, AD-9 envelope, query keys, invalidate-all
       styles/tokens.css     # DESIGN.md custom properties; components use CSS Modules
-      lib/                  # client rules and presentation: pageField (+ .cases.json, AD-3), gauge, slice, cardNotes (page refs, search, highlight, pile order), useSearchCount ("N notes match."), pace (+ .cases.json; the calculator's days, months, years and line), stats (presets, Custom's order, the bars' share and labels), catalog (sort and the shared collator, title search, spine names), catalogSort and catalogView (remembered Sort and Bookcase · List · Tiles, AD-15), catalogFilter (filter rules and value lists) (AD-6; stats also AD-3)
+      lib/                  # client rules and presentation: pageField (+ .cases.json, AD-3), gauge, slice, cardNotes (page refs, search, highlight, pile order), useSearchCount ("N notes match."), pace (+ .cases.json; the calculator's days, months, years and line), stats (presets, Custom's order, the bars' share and labels), catalog (sort and the shared collator, title search, spine names), catalogSort and catalogView (remembered Sort and Bookcase · List · Tiles, AD-15), cardNoteAddAnother (the remembered Add another, `bookvie.cardNoteAddAnother`, off by default, AD-15), catalogFilter (filter rules and value lists) (AD-6; stats also AD-3)
       pages/  components/   # pages include Bookcase, CatalogList and CatalogTiles, Catalog's three views; components include SortSelect, FilterChips and ViewToggle, Catalog's toolbar (AD-6)
     e2e/                    # Playwright, label-contract driven
 ```
@@ -399,7 +399,7 @@ Every row below is built.
 | FR-14 Finish | `intents/finish_reading` | AD-7, AD-11, AD-18, AD-19, AD-20 |
 | FR-15 Quick pace calculator | `domain/progress` (`pages_left`), `domain/pace`; `views/shelf` (`book` and `catalog` views' `pagesLeft`, `measuredPace`); `lib/pace`, `components/PaceCalculator` on Book detail and Catalog | AD-6, AD-20 |
 | FR-16 Stats | `views/stats`, `GET /api/views/stats`; `lib/stats`, `pages/StatsPage`, `components/RangePicker`, `components/StatsBars` | AD-3, AD-6, AD-9, AD-11, AD-20 |
-| FR-17 to FR-19 Card notes | `intents/add_card_note`, `edit_card_note`, `delete_card_note`; `domain/note_pages`; `views/card_notes` (Card notes page), `views/shelf` (Book detail's `cardNotes`, home `cardNoteCount`); the Card notes page, Book detail's Card notes block and the pile | AD-3, AD-6, AD-7, AD-9, AD-18, AD-19 |
+| FR-17 to FR-19 Card notes | `intents/add_card_note`, `edit_card_note`, `delete_card_note`; `domain/note_pages`; `views/card_notes` (Card notes page), `views/shelf` (Book detail's `cardNotes`, home `cardNoteCount`); `components/CardNotePanel` (keyboard save, Add another) with `lib/cardNoteAddAnother`; the Card notes page, Book detail's Card notes block and the pile | AD-3, AD-6, AD-7, AD-9, AD-15, AD-18, AD-19 |
 | FR-21 Cover | `intents/cover` (decode, downscale); `store/store.py` (write, sweep); `intents/edit_book` (Remove cover); `/media/covers` | AD-11, AD-12 |
 | FR-22, FR-23 Export / restore | `GET /api/export` (`intents/export`), `POST /api/intents/restore` (`intents/restore`); `store/restore` (unpack), `store/store.py` (`replace_all`), `store/local_state`; `views/backup`, `views/shelf` (home's "Last export") | AD-4, AD-13, AD-14, AD-15 |
 | A1 shared storage | `store/`, `cli.py`, `instance.py` | AD-1, AD-5, AD-16 |
