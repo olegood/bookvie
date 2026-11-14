@@ -13,7 +13,8 @@
 import type { Page } from '@playwright/test'
 import { finished, SWING_TIME, tabIntoBookcase } from './bookcase.ts'
 import { expect, startSeededServer, test } from './fixtures.ts'
-import { mainAt, mainBookCard, stopAndRemove } from './home.ts'
+import { LEFT_HAND_ID, mainAt, mainBookCard, stopAndRemove } from './home.ts'
+import { SET_SPINE_COLOR, UPDATE_PAGE } from './intents.ts'
 import { fillFields, openEdit, openNewBook } from './library.ts'
 import {
   barPercent,
@@ -260,6 +261,58 @@ test.describe("Story 8.2 See what I've read and what I'm reading on the tiles (a
       await navigateToCatalog(page)
       const after = tileItem(page, 'The Left Hand of Darkness by Ursula K. Le Guin, Main book, 64%')
       await expect.poll(async () => Math.round(barPercent(await lookOf(after), LIGHT) ?? -1)).toBe(64)
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+
+  test('[P1] XUI-E2E-002 intents from another context reach the tiles once Catalog regains focus: the bar follows the new page and the ribbon the new spine color', async ({
+    page,
+    browser,
+  }, testInfo) => {
+    // Epic 8 trace (retro action 62): no other test brings a real intent from elsewhere to an open
+    // Tiles view. The marks must come from the refetched catalog view, not from what was first drawn.
+    const wide = await solidPng(page, 120, 80, COVER_RGB)
+    const server = await startSeededServer(
+      testInfo,
+      'tile-marks-two-contexts',
+      mainAt(150, { others: [BLEAK_HOUSE_BOOK] }),
+      {
+        [WIDE_COVER]: wide,
+      },
+    )
+    try {
+      await openTiles(page, server.url)
+      const bleakHouse = tileItem(page, BLEAK_HOUSE)
+      await expect.poll(async () => near((await lookOf(bleakHouse)).ribbonMiddle, RED.rgb, 24)).toBe(true)
+      const leftHand = tileItem(page, 'The Left Hand of Darkness by Ursula K. Le Guin, Main book, 45%')
+      await expect.poll(async () => Math.round(barPercent(await lookOf(leftHand), LIGHT) ?? -1)).toBe(45)
+
+      const otherContext = await browser.newContext()
+      try {
+        // Another context (the agent, or a second tab) saves p.212 and turns Bleak House blue.
+        const updated = await otherContext.request.post(`${server.url}${UPDATE_PAGE}`, {
+          multipart: { intent: JSON.stringify({ bookId: LEFT_HAND_ID, page: 212 }) },
+        })
+        expect(updated.status()).toBe(200)
+        const recolored = await otherContext.request.post(`${server.url}${SET_SPINE_COLOR}`, {
+          multipart: { intent: JSON.stringify({ bookId: BLEAK_HOUSE_ID, spineColor: BLUE.hex }) },
+        })
+        expect(recolored.status()).toBe(200)
+      } finally {
+        await otherContext.close()
+      }
+
+      // This context regains focus and the catalog view refetches.
+      await page.bringToFront()
+      await page.evaluate(() => window.dispatchEvent(new Event('focus')))
+      // p.212 of 330 is 64%, in the bar and in the name.
+      const after = tileItem(page, 'The Left Hand of Darkness by Ursula K. Le Guin, Main book, 64%')
+      await expect.poll(async () => Math.round(barPercent(await lookOf(after), LIGHT) ?? -1)).toBe(64)
+      // The ribbon is redrawn in the new color on the same, already loaded cover, and no red is left.
+      await expect.poll(async () => near((await lookOf(bleakHouse)).ribbonMiddle, BLUE.rgb, 24)).toBe(true)
+      expect((await lookOf(bleakHouse, RED.rgb)).found).toBe(0)
+      await expect(page.getByRole('alert')).toHaveText('')
     } finally {
       await stopAndRemove(server)
     }

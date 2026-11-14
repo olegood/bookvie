@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-29-2026 17:21
-last_updated: 11-13-2026 17:48
+last_updated: 11-14-2026 10:44
 project: bookvie
 project_key: NOKEY
 tracking_system: file-system
@@ -682,7 +682,7 @@ action_items:
       `_bmad-output/test-artifacts/traceability/epic-8-traceability-matrix.md`, `…/epic-8-gate-decision.json`,
       `…/epic-8-e2e-trace-summary.json`. Due: now, after action 61."
     owner: "Murat (TEA)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-8-retro-2026-11-13.md"
   - id: "epic-8-retro-item-63-have-bmad-code-review-re-run-the-full-np"
     epic: 8

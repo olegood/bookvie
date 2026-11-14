@@ -1,0 +1,165 @@
+{
+  "schema_version": "0.3.0",
+  "snapshot_at": "2026-11-13T16:54:47.000000Z",
+  "repo": "bookvie",
+  "collection_mode": "contract_static",
+  "collection_status": "COLLECTED",
+  "inventory_basis": "acceptance_criteria",
+  "gate_basis": "priority_thresholds",
+  "source_sha": "0d5157cccfb664a9f1debab19636491bd105e7dd",
+  "target": {
+    "type": "epic",
+    "id": "8",
+    "label": "Epic 8: See the catalog as covers"
+  },
+  "decision_mode": "deterministic",
+  "evaluator": "Oleg",
+  "confidence": "high",
+  "oracle": {
+    "resolution_mode": "formal_requirements",
+    "confidence": "high",
+    "sources": [
+      "_bmad-output/planning-artifacts/epics.md (TR7 :154, Epic 8 gate with the 500-cover speed check, stories 8.1-8.3)",
+      "_bmad-output/test-artifacts/test-design-qa.md (Catalog Tiles surfaces of XUI-E2E-002/005; no FR-25 scenario of its own)",
+      "_bmad-output/implementation-artifacts/epic-8-retro-2026-11-13.md (action 62)",
+      "_bmad-output/test-artifacts/atdd-checklist-8-1, 8-2, 8-3 (story ACs and priority markers)"
+    ],
+    "external_pointer_status": "not_used",
+    "synthetic": false
+  },
+  "coverage": {
+    "inventory": {
+      "covered": 25,
+      "total": 25,
+      "pct": 100
+    },
+    "priority_breakdown": {
+      "P0": {
+        "total": 6,
+        "covered": 6,
+        "pct": 100
+      },
+      "P1": {
+        "total": 15,
+        "covered": 15,
+        "pct": 100
+      },
+      "P2": {
+        "total": 4,
+        "covered": 4,
+        "pct": 100
+      },
+      "P3": {
+        "total": 0,
+        "covered": 0,
+        "pct": 100
+      }
+    },
+    "by_level": {
+      "e2e": {
+        "tests": 57,
+        "criteria_covered": 25
+      },
+      "api": {
+        "tests": 2,
+        "criteria_covered": 1
+      },
+      "component": {
+        "tests": 0,
+        "criteria_covered": 0
+      },
+      "unit": {
+        "tests": 2,
+        "criteria_covered": 2
+      },
+      "live": {
+        "tests": 0,
+        "criteria_covered": 0
+      },
+      "other": {
+        "tests": 0,
+        "criteria_covered": 0
+      }
+    }
+  },
+  "tests": {
+    "files": 8,
+    "cases": 61,
+    "skipped_cases": 0,
+    "fixme_cases": 0,
+    "pending_cases": 0,
+    "note": "Counts the 2 Epic 8 backend tests (test_bookcase_view.py test_ac1_p0_catalog_books_carry_their_cover_file_or_null; test_views.py test_seeded_library, extended), the unit cases catalogView.test.ts:47 and catalog.test.ts:413 (tilesName), and the 6 Epic 8 e2e specs (catalog-tiles, catalog-tiles-automate, catalog-tile-marks, catalog-tile-marks-automate, catalog-typeset-covers, catalog-typeset-covers-automate), including this trace's catalog-tile-marks-automate.spec.ts:269. The Epic 8 edits to bookcase.spec.ts:44, bookcase-details.spec.ts:72, restore.spec.ts:104 and catalog-pace-calculator.spec.ts:266 are mapped but not counted here. P3 has no item, so its 0/0 is reported as 100% (n/a)."
+  },
+  "risk_summary": {
+    "critical_open": 0,
+    "high_open": 0,
+    "medium_open": 0,
+    "low_open": 4
+  },
+  "heuristics": {
+    "endpoint_gaps": 0,
+    "auth_negative_path_status": "not_applicable",
+    "error_path_status": "present",
+    "ui_journey_status": "not_applicable",
+    "ui_state_status": "not_applicable"
+  },
+  "live_evidence": {
+    "present": false,
+    "results_file": "_bmad-output/test-artifacts/live-verification-results.json",
+    "freshness": "not_present",
+    "recorded_source_sha": "",
+    "current_source_sha": "0d5157cccfb664a9f1debab19636491bd105e7dd",
+    "producer": "",
+    "counted": 0,
+    "stale": 0,
+    "unverifiable": 0,
+    "failed": 0,
+    "contradicted": 0,
+    "blocked": 0,
+    "skipped": 0,
+    "unmatched": 0,
+    "invalid": 0,
+    "requirements_live_only": 0
+  },
+  "blockers": [],
+  "rejected_evidence": [],
+  "recommendations": [
+    {
+      "priority": "LOW",
+      "action": "Retro action 65: move the Tiles e2e helpers into one module and make coversLoaded require a rendered grid (F-D1, E8-R2)",
+      "requirements": [
+        "8.2 AC-1",
+        "8.2 AC-2"
+      ]
+    },
+    {
+      "priority": "LOW",
+      "action": "Retro actions 63, 64 and 66: process guards before the next story",
+      "requirements": []
+    },
+    {
+      "priority": "LOW",
+      "action": "Run /bmad-testarch-test-review on the Epic 8 suites after action 65",
+      "requirements": []
+    }
+  ],
+  "links": {
+    "trace_report_path": "_bmad-output/test-artifacts/traceability/epic-8-traceability-matrix.md",
+    "trace_report_url": "",
+    "artifact_url": "",
+    "journey_evidence_url": ""
+  },
+  "gate_status": "PASS",
+  "gate_criteria": {
+    "p0_coverage_required": "100%",
+    "p0_coverage_actual": "100%",
+    "p0_status": "MET",
+    "p1_coverage_target": "95%",
+    "p1_coverage_minimum": "80%",
+    "p1_coverage_actual": "100%",
+    "p1_status": "MET",
+    "overall_coverage_minimum": "80%",
+    "overall_coverage_actual": "100%",
+    "overall_status": "MET"
+  }
+}

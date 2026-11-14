@@ -1,0 +1,24 @@
+{
+  "schema_version": "0.1.0",
+  "evaluated_at": "2026-11-13T16:54:47.000000Z",
+  "repo": "bookvie",
+  "target": {
+    "type": "epic",
+    "id": "8",
+    "label": "Epic 8: See the catalog as covers"
+  },
+  "collection_status": "COLLECTED",
+  "gate_basis": "priority_thresholds",
+  "gate_status": "PASS",
+  "rationale": "P0 coverage is 100% (6/6), P1 coverage is 100% (15/15; TR7 target: 95%; workflow default 90%), and overall coverage is 100% (25/25; minimum: 80%). The Epic 8 gate's 500-cover speed check passes (catalog-tiles.spec.ts:595). Epic 8 added no error code; every existing code keeps its API test. check:api is clean and the coverage gates hold (domain 100.00%, intents+store 98.08%). This trace added one e2e test (catalog-tile-marks-automate.spec.ts:269) for XUI-E2E-002 on the Tiles view, with a mutation check and a 10x burn-in.",
+  "p0_status": "MET",
+  "p1_status": "MET",
+  "overall_status": "MET",
+  "critical_open": 0,
+  "links": {
+    "trace_report_path": "_bmad-output/test-artifacts/traceability/epic-8-traceability-matrix.md",
+    "trace_report_url": "",
+    "artifact_url": "",
+    "journey_evidence_url": ""
+  }
+}
