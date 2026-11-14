@@ -105,7 +105,7 @@ development_status:
 
   epic-9: in-progress
   9-1-save-a-card-note-with-cmd-enter: done
-  9-2-add-several-card-notes-in-a-row: backlog
+  9-2-add-several-card-notes-in-a-row: review
   epic-9-retrospective: optional
 action_items:
   - id: "epic-1-retro-item-1-run-an-epic-1-trace-and-gate-against-tr7"

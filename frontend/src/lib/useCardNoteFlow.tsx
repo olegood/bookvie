@@ -3,7 +3,10 @@
 // as the opener says. Cancel or Esc returns focus to the opener once the
 // panel has unmounted; a save does the same, then `status` reads "Card note
 // saved." (the refocus-then-announce order of Book detail's other flows).
-// The user stays on the page either way.
+// The user stays on the page either way. With Add another on (Story 9.2) an
+// add save keeps the panel open instead: the panel clears Note, refocuses it
+// and announces itself, and `onSaved` isn't called, so nothing here runs
+// until Cancel or Esc closes it (which announces nothing).
 
 import { useCallback, useEffect, useRef, useState, type ReactNode, type RefCallback, type RefObject } from 'react'
 import type { BookCardNote } from '../api/index.ts'

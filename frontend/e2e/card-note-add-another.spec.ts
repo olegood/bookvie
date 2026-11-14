@@ -54,7 +54,7 @@ test.describe('Story 9.2 Add several card notes in a row (ATDD)', () => {
     await page.emulateMedia({ colorScheme: 'light' })
   })
 
-  test.skip('[P1] AC-1 add mode shows the native Add another checkbox under Page, tinted accent, its label clickable, the focus ring on the box; edit mode has no checkbox and no count', async ({
+  test('[P1] AC-1 add mode shows the native Add another checkbox under Page, tinted accent, its label clickable, the focus ring on the box; edit mode has no checkbox and no count', async ({
     page,
     seededServer,
   }) => {
@@ -111,7 +111,7 @@ test.describe('Story 9.2 Add several card notes in a row (ATDD)', () => {
     await expect(edit).not.toContainText('Add another')
   })
 
-  test.skip('[P1] AC-2 the Add another choice is stored at once, survives the next opening and a reload, and junk in storage reads as off', async ({
+  test('[P1] AC-2 the Add another choice is stored at once, survives the next opening and a reload, and junk in storage reads as off', async ({
     page,
     seededServer,
   }) => {
@@ -157,7 +157,7 @@ test.describe('Story 9.2 Add several card notes in a row (ATDD)', () => {
     }
   })
 
-  test.skip('[P0] AC-3 with Add another on, a save from Save note or Cmd+Enter keeps the modal panel open, empties Note, keeps Page, refocuses Note and announces again', async ({
+  test('[P0] AC-3 with Add another on, a save from Save note or Cmd+Enter keeps the modal panel open, empties Note, keeps Page, refocuses Note and announces again', async ({
     page,
     seededServer,
   }) => {
@@ -230,7 +230,7 @@ test.describe('Story 9.2 Add several card notes in a row (ATDD)', () => {
     expect(added).toHaveLength(3)
   })
 
-  test.skip('[P1] AC-4 with Add another on, a plain-text count on the checkbox line reads "1 note saved", then "2 notes saved", and starts empty at each opening', async ({
+  test('[P1] AC-4 with Add another on, a plain-text count on the checkbox line reads "1 note saved", then "2 notes saved", and starts empty at each opening', async ({
     page,
     seededServer,
   }) => {
@@ -274,7 +274,7 @@ test.describe('Story 9.2 Add several card notes in a row (ATDD)', () => {
     await expect(savedCount(panel)).toHaveText('1 note saved')
   })
 
-  test.skip('[P1] AC-5 with three saved and a fourth half typed, Esc or Cancel closes the panel, keeps the three, drops the fourth, refocuses the opener and announces nothing more', async ({
+  test('[P1] AC-5 with three saved and a fourth half typed, Esc or Cancel closes the panel, keeps the three, drops the fourth, refocuses the opener and announces nothing more', async ({
     page,
     seededServer,
   }) => {
@@ -295,6 +295,8 @@ test.describe('Story 9.2 Add several card notes in a row (ATDD)', () => {
       await expect(note).toHaveValue('')
       // The label stays Cancel after every save.
       await expect(cancel).toHaveText('Cancel')
+      // Wait out the announce delay: a save or close inside it replaces the pending message.
+      await expect(page.getByRole('status')).toHaveText(SAVED)
     }
     await expect.poll(() => statusTexts(page)).toEqual([SAVED, '', SAVED, '', SAVED])
     await note.fill('Four, half typ')
@@ -318,6 +320,7 @@ test.describe('Story 9.2 Add several card notes in a row (ATDD)', () => {
     await note.press('Meta+Enter')
     await expect(note).toHaveValue('')
     await expect(cancel).toHaveText('Cancel')
+    await expect(page.getByRole('status')).toHaveText(SAVED)
     await note.fill('Five, half typ')
     await cancel.click()
     await expect(panel).toBeHidden()
@@ -329,7 +332,7 @@ test.describe('Story 9.2 Add several card notes in a row (ATDD)', () => {
     expect((await statusTexts(page)).filter((text) => text !== '')).toEqual([SAVED, SAVED, SAVED, SAVED])
   })
 
-  test.skip("[P1] AC-6 with Add another on, a refused or couldn't-save save keeps the panel open with both values and the message, and the count doesn't change", async ({
+  test("[P1] AC-6 with Add another on, a refused or couldn't-save save keeps the panel open with both values and the message, and the count doesn't change", async ({
     page,
     seededServer,
   }) => {
@@ -398,7 +401,35 @@ test.describe('Story 9.2 Add several card notes in a row (ATDD)', () => {
     expect(added).toHaveLength(4)
   })
 
-  test.skip('[P1] AC-7 an edit save closes the panel even while the stored choice is on, and with Add another off an add save closes it as before', async ({
+  test('[P1] AC-3 with Add another on, a save right after a refusal clears the field error it left', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer(mainAt(212))
+    await page.goto(`${server.url}/`)
+
+    await addCardNote(page).click()
+    const panel = cardNotePanel(page)
+    const note = noteField(panel)
+    const pageInput = pageField(panel)
+    await addAnother(panel).check()
+    await note.fill('Refused, then kept.')
+    await pageInput.fill('400')
+    await note.press('Meta+Enter')
+    await expect(pageInput).toHaveAttribute('aria-invalid', 'true')
+
+    // The fix and the save, with nothing in between: the save's own branch clears the error.
+    await pageInput.fill('212')
+    await note.press('Meta+Enter')
+
+    await expect(note).toHaveValue('')
+    await expect(savedCount(panel)).toHaveText('1 note saved')
+    await expect(pageInput).not.toHaveAttribute('aria-invalid', 'true')
+    await expect(pageInput).toHaveAccessibleDescription('')
+    await expect(pageInput).toHaveValue('212')
+  })
+
+  test('[P1] AC-7 an edit save closes the panel even while the stored choice is on, and with Add another off an add save closes it as before', async ({
     page,
     seededServer,
   }) => {
@@ -440,7 +471,7 @@ test.describe('Story 9.2 Add several card notes in a row (ATDD)', () => {
     await expect(seeCardNotes(page, 1)).toBeVisible()
   })
 
-  test.skip('[P2] AC-8 the checkbox takes the accent dark twin and the dark unchecked box in the dark theme, and the system colors under forced colors, with no custom drawing', async ({
+  test('[P2] AC-8 the checkbox takes the accent dark twin and the dark unchecked box in the dark theme, and the system colors under forced colors, with no custom drawing', async ({
     page,
     seededServer,
   }) => {

@@ -1,7 +1,9 @@
 import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { useAddCardNote, useDeleteCardNote, useEditCardNote } from '../api/index.ts'
 import { announce, clearAnnouncements } from '../lib/announce.ts'
+import { readAddAnother, writeAddAnother } from '../lib/cardNoteAddAnother.ts'
 import {
+  CARD_NOTE_SAVED,
   DELETE_CARD_NOTE,
   DELETE_CARD_NOTE_HEADING,
   DELETING_CARD_NOTE,
@@ -27,7 +29,10 @@ type Props = {
   note?: EditedNote
   /** Cancel or Esc: the opener unmounts the panel and takes focus back. */
   onCancel: () => void
-  /** The note is stored and the views have refetched: the opener closes, focuses, then announces. */
+  /**
+   * The note is stored and the views have refetched: the opener closes, focuses, then announces.
+   * Not called on an add save with Add another on, where the panel stays open (Story 9.2).
+   */
   onSaved: () => void
   /** Edit mode: the note is deleted and the views have refetched; the opener closes the panel and the dialog. */
   onDeleted?: () => void
@@ -51,7 +56,18 @@ type FieldErrors = Partial<Record<FieldKey, string>>
  * the request is out, and Esc is ignored then. Cancel and Esc send nothing.
  * In add and edit mode, Cmd+Enter or Ctrl+Enter in Note or Page (Story 9.1) submits the form
  * through `requestSubmit()`, so it takes exactly Save note's path, in-flight
- * guard included; Save note names both keys in `aria-keyshortcuts`.
+ * guard included; Save note names both keys in `aria-keyshortcuts`. A held
+ * key's repeats (`event.repeat`) send nothing, so one press saves one note.
+ *
+ * Add mode only (Story 9.2): an **Add another** native checkbox under Page,
+ * read from `lib/cardNoteAddAnother` when the panel opens and written there
+ * on every change. With it on, a successful save keeps the panel open as the
+ * modal: Note empties, Page keeps what was typed, errors and the
+ * couldn't-save line clear, focus returns to Note, then `status` announces
+ * "Card note saved." again, and a plain-text count ("1 note saved") shows on
+ * the checkbox's row. Failures leave the count as it was. Cancel and Esc
+ * close the panel as ever; the saved notes stay. With it off, a save calls
+ * `onSaved` as before.
  *
  * Edit mode (`note`, Story 5.2): headed "Edit card note", Note and Page
  * prefilled from the note ("96" or "42–45"), Save note sends
@@ -79,6 +95,9 @@ export default function CardNotePanel({ bookId, initialPage = '', note, onCancel
   const inFlight = useRef(false)
   const noteField = useRef<HTMLTextAreaElement>(null)
   const pageField = useRef<HTMLInputElement>(null)
+  // Add another (add mode only): the remembered choice, and the notes saved in this opening.
+  const [addAnother, setAddAnother] = useState(() => !note && readAddAnother())
+  const [savedCount, setSavedCount] = useState(0)
 
   const dismiss = () => {
     if (inFlight.current) {
@@ -109,7 +128,18 @@ export default function CardNotePanel({ bookId, initialPage = '', note, onCancel
     const result = note ? await editNote(bookId, note.id, text, page) : await addNote(bookId, text, page)
     inFlight.current = false
     if (result.kind === 'ok') {
-      onSaved()
+      if (note || !addAnother) {
+        onSaved()
+        return
+      }
+      // Add another: the panel stays open for the next note, with Page kept.
+      setText('')
+      setErrors({})
+      setShowAlert(false)
+      setBusy(false)
+      setSavedCount((count) => count + 1)
+      noteField.current?.focus()
+      announce('status', CARD_NOTE_SAVED)
       return
     }
     setBusy(false)
@@ -137,6 +167,8 @@ export default function CardNotePanel({ bookId, initialPage = '', note, onCancel
     if (event.key !== 'Enter' || !(event.metaKey || event.ctrlKey) || event.nativeEvent.isComposing) return
     if (event.target !== noteField.current && event.target !== pageField.current) return
     event.preventDefault()
+    // A held key saves one note: its repeats send nothing.
+    if (event.repeat) return
     event.currentTarget.requestSubmit()
   }
 
@@ -229,6 +261,27 @@ export default function CardNotePanel({ bookId, initialPage = '', note, onCancel
             error={errors.page}
             onChange={(event) => setPage(event.target.value)}
           />
+          {!note && (
+            <div className={styles.addAnotherRow}>
+              <label className={styles.addAnother}>
+                <input
+                  type="checkbox"
+                  className={styles.addAnotherBox}
+                  checked={addAnother}
+                  onChange={(event) => {
+                    setAddAnother(event.target.checked)
+                    writeAddAnother(event.target.checked)
+                  }}
+                />
+                <span>Add another</span>
+              </label>
+              {savedCount > 0 && (
+                <span className={styles.savedCount}>
+                  {savedCount} {savedCount === 1 ? 'note' : 'notes'} saved
+                </span>
+              )}
+            </div>
+          )}
           <div ref={regionSlot} className={styles.regions} data-show-alert={showAlert ? 'true' : undefined} />
           <div className={styles.actions}>
             {note && (
