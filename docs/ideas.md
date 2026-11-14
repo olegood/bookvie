@@ -129,3 +129,17 @@ Notes:
 - Decide whether the count shows only while a search or filter is active, or always (as the total).
 - Announce the count to screen readers (a polite live region), without announcing on every keystroke.
 - If pagination is picked up (see "Pagination with pagination-aware search"), the count must cover all pages, not only the loaded one.
+
+## Descending catalog sort
+
+**Status:** new
+
+Let the catalog sort in descending order as well. Today every sort (Author, Title, Date added, Pages) is ascending only.
+
+Notes:
+
+- Needs a direction control next to the Sort select, for example an ascending / descending toggle button, or descending entries in the select itself ("Date added, newest first").
+- Remember the direction along with the sort key. The key is already kept in local storage (`bookvie.catalogSort`), so a stored value from before this change must still read correctly (default: ascending).
+- Decide whether each key has its own natural default direction (for example Date added newest first, Pages longest first) or all start ascending.
+- Decide the tie-breaker (for example Title ascending), and whether it flips with the direction.
+- If catalog grouping is picked up (see "Catalog grouping by author, publisher or year"), decide whether the direction also orders the groups or only the Books inside each group.
