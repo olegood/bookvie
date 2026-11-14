@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-29-2026 17:21
-last_updated: 11-14-2026 11:36
+last_updated: 11-14-2026 11:43
 project: bookvie
 project_key: NOKEY
 tracking_system: file-system
@@ -697,7 +697,7 @@ action_items:
       file isn't labelled `docs:`. Changes: `_bmad/custom/bmad-code-review.toml`,
       `AGENTS.md` (\"Story pipeline\", step 3). Due: before the next story."
     owner: "Oleg / bmad config"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-8-retro-2026-11-13.md"
   - id: "epic-8-retro-item-64-forbid-tree-wide-git-state-changes-in-st"
     epic: 8

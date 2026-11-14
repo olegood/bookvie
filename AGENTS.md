@@ -45,7 +45,7 @@ Every story gets these four steps, in this order (Epic 4 retro item 40):
 
 1. `bmad-testarch-atdd`: the red-phase acceptance tests.
 2. `bmad-build-auto`: the build. It ends with the story in review, not `done`.
-3. `bmad-code-review`: the only step that marks a story `done`.
+3. `bmad-code-review`: the only step that marks a story `done`. After any patch, however small, it re-runs the full `npm run check` before it marks the story `done`; a review with no patch doesn't need to. Its commit type follows the files the commit changes, not the step: `docs:` only when every file is Markdown or `sprint-status.yaml`, otherwise `fix:`, `test:` or `chore:` (Epic 8 retro item 63).
 4. `bmad-testarch-automate`: runs only after the story is `done`.
 
 Don't skip or merge a step. The review inside `bmad-build-auto` doesn't replace step 3.
