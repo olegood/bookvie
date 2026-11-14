@@ -2,7 +2,7 @@
 title: bookvie PRD
 status: final
 created: 2026-10-28
-updated: 2026-11-13
+updated: 2026-11-14
 inputs:
   - _bmad-output/brainstorming/brainstorm-personal-library-tracker-2026-10-27/brainstorm-intent.md
   - _bmad-output/planning-artifacts/ux-designs/ux-bookvie-2026-10-28/prd-deltas.md
@@ -212,6 +212,9 @@ The user can add, edit, and delete a Card note on any Book at any time, whether 
   - A Card note needs its text and a page or a page range (for example, p.42 or pp.42–45).
   - The page or range is shown below the text.
   - A page or range outside the Book's page count is refused.
+  - A keyboard shortcut saves a note from its text, without reaching for the mouse.
+  - The user can add several notes in a row without closing and reopening the note form: after each save it stays open for the next note, keeping the page. Whether it stays open is the user's choice; the choice is remembered on this computer and isn't part of an export, like the theme and the sort.
+  - Leaving the form keeps every note already saved; only an unsaved note is dropped.
 
 #### FR-18: Review a Book's Card notes as a pile
 The user can open a Book's Card notes as a pile and go through them one at a time, at the user's own pace.
