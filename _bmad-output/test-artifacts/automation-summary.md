@@ -1,18 +1,18 @@
 ---
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03c-aggregate', 'step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
-lastSaved: '2026-11-13'
-storyId: '8.3'
-storyKey: '8-3-give-books-without-a-cover-a-typeset-cover'
+lastSaved: '2026-11-14'
+storyId: '9.1'
+storyKey: '9-1-save-a-card-note-with-cmd-enter'
 inputDocuments:
-  - _bmad-output/implementation-artifacts/spec-8-3-give-books-without-a-cover-a-typeset-cover.md (Intent, Always rules, I/O matrix, ACs, Review Triage Log, Review Findings)
-  - _bmad-output/test-artifacts/atdd-checklist-8-3-give-books-without-a-cover-a-typeset-cover.md
-  - _bmad-output/implementation-artifacts/epic-8-context.md
-  - _bmad-output/implementation-artifacts/deferred-work.md (code review of spec-8-3, 2026-11-13)
+  - _bmad-output/implementation-artifacts/spec-9-1-save-a-card-note-with-cmd-enter.md (Intent, Always/Never rules, I/O matrix, ACs, Review Findings)
+  - _bmad-output/test-artifacts/atdd-checklist-9-1-save-a-card-note-with-cmd-enter.md
+  - _bmad-output/implementation-artifacts/epic-9-context.md
+  - _bmad-output/implementation-artifacts/deferred-work.md (code review of spec-9-1, 2026-11-14)
   - _bmad/tea/config.yaml
   - frontend/playwright.config.ts
-  - frontend/e2e/catalog-typeset-covers.spec.ts; frontend/e2e/tile-marks.ts; frontend/e2e/catalog-tiles*.spec.ts; frontend/e2e/catalog-tile-marks*.spec.ts; frontend/e2e/bookcase-details.spec.ts (text-spacing model)
-  - frontend/src/pages/CatalogTiles.tsx, CatalogTiles.module.css; frontend/src/styles/tokens.css
+  - frontend/e2e/card-note-keyboard-save.spec.ts; frontend/e2e/add-card-note.spec.ts; frontend/e2e/edit-card-note.spec.ts
+  - frontend/src/components/CardNotePanel.tsx
   - knowledge/test-levels-framework.md
   - knowledge/test-priorities-matrix.md
   - knowledge/data-factories.md
@@ -24,92 +24,93 @@ inputDocuments:
   - knowledge/playwright-cli.md
 ---
 
-# Automation Summary: Give books without a cover a typeset cover (story 8.3)
+# Automation Summary: Save a card note with Cmd+Enter (story 9.1)
 
-The previous version of this file held the summary for story 8.2. It's in git history (`f5cefc7`).
+The previous version of this file held the summary for story 8.3. It's in git history (`3566aa9`).
 
 ## Preflight
 
 - **Stack:** `fullstack`, auto-detected. Frontend: Playwright (`frontend/playwright.config.ts`); backend: pytest. Both frameworks are in place.
-- **Mode:** BMad-Integrated. Story 8.3 is `done` after `bmad-code-review` (`85f8eef`). Spec, ATDD checklist and epic context are present.
+- **Mode:** BMad-Integrated. Story 9.1 is `done` after `bmad-code-review` (`566f030`). Spec, ATDD checklist and epic context are present.
 - **Config:** `tea_use_playwright_utils: true` but `@seontechnologies/playwright-utils` isn't in `package.json`, so the Traditional Patterns fragments load (`fixture-architecture`, `network-first`). No Pact artifacts, so no contract fragments. `tea_browser_automation: auto` adds `playwright-cli`.
-- **Inputs to cover:** the ATDD checklist's 9 open green-phase follow-ups, and the code review's deferred item (the `.typeset { overflow: hidden }` guard is untested under large fonts), which overlaps the follow-up "user text spacing or a 200% zoom".
+- **Inputs to cover:** the ATDD checklist's 7 open green-phase follow-ups. The code review's deferred items are for Story 9.2 (held-key repeat guard, `ControlOrMeta` test advice) and the spine, not for this run.
 
 ## Coverage Plan
 
-Browser exploration skipped: `playwright-cli` isn't installed; targets come from the spec, the checklist and the code.
+Browser exploration skipped: `playwright-cli` isn't installed. Targets come from the spec, the ATDD checklist and `CardNotePanel.tsx`.
 
-**Level:** E2E only. The typeset cover is CSS presentation inside a React page with no logic outside JSX; this repo covers components through Playwright (Vitest/node tests cover `src/lib` only). No API change, so no API or backend leaf.
+**Level:** E2E only, in a new `frontend/e2e/card-note-keyboard-save-automate.spec.ts` (the `*-automate.spec.ts` convention of Epic 8). The behavior is keyboard focus, native form submission and the modal `dialog`, which only a real browser shows; the frontend has no component-test runner, and `saveFromKeys` is not a pure function worth a unit test. The 7 ATDD leaves stay as they are: no duplicate of a case they already prove.
 
-**Scope:** selective. Every open checklist follow-up and the review's deferred item, each mapped to a new leaf or to an existing one.
+| # | Target (ATDD follow-up) | Priority | Why |
+|---|---|---|---|
+| 1 | AC-1 the other two field/key pairs (Control+Enter in Note, Meta+Enter in Page), and add mode from Book detail returning focus to that Add card note | P1 | The "Always" rule promises both keys from both fields; the ATDD leaf covers two of four pairs. |
+| 2 | AC-1 focus lands before the `status` line on a keyboard save | P1 | The announce order (focus, then status) is an Epic 5 invariant; the key path must keep it. |
+| 3 | AC-3 in edit mode: a refused Page and a 503 through Control+Enter, line above the buttons, Delete still at the left | P1 | AC-3 is tested in add mode only. |
+| 4 | AC-4 in add mode: Meta+Enter with the save held, then the same presses (no Delete), gives one `add-card-note` | P1 | AC-4 is tested in edit mode only; a duplicate add would store two notes. |
+| 5 | AC-4 a refusal after a held save: the 422 leaves the panel open with the field error, Save note is no longer `aria-disabled`, and the next Meta+Enter sends one more request | P2 | Shows the in-flight guard releases after a refusal. (The held *key* repeating after a refusal is deferred to Story 9.2, not tested here.) |
+| 6 | AC-4 keys while the Delete Confirm dialog is open: Meta+Enter and Control+Enter there neither save the panel nor confirm the delete | P2 | The dialog is a sibling outside the form; spec "Never" says keys there get no handling. |
+| 7 | AC-5 only Save note carries `aria-keyshortcuts`, not Cancel or Delete, in both modes | P2 | The spec puts it on Save note only. Axe in both themes is covered by re-running the existing axe leaves in `add-card-note.spec.ts` and `edit-card-note.spec.ts`. |
 
-New leaves, in the `(automate)` describe of `frontend/e2e/catalog-typeset-covers.spec.ts` (reusing `TYPESET_SHELF`, `boxFacts`, `typesetOf`, `inside`):
-
-| # | Leaf | AC | Priority | Source |
-|---|------|----|----------|--------|
-| 1 | WCAG text spacing: the plate grows, title and author stay inside the plate, the plate inside the box (read and unread) | AC-1/AC-2 | P2 | checklist "user text spacing or a 200% zoom" |
-| 2 | Large text: nothing of the typeset cover paints past its box onto the reading bar or the caption | AC-1 | P2 | code review defer (`overflow: hidden` guard) |
-| 3 | A cover request aborted at the network gets the typeset cover, no visible `img` | AC-3 | P2 | checklist `route.abort()` |
-| 4 | Remove cover on Book detail: back on Tiles the tile is the read typeset cover in its spine color | AC-3 | P2 | checklist "removing a cover" |
-| 5 | Change color on Book detail: back on Tiles the read typeset fill follows | AC-1 | P2 | checklist "color changes from Book detail" |
-| 6 | Mark finished on Book detail: the tile moves from the unread to the read typeset cover, with the plate and the ribbon | AC-1/AC-2 | P2 | checklist "finishing a Book" |
-| 7 | A pale spine color (`#F2D35B`): the `spine-edge` hairline still shows against the page, the plate and `spine-label` text keep it legible | AC-1 | P3 | checklist "a light spine color" |
-
-Already covered (ticked with references, no new leaf):
-- Rings around a typeset box: `catalog-tile-marks-automate.spec.ts` "[P3] AC-1 the focus ring and the post-add highlight ring…" (Swing Time, added finished with no cover: the read typeset box, its plate in the `sides` scan) and `catalog-tiles-automate.spec.ts` "[P2] AC-7 the highlight ring stays on the new cover box…" (Swing Time unread).
-- axe on Tiles in both themes with typeset covers: `catalog-pace-calculator.spec.ts` "[P2] axe finds nothing on Catalog…" — FLOW_5 has no covers, so every tile is a typeset cover (read: Fahrenheit 451).
-- The empty Main book card's suggestion thumbnail: `up-next.spec.ts:197` (44×64 "No cover").
+**Scope:** selective. The 7 checklist follow-ups, nothing more: the story is one key handler, and the deferred held-key guard belongs to Story 9.2.
 
 ## Execution
 
 - **Mode:** `tea_execution_mode: auto` with the capability probe on. Subagents are supported and agent teams aren't, so the mode resolved to **subagent**.
 - **Workers:**
-  - **3A (API):** not launched. No endpoint changed; `coverFile`, `finished` and `spineColor` already have their pytest.
+  - **3A (API):** not launched. No endpoint changed.
   - **3B-backend:** not launched. No backend target.
-  - **3B-e2e:** targets 1–7. For its fail-proofs it changed only `frontend/src` and restored each change with `git checkout`; afterwards `git diff --stat -- frontend/src backend` is empty.
-- **New file:** the leaves went into `frontend/e2e/catalog-typeset-covers-automate.spec.ts` (389 lines), beside the ATDD spec (now 376 lines), as 8.1 and 8.2 did.
-- **Shared helpers:** the typeset helpers both files use moved out of `catalog-typeset-covers.spec.ts` into `frontend/e2e/typeset-covers.ts` (337 lines): the DESIGN.md colors and `TYPESET` sizes, `TYPESET_SHELF` and its tile names, `typesetServer`, `boxFacts`, `pixelsAt`, `typesetOf`, `inside`, `count`. The move is pure: diffing the old lines 41–354 against the new module with `export` stripped shows only the new header and imports. `forcedPalette` stays in the ATDD spec, its only user. No new fixture or factory.
-- **Review of the worker's output:** read in full. No changes were needed. Its JSON (`success: true`, 7 leaves) is in this session's scratch directory, not committed.
+  - **3B-e2e:** targets 1–7. For its fail-proofs it made temporary edits to `frontend/src` and reverted each one by hand. Afterwards `git diff --stat -- frontend/src backend` is empty. The worker also ran a read-only `git stash list` once, which the item-64 rule bans in any form. It changed nothing: the stash is empty.
+- **New file:** the leaves went into `frontend/e2e/card-note-keyboard-save-automate.spec.ts` (458 lines), beside the ATDD spec (now 347 lines, was 405), following the `*-automate.spec.ts` convention.
+- **Shared helpers:** the helpers both files use moved out of `card-note-keyboard-save.spec.ts` into `frontend/e2e/card-note-keys.ts` (79 lines), as Epic 8 did with `typeset-covers.ts`. Moved: the three status lines, the four note ids, `DUNE_WITH_NOTES`, `cardNotePanel`, `editPanel`, `addCardNote`, `cardNotesBlock`, `noteItem`, `editOf`, `countSubmits` and `submitsSoFar`. The move is pure: the ATDD spec's diff is only its imports and the removed definitions, with no leaf body touched. `KEY_HINT` stays in the ATDD spec, its only user. The automate spec keeps local copies of `watchStatus`/`statusSeen`, because `add-card-note.spec.ts` is read-only for this story. It also adds `boxOf`, `keyshortcutOwners`, `holdRequests` and `confirmDialog`. No new fixture or factory.
+- **Review of the worker's output:** read in full, and no changes were needed. Its JSON is in this session's scratch directory, not committed. One red proof was re-run independently: changing `!(event.metaKey || event.ctrlKey)` to `!event.metaKey` fails `:96`. The mutation was then edited back.
 
 ## Tests Added
 
-All in `frontend/e2e/catalog-typeset-covers-automate.spec.ts`, describe "Story 8.3 Give books without a cover a typeset cover (automate, flows)", at device scale 2:
+All in `frontend/e2e/card-note-keyboard-save-automate.spec.ts`, describe "Story 9.1 Save a card note with Cmd+Enter (automate)":
 
 | Line | Leaf | Priority | Proven red by |
 |------|------|----------|---------------|
-| 133 | AC-1/AC-2 WCAG text spacing: title and author on the plate, the plate inside the box; unread text inside the box | P2 | removing the title's 4-line clamp (Jekyll's plate reached the box bottom) |
-| 175 | AC-1 a much larger font: nothing of the typeset cover paints past the box onto the bar slot or the caption (hit-testing, plus the gap's pixels and Emma's 64% bar) | P2 | removing `overflow: hidden` from `.typeset` |
-| 218 | AC-3 a cover request aborted at the network gets the read typeset cover, no image | P2 | a no-op `onError` on the cover `img` |
-| 243 | AC-3 Remove cover on Book detail: the read tile becomes the typeset cover with the plate | P2 | dropping `removeCover` from the edit intent |
-| 275 | AC-1 Change color on Book detail: the read typeset fill follows (Teal) | P2 | pinning the read fill to one color |
-| 305 | AC-1/AC-2 Mark finished on Book detail: Kindred goes from the unread to the read typeset cover, plate and ribbon | P2 | passing `finished={false}` to `TypesetCover` |
-| 348 | AC-1 a pale spine color (`#F2D35B`): the `spine-edge` hairline shows against the page and the fill; `spine-label` text on the plate | P3 | the read border set to the fill color |
+| 96 | AC-1 Ctrl+Enter in Note and Cmd+Enter in Page on Home each send one `add-card-note` with both values as typed | P1 | `!event.metaKey` in place of `!(event.metaKey \|\| event.ctrlKey)`; also the target guard narrowed to Note |
+| 150 | AC-1 Cmd+Enter in add mode from Book detail returns focus to Book detail's Add card note | P1 | the opener's focus moved to `#main` first and the opener only after a 300 ms delay |
+| 185 | AC-1 on a keyboard save, focus is on Add card note before "Card note saved." (Meta and Ctrl) | P1 | the same late-focus change |
+| 216 | AC-3 edit mode, Ctrl+Enter with a refused Page: message, `aria-invalid`, alert, focus, nothing saved | P1 | `pageField.current?.focus()` changed to `.blur()` |
+| 253 | AC-3 edit mode, Ctrl+Enter couldn't save: line above the buttons, both values kept, Delete at the left | P1 | Delete moved after Cancel; also `setBusy(false)` removed |
+| 296 | AC-4 add mode, while a Cmd+Enter save is out: second press, held key, Save note, Cancel, Esc send nothing more | P1 | `if (inFlight.current) return` removed |
+| 345 | AC-4 a held save that comes back 422 leaves the field error; Save note is no longer `aria-disabled`; the next Cmd+Enter sends one more request | P2 | `setBusy(false)` removed; separately, `inFlight.current = false` moved into the success branch |
+| 384 | AC-4 Cmd+Enter and Ctrl+Enter inside the Delete Confirm dialog neither save nor confirm | P2 | ConfirmDialog moved inside the `<form>` with the field-target guard removed |
+| 432 | AC-5 only Save note carries `aria-keyshortcuts` (Cancel in both modes, Delete in edit mode have none) | P2 | `aria-keyshortcuts="Escape"` added to Cancel |
+
+Priority coverage: P0 0, P1 6, P2 3. The story's P0 path is the ATDD AC-1 leaf.
 
 ## Validation
 
-- `TZ=Europe/Madrid npx playwright test e2e/catalog-typeset-covers.spec.ts e2e/catalog-typeset-covers-automate.spec.ts`: 14 passed; the new file 3 runs over: 21 passed (worker).
-- `npm run check` (repo root), exit 0:
+- `TZ=Europe/Madrid npx playwright test e2e/card-note-keyboard-save.spec.ts e2e/card-note-keyboard-save-automate.spec.ts --repeat-each=2`: 32 passed (this session). The worker also ran the new file 3 times over: 27 passed.
+- Prettier check: clean on the three e2e files. `tsc -b` and oxlint: clean (worker, and in the full check below).
+- `npm run check` (repo root, this session), exit 0:
   - ruff, Prettier, oxlint, `tsc -b`, `check:api`: clean;
   - pytest: 1573 passed, coverage gates ok (domain 100%, intents+store 98.08%);
   - node tests: 354 passed;
-  - Playwright: 665 passed (658 before this run, plus 7);
+  - Playwright: 682 passed (673 before this run, plus 9), including the axe leaves `add-card-note.spec.ts:543` and `edit-card-note.spec.ts:599`;
   - smoke ok.
-- Quality scan of the new files: no `waitForTimeout`, `.only`, `.skip`, `Math.random` or `console.log`; the only conditionals are in DOM-walking helpers, not test flow. Every leaf stops its own seeded server in `finally`. Tiles by role and name, the box by geometry, no class names or `data-testid` (the large-text stylesheet is scoped by the Tiles list's role and name and the link's `aria-hidden` child).
+- Quality scan of the new files: no `waitForTimeout`, `.only`, `.skip`, `Math.random`, `console.log` or `data-testid`. The only loop is the Confirm-dialog leaf's fixed two targets × two keys, which runs the same path every time. Locators go by role and name; geometry is used only for the "above the buttons" and "Delete at the left" checks.
 - No CLI browser sessions were opened (`playwright-cli` isn't installed). Temp artifacts are in the session scratch directory, not the repo.
 - Production code untouched: `git diff --stat -- frontend/src backend` is empty.
 
+## Playwright Utils deviations
+
+None. `@seontechnologies/playwright-utils` isn't installed, so the mandate doesn't apply, and the leaves use the repo's own fixtures (`seededServer`, `requestsTo`) with `page.route` set up before `goto`. Wiring the package (a `merged-fixtures` module, `interceptNetworkCall`) would be a project-wide change, not a story change.
+
 ## ATDD Checklist
 
-`atdd-checklist-8-3-give-books-without-a-cover-a-typeset-cover.md`: the 9 open green-phase follow-ups are ticked — 6 by the new leaves, 3 by existing ones (axe on Tiles with typeset covers, the rings around a typeset box, the empty card's suggestion thumbnail), each with its `file:line`. The helper move is noted. Remaining `[ ]`: **0**.
-
-`deferred-work.md`: the code review's "`.typeset` overflow guard untested" entry is marked resolved by line 175.
+`atdd-checklist-9-1-save-a-card-note-with-cmd-enter.md`: all 7 open green-phase follow-ups are ticked, each with its `file:line`. The AC-5 axe half points at the existing axe leaves (`add-card-note.spec.ts:543`, `edit-card-note.spec.ts:599`), green in the full check. Remaining `[ ]`: **0**.
 
 ## Assumptions and Risks
 
-- The "200% zoom" half of the text-spacing follow-up is covered by the larger-font leaf, not a page zoom: Tiles lays out in CSS pixels, so a zoom only narrows the columns, which the 140px minimum tile keeps above the plate's height at default text.
-- On an unread cover `typesetOf` "finds" a plate, because `spine-unread-fill` (#FDFCF9) is close to `spine-label-strip`. The Mark finished leaf checks "no plate" by computed background, as the ATDD AC-2 leaf does.
-- Pixels are checked in Chromium at device scale 2 only, as in 8.1 and 8.2.
+- **A held key auto-repeating after a refusal is not tested.** It re-sends the request, a known defect deferred to Story 9.2 (`deferred-work.md`, "code review of spec-9-1"). Leaf `:345` covers a held *save* (the request held in flight), which is what the checklist line meant.
+- **Focus-before-status (`:185`, and the `statusSeen` check in `:150`) is mostly guaranteed by the platform.** `announce` sets its text after a 100 ms tick, and Chromium already returns focus to the opener when the modal closes, so swapping focus and announce, or only delaying the focus, keeps it green. The leaves catch a regression that focuses somewhere else first.
+- **Chromium doesn't activate a focused button on Meta+Enter or Control+Enter** (Cancel, the Confirm dialog's Cancel, and Delete card note). Leaf `:384` depends on that. Other browsers are out of scope (AGENTS.md "Supported browser").
+- **Real IME composition** is still covered only by the ATDD leaf's dispatched `isComposing` event.
 
 ## Next
 
-Story 8.3 closes Epic 8's stories. Next is the **Epic 8 retrospective** (`bmad-retrospective`), with the epic's trace and gate and the architecture spine reconciliation (AD-6 drift, deferred by 8.1–8.3) before any next epic.
+Story 9.1 is `done` and doesn't close Epic 9: Story 9.2 "Add several card notes in a row" is next. Its pipeline starts with `bmad-testarch-atdd`. Its ATDD should pick up the two Story 9.2 entries in `deferred-work.md`: guard the held-key repeat, and press both keys by name rather than `ControlOrMeta+Enter`.

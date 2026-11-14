@@ -83,13 +83,13 @@ None expected. The leaves in `add-card-note.spec.ts`, `edit-card-note.spec.ts` a
 
 ## Green-phase follow-ups (secondary branches, not red leaves)
 
-- [ ] **E2E, AC-1 the other two field and key pairs:** `Control+Enter` in Note and `Meta+Enter` in Page. Also add mode from Book detail, where focus returns to that Add card note.
-- [ ] **E2E, AC-1 focus lands before the `status` line** on a keyboard save, as `add-card-note.spec.ts` `watchStatus` proves for Save note.
-- [ ] **E2E, AC-3 in edit mode:** a refused Page and a 503 through `Control+Enter`, with the line above the buttons and Delete still at the left.
-- [ ] **E2E, AC-4 in add mode:** `Meta+Enter` with the save held, then the same presses, gives one `add-card-note`.
-- [ ] **E2E, AC-4 a refusal after a held key:** a 422 for the held save leaves the panel open with the field error. Save note is no longer `aria-disabled`, and the next `Meta+Enter` sends one more request.
-- [ ] **E2E, AC-4 the keys while the Delete Confirm dialog is open:** `Meta+Enter` there neither saves the panel nor confirms the delete (the dialog is the panel's sibling, outside the form).
-- [ ] **E2E, AC-5 only Save note carries `aria-keyshortcuts`:** not Cancel or Delete. Axe on the open panel in both themes stays clean (covered by re-running the existing axe leaves).
+- [x] **E2E, AC-1 the other two field and key pairs:** `Control+Enter` in Note and `Meta+Enter` in Page. Also add mode from Book detail, where focus returns to that Add card note. (done: frontend/e2e/card-note-keyboard-save-automate.spec.ts:96 and :150)
+- [x] **E2E, AC-1 focus lands before the `status` line** on a keyboard save, as `add-card-note.spec.ts` `watchStatus` proves for Save note. (done: frontend/e2e/card-note-keyboard-save-automate.spec.ts:185 (and :150 on Book detail))
+- [x] **E2E, AC-3 in edit mode:** a refused Page and a 503 through `Control+Enter`, with the line above the buttons and Delete still at the left. (done: frontend/e2e/card-note-keyboard-save-automate.spec.ts:216 and :253)
+- [x] **E2E, AC-4 in add mode:** `Meta+Enter` with the save held, then the same presses, gives one `add-card-note`. (done: frontend/e2e/card-note-keyboard-save-automate.spec.ts:296)
+- [x] **E2E, AC-4 a refusal after a held key:** a 422 for the held save leaves the panel open with the field error. Save note is no longer `aria-disabled`, and the next `Meta+Enter` sends one more request. (done: frontend/e2e/card-note-keyboard-save-automate.spec.ts:345 (a held save, not a held key; a held key auto-repeating after the refusal is deferred to Story 9.2, deferred-work.md "code review of spec-9-1"))
+- [x] **E2E, AC-4 the keys while the Delete Confirm dialog is open:** `Meta+Enter` there neither saves the panel nor confirms the delete (the dialog is the panel's sibling, outside the form). (done: frontend/e2e/card-note-keyboard-save-automate.spec.ts:384 (Meta+Enter and Control+Enter, on the dialog's Cancel and on Delete card note))
+- [x] **E2E, AC-5 only Save note carries `aria-keyshortcuts`:** not Cancel or Delete. Axe on the open panel in both themes stays clean (covered by re-running the existing axe leaves). (done: frontend/e2e/card-note-keyboard-save-automate.spec.ts:432; axe re-run green in frontend/e2e/add-card-note.spec.ts:543 and frontend/e2e/edit-card-note.spec.ts:599)
 
 ## Helper probes
 

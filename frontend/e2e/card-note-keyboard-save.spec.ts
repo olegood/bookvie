@@ -10,82 +10,24 @@
 // `ControlOrMeta+Enter`: the story promises both keys on every platform, and
 // `ControlOrMeta` would test only one of them on each machine.
 
-import type { Locator, Page } from '@playwright/test'
+import {
+  addCardNote,
+  cardNotePanel,
+  cardNotesBlock,
+  COULDNT_SAVE,
+  countSubmits,
+  DUNE_WITH_NOTES,
+  editOf,
+  editPanel,
+  noteItem,
+  SAVED,
+  SAVING,
+  SPICE_ID,
+  submitsSoFar,
+} from './card-note-keys.ts'
 import { expect, test } from './fixtures.ts'
-import { DUNE, DUNE_ID, LEFT_HAND_ID, libraryBytes, mainAt, mainBookCard, storedBook } from './home.ts'
+import { DUNE_ID, LEFT_HAND_ID, libraryBytes, mainAt, storedBook } from './home.ts'
 import { ADD_CARD_NOTE, EDIT_CARD_NOTE, intentOf, requestsTo } from './intents.ts'
-
-const SAVED = 'Card note saved.'
-const SAVING = 'Saving the card note.'
-const COULDNT_SAVE = "Couldn't save. Your data wasn't changed."
-
-const FEAR_ID = 'a1e0c0de-0000-4000-8000-000000000012'
-const BEGINNING_ID = 'a1e0c0de-0000-4000-8000-000000000042'
-const SPICE_ID = 'a1e0c0de-0000-4000-8000-000000000096'
-const MYSTERY_ID = 'a1e0c0de-0000-4000-8000-000000000300'
-
-/** Dune with four Card notes, seeded out of page order, with fixed ids. */
-const DUNE_WITH_NOTES = {
-  ...DUNE,
-  cardNotes: [
-    { id: MYSTERY_ID, text: 'The mystery of life isn’t a problem to solve.', pageStart: 300 },
-    { id: FEAR_ID, text: 'Fear is the mind-killer.', pageStart: 12 },
-    { id: SPICE_ID, text: 'The spice must flow.', pageStart: 96 },
-    {
-      id: BEGINNING_ID,
-      text: 'A beginning is the time for taking the most delicate care.',
-      pageStart: 42,
-      pageEnd: 45,
-    },
-  ],
-}
-
-/** The Card note panel in add mode: a modal `dialog` named by its heading. */
-function cardNotePanel(page: Page): Locator {
-  return page.getByRole('dialog', { name: 'Card note', exact: true })
-}
-
-/** The Card note panel in edit mode. */
-function editPanel(page: Page): Locator {
-  return page.getByRole('dialog', { name: 'Edit card note', exact: true })
-}
-
-/** The Main book card's **Add card note**. */
-function addCardNote(page: Page): Locator {
-  return mainBookCard(page).getByRole('button', { name: 'Add card note', exact: true })
-}
-
-/** Book detail's Card notes block, named by its heading "Card notes (N)". */
-function cardNotesBlock(page: Page, count: number): Locator {
-  return page.getByRole('main').getByRole('region', { name: `Card notes (${count})`, exact: true })
-}
-
-/** The block's note whose text is `text`. */
-function noteItem(block: Locator, text: string): Locator {
-  return block.getByRole('listitem').filter({ has: block.page().getByText(text, { exact: true }) })
-}
-
-/** A note's Edit: named "Edit p.96", so it never matches the Book's own Edit. */
-function editOf(item: Locator): Locator {
-  return item.getByRole('button', { name: /^Edit\b/ })
-}
-
-/**
- * Counts every `submit` event from page load on. `requestSubmit()` fires one,
- * as a press of Save note does; a key handler that calls the save directly, or
- * `form.submit()`, fires none. Added before `goto`.
- */
-async function countSubmits(page: Page): Promise<void> {
-  await page.addInitScript(() => {
-    const counter = window as unknown as { submits: number }
-    counter.submits = 0
-    document.addEventListener('submit', () => (counter.submits += 1), true)
-  })
-}
-
-async function submitsSoFar(page: Page): Promise<number> {
-  return page.evaluate(() => (window as unknown as { submits: number }).submits)
-}
 
 /** A key that names a shortcut, as an on-screen hint would. */
 const KEY_HINT = /⌘|↵|⏎|\b(Cmd|Command|Ctrl|Control|Meta|Enter|Return)\b/i
