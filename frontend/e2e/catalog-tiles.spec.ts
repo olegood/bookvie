@@ -23,6 +23,19 @@ import {
 import { expect, startSeededServer, test } from './fixtures.ts'
 import { stopAndRemove } from './home.ts'
 import { COVER_PNG } from './intents.ts'
+import {
+  BROKEN_COVER,
+  bookId,
+  coverBox,
+  DUNE_COVER,
+  ringRect,
+  sameRect,
+  storeTiles,
+  tile,
+  tileLinks,
+  tileNames,
+  tiles,
+} from './tiles.ts'
 
 // DESIGN.md colors, light theme.
 const LINE = 'rgb(228, 223, 213)'
@@ -30,17 +43,8 @@ const SURFACE_INSET = 'rgb(250, 249, 246)'
 const INK_SECONDARY = 'rgb(95, 99, 92)'
 const SPINE_UNREAD_TEXT = 'rgb(119, 113, 106)'
 
-const DUNE_COVER = 'covers/dune.png'
-// Not an image: the browser fails to decode it, so the tile falls back.
-const BROKEN_COVER = 'covers/broken.png'
-
 // "About 1 second" (FR-25, EXPERIENCE.md → Tiles → Covers), with a fifth of slack.
 const FIRST_SCREEN_BUDGET_MS = 1200
-
-/** A stable v4-shaped id for the n-th seeded Book. */
-function bookId(n: number): string {
-  return `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`
-}
 
 /**
  * Nine Books seeded out of order. Under the default Author sort they stand
@@ -79,104 +83,8 @@ const DISCWORLD = 'The Science of Discworld by Terry Pratchett and 2 others, not
 const AUSTERLITZ = 'Austerlitz by W. G. Sebald, finished'
 const BY_AUTHOR = [BLEAK_HOUSE, TUFTE_NAME, DUNE_1, DUNE_2, EMMA, KINDRED, GOOD_OMENS, DISCWORLD, AUSTERLITZ]
 
-function tiles(page: Page): Locator {
-  return page.getByRole('list', { name: /^Tiles, \d+ books?$/ })
-}
-
-function tileLinks(page: Page): Locator {
-  return tiles(page).getByRole('listitem').getByRole('link')
-}
-
-function tile(page: Page, name: string): Locator {
-  return tiles(page).getByRole('listitem').getByRole('link', { name, exact: true })
-}
-
 function sortSelect(page: Page): Locator {
   return page.getByRole('main').getByRole('combobox', { name: 'Sort', exact: true })
-}
-
-/** Opens Catalog in Tiles: the stored choice, set before the app reads it. */
-async function storeTiles(page: Page): Promise<void> {
-  await page.addInitScript(() => window.localStorage.setItem('bookvie.catalogView', 'tiles'))
-}
-
-/** The visible tiles' accessible names, in DOM order (`aria-label`, else `aria-labelledby`, else text). */
-function tileNames(page: Page): Promise<string[]> {
-  return tileLinks(page).evaluateAll((links) =>
-    links.map((link) => {
-      const label = link.getAttribute('aria-label')
-      if (label !== null) return label
-      const ids = link.getAttribute('aria-labelledby')
-      if (ids !== null) {
-        return ids
-          .split(/\s+/)
-          .map((id) => document.getElementById(id)?.textContent ?? '')
-          .join(' ')
-      }
-      return link.textContent ?? ''
-    }),
-  )
-}
-
-type Rect = { x: number; y: number; width: number; height: number }
-
-type BoxLook = {
-  /** The cover box: the outermost element in the tile, as wide as its column, at 2:3. */
-  box: Rect
-  /** Every element filling the box (the box itself, and an image or typeset cover at its size). */
-  fills: { tag: string; background: string; borderStyle: string; borderWidth: string; borderColor: string }[]
-}
-
-/** The tile's cover box, found by its geometry so no class name is pinned. */
-function coverBox(link: Locator): Promise<BoxLook> {
-  return link.evaluate((element) => {
-    const item = element.closest('li') ?? element
-    const width = item.getBoundingClientRect().width
-    const fits = (node: Element) => {
-      const r = node.getBoundingClientRect()
-      return Math.abs(r.width - width) <= 1 && Math.abs(r.height - r.width * 1.5) <= 1.5
-    }
-    const all = Array.from(element.querySelectorAll('*')).filter(fits)
-    if (all.length === 0) throw new Error('no 2:3 cover box as wide as the column')
-    const r = all[0]!.getBoundingClientRect()
-    const box = { x: r.x, y: r.y, width: r.width, height: r.height }
-    const fills = all
-      .filter((node) => {
-        const n = node.getBoundingClientRect()
-        return Math.abs(n.x - r.x) <= 1 && Math.abs(n.y - r.y) <= 1
-      })
-      .map((node) => {
-        const style = getComputedStyle(node)
-        return {
-          tag: node.tagName.toLowerCase(),
-          background: style.backgroundColor,
-          borderStyle: style.borderTopStyle,
-          borderWidth: style.borderTopWidth,
-          borderColor: style.borderTopColor,
-        }
-      })
-    return { box, fills }
-  })
-}
-
-/** The rectangle of whichever element in the tile carries an `accent` ring (outline or box-shadow), or null. */
-function ringRect(link: Locator, accent: string): Promise<(Rect & { outlineWidth: string | null }) | null> {
-  return link.evaluate((element, color) => {
-    const item = element.closest('li') ?? element
-    for (const node of [item, ...Array.from(item.querySelectorAll('*'))]) {
-      const style = getComputedStyle(node)
-      const outlined = style.outlineStyle !== 'none' && style.outlineColor === color
-      if (outlined || style.boxShadow.includes(color)) {
-        const r = node.getBoundingClientRect()
-        return { x: r.x, y: r.y, width: r.width, height: r.height, outlineWidth: outlined ? style.outlineWidth : null }
-      }
-    }
-    return null
-  }, accent)
-}
-
-function sameRect(a: Rect, b: Rect): boolean {
-  return [a.x - b.x, a.y - b.y, a.width - b.width, a.height - b.height].every((d) => Math.abs(d) <= 1)
 }
 
 test.describe('Story 8.1 See my catalog as covers (ATDD)', () => {

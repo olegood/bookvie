@@ -8,6 +8,7 @@ export const INK = 'rgb(43, 46, 42)'
 export const ACCENT = 'rgb(85, 112, 89)'
 export const SHELF_WALL = 'rgb(239, 234, 224)'
 export const SPINE_EDGE = 'rgb(94, 88, 77)'
+export const SPINE_LABEL = 'rgb(43, 46, 42)' // DESIGN.md spine-label #2B2E2A, the same in both themes
 export const SPINE_LABEL_STRIP = 'rgb(251, 248, 241)'
 export const SPINE_UNREAD_FILL = 'rgb(253, 252, 249)'
 export const SPINE_UNREAD_OUTLINE = 'rgb(138, 130, 115)'

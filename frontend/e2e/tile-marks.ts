@@ -4,9 +4,19 @@
 // pixels where the marks belong from a screenshot at device scale 2.
 
 import type { Locator, Page } from '@playwright/test'
-import { expect } from './fixtures.ts'
+import { SPINE_LABEL_STRIP as SPINE_LABEL_STRIP_CSS } from './bookcase.ts'
+import type { Rect } from './tiles.ts'
+
+export { bookId, coversLoaded, type Rect, storeTiles, tileItem, tiles } from './tiles.ts'
 
 export type Rgb = [number, number, number]
+
+/** An `rgb(r, g, b)` CSS color as a tuple; throws on any other form. */
+function rgbOf(css: string): Rgb {
+  const match = /^rgb\((\d+), (\d+), (\d+)\)$/.exec(css)
+  if (!match) throw new Error(`not an rgb(r, g, b) color: ${css}`)
+  return [Number(match[1]), Number(match[2]), Number(match[3])]
+}
 
 // DESIGN.md colors.
 export const LIGHT = {
@@ -20,7 +30,7 @@ export const DARK = {
   spineEdge: [133, 138, 127] as Rgb, // #858A7F
 }
 // Light in both themes, like a spine's label strip.
-export const SPINE_LABEL_STRIP: Rgb = [251, 248, 241] // #FBF8F1
+export const SPINE_LABEL_STRIP = rgbOf(SPINE_LABEL_STRIP_CSS) // bookcase.ts's SPINE_LABEL_STRIP
 
 // Spine colors set by the user, so no cover decides them, each far from the covers below.
 export const RED = { hex: '#B03A2E', rgb: [176, 58, 46] as Rgb }
@@ -31,10 +41,6 @@ export const PURPLE = { hex: '#7A4E8C', rgb: [122, 78, 140] as Rgb }
 // DESIGN.md → Catalog tile.
 export const RIBBON = { width: 16, height: 24, notch: 6, inset: 10 }
 export const BAR = { gap: 6, height: 5 }
-
-export function bookId(n: number): string {
-  return `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`
-}
 
 /** A `width`×`height` PNG of one flat color, drawn in the browser. */
 export async function solidPng(page: Page, width: number, height: number, [r, g, b]: Rgb): Promise<Buffer> {
@@ -52,33 +58,6 @@ export async function solidPng(page: Page, width: number, height: number, [r, g,
   )
   return Buffer.from(base64, 'base64')
 }
-
-export async function storeTiles(page: Page): Promise<void> {
-  await page.addInitScript(() => window.localStorage.setItem('bookvie.catalogView', 'tiles'))
-}
-
-export function tiles(page: Page): Locator {
-  return page.getByRole('list', { name: /^Tiles, \d+ books?$/ })
-}
-
-export function tileItem(page: Page, name: string): Locator {
-  return tiles(page)
-    .getByRole('listitem')
-    .filter({ has: page.getByRole('link', { name, exact: true }) })
-}
-
-/** Waits until every cover `img` in the grid has loaded (the 8.1 behavior the marks sit on). */
-export async function coversLoaded(page: Page): Promise<void> {
-  await expect
-    .poll(() =>
-      tiles(page)
-        .locator('img')
-        .evaluateAll((images) => (images as HTMLImageElement[]).every((img) => img.complete && img.naturalWidth > 0)),
-    )
-    .toBe(true)
-}
-
-export type Rect = { x: number; y: number; width: number; height: number }
 
 /** What a tile's pixels show where the marks belong. Coordinates are CSS pixels relative to the tile. */
 export type TileLook = {

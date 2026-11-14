@@ -992,3 +992,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-epic-8-retro-item-64-no-tree-wide-git-state-changes-in-story-steps.md`
   summary: The ban on tree-wide git commands is prose only. A `permissions.deny` list (`Bash(git stash:*)`, `Bash(git restore:*)`, `Bash(git reset:*)`, `Bash(git clean:*)`, `Bash(git checkout -- *)`) or a PreToolUse Bash hook in `.claude/settings.json` would enforce it, subagents included. It would also block those commands outside story steps, so the call is Oleg's. Medium.
   evidence: Epic 8 PL-2 was stopped by the auto-mode classifier, not by an instruction; `.claude/settings.json` has hooks (`tea-enforce.cjs`) but no git deny rule (Blind Hunter, review of item 64).
+
+## Deferred from: review of spec-epic-8-retro-item-65-one-module-for-the-tiles-e2e-helpers (2026-11-14)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-epic-8-retro-item-65-one-module-for-the-tiles-e2e-helpers.md`
+  summary: No kept test guards the stricter `coversLoaded` (`frontend/e2e/tiles.ts`). Dropping `images.length > 0` or the `opacity === '1'` clause would bring back E8-R2's early pass, and no leaf would fail, because every caller seeds a cover that eventually loads. A kept probe spec with an empty grid, a held transparent cover and a loaded one would catch that. The repo has no tests of its own e2e helpers yet, so this is a new pattern. Low.
+  evidence: item 65's verification was a one-time `covers-loaded.probe.spec.ts`, removed afterwards (spec Implementation Notes). `grep -rn coversLoaded frontend/e2e` finds only the definition, the re-export and its callers (Verification Gap layer, review of item 65).

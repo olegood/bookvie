@@ -10,6 +10,18 @@ import { ACCENT, bookcase, search, spines, SWING_TIME, tabIntoBookcase, viewTogg
 import { expect, startSeededServer, test } from './fixtures.ts'
 import { stopAndRemove } from './home.ts'
 import { COVER_PNG } from './intents.ts'
+import {
+  bookId,
+  coverBox,
+  DUNE_COVER,
+  ringRect,
+  sameRect,
+  storeTiles,
+  tile,
+  tileLinks,
+  tileNames,
+  tiles,
+} from './tiles.ts'
 
 // DESIGN.md colors, dark theme (tokens.css → :root[data-theme="dark"] and the system dark preference).
 const INK_DARK = 'rgb(236, 234, 227)'
@@ -17,17 +29,11 @@ const INK_SECONDARY_DARK = 'rgb(179, 183, 173)'
 const SURFACE_INSET_DARK = 'rgb(29, 32, 27)'
 const LINE_DARK = 'rgb(52, 56, 49)'
 
-const DUNE_COVER = 'covers/dune.png'
 const DUNE_FILES = { [DUNE_COVER]: COVER_PNG }
 
 // CatalogPage's HIGHLIGHT_MS, then the ring's 600ms fade (CatalogTiles.module.css).
 const HIGHLIGHT_MS = 2000
 const FADE_MS = 600
-
-/** A stable v4-shaped id for the n-th seeded Book. */
-function bookId(n: number): string {
-  return `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`
-}
 
 /** Three Books; Dune has a cover file (DUNE_FILES), and sorts second under Author. */
 const SMALL_SHELF = [
@@ -40,18 +46,6 @@ const BARE_SHELF = SMALL_SHELF.map((book) => ({ ...book, coverFile: undefined })
 const DUNE = 'Dune by Frank Herbert, not read yet'
 const EMMA = 'Emma by Jane Austen, not read yet'
 const SWING_TIME_NAME = 'Swing Time by Zadie Smith, not read yet'
-
-function tiles(page: Page): Locator {
-  return page.getByRole('list', { name: /^Tiles, \d+ books?$/ })
-}
-
-function tileLinks(page: Page): Locator {
-  return tiles(page).getByRole('listitem').getByRole('link')
-}
-
-function tile(page: Page, name: string): Locator {
-  return tiles(page).getByRole('listitem').getByRole('link', { name, exact: true })
-}
 
 function viewButton(page: Page, name: 'Bookcase' | 'List' | 'Tiles'): Locator {
   return viewToggle(page).getByRole('button', { name, exact: true })
@@ -68,80 +62,9 @@ function typeChip(page: Page, name: string): Locator {
     .getByRole('button', { name, exact: true })
 }
 
-/** Opens Catalog in Tiles: the stored choice, set before the app reads it. */
-async function storeTiles(page: Page): Promise<void> {
-  await page.addInitScript(() => window.localStorage.setItem('bookvie.catalogView', 'tiles'))
-}
-
-/** The visible tiles' names, in DOM order. */
-function tileNames(page: Page): Promise<(string | null)[]> {
-  return tileLinks(page).evaluateAll((links) => links.map((link) => link.getAttribute('aria-label')))
-}
-
 /** The visible spines' names, in DOM order. */
 function spineNames(page: Page): Promise<(string | null)[]> {
   return spines(page).evaluateAll((buttons) => buttons.map((button) => button.getAttribute('aria-label')))
-}
-
-type Rect = { x: number; y: number; width: number; height: number }
-
-type BoxLook = {
-  /** The cover box: the outermost element in the tile, as wide as its column, at 2:3. */
-  box: Rect
-  /** Every element filling the box (the box itself, and an image or placeholder at its size). */
-  fills: { tag: string; background: string; borderStyle: string; borderWidth: string; borderColor: string }[]
-}
-
-/** The tile's cover box, found by its geometry so no class name is pinned. */
-function coverBox(link: Locator): Promise<BoxLook> {
-  return link.evaluate((element) => {
-    const item = element.closest('li') ?? element
-    const width = item.getBoundingClientRect().width
-    const fits = (node: Element) => {
-      const r = node.getBoundingClientRect()
-      return Math.abs(r.width - width) <= 1 && Math.abs(r.height - r.width * 1.5) <= 1.5
-    }
-    const all = Array.from(element.querySelectorAll('*')).filter(fits)
-    if (all.length === 0) throw new Error('no 2:3 cover box as wide as the column')
-    const r = all[0]!.getBoundingClientRect()
-    const box = { x: r.x, y: r.y, width: r.width, height: r.height }
-    const fills = all
-      .filter((node) => {
-        const n = node.getBoundingClientRect()
-        return Math.abs(n.x - r.x) <= 1 && Math.abs(n.y - r.y) <= 1
-      })
-      .map((node) => {
-        const style = getComputedStyle(node)
-        return {
-          tag: node.tagName.toLowerCase(),
-          background: style.backgroundColor,
-          borderStyle: style.borderTopStyle,
-          borderWidth: style.borderTopWidth,
-          borderColor: style.borderTopColor,
-        }
-      })
-    return { box, fills }
-  })
-}
-
-/** The rectangle of whichever element in the tile carries a `color` ring (outline or box-shadow), or null. */
-function ringRect(link: Locator, color: string): Promise<(Rect & { outlineWidth: string | null }) | null> {
-  return link.evaluate((element, ringColor) => {
-    const item = element.closest('li') ?? element
-    for (const node of [item, ...Array.from(item.querySelectorAll('*'))]) {
-      const style = getComputedStyle(node)
-      const outlined = style.outlineStyle !== 'none' && style.outlineColor === ringColor
-      if (outlined || style.boxShadow.includes(ringColor)) {
-        const r = node.getBoundingClientRect()
-        return { x: r.x, y: r.y, width: r.width, height: r.height, outlineWidth: outlined ? style.outlineWidth : null }
-      }
-    }
-    return null
-  }, color)
-}
-
-function sameRect(a: Rect, b: Rect): boolean {
-  return [a.x - b.x, a.y - b.y, a.width - b.width, a.height - b.height].every((d) => Math.abs(d) <= 1)
 }
 
 /** Whether the tile's cover box carries a `color` ring at its own size. */

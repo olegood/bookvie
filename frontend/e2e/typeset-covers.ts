@@ -20,10 +20,10 @@ import {
   solidPng,
   SPINE_LABEL_STRIP,
 } from './tile-marks.ts'
+import { BROKEN_COVER, WIDE_COVER } from './tiles.ts'
 
 // DESIGN.md colors the typeset covers use (light, then the dark twins).
-export const SPINE_LABEL = 'rgb(43, 46, 42)' // #2B2E2A, the same in both themes
-export const SPINE_LABEL_STRIP_CSS = 'rgb(251, 248, 241)'
+export { SPINE_LABEL, SPINE_LABEL_STRIP as SPINE_LABEL_STRIP_CSS } from './bookcase.ts'
 export const UNREAD = {
   light: {
     fill: [253, 252, 249] as Rgb, // #FDFCF9
@@ -40,8 +40,7 @@ export const UNREAD = {
 // DESIGN.md → components.catalog-tile.typeset-*.
 export const TYPESET = { plateInset: 10, plateTop: 34, titleLines: 4 }
 
-export const WIDE_COVER = 'covers/wide.png'
-export const BROKEN_COVER = 'covers/broken.png'
+export { BROKEN_COVER, WIDE_COVER } from './tiles.ts'
 
 export const GOOD_OMENS_ID = bookId(1)
 export const EMMA_ID = bookId(4)

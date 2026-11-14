@@ -10,7 +10,6 @@
 // is already covered by catalog-pace-calculator.spec.ts, whose Flow 5 seed has
 // a finished Book (Fahrenheit 451) and two Books with a percent.
 
-import type { Page } from '@playwright/test'
 import { finished, SWING_TIME, tabIntoBookcase } from './bookcase.ts'
 import { expect, startSeededServer, test } from './fixtures.ts'
 import { LEFT_HAND_ID, mainAt, mainBookCard, stopAndRemove } from './home.ts'
@@ -20,7 +19,6 @@ import {
   barPercent,
   BLUE,
   bookId,
-  coversLoaded,
   inOrder,
   LIGHT,
   lookOf,
@@ -33,26 +31,12 @@ import {
   type Rgb,
   solidPng,
   SPINE_LABEL_STRIP,
-  storeTiles,
   tileItem,
 } from './tile-marks.ts'
+import { navigateToCatalog, openTiles, WIDE_COVER } from './tiles.ts'
 
 // A landscape cover 120×80 and a portrait one 60×120, one flat color each, far from the spine colors.
 const COVER_RGB: Rgb = [30, 90, 120]
-const WIDE_COVER = 'covers/wide.png'
-
-/** Opens Catalog in Tiles from `url` and waits for every cover to load. */
-async function openTiles(page: Page, url: string): Promise<void> {
-  await storeTiles(page)
-  await page.goto(`${url}/catalog`)
-  await coversLoaded(page)
-}
-
-/** Goes to Catalog through the app's navigation, as a user would after working on Home or Book detail. */
-async function navigateToCatalog(page: Page): Promise<void> {
-  await page.getByRole('navigation').getByRole('link', { name: 'Catalog', exact: true }).click()
-  await coversLoaded(page)
-}
 
 const BLEAK_HOUSE_ID = bookId(1)
 /** Bleak House, finished, with a wide cover and a red spine. */
@@ -160,7 +144,7 @@ test.describe("Story 8.2 See what I've read and what I'm reading on the tiles (a
       },
     )
     try {
-      await openTiles(page, server.url)
+      await openTiles(page, server.url, { covers: true })
       const bleakHouse = tileItem(page, BLEAK_HOUSE)
       await expect.poll(async () => near((await lookOf(bleakHouse)).ribbonMiddle, RED.rgb, 24)).toBe(true)
       const before = await lookOf(bleakHouse, RED.rgb)
@@ -178,7 +162,7 @@ test.describe("Story 8.2 See what I've read and what I'm reading on the tiles (a
       await panel.getByRole('button', { name: 'Save changes', exact: true }).click()
       await expect(panel).toBeHidden()
 
-      await navigateToCatalog(page)
+      await navigateToCatalog(page, { covers: true })
       // The tile now shows the portrait cover: narrower and taller, so its top and right edge moved.
       await expect.poll(async () => Math.round((await lookOf(bleakHouse)).cover.width)).toBe(60 + 2)
       const after = await lookOf(bleakHouse)
@@ -214,7 +198,7 @@ test.describe("Story 8.2 See what I've read and what I'm reading on the tiles (a
       },
     )
     try {
-      await openTiles(page, server.url)
+      await openTiles(page, server.url, { covers: true })
       const bleakHouse = tileItem(page, BLEAK_HOUSE)
       await expect.poll(async () => near((await lookOf(bleakHouse)).ribbonMiddle, RED.rgb, 24)).toBe(true)
       const look = await lookOf(bleakHouse)
@@ -282,7 +266,7 @@ test.describe("Story 8.2 See what I've read and what I'm reading on the tiles (a
       },
     )
     try {
-      await openTiles(page, server.url)
+      await openTiles(page, server.url, { covers: true })
       const bleakHouse = tileItem(page, BLEAK_HOUSE)
       await expect.poll(async () => near((await lookOf(bleakHouse)).ribbonMiddle, RED.rgb, 24)).toBe(true)
       const leftHand = tileItem(page, 'The Left Hand of Darkness by Ursula K. Le Guin, Main book, 45%')

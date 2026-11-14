@@ -37,13 +37,12 @@ import {
   tileItem,
   tiles,
 } from './tile-marks.ts'
+import { BROKEN_COVER, DUNE_COVER, WIDE_COVER } from './tiles.ts'
 
 // A landscape cover 120×80, one flat color: in a 2:3 box it sits at the
 // bottom with empty box above it, so "the visible cover's top" isn't the box's.
-const WIDE_COVER = 'covers/wide.png'
 const WIDE_COVER_RGB: Rgb = [30, 90, 120]
-// COVER_PNG: 40×60, rgb(200, 60, 40), shown at its own size at the bottom of the box.
-const DUNE_COVER = 'covers/dune.png'
+// DUNE_COVER holds COVER_PNG: 40×60, rgb(200, 60, 40), shown at its own size at the bottom of the box.
 
 const EMMA_ID = bookId(3)
 
@@ -455,8 +454,7 @@ test.describe("Story 8.2 See what I've read and what I'm reading on the tiles (A
   })
 })
 
-/** A finished Book whose cover file isn't an image, and one whose cover is narrower than the ribbon plus its inset. */
-const BROKEN_COVER = 'covers/broken.png'
+/** A cover narrower than the ribbon plus its inset. EDGE_SHELF also has a finished Book on BROKEN_COVER, a file that isn't an image. */
 const NARROW_COVER = 'covers/narrow.png'
 const EDGE_SHELF = {
   books: [

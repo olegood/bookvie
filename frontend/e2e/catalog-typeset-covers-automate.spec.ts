@@ -11,26 +11,13 @@
 // styles. The tiles are found by role and name, the cover box by its 2:3
 // geometry, never by a class name.
 
-import type { Locator, Page } from '@playwright/test'
+import type { Locator } from '@playwright/test'
 import { finished } from './bookcase.ts'
 import { expect, startSeededServer, test } from './fixtures.ts'
 import { stopAndRemove } from './home.ts'
 import { openEdit } from './library.ts'
-import {
-  BAR,
-  barPercent,
-  bookId,
-  LIGHT,
-  lookOf,
-  near,
-  OLIVE,
-  PURPLE,
-  RED,
-  type Rgb,
-  storeTiles,
-  tileItem,
-  tiles,
-} from './tile-marks.ts'
+import { BAR, barPercent, bookId, LIGHT, lookOf, near, OLIVE, PURPLE, RED, type Rgb, tileItem } from './tile-marks.ts'
+import { navigateToCatalog, openTiles } from './tiles.ts'
 import {
   BLEAK_HOUSE,
   boxFacts,
@@ -69,19 +56,6 @@ const TEAL: Rgb = [75, 124, 123]
 
 /** A pale spine color the user can set (#F2D35B), close to the page and the plate. */
 const PALE = { hex: '#F2D35B', rgb: [242, 211, 91] as Rgb }
-
-/** Opens Catalog in Tiles at `url`. */
-async function openTiles(page: Page, url: string): Promise<void> {
-  await storeTiles(page)
-  await page.goto(`${url}/catalog`)
-  await expect(tiles(page)).toBeVisible()
-}
-
-/** Goes to Catalog through the app's navigation, as a user would after working on Book detail. */
-async function navigateToCatalog(page: Page): Promise<void> {
-  await page.getByRole('navigation').getByRole('link', { name: 'Catalog', exact: true }).click()
-  await expect(tiles(page)).toBeVisible()
-}
 
 /** Whether a read tile shows the typeset cover in `fill`: the fill beside the plate, and a plate. */
 async function readTypeset(item: Locator, fill: Rgb): Promise<boolean> {
