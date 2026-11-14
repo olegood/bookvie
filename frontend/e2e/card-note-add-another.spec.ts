@@ -230,6 +230,35 @@ test.describe('Story 9.2 Add several card notes in a row (ATDD)', () => {
     expect(added).toHaveLength(3)
   })
 
+  test('[P1] AC-3 with Add another on, Save note is enabled again after a stay-open save, and a second click saves the next note', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer(mainAt(212))
+    const added = requestsTo(page, ADD_CARD_NOTE)
+    await page.goto(`${server.url}/`)
+
+    await addCardNote(page).click()
+    const panel = cardNotePanel(page)
+    const note = noteField(panel)
+    const saveNote = panel.getByRole('button', { name: 'Save note', exact: true })
+    await addAnother(panel).check()
+    await note.fill('Saved with the mouse.')
+    await saveNote.click()
+    await expect(savedCount(panel)).toHaveText('1 note saved')
+
+    // The stay-open save ends busy: Save note isn't "Saving card note" any more.
+    await expect(saveNote).not.toHaveAttribute('aria-disabled', 'true')
+    await expect(saveNote).toHaveAccessibleDescription('')
+
+    await note.fill('Saved with the mouse again.')
+    await saveNote.click()
+    await expect(savedCount(panel)).toHaveText('2 notes saved')
+    await expect(note).toHaveValue('')
+    expect(added).toHaveLength(2)
+    expect(intentOf(added[1])).toMatchObject({ text: 'Saved with the mouse again.' })
+  })
+
   test('[P1] AC-4 with Add another on, a plain-text count on the checkbox line reads "1 note saved", then "2 notes saved", and starts empty at each opening', async ({
     page,
     seededServer,

@@ -3,7 +3,7 @@ title: 'Story 9.2: Add several card notes in a row'
 type: 'feature'
 created: '2026-11-14'
 baseline_revision: '08def0ec92e8ef0ba7e7d0f66ba80059924a6e8b'
-status: 'in-review'
+status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -87,6 +87,31 @@ deferred: []
 - Given Add another on, when a save is refused or can't be written, then the panel stays open with both values and the message, and the count is unchanged.
 - Given Add another off, or edit mode with the stored choice on, when a save succeeds, then the panel closes and focus returns to the opener as before; the existing card note e2e specs pass unchanged.
 - Given the dark theme or forced colors, then the box shows the accent dark twin and the dark unchecked box, or the system colors, with no custom drawing.
+
+### Review Findings
+
+Code review (`bmad-code-review`, new session, 2026-11-14) of `08def0e..c347eda`; layers: Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor, Spine Check (no findings).
+
+- [x] [Review][Patch] No test clicks Save note after a stay-open save: every later save presses Cmd/Ctrl+Enter (`requestSubmit()`), so deleting the stay-open `setBusy(false)` leaves Save note `aria-disabled` with "Saving card note" and ignoring clicks while all 9 leaves stay green (mutation run by the layer) (Verification Gap) [frontend/e2e/card-note-add-another.spec.ts:232]
+- [x] [Review][Patch] `catalog-filter.spec.ts` says "The only keys the app keeps in localStorage (lib/catalogSort, catalogView, theme)" and its `APP_STORAGE_KEYS` lacks `bookvie.cardNoteAddAnother`; the comment is now false and the `:703` assertion would fail on any run that had checked the box (Blind Hunter) [frontend/e2e/catalog-filter.spec.ts:29]
+- Mutation check (this session): with the stay-open `setBusy(false)` deleted, the added leaf "Save note is enabled again after a stay-open save" fails on `aria-disabled`; edited back by hand and rebuilt.
+- Full check after the patches (2026-11-14, this review session): `npm run check` exit 0 — pytest 1573 passed, unit 359 passed, e2e 692 passed, smoke ok.
+
+**Rejected:**
+- `low` Text typed into Note while a stay-open save is in flight is wiped by `setText('')` (Edge Case Hunter) — probed in Chromium: a save resolves in 15–25 ms locally (`[25,16,16,21,15]`), and typing at 30 ms per key right after Cmd+Enter lost only the first character; nobody types the next note within ~20 ms of saving, and a compare-and-clear adds a branch with unclear semantics (Note would keep the old text plus the new characters).
+- `low` The Add another box can be toggled while a save is in flight, and `save()` takes the branch of the value it started with (Edge Case Hunter ×2 + Blind Hunter + Acceptance Auditor) — the window is the 15–25 ms measured above; a ref or a disabled box adds state for a case nobody meets.
+- `false` The build's rejection rests on "a local save resolves in milliseconds", but a save is a POST plus refetches (Edge Case Hunter, claim) — measured: the POST plus refetches take 15–25 ms.
+- `low` A save, Esc or Cancel within 100 ms of a stay-open save drops its "Card note saved." (Edge Case Hunter ×2 + Blind Hunter, which also asks for a `deferred-work.md` entry) — `announce.ts`'s clear-then-set design; unreachable at human speed and already in Residual risks; keeping a pending status through `dismiss()` changes the announce contract.
+- `low` The spec's Verification and Code Map still say 8 leaves; there are 9 (Blind Hunter + Acceptance Auditor) — the fix edits the spec under review; the Auto Run Result records the added leaf.
+- `low` The ATDD checklist doesn't list the added leaf and its unit follow-up is still unchecked (Blind Hunter) — its green-phase follow-ups belong to `bmad-testarch-automate`.
+- `low` The added "AC-3" leaf sits between AC-6 and AC-7 (Blind Hunter) — its title names the AC-3 criterion it pins ("errors … cleared"); the position is cosmetic.
+- `low` The running count isn't heard by screen readers (Blind Hunter) — the spec's Always makes it plain text with no live region; `aria-describedby` is optional per the ATDD checklist.
+- `low` "Add another" and the count's plural are inline JSX, not `lib/cardNotes.ts` constants (Blind Hunter) — both pinned by e2e; a refactor with no defect.
+- `low` No unit test for a missing `window` (Blind Hunter) — the `ReferenceError` falls into the same `catch` the throwing-storage test pins; the app always has a `window`.
+- `low` `.addAnotherRow`'s `gap: var(--space-3)` is set by no spec or test (Blind Hunter) — an existing token, it only spaces the label from the count when the row is tight; no harm named.
+- `low` ATDD leaf AC-5 was edited around the 100 ms announce window (Acceptance Auditor) — recorded in the Spec Change Log as a test-timing fix; no assertion weakened.
+- `false` The spine-drift entry is marked `resolved:` inside the story (Acceptance Auditor) — the drift was code lagging the spine, not the spine lagging code; Spine Check confirms the code now matches AD-15 and the FR-17 to FR-19 row, so nothing is left for the reconciliation to edit, and the Code Map told Finalize to resolve it.
+- `low` Throwing storage, export/restore, Book detail add mode and a held Control+Enter are covered by unit tests or code only (Acceptance Auditor) — the ATDD checklist's follow-ups for `bmad-testarch-automate`.
 
 ## Spec Change Log
 

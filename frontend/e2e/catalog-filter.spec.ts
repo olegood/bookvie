@@ -26,8 +26,8 @@ const ACCENT_SOFT = 'rgb(227, 235, 226)'
 const ACCENT_SOFT_DARK = 'rgb(44, 58, 46)'
 const ACCENT_DARK = 'rgb(147, 181, 151)'
 
-// The only keys the app keeps in localStorage (lib/catalogSort, catalogView, theme).
-const APP_STORAGE_KEYS = ['bookvie.catalogSort', 'bookvie.catalogView', 'bookvie.theme']
+// The only keys the app keeps in localStorage (lib/catalogSort, catalogView, theme, cardNoteAddAnother).
+const APP_STORAGE_KEYS = ['bookvie.catalogSort', 'bookvie.catalogView', 'bookvie.theme', 'bookvie.cardNoteAddAnother']
 
 /** A stable v4-shaped id for the n-th seeded Book. */
 function bookId(n: number): string {
