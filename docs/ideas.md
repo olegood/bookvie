@@ -89,3 +89,43 @@ Notes:
 - Today the Home slice (FR-24) shows the Main book's row, then the Up next Book's, then rows with the most recent finishes, with the Books in bookcase (catalog sort) order. Decide whether recent use replaces that, only orders the Books within it, or is a Home-only option.
 - Define "touch": opening the Book's detail, logging a page, adding a card note, editing it?
 - Local storage is per browser, so the order won't follow you to another computer and resets if site data is cleared. That's acceptable for a convenience, but the app has to work when it's empty.
+
+## Catalog grouping by author, publisher or year
+
+**Status:** new
+
+Let the catalog group Books by author, by publisher or by year, so it's easier to find your way around a large catalog.
+
+Notes:
+
+- Needs a grouping control (none / author / publisher / year), probably next to the list / tiles toggle.
+- Remember the chosen grouping in the browser's local storage, like the Tiles view's remembered choice (FR-25). It's a viewing preference, not library data, so it's never exported.
+- Decide how a Book with several authors is grouped: under each author, or only the first.
+- Books with no publisher or no year need their own group (for example "Unknown"), placed last.
+- Decide how grouping combines with the catalog sort, the filter chips, quick-search and the tiles view, and whether groups can be collapsed.
+
+## Development vs production, and a visible version
+
+**Status:** new
+
+Make it obvious whether the running app is the development version or the one in real use ("production"), and show the app's version somewhere, so it's always clear which version is in use.
+
+Notes:
+
+- Distinguishing the environments: for example a "DEV" badge or a different accent color in the app shell, and a different browser tab title or favicon, only in development. Production stays as it looks today.
+- The two environments should also keep separate data (database file, port), so trying things out in development never touches the real library. Check what is shared today.
+- Version: decide where it comes from (`package.json` / `pyproject.toml` version, a git tag, the commit hash, the build date, or a combination) and where it's shown (footer, an "About" entry, the tab tooltip).
+- The backend could report its version too (for example in a health or info API call), so a mismatch between frontend and backend is visible.
+
+## Catalog search and filter results count
+
+**Status:** new
+
+Show how many Books match the current quick-search and filter chips. Today there is no way to see how many matches were found.
+
+Notes:
+
+- For example "12 of 240 books" near the search field, updated as the user types or toggles a chip.
+- Decide whether the count shows only while a search or filter is active, or always (as the total).
+- Announce the count to screen readers (a polite live region), without announcing on every keystroke.
+- If pagination is picked up (see "Pagination with pagination-aware search"), the count must cover all pages, not only the loaded one.
