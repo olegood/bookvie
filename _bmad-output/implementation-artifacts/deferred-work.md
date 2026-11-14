@@ -1013,3 +1013,6 @@
   summary: Spine drift (Capability → Architecture Map FR-17 to FR-19 row, Structural Seed `lib/`, AD-15), reconciled before the next epic. The map, whose heading says "Every row below is built", names `components/CardNotePanel` "(keyboard save, Add another) with `lib/cardNoteAddAnother`". The Seed lists `cardNoteAddAnother` as a `lib/` module, and AD-15 lists the Card note panel's Add another among the `localStorage` preferences. None of these exists after Story 9.1. The spine got ahead of the code in `450510a`; Story 9.2 is planned to build them. If 9.2 doesn't, reconcile the spine at the Epic 9 retro. Low.
   evidence: ARCHITECTURE-SPINE.md:210, :212, :382, :402; no `frontend/src/lib/cardNoteAddAnother.ts` (Spine Check, code review of Story 9.1).
   resolved: Story 9.2, `frontend/src/lib/cardNoteAddAnother.ts` and the Add another checkbox in `frontend/src/components/CardNotePanel.tsx` now exist as the spine describes; no spine edit needed.
+- source_spec: `_bmad-output/implementation-artifacts/spec-align-select-arrow.md`
+  summary: Add an e2e check that the select chevron sits --space-3 from the right in both themes and falls back to the native arrow under forced colors.
+  evidence: The arrow fix has only manual screenshot verification; nothing stops a `background` shorthand from wiping the chevron again.
