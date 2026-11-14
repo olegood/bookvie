@@ -60,7 +60,7 @@ Notes:
 
 ## Faster card note entry
 
-**Status:** new
+**Status:** planned (Epic 9, see [the plan](../_bmad-output/planning-artifacts/card-note-entry-plan-2026-11-14.md))
 
 Make the "Add card note" dialog quicker to use when adding several notes in a row. Today each note means saving, then pressing "Add card note" again to reopen the dialog.
 
