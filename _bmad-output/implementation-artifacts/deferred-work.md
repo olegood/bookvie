@@ -986,3 +986,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-8-3-give-books-without-a-cover-a-typeset-cover.md`
   summary: Two editions of a Book without a cover look identical in Tiles: the typeset cover and the caption show the same title and first author, and only the link's accessible name carries the edition. It extends the twin-names entry above (finish line, popover heading and Start dialog name a Book by title only) to the visible tiles. Low.
   evidence: `frontend/src/pages/CatalogTiles.tsx:69-72,186-189`; the Epic 8 retro behavior check (two Persuasion editions) and E8-R5 in `epic-8-retro-2026-11-13.md`.
+
+## Deferred from: review of spec-epic-8-retro-item-64-no-tree-wide-git-state-changes-in-story-steps (2026-11-14)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-epic-8-retro-item-64-no-tree-wide-git-state-changes-in-story-steps.md`
+  summary: The ban on tree-wide git commands is prose only. A `permissions.deny` list (`Bash(git stash:*)`, `Bash(git restore:*)`, `Bash(git reset:*)`, `Bash(git clean:*)`, `Bash(git checkout -- *)`) or a PreToolUse Bash hook in `.claude/settings.json` would enforce it, subagents included. It would also block those commands outside story steps, so the call is Oleg's. Medium.
+  evidence: Epic 8 PL-2 was stopped by the auto-mode classifier, not by an instruction; `.claude/settings.json` has hooks (`tea-enforce.cjs`) but no git deny rule (Blind Hunter, review of item 64).
