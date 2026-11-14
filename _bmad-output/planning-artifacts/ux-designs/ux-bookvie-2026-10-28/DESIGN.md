@@ -2,7 +2,7 @@
 name: bookvie
 description: Personal, local-first desktop web app for one reader's home library and reading. Birch Morning direction — bright, flat, Nordic; a pale birch bookcase where read books are colored and unread books are outlined.
 status: final
-updated: 2026-11-13
+updated: 2026-11-14
 colors:
   # Light theme (default tokens). Dark twins carry the -dark suffix.
   page: '#F6F4EF'
@@ -226,6 +226,13 @@ components:
     label: '{typography.body-sm}'
     label-color: '{colors.ink-secondary}'
     placeholder-color: '{colors.ink-tertiary}'
+  checkbox:
+    control: native
+    size: 16px
+    accent: '{colors.accent}'
+    label: '{typography.body-sm}'
+    label-color: '{colors.ink}'
+    label-gap: '{spacing.2}'
   main-book-card:
     background: '{colors.surface}'
     border: '1px solid {colors.line}'
@@ -344,6 +351,8 @@ components:
     text: '{typography.body}'
     page-ref: '{typography.meta}'
     page-ref-color: '{colors.ink-tertiary}'
+    saved-count: '{typography.meta}'
+    saved-count-color: '{colors.ink-tertiary}'
   list-view-row:
     divider: '1px solid {colors.line}'
     text: '{typography.body-sm}'
@@ -545,7 +554,7 @@ Under `forced-colors: active`:
 - Unread spines keep a `CanvasText` outline with a `Canvas` fill.
 - Markers get a `CanvasText` ring.
 - Selected options keep their border indicator.
-
+- The native checkbox takes the system colors on its own; no override.
 - Catalog tiles: the finished ribbon and the reading bar's fill use `forced-color-adjust: none` with `CanvasText`, the bar's track becomes `Canvas` with a `CanvasText` outline, the typeset cover becomes `Canvas` with a `CanvasText` border, its text `CanvasText`, and the cover hairline and the loading box's border become `CanvasText`.
 
 Read and unread stay distinct.
@@ -629,6 +638,7 @@ Visual specs. Behavior lives in EXPERIENCE.md → Component Patterns, under the 
 | **Top nav** | `{components.top-nav}`. "Skip to content" link first (visible only on focus, `surface` chip with `focus-ring`). Items: Home · Catalog · Stats · Card notes · Backup. Active item: `ink`, weight 600, 2px `accent` underline flush with the bar's bottom hairline. Inactive: `ink-secondary`. |
 | **Theme toggle** | Three-option segmented control (Light · Dark · System), each with a small glyph (sun, moon, half-filled circle) and its text. `input-border` around the group. Selected option: `accent-soft` fill, `ink` text, weight 600, and a 2px `accent` bar along its bottom edge (the non-color indicator). All segmented controls (Catalog view, Stats presets, Pile order, Purpose fulfilled) use this same selected treatment. |
 | **Text field** | `{components.text-field}`. Visible label above in `body-sm`/`ink-secondary`; "(required)" sits after the label element in `meta`/`ink-tertiary` and is not part of the label. Focus: `accent` border plus `focus-halo`. Invalid: 2px `ink` border and a one-line message below in `body-sm`/`ink`. Never red. Applies to every field, select, date field and the page field. |
+| **Checkbox** | `{components.checkbox}`. The browser's native checkbox, 16px, tinted with `accent` through CSS `accent-color` (the theme's token swap gives the `accent` dark twin; `color-scheme: dark` gives the dark unchecked box). Label to its right in `body-sm`/`ink`, the whole label clickable. Focus: `{components.focus-ring}` on the box. No custom drawing. Used by the Card note panel's **Add another**. |
 | **Main book card** | See [Main book card](#main-book-card) below. |
 | **Main book card — empty** | Same card frame and size. "No Main book." in `panel-heading`/`ink`. Up next suggestion below it: a 44×64 cover thumbnail (or placeholder), serif title in `book-title-md`, author, and **Start reading** (or **Resume**) as `button-primary`. Catalog suggestion: a `link` "Choose a book in the Catalog". Which one shows: EXPERIENCE.md → State Patterns. No illustration. |
 | **No-cover placeholder** | `surface-inset` fill, 1.5px dashed `spine-unread-outline` border, two short horizontal bars in `spine-unread-outline` suggesting a title. Same size as the cover it stands in for. Catalog tiles use the Typeset cover instead (Components → Catalog tile). |
@@ -651,7 +661,7 @@ Visual specs. Behavior lives in EXPERIENCE.md → Component Patterns, under the 
 | **Duplicate dialog** | `{components.dialog}`, centered, 440px. Heading "Possible duplicate", one sentence naming the matching Books (serif title, author, ISBN if present). Buttons right-aligned: **Don't add** (`button-secondary`), **Add anyway** (`button-primary`). No icon, no warning color. |
 | **Start dialog** | `{components.dialog}`, 480px. Heading "Start *X*?" or "Resume *X*?" with *X* in serif. Up to two trade-off lines in `body`: "This pauses *Y* at p.120 (64%)." and "*Z* moves to Waiting for you.", "*Z* stays on the side." or "*Z* returns to the catalog." The "Which page?" number field (Text field, 110px). Optional Purpose field (one line, label "Purpose (optional)", hint in `ink-tertiary`). Buttons: **Start reading** or **Resume** (`button-primary`), **Cancel**. |
 | **Finish dialog** | `{components.dialog}`, 440px. Heading "Finished *X*" in serif. **Finished on** date field (Text field). "Purpose fulfilled?" as a three-option radio group styled as a segmented control (yes · partly · not yet), with the Purpose sentence quoted above it in `ink-secondary`. "Rating" as five star radios: outline stars in `input-border`; selected and lower stars are filled `accent` (shape change, not only color); the "No rating" text option comes first. Buttons: **Done** (`button-primary`), **Cancel**. |
-| **Card note panel** | `{components.card-note}` styled as an index card: `surface`, `rounded.lg`, 360px wide, small dialog. Heading "Card note" or "Edit card note" in `panel-heading`. Fields: Note (multi-line, `body`), Page. Buttons: **Save note**, **Cancel**; edit mode adds a **Delete** `button-secondary` at the left. |
+| **Card note panel** | `{components.card-note}` styled as an index card: `surface`, `rounded.lg`, 360px wide, small dialog. Heading "Card note" or "Edit card note" in `panel-heading`. Fields: Note (multi-line, `body`), Page. Under Page, add mode only: the **Add another** Checkbox, with the running count ("2 notes saved", `meta`/`ink-tertiary`, `{components.card-note.saved-count}`) right-aligned on the same line, shown after the first save in an opening. Buttons: **Save note**, **Cancel**; edit mode adds a **Delete** `button-secondary` at the left and has no checkbox or count. |
 | **Card notes list** | Notes grouped under serif book titles (on Book detail, the Card notes block uses the same notes, ungrouped). Each note is a `card-note`: text in `body`, page ref ("p.42" or "pp.42–45") below as a compact `{components.chip}` button in `meta` (accessible name "Open p.42 in the pile"; opens the pile at that note, EXPERIENCE.md → Card notes list). Search matches are `<mark>`: `accent-soft` background plus weight 600 and a 1px `accent` underline. Scope chip ("In *X*", removable) when scoped to one Book. |
 | **Pile** | Modal on `page` with `dialog` radius and shadow, over the scrim. A **Close** `button-secondary` (text label, not only a glyph) at the top right. One `card-note` at a time, centered, larger (`pile-text`), its page ref ("p.42" or "pp.42–45") below the text in `meta`, `ink-tertiary` (plain text, not the list's chip button), a faint stacked-card edge behind it (two 1px `line` offsets). Controls below: Previous · "N of M" · Next, and an order control (Page order · Shuffled) styled as a segmented control. At either end the inactive button keeps its shape with `ink-tertiary` text. Mock: [key-book-detail](mockups/key-book-detail.html) (Alternate); it predates Story 5.4, which drops its live region on the card (EXPERIENCE.md → Pile) and the Book title inside the card (the title is in the heading). |
 | **Pace calculator** | Collapsed: `link` "How long until…?". Expanded: inline row on `surface-inset` — "pages/day" field (Text field, 80px; `type="text"` with `inputmode="decimal"`, so any text can be typed), result in `body` ("About 9 months · July 2027"). No error styling. With nothing left to read, "Nothing left to read." in `body-sm` / `ink-secondary` replaces the row. |
