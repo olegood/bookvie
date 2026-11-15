@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-29-2026 17:21
-last_updated: 11-14-2026 22:51
+last_updated: 11-15-2026 09:57
 project: bookvie
 project_key: NOKEY
 tracking_system: file-system
@@ -106,7 +106,7 @@ development_status:
   epic-9: in-progress
   9-1-save-a-card-note-with-cmd-enter: done
   9-2-add-several-card-notes-in-a-row: done
-  epic-9-retrospective: optional
+  epic-9-retrospective: done
 action_items:
   - id: "epic-1-retro-item-1-run-an-epic-1-trace-and-gate-against-tr7"
     epic: 1
@@ -736,3 +736,28 @@ action_items:
     owner: "Murat (TEA)"
     status: done
     ref: "_bmad-output/implementation-artifacts/epic-8-retro-2026-11-13.md"
+  - id: "epic-9-retro-item-67-run-the-epic-9-trace-and-gate-against-tr"
+    epic: 9
+    action: "Run the Epic 9 trace and gate against TR7 (P0 100%, P1 ≥ 95%, `check:api`
+      clean, coverage ≥ 90% on `domain/` and ≥ 80% on `intents/` + `store/`) and the
+      Epic 9 Gate: the existing card note e2e specs pass unchanged with Add another
+      off. This retro's run already shows the coverage and `check:api` parts green.
+      Changes: `_bmad-output/test-artifacts/traceability/epic-9-traceability-matrix.md`,
+      `…/epic-9-gate-decision.json`. Due: before Epic 10."
+    owner: "Murat (TEA)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-9-retro-2026-11-15.md"
+  - id: "epic-9-retro-item-68-give-bmad-build-a-shared-checkout-guard"
+    epic: 9
+    action: "Give `bmad-build` a shared-checkout guard and a format check before it
+      commits (E9-R1). For non-story work, step-01 runs `git status --porcelain`.
+      If it shows changes this run didn't make, a story step may be running (AGENTS.md
+      \"Story pipeline\", item 56): stop, name the files, and offer a `git worktree`
+      or waiting. Continue in place only when the user explicitly says to. Before
+      any commit, run the formatters' checks (`npm --prefix frontend run format:check`,
+      `cd backend && uv run ruff format --check .`) or `npm run check`, and don't
+      commit on a failure. Changes: `_bmad/custom/bmad-build.toml`. Due: before Epic
+      10."
+    owner: "Amelia (dev)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-9-retro-2026-11-15.md"
