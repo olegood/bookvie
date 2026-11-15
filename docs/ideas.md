@@ -132,9 +132,9 @@ Notes:
 
 ## Descending catalog sort
 
-**Status:** new
+**Status:** planned (Epic 10, see [the plan](../_bmad-output/planning-artifacts/catalog-sort-direction-plan-2026-11-15.md))
 
-Let the catalog sort in descending order as well. Today every sort (Author, Title, Date added, Pages) is ascending only.
+Let the catalog sort in the other direction as well. Today each key has one fixed direction: Author, Title and Pages ascending, Date added newest first. The direction isn't shown and can't be reversed.
 
 Notes:
 
