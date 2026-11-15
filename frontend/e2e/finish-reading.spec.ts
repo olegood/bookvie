@@ -614,6 +614,9 @@ test.describe('Story 3.6 Finish my Main book (review follow-ups)', () => {
       await page.goto(server.url)
       await reachLastPage(page)
       const dialog = finishDialog(page)
+      // The dialog opens only once the save's refetch still shows the Book as
+      // Main, so finishing elsewhere before then would keep it from opening.
+      await expect(dialog).toBeVisible()
       await finishElsewhere(page, server.url)
 
       await dialogButton(dialog, 'Done').click()
