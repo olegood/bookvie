@@ -2,7 +2,7 @@
 name: bookvie
 description: Personal, local-first desktop web app for one reader's home library and reading. Birch Morning direction — bright, flat, Nordic; a pale birch bookcase where read books are colored and unread books are outlined.
 status: final
-updated: 2026-11-14
+updated: 2026-11-15
 colors:
   # Light theme (default tokens). Dark twins carry the -dark suffix.
   page: '#F6F4EF'
@@ -226,6 +226,16 @@ components:
     label: '{typography.body-sm}'
     label-color: '{colors.ink-secondary}'
     placeholder-color: '{colors.ink-tertiary}'
+  sort-direction-toggle:
+    background: '{colors.surface-inset}'
+    foreground: '{colors.ink}'
+    border: '1.5px solid {colors.input-border}'
+    radius: '0 {rounded.md} {rounded.md} 0'
+    height: 42px
+    padding: '0 {spacing.3}'
+    gap: '{spacing.1}'
+    label: '{typography.body-sm}'
+    glyph-color: '{colors.ink-secondary}'
   checkbox:
     control: native
     size: 16px
@@ -509,6 +519,8 @@ Text pairs (target 4.5):
 | `ink-secondary` on `shelf-wall` | 5.11 | 8.05 |
 | `ink-tertiary` on `surface` (hints, placeholders, "×") | 5.59 | 5.68 |
 | `ink-tertiary` on `surface-inset` | 5.31 | 6.03 |
+| `ink` on `surface-inset` (Sort direction toggle text) | 13.06 | 13.69 |
+| `ink-secondary` on `surface-inset` (Sort direction toggle arrow) | 5.82 | 8.08 |
 | `ink-tertiary` on `page` | 5.08 | 6.35 |
 | `ink-tertiary` on `accent-soft` — not used | 4.59 | 4.39 ✗ |
 | `accent` link on `surface` | 5.46 | 6.87 |
@@ -555,6 +567,7 @@ Under `forced-colors: active`:
 - Markers get a `CanvasText` ring.
 - Selected options keep their border indicator.
 - The native checkbox takes the system colors on its own; no override.
+- The Sort direction toggle becomes `ButtonFace` with `ButtonText` text, border and glyph. The shared edge with the select stays visible.
 - Catalog tiles: the finished ribbon and the reading bar's fill use `forced-color-adjust: none` with `CanvasText`, the bar's track becomes `Canvas` with a `CanvasText` outline, the typeset cover becomes `Canvas` with a `CanvasText` border, its text `CanvasText`, and the cover hairline and the loading box's border become `CanvasText`.
 
 Read and unread stay distinct.
@@ -596,7 +609,7 @@ Scale: 4 / 8 / 12 / 16 / 20 / 24 / 32 / 36 (`{spacing.1}`–`{spacing.8}`). Comp
 - **Top nav.** Full-width bar, `{spacing.topbar-height}` tall: a "Skip to content" link (visible on focus only), wordmark, nav items, theme toggle pushed right.
 - **Page.** `{spacing.page-x}` side padding, `{spacing.page-top}` top padding.
 - **Home.** A header line (the date in `page-header`, for example, "Wednesday, 28 October"; no greeting) above a two-column grid: Main book card (fluid) beside a `{spacing.side-column}` (320px) column of section panes; gap `{spacing.6}`. Below the grid, full width, the bookcase slice (up to 3 shelf rows, the Main book's row first). Mock: [key-home](mockups/key-home.html).
-- **Catalog.** Full width: `h1` "Catalog"; toolbar row 1 (Search titles with its visible label, Sort select, view toggle, **New book** at the right); toolbar row 2 (filter chips, "Clear filters" link when any filter is on); the library meter; the collapsed pace calculator link; then the bookcase, the list or the tiles. Mocks: [key-catalog](mockups/key-catalog.html), [key-catalog-tiles](mockups/key-catalog-tiles.html).
+- **Catalog.** Full width: `h1` "Catalog"; toolbar row 1 (Search titles with its visible label, Sort select with its direction toggle joined to it, view toggle, **New book** at the right); toolbar row 2 (filter chips, "Clear filters" link when any filter is on); the library meter; the collapsed pace calculator link; then the bookcase, the list or the tiles. Mocks: [key-catalog](mockups/key-catalog.html), [key-catalog-tiles](mockups/key-catalog-tiles.html). Both predate the Sort direction toggle, which only this document specifies (Components → Sort direction toggle).
 - **Book detail.** One `surface` card, two columns (see Components → Book detail). Mock: [key-book-detail](mockups/key-book-detail.html).
 - **Bookcase.** Shelf rows `{spacing.shelf-row-height}` tall, spines bottom-aligned on the plank, `{spacing.spine-gap}` between spines, 12px inner padding at row ends. About 35 spines fit one plank at 1280px; the row count follows the viewport width.
 - **Spine sizing.** Width is always `{spacing.spine-width}` (28px). Height doesn't have to fit the title, but it still grows with it, so a shelf of mixed titles has mixed heights: **height = `{spacing.spine-height-min}` + `{components.spine.height-title-ratio}` × the title's rendered one-line length in `spine-label`**, rounded up to the next `{spacing.spine-height-step}` (8px) and capped at `{spacing.spine-height-max}` (120–200px). Examples: *Dune* (about 29px of text) → 136px; *Persuasion* (about 60px) → 144px; *The Left Hand of Darkness* (about 146px) → 168px; *The Visual Display of Quantitative Information* (about 250px) → 200px. Measure the rendered title, not a character count, so user text-spacing overrides grow the spine. The label itself is capped by the label strip (Components → Spine) and never wraps; the full title is always in the accessible name and the popover. Unread spines place their label at the same position and cap, without the strip.
@@ -648,7 +661,8 @@ Visual specs. Behavior lives in EXPERIENCE.md → Component Patterns, under the 
 | **Section pane** | `{components.section-pane}`. Used for Up next, Waiting for you (N), On the side. Each row: line 1, the serif title as a `link` in `ink` (2-line clamp); line 2, the content for that pane and one compact `button-secondary` (30px) right-aligned. Up next row: 44×64 cover thumbnail (or placeholder) at left, author, button **Start reading** or **Resume**. Waiting-for-you row: 60×5 mini bar (`accent-soft` track, `accent` fill), "p.N of M" in tabular figures, button **Resume**. On-the-side row: author, button **Start reading**. |
 | **Library meter** | `{components.library-meter}`: thin continuous bar plus "X of Y finished" in `meta`/`ink-secondary`. One bar at any library size, never one dot per book. |
 | **Bookcase** | `{components.bookcase}`. `shelf-wall` card; each row is spines standing on a birch plank (face, 4px front edge, and plank shadow). Header: "BOOKCASE" heading; on Home also the library meter right and a "See all in Catalog" `link`. On Catalog the library meter sits in its own row above the bookcase or list (see Catalog). Header line "Finished *X*." in `body-sm`/`ink-secondary` after a finish. Footer legend: finished · not read yet · Main book, filled to its % · up next · waiting for you, each with a mini swatch. Visual reference: [key-home](mockups/key-home.html) (slice), [key-catalog](mockups/key-catalog.html) (full). |
-| **Sort select** | Native `select` styled as Text field, label "Sort" to its left in `body-sm`/`ink-secondary`. Options: Author · Title · Date added · Pages. |
+| **Sort select** | Native `select` styled as Text field, label "Sort" to its left in `body-sm`/`ink-secondary`. Options: Author · Title · Date added · Pages. The Sort direction toggle is joined to its right edge, so the select's right corners are square. |
+| **Sort direction toggle** | `{components.sort-direction-toggle}`. Joined to the Sort select as one compound field: the same height and border, the shared edge drawn once (the toggle has no left border of its own), the outer right corners `rounded.md`. `surface-inset` fill, so the toggle reads as a button and the select as a field. Content: an arrow glyph in `ink-secondary` (↑ natural, ↓ reversed), then the order's text in `body-sm`/`ink` ("A–Z", "Newest first"). Its minimum width fits the wider of the current key's two labels, so pressing it never moves the controls to its right; only a key change may change its width. No hover change, like `button-secondary`. Focus: the shared edge is the select's right border and turns `accent` when the select has focus; the toggle gets `{components.focus-ring}`. Whichever half has focus is raised above the other (`position: relative; z-index: 1`), so its ring or halo paints over the neighbor. Light and dark come from the tokens; no extra state colors. |
 | **Filter chips** | See [Filter chips](#filter-chips) below. |
 | **Spine** | See [Spine](#spine) below. |
 | **Spine popover** | See [Spine popover](#spine-popover) below. |

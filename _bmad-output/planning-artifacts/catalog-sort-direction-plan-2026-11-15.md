@@ -8,7 +8,7 @@ idea: docs/ideas.md → "Descending catalog sort"
 
 # Descending catalog sort — plan
 
-Let Oleg reverse the Catalog order. A **direction toggle** next to the Sort select flips the current key's order, and the button's text says what the order is ("↓ Z–A", "↑ Oldest first"). Each key keeps the direction it has today, so nothing changes until Oleg presses the toggle.
+Let Oleg reverse the Catalog order. A **direction toggle** next to the Sort select flips the current key's order, and the button's text says what the order is ("↓ Z–A", "↓ Oldest first"). Each key keeps the direction it has today, so nothing changes until Oleg presses the toggle.
 
 ## 1. What already exists
 
@@ -44,7 +44,7 @@ Each step is its own skill run, in a fresh context. Docs and planning commits go
 |---|---|---|---|
 | 0 | Spine | Before Epic 10's first story: confirm no unresolved "spine drift" entries from Epic 9 remain in `deferred-work.md` (AGENTS.md → Architecture spine). | — |
 | 1 | EXPERIENCE.md | **Sort select** row: correct the existing text and add the direction toggle (D2–D5, D7–D9). Add a **Sort direction** row to the controls table: a button with no `aria-pressed`, its label, what happens to focus, the reset on key change. Note `catalogSortReversed` where the remembered preferences are listed (Backup page row). | `bmad-ux` (update) |
-| 2 | DESIGN.md | **Sort direction toggle** component: `button-secondary` styling at the Sort select's height, arrow glyph plus `body-sm` text, its place right after the select in Catalog toolbar row 1, and its light, dark and forced-colors states. No new tokens expected. | `bmad-ux` (update) |
+| 2 | DESIGN.md | **Sort direction toggle** component (superseded at the UX step: joined to the Sort select as one compound field, ↑ natural / ↓ reversed): `button-secondary` styling at the Sort select's height, arrow glyph plus `body-sm` text, its place right after the select in Catalog toolbar row 1, and its light, dark and forced-colors states. No new tokens expected. | `bmad-ux` (update) |
 | 3 | PRD | **FR-20** Sort consequence: each key has a natural direction (as in D2), the user can reverse it, and the reversal is remembered on this computer and resets when the key changes. An amendment, not a new FR. Bump `updated:`. | `bmad-prd` (update) |
 | 4 | Architecture spine | AD-6's catalog sort bullet: an optional reversal that flips only the primary compare. AD-15: add `bookvie.catalogSortReversed` to the UI preferences. Seed: `catalogSort` also holds the direction. Not a new AD. | `bmad-architecture` (update) |
 | 5 | Epics (`epics.md`) | New **Epic 10: Reverse the catalog order**, covering the FR-20 amendment, with one story (below). Add it to the Epic List and the FR coverage map. | `bmad-create-epics-and-stories` |
