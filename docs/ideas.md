@@ -156,3 +156,18 @@ Notes:
 - An SVG favicon scales to any size and can follow the color tokens in DESIGN.md. Decide whether a PNG fallback (for example 32×32 and a 180×180 Apple touch icon) is worth adding; Chrome is the only supported browser and handles SVG.
 - Check that it stays readable at 16×16 in the tab, in both light and dark browser themes.
 - If "Development vs production, and a visible version" is picked up, the development build could use a variant of the same icon (for example with a "DEV" mark or another color), so the two tabs are easy to tell apart.
+
+## Back to top button
+
+**Status:** new
+
+Add a button that takes the user back to the top of the page. Scrolling a catalog of 500+ Books is long, and a quick way to jump back to the top (to the search field, filter chips and sort) saves a lot of scrolling.
+
+Notes:
+
+- Show it only after the user has scrolled down some way (for example one screen height), and hide it again near the top.
+- Place it so it doesn't cover content or other controls, for example fixed in the bottom-right corner, and make sure it works in both the list and tiles views.
+- Decide whether it scrolls smoothly or jumps, and respect the reduced-motion setting (`prefers-reduced-motion`).
+- Keyboard and screen readers: give it an accessible name ("Back to top"), and after it's used, move focus to the top of the page (for example the quick-search field or the page heading) so keyboard users don't stay at the bottom.
+- Decide whether it's catalog-only or part of the app shell for any long page.
+- If pagination is picked up (see "Pagination with pagination-aware search"), the catalog gets shorter pages and the button matters less, but it's still useful on a long page.
