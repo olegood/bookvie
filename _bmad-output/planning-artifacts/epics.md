@@ -11,13 +11,14 @@ inputDocuments:
   - _bmad-output/test-artifacts/test-design/bookvie-handoff.md
   - _bmad-output/planning-artifacts/catalog-tiles-plan-2026-11-13.md
   - _bmad-output/planning-artifacts/card-note-entry-plan-2026-11-14.md
+  - _bmad-output/planning-artifacts/catalog-sort-direction-plan-2026-11-15.md
 ---
 
 # bookvie - Epic Breakdown
 
 ## Overview
 
-This document breaks bookvie's PRD, UX design (DESIGN.md, EXPERIENCE.md) and architecture spine into nine epics of implementable stories. Each story names the requirement IDs it satisfies and lists Given/When/Then acceptance criteria.
+This document breaks bookvie's PRD, UX design (DESIGN.md, EXPERIENCE.md) and architecture spine into ten epics of implementable stories. Each story names the requirement IDs it satisfies and lists Given/When/Then acceptance criteria.
 
 **How to read it.** The Epic List gives the build order and what each epic delivers. Each epic section starts with its gate. Every story follows the conventions in "Conventions for every story", just before Epic 1. The Requirements Inventory is a lookup table; the source documents stay authoritative.
 
@@ -44,6 +45,7 @@ Gates are in each epic's section.
 | 7. Organize the catalog | Sort, and filter chips that close up the bookcase; Home's slice follows the sort. | FR-20 |
 | 8. See the catalog as covers | A third Catalog view, Tiles: a grid of covers in the current sort and filters, a spine-color ribbon on read Books, a progress bar on Books being read, and a typeset cover for Books without one; each tile opens its Book. | FR-25 |
 | 9. Add card notes faster | Save a card note with Cmd+Enter or Ctrl+Enter, and add several in a row with a remembered Add another that keeps the panel open, keeps the page and shows a running count. | FR-17 (keyboard save, Add another) |
+| 10. Reverse the catalog order | A Sort direction toggle joined to the Sort select reverses the current key's natural order and says which order is in effect; remembered on this computer, reset on a key change, and followed by Home's slice. | FR-20 (Sort direction) |
 
 ## Requirements Inventory
 
@@ -85,7 +87,7 @@ FR-18 [Must]: Review a Book's Card notes as a pile, one at a time: page order or
 
 FR-19 [Must]: Card notes view and quick search. A separate Card notes view shows all Card notes grouped by Book, with a quick search that finds notes containing the typed text. Search across all Books keeps results grouped by Book; the view scoped to one Book searches only that Book's notes; the pile itself has no search. Results update while typing, case-insensitive; each result shows the page or range and the matching text highlighted (plus the Book title in all-Books search). Opening a result shows that note in its Book's pile.
 
-FR-20 [Should]: Filter and sort. Sort: Author (default), Title, Date added, Pages; the bookcase reorders to match. Filter chips: Read / Unread, Type, Language, Tag; non-matching Books are hidden and the bookcase closes up (not dimmed).
+FR-20 [Should]: Filter and sort. Sort: Author (default), Title, Date added, Pages; the bookcase reorders to match. Each sort has a natural direction (Author and Title A–Z, Date added newest first, Pages fewest first) that the user can reverse; the catalog shows which order is in effect, ties keep their order either way, the direction is remembered on this computer with the sort and not exported, choosing another sort goes back to its natural direction, and Home's bookcase slice follows the same order. Filter chips: Read / Unread, Type, Language, Tag; non-matching Books are hidden and the bookcase closes up (not dimmed).
 
 FR-21 [Should]: Cover on the main screen. The main screen shows the Main book's uploaded cover, or the placeholder.
 
@@ -153,6 +155,7 @@ From ARCHITECTURE-SPINE.md and the TEA handoff. Each line names the source decis
 - AR25 (AD-8, AD-12): `ShelfBook.coverFile` is added in the Python model first, then `api:gen`. Tiles load covers from `/media/covers/<coverFile>` at their stored size, lazily.
 - AR26 (AD-15, Deferred → Cover thumbnails): The remembered Catalog view gains `tiles`. No thumbnails unless Epic 8's 500-cover check fails; that follow-up would amend AD-12 and AD-14.
 - AR27 (AD-15): The Card note panel's Add another choice is a `localStorage` UI preference, `bookvie.cardNoteAddAnother`, read and written by `lib/cardNoteAddAnother` inside try/catch. Off by default and whenever storage is empty, junk or unreadable; never exported, and a restore neither brings nor replaces it.
+- AR28 (AD-6, AD-15): `sortBooks(books, key, reversed)` negates only the primary compare; the tie-break chain (title, `createdAt` older first, Book id) never flips. The reversal is its own `localStorage` key, `bookvie.catalogSortReversed`, read and written by `lib/catalogSort` inside try/catch; the format of `bookvie.catalogSort` doesn't change. Not reversed by default and whenever the value is empty, junk or unreadable, or the stored key isn't one of the four; a key change resets it and stores that; never exported, and a restore neither brings nor replaces it. Home's slice reads both keys.
 
 **Test harness and quality gates (TEA handoff).**
 - TR1 (TC-1): `LibraryBuilder` fixture and pre-start seeding of a data folder.
@@ -250,6 +253,10 @@ Each line names the UX section that holds the full requirement. D = DESIGN.md, E
 - UX-DR61: Add another (add mode only): after a save the panel stays open, Note empties, Page keeps what was typed, errors clear, focus returns to Note, `status` announces "Card note saved."; Cancel or Esc after saves keeps the saved notes; an edit save always closes; failures never close the panel (E → Card note panel, Focus after close, Flow 6 variant)
 - UX-DR62: Running count: "N notes saved" in `meta`/`ink-tertiary` on the checkbox's line, right-aligned, plain text (not a live region), empty at each opening (D → Card note panel, `components.card-note.saved-count`; E → Card note panel)
 
+**Descending catalog sort (FR-20)**
+- UX-DR63: Sort direction toggle, visual: joined to the Sort select's right edge as one compound field (same height and border, the shared edge drawn once, the select's right corners square), `surface-inset` fill, an arrow in `ink-secondary` (↑ natural, ↓ reversed) then the order's text in `body-sm`/`ink`, minimum width of the key's wider label, no hover change, the focused half raised, forced colors as `ButtonFace`/`ButtonText` (D → Components → Sort direction toggle, `components.sort-direction-toggle`, Forced colors)
+- UX-DR64: Sort direction toggle, behavior: a plain `button` named by its visible text ("A–Z" ⇄ "Z–A", "Newest first" ⇄ "Oldest first", "Fewest first" ⇄ "Most first"), no `aria-pressed`, the arrow `aria-hidden`, select and toggle in a `role="group"` labelled "Sort"; a press reorders bookcase, list and tiles in place, keeps focus, and `status` stays silent; next Tab stop after the select; hidden on an empty catalog (E → Component Patterns: Sort select, Sort direction toggle; Accessibility Floor → Names)
+
 ### FR Coverage Map
 
 FR-1: Epic 1 - Book fields, create/edit/delete, Finished on back-fill, tags field, spine color
@@ -269,7 +276,7 @@ FR-16: Epic 6 - Stats
 FR-17: Epic 5 - Add/edit/delete Card notes; Epic 9 - Keyboard save and Add another
 FR-18: Epic 5 - Card notes pile
 FR-19: Epic 5 - Card notes view and search
-FR-20: Epic 7 - Filter and sort
+FR-20: Epic 7 - Filter and sort; Epic 10 - Sort direction
 FR-21: Epic 3 - Cover on the main screen
 FR-22: Epic 2 - Export; Epic 3 - Last export on Home
 FR-23: Epic 2 - Restore
@@ -2320,3 +2327,63 @@ So that I can keep reading and noting without reopening the panel and retyping t
 **Given** the dark theme or `forced-colors: active`
 **When** the checkbox renders
 **Then** it shows the dark unchecked box and the `accent` dark twin in the dark theme, and the system colors under forced colors, with no custom drawing.
+
+## Epic 10: Reverse the catalog order
+
+The user can reverse the Catalog's order: a toggle joined to the Sort select flips the current key's natural direction and says which order is in effect. The choice is remembered on this computer, resets when the key changes, and Home's slice follows it.
+
+**Gate:** per-epic quality gates (TR7), and the existing catalog and home-slice e2e specs pass unchanged with the toggle not pressed.
+
+### Story 10.1: Reverse the catalog order
+
+As Oleg,
+I want to flip the catalog's order and see which order is in effect,
+So that I can find the longest book, my oldest additions, or authors from Z without scrolling to the end.
+
+**Requirements:** FR-20, AR28, UX-DR63, UX-DR64
+
+**Acceptance Criteria:**
+
+**Given** a browser that stored only `bookvie.catalogSort = "dateAdded"` before this story (no reversal key)
+**When** the Catalog opens
+**Then** the order is newest first, exactly as before, and the toggle reads "↑ Newest first"
+**And** with nothing stored, the order is Author A–Z and the toggle reads "↑ A–Z" (AR28).
+
+**Given** a non-empty Catalog
+**When** it renders
+**Then** the Sort direction toggle is joined to the Sort select's right edge as one compound field: the same height and border, the shared edge drawn once, `surface-inset` fill, an `ink-secondary` arrow then the order's text in `body-sm`/`ink`, its minimum width that of the current key's wider label (UX-DR63)
+**And** on an empty Catalog neither the select nor the toggle shows.
+
+**Given** each of the four keys in its natural direction
+**When** I press the toggle (click, Enter or Space)
+**Then** the bookcase, the list and the tiles reorder to exactly the reversed key order, and the toggle's text changes: "A–Z" to "Z–A" (Author, Title), "Newest first" to "Oldest first", "Fewest first" to "Most first", with the arrow from ↑ to ↓
+**And** pressing it again restores the natural order and text
+**And** the controls to its right don't move when it's pressed.
+
+**Given** two Books with the same first author, and two with the same title
+**When** the order is reversed
+**Then** the tied Books keep title A–Z, then the Book added earlier first, exactly as in the natural direction: only the key's own order flips (AR28).
+
+**Given** Author reversed (Z–A)
+**When** I choose Pages in the Sort select
+**Then** the order is fewest first, the toggle reads "↑ Fewest first", and the stored reversal is not reversed, so a reload still shows fewest first.
+
+**Given** the order reversed
+**When** I reload the page, or open Home
+**Then** the Catalog is still reversed, and Home's bookcase slice packs its rows in the reversed order before choosing them
+**And** `bookvie.catalogSortReversed` holds the reversal, `bookvie.catalogSort` keeps its old format, and neither is in an export; a restore neither brings nor replaces them.
+
+**Given** storage that throws, a junk `bookvie.catalogSortReversed`, or a stored key that isn't one of the four
+**When** the Catalog opens
+**Then** the order is the key's natural direction (Author A–Z for a bad key) and the Catalog still sorts
+**And** a write that fails still reverses the order for this visit, with no message.
+
+**Given** a screen reader or keyboard user
+**When** they reach the toggle
+**Then** it is a plain `button` with no `aria-pressed`, its accessible name is its visible text with the arrow `aria-hidden`, and the select and the toggle sit in a `role="group"` labelled by the visible "Sort" label
+**And** it is the next Tab stop after the Sort select, a press keeps focus on it, and the `status` region stays silent
+**And** the bookcase's arrow-key order follows the reversed order (UX-DR64).
+
+**Given** the select or the toggle has focus
+**When** it renders, in light, dark or `forced-colors: active`
+**Then** the focused half is drawn above the other so its halo or focus ring isn't hidden by the shared edge, there is no hover change, and under forced colors the toggle is `ButtonFace` with `ButtonText` text, border and arrow, the shared edge still visible.
