@@ -1,0 +1,24 @@
+{
+  "schema_version": "0.1.0",
+  "evaluated_at": "2026-11-15T09:36:48.000000Z",
+  "repo": "bookvie",
+  "target": {
+    "type": "epic",
+    "id": "9",
+    "label": "Epic 9: Add card notes faster"
+  },
+  "collection_status": "COLLECTED",
+  "gate_basis": "priority_thresholds",
+  "gate_status": "PASS",
+  "rationale": "P0 coverage is 100% (2/2), P1 coverage is 100% (10/10; TR7 target: 95%; workflow default 90%), and overall coverage is 100% (15/15; minimum: 80%). The Epic 9 gate holds: the existing card note e2e specs are unchanged in the epic's range and pass with Add another off. Epic 9 added no error code; every existing code keeps its API test. check:api is clean and the coverage gates hold (domain 100.00%, intents+store 98.08%). This trace added one e2e test (card-note-add-another-automate.spec.ts:324) for XUI-E2E-003 on the stay-open panel, with two mutation checks and a 10x burn-in.",
+  "p0_status": "MET",
+  "p1_status": "MET",
+  "overall_status": "MET",
+  "critical_open": 0,
+  "links": {
+    "trace_report_path": "_bmad-output/test-artifacts/traceability/epic-9-traceability-matrix.md",
+    "trace_report_url": "",
+    "artifact_url": "",
+    "journey_evidence_url": ""
+  }
+}

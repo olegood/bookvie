@@ -32,6 +32,7 @@ import {
   noteField,
   pageField,
   savedCount,
+  seeCardNotes,
   STORAGE_KEY,
   storedChoice,
   textGapAfterBox,
@@ -317,6 +318,69 @@ test.describe('Story 9.2 Add several card notes in a row (automate)', () => {
     await expect(panel).toBeHidden()
     expect(added).toHaveLength(2)
     expect(added.map((request) => intentOf(request).text)).toEqual(['One press.', 'One held press.'])
+    expect(storedBook(server, LEFT_HAND_ID).cardNotes).toHaveLength(2)
+  })
+
+  test('[P2] XUI-E2E-003 with Add another on, a held stay-open save shows nothing early: Note, the count, the status and "See card notes" change only once the response is in', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer(mainAt(212))
+    const added = requestsTo(page, ADD_CARD_NOTE)
+    let release!: () => void
+    let held = new Promise<void>((resolve) => (release = resolve))
+    await page.route(`**${ADD_CARD_NOTE}`, async (route) => {
+      await held
+      await route.continue()
+    })
+    await page.goto(`${server.url}/`)
+    await expect(seeCardNotes(page, 0)).toBeVisible()
+
+    await addCardNote(page).click()
+    const panel = cardNotePanel(page)
+    const note = noteField(panel)
+    const saveNote = panel.getByRole('button', { name: 'Save note', exact: true })
+    await addAnother(panel).check()
+
+    // The first save is out: nothing of its success shows yet.
+    await note.fill('Held once.')
+    await pageField(panel).fill('212–213')
+    await note.press('Meta+Enter')
+    await expect(saveNote).toHaveAttribute('aria-disabled', 'true')
+    await expect.poll(() => added.length).toBe(1)
+    await afterAnnounceDelay(page)
+    await expect(note).toHaveValue('Held once.')
+    await expect(pageField(panel)).toHaveValue('212–213')
+    await expect(savedCount(panel)).toHaveCount(0)
+    await expect(page.getByRole('status')).not.toHaveText(SAVED)
+    await expect(seeCardNotes(page, 0)).toBeAttached()
+    expect(storedBook(server, LEFT_HAND_ID).cardNotes ?? []).toHaveLength(0)
+
+    release()
+    await expect(note).toHaveValue('')
+    await expect(savedCount(panel)).toHaveText('1 note saved')
+    await expect(page.getByRole('status')).toHaveText(SAVED)
+    await expect(seeCardNotes(page, 1)).toBeAttached()
+    await expect(saveNote).not.toHaveAttribute('aria-disabled', 'true')
+
+    // The second save is out: the count stays at 1 until the response.
+    held = new Promise<void>((resolve) => (release = resolve))
+    await note.fill('Held twice.')
+    await saveNote.click()
+    await expect(saveNote).toHaveAttribute('aria-disabled', 'true')
+    await expect.poll(() => added.length).toBe(2)
+    await afterAnnounceDelay(page)
+    await expect(note).toHaveValue('Held twice.')
+    await expect(savedCount(panel)).toHaveText('1 note saved')
+    await expect(seeCardNotes(page, 1)).toBeAttached()
+    expect(storedBook(server, LEFT_HAND_ID).cardNotes).toHaveLength(1)
+
+    release()
+    await expect(note).toHaveValue('')
+    await expect(savedCount(panel)).toHaveText('2 notes saved')
+    await expect(seeCardNotes(page, 2)).toBeAttached()
+    await expect(panel).toBeVisible()
+    await expect(note).toBeFocused()
     expect(storedBook(server, LEFT_HAND_ID).cardNotes).toHaveLength(2)
   })
 
