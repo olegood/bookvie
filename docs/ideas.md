@@ -143,3 +143,16 @@ Notes:
 - Decide whether each key has its own natural default direction (for example Date added newest first, Pages longest first) or all start ascending.
 - Decide the tie-breaker (for example Title ascending), and whether it flips with the direction.
 - If catalog grouping is picked up (see "Catalog grouping by author, publisher or year"), decide whether the direction also orders the groups or only the Books inside each group.
+
+## App favicon
+
+**Status:** new
+
+Give bookvie a favicon, so its tab and bookmark are easy to recognize among the others. Today `frontend/index.html` has no icon link and there is no `frontend/public/` folder, so the browser shows its generic page icon.
+
+Notes:
+
+- Use a free icon whose license allows it (for example a book icon from an open icon set under MIT, CC0 or similar), or draw a simple one. Record the source and license next to the file.
+- An SVG favicon scales to any size and can follow the color tokens in DESIGN.md. Decide whether a PNG fallback (for example 32×32 and a 180×180 Apple touch icon) is worth adding; Chrome is the only supported browser and handles SVG.
+- Check that it stays readable at 16×16 in the tab, in both light and dark browser themes.
+- If "Development vs production, and a visible version" is picked up, the development build could use a variant of the same icon (for example with a "DEV" mark or another color), so the two tabs are easy to tell apart.
