@@ -2,7 +2,7 @@
 title: bookvie PRD
 status: final
 created: 2026-10-28
-updated: 2026-11-14
+updated: 2026-11-15
 inputs:
   - _bmad-output/brainstorming/brainstorm-personal-library-tracker-2026-10-27/brainstorm-intent.md
   - _bmad-output/planning-artifacts/ux-designs/ux-bookvie-2026-10-28/prd-deltas.md
@@ -238,6 +238,7 @@ The user can open a separate Card notes view that shows all Card notes, grouped 
 The user can filter and sort the catalog.
 - **Consequences:**
   - **Sort:** Author (default), Title, Date added, or Pages. The bookcase (FR-24) reorders its spines and the tiles (FR-25) reorder to match.
+  - **Sort direction:** each sort has a natural direction (Author and Title A–Z, Date added newest first, Pages fewest first), and the user can reverse it. The catalog shows which order is in effect. Books that tie keep the same order either way. The direction is remembered on this computer with the sort and isn't part of an export; choosing another sort goes back to that sort's natural direction. Home's bookcase slice follows the same order.
   - **Filter chips:** Read / Unread, Type, Language, and Tag. Books that don't match are hidden and the bookcase or the tiles close up; they aren't dimmed.
 
 #### FR-25: Catalog tiles
