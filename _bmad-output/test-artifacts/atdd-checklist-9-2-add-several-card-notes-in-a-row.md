@@ -92,18 +92,18 @@ None expected. `add-card-note.spec.ts`, `edit-card-note.spec.ts`, `card-notes.sp
 
 ## Green-phase follow-ups (secondary branches, not red leaves)
 
-- [ ] **Unit, AC-2 `lib/cardNoteAddAnother.ts`:** as `catalogView.test.ts`: reads the stored on value, `null`/junk/`''` read as off, a throwing `getItem` reads as off, a throwing `setItem` doesn't throw, and the value is stored under `bookvie.cardNoteAddAnother`.
-- [ ] **E2E, AC-2 throwing storage:** `Storage.prototype.getItem`/`setItem` throw (as `catalog-sort.spec.ts:228`). The box reads off, a click still toggles it for this opening, no message or `alert` appears, and a save with it on still stays open.
-- [ ] **E2E, AC-2 export and restore (AR27):** the export zip (`GET /api/export`) contains no `cardNoteAddAnother`. A restore from a file leaves the stored choice as it was, both on and off.
-- [ ] **E2E, AC-3 a 422 then a success clears the field error:** an empty Note gives "Note is required."; after filling it and saving, Note has no `aria-invalid` or description. AC-6 already covers Page and the couldn't-save line.
-- [ ] **E2E, AC-3 on Book detail:** add mode from Book detail with the box on. "Card notes (N)" updates behind the panel, and Note keeps focus.
-- [ ] **E2E, AC-3 focus lands before the `status` line** on each stay-open save (as `add-card-note.spec.ts` `watchStatus`, with focus on Note).
-- [ ] **E2E, AC-3 `Control+Enter` and a held `Control+Enter`** give one note per press, like Meta.
-- [ ] **E2E, AC-1 the label gap:** the label text starts 8px (`spacing.2`) right of the box (measure the text with a `Range`, since the label may wrap the box; probe the helper first).
-- [ ] **E2E, AC-1 axe** on the open add panel with the box on and a count shown, in both themes.
-- [ ] **E2E, AC-5 the Tab cycle with a count shown** still cycles inside the panel.
-- [ ] **E2E, AC-6 a gone Book (409) with the box on:** the panel stays open, the line shows, and the count is unchanged.
-- [ ] **E2E, AC-7 edit mode on Book detail from "See card notes" / the Card notes page:** no checkbox; a save closes.
+- [x] **Unit, AC-2 `lib/cardNoteAddAnother.ts`:** as `catalogView.test.ts`: reads the stored on value, `null`/junk/`''` read as off, a throwing `getItem` reads as off, a throwing `setItem` doesn't throw, and the value is stored under `bookvie.cardNoteAddAnother`. (done: frontend/src/lib/cardNoteAddAnother.test.ts (5 tests, from the build))
+- [x] **E2E, AC-2 throwing storage:** `Storage.prototype.getItem`/`setItem` throw (as `catalog-sort.spec.ts:228`). The box reads off, a click still toggles it for this opening, no message or `alert` appears, and a save with it on still stays open. (done: frontend/e2e/card-note-add-another-automate.spec.ts:75)
+- [x] **E2E, AC-2 export and restore (AR27):** the export zip (`GET /api/export`) contains no `cardNoteAddAnother`. A restore from a file leaves the stored choice as it was, both on and off. (done: frontend/e2e/card-note-add-another-automate.spec.ts:113)
+- [x] **E2E, AC-3 a 422 then a success clears the field error:** an empty Note gives "Note is required."; after filling it and saving, Note has no `aria-invalid` or description. AC-6 already covers Page and the couldn't-save line. (done: frontend/e2e/card-note-add-another-automate.spec.ts:177; Page variant card-note-add-another.spec.ts:433)
+- [x] **E2E, AC-3 on Book detail:** add mode from Book detail with the box on. "Card notes (N)" updates behind the panel, and Note keeps focus. (done: frontend/e2e/card-note-add-another-automate.spec.ts:213)
+- [x] **E2E, AC-3 focus lands before the `status` line** on each stay-open save (as `add-card-note.spec.ts` `watchStatus`, with focus on Note). (done: frontend/e2e/card-note-add-another-automate.spec.ts:253)
+- [x] **E2E, AC-3 `Control+Enter` and a held `Control+Enter`** give one note per press, like Meta. (done: frontend/e2e/card-note-add-another-automate.spec.ts:282)
+- [x] **E2E, AC-1 the label gap:** the label text starts 8px (`spacing.2`) right of the box (measure the text with a `Range`, since the label may wrap the box; probe the helper first). (done: frontend/e2e/card-note-add-another-automate.spec.ts:323)
+- [x] **E2E, AC-1 axe** on the open add panel with the box on and a count shown, in both themes. (done: frontend/e2e/card-note-add-another-automate.spec.ts:335)
+- [x] **E2E, AC-5 the Tab cycle with a count shown** still cycles inside the panel. (done: frontend/e2e/card-note-add-another-automate.spec.ts:365)
+- [x] **E2E, AC-6 a gone Book (409) with the box on:** the panel stays open, the line shows, and the count is unchanged. (done: frontend/e2e/card-note-add-another-automate.spec.ts:404)
+- [x] **E2E, AC-7 edit mode on Book detail from "See card notes" / the Card notes page:** no checkbox; a save closes. (done: frontend/e2e/card-note-add-another-automate.spec.ts:448)
 
 ## Helper probes
 

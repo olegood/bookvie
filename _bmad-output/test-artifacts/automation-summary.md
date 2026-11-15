@@ -2,17 +2,16 @@
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03c-aggregate', 'step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
 lastSaved: '2026-11-14'
-storyId: '9.1'
-storyKey: '9-1-save-a-card-note-with-cmd-enter'
+storyId: '9.2'
+storyKey: '9-2-add-several-card-notes-in-a-row'
 inputDocuments:
-  - _bmad-output/implementation-artifacts/spec-9-1-save-a-card-note-with-cmd-enter.md (Intent, Always/Never rules, I/O matrix, ACs, Review Findings)
-  - _bmad-output/test-artifacts/atdd-checklist-9-1-save-a-card-note-with-cmd-enter.md
+  - _bmad-output/implementation-artifacts/spec-9-2-add-several-card-notes-in-a-row.md (Intent, Always/Never rules, I/O matrix, ACs, Review Findings)
+  - _bmad-output/test-artifacts/atdd-checklist-9-2-add-several-card-notes-in-a-row.md
   - _bmad-output/implementation-artifacts/epic-9-context.md
-  - _bmad-output/implementation-artifacts/deferred-work.md (code review of spec-9-1, 2026-11-14)
   - _bmad/tea/config.yaml
   - frontend/playwright.config.ts
-  - frontend/e2e/card-note-keyboard-save.spec.ts; frontend/e2e/add-card-note.spec.ts; frontend/e2e/edit-card-note.spec.ts
-  - frontend/src/components/CardNotePanel.tsx
+  - frontend/e2e/card-note-add-another.spec.ts; frontend/e2e/card-note-add-another.ts; frontend/e2e/card-note-keys.ts
+  - frontend/src/components/CardNotePanel.tsx; frontend/src/lib/cardNoteAddAnother.ts (+ .test.ts)
   - knowledge/test-levels-framework.md
   - knowledge/test-priorities-matrix.md
   - knowledge/data-factories.md
@@ -24,34 +23,39 @@ inputDocuments:
   - knowledge/playwright-cli.md
 ---
 
-# Automation Summary: Save a card note with Cmd+Enter (story 9.1)
+# Automation Summary: Add several card notes in a row (story 9.2)
 
-The previous version of this file held the summary for story 8.3. It's in git history (`3566aa9`).
+The previous version of this file held the summary for story 9.1. It's in git history (`53f67b5`).
 
 ## Preflight
 
 - **Stack:** `fullstack`, auto-detected. Frontend: Playwright (`frontend/playwright.config.ts`); backend: pytest. Both frameworks are in place.
-- **Mode:** BMad-Integrated. Story 9.1 is `done` after `bmad-code-review` (`566f030`). Spec, ATDD checklist and epic context are present.
-- **Config:** `tea_use_playwright_utils: true` but `@seontechnologies/playwright-utils` isn't in `package.json`, so the Traditional Patterns fragments load (`fixture-architecture`, `network-first`). No Pact artifacts, so no contract fragments. `tea_browser_automation: auto` adds `playwright-cli`.
-- **Inputs to cover:** the ATDD checklist's 7 open green-phase follow-ups. The code review's deferred items are for Story 9.2 (held-key repeat guard, `ControlOrMeta` test advice) and the spine, not for this run.
+- **Mode:** BMad-Integrated. Story 9.2 is `done` after `bmad-code-review` (`7a0f288`). Spec, ATDD checklist and epic context are present.
+- **Config:** `tea_use_playwright_utils: false`, and `@seontechnologies/playwright-utils` isn't in `package.json`, so the Traditional Patterns fragments load (`fixture-architecture`, `network-first`). No Pact artifacts, so no contract fragments. `tea_browser_automation: auto` adds `playwright-cli`.
+- **Inputs to cover:** the ATDD checklist's 12 open green-phase follow-ups. The code review deferred nothing.
 
 ## Coverage Plan
 
 Browser exploration skipped: `playwright-cli` isn't installed. Targets come from the spec, the ATDD checklist and `CardNotePanel.tsx`.
 
-**Level:** E2E only, in a new `frontend/e2e/card-note-keyboard-save-automate.spec.ts` (the `*-automate.spec.ts` convention of Epic 8). The behavior is keyboard focus, native form submission and the modal `dialog`, which only a real browser shows; the frontend has no component-test runner, and `saveFromKeys` is not a pure function worth a unit test. The 7 ATDD leaves stay as they are: no duplicate of a case they already prove.
+**Level:** E2E, in a new `frontend/e2e/card-note-add-another-automate.spec.ts` (the `*-automate.spec.ts` convention), reusing `card-note-add-another.ts` and `card-note-keys.ts`. Storage, focus, the modal `dialog`, live regions and axe only show in a real browser; the one pure piece, `lib/cardNoteAddAnother`, already has its unit tests (`cardNoteAddAnother.test.ts`, from the build), so follow-up 1 is ticked, not re-written. The 10 ATDD and review leaves stay as they are.
 
 | # | Target (ATDD follow-up) | Priority | Why |
 |---|---|---|---|
-| 1 | AC-1 the other two field/key pairs (Control+Enter in Note, Meta+Enter in Page), and add mode from Book detail returning focus to that Add card note | P1 | The "Always" rule promises both keys from both fields; the ATDD leaf covers two of four pairs. |
-| 2 | AC-1 focus lands before the `status` line on a keyboard save | P1 | The announce order (focus, then status) is an Epic 5 invariant; the key path must keep it. |
-| 3 | AC-3 in edit mode: a refused Page and a 503 through Control+Enter, line above the buttons, Delete still at the left | P1 | AC-3 is tested in add mode only. |
-| 4 | AC-4 in add mode: Meta+Enter with the save held, then the same presses (no Delete), gives one `add-card-note` | P1 | AC-4 is tested in edit mode only; a duplicate add would store two notes. |
-| 5 | AC-4 a refusal after a held save: the 422 leaves the panel open with the field error, Save note is no longer `aria-disabled`, and the next Meta+Enter sends one more request | P2 | Shows the in-flight guard releases after a refusal. (The held *key* repeating after a refusal is deferred to Story 9.2, not tested here.) |
-| 6 | AC-4 keys while the Delete Confirm dialog is open: Meta+Enter and Control+Enter there neither save the panel nor confirm the delete | P2 | The dialog is a sibling outside the form; spec "Never" says keys there get no handling. |
-| 7 | AC-5 only Save note carries `aria-keyshortcuts`, not Cancel or Delete, in both modes | P2 | The spec puts it on Save note only. Axe in both themes is covered by re-running the existing axe leaves in `add-card-note.spec.ts` and `edit-card-note.spec.ts`. |
+| 1 | AC-2 unit tests for `lib/cardNoteAddAnother` | — | Already delivered by the build (`cardNoteAddAnother.test.ts`, 5 tests); tick only. |
+| 2 | AC-2 throwing storage: box reads off, a click still toggles it, no message, a save with it on stays open | P1 | The Always rule's failure branch; tested only at unit level. |
+| 3 | AC-2 export and restore (AR27): the export holds no `cardNoteAddAnother`; a restore leaves the stored choice as it was, on and off | P2 | A browser preference must not travel with the library. |
+| 4 | AC-3 an empty-Note refusal, then a success: Note's error clears | P2 | The review's leaf proves `setErrors({})` with Page; this is the Note field. |
+| 5 | AC-3 add mode from Book detail with the box on: "Card notes (N)" updates behind the panel, Note keeps focus | P1 | The panel is shared, but the opener and the counts differ. |
+| 6 | AC-3 focus lands on Note before the `status` line, on each stay-open save | P1 | The focus-then-announce order (Design Notes). |
+| 7 | AC-3 `Control+Enter` and a held `Control+Enter`: one note per press | P1 | The repeat guard is modifier-blind; only Meta is held in the ATDD leaf. |
+| 8 | AC-1 the label gap: the text starts 8px (`--space-2`) right of the box | P2 | DESIGN.md Checkbox. |
+| 9 | AC-1 axe on the open add panel with the box on and a count shown, both themes | P1 | New control and text inside the modal. |
+| 10 | AC-5 the Tab cycle with a count shown still stays inside the panel | P2 | The checkbox adds a tab stop. |
+| 11 | AC-6 a gone Book (409) with the box on: the panel stays open, the line shows, the count is unchanged | P2 | The third failure kind. |
+| 12 | AC-7 edit mode from the Card notes page with the stored choice on: no checkbox; a save closes | P2 | The other edit opener. |
 
-**Scope:** selective. The 7 checklist follow-ups, nothing more: the story is one key handler, and the deferred held-key guard belongs to Story 9.2.
+**Scope:** selective. The checklist's follow-ups, nothing more.
 
 ## Execution
 
@@ -59,58 +63,55 @@ Browser exploration skipped: `playwright-cli` isn't installed. Targets come from
 - **Workers:**
   - **3A (API):** not launched. No endpoint changed.
   - **3B-backend:** not launched. No backend target.
-  - **3B-e2e:** targets 1–7. For its fail-proofs it made temporary edits to `frontend/src` and reverted each one by hand. Afterwards `git diff --stat -- frontend/src backend` is empty. The worker also ran a read-only `git stash list` once, which the item-64 rule bans in any form. It changed nothing: the stash is empty.
-- **New file:** the leaves went into `frontend/e2e/card-note-keyboard-save-automate.spec.ts` (458 lines), beside the ATDD spec (now 347 lines, was 405), following the `*-automate.spec.ts` convention.
-- **Shared helpers:** the helpers both files use moved out of `card-note-keyboard-save.spec.ts` into `frontend/e2e/card-note-keys.ts` (79 lines), as Epic 8 did with `typeset-covers.ts`. Moved: the three status lines, the four note ids, `DUNE_WITH_NOTES`, `cardNotePanel`, `editPanel`, `addCardNote`, `cardNotesBlock`, `noteItem`, `editOf`, `countSubmits` and `submitsSoFar`. The move is pure: the ATDD spec's diff is only its imports and the removed definitions, with no leaf body touched. `KEY_HINT` stays in the ATDD spec, its only user. The automate spec keeps local copies of `watchStatus`/`statusSeen`, because `add-card-note.spec.ts` is read-only for this story. It also adds `boxOf`, `keyshortcutOwners`, `holdRequests` and `confirmDialog`. No new fixture or factory.
-- **Review of the worker's output:** read in full, and no changes were needed. Its JSON is in this session's scratch directory, not committed. One red proof was re-run independently: changing `!(event.metaKey || event.ctrlKey)` to `!event.metaKey` fails `:96`. The mutation was then edited back.
+  - **3B-e2e:** targets 2–12. For its fail-proofs it made temporary edits to `frontend/src` and reverted each one by hand (two scripted reverts didn't match and were redone by hand). Afterwards `git diff --stat -- frontend/src backend` is empty. No banned git command was run.
+- **New file:** `frontend/e2e/card-note-add-another-automate.spec.ts` (483 lines, 11 leaves).
+- **Shared helpers:** 4 exports added to `frontend/e2e/card-note-add-another.ts`, none of the existing ones changed: `textGapAfterBox` (a `Range` over the label text minus the box's right edge), `watchFocusAtStatus` / `focusAtStatus` (the focused element's name each time `status` gets text), and `zipEntries` (a stored/deflated zip reader over the central directory; the e2e suite had none, since zip contents are otherwise tested at API level). Each was probed in a throwaway `*.probe.spec.ts` against `setContent` fixtures and the shipping app, and refused a wrong value; the probe file was then removed. No new fixture or factory.
+- **Review of the worker's output:** read in full, and no changes were needed. Its JSON is in this session's scratch directory, not committed. One red proof was re-run independently: removing the `event.repeat` guard fails `:282` at `:313` (Note `aria-invalid` from the repeat's empty-Note 422). The guard was then edited back by hand and the app rebuilt.
 
 ## Tests Added
 
-All in `frontend/e2e/card-note-keyboard-save-automate.spec.ts`, describe "Story 9.1 Save a card note with Cmd+Enter (automate)":
+All in `frontend/e2e/card-note-add-another-automate.spec.ts`, describe "Story 9.2 Add several card notes in a row (automate)":
 
 | Line | Leaf | Priority | Proven red by |
 |------|------|----------|---------------|
-| 96 | AC-1 Ctrl+Enter in Note and Cmd+Enter in Page on Home each send one `add-card-note` with both values as typed | P1 | `!event.metaKey` in place of `!(event.metaKey \|\| event.ctrlKey)`; also the target guard narrowed to Note |
-| 150 | AC-1 Cmd+Enter in add mode from Book detail returns focus to Book detail's Add card note | P1 | the opener's focus moved to `#main` first and the opener only after a 300 ms delay |
-| 185 | AC-1 on a keyboard save, focus is on Add card note before "Card note saved." (Meta and Ctrl) | P1 | the same late-focus change |
-| 216 | AC-3 edit mode, Ctrl+Enter with a refused Page: message, `aria-invalid`, alert, focus, nothing saved | P1 | `pageField.current?.focus()` changed to `.blur()` |
-| 253 | AC-3 edit mode, Ctrl+Enter couldn't save: line above the buttons, both values kept, Delete at the left | P1 | Delete moved after Cancel; also `setBusy(false)` removed |
-| 296 | AC-4 add mode, while a Cmd+Enter save is out: second press, held key, Save note, Cancel, Esc send nothing more | P1 | `if (inFlight.current) return` removed |
-| 345 | AC-4 a held save that comes back 422 leaves the field error; Save note is no longer `aria-disabled`; the next Cmd+Enter sends one more request | P2 | `setBusy(false)` removed; separately, `inFlight.current = false` moved into the success branch |
-| 384 | AC-4 Cmd+Enter and Ctrl+Enter inside the Delete Confirm dialog neither save nor confirm | P2 | ConfirmDialog moved inside the `<form>` with the field-target guard removed |
-| 432 | AC-5 only Save note carries `aria-keyshortcuts` (Cancel in both modes, Delete in edit mode have none) | P2 | `aria-keyshortcuts="Escape"` added to Cancel |
+| 75 | AC-2 with storage that throws, Add another reads off, a click still toggles it, no message shows, and a save with it on stays open | P1 | try/catch removed from `readAddAnother` (panel never renders); separately from `writeAddAnother` (a page error) |
+| 113 | AC-2 the stored choice never reaches the server or the export, and a restore leaves it as it was, on and off | P2 | `BackupPage` removing the key after a restore; the add form sending a `cardNoteAddAnother` part |
+| 177 | AC-3 with Add another on, an empty Note is refused, then filling it and saving clears its error | P2 | the stay-open `setErrors({})` removed |
+| 213 | AC-3 add mode from Book detail with Add another on: "Card notes (N)" updates behind the open modal panel after each save, Note keeps focus | P1 | the stay-open `noteField.current?.focus()` removed |
+| 253 | AC-3 on each stay-open save, focus is on Note when "Card note saved." is set | P1 | focus deferred 200 ms, after the announce |
+| 282 | AC-3 with Add another on, Ctrl+Enter saves one note, and a held Ctrl+Enter saves exactly one more | P1 | the `event.repeat` guard removed (re-run in this session) |
+| 323 | AC-1 the "Add another" text starts 8px right of the box | P2 | `.addAnother` gap `--space-2` → `--space-3` |
+| 335 | AC-1 the open add panel with Add another on and a count shown passes axe in both themes | P1 | `.savedCount` in `--color-line` (contrast) |
+| 365 | AC-5 with a count shown, Tab and Shift+Tab cycle inside the panel through Add another | P2 | `tabIndex={-1}` on the checkbox |
+| 404 | AC-6 with Add another on, a save for a Book deleted meanwhile (409) keeps the panel open with its line, and the count stays | P2 | the count bumped before the result is checked |
+| 448 | AC-7 edit mode from the Card notes page, with the stored choice on, has no checkbox and no count, and a save closes it | P2 | the row rendered in edit mode; separately, the edit-mode guards removed |
 
-Priority coverage: P0 0, P1 6, P2 3. The story's P0 path is the ATDD AC-1 leaf.
+Priority coverage: P0 0, P1 5, P2 6. The story's P0 path is the ATDD AC-3 leaf.
 
 ## Validation
 
-- `TZ=Europe/Madrid npx playwright test e2e/card-note-keyboard-save.spec.ts e2e/card-note-keyboard-save-automate.spec.ts --repeat-each=2`: 32 passed (this session). The worker also ran the new file 3 times over: 27 passed.
-- Prettier check: clean on the three e2e files. `tsc -b` and oxlint: clean (worker, and in the full check below).
-- `npm run check` (repo root, this session), exit 0:
-  - ruff, Prettier, oxlint, `tsc -b`, `check:api`: clean;
-  - pytest: 1573 passed, coverage gates ok (domain 100%, intents+store 98.08%);
-  - node tests: 354 passed;
-  - Playwright: 682 passed (673 before this run, plus 9), including the axe leaves `add-card-note.spec.ts:543` and `edit-card-note.spec.ts:599`;
-  - smoke ok.
-- Quality scan of the new files: no `waitForTimeout`, `.only`, `.skip`, `Math.random`, `console.log` or `data-testid`. The only loop is the Confirm-dialog leaf's fixed two targets × two keys, which runs the same path every time. Locators go by role and name; geometry is used only for the "above the buttons" and "Delete at the left" checks.
+- Worker: the new file `--repeat-each=3`, 33 passed; with the ATDD spec, 21 passed; Prettier, `tsc -b` and oxlint clean.
+- `npm run check` (repo root, this session): **exit 1**, at `check:api`'s `format:check`: `src/styles/base.css` isn't Prettier-formatted. That file isn't part of this run: it passed Prettier at `7a0f288` (the story's review commit) and was left unformatted by `9818c7b fix: align the dropdown arrow with the field's text inset`, which another session committed to master while this step ran. pytest had passed before it: 1573 passed, coverage gates ok (domain 100%, intents+store 98.08%).
+- The layers after the format step, run by hand in this session, all passed: Prettier lists only `base.css`; `api-contract` up to date; `tsc -b` and oxlint clean; node tests 359 passed; `check:e2e` (build + Playwright) **703 passed** (692 before this run, plus 11); smoke ok.
+- Quality scan of the new files: no `waitForTimeout`, `.only`, `.skip`, `Math.random`, `console.log` or `data-testid`. Loops run fixed lists (two themes, the Tab order). Locators go by role and name; geometry only for the 8px gap.
 - No CLI browser sessions were opened (`playwright-cli` isn't installed). Temp artifacts are in the session scratch directory, not the repo.
 - Production code untouched: `git diff --stat -- frontend/src backend` is empty.
 
 ## Playwright Utils deviations
 
-None. `@seontechnologies/playwright-utils` isn't installed, so the mandate doesn't apply, and the leaves use the repo's own fixtures (`seededServer`, `requestsTo`) with `page.route` set up before `goto`. Wiring the package (a `merged-fixtures` module, `interceptNetworkCall`) would be a project-wide change, not a story change.
+None. `tea_use_playwright_utils` is false and the package isn't installed; the leaves use the repo's own fixtures (`seededServer`, `requestsTo`, `page.request`). No `page.route` was needed: the 409 comes from the real server after a real `delete-book`.
 
 ## ATDD Checklist
 
-`atdd-checklist-9-1-save-a-card-note-with-cmd-enter.md`: all 7 open green-phase follow-ups are ticked, each with its `file:line`. The AC-5 axe half points at the existing axe leaves (`add-card-note.spec.ts:543`, `edit-card-note.spec.ts:599`), green in the full check. Remaining `[ ]`: **0**.
+`atdd-checklist-9-2-add-several-card-notes-in-a-row.md`: all 12 green-phase follow-ups are ticked, each with its `file:line`. The unit line points at the build's `cardNoteAddAnother.test.ts`; the 422-then-success line also cites the review's Page leaf (`card-note-add-another.spec.ts:433`). Remaining `[ ]`: **0**.
 
 ## Assumptions and Risks
 
-- **A held key auto-repeating after a refusal is not tested.** It re-sends the request, a known defect deferred to Story 9.2 (`deferred-work.md`, "code review of spec-9-1"). Leaf `:345` covers a held *save* (the request held in flight), which is what the checklist line meant.
-- **Focus-before-status (`:185`, and the `statusSeen` check in `:150`) is mostly guaranteed by the platform.** `announce` sets its text after a 100 ms tick, and Chromium already returns focus to the opener when the modal closes, so swapping focus and announce, or only delaying the focus, keeps it green. The leaves catch a regression that focuses somewhere else first.
-- **Chromium doesn't activate a focused button on Meta+Enter or Control+Enter** (Cancel, the Confirm dialog's Cancel, and Delete card note). Leaf `:384` depends on that. Other browsers are out of scope (AGENTS.md "Supported browser").
-- **Real IME composition** is still covered only by the ATDD leaf's dispatched `isComposing` event.
+- **The export half of `:113` can't be broken from the frontend.** The server drops unknown intent parts, so no frontend mutation gets the key into the zip; only a backend change could. The request scan catches the key name in any request, but not the bare value "on" sent under an unrelated part name.
+- **Book detail has no code of its own on the stay-open path.** `:213` is red only through the shared branch; it guards the opener and the "Card notes (N)" count, not a separate implementation.
+- **The axe leaf's dark pass** was not shown red on its own: the contrast mutation fails the light pass first.
+- **A concurrent session committed to the shared checkout during this step** (`9818c7b`, `38d1a61`), against AGENTS.md items 56 and 64. One early AC-7 timeout with trace-file ENOENT in the worker's first run is likely from that; every run since passed.
 
 ## Next
 
-Story 9.1 is `done` and doesn't close Epic 9: Story 9.2 "Add several card notes in a row" is next. Its pipeline starts with `bmad-testarch-atdd`. Its ATDD should pick up the two Story 9.2 entries in `deferred-work.md`: guard the held-key repeat, and press both keys by name rather than `ControlOrMeta+Enter`.
+Story 9.2 closes Epic 9. Next: the Epic 9 retrospective (`bmad-retrospective`), then its before-next-epic items, the Epic 9 trace and gate and the spine reconciliation, before Epic 10's first story. Before that, master needs `src/styles/base.css` formatted (`9818c7b`) for `npm run check` to pass.
