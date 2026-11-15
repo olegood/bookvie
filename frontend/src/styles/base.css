@@ -36,8 +36,20 @@ select {
   --select-padding-end: calc(var(--space-3) * 2 + var(--select-chevron-size) * 2);
   appearance: none;
   background-image:
-    linear-gradient(45deg, transparent 42%, var(--color-ink-secondary) 42%, var(--color-ink-secondary) 58%, transparent 58%),
-    linear-gradient(-45deg, transparent 42%, var(--color-ink-secondary) 42%, var(--color-ink-secondary) 58%, transparent 58%);
+    linear-gradient(
+      45deg,
+      transparent 42%,
+      var(--color-ink-secondary) 42%,
+      var(--color-ink-secondary) 58%,
+      transparent 58%
+    ),
+    linear-gradient(
+      -45deg,
+      transparent 42%,
+      var(--color-ink-secondary) 42%,
+      var(--color-ink-secondary) 58%,
+      transparent 58%
+    );
   background-position:
     right calc(var(--space-3) + var(--select-chevron-size)) center,
     right var(--space-3) center;
