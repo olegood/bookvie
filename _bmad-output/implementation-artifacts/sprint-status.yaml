@@ -797,7 +797,7 @@ action_items:
       in `frontend/e2e/catalog-filter.spec.ts`. Changes: `_bmad/custom/bmad-testarch-atdd.toml`.
       Due: before Epic 11."
     owner: "Murat (TEA)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-10-retro-2026-11-16.md"
   - id: "epic-10-retro-item-72-reconcile-the-spine-with-epic-10"
     epic: 10
