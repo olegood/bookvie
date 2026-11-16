@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-29-2026 17:21
-last_updated: 11-16-2026 16:57
+last_updated: 11-16-2026 22:18
 project: bookvie
 project_key: NOKEY
 tracking_system: file-system
@@ -809,7 +809,7 @@ action_items:
       and `:1029`). Changes: `_bmad-output/planning-artifacts/architecture/architecture-bookvie-2026-10-29/ARCHITECTURE-SPINE.md`,
       `_bmad-output/implementation-artifacts/deferred-work.md`. Due: before Epic 11."
     owner: "Winston (architect)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-10-retro-2026-11-16.md"
   - id: "epic-10-retro-item-73-one-module-for-the-copied-e2e-helpers"
     epic: 10
