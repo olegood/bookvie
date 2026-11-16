@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-29-2026 17:21
-last_updated: 11-16-2026 13:37
+last_updated: 11-16-2026 16:44
 project: bookvie
 project_key: NOKEY
 tracking_system: file-system
@@ -110,7 +110,7 @@ development_status:
 
   epic-10: in-progress
   10-1-reverse-the-catalog-order: done
-  epic-10-retrospective: optional
+  epic-10-retrospective: done
 action_items:
   - id: "epic-1-retro-item-1-run-an-epic-1-trace-and-gate-against-tr7"
     epic: 1
@@ -765,3 +765,61 @@ action_items:
     owner: "Amelia (dev)"
     status: done
     ref: "_bmad-output/implementation-artifacts/epic-9-retro-2026-11-15.md"
+  - id: "epic-10-retro-item-69-run-the-epic-10-trace-and-gate"
+    epic: 10
+    action: "Run the Epic 10 trace and gate against TR7 (P0 100%, P1 ≥ 95%, `check:api`
+      clean, coverage ≥ 90% on `domain/` and ≥ 80% on `intents/` + `store/`) and the
+      Epic 10 Gate: the existing catalog and home-slice e2e specs pass unchanged with
+      the toggle not pressed (the UX-DR64 Tab stops are the declared exception). This
+      retro's run already shows the coverage and `check:api` parts green. Changes:
+      `_bmad-output/test-artifacts/traceability/epic-10-traceability-matrix.md`, `…/epic-10-gate-decision.json`.
+      Due: before Epic 11."
+    owner: "Murat (TEA)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-10-retro-2026-11-16.md"
+  - id: "epic-10-retro-item-70-close-two-small-gaps-from-the-diff-review"
+    epic: 10
+    action: "Close two small gaps from the Epic 10 diff review (E10-B1, E10-B2): HomePage's
+      top comment says the slice follows Catalog's remembered sort and direction,
+      and a unit leaf pins that two Books with the same `createdAt` keep title A–Z
+      under Date added reversed. Changes: `frontend/src/pages/HomePage.tsx`, `frontend/src/lib/catalog.test.ts`.
+      Due: before Epic 11."
+    owner: "Amelia (dev)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-10-retro-2026-11-16.md"
+  - id: "epic-10-retro-item-71-teach-atdd-two-repeated-traps"
+    epic: 10
+    action: "Teach ATDD two traps it has hit more than once (E10-R1, E10-R2). Chromium
+      floors computed border and outline widths to whole CSS pixels: never assert
+      a fractional width through `toHaveCSS`; assert the floored value and pin the
+      token that sets it (as `e6dcc1e` does), and probe such reads under item 66's
+      rule. When a story adds a `localStorage` key, the red phase adds it to `APP_STORAGE_KEYS`
+      in `frontend/e2e/catalog-filter.spec.ts`. Changes: `_bmad/custom/bmad-testarch-atdd.toml`.
+      Due: before Epic 11."
+    owner: "Murat (TEA)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-10-retro-2026-11-16.md"
+  - id: "epic-10-retro-item-72-reconcile-the-spine-with-epic-10"
+    epic: 10
+    action: "Reconcile the spine with Epic 10: mark the catalog sort reversal and
+      `SortDirectionToggle` built in AD-6, the Structural Seed and the Capability
+      map's FR-4/FR-20/FR-24 row; add to AD-15 that the reversal reads as natural
+      when no valid key is stored and that reversing stores the shown key with it;
+      add a `resolved:` line to both Epic 10 spine drift entries (`deferred-work.md:1023`
+      and `:1029`). Changes: `_bmad-output/planning-artifacts/architecture/architecture-bookvie-2026-10-29/ARCHITECTURE-SPINE.md`,
+      `_bmad-output/implementation-artifacts/deferred-work.md`. Due: before Epic 11."
+    owner: "Winston (architect)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-10-retro-2026-11-16.md"
+  - id: "epic-10-retro-item-73-one-module-for-the-copied-e2e-helpers"
+    epic: 10
+    action: "Move the copied e2e helpers into one shared module (E10-D1): `bookId`,
+      `sortSelect` and the DESIGN.md color constants go into `frontend/e2e/library.ts`
+      next to `rgbOf`, and every spec and helper module that copies them imports them
+      instead, with no assertion change. Changes: `frontend/e2e/library.ts`, `frontend/e2e/sort-direction.ts`,
+      `frontend/e2e/tiles.ts`, `frontend/e2e/catalog-sort.spec.ts`, `frontend/e2e/catalog-filter.spec.ts`,
+      `frontend/e2e/home-slice.spec.ts`, `frontend/e2e/catalog-tiles.spec.ts`, `frontend/e2e/catalog-tiles-automate.spec.ts`,
+      and the helper modules that copy the colors. Due: before Epic 11."
+    owner: "Murat (TEA)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-10-retro-2026-11-16.md"
