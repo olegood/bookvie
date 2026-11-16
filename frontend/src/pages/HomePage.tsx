@@ -12,7 +12,7 @@ import UpNextPane from '../components/UpNextPane.tsx'
 import WaitingPane from '../components/WaitingPane.tsx'
 import { announce, clearAnnouncements } from '../lib/announce.ts'
 import { finishStatus, sortBooks } from '../lib/catalog.ts'
-import { readCatalogSort } from '../lib/catalogSort.ts'
+import { readCatalogSort, readCatalogSortReversed } from '../lib/catalogSort.ts'
 import { COULDNT_LOAD } from '../lib/copy.ts'
 import { usePageTitle } from '../lib/page.ts'
 import { pausedStatus } from '../lib/pause.ts'
@@ -65,10 +65,11 @@ function clearHandOffState(): void {
   window.history.replaceState({ ...rest, usr: null }, '')
 }
 
-/** The bookcase slice below the grid, in Catalog's remembered sort (read once per visit). */
+/** The bookcase slice below the grid, in Catalog's remembered sort and direction (read once per visit). */
 function HomeSlice({ view, finishing }: { view: HomeView; finishing: FinishMoment | null }) {
   const [sortKey] = useState(readCatalogSort)
-  const sorted = useMemo(() => sortBooks(view.books, sortKey), [view.books, sortKey])
+  const [reversed] = useState(readCatalogSortReversed)
+  const sorted = useMemo(() => sortBooks(view.books, sortKey, reversed), [view.books, sortKey, reversed])
   const slice = useMemo(() => ({ priority: view.slicePriority }), [view.slicePriority])
   return (
     <div className={styles.slice}>

@@ -1016,3 +1016,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-align-select-arrow.md`
   summary: Add an e2e check that the select chevron sits --space-3 from the right in both themes and falls back to the native arrow under forced colors.
   evidence: The arrow fix has only manual screenshot verification; nothing stops a `background` shorthand from wiping the chevron again.
+
+## Deferred from: build-auto review of spec-10-1-reverse-the-catalog-order (2026-11-16)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-10-1-reverse-the-catalog-order.md`
+  summary: Spine drift (AD-6, Structural Seed, Capability map FR-4/FR-20/FR-24 row), reconciled before the next epic. The spine marks the catalog sort's reversal and `SortDirectionToggle` "Story 10.1, planned", and places the toggle after `SortSelect` in `CatalogPage`. Story 10.1 built it, and the toggle renders inside `SortSelect`'s `role="group"`, which owns the "Sort" label. The rules (only the primary compare flips, `bookvie.catalogSortReversed`, reset on a key change, Home's slice follows) match the code. Low.
+  evidence: ARCHITECTURE-SPINE.md lines 98, 383 and 395; `frontend/src/components/SortSelect.tsx` renders `SortDirectionToggle` (spine check and intent audit, build-auto review of Story 10.1).

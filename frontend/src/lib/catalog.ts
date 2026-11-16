@@ -40,11 +40,13 @@ const PRIMARY: Record<CatalogSortKey, Compare> = {
  * with `Intl.Collator` (numbers by value). Title: A–Z with the collator. Date added: newest
  * `createdAt` first. Pages: fewest first. Every key then breaks ties by
  * title, then `createdAt` (older first), then Book id, so the order is
- * always stable.
+ * always stable. `reversed` (AR28) flips only the key's own compare: the
+ * tie-breaks keep their direction.
  */
-export function sortBooks<B extends SortableBook>(books: readonly B[], key: CatalogSortKey): B[] {
+export function sortBooks<B extends SortableBook>(books: readonly B[], key: CatalogSortKey, reversed = false): B[] {
   const primary = PRIMARY[key]
-  return [...books].sort((a, b) => primary(a, b) || byTitle(a, b) || byCreatedAt(a, b) || byId(a, b))
+  const sign = reversed ? -1 : 1
+  return [...books].sort((a, b) => sign * primary(a, b) || byTitle(a, b) || byCreatedAt(a, b) || byId(a, b))
 }
 
 /** Whether `title` contains the search text, ignoring case. Empty text matches all. */

@@ -12,13 +12,20 @@
   white-space: nowrap;
 }
 
-/* The Text field look (TextField.module.css → .input). */
+/* The select and the Sort direction toggle as one compound field. */
+.field {
+  display: flex;
+  align-items: stretch;
+}
+
+/* The Text field look (TextField.module.css → .input), its right corners
+   square: its right border is the edge shared with the toggle. */
 .select {
   box-sizing: border-box;
   height: var(--button-height);
   padding: 0 var(--select-padding-end) 0 var(--space-3);
   border: var(--text-field-border) solid var(--color-input-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-md) 0 0 var(--radius-md);
   background-color: var(--color-surface);
   color: var(--color-ink);
   font-family: var(--font-body-family);
@@ -26,6 +33,16 @@
 }
 
 .select:focus {
+  /* Raised over the toggle, so the halo isn't hidden. */
+  position: relative;
+  z-index: 1;
   border-color: var(--color-accent);
   box-shadow: 0 0 0 var(--text-field-halo) var(--color-focus-halo);
+}
+
+@media (forced-colors: active) {
+  /* The shared edge stays drawn. */
+  .select {
+    border-right-color: ButtonText;
+  }
 }

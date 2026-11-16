@@ -57,7 +57,7 @@ test.describe('Story 10.1 Reverse the catalog order (ATDD)', () => {
     await page.setViewportSize({ width: 1280, height: 900 })
   })
 
-  test.skip('[P0] AC-1 a browser that stored only the Date added sort opens newest first reading "↑ Newest first", and with nothing stored Author A–Z reads "↑ A–Z"', async ({
+  test('[P0] AC-1 a browser that stored only the Date added sort opens newest first reading "↑ Newest first", and with nothing stored Author A–Z reads "↑ A–Z"', async ({
     page,
     seededServer,
   }) => {
@@ -81,7 +81,7 @@ test.describe('Story 10.1 Reverse the catalog order (ATDD)', () => {
     await expect.poll(() => spineOrder(bookcase(page))).toEqual(BY_AUTHOR)
   })
 
-  test.skip('[P1] AC-2 the toggle is joined to the Sort select as one compound field in surface-inset with an ink-secondary arrow and body-sm ink text, and an empty Catalog shows neither', async ({
+  test('[P1] AC-2 the toggle is joined to the Sort select as one compound field in surface-inset with an ink-secondary arrow and body-sm ink text, and an empty Catalog shows neither', async ({
     page,
     seededServer,
   }) => {
@@ -100,10 +100,12 @@ test.describe('Story 10.1 Reverse the catalog order (ATDD)', () => {
     expect(t.y).toBe(s.y)
     expect(Math.abs(t.x - (s.x + s.width))).toBeLessThanOrEqual(0.5)
     // The shared edge is drawn once: the select's right border, no left border on the toggle.
+    // This Chromium floors a computed border width to whole CSS pixels at any
+    // device scale factor, so the 1.5px border (text-field-border) reads 1px.
     await expect(toggle).toHaveCSS('border-left-width', '0px')
-    await expect(select).toHaveCSS('border-right-width', '1.5px')
+    await expect(select).toHaveCSS('border-right-width', '1px')
     for (const side of ['top', 'right', 'bottom']) {
-      await expect(toggle).toHaveCSS(`border-${side}-width`, '1.5px')
+      await expect(toggle).toHaveCSS(`border-${side}-width`, '1px')
       await expect(toggle).toHaveCSS(`border-${side}-style`, 'solid')
       await expect(toggle).toHaveCSS(`border-${side}-color`, INPUT_BORDER)
     }
@@ -134,7 +136,7 @@ test.describe('Story 10.1 Reverse the catalog order (ATDD)', () => {
     for (const name of ['A–Z', 'Z–A']) await expect(main.getByRole('button', { name, exact: true })).toHaveCount(0)
   })
 
-  test.skip('[P0] AC-3 for each key the toggle reverses the bookcase, the list and the tiles, says the new order with ↓, restores on a second press, and the controls to its right stay put', async ({
+  test('[P0] AC-3 for each key the toggle reverses the bookcase, the list and the tiles, says the new order with ↓, restores on a second press, and the controls to its right stay put', async ({
     page,
     seededServer,
   }) => {
@@ -207,7 +209,7 @@ test.describe('Story 10.1 Reverse the catalog order (ATDD)', () => {
     await expect(toggle).toHaveText(/^↑\s*Fewest first$/)
   })
 
-  test.skip('[P1] AC-4 reversed, Books with the same first author keep title A–Z and Books with the same title keep the one added earlier first', async ({
+  test('[P1] AC-4 reversed, Books with the same first author keep title A–Z and Books with the same title keep the one added earlier first', async ({
     page,
     seededServer,
   }) => {
@@ -227,7 +229,7 @@ test.describe('Story 10.1 Reverse the catalog order (ATDD)', () => {
     await expect(sortToggle(page)).toHaveAccessibleName('Z–A')
   })
 
-  test.skip('[P0] AC-5 choosing another key while reversed gives that key’s natural order, reads its natural label and stores not reversed', async ({
+  test('[P0] AC-5 choosing another key while reversed gives that key’s natural order, reads its natural label and stores not reversed', async ({
     page,
     seededServer,
   }) => {
@@ -259,7 +261,7 @@ test.describe('Story 10.1 Reverse the catalog order (ATDD)', () => {
     await expect.poll(() => stored(page, REVERSED_KEY)).not.toBe(REVERSED)
   })
 
-  test.skip('[P1] AC-6 the reversal survives a reload, Home packs its slice rows in the reversed order before choosing them, and the sort key keeps its format', async ({
+  test('[P1] AC-6 the reversal survives a reload, Home packs its slice rows in the reversed order before choosing them, and the sort key keeps its format', async ({
     page,
     seededServer,
   }) => {
@@ -308,7 +310,26 @@ test.describe('Story 10.1 Reverse the catalog order (ATDD)', () => {
     await expect.poll(() => sliceRows(page)).toEqual(expected)
   })
 
-  test.skip('[P1] AC-7 junk in the reversal key or a stored key that isn’t one of the four opens the natural direction, and with storage that throws the toggle still reverses for this visit with no message', async ({
+  test('[P1] AC-6 a reversal made with nothing stored survives a reload, the default Author key stored with it', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: SORT_SHELF })
+    await page.goto(`${server.url}/catalog`)
+    await expect.poll(() => spineOrder(bookcase(page))).toEqual(BY_AUTHOR)
+    expect(await stored(page, SORT_KEY)).toBeNull()
+    expect(await stored(page, REVERSED_KEY)).toBeNull()
+    await sortToggle(page).click()
+    await expect(sortToggle(page)).toHaveAccessibleName('Z–A')
+    await page.reload()
+
+    await expect(sortToggle(page)).toHaveAccessibleName('Z–A')
+    await expect.poll(() => spineOrder(bookcase(page))).toEqual(AUTHOR_Z_A)
+    expect(await stored(page, SORT_KEY)).toBe('author')
+    expect(await stored(page, REVERSED_KEY)).toBe(REVERSED)
+  })
+
+  test('[P1] AC-7 junk in the reversal key or a stored key that isn’t one of the four opens the natural direction, and with storage that throws the toggle still reverses for this visit with no message', async ({
     page,
     context,
     seededServer,
@@ -370,7 +391,7 @@ test.describe('Story 10.1 Reverse the catalog order (ATDD)', () => {
     expect(errors.map(String)).toEqual([])
   })
 
-  test.skip('[P1] AC-8 the toggle is a plain button named by its visible text in a "Sort" group, the next Tab stop after the select, keeps focus on a press with status silent, and the bookcase arrows follow the reversed order', async ({
+  test('[P1] AC-8 the toggle is a plain button named by its visible text in a "Sort" group, the next Tab stop after the select, keeps focus on a press with status silent, and the bookcase arrows follow the reversed order', async ({
     page,
     seededServer,
   }) => {
@@ -429,7 +450,7 @@ test.describe('Story 10.1 Reverse the catalog order (ATDD)', () => {
     await expect(bookcase(page).getByRole('button', { name: BELOVED, exact: true })).toBeFocused()
   })
 
-  test.skip('[P2] AC-9 the focused half is raised above the other, no hover change, the dark twins, and ButtonFace with ButtonText under forced colors with the shared edge still drawn', async ({
+  test('[P2] AC-9 the focused half is raised above the other, no hover change, the dark twins, and ButtonFace with ButtonText under forced colors with the shared edge still drawn', async ({
     page,
     seededServer,
   }) => {
@@ -474,7 +495,9 @@ test.describe('Story 10.1 Reverse the catalog order (ATDD)', () => {
     await expect(toggle).toHaveCSS('color', buttonText)
     for (const side of ['top', 'right', 'bottom']) await expect(toggle).toHaveCSS(`border-${side}-color`, buttonText)
     await expect(toggleArrow(page)).toHaveCSS('color', buttonText)
-    await expect(select).toHaveCSS('border-right-width', '1.5px')
+    // This Chromium floors a computed border width to whole CSS pixels at any
+    // device scale factor, so the 1.5px border (text-field-border) reads 1px.
+    await expect(select).toHaveCSS('border-right-width', '1px')
     await expect(select).toHaveCSS('border-right-style', 'solid')
     await expect(select).not.toHaveCSS('border-right-color', 'rgba(0, 0, 0, 0)')
   })

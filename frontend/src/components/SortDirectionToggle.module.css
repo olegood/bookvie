@@ -1,0 +1,59 @@
+/* DESIGN.md → components.sort-direction-toggle: the right half of the Sort field. */
+.toggle {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: var(--button-height);
+  margin: 0;
+  padding: 0 var(--space-3);
+  /* The shared edge is the select's right border: no left border here. */
+  border: var(--text-field-border) solid var(--color-input-border);
+  border-left: 0;
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  background: var(--color-surface-inset);
+  color: var(--color-ink);
+  font-family: var(--font-body-sm-family);
+  font-size: var(--font-body-sm-size);
+  font-weight: var(--font-body-sm-weight);
+  line-height: var(--font-body-sm-line-height);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+/* The focused half paints over its neighbor, so its ring isn't hidden. */
+.toggle:focus {
+  position: relative;
+  z-index: 1;
+}
+
+.arrow {
+  color: var(--color-ink-secondary);
+}
+
+/* The label and its hidden twin share one cell: the wider sets the width. */
+.label {
+  display: grid;
+}
+
+.label > span,
+.label::after {
+  grid-area: 1 / 1;
+}
+
+.label::after {
+  content: attr(data-other);
+  visibility: hidden;
+}
+
+@media (forced-colors: active) {
+  .toggle {
+    border-color: ButtonText;
+    background: ButtonFace;
+    color: ButtonText;
+  }
+
+  .arrow {
+    color: ButtonText;
+  }
+}

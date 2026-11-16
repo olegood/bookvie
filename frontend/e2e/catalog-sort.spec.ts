@@ -95,10 +95,12 @@ test.describe('Story 7.1 Sort my catalog (ATDD)', () => {
     // A native select, with a visible label.
     expect(await sort.evaluate((element) => element.tagName)).toBe('SELECT')
     await expect(page.getByRole('main').getByText('Sort', { exact: true })).toBeVisible()
-    // Toolbar order (DESIGN.md → Catalog): Search titles, Sort, the view toggle.
+    // Toolbar order (DESIGN.md → Catalog): Search titles, Sort, the Sort direction toggle (Story 10.1), the view toggle.
     await search(page).focus()
     await page.keyboard.press('Tab')
     await expect(sort).toBeFocused()
+    await page.keyboard.press('Tab')
+    await expect(page.getByRole('main').getByRole('button', { name: 'A–Z', exact: true })).toBeFocused()
     await page.keyboard.press('Tab')
     await expect(viewToggle(page).getByRole('button', { name: 'Bookcase', exact: true })).toBeFocused()
   })

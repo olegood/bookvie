@@ -108,8 +108,8 @@ development_status:
   9-2-add-several-card-notes-in-a-row: done
   epic-9-retrospective: done
 
-  epic-10: backlog
-  10-1-reverse-the-catalog-order: backlog
+  epic-10: in-progress
+  10-1-reverse-the-catalog-order: review
   epic-10-retrospective: optional
 action_items:
   - id: "epic-1-retro-item-1-run-an-epic-1-trace-and-gate-against-tr7"

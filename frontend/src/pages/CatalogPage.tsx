@@ -19,7 +19,13 @@ import {
   NO_FILTERS,
   type CatalogFilters,
 } from '../lib/catalogFilter.ts'
-import { readCatalogSort, writeCatalogSort, type CatalogSortKey } from '../lib/catalogSort.ts'
+import {
+  readCatalogSort,
+  readCatalogSortReversed,
+  writeCatalogSort,
+  writeCatalogSortReversed,
+  type CatalogSortKey,
+} from '../lib/catalogSort.ts'
 import { readCatalogView, writeCatalogView, type CatalogViewChoice } from '../lib/catalogView.ts'
 import { COULDNT_LOAD } from '../lib/copy.ts'
 import { usePageTitle } from '../lib/page.ts'
@@ -135,8 +141,9 @@ export default function CatalogPage() {
   const failed = view.status === 'failed'
   const books = view.status === 'ready' ? view.data.books : NO_BOOKS
   const [sortKey, setSortKey] = useState<CatalogSortKey>(readCatalogSort)
+  const [reversed, setReversed] = useState(readCatalogSortReversed)
   // Re-applied to every refetch, never stored as a derived copy.
-  const sorted = useMemo(() => sortBooks(books, sortKey), [books, sortKey])
+  const sorted = useMemo(() => sortBooks(books, sortKey, reversed), [books, sortKey, reversed])
 
   const location = useLocation()
   // Read once: arriving from Home's empty state opens the panel.
@@ -288,10 +295,21 @@ export default function CatalogPage() {
     writeCatalogView(next)
   }
 
-  // A failed write still re-sorts for this visit.
+  // A failed write still re-sorts for this visit. A new key starts in its natural direction.
   const chooseSort = (next: CatalogSortKey) => {
     setSortKey(next)
+    setReversed(false)
     writeCatalogSort(next)
+    writeCatalogSortReversed(false)
+  }
+
+  // With nothing stored, Author is only a fallback, so the key is stored too,
+  // or the reversal would read back as natural.
+  const reverse = () => {
+    const next = !reversed
+    setReversed(next)
+    writeCatalogSort(sortKey)
+    writeCatalogSortReversed(next)
   }
 
   const empty = view.data.books.length === 0
@@ -313,7 +331,7 @@ export default function CatalogPage() {
       <PageHeading className={styles.title}>Catalog</PageHeading>
       <div className={styles.toolbar}>
         {!empty && <SearchTitles value={query} onChange={search} inputRef={searchRef} />}
-        {!empty && <SortSelect value={sortKey} onChange={chooseSort} />}
+        {!empty && <SortSelect value={sortKey} onChange={chooseSort} reversed={reversed} onReverse={reverse} />}
         {!empty && <ViewToggle value={catalogView} onChange={chooseView} />}
         <Button ref={newBookRef} variant="primary" className={styles.newBook} onClick={openPanel}>
           New book
