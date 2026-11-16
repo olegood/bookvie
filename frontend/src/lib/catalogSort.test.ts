@@ -102,7 +102,7 @@ describe('catalog sort direction', () => {
     assert.equal(readCatalogSortReversed(), false)
   })
 
-  it('reads natural, and writes nothing, when storage throws', () => {
+  it('reads natural, and writing does not throw, when storage throws', () => {
     const fail = () => {
       throw new Error('denied')
     }

@@ -2,7 +2,7 @@
 title: 'Story 10.1: Reverse the catalog order'
 type: 'feature'
 created: '2026-11-16'
-status: 'in-review'
+status: 'done'
 baseline_revision: 'a725453de4e447badd4547ec4e8c2d6b95193a3c'
 review_loop_iteration: 0
 followup_review_recommended: true
@@ -84,6 +84,34 @@ deferred:
 - Given the 9 ATDD leaves (AC-1..AC-9 of `epics.md` Story 10.1, registry in the ATDD checklist), when un-skipped, then all pass.
 - Given the toggle not pressed, when the existing catalog, home-slice, filter, tiles and bookcase specs run, then they pass, except the two Tab-order leaves, which gain the toggle stop.
 - Given `npm run check`, when run from the repo root, then it passes.
+
+### Review Findings
+
+Code review (`bmad-code-review`, new session, 2026-11-16) of `a725453..28b77f9`; layers: Blind Hunter, Edge Case Hunter, Verification Gap (no gaps), Acceptance Auditor (no AC violations), Spine Check.
+
+- [x] [Review][Patch] AC-2 can't tell the 1.5px border from 1px: this Chromium (156) floors the computed width to `1px` at every device scale factor (re-probed by two layers at DPR 1, 2 and 3, a 1.5px and a 1px border both read `1px`), and nothing else pins `--text-field-border` (it isn't a DESIGN.md primitive, so `app-shell.spec.ts` skips it). Pin the token's value next to the `1px` reads (Blind Hunter + Acceptance Auditor + Verification Gap + Edge Case Hunter) [frontend/e2e/catalog-sort-direction.spec.ts:104]
+- [x] [Review][Patch] The spine-drift entry says the spine "places the toggle after `SortSelect` in `CatalogPage`"; no spine line does (98, 383 and 395 only list it). The placement comes from `catalog-sort-direction-plan-2026-11-15.md:61` and `epic-10-context.md`, so the reconciliation would look for a rule that isn't there (Spine Check) [_bmad-output/implementation-artifacts/deferred-work.md:1021]
+- [x] [Review][Patch] The unit test "reads natural, and writes nothing, when storage throws" only asserts `doesNotThrow`; its title promises a check it doesn't make (Blind Hunter) [frontend/src/lib/catalogSort.test.ts:551]
+- [x] [Review][Defer] Spine drift (AD-15): the spine says a missing or junk reversal, or a stored key that isn't one of the four, reads as not reversed; the code also reads not reversed when no key is stored (`readCatalogSortReversed` requires `isCatalogSort` of the stored key), and `reverse()` therefore stores the key with the reversal. The code follows the spec's Tasks line; the spine doesn't describe either rule (Spine Check) [frontend/src/lib/catalogSort.ts:615] — deferred: spine drift, reconciled before the next epic
+- [x] [Review][Defer] Spine drift (AD-6, Structural Seed, Capability map FR-4/FR-20/FR-24 row): `SortDirectionToggle` and the reversal still marked "Story 10.1, planned" (Spine Check + Acceptance Auditor) [ARCHITECTURE-SPINE.md:98] — deferred: already recorded by the build's review in `deferred-work.md`; no new entry
+
+- Mutation check (this session): with `--text-field-border` set to `1px` in `tokens.css`, AC-2 fails on the new token check (`Expected: "1.5px"`, `Received: "1px"`); edited back by hand, `tokens.css` unchanged in `git status`.
+- Full check after the patches (2026-11-16, this review session): `npm run check` exit 0 — pytest 1573 passed, unit 368 passed, e2e 714 passed, smoke ok.
+
+**Rejected:**
+- `false` The border comment's "at any device scale factor" isn't backed by the leaf, which runs at DPR 1 (Blind Hunter) — Edge Case Hunter and Verification Gap each re-probed Chromium 156.0.8078.4 at DPR 1, 2 and 3 in this review: `1px` every time.
+- `low` The ATDD checklist's AC-2/AC-9 rows still say 1.5px and its registry lacks the review's added AC-6 leaf; the spec still says "9 leaves" (Blind Hunter) — the checklist is the red-phase record and its upkeep belongs to `bmad-testarch-automate`, as in Story 9.2's review; the spec part edits the spec under review; the Auto Run Result records both changes.
+- `low` The Spec Change Log is empty though the build rewrote two assertions, added a leaf and placed the toggle in `SortSelect` (Blind Hunter) — the fix edits the spec under review; all three are in the Triage Log and Auto Run Result.
+- `false` Reversed Author puts Books with no author last, undecided and untested (Blind Hunter) — reversal is specified as negating the primary compare (AR28), and the empty author is part of that compare, so last is the specified result; `catalog.test.ts` pins the natural side.
+- `false` The `::after` width twin could leak into the accessible name (Blind Hunter) — `visibility: hidden` content is excluded from the name; AC-8 asserts the exact name `A–Z`. The harm needs a future edit to the hiding rule.
+- `low` Under forced colors the select's other three borders may differ in color from the toggle's `ButtonText` (Blind Hunter) — maybe-false: needs a forced-colors render; cosmetic at most, already a Residual risk; the shared edge AC-9 asks for is pinned.
+- `false` The drift entry cites line numbers that go stale (Blind Hunter) — it also names the sections (AD-6, Structural Seed, Capability map row).
+- `low` The drift entry omits `epic-10-context.md` and the plan as sources of the placement (Blind Hunter) — the corrected entry (patch above) names them; Epic 10 has one story, so no regeneration will reuse it.
+- `low` `SortSelect` now owns the toggle but its name says "select" (Blind Hunter) — the spec's Design Notes chose this (the group owns the label); a rename is a refactor with no named harm.
+- `false` `reverse()` overwrites the stored key on every press (Blind Hunter) — it writes the key that is shown; a junk key already reads and shows as Author; the comment says why.
+- `low` `writeCatalogSort` failing while `writeCatalogSortReversed(true)` succeeds reloads as natural (Edge Case Hunter) — both values are a few bytes in the same storage; a guard adds a return value and a branch; the build's review rejected the same.
+- `low` Export and restore of the reversal aren't tested here (Acceptance Auditor) — holds by construction (localStorage only); the ATDD checklist's green-phase follow-up assigns it to `bmad-testarch-automate`.
+- `false` `reverse()` writes `bookvie.catalogSort`, which the Tasks don't list (Acceptance Auditor) — the format is unchanged and the new reload leaf needs it; the reviewer marks it informational.
 
 ## Spec Change Log
 

@@ -109,6 +109,12 @@ test.describe('Story 10.1 Reverse the catalog order (ATDD)', () => {
       await expect(toggle).toHaveCSS(`border-${side}-style`, 'solid')
       await expect(toggle).toHaveCSS(`border-${side}-color`, INPUT_BORDER)
     }
+    // The floored read can't tell 1.5px from 1px, so pin the token both halves draw with.
+    for (const half of [select, toggle]) {
+      expect(
+        await half.evaluate((element) => getComputedStyle(element).getPropertyValue('--text-field-border').trim()),
+      ).toBe('1.5px')
+    }
     // The select's right corners square, the toggle's outer corners rounded.md.
     await expect(select).toHaveCSS('border-top-left-radius', '9px')
     await expect(select).toHaveCSS('border-top-right-radius', '0px')
