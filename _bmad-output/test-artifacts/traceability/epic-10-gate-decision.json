@@ -1,0 +1,24 @@
+{
+  "schema_version": "0.1.0",
+  "evaluated_at": "2026-11-16T15:57:13.000000Z",
+  "repo": "bookvie",
+  "target": {
+    "type": "epic",
+    "id": "10",
+    "label": "Epic 10: Reverse the catalog order"
+  },
+  "collection_status": "COLLECTED",
+  "gate_basis": "priority_thresholds",
+  "gate_status": "PASS",
+  "rationale": "P0 coverage is 100% (3/3), P1 coverage is 100% (6/6; TR7 target: 95%; workflow default 90%), and overall coverage is 100% (10/10; minimum: 80%). The Epic 10 gate holds: the existing catalog and home-slice e2e specs pass with the toggle not pressed; the only older-spec edits are the UX-DR64 Tab stop in catalog-sort.spec.ts and bookcase-details.spec.ts and one storage-key list in catalog-filter.spec.ts. Epic 10 added no error code and changed no backend file; every existing code keeps its API test. check:api is clean and the coverage gates hold (domain 100.00%, intents+store 98.08%). This trace added no test.",
+  "p0_status": "MET",
+  "p1_status": "MET",
+  "overall_status": "MET",
+  "critical_open": 0,
+  "links": {
+    "trace_report_path": "_bmad-output/test-artifacts/traceability/epic-10-traceability-matrix.md",
+    "trace_report_url": "",
+    "artifact_url": "",
+    "journey_evidence_url": ""
+  }
+}
