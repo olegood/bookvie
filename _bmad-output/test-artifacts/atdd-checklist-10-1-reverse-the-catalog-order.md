@@ -97,18 +97,18 @@ These are spec-mandated changes, not regressions. The build should record them i
 
 ## Green-phase follow-ups (secondary branches, not red leaves)
 
-- [ ] **Unit, `lib/catalog.ts`:** `sortBooks(books, key, true)` for each key is the natural order with only the primary compare negated: ties by title, `createdAt` and id stay put. `reversed` defaults to `false`, so today's calls are unchanged.
-- [ ] **Unit, `lib/catalogSort.ts`:** `readCatalogSortReversed` reads `"true"` as reversed, and `null`, `''`, junk, a throwing `getItem` and a stored key that isn't one of the four as not reversed. `writeCatalogSortReversed` doesn't throw on a throwing `setItem`. The label table gives each key's two labels.
-- [ ] **E2E, AC-6 export and restore (AR27/AD-15):** the export zip holds neither `catalogSortReversed` nor `catalogSort`, and no request carries them. A restore from another library keeps the reversal as it was, both reversed and not (as in `card-note-add-another-automate.spec.ts:113`, with `zipEntries`, `exportOf` and `restoreFrom`).
-- [ ] **E2E, AC-6 Home with the reversal stored and the key Author** (the one-row `SORT_SHELF` slice): `AUTHOR_Z_A`, after both a fresh load and in-app navigation without a reload.
-- [ ] **E2E, AC-7 Home with storage that throws** after a reversal was stored: the slice is in Author A–Z.
-- [ ] **E2E, AC-3 Search titles and filters keep working while reversed:** "d" under Pages reversed shows Emma hidden, `[DUNE_UNREAD, DUNE_FINISHED, BELOVED, KINDRED]`, and a press keeps the search text and the filter chips.
-- [ ] **E2E, AC-3 the List view press:** with List shown, a press reorders the rows and focus stays on the toggle.
-- [ ] **E2E, AC-2 the minimum width for Author, Title and Date added:** the toggle's width doesn't change on a press. Also the padding (12px) and the arrow gap (4px), measured with a `Range` on the text node (probe first).
-- [ ] **E2E, AC-8 a new Book under Date added while reversed** (oldest first) goes to the end in sort order, and is still focused, in view and ringed (as `catalog-sort.spec.ts` "a Book just added is the first spine").
-- [ ] **E2E, AC-8 the Tab stop stays on the last-focused Book across a press** (as `catalog-sort.spec.ts:288`).
-- [ ] **E2E, AC-9 axe** on the Catalog with the toggle in both states, in both themes.
-- [ ] **E2E, AC-9 the dark-theme focus looks:** the select's border and halo, and the toggle's ring, use the accent dark twin.
+- [x] **Unit, `lib/catalog.ts`:** `sortBooks(books, key, true)` for each key is the natural order with only the primary compare negated: ties by title, `createdAt` and id stay put. `reversed` defaults to `false`, so today's calls are unchanged. (done: `frontend/src/lib/catalog.test.ts:161`, `:168`, `:174`)
+- [x] **Unit, `lib/catalogSort.ts`:** `readCatalogSortReversed` reads `"true"` as reversed, and `null`, `''`, junk, a throwing `getItem` and a stored key that isn't one of the four as not reversed. `writeCatalogSortReversed` doesn't throw on a throwing `setItem`. The label table gives each key's two labels. (done: `frontend/src/lib/catalogSort.test.ts:70`, `:82`, `:89`, `:98`, `:105`, `:115`)
+- [x] **E2E, AC-6 export and restore (AR27/AD-15):** the export zip holds neither `catalogSortReversed` nor `catalogSort`, and no request carries them. A restore from another library keeps the reversal as it was, both reversed and not (as in `card-note-add-another-automate.spec.ts:113`, with `zipEntries`, `exportOf` and `restoreFrom`). (done: `frontend/e2e/catalog-sort-direction-automate.spec.ts:77`)
+- [x] **E2E, AC-6 Home with the reversal stored and the key Author** (the one-row `SORT_SHELF` slice): `AUTHOR_Z_A`, after both a fresh load and in-app navigation without a reload. (done: `frontend/e2e/catalog-sort-direction-automate.spec.ts:134`)
+- [x] **E2E, AC-7 Home with storage that throws** after a reversal was stored: the slice is in Author A–Z. (done: `frontend/e2e/catalog-sort-direction-automate.spec.ts:165`)
+- [x] **E2E, AC-3 Search titles and filters keep working while reversed:** "d" under Pages reversed shows Emma hidden, `[DUNE_UNREAD, DUNE_FINISHED, BELOVED, KINDRED]`, and a press keeps the search text and the filter chips. (done: `frontend/e2e/catalog-sort-direction-automate.spec.ts:193`; the expected order was checked against the data, and the Unread chip is the filter pressed)
+- [x] **E2E, AC-3 the List view press:** with List shown, a press reorders the rows and focus stays on the toggle. (done: `frontend/e2e/catalog-sort-direction-automate.spec.ts:227`)
+- [x] **E2E, AC-2 the minimum width for Author, Title and Date added:** the toggle's width doesn't change on a press. Also the padding (12px) and the arrow gap (4px), measured with a `Range` on the text node (probe first). (done: `frontend/e2e/catalog-sort-direction-automate.spec.ts:247`; A–Z and Z–A share glyphs, so only Date added can catch a broken minimum width; the narrower label is centred, so the gap and right padding are asserted on the wider label)
+- [x] **E2E, AC-8 a new Book under Date added while reversed** (oldest first) goes to the end in sort order, and is still focused, in view and ringed (as `catalog-sort.spec.ts` "a Book just added is the first spine"). (done: `frontend/e2e/catalog-sort-direction-automate.spec.ts:284`)
+- [x] **E2E, AC-8 the Tab stop stays on the last-focused Book across a press** (as `catalog-sort.spec.ts:288`). (done: `frontend/e2e/catalog-sort-direction-automate.spec.ts:321`)
+- [x] **E2E, AC-9 axe** on the Catalog with the toggle in both states, in both themes. (done: `frontend/e2e/catalog-sort-direction-automate.spec.ts:350`)
+- [x] **E2E, AC-9 the dark-theme focus looks:** the select's border and halo, and the toggle's ring, use the accent dark twin. (done: `frontend/e2e/catalog-sort-direction-automate.spec.ts:377`)
 
 ## Helper probes
 

@@ -206,3 +206,35 @@ export function systemColor(page: Page, name: string): Promise<string> {
     return color
   }, name)
 }
+
+// Automate leaves (after the story was done): the accent's dark twin and the
+// select's dark focus halo, as a computed `box-shadow` value.
+export const ACCENT_DARK = rgbOf('#93B597')
+export const FOCUS_HALO_DARK = 'rgba(147, 181, 151, 0.18) 0px 0px 0px 4px'
+
+/**
+ * Where the toggle's text sits inside it, measured with a `Range` on each of
+ * its two text nodes (the arrow, then the label; the hidden `::after` twin is
+ * no text node): `left` from the inner border edge to the arrow, `gap` from
+ * the arrow to the label, `right` from the label to the inner border edge.
+ */
+export function toggleInsets(toggle: Locator): Promise<{ left: number; gap: number; right: number }> {
+  return toggle.evaluate((button) => {
+    const walker = document.createTreeWalker(button, NodeFilter.SHOW_TEXT)
+    const texts: Node[] = []
+    while (walker.nextNode()) if ((walker.currentNode.textContent ?? '').trim() !== '') texts.push(walker.currentNode)
+    if (texts.length !== 2) throw new Error(`expected an arrow and a label text node, found ${texts.length}`)
+    const [arrow, label] = texts.map((node) => {
+      const range = document.createRange()
+      range.selectNodeContents(node)
+      return range.getBoundingClientRect()
+    })
+    const box = button.getBoundingClientRect()
+    const style = getComputedStyle(button)
+    return {
+      left: arrow.left - box.left - parseFloat(style.borderLeftWidth),
+      gap: label.left - arrow.right,
+      right: box.right - parseFloat(style.borderRightWidth) - label.right,
+    }
+  })
+}
