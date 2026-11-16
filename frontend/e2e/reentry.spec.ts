@@ -27,7 +27,12 @@ import {
   serverAtFakeToday,
   stopAndRemove,
 } from './home.ts'
-import { rgbOf } from './library.ts'
+import {
+  INK_SECONDARY as INK_SECONDARY_LIGHT,
+  INK_SECONDARY_DARK,
+  INK_TERTIARY as INK_TERTIARY_LIGHT,
+  rgbOf,
+} from './library.ts'
 
 const EMMA_ID = '2a7e4b1c-8d3f-4e5a-9b6c-7d8e9f0a1b2c'
 /** Emma, finished in 20 days: Measured pace 20 pages a day. */
@@ -47,8 +52,8 @@ const EXPORTED_12_DAYS_AGO = { 'local-state.json': JSON.stringify({ lastExportAt
 
 const DATE_HEADER = 'Wednesday, 28 October'
 // tokens.css: the re-entry line is ink-secondary, its dots ink-tertiary (DESIGN.md → Re-entry line).
-const INK_SECONDARY = { light: rgbOf('#5F635C'), dark: rgbOf('#B3B7AD') }
-const INK_TERTIARY = { light: rgbOf('#666961'), dark: rgbOf('#9A9E94') }
+const INK_SECONDARY = { light: INK_SECONDARY_LIGHT, dark: INK_SECONDARY_DARK }
+const INK_TERTIARY = { light: INK_TERTIARY_LIGHT, dark: rgbOf('#9A9E94') }
 
 /** The Left Hand of Darkness as the Main book at `page`, last updated at `lastProgressUpdate`, plus Emma. */
 function pacedMainAt(page: number, lastProgressUpdate: string | null = THREE_DAYS_AGO, others: object[] = [EMMA]) {

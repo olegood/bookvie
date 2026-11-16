@@ -7,13 +7,9 @@ import AxeBuilder from '@axe-core/playwright'
 import type { Locator, Page } from '@playwright/test'
 import { expect, test } from './fixtures.ts'
 import { ADD_BOOK, intentOf, requestsTo } from './intents.ts'
-import { catalogTitles, fillFields, openNewBook } from './library.ts'
+import { INK, INK_DARK, catalogTitles, fillFields, openNewBook } from './library.ts'
 
 const COULDNT_SAVE = "Couldn't save. Your data wasn't changed."
-// DESIGN.md ink, light theme.
-const INK = 'rgb(43, 46, 42)'
-// DESIGN.md ink, dark theme.
-const INK_DARK = 'rgb(236, 234, 227)'
 // Ace's Dune: seeded as ISBN-13, typed as the ISBN-10 on older copies.
 const DUNE_ISBN13 = '9780441172719'
 const DUNE_ISBN10 = '0-441-17271-7'

@@ -36,6 +36,7 @@ import {
   storedLibrary,
   upNextPane,
 } from './home.ts'
+import { bookId } from './library.ts'
 
 const MAIN_COLOR = { hex: '#4F7096', rgb: [79, 112, 150] as RGB }
 const LEGEND_MAIN = 'Main book, filled to its %'
@@ -54,11 +55,6 @@ const MAIN_MARKER = rgb(SPINE_UNREAD_TEXT)
 
 function near(a: RGB, b: RGB, tolerance = 4): boolean {
   return a.every((channel, i) => Math.abs(channel - b[i]) <= tolerance)
-}
-
-/** A stable v4-shaped id for the n-th seeded Book. */
-function bookId(n: number): string {
-  return `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`
 }
 
 function homeBookcase(page: Page): Locator {

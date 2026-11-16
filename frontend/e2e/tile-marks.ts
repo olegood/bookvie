@@ -4,7 +4,7 @@
 // pixels where the marks belong from a screenshot at device scale 2.
 
 import type { Locator, Page } from '@playwright/test'
-import { SPINE_LABEL_STRIP as SPINE_LABEL_STRIP_CSS } from './bookcase.ts'
+import { SPINE_LABEL_STRIP as SPINE_LABEL_STRIP_CSS } from './library.ts'
 import type { Rect } from './tiles.ts'
 
 export { bookId, coversLoaded, type Rect, storeTiles, tileItem, tiles } from './tiles.ts'
@@ -30,7 +30,7 @@ export const DARK = {
   spineEdge: [133, 138, 127] as Rgb, // #858A7F
 }
 // Light in both themes, like a spine's label strip.
-export const SPINE_LABEL_STRIP = rgbOf(SPINE_LABEL_STRIP_CSS) // bookcase.ts's SPINE_LABEL_STRIP
+export const SPINE_LABEL_STRIP = rgbOf(SPINE_LABEL_STRIP_CSS) // library.ts's SPINE_LABEL_STRIP
 
 // Spine colors set by the user, so no cover decides them, each far from the covers below.
 export const RED = { hex: '#B03A2E', rgb: [176, 58, 46] as Rgb }

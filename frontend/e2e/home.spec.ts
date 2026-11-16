@@ -22,7 +22,8 @@ import {
   stopAndRemove,
 } from './home.ts'
 import { COVER_PNG } from './intents.ts'
-import { newBookPanel, rgbOf } from './library.ts'
+// INK_TERTIARY: --color-ink-tertiary in the light theme (tokens.css): muted, never a warning.
+import { INK_TERTIARY, newBookPanel } from './library.ts'
 import { spine } from './bookcase.ts'
 
 const DATE_HEADER = 'Wednesday, 28 October'
@@ -31,8 +32,6 @@ const DATE_HEADER_PATTERN = /^(Mon|Tues|Wednes|Thurs|Fri|Satur|Sun)day, \d{1,2} 
 const EMPTY_SHELF = 'Your shelf is empty. Add your first book.'
 const HOME_VIEW = '**/api/views/home'
 const COULDNT_LOAD = "Couldn't load. Is bookvie still running?"
-// --color-ink-tertiary in the light theme (tokens.css): muted, never a warning.
-const INK_TERTIARY = rgbOf('#666961')
 const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']
 
 const LEFT_HAND_COVER = 'covers/left-hand.png'

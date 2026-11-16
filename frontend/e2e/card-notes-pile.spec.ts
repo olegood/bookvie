@@ -16,6 +16,7 @@ import AxeBuilder from '@axe-core/playwright'
 import type { Locator, Page } from '@playwright/test'
 import { expect, test } from './fixtures.ts'
 import { DUNE_ID } from './home.ts'
+import { PAGE as PAGE_LIGHT, SCRIM } from './library.ts'
 import {
   announcedNote,
   announcement,
@@ -40,9 +41,6 @@ import {
   SPICE,
 } from './pile.ts'
 
-const SCRIM = 'rgba(43, 46, 42, 0.24)'
-/** `page` in the light theme (#F6F4EF). */
-const PAGE_LIGHT = 'rgb(246, 244, 239)'
 /** `page` and the scrim in the dark theme (#191B18, rgba(25,27,24,0.60)). */
 const PAGE_DARK = 'rgb(25, 27, 24)'
 const SCRIM_DARK = 'rgba(25, 27, 24, 0.6)'

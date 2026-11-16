@@ -7,7 +7,7 @@
 // (backend/tests/test_bookcase_view.py), the stored choice in
 // src/lib/catalogView.test.ts.
 
-import type { Locator, Page } from '@playwright/test'
+import type { Locator } from '@playwright/test'
 import {
   ACCENT,
   bookcase,
@@ -23,6 +23,7 @@ import {
 import { expect, startSeededServer, test } from './fixtures.ts'
 import { stopAndRemove } from './home.ts'
 import { COVER_PNG } from './intents.ts'
+import { INK_SECONDARY, SPINE_UNREAD_TEXT, SURFACE_INSET, sortSelect } from './library.ts'
 import {
   BROKEN_COVER,
   bookId,
@@ -37,11 +38,8 @@ import {
   tiles,
 } from './tiles.ts'
 
-// DESIGN.md colors, light theme.
+// DESIGN.md colors, light theme (the shared ones come from library.ts).
 const LINE = 'rgb(228, 223, 213)'
-const SURFACE_INSET = 'rgb(250, 249, 246)'
-const INK_SECONDARY = 'rgb(95, 99, 92)'
-const SPINE_UNREAD_TEXT = 'rgb(119, 113, 106)'
 
 // "About 1 second" (FR-25, EXPERIENCE.md → Tiles → Covers), with a fifth of slack.
 const FIRST_SCREEN_BUDGET_MS = 1200
@@ -82,10 +80,6 @@ const GOOD_OMENS = 'Good Omens by Terry Pratchett and 1 other, not read yet'
 const DISCWORLD = 'The Science of Discworld by Terry Pratchett and 2 others, not read yet'
 const AUSTERLITZ = 'Austerlitz by W. G. Sebald, finished'
 const BY_AUTHOR = [BLEAK_HOUSE, TUFTE_NAME, DUNE_1, DUNE_2, EMMA, KINDRED, GOOD_OMENS, DISCWORLD, AUSTERLITZ]
-
-function sortSelect(page: Page): Locator {
-  return page.getByRole('main').getByRole('combobox', { name: 'Sort', exact: true })
-}
 
 test.describe('Story 8.1 See my catalog as covers (ATDD)', () => {
   test.beforeEach(async ({ page }) => {

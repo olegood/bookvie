@@ -821,5 +821,5 @@ action_items:
       `frontend/e2e/home-slice.spec.ts`, `frontend/e2e/catalog-tiles.spec.ts`, `frontend/e2e/catalog-tiles-automate.spec.ts`,
       and the helper modules that copy the colors. Due: before Epic 11."
     owner: "Murat (TEA)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-10-retro-2026-11-16.md"

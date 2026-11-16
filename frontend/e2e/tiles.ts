@@ -6,16 +6,13 @@
 import type { Locator, Page } from '@playwright/test'
 import { expect } from './fixtures.ts'
 
+export { bookId } from './library.ts'
+
 // Cover file paths, relative to the data dir; each spec writes its own bytes there.
 export const WIDE_COVER = 'covers/wide.png'
 export const DUNE_COVER = 'covers/dune.png'
 /** Seeded with bytes that aren't an image, so the browser fails to decode it and the tile falls back. */
 export const BROKEN_COVER = 'covers/broken.png'
-
-/** A stable v4-shaped id for the n-th seeded Book. */
-export function bookId(n: number): string {
-  return `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`
-}
 
 /** Opens Catalog in Tiles: the stored choice, set before the app reads it. */
 export async function storeTiles(page: Page): Promise<void> {

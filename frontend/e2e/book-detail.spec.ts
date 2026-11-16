@@ -10,15 +10,13 @@ import type { Locator, Page } from '@playwright/test'
 import { spine, viewToggle } from './bookcase.ts'
 import { expect, type Server, test } from './fixtures.ts'
 import { EDIT_BOOK, intentOf, requestsTo } from './intents.ts'
-import { DUNE_ID, catalogTitles, editPanel, openEdit, settled } from './library.ts'
+import { DUNE_ID, INK, catalogTitles, editPanel, openEdit, settled } from './library.ts'
 
 // DESIGN.md surface, light theme.
 const SURFACE = 'rgb(255, 255, 255)'
 const DUNE_ISBN13 = '9780441172719'
 const COULDNT_SAVE = "Couldn't save. Your data wasn't changed."
 const COULDNT_LOAD = "Couldn't load. Is bookvie still running?"
-// DESIGN.md ink, light theme.
-const INK = 'rgb(43, 46, 42)'
 // DESIGN.md → Spine colors: the Clay swatch, as typed and as computed.
 const CLAY = { hex: '#9B6753', rgb: 'rgb(155, 103, 83)' }
 const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']

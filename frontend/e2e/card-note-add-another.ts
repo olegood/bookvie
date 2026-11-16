@@ -9,15 +9,11 @@
 import { inflateRawSync } from 'node:zlib'
 import type { Locator, Page } from '@playwright/test'
 import { mainBookCard } from './home.ts'
-import { rgbOf } from './library.ts'
+
+// tokens.css: accent, ink and ink-tertiary in the light theme, accent and ink in the dark.
+export { ACCENT, ACCENT_DARK, INK, INK_DARK, INK_TERTIARY } from './library.ts'
 
 export const STORAGE_KEY = 'bookvie.cardNoteAddAnother'
-// tokens.css: accent, ink and ink-tertiary in the light theme, accent and ink in the dark.
-export const ACCENT = rgbOf('#557059')
-export const INK = rgbOf('#2B2E2A')
-export const INK_TERTIARY = rgbOf('#666961')
-export const ACCENT_DARK = rgbOf('#93B597')
-export const INK_DARK = rgbOf('#ECEAE3')
 /** Any running count, so its absence can be asserted. */
 export const ANY_COUNT = /\b\d+ notes? saved\b/
 

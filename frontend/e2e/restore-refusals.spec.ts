@@ -12,7 +12,8 @@ import AxeBuilder from '@axe-core/playwright'
 import path from 'node:path'
 import type { Page } from '@playwright/test'
 import { expect, type Server, test } from './fixtures.ts'
-import { catalogTitles, rgbOf } from './library.ts'
+// INK and INK_DARK: --color-ink in each theme (tokens.css): the failure line is ink, never red.
+import { INK, INK_DARK, catalogTitles } from './library.ts'
 import {
   ANY_FILE,
   RESTORE_INTENT,
@@ -27,9 +28,6 @@ import {
 
 const NEWER_VERSION = 'This export is from a newer version of bookvie. Nothing was changed.'
 const COULDNT_SAVE = "Couldn't save. Your data wasn't changed."
-// --color-ink in each theme (tokens.css): the failure line is ink, never red.
-const INK = rgbOf('#2B2E2A')
-const INK_DARK = rgbOf('#ECEAE3')
 const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']
 
 // The library a refused restore must leave alone.

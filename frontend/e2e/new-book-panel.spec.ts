@@ -5,14 +5,10 @@
 
 import type { Locator, Page } from '@playwright/test'
 import { expect, type Server, test } from './fixtures.ts'
-import { fillFields, newBookPanel, openNewBook } from './library.ts'
+import { ACCENT, INK, SCRIM, fillFields, newBookPanel, openNewBook } from './library.ts'
 
 const ADD_BOOK = '**/api/intents/add-book'
 const COULDNT_SAVE = "Couldn't save. Your data wasn't changed."
-// DESIGN.md colors, light theme.
-const INK = 'rgb(43, 46, 42)'
-const ACCENT = 'rgb(85, 112, 89)'
-const SCRIM = 'rgba(43, 46, 42, 0.24)'
 // DESIGN.md → Spine colors, in rotation order.
 const SWATCHES = {
   Sage: '#749076',

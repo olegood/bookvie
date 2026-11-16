@@ -8,7 +8,7 @@
 import AxeBuilder from '@axe-core/playwright'
 import type { Locator, Page } from '@playwright/test'
 import { expect, test } from './fixtures.ts'
-import { fillFields, openNewBook } from './library.ts'
+import { PAGE, fillFields, openNewBook } from './library.ts'
 import {
   INK,
   ACCENT,
@@ -30,7 +30,6 @@ import {
 } from './bookcase.ts'
 // DESIGN.md colors, dark theme. The label strip and its ink have no dark
 // token: the strip stays paper in both themes.
-const PAGE = 'rgb(246, 244, 239)'
 const SPINE_EDGE_DARK = 'rgb(133, 138, 127)'
 const SPINE_UNREAD_FILL_DARK = 'rgb(37, 40, 34)'
 const SPINE_UNREAD_OUTLINE_DARK = 'rgb(112, 118, 106)'

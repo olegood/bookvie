@@ -19,12 +19,12 @@ import {
 } from './bookcase.ts'
 import { expect, test } from './fixtures.ts'
 import { DELETE_BOOK } from './intents.ts'
+import { ACCENT_DARK, bookId, sortSelect } from './library.ts'
 
 // DESIGN.md `accent-soft`, light theme (#E3EBE2).
 const ACCENT_SOFT = 'rgb(227, 235, 226)'
-// DESIGN.md `accent-soft` and `accent`, dark theme (#2C3A2E, #93B597).
+// DESIGN.md `accent-soft`, dark theme (#2C3A2E). `accent` dark comes from library.ts.
 const ACCENT_SOFT_DARK = 'rgb(44, 58, 46)'
-const ACCENT_DARK = 'rgb(147, 181, 151)'
 
 // The only keys the app keeps in localStorage (lib/catalogSort's key and its reversal, catalogView, theme, cardNoteAddAnother).
 const APP_STORAGE_KEYS = [
@@ -34,11 +34,6 @@ const APP_STORAGE_KEYS = [
   'bookvie.theme',
   'bookvie.cardNoteAddAnother',
 ]
-
-/** A stable v4-shaped id for the n-th seeded Book. */
-function bookId(n: number): string {
-  return `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`
-}
 
 /**
  * Six Books, seeded in an order whose languages (German, French, Polish,
@@ -161,10 +156,6 @@ function checkboxNames(page: Page): Promise<string[]> {
 /** A spine by its exact name, even while it is hidden. */
 function anySpine(page: Page, name: string): Locator {
   return bookcase(page).locator(`button[aria-label="${name}"]`)
-}
-
-function sortSelect(page: Page): Locator {
-  return main(page).getByRole('combobox', { name: 'Sort', exact: true })
 }
 
 /** The keys in localStorage and sessionStorage, sorted. */

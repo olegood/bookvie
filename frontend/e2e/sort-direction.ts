@@ -8,29 +8,30 @@
 
 import type { Locator, Page } from '@playwright/test'
 import { finished } from './bookcase.ts'
-import { rgbOf } from './library.ts'
+import { bookId, rgbOf } from './library.ts'
+
+export {
+  ACCENT,
+  ACCENT_DARK,
+  bookId,
+  INK,
+  INK_DARK,
+  INK_SECONDARY,
+  INK_SECONDARY_DARK,
+  SURFACE_INSET,
+  SURFACE_INSET_DARK,
+  sortSelect,
+} from './library.ts'
 
 export const SORT_KEY = 'bookvie.catalogSort'
 export const REVERSED_KEY = 'bookvie.catalogSortReversed'
 /** The stored "reversed" value (plan D6: `"true"`, or the key absent). */
 export const REVERSED = 'true'
 
-// tokens.css, light: surface-inset, input-border, ink, ink-secondary, accent.
-export const SURFACE_INSET = rgbOf('#FAF9F6')
+// tokens.css input-border, light and dark. surface-inset, ink, ink-secondary
+// and accent (and their dark twins) are re-exported above from library.ts.
 export const INPUT_BORDER = rgbOf('#8A8273')
-export const INK = rgbOf('#2B2E2A')
-export const INK_SECONDARY = rgbOf('#5F635C')
-export const ACCENT = rgbOf('#557059')
-// tokens.css, dark twins.
-export const SURFACE_INSET_DARK = rgbOf('#1D201B')
 export const INPUT_BORDER_DARK = rgbOf('#767A6F')
-export const INK_DARK = rgbOf('#ECEAE3')
-export const INK_SECONDARY_DARK = rgbOf('#B3B7AD')
-
-/** A stable v4-shaped id for the n-th seeded Book. */
-export function bookId(n: number): string {
-  return `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`
-}
 
 /**
  * Story 7.1's SORT_SHELF. Every key orders these differently. The two Dune
@@ -124,11 +125,6 @@ export function sortGroup(page: Page): Locator {
   return page.getByRole('main').getByRole('group', { name: 'Sort', exact: true })
 }
 
-/** The Sort select, by its own name (as Story 7.1's specs find it). */
-export function sortSelect(page: Page): Locator {
-  return page.getByRole('main').getByRole('combobox', { name: 'Sort', exact: true })
-}
-
 /** The Sort direction toggle: the one button in the Sort group. */
 export function sortToggle(page: Page): Locator {
   return sortGroup(page).getByRole('button')
@@ -207,9 +203,8 @@ export function systemColor(page: Page, name: string): Promise<string> {
   }, name)
 }
 
-// Automate leaves (after the story was done): the accent's dark twin and the
-// select's dark focus halo, as a computed `box-shadow` value.
-export const ACCENT_DARK = rgbOf('#93B597')
+// Automate leaves (after the story was done): the select's dark focus halo,
+// as a computed `box-shadow` value. ACCENT_DARK comes from library.ts.
 export const FOCUS_HALO_DARK = 'rgba(147, 181, 151, 0.18) 0px 0px 0px 4px'
 
 /**

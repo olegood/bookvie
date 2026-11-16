@@ -12,15 +12,12 @@ import type { Locator, Page } from '@playwright/test'
 import { expect, test } from './fixtures.ts'
 import { DUNE, DUNE_ID, LEFT_HAND_ID, libraryBytes, mainAt, mainBookCard, sizeOf, storedBook } from './home.ts'
 import { ADD_CARD_NOTE, DELETE_BOOK, intentOf, requestsTo } from './intents.ts'
-import { rgbOf, settled } from './library.ts'
+import { INK_TERTIARY, settled } from './library.ts'
 
 const SAVED = 'Card note saved.'
 const COULDNT_SAVE = "Couldn't save. Your data wasn't changed."
 const BOOK_GONE = "This book isn't in your catalog anymore."
 const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']
-// --color-ink-tertiary in the light theme (tokens.css).
-const INK_TERTIARY = rgbOf('#666961')
-
 /** The Card note panel: a modal `dialog` named by its heading. */
 function cardNotePanel(page: Page): Locator {
   return page.getByRole('dialog', { name: 'Card note', exact: true })

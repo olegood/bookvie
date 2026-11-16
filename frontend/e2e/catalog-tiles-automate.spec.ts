@@ -10,6 +10,7 @@ import { ACCENT, bookcase, search, spines, SWING_TIME, tabIntoBookcase, viewTogg
 import { expect, startSeededServer, test } from './fixtures.ts'
 import { stopAndRemove } from './home.ts'
 import { COVER_PNG } from './intents.ts'
+import { INK_DARK, INK_SECONDARY_DARK, SURFACE_INSET_DARK, sortSelect } from './library.ts'
 import {
   bookId,
   coverBox,
@@ -24,9 +25,6 @@ import {
 } from './tiles.ts'
 
 // DESIGN.md colors, dark theme (tokens.css → :root[data-theme="dark"] and the system dark preference).
-const INK_DARK = 'rgb(236, 234, 227)'
-const INK_SECONDARY_DARK = 'rgb(179, 183, 173)'
-const SURFACE_INSET_DARK = 'rgb(29, 32, 27)'
 const LINE_DARK = 'rgb(52, 56, 49)'
 
 const DUNE_FILES = { [DUNE_COVER]: COVER_PNG }
@@ -49,10 +47,6 @@ const SWING_TIME_NAME = 'Swing Time by Zadie Smith, not read yet'
 
 function viewButton(page: Page, name: 'Bookcase' | 'List' | 'Tiles'): Locator {
   return viewToggle(page).getByRole('button', { name, exact: true })
-}
-
-function sortSelect(page: Page): Locator {
-  return page.getByRole('main').getByRole('combobox', { name: 'Sort', exact: true })
 }
 
 function typeChip(page: Page, name: string): Locator {

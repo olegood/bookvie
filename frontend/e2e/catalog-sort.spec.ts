@@ -19,11 +19,7 @@ import {
 } from './bookcase.ts'
 import { expect, test } from './fixtures.ts'
 import { expectedSlice, rowCapacity, slice, sliceRows } from './home.ts'
-
-/** A stable v4-shaped id for the n-th seeded Book. */
-function bookId(n: number): string {
-  return `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`
-}
+import { bookId, sortSelect } from './library.ts'
 
 /**
  * Every key orders these differently. The two Dune editions share title,
@@ -66,10 +62,6 @@ const BY_TITLE = [BELOVED, DUNE_UNREAD, DUNE_FINISHED, EMMA, KINDRED]
 const BY_DATE_ADDED = [BELOVED, EMMA, DUNE_UNREAD, DUNE_FINISHED, KINDRED]
 // Fewest pages first.
 const BY_PAGES = [KINDRED, BELOVED, DUNE_UNREAD, DUNE_FINISHED, EMMA]
-
-function sortSelect(page: Page): Locator {
-  return page.getByRole('main').getByRole('combobox', { name: 'Sort', exact: true })
-}
 
 /** The spine names in `list` (the Catalog bookcase or Home's slice), in DOM order, visible ones only. */
 function spineNames(list: Locator): Promise<(string | null)[]> {
