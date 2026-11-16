@@ -198,6 +198,12 @@ describe('sortBooks', () => {
     }
   })
 
+  it('keeps title A–Z for Books added at the same instant under Date added reversed', () => {
+    const persuasion = book({ id: '1', title: 'Persuasion' })
+    const emma = book({ id: '2', title: 'Emma' })
+    assert.deepEqual(titles(sortBooks([persuasion, emma], 'dateAdded', true)), ['Emma', 'Persuasion'])
+  })
+
   it('puts a Book with no author before named authors, then by title', () => {
     const books = [
       book({ id: '1', title: 'Dune', firstAuthor: 'Frank Herbert' }),

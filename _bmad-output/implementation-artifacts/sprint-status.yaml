@@ -785,7 +785,7 @@ action_items:
       under Date added reversed. Changes: `frontend/src/pages/HomePage.tsx`, `frontend/src/lib/catalog.test.ts`.
       Due: before Epic 11."
     owner: "Amelia (dev)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-10-retro-2026-11-16.md"
   - id: "epic-10-retro-item-71-teach-atdd-two-repeated-traps"
     epic: 10
