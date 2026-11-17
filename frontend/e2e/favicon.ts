@@ -116,3 +116,45 @@ export function linkedIcon(page: Page): Promise<LinkedIcon | null> {
     }
   })
 }
+
+export type FaviconRaster = {
+  /** Alpha (0–255) of every pixel, `alpha[y][x]`. */
+  alpha: number[][]
+  /** `rgb(r, g, b)` of every fully opaque pixel, deduplicated. */
+  opaqueColors: string[]
+}
+
+/**
+ * Draws `url` through an `<img>` into a `size`×`size` canvas, as a tab strip
+ * rasterizes an icon, and reads every pixel. The image takes the page's
+ * color scheme.
+ */
+export function faviconRaster(page: Page, url: string, size: number): Promise<FaviconRaster> {
+  return page.evaluate(
+    async ({ url, size }) => {
+      const image = new Image(size, size)
+      image.src = url
+      await image.decode()
+      const canvas = document.createElement('canvas')
+      canvas.width = size
+      canvas.height = size
+      const context = canvas.getContext('2d')
+      if (!context) throw new Error('faviconRaster: no 2d context')
+      context.drawImage(image, 0, 0, size, size)
+      const data = context.getImageData(0, 0, size, size).data
+      const alpha: number[][] = []
+      const opaque = new Set<string>()
+      for (let y = 0; y < size; y++) {
+        const row: number[] = []
+        for (let x = 0; x < size; x++) {
+          const i = (y * size + x) * 4
+          row.push(data[i + 3])
+          if (data[i + 3] === 255) opaque.add(`rgb(${data[i]}, ${data[i + 1]}, ${data[i + 2]})`)
+        }
+        alpha.push(row)
+      }
+      return { alpha, opaqueColors: [...opaque] }
+    },
+    { url, size },
+  )
+}

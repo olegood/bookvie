@@ -61,6 +61,22 @@ def test_wheel_contains_the_built_spa(source: Path, tmp_path: Path) -> None:
     assert "bookvie/cli.py" in names
 
 
+def test_wheel_contains_the_top_level_favicon(source: Path, tmp_path: Path) -> None:
+    # Story 11.1 AC-4: Vite copies public/favicon.svg to the top of static/,
+    # next to index.html, and the /favicon.svg route serves it from there.
+    static = source / "bookvie" / "http" / "static"
+    static.mkdir(parents=True)
+    (static / "index.html").write_text("<p>spa</p>")
+    (static / "favicon.svg").write_text("<svg/>")
+
+    result = _build_wheel(source, tmp_path / "out")
+
+    assert result.returncode == 0, result.stderr
+    (wheel,) = (tmp_path / "out").glob("bookvie-*.whl")
+    with zipfile.ZipFile(wheel) as archive:
+        assert archive.read("bookvie/http/static/favicon.svg") == b"<svg/>"
+
+
 def test_build_refuses_without_the_spa(source: Path, tmp_path: Path) -> None:
     result = _build_wheel(source, tmp_path / "out")
 

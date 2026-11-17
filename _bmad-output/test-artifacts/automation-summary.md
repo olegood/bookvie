@@ -1,17 +1,18 @@
 ---
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03c-aggregate', 'step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
-lastSaved: '2026-11-16'
-storyId: '10.1'
-storyKey: '10-1-reverse-the-catalog-order'
+lastSaved: '2026-11-17'
+storyId: '11.1'
+storyKey: '11-1-a-favicon-for-bookvie'
 inputDocuments:
-  - _bmad-output/implementation-artifacts/spec-10-1-reverse-the-catalog-order.md (Intent, Always/Never rules, I/O matrix, ACs, Review Findings)
-  - _bmad-output/test-artifacts/atdd-checklist-10-1-reverse-the-catalog-order.md
-  - _bmad-output/implementation-artifacts/epic-10-context.md
+  - _bmad-output/implementation-artifacts/spec-11-1-a-favicon-for-bookvie.md (Intent, Always/Never rules, I/O matrix, ACs, Review Findings, Verification)
+  - _bmad-output/test-artifacts/atdd-checklist-11-1-a-favicon-for-bookvie.md
   - _bmad/tea/config.yaml
-  - frontend/playwright.config.ts
-  - frontend/e2e/catalog-sort-direction.spec.ts; frontend/e2e/sort-direction.ts
-  - frontend/src/components/SortDirectionToggle.tsx; frontend/src/components/SortSelect.tsx; frontend/src/lib/catalogSort.ts (+ .test.ts); frontend/src/lib/catalog.ts (+ .test.ts); frontend/src/pages/CatalogPage.tsx; frontend/src/pages/HomePage.tsx
+  - frontend/playwright.config.ts; frontend/e2e/fixtures.ts
+  - frontend/e2e/favicon.spec.ts; frontend/e2e/favicon.ts
+  - frontend/public/favicon.svg; frontend/index.html
+  - backend/bookvie/http/app.py (favicon route); backend/tests/test_app.py; backend/tests/test_wheel_build.py; backend/pyproject.toml
+  - scripts/smoke.mjs
   - knowledge/test-levels-framework.md
   - knowledge/test-priorities-matrix.md
   - knowledge/data-factories.md
@@ -23,94 +24,83 @@ inputDocuments:
   - knowledge/playwright-cli.md
 ---
 
-# Automation Summary: Reverse the catalog order (story 10.1)
+# Automation Summary: A favicon for bookvie (story 11.1)
 
-The previous version of this file held the summary for story 9.2. It's in git history (`f633bf4`).
+The previous version of this file held the summary for story 10.1. It's in git history (`34cd03a`).
 
 ## Preflight
 
 - **Stack:** `fullstack`, auto-detected. Frontend: Playwright (`frontend/playwright.config.ts`); backend: pytest. Both frameworks are in place.
-- **Mode:** BMad-Integrated. Story 10.1 is `done` after `bmad-code-review` (2026-11-16; the review's patches are in the working tree, not yet committed). Spec, ATDD checklist and epic context are present.
+- **Mode:** BMad-Integrated. Story 11.1 is `done` after `bmad-code-review` (commit `890c13e`, working tree clean at the start of this run). The spec and ATDD checklist are present.
 - **Config:** `tea_use_playwright_utils: false`, and `@seontechnologies/playwright-utils` isn't in `package.json`, so the Traditional Patterns fragments load (`fixture-architecture`, `network-first`). No Pact artifacts, so no contract fragments. `tea_browser_automation: auto` adds `playwright-cli`.
-- **Inputs to cover:** the ATDD checklist's 12 open green-phase follow-ups. The code review deferred only spine drift (no test work).
+- **Inputs to cover:** the ATDD checklist's 8 green-phase follow-ups and the 7 lines of its implementation checklist. The code review deferred only spine drift (no test work).
 
 ## Coverage Plan
 
-Browser exploration skipped: `playwright-cli` isn't installed. Targets come from the spec, the ATDD checklist and the Story 10.1 source.
+Browser exploration skipped: the favicon has no UI to explore, and `playwright-cli` isn't installed. Targets come from the spec, the ATDD checklist and the Story 11.1 source.
 
-**Level:** E2E, in a new `frontend/e2e/catalog-sort-direction-automate.spec.ts` (the `*-automate.spec.ts` convention), reusing `sort-direction.ts` and the other shared helpers. Storage across reloads, Home's packing, focus, axe and computed style only show in a real browser. The two unit follow-ups were already delivered by the build (`catalog.test.ts`, `catalogSort.test.ts`), so they are ticked, not re-written. The 10 ATDD and review leaves stay as they are. No backend or API target: the story changed neither.
+The build already delivered four of the eight follow-ups, so they are ticked, not re-written. The remaining four are new leaves: three e2e leaves (one runs under both schemes) in a new `frontend/e2e/favicon-automate.spec.ts` (the `*-automate.spec.ts` convention), and one pytest in `backend/tests/test_wheel_build.py`. The 6 ATDD leaves stay as they are.
 
-| # | Target (ATDD follow-up) | Priority | Why |
-|---|---|---|---|
-| 1 | Unit, `sortBooks(…, true)` per key with ties kept, `reversed` defaulting to `false` | — | Already delivered by the build (`catalog.test.ts`, 3 tests); tick only. |
-| 2 | Unit, `readCatalogSortReversed` / `writeCatalogSortReversed` edge cases and the label table | — | Already delivered by the build (`catalogSort.test.ts`, 6 tests); tick only. |
-| 3 | AC-6 export and restore (AR27/AD-15): the zip holds neither key, no request carries them, a restore keeps the reversal as it was (reversed and not) | P2 | A browser preference must not travel with the library. |
-| 4 | AC-6 Home with Author reversed stored: `AUTHOR_Z_A` on a fresh load and after in-app navigation | P1 | Home reads the reversal once per visit; the ATDD leaf covers only Pages. |
-| 5 | AC-7 Home with storage that throws after a reversal was stored: the slice is Author A–Z | P1 | The Always rule's failure branch on Home. |
-| 6 | AC-3 Search titles and filters keep working while reversed, and a press keeps the search text and chips | P1 | The reversal shares the sorted array with search and filters. |
-| 7 | AC-3 the List view press: rows reorder and focus stays on the toggle | P2 | The ATDD leaf presses in Bookcase and Tiles only. |
-| 8 | AC-2 the minimum width for Author, Title and Date added; padding 12px and arrow gap 4px | P2 | DESIGN.md `components.sort-direction-toggle`; the ATDD leaf pins Pages only. |
-| 9 | AC-8 a new Book under Date added reversed goes to the end, still focused, in view and ringed | P1 | The add-a-book focus path meets the reversed order. |
-| 10 | AC-8 the bookcase Tab stop stays on the last-focused Book across a press | P2 | Roving tabindex across a re-sort. |
-| 11 | AC-9 axe on the Catalog with the toggle in both states, both themes | P1 | New control in the toolbar. |
-| 12 | AC-9 the dark-theme focus looks: select border and halo, toggle ring in the accent dark twin | P2 | The ATDD leaf checks focus in light only. |
+| # | Target (ATDD follow-up) | Level | Priority | Why |
+|---|---|---|---|---|
+| 1 | AC-3 HEAD `/favicon.svg` | API | — | Already delivered by the build (`test_app.py:89`); tick only. |
+| 2 | AC-3 no built icon: 404, never `index.html` | API | — | Already delivered by the build (`test_app.py:100`); tick only. |
+| 3 | AC-3 foreign `Host` gets 403 | API | — | Already delivered by the build (`test_app.py:115`); tick only. |
+| 4 | AC-4 smoke compares the installed server's body with the built file | Smoke | — | Already delivered by the build (`scripts/smoke.mjs:137`); tick only. |
+| 5 | AC-1 the 16×16 silhouette: spines and plank stay apart, in both schemes | E2E | P2 | The tab draws the icon at 16 px; only a real raster shows whether the gaps survive. |
+| 6 | AC-2 the served `index.html` text holds exactly one icon link on every route | E2E (request) | P2 | The ATDD leaf reads the DOM after scripts ran; this reads the HTML Chromium gets. |
+| 7 | AC-4 the wheel carries a top-level `static/favicon.svg` | Pytest (real `uv build`) | P2 | The wheel test covered `index.html` and `assets/` only. |
+| 8 | AC-5 forced colors leave the fill alone | E2E | P3 | Records today's Chromium behavior so a change is noticed. |
 
 **Scope:** selective. The checklist's follow-ups, nothing more.
 
 ## Execution
 
-- **Mode:** `tea_execution_mode: auto` with the capability probe on. Subagents are supported and agent teams aren't, so the mode resolved to **subagent**.
-- **Workers:**
-  - **3A (API):** not launched. No endpoint changed.
-  - **3B-backend:** not launched. No backend target.
-  - **3B-e2e:** targets 3–12. For its red proofs it made temporary edits to `frontend/src` and reverted each one by hand. Afterwards `git diff --stat -- frontend/src backend` lists only `frontend/src/lib/catalogSort.test.ts`, the code review's uncommitted title fix. No banned git command was run.
-- **New file:** `frontend/e2e/catalog-sort-direction-automate.spec.ts` (406 lines, 10 leaves).
-- **Shared helpers:** 3 exports added to `frontend/e2e/sort-direction.ts`, none of the existing ones changed: `ACCENT_DARK`, `FOCUS_HALO_DARK`, and `toggleInsets` (a `Range` on the arrow and label text nodes, measuring the left padding, the arrow gap and the right padding). `toggleInsets` was probed in a throwaway `sort-direction.probe.spec.ts` against `setContent` buttons (it returned their styled padding and gap, and refused 12) and on the app, then removed. No new fixture or factory.
-- **Review of the worker's output:** read in full. One change: an unused `FOCUS_HALO` export was removed. Its JSON is in this session's scratch directory, not committed. One red proof was re-run independently: with the `catch` in `readCatalogSortReversed` returning `true`, `:165` fails on the slice order. The `catch` was then edited back by hand and the app rebuilt.
+- **Mode:** `tea_execution_mode: auto` would resolve to **subagent**. This run stayed **sequential** in the main session instead: four small leaves, all pinned by a probe that had to run first, didn't justify a worker hand-off. The output contract is unchanged.
+- **Probe:** a throwaway `frontend/e2e/favicon.probe.spec.ts` drew the served `/favicon.svg` through an `<img>` into a 16×16 canvas under both schemes and dumped its alpha grid. Spine columns 2–4, 7–9 and 11–13 read 255 in rows 6–11; the gap columns read 127 (col 5) and 63 (col 10); row 12 (between the spines and the plank) reads at most 128; plank rows 13–14 read 255 from column 1 to 14. Every opaque pixel was `rgb(85, 112, 89)` under light and `rgb(147, 181, 151)` under dark, so a rasterized `<img>` follows the page's scheme as the tab does. Under `forcedColors: 'active'` the document's fill stayed the accent in both schemes. The raw HTML of `/`, `/catalog` and `/no-such-page` held the one link tag. The probe was then removed with `rm`.
+- **Production code untouched:** `git status` lists only the files below.
 
 ## Tests Added
 
-All in `frontend/e2e/catalog-sort-direction-automate.spec.ts`, describe "Story 10.1 Reverse the catalog order (automate)":
+**New helper:** `faviconRaster(page, url, size)` in `frontend/e2e/favicon.ts`. It draws an image through `<img>` into a canvas and returns the alpha grid and the opaque colors. It is what the probe ran, moved into the helper file. No existing helper changed, and no fixture or factory was added.
+
+`frontend/e2e/favicon-automate.spec.ts`, describe "Story 11.1 A favicon for bookvie (automate)":
 
 | Line | Leaf | Priority | Proven red by |
 |------|------|----------|---------------|
-| 77 | AC-6 the reversal never reaches the server or the export, and a restore from another library leaves it as it was, reversed and not | P2 | `BackupPage` removing `bookvie.catalogSortReversed` after a restore |
-| 134 | AC-6 Home's one-row slice follows Author reversed, on a fresh load and after a press made in the app | P1 | `HomePage` forcing `reversed` to false |
-| 165 | AC-7 Home with storage that throws after Author reversed was stored shows the slice Author A–Z | P1 | the `catch` in `readCatalogSortReversed` returning true (re-run in this session) |
-| 193 | AC-3 Search titles and the filter chips keep working while reversed, and a press keeps the search text and the chips | P1 | `reverse()` calling `setFilters(NO_FILTERS)` |
-| 227 | AC-3 in List view a press reorders the rows and keeps focus on the toggle | P2 | `reverse()` focusing Search titles |
-| 247 | AC-2 under Author, Title and Date added the toggle keeps its width on a press, with 12px padding and a 4px arrow gap | P2 | `.label::after { content: none }` (Date added width 117.30 → 111.28); separately the gap `--space-1` → `--space-2` |
-| 284 | AC-8 under Date added reversed a Book just added is the last spine, focused, in view and ringed | P1 | `scrollIntoView` removed from the added effect |
-| 321 | AC-8 the bookcase Tab stop stays on the last-focused Book across a press, and the arrows go on in the reversed order | P2 | `key={String(reversed)}` on `<Bookcase>` (a remount) |
-| 350 | AC-9 the Catalog passes axe with the toggle natural and reversed, in both themes | P1 | `.toggle` text in `#9a9a9a` (contrast) |
-| 377 | AC-9 in the dark theme the focused select's border and halo and the toggle's ring use the accent's dark twin | P2 | `.select:focus` border hard-coded to the light accent; separately the toggle's `outline-color` |
+| 27 | AC-1 drawn at 16×16 under the light / dark scheme, the three spines and the plank stay apart in one flat fill (2 leaves, one per scheme) | P2 | the middle spine widened to start at x 11 (`row 7, gap column 5` read 254, both schemes); separately, the dark `@media` rule removed (the dark leaf's opaque color read the light accent) |
+| 60 | AC-2 the served index.html of every route holds exactly one icon link, before any script runs | P2 | a second `<link rel="shortcut icon" href="/favicon.ico" />` in `index.html` (2 matches on `/`) |
+| 76 | AC-5 under forced colors the served favicon keeps its accent fill in both schemes | P3 | `@media (forced-colors: active) { path { fill: CanvasText; } }` in the SVG (read `rgb(0, 0, 0)`) |
 
-Priority coverage: P0 0, P1 5, P2 5. The story's P0 paths are the ATDD AC-1, AC-3 and AC-5 leaves.
+`backend/tests/test_wheel_build.py:64` `test_wheel_contains_the_top_level_favicon` (P2): builds a real wheel with `index.html` and a top-level `favicon.svg` in the copied `static/`, and reads `bookvie/http/static/favicon.svg` back from it byte for byte. Proven red only with both `artifacts` narrowed to `index.html` and `assets/**` **and** an `exclude` of the favicon in `pyproject.toml` (`KeyError: no item named …favicon.svg`). Either mutation alone stays green: in this copied tree, `packages = ["bookvie"]` already picks up `static/`, and `artifacts` outranks `exclude`.
+
+Every mutation was a by-hand edit of one file (`frontend/public/favicon.svg`, `frontend/index.html` or `backend/pyproject.toml`), copied to the session scratch directory first and copied back after; `cmp` confirmed each file matches its original. No git command changed the tree.
+
+Priority coverage: P0 0, P1 0, P2 4, P3 1. The story's P0 and P1 paths are the ATDD leaves.
 
 ## Validation
 
-- Worker: the new file `--repeat-each=3`, 30 passed; with the ATDD spec, 20 passed; Prettier, `tsc -b` and oxlint clean (oxlint's only warnings are in the untouched `src/lib/usePauseFlow.tsx`).
-- `npm run check` (repo root, this session, after removing `FOCUS_HALO`): **exit 0**. That is ruff and pytest (1573 passed), format, tsc and oxlint, node tests (368 passed), `check:e2e` (**724 passed**: 714 before this run, plus 10), and smoke ok.
-- Quality scan of the new file: no `waitForTimeout`, `.only`, `.skip`, `Math.random`, `console.log` or `data-testid`. Loops run fixed lists (three keys, two themes). Locators go by role and name; geometry only for the toggle's width and insets.
-- No CLI browser sessions were opened (`playwright-cli` isn't installed). Temp artifacts are in the session scratch directory, not the repo.
-- Production code untouched: `git diff --stat -- frontend/src backend` lists only the review's test-title edit.
+- New and ATDD e2e together, `--repeat-each=3`: 27 passed. `tests/test_wheel_build.py`: 3 passed. Prettier (frontend) and ruff format and check (backend) clean on the changed files.
+- `npm run check` (repo root, this session, after every mutation was reverted): **exit 0**. That is ruff and pytest (1579 passed: 1578 before this run, plus 1; coverage gates domain 100%, intents+store 98.08%), format, tsc and oxlint, node tests (369 passed), `check:e2e` (**733 passed**: 729 before this run, plus 4), and smoke ok (`GET /favicon.svg -> 200 as image/svg+xml, the built file`). The e2e global setup rebuilt `static/` from the restored sources.
+- Quality scan of the new spec: no `waitForTimeout`, `.only`, `.skip`, `Math.random`, `console.log` or `data-testid`. Loops run fixed lists (two schemes, four routes, fixed pixel columns). The raster is read only after the banner's navigation is visible and `image.decode()` has resolved; the forced-colors reads go through `expect.poll`.
+- No CLI browser sessions were opened. Temp artifacts (probe output, file backups, the check log) are in the session scratch directory, not the repo.
 
 ## Playwright Utils deviations
 
-None. `tea_use_playwright_utils` is false and the package isn't installed; the leaves use the repo's own fixtures (`seededServer`, `storeOnce`, `exportOf`, `restoreFrom`). No `page.route` was needed.
+None. `tea_use_playwright_utils` is false and the package isn't installed; the leaves use the repo's own fixtures and helpers.
 
 ## ATDD Checklist
 
-`atdd-checklist-10-1-reverse-the-catalog-order.md`: all 12 green-phase follow-ups are ticked, each with its `file:line`. The two unit lines point at the build's `catalog.test.ts` and `catalogSort.test.ts`. Remaining `[ ]`: **0**.
+`atdd-checklist-11-1-a-favicon-for-bookvie.md`: all 8 green-phase follow-ups and all 7 implementation-checklist lines are ticked, each with its evidence. Remaining `[ ]`: **0**.
 
 ## Assumptions and Risks
 
-- **`:247` can catch a broken minimum width only under Date added.** "A–Z" and "Z–A" use the same glyphs, so their widths match with or without the hidden twin.
-- **`:350`'s dark and reversed scans were not shown red on their own.** The contrast mutation fails the light pass first.
-- **The export half of `:77` can't be broken from the frontend.** The server builds the zip from `library.json`; only a backend change could put the key in it. The request scan catches the key name in any request.
-- **The narrower label is centred** in the minimum width ("Oldest first" has a 7px gap and 15px right padding), so `:247` asserts the gap and right padding on the wider label only. DESIGN.md doesn't say where the narrower label sits.
-- **The code review's patches were uncommitted** when this run started, and stay in the working tree beside this run's files.
+- **The 16×16 pixel columns are tied to today's drawing.** A redrawn icon (DESIGN.md → Favicon) moves the gaps, and the leaf's column constants need updating with it. The leaf names the row and column on failure.
+- **Chromium's antialiasing sets the gap alphas** (127 and 63). The leaf only asks for less than 160, so a renderer change in the low bits won't trip it, but a change in how Chromium rasterizes half-covered pixels could.
+- **The canvas raster stands in for the tab strip.** Chromium draws the real tab icon in browser UI that Playwright can't read; Oleg's by-hand check in the spec covers that.
+- **The forced-colors leaf records behavior, not a requirement.** If Chromium starts forcing SVG documents' author fills, the leaf fails and the decision is whether the icon should follow.
+- **The wheel test can't fail from the `artifacts` glob alone** in its copied tree (see above). It guards against the favicon being excluded from the wheel, not against the glob being narrowed. The smoke test still proves the real installed wheel serves the icon.
 
 ## Next
 
-Story 10.1 closes Epic 10. Next: the Epic 10 retrospective (`bmad-retrospective`), then its before-next-epic items, the Epic 10 trace and gate and the spine reconciliation (two spine-drift entries in `deferred-work.md`), before Epic 11's first story.
+Story 11.1 is Epic 11's first story, and 11.2 to 11.4 are still to do. Next: Story 11.2's ATDD (`bmad-testarch-atdd`). `deferred-work.md` has three spine-drift entries from this story; those wait for the Epic 11 reconciliation, not for 11.2.

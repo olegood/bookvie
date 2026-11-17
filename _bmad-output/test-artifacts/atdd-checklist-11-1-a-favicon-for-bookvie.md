@@ -87,14 +87,14 @@ None. AC-6 requires every existing spec to pass unchanged. Things to watch:
 
 ## Green-phase follow-ups (secondary branches, not red leaves)
 
-- [ ] **API, AC-3 HEAD:** HEAD `/favicon.svg` answers 200 with the same headers and no body, as the catch-all did for top-level files.
-- [ ] **API, AC-3 no built icon:** with `static/` built but no `favicon.svg`, `/favicon.svg` answers as the build decides (a 404 is the obvious choice), and never a stack trace or `index.html` with `image/svg+xml`.
-- [ ] **API, AC-3 guard:** `/favicon.svg` through `HostOriginGuard` with a foreign `Host` answers 403, as any other path (`test_guard.py`).
-- [ ] **E2E, AC-1 the 16×16 silhouette:** drawn into a 16×16 canvas through an `<img>`, the three spines and the plank stay apart (sample the gaps at x ≈ 5.75 and 10.5 device px for transparency). Probe the pixel helper first.
-- [ ] **E2E, AC-2 the served `index.html` text** (`request.get('/')`) holds one `rel="icon"`, so a client-side head change can't hide a second link in the raw HTML.
-- [ ] **Smoke, AC-4 body equality:** the smoke compares the installed server's `/favicon.svg` bytes with `backend/bookvie/http/static/favicon.svg`.
-- [ ] **Pytest, AC-4 wheel:** `test_wheel_build.py` with a `favicon.svg` in the copied `static/` finds `bookvie/http/static/favicon.svg` in the wheel (already implied by `static/**`, but cheap).
-- [ ] **E2E, AC-5 forced colors:** under `forcedColors: 'active'` the document still computes the accent fill (Chromium doesn't force SVG documents' author fills), recorded so a future change is noticed.
+- [x] **API, AC-3 HEAD:** HEAD `/favicon.svg` answers 200 with the same headers and no body, as the catch-all did for top-level files. (done: backend/tests/test_app.py:89 test_favicon_head_has_the_same_headers_and_no_body)
+- [x] **API, AC-3 no built icon:** with `static/` built but no `favicon.svg`, `/favicon.svg` answers as the build decides (a 404 is the obvious choice), and never a stack trace or `index.html` with `image/svg+xml`. (done: backend/tests/test_app.py:100 test_favicon_not_built_is_404_never_index)
+- [x] **API, AC-3 guard:** `/favicon.svg` through `HostOriginGuard` with a foreign `Host` answers 403, as any other path (`test_guard.py`). (done: backend/tests/test_app.py:115 test_favicon_foreign_host_is_403)
+- [x] **E2E, AC-1 the 16×16 silhouette:** drawn into a 16×16 canvas through an `<img>`, the three spines and the plank stay apart (sample the gaps at x ≈ 5.75 and 10.5 device px for transparency). Probe the pixel helper first. (done: frontend/e2e/favicon-automate.spec.ts:27, light and dark)
+- [x] **E2E, AC-2 the served `index.html` text** (`request.get('/')`) holds one `rel="icon"`, so a client-side head change can't hide a second link in the raw HTML. (done: frontend/e2e/favicon-automate.spec.ts:60)
+- [x] **Smoke, AC-4 body equality:** the smoke compares the installed server's `/favicon.svg` bytes with `backend/bookvie/http/static/favicon.svg`. (done: scripts/smoke.mjs:137, `smoke: GET /favicon.svg -> 200 as image/svg+xml, the built file` in this run's npm run check)
+- [x] **Pytest, AC-4 wheel:** `test_wheel_build.py` with a `favicon.svg` in the copied `static/` finds `bookvie/http/static/favicon.svg` in the wheel (already implied by `static/**`, but cheap). (done: backend/tests/test_wheel_build.py:64 test_wheel_contains_the_top_level_favicon)
+- [x] **E2E, AC-5 forced colors:** under `forcedColors: 'active'` the document still computes the accent fill (Chromium doesn't force SVG documents' author fills), recorded so a future change is noticed. (done: frontend/e2e/favicon-automate.spec.ts:76)
 
 ## Helper probes
 
@@ -141,13 +141,13 @@ With the skips in place: `pytest tests/test_app.py` → 19 passed, 1 skipped. `t
 
 ## Implementation checklist (for `bmad-build-auto`)
 
-- [ ] Add `frontend/public/favicon.svg` per the contract above (AC-1, AC-5).
-- [ ] Add the icon link to `frontend/index.html` (AC-2).
-- [ ] Add the dedicated `GET /favicon.svg` route before the catch-all in `backend/bookvie/http/app.py`, with `Cache-Control: no-cache` (AC-3).
-- [ ] Extend `scripts/smoke.mjs` to check `/favicon.svg` from the installed wheel (AC-4).
-- [ ] Un-skip the 6 leaves and see them pass. Run `npm run check` with no existing spec edited (AC-6).
-- [ ] Look at the tab once by hand with Chrome's Mode set opposite to the OS, and record the result in the story (AC-5).
-- [ ] No README change (AGENTS.md: stories don't update the README).
+- [x] Add `frontend/public/favicon.svg` per the contract above (AC-1, AC-5). (done: frontend/e2e/favicon.spec.ts:29 (AC-1) and :104 (AC-5))
+- [x] Add the icon link to `frontend/index.html` (AC-2). (done: frontend/e2e/favicon.spec.ts:63)
+- [x] Add the dedicated `GET /favicon.svg` route before the catch-all in `backend/bookvie/http/app.py`, with `Cache-Control: no-cache` (AC-3). (done: backend/tests/test_app.py:62 test_favicon_route_serves_the_built_icon_uncached_before_the_spa_catch_all)
+- [x] Extend `scripts/smoke.mjs` to check `/favicon.svg` from the installed wheel (AC-4). (done: scripts/smoke.mjs:133; check:smoke ok in this run)
+- [x] Un-skip the 6 leaves and see them pass. Run `npm run check` with no existing spec edited (AC-6). (done: no skip left in favicon.spec.ts or test_app.py; npm run check exit 0 in this run (e2e 733 passed))
+- [x] Look at the tab once by hand with Chrome's Mode set opposite to the OS, and record the result in the story (AC-5). (done: spec-11-1-a-favicon-for-bookvie.md → Verification, Oleg's check 2026-11-17)
+- [x] No README change (AGENTS.md: stories don't update the README). (done: `git log 484b905^..HEAD -- README.md` is empty)
 
 ## Next
 
