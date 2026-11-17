@@ -1045,33 +1045,41 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-11-1-a-favicon-for-bookvie.md`
   summary: Spine drift (AD-16, Structural Seed `public/`), reconciled before the next epic. AD-16's Favicon bullet still reads "(Epic 11, planned)" and the Seed lists `public/` as "favicon.svg, favicon-dev.svg (planned)". Story 11.1 built the production half: the dedicated `GET`/`HEAD` `/favicon.svg` route before the SPA catch-all (`image/svg+xml`, `Cache-Control: no-cache`), `frontend/public/favicon.svg` and the one icon link in `index.html`. The dev half (`favicon-dev.svg`, the `--dev` switch, the Vite proxy) is Story 11.2's, so the bullet stays partly planned until then. Low.
   evidence: ARCHITECTURE-SPINE.md:230 and :387; `backend/bookvie/http/app.py` `favicon` route; `frontend/public/favicon.svg` (spine check, build-auto review of Story 11.1).
+  resolved: Epic 11 retro item 75 (2026-11-17): AD-16 Favicon bullet cites stories 11.1 and 11.2 and names the `GET`/`HEAD` route; Seed `public/` drops "(planned)" in ARCHITECTURE-SPINE.md.
 - source_spec: `_bmad-output/implementation-artifacts/spec-11-1-a-favicon-for-bookvie.md`
   summary: Spine drift (Consistency Conventions → Testing row, Structural Seed "Build and install"), reconciled before the next epic. The spine describes the install smoke test as build, `uv tool install`, start, load `/`, proving the SPA is in the installed tool. It now also fetches `/favicon.svg` from the installed wheel and checks 200, `image/svg+xml` and the built file's bytes. An extension, not a contradiction. Low.
   evidence: `scripts/smoke.mjs` (the `/favicon.svg` block after the SPA routes) (spine check, build-auto review of Story 11.1).
+  resolved: Epic 11 retro item 75 (2026-11-17): the Testing row and Seed "Build and install" name the smoke test's favicon checks in ARCHITECTURE-SPINE.md.
 
 ## Deferred from: code review of spec-11-1-a-favicon-for-bookvie (2026-11-17)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-11-1-a-favicon-for-bookvie.md`
   summary: Spine drift (AD-16, Capability → Architecture Map), reconciled before the next epic. The map's preamble still reads "Every row below is built, except FR-26 and FR-27 (Epic 11, planned)", and the FR-26 row lists `GET /favicon.svg` in `http/` and `frontend/public/` favicons, which Story 11.1 built. The rest of FR-26 (dev defaults, `app_info` `mode`, the Vite proxy, the DEV pill, the title prefix) is Stories 11.2 to 11.4's. Neither of the build's two spine drift entries names the map. Low.
   evidence: ARCHITECTURE-SPINE.md:399 and :415; `backend/bookvie/http/app.py` `favicon` route; `frontend/public/favicon.svg` (spine check, code review of Story 11.1).
+  resolved: Epic 11 retro item 75 (2026-11-17): the Capability map preamble reads "Every row below is built." in ARCHITECTURE-SPINE.md.
 
 ## Deferred from: build-auto review of spec-11-2-keep-development-apart-from-the-real-library (2026-11-17)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-11-2-keep-development-apart-from-the-real-library.md`
   summary: Spine drift (AD-6, "App info" bullet), reconciled before the next epic. The bullet still reads "(Epic 11, planned)"; Story 11.2 built `GET /api/views/app-info` (`views/app_info.py` `AppInfoView`, the route in `http/api.py`, `app.state.app_info` from `create_app`, `version`/`commit` passed by the CLI because `views` can't import the package's top level). Low.
   evidence: ARCHITECTURE-SPINE.md:98; `backend/bookvie/views/app_info.py`, `backend/bookvie/http/api.py` `app_info_view` (spine check, build-auto review of Story 11.2).
+  resolved: Epic 11 retro item 75 (2026-11-17): AD-6 App info cites story 11.2 and names `app.state.app_info` and the CLI passing `version` and `commit` in ARCHITECTURE-SPINE.md.
 - source_spec: `_bmad-output/implementation-artifacts/spec-11-2-keep-development-apart-from-the-real-library.md`
   summary: Spine drift (AD-7, "App info is an ordinary view"), reconciled before the next epic. The line still reads "(Epic 11, planned)"; Story 11.2 built the client half (`useAppInfo` keyed `['view','app-info']`, read by `AppShell.tsx` and `lib/page.ts`). The version comparison and update notice stay planned for Stories 11.3 and 11.4. Low.
   evidence: ARCHITECTURE-SPINE.md:121; `frontend/src/api/views.ts` `useAppInfo` (spine check, build-auto review of Story 11.2).
+  resolved: Epic 11 retro item 75 (2026-11-17): AD-7 App info cites stories 11.2 to 11.4 and names its readers (`AppShell`, `lib/page`, About this copy, `UpdateNotice`) in ARCHITECTURE-SPINE.md.
 - source_spec: `_bmad-output/implementation-artifacts/spec-11-2-keep-development-apart-from-the-real-library.md`
   summary: Spine drift (AD-16, "Binding" and "Real library refused" bullets), reconciled before the next epic. Both still read "(Epic 11, planned)"; Story 11.2 built them in `cli.py` (`DEV_PORT`, `DEV_DATA_DIR`, defaults filled after parsing, `_refuses_real_library` through `instance.same_folder` so case variants and firmlinks are refused too, exit 2 before the lock or store). The spine says "resolved"; the code also compares by file identity. Low.
   evidence: ARCHITECTURE-SPINE.md:223, :224; `backend/bookvie/cli.py` (spine check, build-auto review of Story 11.2).
+  resolved: Epic 11 retro item 75 (2026-11-17): AD-16 Binding cites story 11.2; Real library refused records the file-identity comparison (`instance.same_folder`) and item 76's case-insensitive fallback in ARCHITECTURE-SPINE.md.
 - source_spec: `_bmad-output/implementation-artifacts/spec-11-2-keep-development-apart-from-the-real-library.md`
   summary: Spine drift (Structural Seed `views/`), reconciled before the next epic. The Seed lists "app_info (planned)"; `backend/bookvie/views/app_info.py` now exists. Low.
   evidence: ARCHITECTURE-SPINE.md:382 (spine check, build-auto review of Story 11.2).
+  resolved: Epic 11 retro item 75 (2026-11-17): the Seed's `views/` lists `app_info` without "(planned)" in ARCHITECTURE-SPINE.md.
 - source_spec: `_bmad-output/implementation-artifacts/spec-11-2-keep-development-apart-from-the-real-library.md`
   summary: Spine drift (AD-16 Favicon bullet and Seed `public/`; Capability map FR-26 row; Testing row and Seed "Build and install"), reconciled before the next epic. These extend the Story 11.1 entries above: 11.2 finished the dev half of the favicon (`favicon-dev.svg`, the route's `--dev` switch, the Vite `/favicon.svg` proxy), the whole FR-26 row is now built (only FR-27 stays planned), and `scripts/smoke.mjs` also checks that the installed package carries `static/favicon-dev.svg` with the built file's bytes. Low.
   evidence: ARCHITECTURE-SPINE.md:230, :297, :346, :387, :399, :415; `frontend/public/favicon-dev.svg`, `frontend/vite.config.ts`, `scripts/smoke.mjs` (spine check, build-auto review of Story 11.2).
+  resolved: Epic 11 retro item 75 (2026-11-17): ARCHITECTURE-SPINE.md marks AD-16 Favicon and Seed `public/` built, has no Epic 11 exception in the map preamble, and adds the installed `favicon-dev.svg` check to the Testing row and Seed "Build and install"; the FR-26 row names `instance.same_folder` and the SPA catch-all's icon exclusion.
 
 ## Deferred from: code review of spec-11-2-keep-development-apart-from-the-real-library (2026-11-17)
 
@@ -1084,15 +1092,18 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-11-3-show-the-version-on-the-backup-page.md`
   summary: Spine drift (AD-6, AD-7, AD-8, Capability → Architecture Map, FR-27 row and preamble), reconciled before the next epic. The preamble still reads "Every row below is built, except FR-26 and FR-27 (Epic 11, planned)", which covers the FR-27 row's `pages/BackupPage` About this copy (the row itself doesn't say "planned"); Story 11.3 built the card, with its line rules in a new `lib/aboutThisCopy` (`versionLine`, `folderLine`) that the row doesn't name. Low.
   evidence: ARCHITECTURE-SPINE.md:399, :416; `frontend/src/pages/BackupPage.tsx`, `frontend/src/lib/aboutThisCopy.ts` (spine check, build-auto review of Story 11.3).
+  resolved: Epic 11 retro item 75 (2026-11-17): the map preamble has no Epic 11 exception; the FR-27 row names `lib/aboutThisCopy` in ARCHITECTURE-SPINE.md.
 - source_spec: `_bmad-output/implementation-artifacts/spec-11-3-show-the-version-on-the-backup-page.md`
   summary: Spine drift (Structural Seed `frontend/src/lib/`), reconciled before the next epic. The Seed lists the client-rule and presentation modules in `lib/` but not `aboutThisCopy`, which builds Backup's two About this copy lines from the `app-info` view. Low.
   evidence: ARCHITECTURE-SPINE.md:392; `frontend/src/lib/aboutThisCopy.ts` (spine check, build-auto review of Story 11.3).
+  resolved: Epic 11 retro item 75 (2026-11-17): the Seed's `lib/` lists `aboutThisCopy` in ARCHITECTURE-SPINE.md.
 
 ## Deferred from: code review of spec-11-3-show-the-version-on-the-backup-page (2026-11-17)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-11-3-show-the-version-on-the-backup-page.md`
   summary: Spine drift (AD-6 "App info" bullet, AD-7 "App info is an ordinary view"), reconciled before the next epic. Both still read "(Epic 11, planned)". This extends the Story 11.2 AD-6 and AD-7 entries above: Story 11.3 is a second consumer of `useAppInfo`, the Backup page's About this copy card (shown only while the view has data, kept after a failed refetch, line rules in `lib/aboutThisCopy`), so the reconciliation should mark it built and leave only Story 11.4's version comparison and update notice planned. Low.
   evidence: ARCHITECTURE-SPINE.md:98, :121; `frontend/src/pages/BackupPage.tsx`, `frontend/src/lib/aboutThisCopy.ts` (spine check, code review of Story 11.3).
+  resolved: Epic 11 retro item 75 (2026-11-17): in ARCHITECTURE-SPINE.md, AD-6 and AD-7 cite their stories, and AD-7 names About this copy (lines from `lib/aboutThisCopy`, shown only while the view has data).
 - source_spec: `_bmad-output/implementation-artifacts/spec-11-3-show-the-version-on-the-backup-page.md`
   summary: EXPERIENCE.md's About this copy row says the card's `h2` is "like the page's other headings below the `h1`", but Backup has no other `h2`: Export and Restore are `aria-label`led sections with no visible heading. AC-5 of Story 11.3 ("the headings run `h1` Backup, `h2` About this copy") confirms the single `h2` is intended, so only the UX wording is off. Fix the row's wording in the next UX pass. Low.
   evidence: `_bmad-output/planning-artifacts/ux-designs/ux-bookvie-2026-10-28/EXPERIENCE.md:154`; `frontend/src/pages/BackupPage.tsx` (Blind Hunter, code review of Story 11.3).
@@ -1102,15 +1113,19 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-11-4-tell-me-when-a-tab-is-older-than-the-app.md`
   summary: Spine drift (AD-7, "App info is an ordinary view"), reconciled before the next epic. The line still reads "(Epic 11, planned)"; Story 11.4 built the version comparison and update notice on `useAppInfo`, and its once-per-new-version `status` announcement (skipped while another message waits for its tick, `isAnnouncing()`) is not in the bullet. Low.
   evidence: `frontend/src/components/UpdateNotice.tsx`, `frontend/src/lib/updateNotice.ts`, `frontend/src/lib/announce.ts` (spine check, build-auto review of Story 11.4).
+  resolved: Epic 11 retro item 75 (2026-11-17): AD-7 records the once-per-new-version `status` announcement and its yield to a waiting message (`isAnnouncing()`) in ARCHITECTURE-SPINE.md.
 - source_spec: `_bmad-output/implementation-artifacts/spec-11-4-tell-me-when-a-tab-is-older-than-the-app.md`
   summary: Spine drift (AD-8, "One version"), reconciled before the next epic. The bullet still reads "(Epic 11, planned)"; Story 11.4 bakes `__BOOKVIE_VERSION__` from frontend/package.json through a Vite `define` (declared in `src/globals.d.ts`), and `scripts/version.test.mjs` checks the four copies in `check:api`. Low.
   evidence: `frontend/vite.config.ts`, `frontend/src/globals.d.ts`, `frontend/scripts/version.test.mjs` (spine check, build-auto review of Story 11.4).
+  resolved: Epic 11 retro item 75 (2026-11-17): AD-8 One version cites story 11.4 and names `__BOOKVIE_VERSION__`, `src/globals.d.ts` and `frontend/scripts/version.test.mjs` in `check:api` in ARCHITECTURE-SPINE.md.
 - source_spec: `_bmad-output/implementation-artifacts/spec-11-4-tell-me-when-a-tab-is-older-than-the-app.md`
   summary: Spine drift (AD-6, AD-7, AD-8, Capability → Architecture Map preamble and FR-27 row), reconciled before the next epic. After Story 11.4 nothing in FR-27 is planned, but the preamble still excepts FR-26 and FR-27 as "(Epic 11, planned)", and the row doesn't name `lib/updateNotice` or `components/UpdateNotice`. Extends the 11.3 entry for the same row. Low.
   evidence: the Story 11.4 diff (spine check, build-auto review of Story 11.4).
+  resolved: Epic 11 retro item 75 (2026-11-17): the map preamble has no Epic 11 exception; the FR-27 row names `lib/updateNotice` and `components/UpdateNotice` in ARCHITECTURE-SPINE.md.
 - source_spec: `_bmad-output/implementation-artifacts/spec-11-4-tell-me-when-a-tab-is-older-than-the-app.md`
   summary: Spine drift (Structural Seed `frontend/src/lib/`), reconciled before the next epic. The Seed's `lib/` listing doesn't name `updateNotice` (the version comparison and the notice sentence). Low.
   evidence: `frontend/src/lib/updateNotice.ts` (spine check, build-auto review of Story 11.4).
+  resolved: Epic 11 retro item 75 (2026-11-17): the Seed's `lib/` lists `updateNotice`; `components/` lists `UpdateNotice` in ARCHITECTURE-SPINE.md.
 - source_spec: `_bmad-output/implementation-artifacts/spec-11-4-tell-me-when-a-tab-is-older-than-the-app.md`
   summary: The e2e version literals flip meaning at the next version bump. `update-notice.spec.ts` uses `NEWER = '1.2.0'`, and the Story 11.3 fixtures (`about-this-copy*.spec.ts`) fulfil '1.1.0' and '1.2.0' as fixed strings. When `release.sh` sets 1.2.0, the "another version" leaves stop showing the notice (AC-3, AC-6 and the AC-2 witness fail) and the "same version" fixtures start showing it. Derive the differing versions from `BUNDLE_VERSION` (`e2e/update-notice.ts`) in Story 11.4's automate step. Medium.
   evidence: `frontend/e2e/update-notice.spec.ts:36-38`; `about-this-copy-automate.spec.ts:26-27`, `about-this-copy-dev.spec.ts:20,32`, `about-this-copy.spec.ts:110` (Blind Hunter, build-auto review of Story 11.4).
@@ -1128,3 +1143,4 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-epic-11-retro-item-76-close-dev-mode-refusal-and-serving-gaps.md`
   summary: Spine drift, AD-16 (reconciled before the next epic, with item 75). The "SPA routes" line says only that `index.html` is the fallback. It doesn't say that `index.html` is served with `Cache-Control: no-cache`, or that the catch-all never serves `index.html`, `favicon.svg` or `favicon-dev.svg` as is, in any letter case. Item 75's text names only the refusal's case-insensitive fallback (which now also normalizes Unicode and fails closed when the disk probe errors).
   evidence: `ARCHITECTURE-SPINE.md:229`; `backend/bookvie/http/app.py` `INDEX_CACHE_CONTROL`, `_NEVER_AS_IS`; `backend/bookvie/cli.py` `_refuses_real_library`, `_case_insensitive_disk` (Blind Hunter, bmad-build review of epic 11 retro item 76).
+  resolved: Epic 11 retro item 75 (2026-11-17): AD-16 SPA routes records `index.html`'s `Cache-Control: no-cache` and the files the catch-all never serves as is; Real library refused records the NFC/casefold fallback and the fail-closed probe in ARCHITECTURE-SPINE.md.
