@@ -1082,8 +1082,17 @@
 ## Deferred from: build-auto review of spec-11-3-show-the-version-on-the-backup-page (2026-11-17)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-11-3-show-the-version-on-the-backup-page.md`
-  summary: Spine drift (Capability → Architecture Map, FR-27 row and preamble), reconciled before the next epic. The preamble still reads "Every row below is built, except FR-26 and FR-27 (Epic 11, planned)", and the FR-27 row lists `pages/BackupPage` About this copy as planned; Story 11.3 built the card, with its line rules in a new `lib/aboutThisCopy` (`versionLine`, `folderLine`) that the row doesn't name. Low.
+  summary: Spine drift (AD-6, AD-7, AD-8, Capability → Architecture Map, FR-27 row and preamble), reconciled before the next epic. The preamble still reads "Every row below is built, except FR-26 and FR-27 (Epic 11, planned)", which covers the FR-27 row's `pages/BackupPage` About this copy (the row itself doesn't say "planned"); Story 11.3 built the card, with its line rules in a new `lib/aboutThisCopy` (`versionLine`, `folderLine`) that the row doesn't name. Low.
   evidence: ARCHITECTURE-SPINE.md:399, :416; `frontend/src/pages/BackupPage.tsx`, `frontend/src/lib/aboutThisCopy.ts` (spine check, build-auto review of Story 11.3).
 - source_spec: `_bmad-output/implementation-artifacts/spec-11-3-show-the-version-on-the-backup-page.md`
   summary: Spine drift (Structural Seed `frontend/src/lib/`), reconciled before the next epic. The Seed lists the client-rule and presentation modules in `lib/` but not `aboutThisCopy`, which builds Backup's two About this copy lines from the `app-info` view. Low.
   evidence: ARCHITECTURE-SPINE.md:392; `frontend/src/lib/aboutThisCopy.ts` (spine check, build-auto review of Story 11.3).
+
+## Deferred from: code review of spec-11-3-show-the-version-on-the-backup-page (2026-11-17)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-11-3-show-the-version-on-the-backup-page.md`
+  summary: Spine drift (AD-6 "App info" bullet, AD-7 "App info is an ordinary view"), reconciled before the next epic. Both still read "(Epic 11, planned)". This extends the Story 11.2 AD-6 and AD-7 entries above: Story 11.3 is a second consumer of `useAppInfo`, the Backup page's About this copy card (shown only while the view has data, kept after a failed refetch, line rules in `lib/aboutThisCopy`), so the reconciliation should mark it built and leave only Story 11.4's version comparison and update notice planned. Low.
+  evidence: ARCHITECTURE-SPINE.md:98, :121; `frontend/src/pages/BackupPage.tsx`, `frontend/src/lib/aboutThisCopy.ts` (spine check, code review of Story 11.3).
+- source_spec: `_bmad-output/implementation-artifacts/spec-11-3-show-the-version-on-the-backup-page.md`
+  summary: EXPERIENCE.md's About this copy row says the card's `h2` is "like the page's other headings below the `h1`", but Backup has no other `h2`: Export and Restore are `aria-label`led sections with no visible heading. AC-5 of Story 11.3 ("the headings run `h1` Backup, `h2` About this copy") confirms the single `h2` is intended, so only the UX wording is off. Fix the row's wording in the next UX pass. Low.
+  evidence: `_bmad-output/planning-artifacts/ux-designs/ux-bookvie-2026-10-28/EXPERIENCE.md:154`; `frontend/src/pages/BackupPage.tsx` (Blind Hunter, code review of Story 11.3).

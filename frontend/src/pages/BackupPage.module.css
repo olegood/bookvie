@@ -63,9 +63,8 @@
   max-width: 100%;
 }
 
-/* With .text (body-sm/ink-secondary): the data folder wraps anywhere and is never cut short. */
+/* With .text (body-sm/ink-secondary): overflow-wrap lets the data folder wrap anywhere, never cut short. */
 .aboutLine {
-  max-width: 100%;
   overflow-wrap: anywhere;
 }
 

@@ -23,6 +23,10 @@ describe('the About this copy lines', () => {
     assert.equal(versionLine({ ...dev, commit: null }), 'bookvie 1.1.0 · Development server')
   })
 
+  it('reads the version it is given on a dev server', () => {
+    assert.equal(versionLine({ ...dev, version: '2.0.0' }), 'bookvie 2.0.0 (a1b2c3d) · Development server')
+  })
+
   it('gives the data folder verbatim', () => {
     const long = `/private/var/folders/${'x'.repeat(150)}/bookvie-data`
     assert.equal(folderLine(production), 'Data folder: ~/bookvie-data')

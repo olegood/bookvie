@@ -3,7 +3,7 @@ title: 'Story 11.3: Show the version on the Backup page'
 type: 'feature'
 created: '2026-11-17'
 baseline_revision: '4431e57fcaf9f90b44049bb2d75a887cd61f8f7c'
-status: 'in-review'
+status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -84,6 +84,28 @@ deferred:
 - Given `app-info` pending or failing, when I open Backup, then there is no card and nothing said, Export and Restore work, and a failed refetch after a success keeps the card (AC-4).
 - Given the card, when a keyboard or screen-reader user reaches it, then it has no Tab stop or control, the headings run `h1` "Backup", `h2` "About this copy", and axe passes in light and dark (AC-5).
 - Given the existing Backup e2e specs, when `npm run check` runs, then they pass unedited and the 6 story leaves pass (AC-6).
+
+### Review Findings
+
+Code review (`bmad-code-review`, new session), 2026-11-17. Layers: Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor, Spine Check; none failed (Edge Case Hunter and Verification Gap found nothing). 1 decision-needed, 3 patch, 3 defer, 6 rejected.
+
+- [x] [Review][Decision] The AC-3 leaf was edited beyond the un-skip — Execution says the ATDD files get "`test.skip(` → `test(` on the 6 leaves; no other edit", but `about-this-copy.spec.ts` changed `expect(cardBox.width).toBeLessThanOrEqual(560)` to `expect(cardBox.width).toBe(exportBox.width)` (plus an `exportBox` lookup and comment). The old bound can't hold alongside AC-1's "Export's frame": `.card` is a 560px content-box `max-width` with `20px 24px` padding and a 1px border, so Export already renders 610px. Options: accept the edit as the leaf's intent, or reverse it and make `.card` `box-sizing: border-box` (narrows Export and Restore by 50px). — resolved 2026-11-17 (Oleg): accepted; `cardBox.width === exportBox.width` is the leaf's intent (a long path doesn't widen the card), AC-1's `frameOf` still pins `max-width` against Export, no code change.
+- [x] [Review][Patch] `.aboutLine`'s `max-width: 100%` does nothing (each `p` is a block child of `.aboutLines`, which already carries the cap), and its comment credits it with the wrapping that `overflow-wrap: anywhere` does [frontend/src/pages/BackupPage.module.css:68] — fixed: declaration dropped, comment credits `overflow-wrap`
+- [x] [Review][Patch] The unit test's dev cases all use `version: '1.1.0'`, which is also the real `bookvie.__version__`, so a dev branch that hard-coded "1.1.0" would pass the unit test and both e2e legs; give a dev case another version [frontend/src/lib/aboutThisCopy.test.ts:18] — fixed: new case `reads the version it is given on a dev server` (`2.0.0`); 6 unit cases pass
+- [x] [Review][Patch] The build's FR-27 spine-drift entry says the FR-27 row lists About this copy "as planned" (only the preamble at :399 says planned; the row at :416 doesn't) and names no AD (the row's are AD-6, AD-7, AD-8) [_bmad-output/implementation-artifacts/deferred-work.md:1085] — fixed: entry names AD-6, AD-7, AD-8 and says only the preamble reads "planned"
+- [x] [Review][Defer] Spine drift (AD-6 "App info" bullet, AD-7 "App info is an ordinary view"): both still "(Epic 11, planned)"; 11.3 is now a second consumer of `useAppInfo`, so the reconciliation should mark About this copy built and leave only 11.4's version comparison and update notice planned [ARCHITECTURE-SPINE.md:98, :121] — deferred: spine drift, reconciled before the next epic; extends the 11.2 entries
+- [x] [Review][Defer] Spine drift (Capability → Architecture Map FR-27 row and preamble; Structural Seed `lib/`) [ARCHITECTURE-SPINE.md:392, :399, :416] — deferred: spine drift, reconciled before the next epic; already recorded by the build in `deferred-work.md` ("build-auto review of spec-11-3-…"), no new entry
+- [x] [Review][Defer] EXPERIENCE.md says the card's `h2` is "like the page's other headings below the `h1`", but Backup has no other `h2` (Export and Restore are `aria-label`led sections without a visible heading), which AC-5 ("headings run `h1` Backup, `h2` About this copy") confirms is intended [_bmad-output/planning-artifacts/ux-designs/ux-bookvie-2026-10-28/EXPERIENCE.md:154] — deferred: the fix is a UX-doc wording correction, not code
+
+- Full check after the patches, 2026-11-17: `npm run check` exit 0 — pytest 1605 passed, unit 377 passed (0 skipped), e2e 755 passed, smoke ok; no `~/bookvie-data-dev` created.
+
+**Rejected:**
+- `low` (Blind) the new AC-3 width check pins no absolute bound: a widening of this card alone fails the equality with Export; only a change to the shared `.card` would widen all three, which AC-1's `frameOf` (`max-width` against Export's) and the existing Backup specs own, not this leaf.
+- `low` (Blind) the spec's Execution, Design Notes and Spec Change Log still describe the code before the build's patches: the fix edits the spec under review.
+- `low` (Blind) the Auto Run Result's verification order contradicts itself: the fix edits the spec under review; this review re-runs `npm run check` itself after its patches.
+- `low` (Blind) no test pins that the two lines sit with no gap between them: the AC doesn't specify that spacing (Design Notes leave it to automate); listed for `bmad-testarch-automate`.
+- `low` (Blind) the build's FR-27 drift entry overlaps the 11.1 entry at `deferred-work.md:1055` on the same preamble sentence: the reconciliation pass closes every "spine drift" entry, and 1085 adds the FR-27 row and `lib/aboutThisCopy` that 1055 lacks; nothing is lost or doubled in the spine.
+- `low` (Acceptance) the CSS splits the line styles differently from the Tasks text (`.text` plus `.aboutLine`): the computed style is the same, it was the build review's patch, and the fix would edit the spec.
 
 ## Spec Change Log
 
