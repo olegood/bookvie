@@ -14,17 +14,9 @@ import { fileURLToPath } from 'node:url'
 import type { Locator, Page } from '@playwright/test'
 import { createServer, type ViteDevServer } from 'vite'
 import { expect, freePort, startSeededServer, test } from './fixtures.ts'
-import {
-  designComponentColor,
-  devPill,
-  elementsColored,
-  mainNav,
-  ROUTES,
-  systemColor,
-  watchAppInfo,
-} from './dev-mode.ts'
+import { devPill, elementsColored, mainNav, ROUTES, systemColor, watchAppInfo } from './dev-mode.ts'
 import { DUNE } from './home.ts'
-import { rgbOf } from './library.ts'
+import { answerAppInfo, designComponentColor, rgbOf } from './library.ts'
 
 const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']
 const FRONTEND = fileURLToPath(new URL('..', import.meta.url))
@@ -136,9 +128,7 @@ test.describe('Story 11.2 Keep development apart from the real library, on a dev
     server,
   }) => {
     let failing = false
-    await page.route('**/api/views/app-info', (route) =>
-      failing ? route.fulfill({ status: 500, body: '' }) : route.continue(),
-    )
+    await answerAppInfo(page, () => (failing ? 'fail' : 'pass'))
     const seen = watchAppInfo(page)
     await page.goto(`${server.url}/`)
     await expect(devPill(page)).toBeVisible()

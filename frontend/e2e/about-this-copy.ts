@@ -1,12 +1,11 @@
-// Story 11.3 helpers: the About this copy card on Backup, the app-info body a
-// test can fulfil in place of the server's, and how a line of the card wraps.
+// Story 11.3 helpers: the About this copy card on Backup, the server's own
+// app-info, and how a line of the card wraps. (A test answers app-info in place
+// of the server with `answerAppInfo` from library.ts.)
 
-import type { Locator, Page, Route } from '@playwright/test'
+import type { Locator, Page } from '@playwright/test'
+import type { AppInfo } from './library.ts'
 
 export const ABOUT = 'About this copy'
-
-/** The `app-info` view as the server sends it (`views/app_info`). */
-export type AppInfo = { version: string; mode: 'dev' | 'production'; dataDir: string; commit: string | null }
 
 /** The About this copy card: a `section` labelled by its `h2`, inside `main`. */
 export function aboutCard(page: Page): Locator {
@@ -21,11 +20,6 @@ export function exportButton(page: Page): Locator {
 /** The server's own `app-info`, read outside the page. */
 export async function serverAppInfo(page: Page, url: string): Promise<AppInfo> {
   return (await (await page.request.get(`${url}/api/views/app-info`)).json()) as AppInfo
-}
-
-/** Answers every `app-info` request with `body` until the page unroutes it. Call before navigating. */
-export async function fulfilAppInfo(page: Page, body: AppInfo): Promise<void> {
-  await page.route('**/api/views/app-info', (route: Route) => route.fulfill({ json: body }))
 }
 
 /**

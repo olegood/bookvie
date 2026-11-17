@@ -4,8 +4,9 @@
 // and " · Development server" (AC-2). The production card and the other
 // criteria are in about-this-copy.spec.ts.
 
-import { aboutCard, exportButton, fulfilAppInfo, serverAppInfo } from './about-this-copy.ts'
+import { aboutCard, exportButton, serverAppInfo } from './about-this-copy.ts'
 import { expect, test } from './fixtures.ts'
+import { answerAppInfo } from './library.ts'
 import { BUNDLE_VERSION } from './update-notice.ts'
 
 /** " · ": space, U+00B7 middle dot, space, as text (DESIGN.md → About this copy). */
@@ -18,12 +19,12 @@ test.describe('Story 11.3 Show the version on the Backup page, on a dev server (
     page,
     server,
   }) => {
-    await fulfilAppInfo(page, {
+    await answerAppInfo(page, () => ({
       version: BUNDLE_VERSION,
       mode: 'dev',
       dataDir: '~/bookvie-data-dev',
       commit: 'a1b2c3d',
-    })
+    }))
     await page.goto(`${server.url}/backup`)
     await expect(exportButton(page)).toBeVisible()
     const card = aboutCard(page)
@@ -37,7 +38,12 @@ test.describe('Story 11.3 Show the version on the Backup page, on a dev server (
 
     // No commit (no git, or not a checkout): no brackets.
     await page.unrouteAll({ behavior: 'ignoreErrors' })
-    await fulfilAppInfo(page, { version: BUNDLE_VERSION, mode: 'dev', dataDir: '~/bookvie-data-dev', commit: null })
+    await answerAppInfo(page, () => ({
+      version: BUNDLE_VERSION,
+      mode: 'dev',
+      dataDir: '~/bookvie-data-dev',
+      commit: null,
+    }))
     await page.reload()
     await expect(card.getByText(`bookvie ${BUNDLE_VERSION}${DOT}Development server`, { exact: true })).toBeVisible()
     await expect(card).not.toContainText('(')

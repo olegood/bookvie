@@ -8,12 +8,12 @@
 // shows no card.
 
 import { realpathSync } from 'node:fs'
-import type { Locator, Page, Route } from '@playwright/test'
-import { ABOUT, aboutCard, exportButton, fulfilAppInfo, serverAppInfo, type AppInfo } from './about-this-copy.ts'
+import type { Locator, Page } from '@playwright/test'
+import { ABOUT, aboutCard, exportButton, serverAppInfo } from './about-this-copy.ts'
 import { liveRegionText, systemColor, watchAppInfo } from './dev-mode.ts'
 import { expect, test } from './fixtures.ts'
-import { INK_SECONDARY_DARK, rgbOf } from './library.ts'
-import { BUNDLE_VERSION, NEWER_VERSION, noticeText } from './update-notice.ts'
+import { answerAppInfo, INK_SECONDARY_DARK, rgbOf, type AppInfo, type AppInfoAnswer } from './library.ts'
+import { BUNDLE_VERSION, focusWindow, NEWER_VERSION, noticeText } from './update-notice.ts'
 
 /** DESIGN.md ink-tertiary, dark theme (tokens.css --color-ink-tertiary under dark). */
 const INK_TERTIARY_DARK = rgbOf('#9A9E94')
@@ -38,24 +38,12 @@ async function chooseTheme(page: Page, name: 'Light' | 'Dark' | 'System'): Promi
   await expect(option).toHaveAttribute('aria-pressed', 'true')
 }
 
-/** Answers `app-info` with whatever `answer()` returns at the time: a body, or 500. */
-async function routeAppInfo(page: Page, answer: () => AppInfo | 500): Promise<void> {
-  await page.route('**/api/views/app-info', (route: Route) => {
-    const body = answer()
-    return body === 500 ? route.fulfill({ status: 500, body: '' }) : route.fulfill({ json: body })
-  })
-}
-
-async function focusWindow(page: Page): Promise<void> {
-  await page.evaluate(() => window.dispatchEvent(new Event('focus')))
-}
-
 test.describe('Story 11.3 Show the version on the Backup page (automate)', () => {
   test('[P2] AC-1 in dark the card is surface-dark with a line-dark border, its heading ink-tertiary-dark and its lines ink-secondary-dark, under Theme System with OS dark and Theme Dark with OS light', async ({
     page,
     server,
   }) => {
-    await fulfilAppInfo(page, PRODUCTION)
+    await answerAppInfo(page, () => PRODUCTION)
     const card = aboutCard(page)
     const version = card.getByText(`bookvie ${BUNDLE_VERSION}`, { exact: true })
     const folder = card.getByText('Data folder: ~/bookvie-data', { exact: true })
@@ -81,7 +69,7 @@ test.describe('Story 11.3 Show the version on the Backup page (automate)', () =>
     page,
     server,
   }) => {
-    await fulfilAppInfo(page, PRODUCTION)
+    await answerAppInfo(page, () => PRODUCTION)
     await page.goto(`${server.url}/backup`)
     const card = aboutCard(page)
     const version = card.getByText(`bookvie ${BUNDLE_VERSION}`, { exact: true })
@@ -101,14 +89,14 @@ test.describe('Story 11.3 Show the version on the Backup page (automate)', () =>
   }) => {
     const seen = watchAppInfo(page)
     const failures = () => seen.filter((answer) => answer.status === 500).length
-    let answer: AppInfo | 500 = DEV
-    await routeAppInfo(page, () => answer)
+    let answer: AppInfoAnswer = DEV
+    await answerAppInfo(page, () => answer)
     await page.goto(`${server.url}/backup`)
     const card = aboutCard(page)
     const line = card.getByText(`bookvie ${BUNDLE_VERSION} (a1b2c3d) · Development server`, { exact: true })
     await expect(line).toBeVisible()
 
-    answer = 500
+    answer = 'fail'
     await focusWindow(page)
     await expect.poll(failures).toBeGreaterThan(0)
 
@@ -134,7 +122,7 @@ test.describe('Story 11.3 Show the version on the Backup page (automate)', () =>
   test('[P2] AC-4 a tab left open reads the new version after a focus refetch answers it', async ({ page, server }) => {
     const seen = watchAppInfo(page)
     let answer: AppInfo = PRODUCTION
-    await routeAppInfo(page, () => answer)
+    await answerAppInfo(page, () => answer)
     await page.goto(`${server.url}/backup`)
     const card = aboutCard(page)
     await expect(card.getByText(`bookvie ${BUNDLE_VERSION}`, { exact: true })).toBeVisible()
@@ -156,7 +144,7 @@ test.describe('Story 11.3 Show the version on the Backup page (automate)', () =>
     page,
     server,
   }) => {
-    await fulfilAppInfo(page, PRODUCTION)
+    await answerAppInfo(page, () => PRODUCTION)
     const card = aboutCard(page)
     const version = card.getByText(`bookvie ${BUNDLE_VERSION}`, { exact: true })
     const folder = card.getByText('Data folder: ~/bookvie-data', { exact: true })
@@ -183,7 +171,7 @@ test.describe('Story 11.3 Show the version on the Backup page (automate)', () =>
     page,
     server,
   }) => {
-    await fulfilAppInfo(page, DEV)
+    await answerAppInfo(page, () => DEV)
     await page.goto(`${server.url}/backup`)
 
     await expect(aboutCard(page)).toMatchAriaSnapshot(`
@@ -199,7 +187,7 @@ test.describe('Story 11.3 Show the version on the Backup page (automate)', () =>
     server,
   }) => {
     const seen = watchAppInfo(page)
-    await fulfilAppInfo(page, PRODUCTION)
+    await answerAppInfo(page, () => PRODUCTION)
     await page.route('**/api/views/backup', (route) =>
       route.fulfill({ status: 503, contentType: 'text/plain', body: 'Service Unavailable' }),
     )

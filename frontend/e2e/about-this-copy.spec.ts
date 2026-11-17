@@ -9,10 +9,11 @@
 
 import AxeBuilder from '@axe-core/playwright'
 import type { Locator, Page, Route } from '@playwright/test'
-import { ABOUT, aboutCard, exportButton, fulfilAppInfo, serverAppInfo, wrapOf } from './about-this-copy.ts'
+import { ABOUT, aboutCard, exportButton, serverAppInfo, wrapOf } from './about-this-copy.ts'
 import { liveRegionText, watchAppInfo } from './dev-mode.ts'
 import { expect, test } from './fixtures.ts'
 import { DUNE } from './home.ts'
+import { answerAppInfo } from './library.ts'
 import { BUNDLE_VERSION, NEWER_VERSION } from './update-notice.ts'
 
 const RESTORE = 'Restore from file…'
@@ -96,12 +97,12 @@ test.describe('Story 11.3 Show the version on the Backup page (ATDD)', () => {
 
     // The lines come from app-info: a different answer shows different lines,
     // and a commit is never shown in production even when sent.
-    await fulfilAppInfo(page, {
+    await answerAppInfo(page, () => ({
       version: NEWER_VERSION,
       mode: 'production',
       dataDir: '~/bookvie-data',
       commit: 'a1b2c3d',
-    })
+    }))
     await page.reload()
     await expect(card.getByText(`bookvie ${NEWER_VERSION}`, { exact: true })).toBeVisible()
     await expect(card.getByText('Data folder: ~/bookvie-data', { exact: true })).toBeVisible()
@@ -113,7 +114,12 @@ test.describe('Story 11.3 Show the version on the Backup page (ATDD)', () => {
     page,
     server,
   }) => {
-    await fulfilAppInfo(page, { version: BUNDLE_VERSION, mode: 'production', dataDir: LONG_FOLDER, commit: null })
+    await answerAppInfo(page, () => ({
+      version: BUNDLE_VERSION,
+      mode: 'production',
+      dataDir: LONG_FOLDER,
+      commit: null,
+    }))
     await page.goto(`${server.url}/backup`)
     await expect(exportButton(page)).toBeVisible()
     const card = aboutCard(page)

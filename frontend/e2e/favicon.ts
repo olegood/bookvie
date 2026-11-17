@@ -1,13 +1,15 @@
-// Story 11.1 favicon helpers: where the icon lives, what DESIGN.md says it
-// is, and what Chromium computes for it.
+// Story 11.1 favicon helpers: where the icon lives, the path DESIGN.md's prose
+// gives it, and what Chromium computes for it. (DESIGN.md's frontmatter colors
+// are read in library.ts.)
 
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import type { Page } from '@playwright/test'
+import { DESIGN_MD } from './library.ts'
 
-export const DESIGN_MD = fileURLToPath(
-  new URL('../../_bmad-output/planning-artifacts/ux-designs/ux-bookvie-2026-10-28/DESIGN.md', import.meta.url),
-)
+// DESIGN.md is read in library.ts; re-exported for the specs that import them from here.
+export { DESIGN_MD, designColor } from './library.ts'
+
 /** The drawing as checked in (Vite copies `public/` into the build). */
 export const SOURCE_FAVICON = fileURLToPath(new URL('../public/favicon.svg', import.meta.url))
 /** The drawing as the build leaves it in the served folder (and the wheel). */
@@ -16,15 +18,6 @@ export const SMOKE_SCRIPT = fileURLToPath(new URL('../../scripts/smoke.mjs', imp
 
 /** A made-up origin `serveSourceFavicon` answers for; nothing goes to the network. */
 export const SOURCE_FAVICON_URL = 'http://favicon.source.test/favicon.svg'
-
-/** A color primitive from DESIGN.md's frontmatter `colors:` block, as written (`#557059`). */
-export function designColor(name: string): string {
-  const frontmatter = readFileSync(DESIGN_MD, 'utf8').split(/^---$/m)[1]
-  const colors = frontmatter.split(/^colors:[ \t]*$/m)[1]?.split(/^\S/m)[0] ?? ''
-  const match = colors.match(new RegExp(`^ {2}${name}:\\s*'(#[0-9A-Fa-f]{6})'\\s*$`, 'm'))
-  if (!match) throw new Error(`DESIGN.md has no color ${name}`)
-  return match[1]
-}
 
 /** The favicon path DESIGN.md → Components → Favicon gives (the F3 drawing). */
 export function designFaviconPath(): string {

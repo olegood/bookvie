@@ -1,12 +1,15 @@
-// Story 11.2 helpers: the dev favicon's files, DESIGN.md's component
-// literals, the DEV pill's geometry, the app-info responses a page sees,
-// and the checks that production shows no dev amber.
+// Story 11.2 helpers: the dev favicon's files, the DEV pill's geometry, the
+// app-info responses a page sees, and the checks that production shows no dev
+// amber. (DESIGN.md's component literals are read in library.ts.)
 
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import type { Locator, Page } from '@playwright/test'
-import { DESIGN_MD } from './favicon.ts'
 import { DUNE_ID } from './home.ts'
+import type { AppInfo } from './library.ts'
+
+// DESIGN.md is read in library.ts; re-exported for the specs that import it from here.
+export { designComponentColor } from './library.ts'
 
 /** The dev drawing as checked in. */
 export const SOURCE_FAVICON_DEV = fileURLToPath(new URL('../public/favicon-dev.svg', import.meta.url))
@@ -46,21 +49,6 @@ export function liveRegionText(page: Page): Promise<string> {
 
 export function readText(file: string): string {
   return readFileSync(file, 'utf8')
-}
-
-/**
- * A literal `#rrggbb` from DESIGN.md's frontmatter `components:` block, as
- * written (`components.favicon.dev-fill` → `#8C5E0E`). Throws when the
- * component or key is missing, or the value is a token reference.
- */
-export function designComponentColor(component: string, key: string): string {
-  const frontmatter = readFileSync(DESIGN_MD, 'utf8').split(/^---$/m)[1]
-  const components = frontmatter.split(/^components:[ \t]*$/m)[1]?.split(/^\S/m)[0] ?? ''
-  const block = components.split(new RegExp(`^ {2}${component}:[ \\t]*$`, 'm'))[1]?.split(/^ {2}\S/m)[0]
-  if (block === undefined) throw new Error(`DESIGN.md has no component ${component}`)
-  const match = block.match(new RegExp(`^ {4}${key}:\\s*'(#[0-9A-Fa-f]{6})'\\s*$`, 'm'))
-  if (!match) throw new Error(`DESIGN.md components.${component} has no color literal ${key}`)
-  return match[1]
 }
 
 /** The DEV pill: the exact text "DEV" inside the header. */
@@ -154,7 +142,7 @@ export function elementsColored(page: Page, hexes: string[]): Promise<string[]> 
   }, hexes)
 }
 
-export type AppInfoSeen = { status: number; body: { mode?: string } | null }
+export type AppInfoSeen = { status: number; body: Partial<AppInfo> | null }
 
 /**
  * Records every `/api/views/app-info` response the page gets, in order, with

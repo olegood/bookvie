@@ -1,61 +1,9 @@
 // Story 1.6 app shell: tokens, top nav, theme toggle,
 // landmarks, live regions, shared primitives, motion and minimum width.
 
-import { readFileSync } from 'node:fs'
-import { fileURLToPath } from 'node:url'
 import type { Page } from '@playwright/test'
 import { test, expect } from './fixtures.ts'
-
-const DESIGN_MD = fileURLToPath(
-  new URL('../../_bmad-output/planning-artifacts/ux-designs/ux-bookvie-2026-10-28/DESIGN.md', import.meta.url),
-)
-
-const TYPOGRAPHY_PROPS: Record<string, string> = {
-  fontFamily: 'family',
-  fontSize: 'size',
-  fontWeight: 'weight',
-  lineHeight: 'line-height',
-  letterSpacing: 'letter-spacing',
-}
-
-type Tokens = { light: Map<string, string>; dark: Map<string, string> }
-
-/**
- * Every primitive in DESIGN.md frontmatter as the custom property tokens.css
- * names it (`--color-*`, `--font-<role>-*`, `--radius-*`, `--space-*`), with
- * its light value and, for colors with a `-dark` twin, its dark value.
- */
-function designTokens(): Tokens {
-  const frontmatter = readFileSync(DESIGN_MD, 'utf8').split(/^---$/m)[1]
-  const light = new Map<string, string>()
-  const dark = new Map<string, string>()
-  let section = ''
-  let role = ''
-  for (const line of frontmatter.split('\n')) {
-    if (/^\s*(#|$)/.test(line)) continue
-    const top = line.match(/^(\w[\w-]*):\s*$/)
-    if (top) {
-      section = top[1]
-      continue
-    }
-    const entry = line.match(/^( +)'?([\w-]+)'?:\s*(.*)$/)
-    if (!entry) continue
-    const [, indent, key, raw] = entry
-    const value = raw.replace(/^'(.*)'$/, '$1')
-    if (section === 'colors') {
-      if (key.endsWith('-dark')) dark.set(`--color-${key.slice(0, -'-dark'.length)}`, value)
-      else light.set(`--color-${key}`, value)
-    } else if (section === 'typography') {
-      if (indent.length === 2) role = key
-      else light.set(`--font-${role}-${TYPOGRAPHY_PROPS[key]}`, value)
-    } else if (section === 'rounded') {
-      light.set(`--radius-${key}`, value)
-    } else if (section === 'spacing') {
-      light.set(`--space-${key}`, value)
-    }
-  }
-  return { light, dark }
-}
+import { designTokens } from './library.ts'
 
 // DESIGN.md → Elevation & Depth keeps shadows and the scrim as literal values;
 // these are the custom properties tokens.css gives them.

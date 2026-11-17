@@ -885,7 +885,7 @@ action_items:
       `frontend/e2e/dev-mode.spec.ts`, `frontend/e2e/dev-mode-automate.spec.ts`. Due:
       before Epic 12."
     owner: "Murat (TEA)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-11-retro-2026-11-17.md"
   - id: "epic-11-retro-item-78-teach-atdd-helper-reuse-and-measuring-shipped-ui"
     epic: 11

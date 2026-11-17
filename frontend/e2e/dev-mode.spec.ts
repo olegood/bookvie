@@ -16,7 +16,6 @@ import {
   FRONTEND_SRC,
   ROUTES,
   SOURCE_FAVICON_DEV,
-  designComponentColor,
   devPill,
   gapAfterWord,
   liveRegionText,
@@ -26,7 +25,7 @@ import {
   watchAppInfo,
 } from './dev-mode.ts'
 import { DUNE } from './home.ts'
-import { rgbOf } from './library.ts'
+import { answerAppInfo, designComponentColor, rgbOf } from './library.ts'
 
 /** The only elements the drawing may have, as in favicon.spec.ts. */
 const ALLOWED_ELEMENTS = new Set(['path', 'style', 'title', 'desc'])
@@ -175,9 +174,7 @@ test.describe('Story 11.2 Keep development apart from the real library, on a dev
     // After a success, a refetch that fails keeps the last data.
     await page.unrouteAll({ behavior: 'ignoreErrors' })
     let failing = false
-    await page.route('**/api/views/app-info', (route) =>
-      failing ? route.fulfill({ status: 500, body: '' }) : route.continue(),
-    )
+    await answerAppInfo(page, () => (failing ? 'fail' : 'pass'))
     await page.reload()
     await expect(mainNav(page)).toBeVisible()
     await expect(devPill(page)).toBeVisible()

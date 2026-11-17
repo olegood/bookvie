@@ -1,11 +1,14 @@
 // Story 11.4 helpers: the update notice's parts, the bundle's own version,
-// an `app-info` route whose answer a test changes as it goes, the focus that
-// refetches it, and two measurements of the notice: where its text sits and
-// which backgrounds it paints.
+// the focus that refetches `app-info`, and two measurements of the notice:
+// where its text sits and which backgrounds it paints. (The `app-info` route
+// itself is `answerAppInfo` in library.ts.)
 
 import { readFileSync } from 'node:fs'
-import type { Locator, Page, Route } from '@playwright/test'
-import type { AppInfo } from './about-this-copy.ts'
+import type { Locator, Page } from '@playwright/test'
+import type { AppInfo } from './library.ts'
+
+// Re-exported for the specs that import them from here.
+export { answerAppInfo, type AppInfoAnswer as Answer } from './library.ts'
 
 /** The version the bundle bakes: frontend/package.json's (AR34). */
 export const BUNDLE_VERSION: string = JSON.parse(
@@ -60,22 +63,6 @@ export function noticeBand(page: Page): Locator {
     .filter({ has: page.getByText(/^bookvie was updated to /) })
     .filter({ has: page.getByRole('button', { name: 'Reload', exact: true }) })
     .first()
-}
-
-export type Answer = AppInfo | 'pass' | 'fail'
-
-/**
- * Answers every `app-info` request with what `answer()` returns at the time:
- * `'pass'` lets it reach the server, `'fail'` is a 500, a body is fulfilled.
- * Call before navigating.
- */
-export async function answerAppInfo(page: Page, answer: () => Answer): Promise<void> {
-  await page.route('**/api/views/app-info', (route: Route) => {
-    const body = answer()
-    if (body === 'pass') return route.continue()
-    if (body === 'fail') return route.fulfill({ status: 500, body: '' })
-    return route.fulfill({ json: body })
-  })
 }
 
 /** The window regains focus: views refetch (`queryClient.ts`). */
