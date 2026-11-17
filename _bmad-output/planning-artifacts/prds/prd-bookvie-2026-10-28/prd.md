@@ -2,7 +2,7 @@
 title: bookvie PRD
 status: final
 created: 2026-10-28
-updated: 2026-11-15
+updated: 2026-11-17
 inputs:
   - _bmad-output/brainstorming/brainstorm-personal-library-tracker-2026-10-27/brainstorm-intent.md
   - _bmad-output/planning-artifacts/ux-designs/ux-bookvie-2026-10-28/prd-deltas.md
@@ -65,6 +65,7 @@ Anyone other than the single user.
 - **Quick pace calculator**: takes a pages/day value and shows an estimated finish date.
 - **Measured pace**: total pages read in finished Readings, counted from each Reading's starting page and, after a resume at another page, from that page (pages skipped on a resume don't count), divided by the total days from their start dates to their finish dates. Both the start and the finish day count, so a same-day start and finish is 1 day. Back-filled Readings are excluded.
 - **Ownership**: *owned*, or *donated* once Donation ships (see addendum).
+- **Development server**: bookvie started in development mode, for building and testing bookvie. It keeps its own library and is marked "DEV" (FR-26). Anything else is the real app.
 - **Card note**: a piece of text (a quote or a note) plus the page or page range where the user found it, attached to a Book. It has one side only; it isn't a flash card.
 
 ## 4. Features
@@ -268,12 +269,31 @@ The user can restore bookvie from an export file.
   - Exporting and then restoring reproduces identical data.
   - This is the only way to import data into bookvie.
 
+### 4.10 Running bookvie *(Must)*
+These requirements serve the builder, and the AI agents who run commands for the builder, as much as the reader: a Development server must never be mistaken for the real app, or pointed at the real library.
+
+#### FR-26: Development and production stay apart
+A Development server keeps away from the user's real library and is plainly marked as development, so it can't be confused with the real app.
+- **Consequences:**
+  - **Separate by default:** without extra options, a Development server uses its own library and its own address. An explicitly chosen library or address still wins. Starting bookvie normally is unchanged.
+  - **Real library refused:** a Development server refuses to start on the user's real library, even when it's named through a link or a roundabout path. It says why and how to start instead, and it changes nothing.
+  - **Development is how the server started:** whatever delivered the page, the server alone decides whether a tab is development.
+  - **Marked in development only:** the tab title starts with "DEV", the header shows a "DEV" label (a word, not just a color), and the tab icon turns amber (§5 Look and feel). The real app shows none of these marks.
+
+#### FR-27: The version is visible
+The user can see which version of bookvie is running and which library it uses, and is told when an open tab is older than the app.
+- **Consequences:**
+  - **About this copy:** the Backup page shows the version and the library's folder under "Last export". On a Development server it also says so and shows the exact build (the source commit). The real app shows no build.
+  - **Update notice:** when the running app's version differs from the version an open tab was loaded with, the tab shows a quiet notice that bookvie was updated, with a Reload button. A rollback counts as a difference too. If the app can't be reached, for example while it restarts, there's no notice.
+  - The notice is announced once, never on every check. It's never a dialog and blocks nothing: the old tab keeps working until the user reloads it.
+
 ## 5. Cross-Cutting NFRs
 - **Local-first:** bookvie runs in a browser on one laptop or desktop. No account and no network connection are needed for any feature. There's no database server, and all data lives locally. A Book saved from any browser on this machine appears in every other browser.
 - **Display:** The UI is in English only. The minimum viewport is 1024px; below that the page scrolls horizontally, and there's no phone layout. The user can choose a light, dark, or system theme.
 - **Accessibility deviation (accepted):** The 1024px minimum width doesn't meet WCAG 2.2 SC 1.4.10 Reflow; at 200–400% zoom the page scrolls horizontally. Accepted because bookvie has a single user, runs on desktop only, and phone layouts are Won't (§6.3).
 - **Speed:** Catch-up (one page update) takes under 30 seconds and at most 2 interactions after opening the app.
-- **Data safety:** No action silently deletes data. Every destructive action needs confirmation. A save that fails is never silent: the UI says "Couldn't save. Your data wasn't changed." and keeps the user's input.
+- **Data safety:** No action silently deletes data. Every destructive action needs confirmation. A Development server never opens the real library (FR-26). A save that fails is never silent: the UI says "Couldn't save. Your data wasn't changed." and keeps the user's input.
+- **Look and feel:** bookvie has its own tab icon, drawn for bookvie: a small shelf of three book spines on a plank, readable at 16×16, in the accent sage, with a lighter fill on a dark tab strip. A Development server shows the same drawing in amber (FR-26).
 - **Tone:** No guilt mechanics. bookvie has no streaks, no "you missed a day" message, and no red failure states. There are no greetings, exclamation marks, or praise. The finish copy is "Finished *X*." ("Finished *X* again." for a re-read), and the finish moment is a single ~600ms spine fill that never replays.
 
 ## 6. MVP Scope
