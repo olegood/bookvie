@@ -6,7 +6,17 @@ All notable changes to bookvie are recorded here. The format follows
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+
+- bookvie has its own favicon in the browser tab (Epic 11).
+- Run a development copy with `bookvie --dev`: it keeps its own data folder and port, refuses the real library, and shows a DEV pill and an amber favicon (Epic 11).
+- See bookvie's version on the Backup page (Epic 11).
+- A tab that is older than the running app shows a notice to reload it (Epic 11).
+
+### Fixed
+
+- `bookvie --dev` refuses a case or Unicode variant of the real data folder even before it exists, and a second `--dev` from another checkout is refused instead of joining the running one.
+- The page itself is served with `Cache-Control: no-cache`, so a new version reaches open tabs.
 
 ## [1.1.0] - 2026-11-17
 
