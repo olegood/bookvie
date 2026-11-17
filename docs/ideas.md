@@ -106,7 +106,7 @@ Notes:
 
 ## Development vs production, and a visible version
 
-**Status:** new
+**Status:** planned (Epic 11, see [the plan](../_bmad-output/planning-artifacts/dev-prod-favicon-plan-2026-11-17.md))
 
 Make it obvious whether the running app is the development version or the one in real use ("production"), and show the app's version somewhere, so it's always clear which version is in use.
 
@@ -146,7 +146,7 @@ Notes:
 
 ## App favicon
 
-**Status:** new
+**Status:** planned (Epic 11, see [the plan](../_bmad-output/planning-artifacts/dev-prod-favicon-plan-2026-11-17.md))
 
 Give bookvie a favicon, so its tab and bookmark are easy to recognize among the others. Today `frontend/index.html` has no icon link and there is no `frontend/public/` folder, so the browser shows its generic page icon.
 
