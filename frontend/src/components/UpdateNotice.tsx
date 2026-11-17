@@ -1,7 +1,7 @@
 import { useEffect, useId } from 'react'
 import { useAppInfo } from '../api/views.ts'
 import { announce, isAnnouncing } from '../lib/announce.ts'
-import { noticeText, noticeVersion } from '../lib/updateNotice.ts'
+import { noticeText, noticeVersion, shouldAnnounce } from '../lib/updateNotice.ts'
 import Button from './Button.tsx'
 import styles from './UpdateNotice.module.css'
 
@@ -18,7 +18,7 @@ export default function UpdateNotice() {
   const sentenceId = useId()
   const shown = noticeVersion(__BOOKVIE_VERSION__, useAppInfo()?.version)
   useEffect(() => {
-    if (shown !== undefined && !isAnnouncing()) announce('status', noticeText(shown))
+    if (shouldAnnounce(shown, isAnnouncing())) announce('status', noticeText(shown))
   }, [shown])
   if (shown === undefined) return null
   return (

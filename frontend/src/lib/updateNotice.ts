@@ -12,6 +12,15 @@ export function noticeVersion(bundle: string, server: string | undefined): strin
   return server !== undefined && server !== bundle ? server : undefined
 }
 
+/**
+ * Whether the notice announces `shown` now: only when a notice shows and no
+ * other message is waiting for its tick (`announcing`), so it never replaces
+ * a message another part of the app has just announced.
+ */
+export function shouldAnnounce(shown: string | undefined, announcing: boolean): shown is string {
+  return shown !== undefined && !announcing
+}
+
 /** The notice's sentence, also what the status region announces. */
 export function noticeText(version: string): string {
   return `bookvie was updated to ${version}. Reload to use it.`

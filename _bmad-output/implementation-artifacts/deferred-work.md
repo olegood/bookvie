@@ -1114,3 +1114,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-11-4-tell-me-when-a-tab-is-older-than-the-app.md`
   summary: The e2e version literals flip meaning at the next version bump. `update-notice.spec.ts` uses `NEWER = '1.2.0'`, and the Story 11.3 fixtures (`about-this-copy*.spec.ts`) fulfil '1.1.0' and '1.2.0' as fixed strings. When `release.sh` sets 1.2.0, the "another version" leaves stop showing the notice (AC-3, AC-6 and the AC-2 witness fail) and the "same version" fixtures start showing it. Derive the differing versions from `BUNDLE_VERSION` (`e2e/update-notice.ts`) in Story 11.4's automate step. Medium.
   evidence: `frontend/e2e/update-notice.spec.ts:36-38`; `about-this-copy-automate.spec.ts:26-27`, `about-this-copy-dev.spec.ts:20,32`, `about-this-copy.spec.ts:110` (Blind Hunter, build-auto review of Story 11.4).
+
+## Deferred from: code review of spec-11-4-tell-me-when-a-tab-is-older-than-the-app (2026-11-17)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-11-4-tell-me-when-a-tab-is-older-than-the-app.md`
+  summary: Extends the build-auto entry above on the e2e version literals. They block a release, not only a later run: `scripts/release.sh` sets the version (step 3) and then runs `npm run check` (step 4), so `release.sh 1.2.0` stops on AC-3, AC-6, the AC-2 witness and the save-collision leaf unless `--skip-check`. The review also adds one more literal: `about-this-copy-automate.spec.ts:152` removes `noticeText('1.2.0')`. Fix it in Story 11.4's automate step, before any release. Medium.
+  evidence: `scripts/release.sh:8-9,115-129`; `frontend/e2e/update-notice.spec.ts:36`; `frontend/e2e/about-this-copy-automate.spec.ts:152` (Blind Hunter and Verification Gap, code review of Story 11.4).

@@ -3,7 +3,7 @@ title: 'Story 11.4: Tell me when a tab is older than the app'
 type: 'feature'
 created: '2026-11-17'
 baseline_revision: '1795079f6a1d81c4dd7a5ed87875c574afc387b2'
-status: 'in-review'
+status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -128,6 +128,31 @@ deferred:
 - Given forced colors, then the band's bottom border is `CanvasText` and Reload has system button colors (AC-9).
 - Given the README, then Updating names the notice and Reload and no "hard-reload" remains (AC-10).
 - Given the existing e2e suite, when `npm run check` runs, then it passes with the 10 story leaves un-skipped (app-shell/shell header checks unchanged).
+
+### Review Findings
+
+Code review 2026-11-17 (`bmad-code-review`, new session; layers: Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor, Spine Check; diff `1795079..b3af21d`).
+
+- [x] [Review][Patch] Nothing tests the `!isAnnouncing()` guard (decision resolved 2026-11-17: extract the decision into a pure helper in `lib/updateNotice.ts`, called by `UpdateNotice`, with unit tests) — the save-collision leaf passes with `&& !isAnnouncing()` deleted, because `sendIntent` awaits the invalidation before the caller announces [frontend/src/components/UpdateNotice.tsx:21] — fixed: `shouldAnnounce(shown, announcing)` (a `shown is string` predicate) in `lib/updateNotice.ts`, called by `UpdateNotice`; 3 unit cases in `updateNotice.test.ts`. Mutation probe: dropping `&& !announcing` fails 1 of 8 cases; restored, 8 pass.
+- [x] [Review][Patch] `isAnnouncing()`'s doc comment says the notice avoids replacing "a message an intent has just announced"; `pending` is set by every `announce` (search and filter counts, Stats totals, panels), so the guard yields to any waiting message [frontend/src/lib/announce.ts:93]
+- [x] [Review][Patch] Stale CSS comment: "The active indicator sits flush on the header's bottom hairline." — the hairline now belongs to `.bar` [frontend/src/components/AppShell.module.css:91]
+- [x] [Review][Defer] The deferred e2e version literals (`NEWER = '1.2.0'`, the 11.3 fixtures, and now `noticeText('1.2.0')` in `about-this-copy-automate.spec.ts:152`) don't only fail "after the bump": `scripts/release.sh` sets the version (step 3) and then runs `npm run check` (step 4), so `release.sh 1.2.0` stops on AC-3, AC-6, the AC-2 witness and the save leaf unless `--skip-check` [frontend/e2e/update-notice.spec.ts:36] — deferred: pre-existing (ATDD constants committed before this build's baseline); already in `deferred-work.md` for `bmad-testarch-automate`, which runs before any release; this adds the release-blocking effect to that entry.
+
+- Full check after the patches, 2026-11-17: `npm run check` exit 0 — pytest 1605 passed, unit 387 passed (0 skipped), e2e 774 passed, smoke ok.
+
+**Rejected:**
+- `low` (Edge 1, Acceptance 3) A version first found while another message is pending is shown but never announced — Boundaries accept it ("the notice skips its announcement so it never clobbers the save's message"; EXPERIENCE.md accepts a lost notice announcement); the band stays and Reload is a Tab stop. AC-6's wording vs the Boundaries is a spec edit, out of scope here.
+- `low` (Edge 2) A notice announcement still pending when `shown` changes again (1.2.0 → 1.3.0 or hide) within the same 100 ms tick reads the stale sentence — needs two server changes within one tick; a cleanup or own-text tracking adds state for an unrealistic case.
+- `low` (Acceptance 1, Blind 7) The two review-added leaves exceed the "un-skip only" task, the last AC says "10 leaves", the Spec Change Log is empty — the fix is a spec edit; the Auto Run Result already names both leaves.
+- `low` (Acceptance 2) Boundaries say the bar is 64px; it is 60px (`--space-topbar-height`) — the code preserves the old height ("exactly as before" holds); the fix is a spec edit.
+- `low` (Blind 4) README "then shows a notice" — app-info refetches on window focus (`refetchOnWindowFocus: true`), and after restarting `bookvie` in a terminal Oleg returns to the tab, which focuses it; no realistic path where the promise misleads.
+- `low` (Blind 5) Tabs opened on a pre-11.4 bundle have no notice on the next update — a one-time case; a README note for it would be stale after one release.
+- `low` (Blind 6) `version.test.mjs` checks four copies but `release.sh` also writes the lockfiles — AR34 names the four copies; the lockfiles are written by `npm version`/`uv lock` in the same script, not by hand.
+- `low` (Blind 8, color constant) The new top-bar leaf compares `surface-inset` against `BUTTON_SECONDARY` — DESIGN.md defines `button-secondary`'s fill as `surface-inset`, so the values can't drift apart; naming only.
+- `false` (Blind 8, skip link and indicator) The restructured header's skip link and nav indicator are unchecked — `app-shell.spec.ts:338` "[P2] AC-2 Skip to content stays off-screen until it takes focus" checks the skip link's off-screen box and focus reveal against the new structure; the indicator's `margin-bottom: calc(-1 * var(--hairline))` is relative to its flex container, which is `.bar` with the old `.header` rules unchanged.
+- `low` (Blind 8, light only; Blind 10) No dark-theme assertion on the band or bar — the colors are tokens switched by `tokens.css`, which `app-shell.spec.ts` compares to DESIGN.md; more theme coverage belongs to `bmad-testarch-automate`.
+- `low` (Blind 9) The edited 11.3 assertion removes the notice sentence with `String.replace` (first match only) — `announce` clears both regions before setting text, so the sentence can't appear twice; any other text still fails the leaf.
+- `low` (Spine Check) AD-7, AD-8, Capability map FR-27 row and preamble, Seed `lib/`/components/`globals.d.ts` still read as planned — spine drift, already deferred by the build (four "Spine drift" entries in `deferred-work.md`); no AD is broken. Reconciled before the next epic (AGENTS.md "Architecture spine").
 
 ## Spec Change Log
 

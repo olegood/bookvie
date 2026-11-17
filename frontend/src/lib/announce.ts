@@ -91,7 +91,8 @@ export function clearAnnouncements(): void {
 
 /**
  * Whether a message is waiting for its tick. The update notice checks this so
- * it never replaces a message an intent has just announced.
+ * it never replaces any message still waiting: an intent's, a count's or a
+ * panel's.
  */
 export function isAnnouncing(): boolean {
   return pending !== undefined
