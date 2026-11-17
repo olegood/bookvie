@@ -909,7 +909,7 @@ action_items:
       (Backup has one h2). Changes: `_bmad-output/planning-artifacts/ux-designs/ux-bookvie-2026-10-28/EXPERIENCE.md`,
       `_bmad-output/planning-artifacts/epics.md`. Due: before Epic 12."
     owner: "Sally (UX)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-11-retro-2026-11-17.md"
   - id: "epic-11-retro-item-80-second-dev-server-from-another-checkout"
     epic: 11

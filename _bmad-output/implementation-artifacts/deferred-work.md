@@ -1107,6 +1107,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-11-3-show-the-version-on-the-backup-page.md`
   summary: EXPERIENCE.md's About this copy row says the card's `h2` is "like the page's other headings below the `h1`", but Backup has no other `h2`: Export and Restore are `aria-label`led sections with no visible heading. AC-5 of Story 11.3 ("the headings run `h1` Backup, `h2` About this copy") confirms the single `h2` is intended, so only the UX wording is off. Fix the row's wording in the next UX pass. Low.
   evidence: `_bmad-output/planning-artifacts/ux-designs/ux-bookvie-2026-10-28/EXPERIENCE.md:154`; `frontend/src/pages/BackupPage.tsx` (Blind Hunter, code review of Story 11.3).
+  resolved: Epic 11 retro item 79 (2026-11-17): the About this copy row in EXPERIENCE.md now calls the heading an `h2` under the `h1` "Backup", with no count of other headings.
 
 ## Deferred from: build-auto review of spec-11-4-tell-me-when-a-tab-is-older-than-the-app (2026-11-17)
 
