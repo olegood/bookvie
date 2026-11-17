@@ -42,7 +42,7 @@ function frameOf(card: Locator): Promise<string> {
 }
 
 test.describe('Story 11.3 Show the version on the Backup page (ATDD)', () => {
-  test.skip('[P0] AC-1 on a production server Backup ends with a third surface card "About this copy" giving the version and the data folder from app-info on two lines, with no commit and no Development server', async ({
+  test('[P0] AC-1 on a production server Backup ends with a third surface card "About this copy" giving the version and the data folder from app-info on two lines, with no commit and no Development server', async ({
     page,
     server,
   }) => {
@@ -103,7 +103,7 @@ test.describe('Story 11.3 Show the version on the Backup page (ATDD)', () => {
     await expect(card).not.toContainText('Development server')
   })
 
-  test.skip('[P1] AC-3 a data folder outside the home folder shows as the full absolute path, wrapping anywhere inside the card and never cut short', async ({
+  test('[P1] AC-3 a data folder outside the home folder shows as the full absolute path, wrapping anywhere inside the card and never cut short', async ({
     page,
     server,
   }) => {
@@ -121,14 +121,15 @@ test.describe('Story 11.3 Show the version on the Backup page (ATDD)', () => {
     const wrap = await wrapOf(folder)
     expect(wrap.lines).toBeGreaterThan(1)
     expect(wrap.overflow).toBe(0)
-    // Inside the card, which keeps its width.
+    // Inside the card, which keeps Export's width (max-width 560px is the content box).
     const cardBox = (await card.boundingBox())!
     const folderBox = (await folder.boundingBox())!
+    const exportBox = (await page.getByRole('main').getByRole('region', { name: 'Export', exact: true }).boundingBox())!
     expect(folderBox.x + folderBox.width).toBeLessThanOrEqual(cardBox.x + cardBox.width)
-    expect(cardBox.width).toBeLessThanOrEqual(560)
+    expect(cardBox.width).toBe(exportBox.width)
   })
 
-  test.skip('[P1] AC-4 the card is left out silently while app-info is pending or failing, Export and Restore work as before, and a failed refetch after a success keeps the card as it was', async ({
+  test('[P1] AC-4 the card is left out silently while app-info is pending or failing, Export and Restore work as before, and a failed refetch after a success keeps the card as it was', async ({
     page,
     seededServer,
   }) => {
@@ -185,7 +186,7 @@ test.describe('Story 11.3 Show the version on the Backup page (ATDD)', () => {
     await chooser
   })
 
-  test.skip('[P1] AC-5 the card is plain read-only text with no copy button and no Tab stop, the headings run h1 Backup then h2 About this copy, and axe passes in light and dark', async ({
+  test('[P1] AC-5 the card is plain read-only text with no copy button and no Tab stop, the headings run h1 Backup then h2 About this copy, and axe passes in light and dark', async ({
     page,
     server,
   }) => {
@@ -216,7 +217,7 @@ test.describe('Story 11.3 Show the version on the Backup page (ATDD)', () => {
     }
   })
 
-  test.skip('[P1] AC-6 with the card shown, Backup keeps its Export and Restore cards first, its focused h1, its title and its silent live regions', async ({
+  test('[P1] AC-6 with the card shown, Backup keeps its Export and Restore cards first, its focused h1, its title and its silent live regions', async ({
     page,
     seededServer,
   }) => {

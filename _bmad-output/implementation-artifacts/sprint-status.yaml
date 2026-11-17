@@ -115,7 +115,7 @@ development_status:
   epic-11: in-progress
   11-1-a-favicon-for-bookvie: done
   11-2-keep-development-apart-from-the-real-library: done
-  11-3-show-the-version-on-the-backup-page: backlog
+  11-3-show-the-version-on-the-backup-page: review
   11-4-tell-me-when-a-tab-is-older-than-the-app: backlog
   epic-11-retrospective: optional
 action_items:

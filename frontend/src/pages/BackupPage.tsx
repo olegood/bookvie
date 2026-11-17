@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { useEffect, useRef, useState, type ChangeEvent } from 'react'
+import { useEffect, useId, useRef, useState, type ChangeEvent } from 'react'
 import { useNavigate } from 'react-router'
 import {
   COULDNT_EXPORT_MESSAGE,
@@ -9,10 +9,12 @@ import {
   restore,
   useBackupView,
 } from '../api/index.ts'
+import { useAppInfo } from '../api/views.ts'
 import Button from '../components/Button.tsx'
 import ConfirmDialog from '../components/ConfirmDialog.tsx'
 import FailureMessage from '../components/FailureMessage.tsx'
 import PageHeading from '../components/PageHeading.tsx'
+import { folderLine, versionLine } from '../lib/aboutThisCopy.ts'
 import { announce, clearAnnouncements } from '../lib/announce.ts'
 import { COULDNT_LOAD } from '../lib/copy.ts'
 import { usePageTitle } from '../lib/page.ts'
@@ -35,6 +37,9 @@ const RESTORED = 'Restored.'
 export default function BackupPage() {
   usePageTitle('Backup')
   const view = useBackupView()
+  // About this copy: shown only while app-info has data; a failed refetch keeps it.
+  const appInfo = useAppInfo()
+  const aboutId = useId()
   const now = useNow()
   const queryClient = useQueryClient()
   const [busy, setBusy] = useState(false)
@@ -179,6 +184,17 @@ export default function BackupPage() {
         <p className={styles.text}>{RESTORE_EXPLANATION}</p>
         {restoreFailure !== null && <FailureMessage>{restoreFailure}</FailureMessage>}
       </section>
+      {appInfo !== undefined && (
+        <section className={styles.card} aria-labelledby={aboutId}>
+          <h2 id={aboutId} className={styles.aboutHeading}>
+            About this copy
+          </h2>
+          <div className={styles.aboutLines}>
+            <p className={`${styles.text} ${styles.aboutLine}`}>{versionLine(appInfo)}</p>
+            <p className={`${styles.text} ${styles.aboutLine}`}>{folderLine(appInfo)}</p>
+          </div>
+        </section>
+      )}
       {picked !== null && (
         <ConfirmDialog
           heading={CONFIRM_HEADING}

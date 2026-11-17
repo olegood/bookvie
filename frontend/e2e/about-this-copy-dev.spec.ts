@@ -13,7 +13,7 @@ const DOT = ' · '
 test.use({ serverDev: true })
 
 test.describe('Story 11.3 Show the version on the Backup page, on a dev server (ATDD)', () => {
-  test.skip('[P0] AC-2 on a dev server line 1 reads "bookvie 1.1.0 (a1b2c3d) · Development server", or without brackets when commit is null, and line 2 gives the dev data folder', async ({
+  test('[P0] AC-2 on a dev server line 1 reads "bookvie 1.1.0 (a1b2c3d) · Development server", or without brackets when commit is null, and line 2 gives the dev data folder', async ({
     page,
     server,
   }) => {
