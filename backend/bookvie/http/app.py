@@ -211,7 +211,7 @@ def create_app(
         index = static_dir / "index.html"
         if not index.is_file():
             return PlainTextResponse(_NOT_BUILT, status_code=404)
-        # Top-level files from the build (e.g. favicon) are served as is.
+        # Top-level files from the build (e.g. robots.txt) are served as is.
         if path:
             candidate = (static_dir / path).resolve()
             if candidate.is_file() and candidate.is_relative_to(static_dir):

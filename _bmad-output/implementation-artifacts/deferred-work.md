@@ -1048,3 +1048,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-11-1-a-favicon-for-bookvie.md`
   summary: Spine drift (Consistency Conventions → Testing row, Structural Seed "Build and install"), reconciled before the next epic. The spine describes the install smoke test as build, `uv tool install`, start, load `/`, proving the SPA is in the installed tool. It now also fetches `/favicon.svg` from the installed wheel and checks 200, `image/svg+xml` and the built file's bytes. An extension, not a contradiction. Low.
   evidence: `scripts/smoke.mjs` (the `/favicon.svg` block after the SPA routes) (spine check, build-auto review of Story 11.1).
+
+## Deferred from: code review of spec-11-1-a-favicon-for-bookvie (2026-11-17)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-11-1-a-favicon-for-bookvie.md`
+  summary: Spine drift (AD-16, Capability → Architecture Map), reconciled before the next epic. The map's preamble still reads "Every row below is built, except FR-26 and FR-27 (Epic 11, planned)", and the FR-26 row lists `GET /favicon.svg` in `http/` and `frontend/public/` favicons, which Story 11.1 built. The rest of FR-26 (dev defaults, `app_info` `mode`, the Vite proxy, the DEV pill, the title prefix) is Stories 11.2 to 11.4's. Neither of the build's two spine drift entries names the map. Low.
+  evidence: ARCHITECTURE-SPINE.md:399 and :415; `backend/bookvie/http/app.py` `favicon` route; `frontend/public/favicon.svg` (spine check, code review of Story 11.1).

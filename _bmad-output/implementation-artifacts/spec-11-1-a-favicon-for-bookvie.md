@@ -2,7 +2,7 @@
 title: 'Story 11.1: A favicon for bookvie'
 type: 'feature'
 created: '2026-11-17'
-status: 'in-review'
+status: 'done'
 baseline_revision: '484b9050610f16ccfe05523d0e918b4fa3b128a2'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -82,6 +82,33 @@ deferred:
 - Given Chromium's scheme opposite to bookvie's Theme, when `/favicon.svg` is opened, then the fill follows Chromium's scheme (AC-5 leaf green); the by-hand tab check is recorded in this spec.
 - Given the existing suite, when `npm run check` runs, then every spec passes with none edited (AC-6).
 
+### Review Findings
+
+Code review (`bmad-code-review`, new session, 2026-11-17) of `484b905..ff5466d`; layers: Blind Hunter, Edge Case Hunter, Verification Gap (no gaps), Acceptance Auditor (no AC violations), Spine Check (no AD broken, drift only).
+
+- [x] [Review][Decision] AC-5's by-hand tab check is still "pending" — AC-5 says Oleg looks at the tab once with Chrome's Mode set opposite to the OS and the result is noted in the story; the spec's own Task "record AC-5's by-hand check" is open. The e2e leaf proves only the mechanism. Either Oleg does the check now and the result is recorded, or the story closes with it explicitly pending (Blind Hunter) [_bmad-output/implementation-artifacts/spec-11-1-a-favicon-for-bookvie.md, Verification] — resolved: Oleg did the check in this review (Chrome Dark, macOS Light, light sage icon matching the tab strip); recorded under Verification
+- [x] [Review][Patch] The catch-all's comment "Top-level files from the build (e.g. favicon) are served as is" names the one top-level file that no longer reaches it: `/favicon.svg` has its own route, and `/favicon.ico` isn't built, so it gets `index.html` (Blind Hunter + Edge Case Hunter + Acceptance Auditor) [backend/bookvie/http/app.py:214]
+- [x] [Review][Defer] Spine drift (AD-16, Capability → Architecture Map): the map's preamble still reads "Every row below is built, except FR-26 and FR-27 (Epic 11, planned)" and the FR-26 row lists `GET /favicon.svg` in `http/` and `frontend/public/` favicons, which Story 11.1 built; neither drift entry from the build names the map (Spine Check) [ARCHITECTURE-SPINE.md:399, :415] — deferred: spine drift, reconciled before the next epic
+- [x] [Review][Defer] Spine drift (AD-16 Favicon bullet, Seed `public/`; Testing row and Seed "Build and install" smoke description) (Spine Check) [ARCHITECTURE-SPINE.md:230, :297, :346, :387] — deferred: already recorded by the build's review in `deferred-work.md`; no new entry
+
+- AC-5 by hand (this session): Oleg ran this story's build from the worktree on a spare port with a throwaway data folder (the installed `bookvie` on :8765 predates the story and has no icon); Chrome Dark, macOS Light, the icon is light sage and matches the tab strip.
+- Full check after the patch (2026-11-17, this review session): `npm run check` exit 0 — pytest 1578 passed, unit 369 passed, e2e 729 passed, smoke ok.
+
+**Rejected:**
+- `low` The Design Notes still say `no-cache` "keeps revalidation cheap: `FileResponse` already sends `ETag` and `Last-Modified`", the claim the build's review retracted in `app.py` (Starlette's `FileResponse` never answers 304, re-checked in this review) (Blind Hunter + Edge Case Hunter + Verification Gap) — the fix edits the spec under review; the patched code comment is accurate.
+- `low` The Auto Run Result counts "3 low" patched rows; the Triage Log has four `[patch]` rows (Blind Hunter) — the fix edits the spec under review; both fixes are listed.
+- `low` The Auto Run Result's "Files changed" omits `epic-11-context.md`, `sprint-status.yaml` and the spec (Blind Hunter) — the fix edits the spec under review.
+- `low` The I/O matrix says "plain 404"; the route answers FastAPI's JSON 404 (Blind Hunter + Acceptance Auditor) — the row's point (never `index.html`, never `image/svg+xml`) holds and is tested; the fix edits the spec under review.
+- `low` `test_top_level_build_file_is_served` requests `/favicon.svg`, which the new route now answers, so it no longer exercises the catch-all (Blind Hunter) — the catch-all's top-level-file rule stays covered by the AC-3 test's `robots.txt` tail; the build's review rejected the same.
+- `false` The smoke error message blames the content type when the status is wrong (Blind Hunter) — it prints the status first ("answered 404 as application/json, …"), so the failure is visible.
+- `low` The route skips the catch-all's `resolve()`/`is_relative_to` containment, so a symlinked `static/favicon.svg` would be followed (Blind Hunter + Edge Case Hunter) — `static/` is Vite build output only; the fix adds a guard; Story 11.2's file switch is not built yet.
+- `low` The AC-4 leaf checks `smoke.mjs` by grepping its source (Blind Hunter) — the real evidence is `check:smoke` running the block inside `npm run check` (Verification Gap confirmed).
+- `false` Smoke doesn't assert `Cache-Control: no-cache` on the installed wheel (Blind Hunter) — the wheel ships the same `app.py`; the header is pinned by the AC-3 pytest and end to end on the production server by the AC-6 leaf.
+- `low` `/favicon.svg/` and `/FAVICON.SVG` reach the catch-all and get the icon without `no-cache` (Edge Case Hunter) — no client requests them; `index.html` links exactly `/favicon.svg`; the fix adds a branch.
+- `low` The file vanishing between `is_file()` and `FileResponse`'s stat gives 500 (Edge Case Hunter) — only a rebuild racing a request at that instant; the catch-all has the same race; the fix adds a try.
+- `low` Smoke compares UTF-8-decoded text, not raw bytes (Edge Case Hunter + Acceptance Auditor) — the file is ASCII, so the decode is lossless; the AC-4 leaf compares bytes.
+- `false` `epic-11-context.md` is outside the story's Tasks (Acceptance Auditor) — it is the per-epic context file every epic's first story build adds (as in 10.1, 9.1, 8.1).
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -137,7 +164,7 @@ Golden file (write the fill in `<style>` so the dark override needs no `!importa
 
 **Manual checks (if no CLI):**
 - AC-5: with Chrome's Mode set opposite to the OS, the tab's icon fill matches the tab strip's scheme. Oleg's check; record the result here.
-  - Result: **pending, Oleg's by-hand check.** The build can't look at Chrome's tab strip. The mechanism it relies on is proven by the AC-5 e2e leaf (the served `/favicon.svg` computes `#93B597` under Chromium's dark scheme and `#557059` under light, whatever bookvie's stored Theme).
+  - Result: **pass, Oleg's check, 2026-11-17 (code review).** Chrome Mode Dark, macOS Light, this story's build (`ff5466d`) served from the worktree on a spare port with a throwaway data folder: the tab icon is light sage (`#93B597`) and matches the dark tab strip. The AC-5 e2e leaf proves the mechanism (the served `/favicon.svg` computes `#93B597` under Chromium's dark scheme and `#557059` under light, whatever bookvie's stored Theme).
 
 ## Auto Run Result
 
