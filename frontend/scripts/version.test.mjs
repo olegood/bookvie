@@ -54,7 +54,7 @@ function sourceFiles(predicate) {
 
 const escape = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
-test.skip('[P0] AC-1 the bundle bakes frontend/package.json’s version through a Vite define declared for tsc, and the four version copies agree', async () => {
+test('[P0] AC-1 the bundle bakes frontend/package.json’s version through a Vite define declared for tsc, and the four version copies agree', async () => {
   const version = packageVersion(join(frontend, 'package.json'))
   const keys = await bakedVersionKeys(version)
 

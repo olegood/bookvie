@@ -1,5 +1,13 @@
+import { readFileSync } from 'node:fs'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
+
+// The bundle bakes its own version from package.json (AR34), read here so the
+// digits live only in the package file. The update notice compares it with
+// app-info's version.
+const { version } = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as {
+  version: string
+}
 
 // The SPA is built into the backend package so the installed tool can serve it.
 // In dev, Vite serves the SPA and proxies server paths to `bookvie --dev`,
@@ -11,6 +19,9 @@ const backend = { target: 'http://127.0.0.1:8766', changeOrigin: true }
 
 export default defineConfig({
   plugins: [react()],
+  define: {
+    __BOOKVIE_VERSION__: JSON.stringify(version),
+  },
   build: {
     outDir: '../backend/bookvie/http/static',
     emptyOutDir: true,

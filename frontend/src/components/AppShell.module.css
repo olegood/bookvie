@@ -1,4 +1,6 @@
-.header {
+/* The top bar. The header itself is a plain wrapper: the update notice, when
+   shown, follows the bar inside it. */
+.bar {
   position: relative;
   box-sizing: border-box;
   display: flex;

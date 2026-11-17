@@ -5,6 +5,7 @@ import {
   adoptRegions,
   announce,
   clearAnnouncements,
+  isAnnouncing,
   regionHost,
   registerRegion,
   releaseRegions,
@@ -69,6 +70,18 @@ describe('announce', () => {
     mock.timers.tick(ANNOUNCE_DELAY_MS)
     assert.equal(status.textContent, '')
     assert.equal(alert.textContent, 'Second.')
+  })
+
+  it('isAnnouncing is true only while a message waits for its tick', () => {
+    assert.equal(isAnnouncing(), false)
+    announce('status', 'Saved.')
+    assert.equal(isAnnouncing(), true)
+    mock.timers.tick(ANNOUNCE_DELAY_MS)
+    assert.equal(isAnnouncing(), false)
+
+    announce('status', 'Saved.')
+    clearAnnouncements()
+    assert.equal(isAnnouncing(), false)
   })
 })
 

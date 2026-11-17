@@ -53,7 +53,7 @@ function exportButton(page: Page) {
 }
 
 test.describe('Story 11.4 Tell me when a tab is older than the app (ATDD)', () => {
-  test.skip('[P0] AC-2 a tab whose bundle version equals app-info.version shows no notice and announces nothing on any page, at load and after a refetch', async ({
+  test('[P0] AC-2 a tab whose bundle version equals app-info.version shows no notice and announces nothing on any page, at load and after a refetch', async ({
     page,
     seededServer,
   }) => {
@@ -96,7 +96,7 @@ test.describe('Story 11.4 Tell me when a tab is older than the app (ATDD)', () =
     }
   })
 
-  test.skip('[P0] AC-3 a refetch that finds another version shows a full-width surface band under the top nav, "bookvie was updated to X. Reload to use it." then a compact Reload, pushing the page down', async ({
+  test('[P0] AC-3 a refetch that finds another version shows a full-width surface band under the top nav, "bookvie was updated to X. Reload to use it." then a compact Reload, pushing the page down', async ({
     page,
     server,
   }) => {
@@ -169,7 +169,7 @@ test.describe('Story 11.4 Tell me when a tab is older than the app (ATDD)', () =
     await expect(reloadButton(page)).toBeVisible()
   })
 
-  test.skip('[P1] AC-4 the notice stays on every route until the tab reloads, is no dialog, alert or live region, and saving a page or a card note still works', async ({
+  test('[P1] AC-4 the notice stays on every route until the tab reloads, is no dialog, alert or live region, and saving a page or a card note still works', async ({
     page,
     seededServer,
   }) => {
@@ -230,7 +230,7 @@ test.describe('Story 11.4 Tell me when a tab is older than the app (ATDD)', () =
     await expect(sentence).toBeVisible()
   })
 
-  test.skip('[P0] AC-5 Reload reloads the page at once, without asking, by click, Enter or Space', async ({
+  test('[P0] AC-5 Reload reloads the page at once, without asking, by click, Enter or Space', async ({
     page,
     server,
   }) => {
@@ -265,7 +265,7 @@ test.describe('Story 11.4 Tell me when a tab is older than the app (ATDD)', () =
     expect(dialogs).toEqual([])
   })
 
-  test.skip('[P0] AC-6 the status region announces the notice once when it appears, not again for the same version, once more for a new version, and the bundle’s own version hides it', async ({
+  test('[P0] AC-6 the status region announces the notice once when it appears, not again for the same version, once more for a new version, and the bundle’s own version hides it', async ({
     page,
     server,
   }) => {
@@ -313,7 +313,7 @@ test.describe('Story 11.4 Tell me when a tab is older than the app (ATDD)', () =
     await expect(anyNoticeSentence(page)).toHaveCount(0)
   })
 
-  test.skip('[P1] AC-7 a failed app-info refetch leaves a shown notice showing, and with no notice shows none and complains nowhere', async ({
+  test('[P1] AC-7 a failed app-info refetch leaves a shown notice showing, and with no notice shows none and complains nowhere', async ({
     page,
     server,
   }) => {
@@ -365,7 +365,7 @@ test.describe('Story 11.4 Tell me when a tab is older than the app (ATDD)', () =
     expect(await liveRegionText(page)).toBe('')
   })
 
-  test.skip('[P1] AC-8 Tab reaches Reload after the theme toggle and before the page, Skip to content skips it, and the notice sits in the header after the top bar', async ({
+  test('[P1] AC-8 Tab reaches Reload after the theme toggle and before the page, Skip to content skips it, and the notice sits in the header after the top bar', async ({
     page,
     server,
   }) => {
@@ -413,7 +413,7 @@ test.describe('Story 11.4 Tell me when a tab is older than the app (ATDD)', () =
     expect(order).toEqual({ inHeader: true, afterNav: true, afterTheme: true, inNav: false })
   })
 
-  test.skip('[P2] AC-9 under forced colors the notice keeps a CanvasText bottom border and Reload takes the system button colors', async ({
+  test('[P2] AC-9 under forced colors the notice keeps a CanvasText bottom border and Reload takes the system button colors', async ({
     page,
     server,
   }) => {
@@ -438,7 +438,48 @@ test.describe('Story 11.4 Tell me when a tab is older than the app (ATDD)', () =
     }
   })
 
-  test.skip('[P2] AC-10 the README’s Updating line says open tabs show a notice with Reload, not to hard-reload them', () => {
+  test('[P1] AC-6 a save whose refetch first finds a new version keeps the save’s announcement and shows the notice', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer(mainAt(150))
+    const seen = watchAppInfo(page)
+    let answer: Answer = 'pass'
+    await answerAppInfo(page, () => answer)
+    await page.goto(server.url)
+    const field = mainBookCard(page).getByRole('spinbutton', { name: 'Page', exact: true })
+    await expect(field).toBeVisible()
+    await expect.poll(() => seen.length).toBeGreaterThan(0)
+
+    // The intent's invalidation refetches app-info, which is the first to find another version.
+    answer = productionInfo(NEWER)
+    await field.fill('212')
+    await mainBookCard(page).getByRole('button', { name: 'Update', exact: true }).click()
+    await expect(noticeSentence(page, NEWER)).toBeVisible()
+    await afterAnnounceDelay(page)
+    await expect(page.getByRole('status')).toHaveText('Page 212 of 330, 64%.')
+  })
+
+  test('[P1] AC-2 with no notice the top bar is unchanged: topbar height (60px), surface-inset, 1px line hairline', async ({
+    page,
+    server,
+  }) => {
+    await page.emulateMedia({ colorScheme: 'light' })
+    await page.goto(`${server.url}/backup`)
+    await expect(exportButton(page)).toBeVisible()
+    const bar = mainNav(page).locator('xpath=..')
+    await expect(bar).toHaveCSS('height', '60px')
+    await expect(bar).toHaveCSS('background-color', BUTTON_SECONDARY)
+    await expect(bar).toHaveCSS('border-bottom-width', '1px')
+    await expect(bar).toHaveCSS('border-bottom-style', 'solid')
+    await expect(bar).toHaveCSS('border-bottom-color', LINE)
+    await expect(reloadButton(page)).toHaveCount(0)
+    const barBox = (await bar.boundingBox())!
+    const bannerBox = (await page.getByRole('banner').boundingBox())!
+    expect(bannerBox.height).toBe(barBox.height)
+  })
+
+  test('[P2] AC-10 the README’s Updating line says open tabs show a notice with Reload, not to hard-reload them', () => {
     const readme = readText(README)
     const updating = readme.split(/\n[ \t]*\n/).find((block) => block.startsWith('**Updating:**')) ?? ''
 

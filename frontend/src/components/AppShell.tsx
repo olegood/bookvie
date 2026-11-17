@@ -4,14 +4,17 @@ import { NavLink, Outlet } from 'react-router'
 import { useAppInfo } from '../api/views.ts'
 import { regionHost, registerRegion } from '../lib/announce.ts'
 import ThemeToggle from './ThemeToggle.tsx'
+import UpdateNotice from './UpdateNotice.tsx'
 import styles from './AppShell.module.css'
 
 /**
- * The frame every page renders in: header (skip link, wordmark, nav, theme
- * toggle), `main`, and the page's two live regions. The regions are portalled
- * into one host element outside React's tree (see `regionHost`), so an open
- * modal side panel or dialog can move them inside itself, where they are not
- * inert, and back to the body when it closes.
+ * The frame every page renders in: header (the top bar with skip link,
+ * wordmark, nav and theme toggle, then the update notice when this tab's
+ * bundle is not the server's version), `main`, and the page's two live
+ * regions. The regions are portalled into one host element outside React's
+ * tree (see `regionHost`), so an open modal side panel or dialog can move
+ * them inside itself, where they are not inert, and back to the body when it
+ * closes.
  *
  * On a server started with `--dev` (app-info says so), the wordmark reads
  * "bookvie DEV". Until app-info loads, or if it never does, the shell looks
@@ -27,52 +30,55 @@ export default function AppShell({ children }: { children?: ReactNode }) {
   }
   return (
     <>
-      <header className={styles.header}>
-        <a href="#main" className={styles.skip} onClick={skipToContent}>
-          Skip to content
-        </a>
-        <span className={styles.wordmark}>
-          <span className={styles.mark} aria-hidden="true" />
-          bookvie
-          {dev && (
-            <>
-              {' '}
-              <span className={styles.devPill}>DEV</span>
-            </>
-          )}
-        </span>
-        <nav className={styles.nav} aria-label="Main">
-          <ul className={styles.items}>
-            <li className={styles.item}>
-              <NavLink to="/" end className={styles.link}>
-                Home
-              </NavLink>
-            </li>
-            <li className={styles.item}>
-              <NavLink to="/catalog" className={styles.link}>
-                Catalog
-              </NavLink>
-            </li>
-            <li className={styles.item}>
-              <NavLink to="/stats" className={styles.link}>
-                Stats
-              </NavLink>
-            </li>
-            <li className={styles.item}>
-              <NavLink to="/card-notes" className={styles.link}>
-                Card notes
-              </NavLink>
-            </li>
-            <li className={styles.item}>
-              <NavLink to="/backup" className={styles.link}>
-                Backup
-              </NavLink>
-            </li>
-          </ul>
-        </nav>
-        <div className={styles.end}>
-          <ThemeToggle />
+      <header>
+        <div className={styles.bar}>
+          <a href="#main" className={styles.skip} onClick={skipToContent}>
+            Skip to content
+          </a>
+          <span className={styles.wordmark}>
+            <span className={styles.mark} aria-hidden="true" />
+            bookvie
+            {dev && (
+              <>
+                {' '}
+                <span className={styles.devPill}>DEV</span>
+              </>
+            )}
+          </span>
+          <nav className={styles.nav} aria-label="Main">
+            <ul className={styles.items}>
+              <li className={styles.item}>
+                <NavLink to="/" end className={styles.link}>
+                  Home
+                </NavLink>
+              </li>
+              <li className={styles.item}>
+                <NavLink to="/catalog" className={styles.link}>
+                  Catalog
+                </NavLink>
+              </li>
+              <li className={styles.item}>
+                <NavLink to="/stats" className={styles.link}>
+                  Stats
+                </NavLink>
+              </li>
+              <li className={styles.item}>
+                <NavLink to="/card-notes" className={styles.link}>
+                  Card notes
+                </NavLink>
+              </li>
+              <li className={styles.item}>
+                <NavLink to="/backup" className={styles.link}>
+                  Backup
+                </NavLink>
+              </li>
+            </ul>
+          </nav>
+          <div className={styles.end}>
+            <ThemeToggle />
+          </div>
         </div>
+        <UpdateNotice />
       </header>
       <main id="main" ref={main} tabIndex={-1} className={styles.main}>
         {children ?? <Outlet />}

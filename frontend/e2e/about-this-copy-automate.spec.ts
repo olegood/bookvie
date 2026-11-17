@@ -13,6 +13,7 @@ import { ABOUT, aboutCard, exportButton, fulfilAppInfo, serverAppInfo, type AppI
 import { liveRegionText, systemColor, watchAppInfo } from './dev-mode.ts'
 import { expect, test } from './fixtures.ts'
 import { INK_SECONDARY_DARK, rgbOf } from './library.ts'
+import { noticeText } from './update-notice.ts'
 
 /** DESIGN.md ink-tertiary, dark theme (tokens.css --color-ink-tertiary under dark). */
 const INK_TERTIARY_DARK = rgbOf('#9A9E94')
@@ -145,7 +146,10 @@ test.describe('Story 11.3 Show the version on the Backup page (automate)', () =>
 
     await expect(card.getByText('bookvie 1.2.0', { exact: true })).toBeVisible()
     await expect(card).not.toContainText('1.1.0')
-    expect(await liveRegionText(page)).toBe('')
+    // Nothing complains. Story 11.4's update notice announces its own sentence
+    // after the tick, since 1.2.0 isn't the bundle's version; that is the only
+    // text the live regions may hold.
+    expect((await liveRegionText(page)).replace(noticeText('1.2.0'), '')).toBe('')
   })
 
   test('[P2] AC-5 under forced colors, light and dark, the heading and both lines are CanvasText and the card keeps a visible 1px border', async ({

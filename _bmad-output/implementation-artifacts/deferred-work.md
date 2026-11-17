@@ -1096,3 +1096,21 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-11-3-show-the-version-on-the-backup-page.md`
   summary: EXPERIENCE.md's About this copy row says the card's `h2` is "like the page's other headings below the `h1`", but Backup has no other `h2`: Export and Restore are `aria-label`led sections with no visible heading. AC-5 of Story 11.3 ("the headings run `h1` Backup, `h2` About this copy") confirms the single `h2` is intended, so only the UX wording is off. Fix the row's wording in the next UX pass. Low.
   evidence: `_bmad-output/planning-artifacts/ux-designs/ux-bookvie-2026-10-28/EXPERIENCE.md:154`; `frontend/src/pages/BackupPage.tsx` (Blind Hunter, code review of Story 11.3).
+
+## Deferred from: build-auto review of spec-11-4-tell-me-when-a-tab-is-older-than-the-app (2026-11-17)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-11-4-tell-me-when-a-tab-is-older-than-the-app.md`
+  summary: Spine drift (AD-7, "App info is an ordinary view"), reconciled before the next epic. The line still reads "(Epic 11, planned)"; Story 11.4 built the version comparison and update notice on `useAppInfo`, and its once-per-new-version `status` announcement (skipped while another message waits for its tick, `isAnnouncing()`) is not in the bullet. Low.
+  evidence: `frontend/src/components/UpdateNotice.tsx`, `frontend/src/lib/updateNotice.ts`, `frontend/src/lib/announce.ts` (spine check, build-auto review of Story 11.4).
+- source_spec: `_bmad-output/implementation-artifacts/spec-11-4-tell-me-when-a-tab-is-older-than-the-app.md`
+  summary: Spine drift (AD-8, "One version"), reconciled before the next epic. The bullet still reads "(Epic 11, planned)"; Story 11.4 bakes `__BOOKVIE_VERSION__` from frontend/package.json through a Vite `define` (declared in `src/globals.d.ts`), and `scripts/version.test.mjs` checks the four copies in `check:api`. Low.
+  evidence: `frontend/vite.config.ts`, `frontend/src/globals.d.ts`, `frontend/scripts/version.test.mjs` (spine check, build-auto review of Story 11.4).
+- source_spec: `_bmad-output/implementation-artifacts/spec-11-4-tell-me-when-a-tab-is-older-than-the-app.md`
+  summary: Spine drift (AD-6, AD-7, AD-8, Capability → Architecture Map preamble and FR-27 row), reconciled before the next epic. After Story 11.4 nothing in FR-27 is planned, but the preamble still excepts FR-26 and FR-27 as "(Epic 11, planned)", and the row doesn't name `lib/updateNotice` or `components/UpdateNotice`. Extends the 11.3 entry for the same row. Low.
+  evidence: the Story 11.4 diff (spine check, build-auto review of Story 11.4).
+- source_spec: `_bmad-output/implementation-artifacts/spec-11-4-tell-me-when-a-tab-is-older-than-the-app.md`
+  summary: Spine drift (Structural Seed `frontend/src/lib/`), reconciled before the next epic. The Seed's `lib/` listing doesn't name `updateNotice` (the version comparison and the notice sentence). Low.
+  evidence: `frontend/src/lib/updateNotice.ts` (spine check, build-auto review of Story 11.4).
+- source_spec: `_bmad-output/implementation-artifacts/spec-11-4-tell-me-when-a-tab-is-older-than-the-app.md`
+  summary: The e2e version literals flip meaning at the next version bump. `update-notice.spec.ts` uses `NEWER = '1.2.0'`, and the Story 11.3 fixtures (`about-this-copy*.spec.ts`) fulfil '1.1.0' and '1.2.0' as fixed strings. When `release.sh` sets 1.2.0, the "another version" leaves stop showing the notice (AC-3, AC-6 and the AC-2 witness fail) and the "same version" fixtures start showing it. Derive the differing versions from `BUNDLE_VERSION` (`e2e/update-notice.ts`) in Story 11.4's automate step. Medium.
+  evidence: `frontend/e2e/update-notice.spec.ts:36-38`; `about-this-copy-automate.spec.ts:26-27`, `about-this-copy-dev.spec.ts:20,32`, `about-this-copy.spec.ts:110` (Blind Hunter, build-auto review of Story 11.4).

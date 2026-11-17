@@ -89,6 +89,14 @@ export function clearAnnouncements(): void {
   }
 }
 
+/**
+ * Whether a message is waiting for its tick. The update notice checks this so
+ * it never replaces a message an intent has just announced.
+ */
+export function isAnnouncing(): boolean {
+  return pending !== undefined
+}
+
 /** Empties both regions, then sets `text` in `kind` after ANNOUNCE_DELAY_MS. */
 export function announce(kind: RegionKind, text: string): void {
   clearAnnouncements()

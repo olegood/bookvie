@@ -88,7 +88,7 @@ uv tool install --reinstall ./backend    # puts `bookvie` on your PATH
 bookvie                                  # serves 127.0.0.1:8765 and opens the browser
 ```
 
-**Updating:** `npm run install:local` rebuilds and reinstalls in one step. Then restart a running `bookvie` (Ctrl+C, run it again) and hard-reload open tabs so the browser picks up the new bundle.
+**Updating:** `npm run install:local` rebuilds and reinstalls in one step. Then restart a running `bookvie` (Ctrl+C, run it again). A tab left open from before the update then shows a notice under the top bar, "bookvie was updated to X. Reload to use it.", and **Reload** loads the new bundle. A rebuild that keeps the same version shows no notice, so reload such tabs yourself.
 
 **Options:** `--data-dir DIR` (default `~/bookvie-data`, or `~/bookvie-data-dev` with `--dev`), `--port N` (default 8765, or 8766 with `--dev`), `--no-browser`, `--dev` (a development server: its own folder and port, accepts the Vite dev origin on `:5173`, and refuses `~/bookvie-data`) and `--fake-today YYYY-MM-DD` (tests only, with `--no-browser`). Only one `bookvie` runs per data folder; a second launch reopens it.
 
