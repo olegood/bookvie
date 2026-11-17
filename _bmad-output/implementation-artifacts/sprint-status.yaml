@@ -870,7 +870,7 @@ action_items:
       `backend/bookvie/http/app.py`, `backend/tests/test_dev_mode.py`, `backend/tests/test_app.py`.
       Due: before Epic 12."
     owner: "Amelia (dev)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-11-retro-2026-11-17.md"
   - id: "epic-11-retro-item-77-one-home-for-design-md-and-app-info-e2e-helpers"
     epic: 11

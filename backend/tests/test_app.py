@@ -75,11 +75,12 @@ def test_favicon_route_serves_the_built_icon_uncached_before_the_spa_catch_all(
     paths = [getattr(route, "path", None) for route in app.routes]
     assert "/favicon.svg" in paths
     assert paths.index("/favicon.svg") < paths.index("/{path:path}")
-    # Any other top-level file behaves as before: /favicon.ico gets the SPA,
-    # a built file is served as is, and neither is marked no-cache.
+    # Any other top-level file behaves as before: /favicon.ico gets the SPA
+    # (no-cache like any index.html, Epic 11 retro item 76), and a built file
+    # is served as is, not marked no-cache.
     ico = client.get("/favicon.ico")
     assert (ico.status_code, ico.text) == (200, INDEX)
-    assert "cache-control" not in ico.headers
+    assert ico.headers.get("cache-control") == "no-cache"
     (static_dir / "robots.txt").write_text("User-agent: *")
     other = client.get("/robots.txt")
     assert (other.status_code, other.text) == (200, "User-agent: *")
@@ -160,3 +161,33 @@ def test_app_has_write_lock(static_dir: Path) -> None:
     lock = create_app(static_dir).state.write_lock
     assert lock.acquire(blocking=False)
     lock.release()
+
+
+@pytest.mark.parametrize("path", ["/", "/books/x", "/catalog?q=1", "/index.html", "/INDEX.HTML"])
+def test_index_is_served_no_cache_on_get_and_head(client: TestClient, path: str) -> None:
+    # Epic 11 retro item 76 (E11-B3): index.html names hashed assets a rebuild
+    # deletes, so the browser must revalidate it rather than cache it heuristically.
+    for method in ("GET", "HEAD"):
+        response = client.request(method, path)
+        assert response.status_code == 200
+        assert response.headers["content-type"].startswith("text/html")
+        assert response.headers.get("cache-control") == "no-cache"
+    assert client.get(path).text == INDEX
+
+
+@pytest.mark.parametrize("dev", [False, True])
+@pytest.mark.parametrize(
+    "path", ["/favicon-dev.svg", "/FAVICON-DEV.SVG", "/FAVICON.SVG", "/Favicon.svg"]
+)
+def test_the_catch_all_never_serves_an_icon(static_dir: Path, dev: bool, path: str) -> None:
+    # Epic 11 retro item 76 (E11-B2): no amber anywhere from a production server, and
+    # each icon only at /favicon.svg, the one the mode picks. Any other spelling gets
+    # the SPA like any unknown path.
+    (static_dir / "favicon-dev.svg").write_text("<svg>amber</svg>")
+    client = TestClient(create_app(static_dir, dev=dev), base_url=BASE_URL)
+
+    for method in ("GET", "HEAD"):
+        response = client.request(method, path)
+        assert response.status_code == 200
+        assert response.headers["content-type"].startswith("text/html")
+    assert client.get(path).text == INDEX

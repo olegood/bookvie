@@ -9,6 +9,7 @@ import subprocess
 import sys
 import threading
 import time
+import unicodedata
 import webbrowser
 from collections.abc import Sequence
 from datetime import date
@@ -98,9 +99,36 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
 
 def _refuses_real_library(args: argparse.Namespace) -> bool:
     """True when ``--dev`` names the real library, in any form (``~``, symlinks, ``..``,
-    a case variant on a case-insensitive disk, a folder that doesn't exist yet)."""
+    a case or Unicode variant on a case-insensitive disk, a folder that doesn't exist
+    yet). On a case-sensitive disk a case variant is another folder and is allowed."""
+    if not args.dev:
+        return False
     real = Path(DEFAULT_DATA_DIR).expanduser().resolve()
-    return args.dev and instance.same_folder(str(real), args.data_dir)
+    if instance.same_folder(str(real), args.data_dir):
+        return True
+    # samefile can't compare a folder that doesn't exist yet, and resolve()
+    # keeps the case it was given: compare case-insensitively on such a disk.
+    return _folded(real) == _folded(args.data_dir) and _case_insensitive_disk(real)
+
+
+def _folded(path: Path) -> str:
+    return unicodedata.normalize("NFC", str(path)).casefold()
+
+
+def _case_insensitive_disk(path: Path) -> bool:
+    """Whether the disk holding ``path`` ignores case, probed on its nearest
+    existing ancestor whose name has a letter; the platform's default when none.
+    A probe that errors counts as case-insensitive, so the refusal fails closed."""
+    for folder in (path, *path.parents):
+        flipped = folder.name.swapcase()
+        if flipped == folder.name or not folder.exists():
+            continue
+        twin = folder.with_name(flipped)
+        try:
+            return twin.exists() and os.path.samefile(folder, twin)
+        except OSError:
+            return True
+    return sys.platform in ("darwin", "win32")
 
 
 def _checkout_commit() -> str | None:

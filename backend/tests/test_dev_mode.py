@@ -353,6 +353,102 @@ def test_commit_is_null_whatever_reading_it_raises(
     assert app.state.app_info.commit is None
 
 
+def test_dev_refuses_a_case_variant_of_the_real_library_that_does_not_exist_yet(
+    home: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # Epic 11 retro item 76 (E11-B1): samefile can't see a missing folder, so the
+    # case-insensitive comparison must refuse it, and nothing may be created.
+    probe = home / "probe"
+    probe.mkdir()
+    insensitive = (home / "PROBE").exists()
+    probe.rmdir()
+    if not insensitive:
+        pytest.skip("the temporary disk is case-sensitive")
+    # Should the refusal fail, the start returns at once instead of serving.
+    monkeypatch.setattr(cli.instance, "bind_socket", lambda port: REAL_BIND(0))
+    monkeypatch.setattr(cli, "_Server", _CapturedServer)
+
+    code = exit_code(lambda: cli.main(["--dev", "--no-browser", "--data-dir", "~/BOOKVIE-DATA"]))
+
+    assert code == 2
+    assert capsys.readouterr().err == REFUSAL + "\n"
+    assert sorted(home.iterdir()) == []
+
+
+@pytest.mark.parametrize("insensitive", [True, False])
+def test_a_missing_case_variant_is_refused_only_on_a_case_insensitive_disk(
+    insensitive: bool,
+    home: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    # Epic 11 retro item 76 (E11-B1), on any disk: the disk check is faked.
+    probed: list[Path] = []
+    monkeypatch.setattr(cli, "_case_insensitive_disk", lambda p: probed.append(p) or insensitive)
+    argv = ["--dev", "--no-browser", "--data-dir", "~/Bookvie-Data"]
+
+    assert cli._refuses_real_library(cli.parse_args(argv)) is insensitive
+    assert probed == [(home / "bookvie-data").resolve()]
+    if insensitive:
+        assert exit_code(lambda: cli.main(argv)) == 2
+        assert capsys.readouterr().err == REFUSAL + "\n"
+    # Another name, or production, never reaches the disk check.
+    probed.clear()
+    other = cli.parse_args(["--dev", "--no-browser", "--data-dir", "~/bookvie-data-x"])
+    assert cli._refuses_real_library(other) is False
+    prod = cli.parse_args(["--no-browser", "--data-dir", "~/BOOKVIE-DATA"])
+    assert cli._refuses_real_library(prod) is False
+    assert probed == []
+    assert sorted(home.iterdir()) == []
+
+
+def test_the_disk_probe_reads_case_from_the_nearest_existing_lettered_ancestor(
+    tmp_path: Path,
+) -> None:
+    # Epic 11 retro item 76 (E11-B1): the probe itself, on whichever disk runs it.
+    folder = (tmp_path / "Probe").resolve()
+    folder.mkdir()
+    insensitive = (tmp_path / "pROBE").exists()
+
+    assert cli._case_insensitive_disk(folder / "missing" / "deeper") is insensitive
+    assert cli._case_insensitive_disk(folder) is insensitive
+
+
+def test_the_disk_probe_fails_closed_when_samefile_errors(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    folder = (tmp_path / "probe").resolve()
+    folder.mkdir()
+    monkeypatch.setattr(Path, "exists", lambda self: True)
+
+    def broken(a, b):
+        raise OSError("unreadable")
+
+    monkeypatch.setattr(cli.os.path, "samefile", broken)
+    assert cli._case_insensitive_disk(folder / "bookvie-data") is True
+
+
+@pytest.mark.parametrize(
+    ("platform", "expected"), [("darwin", True), ("win32", True), ("linux", False)]
+)
+def test_the_disk_probe_uses_the_platform_default_without_a_lettered_ancestor(
+    platform: str, expected: bool, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(cli.sys, "platform", platform)
+    assert cli._case_insensitive_disk(Path("/")) is expected
+    assert cli._case_insensitive_disk(Path("/0/1")) is expected
+
+
+def test_a_missing_unicode_variant_is_refused_on_a_case_insensitive_disk(
+    home: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # The same name in the other Unicode normal form is the same folder on APFS.
+    monkeypatch.setattr(cli, "_case_insensitive_disk", lambda p: True)
+    monkeypatch.setattr(cli, "DEFAULT_DATA_DIR", "~/bookvie-d\u00e9ta")
+    argv = ["--dev", "--no-browser", "--data-dir", "~/bookvie-de\u0301ta"]
+    assert cli._refuses_real_library(cli.parse_args(argv)) is True
+
+
 @pytest.mark.parametrize(("dev", "served"), [(True, "favicon-dev.svg"), (False, "favicon.svg")])
 def test_favicon_route_serves_the_file_for_its_mode(dev: bool, served: str, tmp_path: Path) -> None:
     # AC-4: one route, the file chosen by mode, same headers on GET and HEAD.

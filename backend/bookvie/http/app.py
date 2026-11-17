@@ -53,6 +53,13 @@ DEV_FAVICON_FILE = "favicon-dev.svg"
 FAVICON_PATH = "/" + FAVICON_FILE
 FAVICON_MEDIA_TYPE = "image/svg+xml"
 FAVICON_CACHE_CONTROL = "no-cache"
+# index.html names the build's hashed assets, which a rebuild deletes: the
+# browser revalidates it each time instead of caching it heuristically.
+INDEX_CACHE_CONTROL = "no-cache"
+# Built files the catch-all never serves as is (any case, for a case-insensitive
+# disk): index.html always gets the fallback's headers, and both icons are
+# served only by the favicon route, the one its mode picks (AD-16).
+_NEVER_AS_IS = frozenset({"index.html", FAVICON_FILE, DEV_FAVICON_FILE})
 
 # Sec-Fetch-Site values a server path accepts; a missing header passes too.
 _ALLOWED_FETCH_SITES = frozenset({"same-origin", "none"})
@@ -203,7 +210,8 @@ def create_app(
         name="assets",
     )
 
-    # Before the SPA catch-all, which would otherwise serve the file uncached.
+    # Before the SPA catch-all, which would otherwise serve the file as is,
+    # without Cache-Control, and never the amber one.
     @app.api_route(FAVICON_PATH, methods=["GET", "HEAD"], include_in_schema=False)
     def favicon():
         """The built favicon (amber with ``--dev``), read per request; 404 (never
@@ -224,11 +232,16 @@ def create_app(
         index = static_dir / "index.html"
         if not index.is_file():
             return PlainTextResponse(_NOT_BUILT, status_code=404)
-        # Top-level files from the build (e.g. robots.txt) are served as is.
+        # Top-level files from the build (e.g. robots.txt) are served as is,
+        # except those in _NEVER_AS_IS.
         if path:
             candidate = (static_dir / path).resolve()
-            if candidate.is_file() and candidate.is_relative_to(static_dir):
+            if (
+                candidate.is_file()
+                and candidate.is_relative_to(static_dir)
+                and candidate.name.casefold() not in _NEVER_AS_IS
+            ):
                 return FileResponse(candidate)
-        return FileResponse(index)
+        return FileResponse(index, headers={"Cache-Control": INDEX_CACHE_CONTROL})
 
     return app
