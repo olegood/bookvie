@@ -38,7 +38,7 @@ npx --prefix frontend playwright show-trace frontend/test-results/<test>/trace.z
 
 ## Write-time enforcement (TEA hook)
 
-`.claude/hooks/tea-enforce.cjs`, registered in `.claude/settings.json`, checks test files when Claude Code writes them. Its scope is set in `.tea/enforce-config.json` (`testGlobs`: `frontend/e2e/**/*.spec.{ts,js}` and `backend/tests/**/test_*.py`). It blocks focused tests (C2), tautological assertions (C3), hard waits (H1) and files over 1000 lines (H5), and warns on disabled tests (C1). The rules and their severities come from `bmad-testarch-test-review/steps-c/criteria-registry.md`, not from the hook. Don't edit the hook: `hookSha256` flags a modified copy. To turn a rule off, add its id to `disabledRules` and give the reason in the commit message.
+`.claude/hooks/tea-enforce.cjs`, registered in `.claude/settings.json`, checks test files when Claude Code writes them. Its scope is set in `.tea/enforce-config.json` (`testGlobs`: `frontend/e2e/**/*.spec.{ts,js}` and `backend/tests/**/test_*.py`). It blocks focused tests (C2), tautological assertions (C3), hard waits (H1) and files over 1000 lines (H5), and warns on disabled tests (C1). The rules and their severities come from `bmad-testarch-test-review/steps-c/criteria-registry.md`, not from the hook. Don't edit the hook: `hookSha256` flags a modified copy. The one local change (`gitTouchedFiles`): the end-of-turn sweep reports a test file only when git also sees it as changed, untracked or recently committed, so a fresh `git worktree` doesn't report every old file as written this turn. Re-apply it if a BMad update re-copies the hook. To turn a rule off, add its id to `disabledRules` and give the reason in the commit message.
 
 ## Troubleshooting
 

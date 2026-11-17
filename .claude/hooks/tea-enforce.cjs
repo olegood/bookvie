@@ -75,6 +75,7 @@
 
 'use strict';
 
+const { execFileSync } = require('node:child_process');
 const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -919,9 +920,53 @@ function scanRoots(globs) {
   return list.filter((root) => !list.some((other) => other !== root && root.startsWith(`${other}/`)));
 }
 
+/**
+ * The files git says were touched recently: changed or untracked in the working
+ * tree, plus every file in a commit made since `cutoff`. Null when git can't
+ * answer (not a repository, git missing), so the caller falls back to mtime only.
+ *
+ * Why: mtime alone can't tell "written this turn" from "checked out this turn".
+ * A fresh `git worktree add` gives every file in the tree the checkout's time, so
+ * the --stop sweep reported every old violation in the repo as written this turn,
+ * on every turn, for the first 15 minutes of every worktree session. Requiring
+ * both (git says changed AND mtime is recent) keeps the original intent: a
+ * codegen script's unnamed files are still caught, and so is a test written and
+ * committed inside the same turn.
+ */
+function gitTouchedFiles(projectRoot, cutoff) {
+  const git = (args) =>
+    execFileSync('git', ['-C', projectRoot, ...args], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+      timeout: 5000,
+      maxBuffer: 64 * 1024 * 1024,
+    });
+  try {
+    const top = git(['rev-parse', '--show-toplevel']).trim();
+    const touched = new Set();
+    // -z: NUL-separated, paths unquoted. A rename or copy entry is followed by its
+    // original path as a separate field, which is skipped.
+    const fields = git(['status', '--porcelain', '-z', '--untracked-files=all']).split('\0');
+    for (let index = 0; index < fields.length; index += 1) {
+      const field = fields[index];
+      if (field.length < 4) continue;
+      touched.add(path.resolve(top, field.slice(3)));
+      if (/[RC]/.test(field.slice(0, 2))) index += 1;
+    }
+    const since = `@${Math.floor(cutoff / 1000)}`;
+    for (const line of git(['log', `--since=${since}`, '--name-only', '--format=', '-z']).split(/[\0\n]/)) {
+      if (line) touched.add(path.resolve(top, line));
+    }
+    return touched;
+  } catch {
+    return null;
+  }
+}
+
 function walkRecentFiles(projectRoot, config) {
   const cutoff = Date.now() - (config.stopScanWindowSeconds || DEFAULT_CONFIG.stopScanWindowSeconds) * 1000;
   const limit = config.maxScannedFiles || DEFAULT_CONFIG.maxScannedFiles;
+  const touched = gitTouchedFiles(projectRoot, cutoff);
   const found = [];
   let visited = 0;
 
@@ -949,6 +994,16 @@ function walkRecentFiles(projectRoot, config) {
         if (fs.statSync(absolute).mtimeMs < cutoff) continue;
       } catch {
         continue;
+      }
+      if (touched && !touched.has(absolute)) {
+        // git reports real paths; the project root may sit behind a symlink.
+        let real = absolute;
+        try {
+          real = fs.realpathSync(absolute);
+        } catch {
+          continue;
+        }
+        if (!touched.has(real)) continue;
       }
       found.push(absolute);
     }
