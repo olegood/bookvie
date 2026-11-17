@@ -2,7 +2,7 @@
 name: bookvie
 description: Personal, local-first desktop web app for one reader's home library and reading. Birch Morning direction — bright, flat, Nordic; a pale birch bookcase where read books are colored and unread books are outlined.
 status: final
-updated: 2026-11-15
+updated: 2026-11-17
 colors:
   # Light theme (default tokens). Dark twins carry the -dark suffix.
   page: '#F6F4EF'
@@ -420,6 +420,34 @@ components:
     offset: 2px
   highlight-ring:
     ring: '0 0 0 2px {colors.page}, 0 0 0 4px {colors.accent}'
+  favicon:
+    viewbox: '0 0 32 32'
+    fill: '{colors.accent}'
+    fill-dark: '{colors.accent-dark}'
+    dev-fill: '#8C5E0E'
+    dev-fill-dark: '#EBC27A'
+  dev-pill:
+    background: '#8C5E0E'
+    background-dark: '#EBC27A'
+    foreground: '#FFFFFF'
+    foreground-dark: '#191B18'
+    text: '{typography.section-label}'
+    radius: '{rounded.sm}'
+    padding: '4px 7px'
+    gap: '{spacing.2}'
+  update-notice:
+    background: '{colors.surface}'
+    border-bottom: '1px solid {colors.line}'
+    padding: '10px {spacing.page-x}'
+    gap: '{spacing.4}'
+    text: '{typography.body-sm}'
+    text-color: '{colors.ink}'
+    button-height: 30px
+  about-card:
+    heading: '{typography.section-label}'
+    heading-color: '{colors.ink-tertiary}'
+    text: '{typography.body-sm}'
+    text-color: '{colors.ink-secondary}'
 ---
 
 # bookvie — Design Spine
@@ -439,7 +467,7 @@ Style rules in one line each:
 
 - Flat surfaces separated by hairlines and tone, not shadows.
 - Sans-serif for everything the app says; serif only for book titles, which belong to the books.
-- One accent, sage, meaning "your action" and "your progress".
+- One accent, sage, meaning "your action" and "your progress". A development server adds one more color, dev amber, and only to say "this is not your real library" (Colors → Dev amber). Production never shows it.
 - Color on the shelf belongs to the books. Chrome stays neutral so the spines carry the color.
 - Light and dark themes share one layout. Dark is the same room in the evening: the birch plank becomes walnut, read spines keep their exact colors.
 
@@ -557,6 +585,24 @@ Non-text pairs (target 3.0):
 
 The marker dot is identified against its own `marker-ring`, and the focus ring by its internal `accent`-to-`page` edge, so neither depends on the spine fill (which may be any color).
 
+### Dev amber
+
+Only a server started with `--dev` shows dev amber, and only on two things: the dev favicon and the DEV pill. Dev amber is a literal in `{components.favicon}` and `{components.dev-pill}`, not a `colors` primitive, so the DESIGN.md/`tokens.css` comparison in `e2e/app-shell.spec.ts` doesn't change until a story ships it.
+
+| Value | Light | Dark | Use | Not for |
+|---|---|---|---|---|
+| Dev amber | `#8C5E0E` | `#EBC27A` | Dev favicon fill; DEV pill fill | Anything in production; warnings; text on the page |
+| On dev amber | `#FFFFFF` | `#191B18` | "DEV" on the pill | — |
+
+| Pair | Light | Dark | Target |
+|---|---|---|---|
+| "DEV" on the pill | 5.64 | 10.34 | 4.5 |
+| Pill vs `surface-inset` (top nav) | 5.36 | 9.83 | 3.0 |
+| Dev favicon vs Chrome's tab strip (`#DEE1E6` / `#202124`) | 4.30 | 9.61 | 3.0 |
+| Sage favicon vs Chrome's tab strip (`#DEE1E6` / `#202124`, with `accent-dark` in dark) | 4.16 | 7.13 | 3.0 |
+| Sage favicon vs Chrome's active tab (`#FFFFFF` / `#35363A`) | 5.46 | 5.34 | 3.0 |
+| Dev favicon vs Chrome's active tab (`#FFFFFF` / `#35363A`) | 5.64 | 7.20 | 3.0 |
+
 ### Forced colors
 
 Under `forced-colors: active`:
@@ -568,6 +614,9 @@ Under `forced-colors: active`:
 - Selected options keep their border indicator.
 - The native checkbox takes the system colors on its own; no override.
 - The Sort direction toggle becomes `ButtonFace` with `ButtonText` text, border and glyph. The shared edge with the select stays visible.
+- The DEV pill becomes `Canvas` with `CanvasText` text and a 1px `CanvasText` border, so it still reads as a pill.
+- The update notice keeps its bottom border as `CanvasText`; Reload is a button and takes the system button colors.
+- The favicon is outside the page and isn't affected.
 - Catalog tiles: the finished ribbon and the reading bar's fill use `forced-color-adjust: none` with `CanvasText`, the bar's track becomes `Canvas` with a `CanvasText` outline, the typeset cover becomes `Canvas` with a `CanvasText` border, its text `CanvasText`, and the cover hairline and the loading box's border become `CanvasText`.
 
 Read and unread stay distinct.
@@ -581,7 +630,7 @@ Two families, both system stacks, nothing to download:
 
 | Role | Token | Where |
 |---|---|---|
-| Wordmark | `{typography.wordmark}` | "bookvie" in the top nav, followed by a small `accent` square |
+| Wordmark | `{typography.wordmark}` | "bookvie" in the top nav, after a small `accent` square; on a dev server the DEV pill follows the word |
 | Nav | `{typography.nav}` / `{typography.nav-active}` | Top nav items |
 | Page title | `{typography.page-title}` | Visible `h1` on Catalog, Stats, Card notes, Backup, Book detail (Book detail's `h1` is the book title in `book-title-lg`). Home's `h1` "Home" is visually hidden. |
 | Page header | `{typography.page-header}` | Home date line ("Wednesday, 28 October"), `ink-secondary` |
@@ -606,7 +655,8 @@ All UI text is English. Spine labels rotate every script the same way (`text-ori
 Scale: 4 / 8 / 12 / 16 / 20 / 24 / 32 / 36 (`{spacing.1}`–`{spacing.8}`). Component sizes (card padding `28px 32px`, pane padding `20px 22px`, panel and popover widths, gauge radius, plank height, marker size) are fixed component dimensions, not spacing steps; they are listed as literal values in the component tokens on purpose.
 
 - **Viewport.** Desktop Chrome only (AGENTS.md → Supported browser; Epic 7 retro item 59). Design target and minimum width `{spacing.min-viewport}` (1024px); below that the page scrolls horizontally. No phone layout (documented deviation: EXPERIENCE.md → Accessibility Floor → Reflow). The spine popover is capped at `calc(100vw - 32px)`.
-- **Top nav.** Full-width bar, `{spacing.topbar-height}` tall: a "Skip to content" link (visible on focus only), wordmark, nav items, theme toggle pushed right.
+- **Top nav.** Full-width bar, `{spacing.topbar-height}` tall: a "Skip to content" link (visible on focus only), wordmark (with the DEV pill on a dev server), nav items, theme toggle pushed right.
+- **Update notice.** When shown, a full-width band directly under the top nav and above the page, pushing the page down. It never overlaps content.
 - **Page.** `{spacing.page-x}` side padding, `{spacing.page-top}` top padding.
 - **Home.** A header line (the date in `page-header`, for example, "Wednesday, 28 October"; no greeting) above a two-column grid: Main book card (fluid) beside a `{spacing.side-column}` (320px) column of section panes; gap `{spacing.6}`. Below the grid, full width, the bookcase slice (up to 3 shelf rows, the Main book's row first). Mock: [key-home](mockups/key-home.html).
 - **Catalog.** Full width: `h1` "Catalog"; toolbar row 1 (Search titles with its visible label, Sort select with its direction toggle joined to it, view toggle, **New book** at the right); toolbar row 2 (filter chips, "Clear filters" link when any filter is on); the library meter; the collapsed pace calculator link; then the bookcase, the list or the tiles. Mocks: [key-catalog](mockups/key-catalog.html), [key-catalog-tiles](mockups/key-catalog-tiles.html). Both predate the Sort direction toggle, which only this document specifies (Components → Sort direction toggle).
@@ -649,6 +699,9 @@ Visual specs. Behavior lives in EXPERIENCE.md → Component Patterns, under the 
 | Component | Visual spec |
 |---|---|
 | **Top nav** | `{components.top-nav}`. "Skip to content" link first (visible only on focus, `surface` chip with `focus-ring`). Items: Home · Catalog · Stats · Card notes · Backup. Active item: `ink`, weight 600, 2px `accent` underline flush with the bar's bottom hairline. Inactive: `ink-secondary`. |
+| **Favicon** | See [Favicon](#favicon) below. |
+| **DEV pill** | `{components.dev-pill}`. Only on a dev server. The text "DEV" in `section-label` (uppercase, 12px, weight 600, 0.08em tracking) in `{components.dev-pill.foreground}`, on a `{components.dev-pill.background}` fill with `rounded.sm` corners and `4px 7px` padding. It sits `{spacing.2}` after the word "bookvie", centered on the wordmark's line. Its height follows the text (line-height 1 plus the padding, about 20px). Text, not color alone, says what it is. The same on every page; no hover, not interactive. Mock: [epic11-options](mockups/epic11-options.html) P1; the mock's 11px/700 text is superseded by `section-label`. |
+| **Update notice** | `{components.update-notice}`. A full-width `surface` band under the top nav with a `line` hairline at the bottom, its text aligned with the page's `{spacing.page-x}` padding. One sentence in `body-sm`/`ink` ("bookvie was updated to 1.2.0. Reload to use it."), then, `{spacing.4}` after it, **Reload** as the compact `button-secondary` of the Section pane rows (30px tall, `body-sm`, `0 {spacing.3}` padding). No icon, no close button, no amber, no accent fill: it's news, not a warning. Mock: [epic11-options](mockups/epic11-options.html) N1. |
 | **Theme toggle** | Three-option segmented control (Light · Dark · System), each with a small glyph (sun, moon, half-filled circle) and its text. `input-border` around the group. Selected option: `accent-soft` fill, `ink` text, weight 600, and a 2px `accent` bar along its bottom edge (the non-color indicator). All segmented controls (Catalog view, Stats presets, Pile order, Purpose fulfilled) use this same selected treatment. |
 | **Text field** | `{components.text-field}`. Visible label above in `body-sm`/`ink-secondary`; "(required)" sits after the label element in `meta`/`ink-tertiary` and is not part of the label. Focus: `accent` border plus `focus-halo`. Invalid: 2px `ink` border and a one-line message below in `body-sm`/`ink`. Never red. Applies to every field, select, date field and the page field. |
 | **Checkbox** | `{components.checkbox}`. The browser's native checkbox, 16px, tinted with `accent` through CSS `accent-color` (the theme's token swap gives the `accent` dark twin; `color-scheme: dark` gives the dark unchecked box). Label to its right in `body-sm`/`ink`, the whole label clickable. Focus: `{components.focus-ring}` on the box. No custom drawing. Used by the Card note panel's **Add another**. |
@@ -681,7 +734,8 @@ Visual specs. Behavior lives in EXPERIENCE.md → Component Patterns, under the 
 | **Pace calculator** | Collapsed: `link` "How long until…?". Expanded: inline row on `surface-inset` — "pages/day" field (Text field, 80px; `type="text"` with `inputmode="decimal"`, so any text can be typed), result in `body` ("About 9 months · July 2027"). No error styling. With nothing left to read, "Nothing left to read." in `body-sm` / `ink-secondary` replaces the row. |
 | **Stats range picker** | Segmented presets (This month · This year · Last year · All time · Custom); Custom reveals two date fields ("From", "To"). |
 | **Monthly bars** | `{components.monthly-bar}`. One vertical bar per month (one per year for ranges over 24 months), height proportional to pages finished; value label above the bar in `meta`; period label below. Two big numbers above the chart: books finished, pages finished, in `gauge-figure` with `meta` captions. |
-| **Backup page** | Two blocks on `surface` cards: Export (one `button-primary` "Export all data", "Last export: N days ago" below in `meta`/`ink-tertiary`) and Restore (`button-secondary` "Restore from file…", one-line explanation). |
+| **Backup page** | Three blocks on `surface` cards, stacked: Export (one `button-primary` "Export all data", "Last export: N days ago" below in `meta`/`ink-tertiary`), Restore (`button-secondary` "Restore from file…", one-line explanation), and About this copy. |
+| **About this copy** | `{components.about-card}`. The third Backup card, same frame as the other two. Heading "ABOUT THIS COPY" in `section-label`/`ink-tertiary`. Line 1 in `body-sm`/`ink-secondary`: "bookvie 1.1.0"; on a dev server "bookvie 1.1.0 (a1b2c3d) · Development server", the parts joined by " · " (space, middle dot, space, as in the tab title), not a drawn dot. Line 2, same style: "Data folder: ~/bookvie-data"; a long path wraps at any character (`overflow-wrap: anywhere`) inside the card. All sans, no monospace. This third card supersedes plan D9's "under Last export" placement (Oleg's pick B1). Mock: [epic11-options](mockups/epic11-options.html) B1, which shows the dev text on two lines and predates the " · " rule. |
 | **Busy button** | Busy state of Export and Restore: the label reads "Exporting…" or "Restoring…", the button stays `accent` at 60% opacity, and there is no spinner animation. |
 | **Failure message** | One line in `body-sm`/`ink` below the action that failed, for example, "Couldn't save. Your data wasn't changed." No icon, no red, no colored box. |
 | **Confirm dialog** | `{components.dialog}` for Restore, Delete book, Delete card note, and Pause (when Pause displaces an Up next). Heading states the consequence; confirm button labelled with the action ("Replace all data", "Delete book", "Delete card note", "Pause") in `button-primary`; **Cancel** beside it. No red. |
@@ -689,6 +743,16 @@ Visual specs. Behavior lives in EXPERIENCE.md → Component Patterns, under the 
 | **Focus ring** | `{components.focus-ring}` on every focusable element; spines use the two-tone `{components.spine.focus-ring}`. Never removed. |
 | **Highlight ring** | `{components.highlight-ring}`: 2px `page` gap then 2px `accent` ring. Used on a newly added spine or row and on the spine during the finish moment. |
 | **Finish fill** | The finished spine fills with its color bottom to top, about 600 ms ease-out, with the highlight ring, then stays solid. Visual reference: the dark panel of [birch-v2-light-dark](mockups/birch-v2-light-dark.html) and the end state in [key-home](mockups/key-home.html) (Alternate 1). |
+
+### Favicon
+
+`{components.favicon}`. Our own drawing (MIT, like the repo; noted in a comment in the file). SVG only. Mock: [epic11-options](mockups/epic11-options.html), option F3.
+
+- **Drawing:** a small shelf, three spines of different heights standing on one plank, on a 32-unit grid. Left spine 8 wide, 16 tall; middle 8 wide, 22 tall; right 7 wide, 14 tall; 1.5 units between spines; each spine has 2-unit rounded top corners (the spine's rounded top, scaled) and a square base. The plank runs nearly the full width (30 units), 4 units tall, 1 unit below the spines' bases. One flat fill, no outline, no label strips: at 16px they'd blur. The rest is transparent, so the tab strip shows around it. Path (fill `currentColor` in the mock): `M3 11a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v14H3z M12.5 5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v20h-8z M22 13a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v12h-7z M1 26h30v4H1z`.
+- **Production:** `{components.favicon.fill}`; under `@media (prefers-color-scheme: dark)` inside the SVG, `{components.favicon.fill-dark}`.
+- **Dev:** the same drawing with `{components.favicon.dev-fill}`, and `{components.favicon.dev-fill-dark}` under the dark scheme.
+- The SVG's `prefers-color-scheme` is Chrome's own color scheme (its Mode setting, which follows the OS by default), not bookvie's Theme toggle. The tab strip is drawn in that same scheme, so the fill always matches the strip it sits on. Check once by hand with Chrome's Mode set opposite to the OS.
+- **Caching:** production and dev serve different files at the same `/favicon.svg`, and a dev server started with an explicit `--port 8765` would share the origin. The response should carry `Cache-Control: no-cache` (a note for the architecture step), so a tab never keeps the other mode's icon.
 
 ### Main book card
 
@@ -761,7 +825,7 @@ Accepted layout; mock [key-book-detail](mockups/key-book-detail.html). Mirrors t
 
 | Do | Don't |
 |---|---|
-| Keep color for the books; chrome stays neutral | Color chrome, headings, or status badges |
+| Keep color for the books; chrome stays neutral | Color chrome, headings, or status badges (except the DEV pill: Colors → Dev amber) |
 | Use sage only for actions, progress, focus, selection | Use sage decoratively or as a warning |
 | Serif for book titles only | Serif for UI text or numbers |
 | Same 28px width for every spine; height in 8px steps within 120–200px | Variable widths, page-count-based widths, heights outside the range |
@@ -771,7 +835,8 @@ Accepted layout; mock [key-book-detail](mockups/key-book-detail.html). Mirrors t
 | Pair every marker with a legend, a ring, and an accessible name | Let a colored dot carry meaning alone |
 | Show selection with a border or bar as well as a fill | Show selection with a tint alone |
 | Flat surfaces, hairlines, tone | Shadows for hierarchy |
-| Muted text for status facts and failures ("Couldn't save. Your data wasn't changed.") | Red, orange, warning icons, or alarm styling anywhere |
+| Muted text for status facts and failures ("Couldn't save. Your data wasn't changed.") | Red, orange, warning icons, or alarm styling anywhere (dev amber is not a warning: Colors → Dev amber) |
+| Use dev amber only for the dev favicon and the DEV pill | Amber in production, or amber on the update notice or any message |
 | One quiet fill on finish | Confetti, sound, bouncing, replays |
 | Show a tile's cover as is, with status by ribbon and bar | Dim, desaturate, crop or tint covers to show status |
 | Same layout in light and dark; read spine fills and label strips identical in both (only `spine-edge` has a dark twin) | Theme-specific layouts or recolored read spines |

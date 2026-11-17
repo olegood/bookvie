@@ -1,7 +1,7 @@
 ---
 name: bookvie
 status: final
-updated: 2026-11-15
+updated: 2026-11-17
 design: ./DESIGN.md
 sources:
   - _bmad-output/planning-artifacts/prds/prd-bookvie-2026-10-28/prd.md
@@ -9,6 +9,7 @@ sources:
   - _bmad-output/planning-artifacts/catalog-tiles-plan-2026-11-13.md
   - _bmad-output/planning-artifacts/card-note-entry-plan-2026-11-14.md
   - _bmad-output/planning-artifacts/catalog-sort-direction-plan-2026-11-15.md
+  - _bmad-output/planning-artifacts/dev-prod-favicon-plan-2026-11-17.md
 ---
 
 # bookvie — Experience Spine
@@ -23,6 +24,7 @@ Mocks illustrate this spine; they are not the contract. If a mock and a spine di
 - **UI system.** None named. Plain, semantic HTML controls styled by DESIGN.md tokens. Native elements (`button`, `input`, `select`, `dialog`) are preferred so roles and names come for free.
 - **Local-first.** All data lives on this computer; no account, no network (PRD §5). No sync or connection status is shown. There is no loading indicator: before a page's first view response, only the header and nav render (no spinner, no skeleton). A view that can't be loaded shows "Couldn't load" (see State Patterns); a failed background refetch keeps the last data silently. The only busy states are Export and Restore (see Backup page). A save that fails is never silent (see State Patterns → Couldn't save).
 - **One store, two operators.** The user's browser and the cataloging skill's browser must see the same data (PRD §5: a Book saved from any browser on this machine appears in every other). How they share it is an architecture decision (prd-deltas → For architecture, A1). UX rule for two open tabs or browsers: last write wins; reloading shows the current data. No cross-tab warning is shown.
+- **Production and development.** A server started with `--dev` is a development server; anything else is production (plan D3). The mode comes from the `app-info` view (`mode`, `version`, `dataDir`, `commit`), never from how the page was served. Production looks exactly as before Epic 11, apart from the favicon, the About this copy card and, after an update, the update notice. A development server adds three marks, so a dev tab can't be taken for the real library: the amber favicon, the `DEV · ` tab-title prefix and the DEV pill.
 - **Theme.** Light · Dark · System toggle in the top nav. Default is System; the choice is remembered on this computer.
 - **Users.** One person, who is also the builder. A browser-driven AI cataloging skill acts as a second, unattended operator of the add-book form (see Agent Label Contract).
 - **Language.** UI is English only.
@@ -41,7 +43,9 @@ Top nav, left to right: **Home · Catalog · Stats · Card notes · Backup**, th
 | Book detail | A book title anywhere (Main book card, Home panes, List view row, catalog tile); "Open book →" in the spine popover; "Open book" in the "⋯" menu | One Book's metadata, current Reading, its first Card notes with search and the pile, Readings, actions, per-Book pace, spine color | FR-1, FR-4–FR-9, FR-14, FR-15; D31, D35 | Flows 1, 9, 10 |
 | Stats | Nav | Books finished and pages finished for a period, monthly bars | FR-16; D3, D30 | Flow 7 |
 | Card notes | Nav (all Books); "See card notes" on the Main book card or "See all card notes" on Book detail (scoped to one Book) | Card notes grouped by Book, quick search, entry to the pile | FR-17–FR-19; D23, D43 | Flow 6 |
-| Backup | Nav | Export, Restore, "Last export" | FR-22, FR-23; D19 | Flows 7, 8 |
+| Backup | Nav | Export, Restore, "Last export", About this copy (version, mode, data folder) | FR-22, FR-23, FR-27; D19 | Flows 7, 8, 11, 12 |
+
+The app shell (top nav, and the update notice under it) is on every page. The favicon, the dev tab title, the DEV pill and the update notice trace to FR-26 and FR-27 (Flows 11, 12); both FRs are planned (dev-prod-favicon-plan step 3) and not yet in the PRD.
 
 Book detail is a page, not an overlay.
 
@@ -102,6 +106,8 @@ Microcopy. Brand voice lives in DESIGN.md → Brand & Style. A calm librarian: s
 | "Page must be between 0 and 330." | "Invalid input!" |
 | Waiting for you shows the page ("p.120 of 330") | Elapsed time since pause ("paused 41 days ago") |
 | No greeting. The Home header is the date. | "Good morning, Oleg" |
+| "bookvie was updated to 1.2.0. Reload to use it." | "A new version is available! Please refresh now." |
+| "DEV" | "⚠ DEVELOPMENT MODE — DO NOT USE" |
 
 ## Component Patterns
 
@@ -110,6 +116,10 @@ Behavioral. Visual specs: DESIGN.md → Components, same names. Longer patterns 
 | Component | Use | Behavioral rules |
 |---|---|---|
 | Top nav | Every page | `nav` landmark inside the `header`. Active item has `aria-current="page"`. "Skip to content" moves focus to `main`. |
+| DEV pill | Top nav, dev server only | Plain text "DEV" inside the wordmark, after the word "bookvie"; not a control, not a link, not a Tab stop. The DOM puts a space between the word and the pill, so a screen reader reads the wordmark as "bookvie DEV". The pill appearing after `app-info` loads shifts the nav slightly to the right, once, on a dev server only; that's accepted. Shown once `app-info` says `mode: "dev"`; until `app-info` loads, or if it never loads, the header looks like production. |
+| Tab title | Every page | Production: "*Page* — bookvie" as before. Dev server: "DEV · *Page* — bookvie" ("DEV · Catalog — bookvie"), on every route, Book detail included. The prefix follows the DEV pill's rule: it appears once `app-info` has loaded. |
+| Favicon | Browser tab | The server picks it, so the tab is right from the first paint: sage on production, amber on a dev server (plan D5). Nothing in the page changes it. |
+| Update notice | Every page, under the top nav | See [Update notice](#update-notice) below. |
 | Theme toggle | Top nav | `role="group"` named "Theme" holding three toggle buttons (Light, Dark, System), `aria-pressed` on each; glyphs `aria-hidden`. Switching is instant; System follows the OS setting live. |
 | Main book card | Home, when a Main book exists | Shows cover (or no-cover placeholder), title, author, edition only when it isn't 1, gauge, page field, re-entry line. The title is a link to Book detail. Actions: **Add card note** (opens Card note panel; the user stays on Home) and **See card notes · N** (opens Card notes scoped to this Book; accessible name "See card notes, 7 notes"; at 0 notes the label is just "See card notes"). Progress is only the page field. "⋯" button (name "More actions", `aria-haspopup="menu"`) opens a menu: **Pause** (see Book detail → Pause) and **Open book**. Arrow keys move within the menu; Esc closes it and returns focus to "⋯". |
 | Page field | Main book card | Holds the absolute current page, prefilled with the last saved page; "of 330" is linked to the field by `aria-describedby`. **Update** (or Enter) saves. Saving takes at most two interactions after opening the app (focus is not auto-placed in the field, so a stray keypress never edits progress). Accepts whole numbers 0 to the Book's page count; a lower page than before is allowed and the gauge follows. Out-of-range or non-numeric: not saved, field keeps the typed value, `aria-invalid="true"`, inline message linked by `aria-describedby` and announced in the `alert` region. Entering the last page opens the Finish dialog; Cancel there leaves the Reading active at that page, and pressing **Update** again with the last page reopens the dialog. On save: gauge, percentage, re-entry line, and the Main book spine fill update together; the `status` region announces "Page 212 of 330, 64%." |
@@ -141,6 +151,7 @@ Behavioral. Visual specs: DESIGN.md → Components, same names. Longer patterns 
 | Pace calculator | Catalog (library scope), Book detail (Book scope) | Catalog: collapsed behind the link "How long until…?"; activating it expands inline (`aria-expanded`). One "pages/day" field, prefilled with Measured pace rounded to one decimal when one exists, else empty. Result updates as the user types, in an `output` element: duration and date ("About 9 months · July 2027"). Duration in days under 60 days, months under 24 months, years beyond: days = max(1, ceil(pages left ÷ pages/day)), months = round(days ÷ 30.4375), years = round(months ÷ 12). Under 60 days the date is a day and month ("About 12 days · 10 November"), with the year added only when it isn't this year, and 1 day reads "About 1 day"; months and years keep month and year ("July 2027"). The prefill drops a trailing ".0" (pace 20 → "20"). While the field's text is the prefill, the result uses the unrounded Measured pace, so Book detail agrees with Home's "~N days left" for the same Book (300 pages left at 100/3 is 9 days, where "33.3" would give 10; Epic 6 retro item 55). Any other text, "33.30" included, uses the number typed. When nothing is left to read, including an unfinished Reading at its last page: "Nothing left to read." in place of the field. Zero, negative, or non-numeric input: no result, no message. The `output` is not a live region (one polite `status` per page); the field is described by it (`aria-describedby`). Scopes per FR-15. The library scope counts every active or paused Reading, the Up next Book's included. |
 | Stats range picker | Stats | Presets This month · This year · Last year · All time, plus Custom ("From", "To" date fields). Default This year. Presets end today: This month runs from the 1st to today, This year from 1 January to today; Last year is the full year. If To is before From, the two dates swap silently. All time starts at the earliest finished Reading, back-filled ones included; with no finished Readings it shows 0 books, 0 pages, no bars, and "No books finished yet." A finish counts by its local date. Changing the range updates numbers and bars instantly and the `status` region announces "2 books, 610 pages." |
 | Monthly bars | Stats | Two numbers: books finished, pages finished. One bar per month in the range, counting only finishes inside the range (a range from 15 March counts March from the 15th); over 24 months, one bar per year. Each bar has a text value. All of a Reading's pages count in the period it finished (FR-16), using the page count it finished with. Exposed as a table to assistive tech (period, books, pages). |
+| About this copy | Backup page, third card | A `section` labelled by its visible heading "About this copy", an `h2` like the page's other headings below the `h1`. Production: "bookvie 1.1.0" and "Data folder: ~/bookvie-data". Dev server: "bookvie 1.1.0 (a1b2c3d) · Development server" and "Data folder: ~/bookvie-data-dev"; with no commit (no git or no checkout) the part in brackets is left out: "bookvie 1.1.0 · Development server". The commit is never shown in production. The data folder is written as the server sends it: with `~` for the home folder, and as a full absolute path when it is outside the home folder. Plain read-only text, with no copy button. The card shows once `app-info` has loaded; if it can't load, the card is left out silently and Export and Restore work as usual. |
 | Backup page | Backup | **Export all data** builds one file (FR-22) and hands it to the browser's download. When Export or Restore takes longer than about 300 ms, its button reads "Exporting…" or "Restoring…" and is disabled until it finishes; there is no spinner. "Last export: today" is set only once the file has been built and handed over; the browser cannot confirm the file was kept. **Restore from file…** opens a file picker, then the Confirm dialog. The whole file is checked before anything is replaced. "Last export: N days ago" also appears on Home's re-entry line; "No export yet" before the first export. "Last export" and preferences (theme, Catalog view, sort and its direction, Add another) stay local: a restore neither brings nor replaces them. "Last export" is never a warning. |
 | Confirm dialog | Restore, Delete book, Delete card note, Pause | `alertdialog`. Restore: "Replace all data with this file? Your current books, readings and card notes will be replaced." with **Replace all data** and **Cancel**. Delete book: "Delete *X*? Its readings and card notes are deleted too." with the Book's role when it has one ("It is your Main book.", "It is Up next.", or "It is waiting for you at p.120."), then **Delete book** and **Cancel**. After deleting, the app goes to Catalog; a vacated Main book or Up next stays empty (nothing is promoted automatically). Delete card note: see Card note panel. Pause: see Book detail. Cancel has default focus. For Delete book, Delete card note and Pause, if the save fails the dialog stays open and shows the couldn't-save `alert` line inside it, above its buttons (State Patterns → Couldn't save). Restore is the exception, because a restore can take a while: **Replace all data** closes the dialog and starts it, so its busy state ("Restoring…") and any failure or refusal show on the Backup page, as the `ink` line under **Restore from file…**, announced in `alert`, with focus back on that button. Nothing has changed, and the user can pick the file again. |
 | Empty state | Home, Catalog (no Books) | Bare birch planks, "Your shelf is empty. Add your first book.", **New book** button. |
@@ -159,6 +170,18 @@ Use: Home side column.
 - **Waiting for you (N):** every paused Reading except the Up next Book's, longest paused first (by paused-at date), no cap. The paused-at date orders the list but is never shown. Each row: title, mini bar, "p.N of M", and **Resume**. The mini bar is a progressbar named by the row title (`aria-labelledby`), with `aria-valuetext` "page 120 of 330, 36%".
 - **On the side:** up to 3 Side reads. Each row: title, author, and **Start reading**, which opens the Start dialog with "Which page?".
 - **Empty panes:** hidden, except Up next while a Main book exists ("Nothing up next."). With no Main book the Up next pane is hidden: the empty Main book card already suggests the Up next Book (see State Patterns).
+
+### Update notice
+
+The bundle knows the version it was built as; `app-info` says the server's.
+
+- **When it shows:** the two versions differ, newer or older. When they are equal it never shows.
+- **Content:** "bookvie was updated to *1.2.0*. Reload to use it.", where *1.2.0* is the server's version, and a **Reload** button.
+- **What it follows:** the last successful `app-info`. The sentence names the newest server version seen; when a later refetch finds the bundle's own version again (a rollback to it), the notice hides. A failed fetch never shows it and never hides one already shown (the last data stays, Foundation). Because views refetch when the window regains focus, the notice appears when Oleg comes back to an old tab.
+- **Never in the way:** not a dialog, not an `alert`; it blocks nothing, and the old tab keeps working until it's reloaded. No dismiss: it stays on every route until the tab reloads.
+- **Reload:** reloads at once, without asking, like the browser's own reload; typing in an open panel or field is lost.
+- **Place:** inside the `header` landmark, after the top bar, so it belongs to a landmark. Tab reaches **Reload** after the theme toggle and before the page; "Skip to content" skips it.
+- **Announcement:** once; see Accessibility Floor → Live regions.
 
 ### Spine popover
 
@@ -342,6 +365,9 @@ Tiles show the library as a grid of covers, so the user can find a Book by its c
 | Restore, not a bookvie file or damaged | Backup | Refused before anything changes: "This file isn't a bookvie export, or it's damaged. Nothing was changed." |
 | Restore, newer version | Backup | Refused: "This export is from a newer version of bookvie. Nothing was changed." |
 | Restore, older version | Backup | Accepted; the data is migrated to the current format, then replaces the current data. |
+| `app-info` not loaded yet, or never loaded | Every page, Backup | The header and title look like production, no update notice, no About this copy card; nothing says it failed. Everything else works. |
+| `app-info` refetch failed after a success | Every page, Backup | The last data stays: the DEV pill, the `DEV · ` title, the About this copy card and any update notice keep showing as they were. Nothing says it failed. |
+| Versions differ | Every page | Update notice under the top nav until the tab reloads. |
 | Restore done | Backup → Home | `status` "Restored." The app goes to Home with the restored data; focus on Home's `h1`. |
 | Finish moment | Home shelf slice | After **Done** in the Finish dialog for the Main book, the slice first scrolls the finished spine into view if needed, then the spine fills with its color from its current fill to full, bottom to top, **about 600 ms ease-out**, with the highlight ring; then it stays solid. Under reduced motion the fill is instant. It **never replays** (not on reload, not on revisit). The library meter updates, and one quiet line "Finished *X*." appears in the bookcase header; it is gone on the next visit to Home. Once focus has settled (see Focus after close), the `status` region announces "Finished *X*. 25 of 73 finished." The Main book card switches to the no-Main-book state with Up next suggested. No sound, no confetti. |
 | Finish moment, re-read | Home shelf slice | The spine is already full color: only the highlight ring plays. Header line "Finished *X* again."; the meter count does not change. |
@@ -382,12 +408,12 @@ Messages for forms outside the Agent Label Contract's validation table. Each is 
 Behavioral. Visual contrast lives in DESIGN.md → Colors.
 
 - WCAG 2.2 AA target, both themes, with one documented deviation (Reflow, below).
-- **Structure.** `header` (with `nav`), `main`, and one `h1` per page ("Home" visually hidden on Home; "Catalog", "Stats", "Card notes", "Backup"; the Book title on Book detail). Each route sets `document.title` ("Catalog — bookvie"). On a route change, focus moves to the new page's `h1`. A "Skip to content" link is the first focusable element.
-- **Keyboard.** Every action is reachable and operable by keyboard. Tab order follows reading order: top nav → page content left to right, top to bottom. The bookcase is one Tab stop with arrow-key movement (see Bookcase → Keyboard).
+- **Structure.** `header` (with `nav`), `main`, and one `h1` per page ("Home" visually hidden on Home; "Catalog", "Stats", "Card notes", "Backup"; the Book title on Book detail). Each route sets `document.title` ("Catalog — bookvie"; "DEV · Catalog — bookvie" on a dev server). On a route change, focus moves to the new page's `h1`. A "Skip to content" link is the first focusable element.
+- **Keyboard.** Every action is reachable and operable by keyboard. Tab order follows reading order: top nav → **Reload** in the update notice, when shown → page content left to right, top to bottom. The bookcase is one Tab stop with arrow-key movement (see Bookcase → Keyboard).
 - **Focus.** Visible sage focus ring on every focusable element, never suppressed; spines use the two-tone ring. Dialogs trap focus. Controls that can't act right now stay focusable with `aria-disabled="true"` and a description saying why, never natively disabled (except the Export and Restore busy state).
 - **Esc.** See Interaction Primitives → Esc.
 - **Names.** Every control has a visible label, and its accessible name is exactly that label, or starts with it when it adds the Book title ("Resume The Left Hand of Darkness"). Markers such as "(required)" sit outside the label element; requiredness is exposed with `required`. Spines carry full title, author, and status in their names, so a label cut with an ellipsis never hides information. Catalog tiles carry the same names as spines. Toggle groups have group names ("Theme", "Catalog view", "Order"), and the Sort select with its direction toggle is a group named "Sort".
-- **Live regions.** One polite `status` region per page for outcomes (page saved, book added or saved, Card note saved, finished, paused, set as Up next, side read added or removed, color set, search and filter counts, Stats totals, restored). One-click actions announce: "*X* is Up next." (Set as Up next), "*X* is on the side." (Mark as Side read), "*X* is off the side." (Remove from side), "Paused *X* at p.120. It's Up next." (Pause without a Confirm dialog). After them, focus moves to Book detail's `button-primary` (its `h1` when there is none); from a spine popover, focus returns to the spine. One `alert` region for blocking outcomes (validation failure, couldn't save). Before every save attempt and when a panel or dialog opens, both regions are emptied; new text is set after a short tick (about 100 ms), so repeated identical messages are announced again and old text is never mistaken for a new outcome. Messages that follow a focus change are set after focus has settled. The Duplicate and Confirm dialogs are `alertdialog`.
+- **Live regions.** One polite `status` region per page for outcomes (page saved, book added or saved, Card note saved, finished, paused, set as Up next, side read added or removed, color set, search and filter counts, Stats totals, restored). One-click actions announce: "*X* is Up next." (Set as Up next), "*X* is on the side." (Mark as Side read), "*X* is off the side." (Remove from side), "Paused *X* at p.120. It's Up next." (Pause without a Confirm dialog). After them, focus moves to Book detail's `button-primary` (its `h1` when there is none); from a spine popover, focus returns to the spine. One `alert` region for blocking outcomes (validation failure, couldn't save). Before every save attempt and when a panel or dialog opens, both regions are emptied; new text is set after a short tick (about 100 ms), so repeated identical messages are announced again and old text is never mistaken for a new outcome. Messages that follow a focus change are set after focus has settled. The Duplicate and Confirm dialogs are `alertdialog`. The update notice is announced once, through the polite `status` region, with its sentence, when it first appears in a tab; a refetch that finds the same server version doesn't announce it again, and a later, different server version announces the new sentence once. The notice element itself is not a live region. If a save or an opening panel empties the `status` region within the tick, the announcement is lost and isn't repeated; that's accepted, because the notice stays on screen and **Reload** is a Tab stop.
 - **Progress.** Gauge, library meter, and mini bars are progressbars with `aria-valuemin`, `aria-valuemax`, and text values; markers never carry meaning by color alone.
 - **Reduced motion.** Global rule in Interaction Primitives → Motion.
 - **Forced colors.** Read and unread spines, fills and markers stay distinct (DESIGN.md → Colors → Forced colors).
@@ -630,6 +656,30 @@ Mocks: [key-home](mockups/key-home.html) (Alternate 3, the "⋯" menu), [key-boo
 5. **Climax:** Home shows *The Left Hand of Darkness* at p.212, 64%, "Last updated today". *Accelerate* is back in the Up next pane, page kept. Nothing was lost and nothing started on its own.
 
 Failure path: at step 2 Oleg clicks **Cancel**; nothing changes. Alternative entry: **Pause** on the Main book's Book detail.
+
+### Flow 11 — Two bookvies side by side
+
+Oleg, an evening of work on a new story in a worktree, with the real library open in another tab.
+
+1. An agent starts `bookvie --dev` for the worktree. It runs on port 8766 with `~/bookvie-data-dev`; the real bookvie keeps running on 8765.
+2. Oleg has two bookvie tabs open. One has the sage shelf favicon and the title "Catalog — bookvie"; the other has the amber shelf and "DEV · Catalog — bookvie".
+3. Oleg switches to the amber tab. Its header reads "bookvie DEV" with the amber pill, so Oleg knows this is the scratch library before reading anything else.
+4. Oleg adds three test books, deletes one, and checks the new screen.
+5. **Climax:** to be sure, Oleg opens Backup in the dev tab. About this copy says "bookvie 1.1.0 (a1b2c3d) · Development server" and, under it, "Data folder: ~/bookvie-data-dev". Back in the sage tab, the real catalog hasn't changed.
+
+Failure path: an agent passes `--dev --data-dir ~/bookvie-data` out of habit. The server refuses to start ("bookvie: --dev won't use your real library…", plan D2); no tab ever opens on the real library in dev.
+
+### Flow 12 — Come back to an old tab
+
+Oleg, the morning after installing a new release.
+
+1. Last night Oleg ran `npm run install:local`, which updated bookvie to 1.2.0. This morning's Home tab was opened last week, on 1.1.0.
+2. Oleg switches to the tab. The views refetch on focus.
+3. A band appears under the top nav: "bookvie was updated to 1.2.0. Reload to use it." with **Reload**. A screen reader hears the sentence once.
+4. Oleg saves today's page first. The old tab still works, and the notice blocks nothing; it only pushed the page down once, when it appeared.
+5. **Climax:** Oleg clicks **Reload**. The page comes back on 1.2.0, the notice is gone, and About this copy on Backup reads "bookvie 1.2.0".
+
+Failure path: bookvie is restarting when Oleg switches tabs and `app-info` fails. No notice appears and nothing complains; the notice shows on the next successful refetch.
 
 ## Inspiration & Anti-patterns
 

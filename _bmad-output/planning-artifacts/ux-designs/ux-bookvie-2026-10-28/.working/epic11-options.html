@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Epic 11 options</title>
+<style>
+/* Exploration for Epic 11 (plan dev-prod-favicon-plan-2026-11-17.md D6–D12). Non-normative.
+   Tokens copied from DESIGN.md. Amber candidates are literals under consideration. */
+:root {
+  --page:#F6F4EF; --surface:#FFFFFF; --inset:#FAF9F6; --line:#E4DFD5; --input-border:#8A8273;
+  --ink:#2B2E2A; --ink2:#5F635C; --ink3:#666961; --accent:#557059; --on-accent:#FFFFFF; --accent-soft:#E3EBE2;
+  --tab-strip:#DEE1E6; --tab-active:#FFFFFF; --tab-ink:#3C4043;
+  --amber:#8C5E0E; --amber-soft:#F5EBD8; --on-amber:#FFFFFF;
+  --sans: system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+}
+body.dark {
+  --page:#191B18; --surface:#222520; --inset:#1D201B; --line:#343831; --input-border:#767A6F;
+  --ink:#ECEAE3; --ink2:#B3B7AD; --ink3:#9A9E94; --accent:#93B597; --on-accent:#142017; --accent-soft:#2C3A2E;
+  --tab-strip:#202124; --tab-active:#35363A; --tab-ink:#E8EAED;
+  --amber:var(--amber-d); --amber-soft:#3A3222; --on-amber:#191B18;
+}
+body { margin:0; background:var(--page); color:var(--ink); font:15px/1.5 var(--sans); }
+.wrap { max-width:1180px; margin:0 auto; padding:24px 36px 64px; }
+h1 { font-size:26px; margin:0 0 4px; }
+h2 { font-size:19px; margin:40px 0 4px; }
+.lede, .note { color:var(--ink2); font-size:14px; margin:0 0 16px; max-width:860px; }
+.controls { position:sticky; top:0; z-index:5; display:flex; gap:24px; align-items:center; flex-wrap:wrap;
+  padding:12px 0; background:var(--page); border-bottom:1px solid var(--line); margin-bottom:8px; font-size:14px; }
+.controls fieldset { border:0; margin:0; padding:0; display:flex; gap:12px; align-items:center; }
+.controls legend { float:left; font-weight:600; margin-right:8px; }
+.sw { display:inline-block; width:12px; height:12px; border-radius:3px; vertical-align:-1px; margin-right:4px; border:1px solid var(--line); }
+.grid { display:grid; gap:20px; }
+.g3 { grid-template-columns:repeat(3, 1fr); }
+.g2 { grid-template-columns:repeat(2, 1fr); }
+.opt { background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:16px 18px; }
+.opt h3 { margin:0 0 2px; font-size:15px; }
+.opt p { margin:4px 0 0; font-size:13px; color:var(--ink2); }
+.tag { font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink3); font-weight:600; }
+
+/* Favicon drawings */
+.fav { color:var(--accent); }
+.fav.dev { color:var(--amber); }
+.sizes { display:flex; gap:14px; align-items:flex-end; margin:10px 0; }
+.sizes svg { display:block; }
+.big { background:repeating-conic-gradient(var(--line) 0 25%, transparent 0 50%) 0 0/8px 8px; border-radius:6px; }
+
+/* Fake Chrome tab strip */
+.strip { display:flex; gap:2px; align-items:flex-end; padding:8px 8px 0; border-radius:8px 8px 0 0; background:var(--tab-strip); margin-top:8px; overflow:hidden; }
+.tab { display:flex; gap:8px; align-items:center; height:34px; padding:0 12px; width:190px; border-radius:8px 8px 0 0;
+  font:12px var(--sans); color:var(--tab-ink); white-space:nowrap; overflow:hidden; }
+.tab.on { background:var(--tab-active); }
+.tab span { overflow:hidden; text-overflow:ellipsis; }
+
+/* App header */
+.hdr { display:flex; align-items:stretch; gap:32px; height:60px; padding:0 24px; background:var(--inset); border:1px solid var(--line); border-radius:10px 10px 0 0; }
+.wm { display:inline-flex; align-items:center; gap:8px; font-size:20px; font-weight:600; letter-spacing:-.01em; }
+.wm i { width:12px; height:12px; border-radius:2px; background:var(--accent); display:inline-block; }
+.nav { display:flex; gap:24px; }
+.nav a { display:flex; align-items:center; color:var(--ink2); text-decoration:none; font-size:15px; border-bottom:2px solid transparent; margin-bottom:-1px; }
+.nav a.cur { color:var(--ink); font-weight:600; border-bottom-color:var(--accent); }
+.body { background:var(--page); border:1px solid var(--line); border-top:0; border-radius:0 0 10px 10px; padding:20px 24px; min-height:40px; color:var(--ink2); font-size:14px; }
+
+/* DEV pills */
+.pill { align-self:center; font:700 11px/1 var(--sans); letter-spacing:.08em; padding:4px 7px; border-radius:6px; }
+.p1 { background:var(--amber); color:var(--on-amber); }
+.p2 { background:var(--amber-soft); color:var(--amber); box-shadow: inset 0 0 0 1px var(--amber); }
+.p3 { color:var(--amber); box-shadow: inset 0 0 0 1.5px var(--amber); }
+.wm .pill { margin-left:4px; }
+
+/* Update notice */
+.notice-band { display:flex; gap:16px; align-items:center; padding:10px 24px; font-size:14px; color:var(--ink); }
+.n1 { background:var(--surface); border:1px solid var(--line); border-top:0; }
+.n2 { background:var(--inset); border:1px solid var(--line); border-top:0; }
+.n3 { padding:14px 24px 0; color:var(--ink2); font-size:13px; }
+.btn2 { font:14px var(--sans); height:30px; padding:0 12px; border-radius:9px; background:var(--inset); color:var(--ink); border:1px solid var(--input-border); }
+.btn1 { font:600 14px var(--sans); height:30px; padding:0 12px; border-radius:9px; background:var(--accent); color:var(--on-accent); border:0; }
+.link { color:var(--accent); text-decoration:underline; text-underline-offset:3px; }
+
+/* Backup page */
+.bp { background:var(--page); border:1px solid var(--line); border-radius:10px; padding:20px 24px; display:flex; flex-direction:column; gap:16px; }
+.bp h4 { font-size:26px; margin:0; font-weight:600; }
+.card { background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:16px 20px; display:flex; flex-direction:column; align-items:flex-start; gap:10px; max-width:560px; }
+.btnP { font:600 15px var(--sans); height:42px; padding:0 16px; border-radius:9px; background:var(--accent); color:var(--on-accent); border:0; }
+.btnS { font:15px var(--sans); height:42px; padding:0 16px; border-radius:9px; background:var(--inset); color:var(--ink); border:1px solid var(--input-border); }
+.meta { font-size:13px; color:var(--ink3); margin:0; }
+.bsm { font-size:14px; color:var(--ink2); margin:0; }
+.slabel { font-size:12px; letter-spacing:.08em; text-transform:uppercase; font-weight:600; color:var(--ink3); margin:0; }
+.hair { align-self:stretch; border-top:1px solid var(--line); margin:4px 0; }
+.mini { transform-origin:top left; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Epic 11: options to pick from</h1>
+  <p class="lede">Built from DESIGN.md tokens. Each section is one decision, with options labelled F, A, P, N and B. Use the switches to see everything in dark, and to recolor every amber element with each amber candidate. This page is exploration only, not the contract.</p>
+
+  <div class="controls">
+    <fieldset><legend>Theme</legend>
+      <label><input type="radio" name="th" value="light" checked> Light</label>
+      <label><input type="radio" name="th" value="dark"> Dark</label>
+    </fieldset>
+    <fieldset><legend>Amber</legend>
+      <label><input type="radio" name="am" value="A"> <span class="sw" style="background:#9A6A12"></span>A</label>
+      <label><input type="radio" name="am" value="B"> <span class="sw" style="background:#A8701A"></span>B</label>
+      <label><input type="radio" name="am" value="C" checked> <span class="sw" style="background:#8C5E0E"></span>C</label>
+    </fieldset>
+  </div>
+
+  <!-- ============ 1. FAVICON ============ -->
+  <h2>1. Favicon drawing (D6)</h2>
+  <p class="note">All three use the sage <code>accent</code>, with <code>accent-dark</code> under a dark color scheme, and the wordmark mark's 2px corner (scaled). The light parts are holes, so the tab strip shows through them. Each option shows 16px (actual tab size), 32px (retina) and 64px on a checkerboard.</p>
+  <div class="grid g3">
+    <div class="opt">
+      <div class="tag">F1</div><h3>Tile with a spine cut-out</h3>
+      <div class="sizes fav" data-f="F1"></div>
+      <p>The wordmark's sage square, grown to fill the icon, with one spine and its plank cut out of it. The closest to the existing mark, and the solidest silhouette at 16px.</p>
+    </div>
+    <div class="opt">
+      <div class="tag">F2</div><h3>One spine on a plank</h3>
+      <div class="sizes fav" data-f="F2"></div>
+      <p>A single sage spine with a rounded top, standing on a plank. Its label strip is cut out. Literal, but narrow at 16px.</p>
+    </div>
+    <div class="opt">
+      <div class="tag">F3</div><h3>Three spines on a plank</h3>
+      <div class="sizes fav" data-f="F3"></div>
+      <p>Three spines of different heights on one plank: a small shelf. Reads as "books", and the mixed heights echo the bookcase. Busier at 16px.</p>
+    </div>
+  </div>
+  <p class="note" style="margin-top:14px">In a tab strip. The first tab is production; the second is dev, drawn in amber with the <code>DEV · </code> title from D8.</p>
+  <div class="grid g3" id="strips"></div>
+
+  <!-- ============ 2. AMBER ============ -->
+  <h2>2. Dev amber (D7)</h2>
+  <p class="note">The dev favicon and the DEV pill use the same amber. Each value is computed against bookvie's surfaces and Chrome's tab strip. Text under 4.5:1 doesn't pass for 11px pill text. An icon only needs 3:1.</p>
+  <div class="grid g3">
+    <div class="opt"><div class="tag">A</div><h3><span class="sw" style="background:#9A6A12"></span>#9A6A12 · dark <span class="sw" style="background:#E3B45C"></span>#E3B45C</h3>
+      <p>vs <code>surface-inset</code> 4.49 (just under 4.5, so it can't be the text color of an outlined pill) · white on it 4.73 · vs light tab strip 3.60 · dark twin vs dark strip 8.39</p></div>
+    <div class="opt"><div class="tag">B</div><h3><span class="sw" style="background:#A8701A"></span>#A8701A · dark <span class="sw" style="background:#D9A54A"></span>#D9A54A</h3>
+      <p>The brightest, and the most "amber". vs <code>surface-inset</code> 3.99 · white on it 4.20 (both fail as text) · vs light tab strip 3.21 · dark twin vs dark strip 7.23. It could only be used where no text sits on it or in it.</p></div>
+    <div class="opt"><div class="tag">C</div><h3><span class="sw" style="background:#8C5E0E"></span>#8C5E0E · dark <span class="sw" style="background:#EBC27A"></span>#EBC27A</h3>
+      <p>The deepest, close to bronze. vs <code>surface-inset</code> 5.36 · white on it 5.64 · on the tinted pill fill 4.77 · vs light tab strip 4.30 · dark twin vs dark strip 9.61. Passes every pill variant below.</p></div>
+  </div>
+
+  <!-- ============ 3. DEV PILL ============ -->
+  <h2>3. DEV pill after the wordmark (D8)</h2>
+  <p class="note">Each pill is the text "DEV", 11px, weight 700. The rest of the header is unchanged.</p>
+  <div class="grid" style="gap:14px">
+    <div><div class="tag">P1 · filled</div>
+      <div class="hdr"><span class="wm"><i></i>bookvie<span class="pill p1">DEV</span></span><nav class="nav"><a>Home</a><a class="cur">Catalog</a><a>Stats</a><a>Card notes</a><a>Backup</a></nav></div>
+      <div class="body">The loudest of the three. Amber fill, with white text in light and dark ink in dark.</div></div>
+    <div><div class="tag">P2 · tinted</div>
+      <div class="hdr"><span class="wm"><i></i>bookvie<span class="pill p2">DEV</span></span><nav class="nav"><a>Home</a><a class="cur">Catalog</a><a>Stats</a><a>Card notes</a><a>Backup</a></nav></div>
+      <div class="body">A pale amber fill with amber text and a 1px amber edge. The same recipe as <code>accent-soft</code> with its <code>accent</code> indicator.</div></div>
+    <div><div class="tag">P3 · outlined</div>
+      <div class="hdr"><span class="wm"><i></i>bookvie<span class="pill p3">DEV</span></span><nav class="nav"><a>Home</a><a class="cur">Catalog</a><a>Stats</a><a>Card notes</a><a>Backup</a></nav></div>
+      <div class="body">The quietest: a 1.5px amber outline and amber text, with no fill.</div></div>
+  </div>
+
+  <!-- ============ 4. UPDATE NOTICE ============ -->
+  <h2>4. Update notice under the header (D11)</h2>
+  <p class="note">The copy is the plan's: "bookvie was updated to 1.2.0. Reload to use it." The notice never blocks anything and never uses a warning color.</p>
+  <div class="grid" style="gap:14px">
+    <div><div class="tag">N1 · band on surface, Reload as a secondary button</div>
+      <div class="hdr"><span class="wm"><i></i>bookvie</span><nav class="nav"><a class="cur">Home</a><a>Catalog</a><a>Stats</a><a>Card notes</a><a>Backup</a></nav></div>
+      <div class="notice-band n1">bookvie was updated to 1.2.0. Reload to use it. <button class="btn2">Reload</button></div>
+      <div class="body">A full-width white band under the header with a bottom hairline. Reload is a compact (30px) <code>button-secondary</code> right after the sentence.</div></div>
+    <div><div class="tag">N2 · band on surface-inset, Reload as a primary button</div>
+      <div class="hdr" style="border-radius:10px 10px 0 0"><span class="wm"><i></i>bookvie</span><nav class="nav"><a class="cur">Home</a><a>Catalog</a><a>Stats</a><a>Card notes</a><a>Backup</a></nav></div>
+      <div class="notice-band n2">bookvie was updated to 1.2.0. Reload to use it. <button class="btn1">Reload</button></div>
+      <div class="body">The band takes the header's tone, so it reads as part of the chrome. Reload is sage, because it's the one action on offer.</div></div>
+    <div><div class="tag">N3 · no band, one line at the top of the page</div>
+      <div class="hdr"><span class="wm"><i></i>bookvie</span><nav class="nav"><a class="cur">Home</a><a>Catalog</a><a>Stats</a><a>Card notes</a><a>Backup</a></nav></div>
+      <div class="body" style="padding-top:0"><div class="n3">bookvie was updated to 1.2.0. <a class="link">Reload to use it</a></div><div style="padding:14px 0 0">Wednesday, 18 November …</div></div>
+      <p class="note" style="margin-top:6px">The quietest. One line in <code>body-sm</code>/<code>ink-secondary</code> above the page content, with Reload as a link. It's easy to miss, which may be the point, or may be a problem.</p></div>
+  </div>
+
+  <!-- ============ 5. ABOUT THIS COPY ============ -->
+  <h2>5. "About this copy" on the Backup page (D9, D10)</h2>
+  <p class="note">This is the dev text. Production drops "(a1b2c3d) · Development server" and shows "bookvie 1.1.0 · Data folder: ~/bookvie-data".</p>
+  <div class="grid g3">
+    <div><div class="tag">B1 · its own third card</div>
+      <div class="bp"><h4>Backup</h4>
+        <div class="card"><button class="btnP">Export all data</button><p class="meta">Last export: 3 days ago</p></div>
+        <div class="card"><button class="btnS">Restore from file…</button><p class="bsm">Replaces everything here with the contents of an export file.</p></div>
+        <div class="card"><p class="slabel">About this copy</p><p class="bsm">bookvie 1.1.0 (a1b2c3d) · Development server</p><p class="bsm">Data folder: ~/bookvie-data-dev</p></div>
+      </div></div>
+    <div><div class="tag">B2 · inside Export, under Last export</div>
+      <div class="bp"><h4>Backup</h4>
+        <div class="card"><button class="btnP">Export all data</button><p class="meta">Last export: 3 days ago</p><div class="hair"></div><p class="slabel">About this copy</p><p class="meta">bookvie 1.1.0 (a1b2c3d) · Development server · Data folder: ~/bookvie-data-dev</p></div>
+        <div class="card"><button class="btnS">Restore from file…</button><p class="bsm">Replaces everything here with the contents of an export file.</p></div>
+      </div></div>
+    <div><div class="tag">B3 · no card, a meta footer under the cards</div>
+      <div class="bp"><h4>Backup</h4>
+        <div class="card"><button class="btnP">Export all data</button><p class="meta">Last export: 3 days ago</p></div>
+        <div class="card"><button class="btnS">Restore from file…</button><p class="bsm">Replaces everything here with the contents of an export file.</p></div>
+        <p class="meta" style="padding-left:2px">About this copy: bookvie 1.1.0 (a1b2c3d) · Development server · Data folder: ~/bookvie-data-dev</p>
+      </div></div>
+  </div>
+</div>
+
+<script>
+const AMBERS = { A:['#9A6A12','#E3B45C','#F5EBD8'], B:['#A8701A','#D9A54A','#F5EBD8'], C:['#8C5E0E','#EBC27A','#F5EBD8'] }
+// 32-unit drawings; evenodd holes let the tab strip show through.
+const DRAW = {
+  F1: '<path fill-rule="evenodd" fill="currentColor" d="M4 0h24a4 4 0 0 1 4 4v24a4 4 0 0 1-4 4H4a4 4 0 0 1-4-4V4a4 4 0 0 1 4-4z M12.5 7.5a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2V22h-7z M6 23.5h20v3.5H6z"/>',
+  F2: '<path fill-rule="evenodd" fill="currentColor" d="M10 5a3 3 0 0 1 3-3h6a3 3 0 0 1 3 3v20H10z M14 6h4v9h-4z M3 26h26v4H3z"/>',
+  F3: '<path fill="currentColor" d="M3 11a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v14H3z M12.5 5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v20h-8z M22 13a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v12h-7z M1 26h30v4H1z"/>',
+}
+const svg = (f, px, cls='') => `<svg class="${cls}" width="${px}" height="${px}" viewBox="0 0 32 32" aria-hidden="true">${DRAW[f]}</svg>`
+document.querySelectorAll('.sizes').forEach(el => {
+  const f = el.dataset.f
+  el.innerHTML = svg(f,16) + svg(f,32) + svg(f,64,'big') +
+    `<span style="width:14px"></span><span class="fav dev" style="display:flex;gap:14px;align-items:flex-end">${svg(f,16)}${svg(f,32)}</span>`
+})
+document.getElementById('strips').innerHTML = ['F1','F2','F3'].map(f => `<div><div class="tag">${f}</div>
+  <div class="strip"><div class="tab on"><span class="fav" style="display:flex">${svg(f,16)}</span><span>Catalog — bookvie</span></div>
+  <div class="tab"><span class="fav dev" style="display:flex">${svg(f,16)}</span><span>DEV · Catalog — bookvie</span></div></div></div>`).join('')
+function apply() {
+  const dark = document.querySelector('[name=th]:checked').value === 'dark'
+  const [l, d, s] = AMBERS[document.querySelector('[name=am]:checked').value]
+  document.body.classList.toggle('dark', dark)
+  document.body.style.setProperty('--amber-d', d)
+  if (!dark) { document.body.style.setProperty('--amber', l); document.body.style.setProperty('--amber-soft', s) }
+  else { document.body.style.removeProperty('--amber'); document.body.style.removeProperty('--amber-soft') }
+}
+document.querySelectorAll('input[type=radio]').forEach(i => i.addEventListener('change', apply))
+apply()
+</script>
+</body>
+</html>
