@@ -25,18 +25,21 @@ import {
   backgroundsIn,
   BUNDLE_VERSION,
   focusWindow,
+  NEWER_VERSION,
+  NEWEST_VERSION,
   noticeBand,
   noticeSentence,
   noticeText,
+  OLDER_VERSION,
   productionInfo,
   reloadButton,
   textExtent,
 } from './update-notice.ts'
 
-/** A newer and an older server than the bundle. */
-const NEWER = '1.2.0'
-const NEWEST = '1.3.0'
-const OLDER = '1.0.0'
+/** Newer and older servers than the bundle, derived from its version. */
+const NEWER = NEWER_VERSION
+const NEWEST = NEWEST_VERSION
+const OLDER = OLDER_VERSION
 /** DESIGN.md → typography: `body-sm` is this sans stack. */
 const SANS = 'system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif'
 const SURFACE = 'rgb(255, 255, 255)'

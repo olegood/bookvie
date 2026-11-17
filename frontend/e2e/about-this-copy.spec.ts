@@ -13,6 +13,7 @@ import { ABOUT, aboutCard, exportButton, fulfilAppInfo, serverAppInfo, wrapOf } 
 import { liveRegionText, watchAppInfo } from './dev-mode.ts'
 import { expect, test } from './fixtures.ts'
 import { DUNE } from './home.ts'
+import { BUNDLE_VERSION, NEWER_VERSION } from './update-notice.ts'
 
 const RESTORE = 'Restore from file…'
 const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']
@@ -95,9 +96,14 @@ test.describe('Story 11.3 Show the version on the Backup page (ATDD)', () => {
 
     // The lines come from app-info: a different answer shows different lines,
     // and a commit is never shown in production even when sent.
-    await fulfilAppInfo(page, { version: '1.2.0', mode: 'production', dataDir: '~/bookvie-data', commit: 'a1b2c3d' })
+    await fulfilAppInfo(page, {
+      version: NEWER_VERSION,
+      mode: 'production',
+      dataDir: '~/bookvie-data',
+      commit: 'a1b2c3d',
+    })
     await page.reload()
-    await expect(card.getByText('bookvie 1.2.0', { exact: true })).toBeVisible()
+    await expect(card.getByText(`bookvie ${NEWER_VERSION}`, { exact: true })).toBeVisible()
     await expect(card.getByText('Data folder: ~/bookvie-data', { exact: true })).toBeVisible()
     await expect(card).not.toContainText('a1b2c3d')
     await expect(card).not.toContainText('Development server')
@@ -107,7 +113,7 @@ test.describe('Story 11.3 Show the version on the Backup page (ATDD)', () => {
     page,
     server,
   }) => {
-    await fulfilAppInfo(page, { version: '1.1.0', mode: 'production', dataDir: LONG_FOLDER, commit: null })
+    await fulfilAppInfo(page, { version: BUNDLE_VERSION, mode: 'production', dataDir: LONG_FOLDER, commit: null })
     await page.goto(`${server.url}/backup`)
     await expect(exportButton(page)).toBeVisible()
     const card = aboutCard(page)

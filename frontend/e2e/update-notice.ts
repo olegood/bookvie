@@ -12,6 +12,17 @@ export const BUNDLE_VERSION: string = JSON.parse(
   readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
 ).version
 
+const [MAJOR, MINOR] = BUNDLE_VERSION.split('.').map(Number)
+
+/**
+ * Server versions other than the bundle's, derived from it so a release that
+ * bumps the version never turns "another version" into the bundle's own:
+ * two newer minors and an older version than any release.
+ */
+export const NEWER_VERSION = `${MAJOR}.${MINOR + 1}.0`
+export const NEWEST_VERSION = `${MAJOR}.${MINOR + 2}.0`
+export const OLDER_VERSION = '0.0.0'
+
 /** The notice's sentence for server version `version`. */
 export function noticeText(version: string): string {
   return `bookvie was updated to ${version}. Reload to use it.`

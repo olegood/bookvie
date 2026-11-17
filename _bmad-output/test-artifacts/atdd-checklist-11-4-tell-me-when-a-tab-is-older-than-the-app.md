@@ -121,19 +121,19 @@ None need editing. The bundle and server agree, so no notice shows in any existi
 
 ## Green-phase follow-ups (secondary branches, not red leaves)
 
-- [ ] **E2E, AC-3 dark:** in dark (Theme System with OS dark, and Theme Dark with OS light), the band is `surface-dark` `rgb(34, 37, 32)` with a `line-dark` `rgb(52, 56, 49)` border, and the sentence is `ink-dark` `rgb(236, 234, 227)`.
-- [ ] **E2E, AC-3 padding and wrap:** the band's vertical padding is 10px (`components.update-notice.padding`). At a narrow viewport, the sentence and Reload stay inside the band with no horizontal overflow.
-- [ ] **E2E, AC-3 dev server:** on a `--dev` server with the DEV pill, the notice shows the same way and contains no amber (the pill keeps its amber).
-- [ ] **E2E, AC-4 Book detail and a modal:** the notice shows on `/book/:id` reached by a client link. With a modal side panel open, the notice is inert (Reload isn't reachable by Tab) and the panel works.
-- [ ] **E2E, AC-5 after reload:** after Reload, with the server now answering the bundle's version, the notice is gone (Flow 12 climax), and About this copy on Backup reads the server's version.
-- [ ] **E2E, AC-6 the tick:** the sentence reaches `status` no sooner than about `ANNOUNCE_DELAY_MS` after the refetch answer, and an intent saved within the tick wins (the notice's announcement is lost and not repeated; the notice stays on screen). Both are accepted in EXPERIENCE.md.
-- [ ] **E2E, AC-6 after an intent:** an intent's invalidation refetches `app-info` (AR32). A save in a stale tab makes the notice appear without a focus event.
-- [ ] **E2E, AC-7 never loaded, then loaded:** `app-info` fails on load, then a later refetch answers `1.2.0`: the notice appears and is announced once (Flow 12 failure path).
-- [ ] **E2E, AC-8 aria snapshot:** the banner reads skip link, wordmark, nav, Theme group, then the sentence and Reload (`toMatchAriaSnapshot`).
-- [ ] **E2E, AC-9 forced colors text:** the sentence is readable and Reload has a visible system border.
-- [ ] **Unit (node:test), AC-1 mutation:** the equality part fails when one copy differs. Run it on a temp copy of the four files, or with an injected reader, so the real files aren't edited.
-- [ ] **Unit, AC-2/AC-6:** if the "show / which version / announce?" decision is a pure function, cover equal, newer, older, same-again, a third version, back to the bundle's own, and a failure (no change).
-- [ ] **axe, AC-3:** the Backup and Home axe checks pass in light and dark with the notice shown.
+- [x] **E2E, AC-3 dark:** in dark (Theme System with OS dark, and Theme Dark with OS light), the band is `surface-dark` `rgb(34, 37, 32)` with a `line-dark` `rgb(52, 56, 49)` border, and the sentence is `ink-dark` `rgb(236, 234, 227)`. (done: frontend/e2e/update-notice-automate.spec.ts:54)
+- [x] **E2E, AC-3 padding and wrap:** the band's vertical padding is 10px (`components.update-notice.padding`). At a narrow viewport, the sentence and Reload stay inside the band with no horizontal overflow. (done: frontend/e2e/update-notice-automate.spec.ts:77)
+- [x] **E2E, AC-3 dev server:** on a `--dev` server with the DEV pill, the notice shows the same way and contains no amber (the pill keeps its amber). (done: frontend/e2e/update-notice-automate.spec.ts:105 (a fulfilled `mode: 'dev'` answer on the production server: the DEV pill shows from app-info, as in 11.3's automate))
+- [x] **E2E, AC-4 Book detail and a modal:** the notice shows on `/book/:id` reached by a client link. With a modal side panel open, the notice is inert (Reload isn't reachable by Tab) and the panel works. (done: frontend/e2e/update-notice-automate.spec.ts:122)
+- [x] **E2E, AC-5 after reload:** after Reload, with the server now answering the bundle's version, the notice is gone (Flow 12 climax), and About this copy on Backup reads the server's version. (done: frontend/e2e/update-notice-automate.spec.ts:157)
+- ~~**E2E, AC-6 the tick:** the sentence reaches `status` no sooner than about `ANNOUNCE_DELAY_MS` after the refetch answer, and an intent saved within the tick wins (the notice's announcement is lost and not repeated; the notice stays on screen). Both are accepted in EXPERIENCE.md.~~ **Retired:** the delay is `announce`'s own, proved by `frontend/src/lib/announce.test.ts` (text lands at `ANNOUNCE_DELAY_MS`, not before); "a message waiting for its tick wins" is `shouldAnnounce` in `frontend/src/lib/updateNotice.test.ts` (added by the code review, mutation-proved). An e2e that lands a refetch inside a 100 ms window would be timing-bound.
+- [x] **E2E, AC-6 after an intent:** an intent's invalidation refetches `app-info` (AR32). A save in a stale tab makes the notice appear without a focus event. (done: frontend/e2e/update-notice.spec.ts:444 "[P1] AC-6 a save whose refetch first finds a new version…" (no focus event; the save's invalidation finds the version))
+- [x] **E2E, AC-7 never loaded, then loaded:** `app-info` fails on load, then a later refetch answers `1.2.0`: the notice appears and is announced once (Flow 12 failure path). (done: frontend/e2e/update-notice-automate.spec.ts:179)
+- [x] **E2E, AC-8 aria snapshot:** the banner reads skip link, wordmark, nav, Theme group, then the sentence and Reload (`toMatchAriaSnapshot`). (done: frontend/e2e/update-notice-automate.spec.ts:207)
+- [x] **E2E, AC-9 forced colors text:** the sentence is readable and Reload has a visible system border. (done: frontend/e2e/update-notice.spec.ts:419 (sentence `CanvasText`, Reload `ButtonFace`/`ButtonText`) and frontend/e2e/update-notice-automate.spec.ts:242 (Reload's 1px solid border on every side, not `Canvas`))
+- [x] **Unit (node:test), AC-1 mutation:** the equality part fails when one copy differs. Run it on a temp copy of the four files, or with an injected reader, so the real files aren't edited. (done: frontend/scripts/version.test.mjs:105 (copies the four files to a temp folder, edits one, the check names it))
+- [x] **Unit, AC-2/AC-6:** if the "show / which version / announce?" decision is a pure function, cover equal, newer, older, same-again, a third version, back to the bundle's own, and a failure (no change). (done: frontend/src/lib/updateNotice.test.ts: `noticeVersion` (equal, newer, older, never loaded) and `shouldAnnounce` (shown, waiting message, none). Same-again, a third version, back to the bundle's own and a failure live in the component's effect and TanStack's kept `data`, not in a pure function; they are proved end to end by update-notice.spec.ts:271 (AC-6) and :319 (AC-7))
+- [x] **axe, AC-3:** the Backup and Home axe checks pass in light and dark with the notice shown. (done: frontend/e2e/update-notice-automate.spec.ts:262)
 
 ## Helper probes
 
@@ -220,15 +220,15 @@ The helpers are in `frontend/e2e/update-notice.ts`.
 
 ## Implementation checklist (for `bmad-build-auto`)
 
-- [ ] `vite.config.ts`: a `define` that bakes `frontend/package.json`'s `version` (read, not typed) as a string literal. A `.d.ts` under `src` declares it `declare const <KEY>: string` (AC-1).
-- [ ] Un-skip `scripts/version.test.mjs` so it runs in `check:api` as the AR34 equality test (AC-1).
-- [ ] `AppShell.tsx` / `.module.css`: the band inside `header`, after the top bar. It shows while the last successful `app-info.version` differs from the baked one, with the sentence and Reload styled per `components.update-notice` (`surface`, `line` bottom hairline, `10px {spacing.page-x}` padding, `spacing.4` gap, `body-sm`/`ink`, a 30px `button-secondary` with `0 {spacing.3}` padding). There's no icon, close, amber or accent. Forced colors: a `CanvasText` border, and Reload keeps the system button colors (AC-3, AC-8, AC-9).
-- [ ] Reload calls `window.location.reload()` at once (AC-5).
-- [ ] Announce through `announce('status', sentence)` once for each new differing server version. Nothing on a same-version refetch or a failure, and the notice hides on the bundle's own version (AC-6, AC-7).
-- [ ] The notice element carries no `role` or `aria-live` (AC-4).
-- [ ] README **Updating:** replace "hard-reload open tabs…" with a line saying open tabs show a notice with **Reload** (AC-10).
-- [ ] Re-check `about-this-copy-automate.spec.ts` "[P2] AC-4 a tab left open…" (see above), `app-shell.spec.ts` and `shell.spec.ts`.
-- [ ] Un-skip the 9 e2e leaves and see them pass, then run `npm run check`.
+- [x] `vite.config.ts`: a `define` that bakes `frontend/package.json`'s `version` (read, not typed) as a string literal. A `.d.ts` under `src` declares it `declare const <KEY>: string` (AC-1). (done: frontend/scripts/version.test.mjs:71)
+- [x] Un-skip `scripts/version.test.mjs` so it runs in `check:api` as the AR34 equality test (AC-1). (done: frontend/scripts/version.test.mjs:71 runs in `check:api`)
+- [x] `AppShell.tsx` / `.module.css`: the band inside `header`, after the top bar. It shows while the last successful `app-info.version` differs from the baked one, with the sentence and Reload styled per `components.update-notice` (`surface`, `line` bottom hairline, `10px {spacing.page-x}` padding, `spacing.4` gap, `body-sm`/`ink`, a 30px `button-secondary` with `0 {spacing.3}` padding). There's no icon, close, amber or accent. Forced colors: a `CanvasText` border, and Reload keeps the system button colors (AC-3, AC-8, AC-9). (done: frontend/e2e/update-notice.spec.ts:102, :371, :419)
+- [x] Reload calls `window.location.reload()` at once (AC-5). (done: frontend/e2e/update-notice.spec.ts:236)
+- [x] Announce through `announce('status', sentence)` once for each new differing server version. Nothing on a same-version refetch or a failure, and the notice hides on the bundle's own version (AC-6, AC-7). (done: frontend/e2e/update-notice.spec.ts:271, :319)
+- [x] The notice element carries no `role` or `aria-live` (AC-4). (done: frontend/e2e/update-notice.spec.ts:175)
+- [x] README **Updating:** replace "hard-reload open tabs…" with a line saying open tabs show a notice with **Reload** (AC-10). (done: frontend/e2e/update-notice.spec.ts:485)
+- [x] Re-check `about-this-copy-automate.spec.ts` "[P2] AC-4 a tab left open…" (see above), `app-shell.spec.ts` and `shell.spec.ts`. (done: frontend/e2e/about-this-copy-automate.spec.ts:134 (story-caused fix, named in the build summary); app-shell.spec.ts and shell.spec.ts green in this run's `npm run check`)
+- [x] Un-skip the 9 e2e leaves and see them pass, then run `npm run check`. (done: frontend/e2e/update-notice.spec.ts (all leaves un-skipped; green in this run's `npm run check`))
 
 ## Next
 

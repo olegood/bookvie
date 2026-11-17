@@ -7,7 +7,8 @@
 // them would show a false notice in every tab.
 
 import assert from 'node:assert/strict'
-import { readdirSync, readFileSync } from 'node:fs'
+import { cpSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join, relative, resolve } from 'node:path'
 import { test } from 'node:test'
 import { fileURLToPath } from 'node:url'
@@ -22,8 +23,8 @@ const read = (file) => readFileSync(file, 'utf8')
 const packageVersion = (file) => JSON.parse(read(file)).version
 
 /** `version = "…"` in pyproject.toml's `[project]` table. */
-function pyprojectVersion() {
-  const project = read(join(repo, 'backend', 'pyproject.toml'))
+function pyprojectVersion(root) {
+  const project = read(join(root, 'backend', 'pyproject.toml'))
     .split(/^\[project\][ \t]*$/m)[1]
     ?.split(/^\[/m)[0]
   const match = project?.match(/^version\s*=\s*"([^"]+)"\s*$/m)
@@ -32,11 +33,24 @@ function pyprojectVersion() {
 }
 
 /** `__version__ = "…"` in the backend package. */
-function initVersion() {
-  const match = read(join(repo, 'backend', 'bookvie', '__init__.py')).match(/^__version__\s*=\s*"([^"]+)"\s*$/m)
+function initVersion(root) {
+  const match = read(join(root, 'backend', 'bookvie', '__init__.py')).match(/^__version__\s*=\s*"([^"]+)"\s*$/m)
   if (!match) throw new Error('backend/bookvie/__init__.py has no __version__')
   return match[1]
 }
+
+/** The four version copies (AR34) under the repo at `root`. */
+function versionCopies(root) {
+  return {
+    'bookvie.__version__': initVersion(root),
+    'backend/pyproject.toml': pyprojectVersion(root),
+    'package.json': packageVersion(join(root, 'package.json')),
+    'frontend/package.json': packageVersion(join(root, 'frontend', 'package.json')),
+  }
+}
+
+/** The repo-relative paths of the four version files. */
+const VERSION_FILES = ['backend/bookvie/__init__.py', 'backend/pyproject.toml', 'package.json', 'frontend/package.json']
 
 /** The `define` keys of the resolved build config whose value is `version` as a JS string literal. */
 export async function bakedVersionKeys(version, inlineConfig = { configFile: VITE_CONFIG }) {
@@ -77,12 +91,7 @@ test('[P0] AC-1 the bundle bakes frontend/package.json’s version through a Vit
 
   // The four copies agree (AR34).
   assert.deepEqual(
-    {
-      'bookvie.__version__': initVersion(),
-      'backend/pyproject.toml': pyprojectVersion(),
-      'package.json': packageVersion(join(repo, 'package.json')),
-      'frontend/package.json': version,
-    },
+    versionCopies(repo),
     {
       'bookvie.__version__': version,
       'backend/pyproject.toml': version,
@@ -91,4 +100,21 @@ test('[P0] AC-1 the bundle bakes frontend/package.json’s version through a Vit
     },
     `the version copies disagree (${relative(repo, frontend)}/package.json has ${version})`,
   )
+})
+
+test('[P2] AC-1 the equality check names a copy that differs, on a temp copy of the four files', (t) => {
+  const root = mkdtempSync(join(tmpdir(), 'bookvie-version-'))
+  t.after(() => rmSync(root, { recursive: true, force: true }))
+  for (const file of VERSION_FILES) cpSync(join(repo, file), join(root, file))
+  const version = packageVersion(join(root, 'frontend', 'package.json'))
+  const agree = Object.fromEntries(Object.keys(versionCopies(root)).map((copy) => [copy, version]))
+
+  // The copies as they are agree.
+  assert.deepEqual(versionCopies(root), agree)
+
+  // One copy edited by hand: the check sees exactly that copy differ.
+  const init = join(root, 'backend', 'bookvie', '__init__.py')
+  writeFileSync(init, read(init).replace(/^__version__\s*=\s*"[^"]+"/m, '__version__ = "0.0.0"'))
+  assert.deepEqual(versionCopies(root), { ...agree, 'bookvie.__version__': '0.0.0' })
+  assert.throws(() => assert.deepEqual(versionCopies(root), agree))
 })

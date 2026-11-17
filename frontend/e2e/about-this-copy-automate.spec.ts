@@ -13,7 +13,7 @@ import { ABOUT, aboutCard, exportButton, fulfilAppInfo, serverAppInfo, type AppI
 import { liveRegionText, systemColor, watchAppInfo } from './dev-mode.ts'
 import { expect, test } from './fixtures.ts'
 import { INK_SECONDARY_DARK, rgbOf } from './library.ts'
-import { noticeText } from './update-notice.ts'
+import { BUNDLE_VERSION, NEWER_VERSION, noticeText } from './update-notice.ts'
 
 /** DESIGN.md ink-tertiary, dark theme (tokens.css --color-ink-tertiary under dark). */
 const INK_TERTIARY_DARK = rgbOf('#9A9E94')
@@ -24,8 +24,8 @@ const LINE_DARK = rgbOf('#343831')
 /** DESIGN.md space-3: the Backup card's gap between its blocks. */
 const CARD_GAP = 12
 const COULDNT_LOAD = "Couldn't load. Is bookvie still running?"
-const PRODUCTION: AppInfo = { version: '1.1.0', mode: 'production', dataDir: '~/bookvie-data', commit: null }
-const DEV: AppInfo = { version: '1.1.0', mode: 'dev', dataDir: '~/bookvie-data-dev', commit: 'a1b2c3d' }
+const PRODUCTION: AppInfo = { version: BUNDLE_VERSION, mode: 'production', dataDir: '~/bookvie-data', commit: null }
+const DEV: AppInfo = { version: BUNDLE_VERSION, mode: 'dev', dataDir: '~/bookvie-data-dev', commit: 'a1b2c3d' }
 
 function heading(card: Locator): Locator {
   return card.getByRole('heading', { level: 2, name: ABOUT, exact: true })
@@ -57,7 +57,7 @@ test.describe('Story 11.3 Show the version on the Backup page (automate)', () =>
   }) => {
     await fulfilAppInfo(page, PRODUCTION)
     const card = aboutCard(page)
-    const version = card.getByText('bookvie 1.1.0', { exact: true })
+    const version = card.getByText(`bookvie ${BUNDLE_VERSION}`, { exact: true })
     const folder = card.getByText('Data folder: ~/bookvie-data', { exact: true })
     const expectDark = async (how: string) => {
       await expect(card, how).toHaveCSS('background-color', SURFACE_DARK)
@@ -84,7 +84,7 @@ test.describe('Story 11.3 Show the version on the Backup page (automate)', () =>
     await fulfilAppInfo(page, PRODUCTION)
     await page.goto(`${server.url}/backup`)
     const card = aboutCard(page)
-    const version = card.getByText('bookvie 1.1.0', { exact: true })
+    const version = card.getByText(`bookvie ${BUNDLE_VERSION}`, { exact: true })
     const folder = card.getByText('Data folder: ~/bookvie-data', { exact: true })
     await expect(folder).toBeVisible()
 
@@ -105,7 +105,7 @@ test.describe('Story 11.3 Show the version on the Backup page (automate)', () =>
     await routeAppInfo(page, () => answer)
     await page.goto(`${server.url}/backup`)
     const card = aboutCard(page)
-    const line = card.getByText('bookvie 1.1.0 (a1b2c3d) · Development server', { exact: true })
+    const line = card.getByText(`bookvie ${BUNDLE_VERSION} (a1b2c3d) · Development server`, { exact: true })
     await expect(line).toBeVisible()
 
     answer = 500
@@ -137,19 +137,19 @@ test.describe('Story 11.3 Show the version on the Backup page (automate)', () =>
     await routeAppInfo(page, () => answer)
     await page.goto(`${server.url}/backup`)
     const card = aboutCard(page)
-    await expect(card.getByText('bookvie 1.1.0', { exact: true })).toBeVisible()
+    await expect(card.getByText(`bookvie ${BUNDLE_VERSION}`, { exact: true })).toBeVisible()
 
-    answer = { ...PRODUCTION, version: '1.2.0' }
+    answer = { ...PRODUCTION, version: NEWER_VERSION }
     const before = seen.length
     await focusWindow(page)
     await expect.poll(() => seen.length).toBeGreaterThan(before)
 
-    await expect(card.getByText('bookvie 1.2.0', { exact: true })).toBeVisible()
-    await expect(card).not.toContainText('1.1.0')
+    await expect(card.getByText(`bookvie ${NEWER_VERSION}`, { exact: true })).toBeVisible()
+    await expect(card).not.toContainText(BUNDLE_VERSION)
     // Nothing complains. Story 11.4's update notice announces its own sentence
-    // after the tick, since 1.2.0 isn't the bundle's version; that is the only
+    // after the tick, since NEWER_VERSION isn't the bundle's version; that is the only
     // text the live regions may hold.
-    expect((await liveRegionText(page)).replace(noticeText('1.2.0'), '')).toBe('')
+    expect((await liveRegionText(page)).replace(noticeText(NEWER_VERSION), '')).toBe('')
   })
 
   test('[P2] AC-5 under forced colors, light and dark, the heading and both lines are CanvasText and the card keeps a visible 1px border', async ({
@@ -158,7 +158,7 @@ test.describe('Story 11.3 Show the version on the Backup page (automate)', () =>
   }) => {
     await fulfilAppInfo(page, PRODUCTION)
     const card = aboutCard(page)
-    const version = card.getByText('bookvie 1.1.0', { exact: true })
+    const version = card.getByText(`bookvie ${BUNDLE_VERSION}`, { exact: true })
     const folder = card.getByText('Data folder: ~/bookvie-data', { exact: true })
 
     for (const colorScheme of ['light', 'dark'] as const) {
@@ -189,7 +189,7 @@ test.describe('Story 11.3 Show the version on the Backup page (automate)', () =>
     await expect(aboutCard(page)).toMatchAriaSnapshot(`
       - region "About this copy":
         - heading "About this copy" [level=2]
-        - paragraph: bookvie 1.1.0 (a1b2c3d) · Development server
+        - paragraph: bookvie ${BUNDLE_VERSION} (a1b2c3d) · Development server
         - paragraph: "Data folder: ~/bookvie-data-dev"
     `)
   })
@@ -208,7 +208,7 @@ test.describe('Story 11.3 Show the version on the Backup page (automate)', () =>
     await expect.poll(() => seen.some((answer) => answer.status === 200)).toBe(true)
 
     await expect(aboutCard(page)).toHaveCount(0)
-    await expect(page.getByRole('main')).not.toContainText('bookvie 1.1.0')
+    await expect(page.getByRole('main')).not.toContainText(`bookvie ${BUNDLE_VERSION}`)
     await expect(exportButton(page)).toHaveCount(0)
   })
 })
