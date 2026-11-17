@@ -44,6 +44,14 @@ _SERVER_PREFIXES = ("api", "media")
 # Cover names are never reused (AD-12), so a served cover never changes.
 COVER_CACHE_CONTROL = "public, max-age=31536000, immutable"
 
+# The tab icon, served by its own route. `no-cache` makes the browser ask
+# again each time, so a tab never keeps an icon the server no longer serves;
+# the file is tiny.
+FAVICON_FILE = "favicon.svg"
+FAVICON_PATH = "/" + FAVICON_FILE
+FAVICON_MEDIA_TYPE = "image/svg+xml"
+FAVICON_CACHE_CONTROL = "no-cache"
+
 # Sec-Fetch-Site values a server path accepts; a missing header passes too.
 _ALLOWED_FETCH_SITES = frozenset({"same-origin", "none"})
 
@@ -182,6 +190,19 @@ def create_app(
         _AssetFiles(directory=static_dir / "assets", check_dir=False),
         name="assets",
     )
+
+    # Before the SPA catch-all, which would otherwise serve the file uncached.
+    @app.api_route(FAVICON_PATH, methods=["GET", "HEAD"], include_in_schema=False)
+    def favicon():
+        """The built favicon, read per request; 404 (never index.html) when not built."""
+        path = static_dir / FAVICON_FILE
+        if not path.is_file():
+            raise HTTPException(status_code=404)
+        return FileResponse(
+            path,
+            media_type=FAVICON_MEDIA_TYPE,
+            headers={"Cache-Control": FAVICON_CACHE_CONTROL},
+        )
 
     @app.api_route("/{path:path}", methods=["GET", "HEAD"], include_in_schema=False)
     async def spa(path: str):

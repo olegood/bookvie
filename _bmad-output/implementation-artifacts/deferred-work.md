@@ -1039,3 +1039,12 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-epic-10-retro-item-73-one-module-for-the-copied-e2e-helpers.md`
   summary: The colors in `frontend/e2e/library.ts` are typed by hand. Nothing checks them against `frontend/src/styles/tokens.css`, so after a token change the e2e expectations could go stale without any test failing. A small leaf could compare each `library.ts` color with its `--color-*` value in `tokens.css`, the way `app-shell.spec.ts` compares `tokens.css` with DESIGN.md. Medium, unverified.
   evidence: a new check, outside item 73's move-only intent (Blind Hunter, review of item 73). The idea would be proven worth doing if a token change ever left an e2e color constant stale.
+
+## Deferred from: build-auto review of spec-11-1-a-favicon-for-bookvie (2026-11-17)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-11-1-a-favicon-for-bookvie.md`
+  summary: Spine drift (AD-16, Structural Seed `public/`), reconciled before the next epic. AD-16's Favicon bullet still reads "(Epic 11, planned)" and the Seed lists `public/` as "favicon.svg, favicon-dev.svg (planned)". Story 11.1 built the production half: the dedicated `GET`/`HEAD` `/favicon.svg` route before the SPA catch-all (`image/svg+xml`, `Cache-Control: no-cache`), `frontend/public/favicon.svg` and the one icon link in `index.html`. The dev half (`favicon-dev.svg`, the `--dev` switch, the Vite proxy) is Story 11.2's, so the bullet stays partly planned until then. Low.
+  evidence: ARCHITECTURE-SPINE.md:230 and :387; `backend/bookvie/http/app.py` `favicon` route; `frontend/public/favicon.svg` (spine check, build-auto review of Story 11.1).
+- source_spec: `_bmad-output/implementation-artifacts/spec-11-1-a-favicon-for-bookvie.md`
+  summary: Spine drift (Consistency Conventions → Testing row, Structural Seed "Build and install"), reconciled before the next epic. The spine describes the install smoke test as build, `uv tool install`, start, load `/`, proving the SPA is in the installed tool. It now also fetches `/favicon.svg` from the installed wheel and checks 200, `image/svg+xml` and the built file's bytes. An extension, not a contradiction. Low.
+  evidence: `scripts/smoke.mjs` (the `/favicon.svg` block after the SPA routes) (spine check, build-auto review of Story 11.1).

@@ -7,13 +7,14 @@
 // network. Every temp folder is removed at the end, pass or fail.
 
 import { spawn, spawnSync } from 'node:child_process'
-import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync } from 'node:fs'
 import net from 'node:net'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const REPO = fileURLToPath(new URL('..', import.meta.url))
+const BUILT_FAVICON = path.join(REPO, 'backend', 'bookvie', 'http', 'static', 'favicon.svg')
 const START_TIMEOUT_MS = 30_000
 const STOP_TIMEOUT_MS = 15_000
 
@@ -51,7 +52,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
 async function get(url) {
   const response = await fetch(url, { signal: AbortSignal.timeout(5_000) })
-  return { status: response.status, body: await response.text() }
+  return { status: response.status, type: response.headers.get('content-type'), body: await response.text() }
 }
 
 /** True when a health body is JSON reporting `dataDir`; anything else is "not yet". */
@@ -127,6 +128,16 @@ async function main() {
       }
       say(`GET ${route} -> ${status} with <div id="root">`)
     }
+
+    // The tab icon: the installed wheel must carry the built file and serve it as SVG.
+    const favicon = await get(`${origin}/favicon.svg`)
+    if (favicon.status !== 200 || favicon.type !== 'image/svg+xml') {
+      throw new Error(`GET /favicon.svg answered ${favicon.status} as ${favicon.type}, not image/svg+xml`)
+    }
+    if (favicon.body !== readFileSync(BUILT_FAVICON, 'utf8')) {
+      throw new Error(`GET /favicon.svg is not ${BUILT_FAVICON}:\n${favicon.body.slice(0, 500)}`)
+    }
+    say(`GET /favicon.svg -> ${favicon.status} as ${favicon.type}, the built file`)
 
     server.kill('SIGTERM')
     const timer = setTimeout(() => server.kill('SIGKILL'), STOP_TIMEOUT_MS)

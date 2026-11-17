@@ -11,8 +11,6 @@ from tests.helpers import BASE_URL
 
 INDEX = "<!doctype html><title>bookvie</title><div id=root></div>"
 
-RED = "ATDD red phase (Story 11.1): there is no dedicated /favicon.svg route yet"
-
 
 @pytest.fixture
 def static_dir(tmp_path: Path) -> Path:
@@ -61,7 +59,6 @@ def test_top_level_build_file_is_served(client: TestClient) -> None:
     assert response.text == "<svg/>"
 
 
-@pytest.mark.skip(reason=RED)
 def test_favicon_route_serves_the_built_icon_uncached_before_the_spa_catch_all(
     static_dir: Path,
 ) -> None:
@@ -87,6 +84,38 @@ def test_favicon_route_serves_the_built_icon_uncached_before_the_spa_catch_all(
     other = client.get("/robots.txt")
     assert (other.status_code, other.text) == (200, "User-agent: *")
     assert "cache-control" not in other.headers
+
+
+def test_favicon_head_has_the_same_headers_and_no_body(client: TestClient) -> None:
+    get = client.get("/favicon.svg")
+    head = client.head("/favicon.svg")
+    assert head.status_code == 200
+    assert head.content == b""
+    assert head.headers["content-type"] == "image/svg+xml"
+    assert head.headers["cache-control"] == "no-cache"
+    assert head.headers["content-length"] == get.headers["content-length"]
+    assert head.headers["etag"] == get.headers["etag"]
+
+
+def test_favicon_not_built_is_404_never_index(client: TestClient, static_dir: Path) -> None:
+    (static_dir / "favicon.svg").unlink()
+    response = client.get("/favicon.svg")
+    assert response.status_code == 404
+    assert INDEX not in response.text
+    assert response.headers["content-type"] != "image/svg+xml"
+    assert client.head("/favicon.svg").status_code == 404
+
+
+def test_favicon_is_read_per_request(client: TestClient, static_dir: Path) -> None:
+    assert client.get("/favicon.svg").text == "<svg/>"
+    (static_dir / "favicon.svg").write_text("<svg><path/></svg>")
+    assert client.get("/favicon.svg").text == "<svg><path/></svg>"
+
+
+def test_favicon_foreign_host_is_403(client: TestClient) -> None:
+    response = client.get("/favicon.svg", headers={"Host": "evil.example"})
+    assert response.status_code == 403
+    assert "<svg" not in response.text
 
 
 @pytest.mark.parametrize(

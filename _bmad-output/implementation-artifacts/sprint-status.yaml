@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-29-2026 17:21
-last_updated: 11-17-2026 12:26
+last_updated: 11-17-2026 12:54
 project: bookvie
 project_key: NOKEY
 tracking_system: file-system
@@ -112,8 +112,8 @@ development_status:
   10-1-reverse-the-catalog-order: done
   epic-10-retrospective: done
 
-  epic-11: backlog
-  11-1-a-favicon-for-bookvie: backlog
+  epic-11: in-progress
+  11-1-a-favicon-for-bookvie: review
   11-2-keep-development-apart-from-the-real-library: backlog
   11-3-show-the-version-on-the-backup-page: backlog
   11-4-tell-me-when-a-tab-is-older-than-the-app: backlog

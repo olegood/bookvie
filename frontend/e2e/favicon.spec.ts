@@ -1,10 +1,9 @@
-// Story 11.1 A favicon for bookvie (ATDD red phase).
+// Story 11.1 A favicon for bookvie.
 //
 // AC-1 reads `frontend/public/favicon.svg` as Chromium draws it and compares
 // its fills with DESIGN.md, in the spirit of app-shell.spec.ts. AC-2, AC-5
 // and AC-6 run on the worker's production server, AC-4 checks the build and
 // the smoke script. AC-3 (the route) is in backend/tests/test_app.py.
-// Activate a leaf by changing its `test.skip(` to `test(`.
 
 import { existsSync, readFileSync } from 'node:fs'
 import { test, expect } from './fixtures.ts'
@@ -27,7 +26,7 @@ import { rgbOf } from './library.ts'
 const ALLOWED_ELEMENTS = new Set(['path', 'style', 'title', 'desc'])
 
 test.describe('Story 11.1 A favicon for bookvie (ATDD)', () => {
-  test.skip('[P1] AC-1 favicon.svg is the F3 drawing on a 0 0 32 32 viewBox with one flat fill, accent in light and accent-dark under the dark scheme, and an MIT comment', async ({
+  test('[P1] AC-1 favicon.svg is the F3 drawing on a 0 0 32 32 viewBox with one flat fill, accent in light and accent-dark under the dark scheme, and an MIT comment', async ({
     page,
   }) => {
     const accent = designColor('accent')
@@ -61,7 +60,7 @@ test.describe('Story 11.1 A favicon for bookvie (ATDD)', () => {
     expect(comments.filter((text) => /bookvie/i.test(text) && /\bMIT\b/.test(text))).toHaveLength(1)
   })
 
-  test.skip('[P1] AC-2 every page head has exactly one icon link, rel icon to /favicon.svg as image/svg+xml, and no PNG or .ico fallback', async ({
+  test('[P1] AC-2 every page head has exactly one icon link, rel icon to /favicon.svg as image/svg+xml, and no PNG or .ico fallback', async ({
     page,
   }) => {
     await page.goto('/')
@@ -82,7 +81,7 @@ test.describe('Story 11.1 A favicon for bookvie (ATDD)', () => {
     }
   })
 
-  test.skip('[P1] AC-4 the build copies favicon.svg into the served folder unchanged, the server sends it as image/svg+xml, and the smoke test checks the installed wheel serves it', async ({
+  test('[P1] AC-4 the build copies favicon.svg into the served folder unchanged, the server sends it as image/svg+xml, and the smoke test checks the installed wheel serves it', async ({
     request,
   }) => {
     expect(existsSync(BUILT_FAVICON)).toBe(true)
@@ -102,7 +101,7 @@ test.describe('Story 11.1 A favicon for bookvie (ATDD)', () => {
     expect(smoke).toContain('image/svg+xml')
   })
 
-  test.skip("[P2] AC-5 the served favicon follows Chromium's own color scheme, not bookvie's Theme, so its fill matches the tab strip", async ({
+  test("[P2] AC-5 the served favicon follows Chromium's own color scheme, not bookvie's Theme, so its fill matches the tab strip", async ({
     page,
   }) => {
     // bookvie's Theme set opposite to the browser's scheme.
@@ -120,7 +119,7 @@ test.describe('Story 11.1 A favicon for bookvie (ATDD)', () => {
     await expect.poll(() => svgFill(page)).toBe(rgbOf(designColor('accent')))
   })
 
-  test.skip('[P1] AC-6 the icon link resolves to the icon, uncached, and adds nothing to the page itself', async ({
+  test('[P1] AC-6 the icon link resolves to the icon, uncached, and adds nothing to the page itself', async ({
     page,
     baseURL,
   }) => {
