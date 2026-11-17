@@ -3,38 +3,25 @@
 A back-fill on a Book with no Readings finishes it, so the Book leaves the Side
 reads (FR-8) and keeps Up next; beside a paused Reading the Book stays. Every
 back-fill counts from page 0. The Finished on rules themselves are proven in
-``test_edit_book.py``.
+``test_edit_book_finished_on.py``.
 """
 
 import json
 from pathlib import Path
-from typing import Any
 
 import pytest
-from fastapi.testclient import TestClient
 
 from tests.builder import LibraryBuilder
 from tests.helpers import (
     DUNE,
     DUNE_FORM,
-    EDIT_BOOK,
+    NEUROMANCER,
     api_client,
     assert_invariants,
     library_bytes,
-    stored_book,
+    post_edit_book,
+    stored_readings,
 )
-
-NEUROMANCER = {"title": "Neuromancer", "authors": ["William Gibson"], "pages": 271}
-
-
-def _edit(client: TestClient, book_id: str, form: dict[str, Any], **changes: Any):
-    """``edit-book`` for ``book_id``: the prefilled ``form`` with ``changes``."""
-    intent = {"bookId": book_id, **form, **changes}
-    return client.post(EDIT_BOOK, files={"intent": (None, json.dumps(intent), "application/json")})
-
-
-def _readings(data_dir: Path, book_id: str) -> list[dict[str, Any]]:
-    return stored_book(data_dir, book_id)["readings"]
 
 
 def test_a_back_fill_counts_from_page_0(tmp_path: Path, library_builder: LibraryBuilder) -> None:
@@ -43,8 +30,8 @@ def test_a_back_fill_counts_from_page_0(tmp_path: Path, library_builder: Library
     library_builder.write(tmp_path)
     client = api_client(tmp_path)
 
-    assert _edit(client, dune, DUNE_FORM, finishedOn="2020-01-01").status_code == 200
-    (reading,) = _readings(tmp_path, dune)
+    assert post_edit_book(client, dune, DUNE_FORM, finishedOn="2020-01-01").status_code == 200
+    (reading,) = stored_readings(tmp_path, dune)
     assert (reading["startDate"], reading["startPage"]) == (None, 0)
 
 
@@ -58,7 +45,7 @@ def test_a_back_fill_on_a_never_started_side_read_takes_it_off_the_side_and_keep
     library_builder.write(tmp_path)
     client = api_client(tmp_path)
 
-    assert _edit(client, dune, DUNE_FORM, finishedOn="2020-01-01").status_code == 200
+    assert post_edit_book(client, dune, DUNE_FORM, finishedOn="2020-01-01").status_code == 200
     stored = json.loads(library_bytes(tmp_path))
     assert stored["sideReadBookIds"] == [other]
     assert stored["upNextBookId"] == dune
@@ -75,9 +62,9 @@ def test_a_back_fill_beside_a_paused_reading_stays_on_the_side(
     library_builder.write(tmp_path)
     client = api_client(tmp_path)
 
-    assert _edit(client, dune, DUNE_FORM, finishedOn="2020-01-01").status_code == 200
+    assert post_edit_book(client, dune, DUNE_FORM, finishedOn="2020-01-01").status_code == 200
     assert json.loads(library_bytes(tmp_path))["sideReadBookIds"] == [dune]
-    assert len(_readings(tmp_path, dune)) == 2
+    assert len(stored_readings(tmp_path, dune)) == 2
 
 
 @pytest.mark.parametrize(
@@ -96,7 +83,7 @@ def test_an_edit_that_adds_no_back_fill_keeps_a_finished_side_read(
     client = api_client(tmp_path)
     form = {**DUNE_FORM, "finishedOn": "2020-01-01"}
 
-    assert _edit(client, dune, form, **changes).status_code == 200
+    assert post_edit_book(client, dune, form, **changes).status_code == 200
     assert json.loads(library_bytes(tmp_path))["sideReadBookIds"] == [dune]
 
 
@@ -108,5 +95,5 @@ def test_an_edit_with_no_finished_on_keeps_a_never_started_side_read(
     library_builder.write(tmp_path)
     client = api_client(tmp_path)
 
-    assert _edit(client, dune, DUNE_FORM, subtitle="A Novel").status_code == 200
+    assert post_edit_book(client, dune, DUNE_FORM, subtitle="A Novel").status_code == 200
     assert json.loads(library_bytes(tmp_path))["sideReadBookIds"] == [dune]

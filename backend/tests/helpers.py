@@ -139,6 +139,18 @@ DUNE_FORM = {
 # VALID (The Dispossessed) as the Edit book panel prefills it.
 VALID_FORM = {**DUNE_FORM, **VALID, "isbn": "", "year": ""}
 
+# A second Book for edit-book's duplicate and floor tests, and its Edit book form.
+NEUROMANCER = {"title": "Neuromancer", "authors": ["William Gibson"], "pages": 271}
+NEUROMANCER_FORM = {
+    **DUNE_FORM,
+    "title": "Neuromancer",
+    "pages": "271",
+    "authors": "William Gibson",
+    "publisher": "Publisher",
+    "isbn": "",
+    "year": "",
+}
+
 # A saturated red-orange: hue ~8°, lightness 0.47, saturation 0.67 (capped to 0.45).
 RED_ORANGE = (200, 60, 40)
 
@@ -241,6 +253,18 @@ def stored_books(data_dir: Path) -> list[dict[str, Any]]:
 def stored_book(data_dir: Path, book_id: str) -> dict[str, Any]:
     (book,) = [b for b in stored_books(data_dir) if b["id"] == book_id]
     return book
+
+
+def stored_readings(data_dir: Path, book_id: str) -> list[dict[str, Any]]:
+    return stored_book(data_dir, book_id)["readings"]
+
+
+def post_edit_book(
+    client: TestClient, book_id: str, form: dict[str, Any], **changes: Any
+) -> httpx.Response:
+    """``edit-book`` for ``book_id``: the prefilled ``form`` with ``changes``."""
+    intent = {"bookId": book_id, **form, **changes}
+    return client.post(EDIT_BOOK, files={"intent": (None, json.dumps(intent), "application/json")})
 
 
 def assert_invariants(data_dir: Path) -> None:

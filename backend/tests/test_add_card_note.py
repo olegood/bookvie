@@ -34,7 +34,6 @@ from tests.helpers import (
     COULDNT_SAVE_BODY,
     DUNE,
     DUNE_FORM,
-    EDIT_BOOK,
     NOTE_REQUIRED,
     OUT_OF_RANGE,
     PAGE_FORMS,
@@ -44,6 +43,7 @@ from tests.helpers import (
     api_client,
     assert_invariants,
     library_bytes,
+    post_edit_book,
     stored_book,
 )
 
@@ -61,12 +61,6 @@ def _fields(response) -> dict[str, str]:
     """The refused fields' messages by field; empty when the body has none."""
     fields = response.json().get("error", {}).get("fields") or []
     return {f["field"]: f["message"] for f in fields}
-
-
-def _edit(client: TestClient, book_id: str, form: dict[str, Any], **changes: Any):
-    """``edit-book`` for ``book_id``: the prefilled ``form`` with ``changes``."""
-    intent = {"bookId": book_id, **form, **changes}
-    return client.post(EDIT_BOOK, files={"intent": (None, json.dumps(intent), "application/json")})
 
 
 def _left_hand(builder: LibraryBuilder) -> str:
@@ -257,7 +251,7 @@ def test_r09_p1_a_note_added_through_the_intent_sets_the_pages_floor_for_edit_bo
     assert _add_card_note(client, dune, "The spice must flow.", "p.270").status_code == 200
     before = library_bytes(tmp_path)
 
-    lowered = _edit(client, dune, DUNE_FORM, pages="260")
+    lowered = post_edit_book(client, dune, DUNE_FORM, pages="260")
 
     assert lowered.status_code == 409
     assert lowered.json()["error"]["code"] == "pages_below_card_note"
@@ -265,7 +259,7 @@ def test_r09_p1_a_note_added_through_the_intent_sets_the_pages_floor_for_edit_bo
     assert library_bytes(tmp_path) == before
 
     # Pages equal to the note's page is the floor itself, and saves.
-    assert _edit(client, dune, DUNE_FORM, pages="270").status_code == 200
+    assert post_edit_book(client, dune, DUNE_FORM, pages="270").status_code == 200
     saved = stored_book(tmp_path, dune)
     assert saved["pages"] == 270
     assert [(n["text"], n["pageStart"]) for n in saved["cardNotes"]] == [
