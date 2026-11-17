@@ -897,7 +897,7 @@ action_items:
       step before it becomes an assertion, recorded under Helper probes. Changes:
       `_bmad/custom/bmad-testarch-atdd.toml`. Due: before Epic 12."
     owner: "Murat (TEA)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-11-retro-2026-11-17.md"
   - id: "epic-11-retro-item-79-reconcile-ux-wording-with-epic-11"
     epic: 11
