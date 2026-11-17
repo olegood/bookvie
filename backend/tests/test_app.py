@@ -11,6 +11,8 @@ from tests.helpers import BASE_URL
 
 INDEX = "<!doctype html><title>bookvie</title><div id=root></div>"
 
+RED = "ATDD red phase (Story 11.1): there is no dedicated /favicon.svg route yet"
+
 
 @pytest.fixture
 def static_dir(tmp_path: Path) -> Path:
@@ -57,6 +59,34 @@ def test_top_level_build_file_is_served(client: TestClient) -> None:
     response = client.get("/favicon.svg")
     assert response.status_code == 200
     assert response.text == "<svg/>"
+
+
+@pytest.mark.skip(reason=RED)
+def test_favicon_route_serves_the_built_icon_uncached_before_the_spa_catch_all(
+    static_dir: Path,
+) -> None:
+    # Story 11.1 AC-3 (AR33).
+    app = create_app(static_dir)
+    client = TestClient(app, base_url=BASE_URL)
+
+    response = client.get("/favicon.svg")
+
+    assert response.headers.get("cache-control") == "no-cache"
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "image/svg+xml"
+    assert response.text == "<svg/>"
+    paths = [getattr(route, "path", None) for route in app.routes]
+    assert "/favicon.svg" in paths
+    assert paths.index("/favicon.svg") < paths.index("/{path:path}")
+    # Any other top-level file behaves as before: /favicon.ico gets the SPA,
+    # a built file is served as is, and neither is marked no-cache.
+    ico = client.get("/favicon.ico")
+    assert (ico.status_code, ico.text) == (200, INDEX)
+    assert "cache-control" not in ico.headers
+    (static_dir / "robots.txt").write_text("User-agent: *")
+    other = client.get("/robots.txt")
+    assert (other.status_code, other.text) == (200, "User-agent: *")
+    assert "cache-control" not in other.headers
 
 
 @pytest.mark.parametrize(
