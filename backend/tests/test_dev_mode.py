@@ -384,3 +384,35 @@ def test_dev_favicon_route_answers_404_when_the_dev_icon_is_not_built(tmp_path: 
     client = TestClient(create_app(static, dev=True), base_url="http://127.0.0.1:8765")
 
     assert client.get("/favicon.svg").status_code == 404
+
+
+@pytest.mark.parametrize("form", ["existing", "missing"])
+def test_a_real_dev_process_refuses_the_real_library_with_exit_2(form: str, home: Path) -> None:
+    # AC-2 at the process level (automate): the exit code a shell sees, the exact stderr, no stdout.
+    import sys
+
+    real = home / "bookvie-data"
+    if form == "existing":
+        real.mkdir()
+        (real / "library.json").write_bytes(b'{"real": true}')
+    before = tree(real)
+    cmd = [
+        sys.executable,
+        "-m",
+        "bookvie.cli",
+        "--dev",
+        "--no-browser",
+        "--data-dir",
+        "~/bookvie-data",
+    ]
+
+    done = subprocess.run(
+        cmd, env=os.environ | {"HOME": str(home)}, capture_output=True, text=True, timeout=30
+    )
+
+    assert done.returncode == 2
+    assert done.stderr == REFUSAL + "\n"
+    assert done.stdout == ""
+    assert tree(real) == before
+    assert real.exists() == (form == "existing")
+    assert not (home / "bookvie-data-dev").exists()

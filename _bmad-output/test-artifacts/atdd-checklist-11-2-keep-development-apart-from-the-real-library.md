@@ -107,24 +107,24 @@ acceptanceCriteria:
 
 ## Green-phase follow-ups (secondary branches, not red leaves)
 
-- [ ] **Pytest, AC-2 real process:** `python -m bookvie.cli --dev --no-browser --data-dir <HOME>/bookvie-data` with `HOME` = tmp exits 2 with exactly the message on stderr (the process-level exit code).
-- [ ] **Pytest, AC-2 HOME through a symlink:** `HOME` itself a symlink to the temp home, `--data-dir` the resolved real path: still refused (both sides resolved).
-- [ ] **Pytest, AC-2 near misses start normally:** `--dev --data-dir ~/bookvie-data2`, `~/bookvie-data/sub` and `~/bookvie-data-dev` aren't refused.
-- [ ] **Pytest, AC-2 without --dev:** plain `bookvie --data-dir ~/bookvie-data` still starts (the refusal is dev-only).
-- [ ] **Pytest, AC-3 dataDir edge cases:** a data folder equal to `HOME` shows `~`; a sibling with the home folder as a name prefix (`/tmp/home2`) shows the absolute path, not `~2`.
-- [ ] **Pytest, AC-3 commit read once:** git runs exactly once per dev start and never in production (spy on `subprocess.run`, or a fake `git` on `PATH` that counts).
-- [ ] **Pytest, AC-4 route by mode:** `create_app(static_dir, dev=True)` serves `favicon-dev.svg`; with only `favicon.svg` built it answers 404 (or as the build decides), never the sage file or `index.html`; HEAD has the same headers.
-- [ ] **Pytest, AC-4 wheel:** `test_wheel_build.py` with a `favicon-dev.svg` in the copied `static/` finds it in the wheel, like `test_wheel_contains_the_top_level_favicon`.
-- [ ] **Smoke, AC-4:** `scripts/smoke.mjs` checks the installed package's `static/favicon-dev.svg` (or starts the installed `bookvie --dev` on a scratch folder and gets the amber file).
-- [ ] **E2E, AC-6 through Vite:** with the Vite server of AC-5, the page shows the pill and `DEV · Catalog — bookvie`.
-- [ ] **E2E, AC-6 Theme Dark under OS light, and Theme Light under OS dark:** the pill follows bookvie's Theme, like the rest of the page.
-- [ ] **E2E, AC-6 Tab order:** Tab from "Skip to content" to the theme toggle never lands in the wordmark.
-- [ ] **E2E, AC-6 centered and about 20px tall:** the pill's vertical center is within 1px of the word's, and its height is 20px ±1 (DESIGN.md → DEV pill).
-- [ ] **E2E, AC-6 accessibility:** axe passes on a dev page in light and dark, and the banner's accessible text includes "bookvie DEV".
-- [ ] **E2E, AC-7 forced colors:** a production page under forced colors has no pill and nothing new.
-- [ ] **E2E, AC-8 client navigation:** after a failed refetch, a client-side route change keeps the prefix on the new title.
-- [ ] **E2E, AC-9 dark forced colors:** same checks under `colorScheme: 'dark'`.
-- [ ] **Vitest, AC-6/AC-8:** a unit test for whatever builds the title from `mode` (e.g. `usePageTitle` with and without `app-info`).
+- [x] **Pytest, AC-2 real process:** `python -m bookvie.cli --dev --no-browser --data-dir <HOME>/bookvie-data` with `HOME` = tmp exits 2 with exactly the message on stderr (the process-level exit code). (done: backend/tests/test_dev_mode.py:390 test_a_real_dev_process_refuses_the_real_library_with_exit_2)
+- [x] **Pytest, AC-2 HOME through a symlink:** `HOME` itself a symlink to the temp home, `--data-dir` the resolved real path: still refused (both sides resolved). (done: backend/tests/test_dev_mode.py:286 test_dev_refuses_the_real_library_when_home_is_a_symlink)
+- [x] **Pytest, AC-2 near misses start normally:** `--dev --data-dir ~/bookvie-data2`, `~/bookvie-data/sub` and `~/bookvie-data-dev` aren't refused. (done: backend/tests/test_dev_mode.py:269 test_dev_starts_on_a_folder_that_only_looks_like_the_real_library)
+- [x] **Pytest, AC-2 without --dev:** plain `bookvie --data-dir ~/bookvie-data` still starts (the refusal is dev-only). (done: backend/tests/test_dev_mode.py:278 test_plain_bookvie_still_opens_the_real_library)
+- [x] **Pytest, AC-3 dataDir edge cases:** a data folder equal to `HOME` shows `~`; a sibling with the home folder as a name prefix (`/tmp/home2`) shows the absolute path, not `~2`. (done: backend/tests/test_dev_mode.py:305 test_data_dir_shows_tilde_only_inside_the_home_folder)
+- [x] **Pytest, AC-3 commit read once:** git runs exactly once per dev start and never in production (spy on `subprocess.run`, or a fake `git` on `PATH` that counts). (done: backend/tests/test_dev_mode.py:315 test_commit_is_read_once_per_dev_start_and_never_in_production)
+- [x] **Pytest, AC-4 route by mode:** `create_app(static_dir, dev=True)` serves `favicon-dev.svg`; with only `favicon.svg` built it answers 404 (or as the build decides), never the sage file or `index.html`; HEAD has the same headers. (done: backend/tests/test_dev_mode.py:357 test_favicon_route_serves_the_file_for_its_mode and :376 test_dev_favicon_route_answers_404_when_the_dev_icon_is_not_built)
+- [x] **Pytest, AC-4 wheel:** `test_wheel_build.py` with a `favicon-dev.svg` in the copied `static/` finds it in the wheel, like `test_wheel_contains_the_top_level_favicon`. (done: backend/tests/test_wheel_build.py:80 test_wheel_contains_the_dev_favicon)
+- [x] **Smoke, AC-4:** `scripts/smoke.mjs` checks the installed package's `static/favicon-dev.svg` (or starts the installed `bookvie --dev` on a scratch folder and gets the amber file). (done: scripts/smoke.mjs installed-package check; `npm run check` printed "smoke: installed favicon-dev.svg is the built file" on 2026-11-17)
+- [x] **E2E, AC-6 through Vite:** with the Vite server of AC-5, the page shows the pill and `DEV · Catalog — bookvie`. (done: frontend/e2e/dev-mode-automate.spec.ts:190)
+- [x] **E2E, AC-6 Theme Dark under OS light, and Theme Light under OS dark:** the pill follows bookvie's Theme, like the rest of the page. (done: frontend/e2e/dev-mode-automate.spec.ts:46)
+- [x] **E2E, AC-6 Tab order:** Tab from "Skip to content" to the theme toggle never lands in the wordmark. (done: frontend/e2e/dev-mode-automate.spec.ts:93)
+- [x] **E2E, AC-6 centered and about 20px tall:** the pill's vertical center is within 1px of the word's, and its height is 20px ±1 (DESIGN.md → DEV pill). (done: frontend/e2e/dev-mode-automate.spec.ts:70)
+- [x] **E2E, AC-6 accessibility:** axe passes on a dev page in light and dark, and the banner's accessible text includes "bookvie DEV". (done: frontend/e2e/dev-mode-automate.spec.ts:117)
+- [x] **E2E, AC-7 forced colors:** a production page under forced colors has no pill and nothing new. (done: frontend/e2e/dev-mode-automate.spec.ts:224)
+- [x] **E2E, AC-8 client navigation:** after a failed refetch, a client-side route change keeps the prefix on the new title. (done: frontend/e2e/dev-mode-automate.spec.ts:134)
+- [x] **E2E, AC-9 dark forced colors:** same checks under `colorScheme: 'dark'`. (done: frontend/e2e/dev-mode-automate.spec.ts:160)
+- [x] **Vitest, AC-6/AC-8:** a unit test for whatever builds the title from `mode` (e.g. `usePageTitle` with and without `app-info`). (done: frontend/src/lib/page.test.ts:6 and :11 (`pageTitle(name, mode)`, a node:test unit; `usePageTitle` passes it `useAppInfo()?.mode`))
 
 ## Helper probes
 
@@ -187,13 +187,13 @@ With the skips in place: `pytest tests/test_dev_mode.py tests/test_cli.py tests/
 
 ## Implementation checklist (for `bmad-build-auto`)
 
-- [ ] `cli.py`: dev defaults and `--help` (AC-1); the refusal before `ensure_writable` and the lock (AC-2); the commit read once at a dev start (AC-3).
-- [ ] `views/app_info.py` with the response model, `GET /api/views/app-info` in `http/api.py`, and `npm --prefix frontend run api:gen` for `schema.d.ts` (AC-3).
-- [ ] `frontend/public/favicon-dev.svg`, and the `/favicon.svg` route choosing it with `--dev` (AC-4); `scripts/smoke.mjs` checks the wheel ships it (AC-4).
-- [ ] `vite.config.ts`: target `http://127.0.0.1:8766`, `/favicon.svg` proxied; `dev-proxy.spec.ts`'s existing inline map gains `/favicon.svg` (AC-5).
-- [ ] An `app-info` view query in `api/views.ts` (`['view', 'app-info']`), the DEV pill in `AppShell.tsx` with its CSS Module, and the `DEV · ` prefix in `lib/page.ts`, all from `app-info.mode` (AC-6, AC-8, AC-9, AC-10).
-- [ ] README Development and Options paragraphs (AC-11).
-- [ ] Un-skip the 11 leaves and see them pass. Run `npm run check` with no existing e2e spec's assertions edited (AC-7: production unchanged).
+- [x] `cli.py`: dev defaults and `--help` (AC-1); the refusal before `ensure_writable` and the lock (AC-2); the commit read once at a dev start (AC-3). (done: backend/bookvie/cli.py `parse_args`, `_refuses_real_library`, `_checkout_commit`; backend/tests/test_dev_mode.py:102, :131, :181)
+- [x] `views/app_info.py` with the response model, `GET /api/views/app-info` in `http/api.py`, and `npm --prefix frontend run api:gen` for `schema.d.ts` (AC-3). (done: backend/bookvie/views/app_info.py, http/api.py `app_info_view`, frontend/src/api/generated/schema.d.ts `AppInfoView`)
+- [x] `frontend/public/favicon-dev.svg`, and the `/favicon.svg` route choosing it with `--dev` (AC-4); `scripts/smoke.mjs` checks the wheel ships it (AC-4). (done: frontend/public/favicon-dev.svg, http/app.py `favicon`, scripts/smoke.mjs; frontend/e2e/dev-mode.spec.ts:37)
+- [x] `vite.config.ts`: target `http://127.0.0.1:8766`, `/favicon.svg` proxied; `dev-proxy.spec.ts`'s existing inline map gains `/favicon.svg` (AC-5). (done: frontend/vite.config.ts; frontend/e2e/dev-proxy.spec.ts AC-5 leaf)
+- [x] An `app-info` view query in `api/views.ts` (`['view', 'app-info']`), the DEV pill in `AppShell.tsx` with its CSS Module, and the `DEV · ` prefix in `lib/page.ts`, all from `app-info.mode` (AC-6, AC-8, AC-9, AC-10). (done: frontend/src/api/views.ts `useAppInfo`, components/AppShell.tsx + .module.css, lib/page.ts; frontend/e2e/dev-mode.spec.ts)
+- [x] README Development and Options paragraphs (AC-11). (done: README.md Options and Development; frontend/e2e/dev-mode-production.spec.ts AC-11 leaf)
+- [x] Un-skip the 11 leaves and see them pass. Run `npm run check` with no existing e2e spec's assertions edited (AC-7: production unchanged). (done: no `test.skip` left in the story's leaves; `npm run check` exit 0 on 2026-11-17 (code review of 11.2))
 
 ## Next
 
