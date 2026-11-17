@@ -46,6 +46,30 @@
   background: var(--color-accent);
 }
 
+/* The DEV pill (UX-DR67). Dev amber lives only here and in favicon-dev.svg,
+   never in tokens.css (UX-DR66). The wordmark's gap is the space after the word. */
+.devPill {
+  padding: 4px 7px;
+  border-radius: var(--radius-sm);
+  background: #8c5e0e;
+  color: #fff;
+  font: var(--font-section-label-weight) var(--font-section-label-size) / 1 var(--font-section-label-family);
+  letter-spacing: var(--font-section-label-letter-spacing);
+  text-transform: uppercase;
+}
+
+:root[data-theme='dark'] .devPill {
+  background: #ebc27a;
+  color: #191b18;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .devPill {
+    background: #ebc27a;
+    color: #191b18;
+  }
+}
+
 .nav {
   display: flex;
 }
@@ -99,5 +123,11 @@
 @media (forced-colors: active) {
   .link[aria-current='page'] {
     border-bottom-color: Highlight;
+  }
+
+  .devPill {
+    border: 1px solid CanvasText;
+    background: Canvas;
+    color: CanvasText;
   }
 }

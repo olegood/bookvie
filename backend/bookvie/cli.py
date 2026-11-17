@@ -5,6 +5,7 @@ import asyncio
 import copy
 import os
 import re
+import subprocess
 import sys
 import threading
 import time
@@ -15,7 +16,7 @@ from pathlib import Path
 
 import uvicorn
 
-from bookvie import instance
+from bookvie import __version__, instance
 from bookvie.domain.clock import FakeClock, SystemClock
 from bookvie.http.app import STATIC_DIR, create_app
 from bookvie.instance import HOST
@@ -23,6 +24,14 @@ from bookvie.store import StartupError, Store, ensure_writable
 
 DEFAULT_PORT = 8765
 DEFAULT_DATA_DIR = "~/bookvie-data"
+# `--dev` keeps to its own folder and port, so it never opens the real library (AD-16).
+DEV_PORT = 8766
+DEV_DATA_DIR = "~/bookvie-data-dev"
+_REFUSAL = (
+    f"bookvie: --dev won't use your real library ({DEFAULT_DATA_DIR}). "
+    f"Leave out --data-dir to use {DEV_DATA_DIR}, or pass a scratch folder."
+)
+_GIT_TIMEOUT_SECONDS = 5.0
 _BROWSER_WAIT_SECONDS = 30.0
 
 
@@ -42,14 +51,17 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--data-dir",
-        default=DEFAULT_DATA_DIR,
-        help=f"folder that holds the library (default: {DEFAULT_DATA_DIR})",
+        default=None,
+        help=(
+            f"folder that holds the library "
+            f"(default: {DEFAULT_DATA_DIR}, or {DEV_DATA_DIR} with --dev)"
+        ),
     )
     parser.add_argument(
         "--port",
         type=int,
-        default=DEFAULT_PORT,
-        help=f"port on 127.0.0.1 (default: {DEFAULT_PORT})",
+        default=None,
+        help=f"port on 127.0.0.1 (default: {DEFAULT_PORT}, or {DEV_PORT} with --dev)",
     )
     parser.add_argument(
         "--no-browser",
@@ -59,7 +71,10 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--dev",
         action="store_true",
-        help="development mode, used alongside the Vite dev server on :5173",
+        help=(
+            "development mode, used alongside the Vite dev server on :5173; "
+            f"refuses {DEFAULT_DATA_DIR}"
+        ),
     )
     parser.add_argument(
         "--fake-today",
@@ -69,12 +84,44 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         help="pretend today is this local date (tests only; needs --no-browser)",
     )
     args = parser.parse_args(argv)
+    if args.port is None:
+        args.port = DEV_PORT if args.dev else DEFAULT_PORT
+    if args.data_dir is None:
+        args.data_dir = DEV_DATA_DIR if args.dev else DEFAULT_DATA_DIR
     if not 1 <= args.port <= 65535:
         parser.error(f"--port must be between 1 and 65535, got {args.port}")
     if args.fake_today is not None and not args.no_browser:
         parser.error("--fake-today is only allowed with --no-browser")
     args.data_dir = Path(args.data_dir).expanduser().resolve()
     return args
+
+
+def _refuses_real_library(args: argparse.Namespace) -> bool:
+    """True when ``--dev`` names the real library, in any form (``~``, symlinks, ``..``,
+    a case variant on a case-insensitive disk, a folder that doesn't exist yet)."""
+    real = Path(DEFAULT_DATA_DIR).expanduser().resolve()
+    return args.dev and instance.same_folder(str(real), args.data_dir)
+
+
+def _checkout_commit() -> str | None:
+    """The short git hash of the checkout this package runs from, or None.
+
+    Any failure (no git on PATH, not a checkout, a timeout) gives None: the
+    commit is shown for information and must never stop a start.
+    """
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=Path(__file__).resolve().parent,
+            capture_output=True,
+            text=True,
+            timeout=_GIT_TIMEOUT_SECONDS,
+            check=True,
+        )
+    except OSError, subprocess.SubprocessError:
+        return None
+    commit = result.stdout.strip()
+    return commit or None
 
 
 def _log_config() -> dict:
@@ -157,6 +204,10 @@ def _port_conflict(port: int, data_dir: Path, pid: int, no_browser: bool) -> tup
 def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
     data_dir: Path = args.data_dir
+    # Before anything touches the folder: no lock, no store, no new files.
+    if _refuses_real_library(args):
+        _say(_REFUSAL)
+        return 2
     try:
         ensure_writable(data_dir)
     except StartupError as exc:
@@ -197,6 +248,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             dev=args.dev,
             store=store,
             clock=clock,
+            version=__version__,
+            commit=_checkout_commit() if args.dev else None,
         )
 
         def release() -> None:

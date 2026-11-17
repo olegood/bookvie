@@ -1,6 +1,7 @@
 import { useRef, type MouseEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { NavLink, Outlet } from 'react-router'
+import { useAppInfo } from '../api/views.ts'
 import { regionHost, registerRegion } from '../lib/announce.ts'
 import ThemeToggle from './ThemeToggle.tsx'
 import styles from './AppShell.module.css'
@@ -11,9 +12,14 @@ import styles from './AppShell.module.css'
  * into one host element outside React's tree (see `regionHost`), so an open
  * modal side panel or dialog can move them inside itself, where they are not
  * inert, and back to the body when it closes.
+ *
+ * On a server started with `--dev` (app-info says so), the wordmark reads
+ * "bookvie DEV". Until app-info loads, or if it never does, the shell looks
+ * like production.
  */
 export default function AppShell({ children }: { children?: ReactNode }) {
   const main = useRef<HTMLElement>(null)
+  const dev = useAppInfo()?.mode === 'dev'
   const skipToContent = (event: MouseEvent<HTMLAnchorElement>) => {
     // Focus directly: a hash change would count as a navigation.
     event.preventDefault()
@@ -28,6 +34,12 @@ export default function AppShell({ children }: { children?: ReactNode }) {
         <span className={styles.wordmark}>
           <span className={styles.mark} aria-hidden="true" />
           bookvie
+          {dev && (
+            <>
+              {' '}
+              <span className={styles.devPill}>DEV</span>
+            </>
+          )}
         </span>
         <nav className={styles.nav} aria-label="Main">
           <ul className={styles.items}>

@@ -90,11 +90,11 @@ bookvie                                  # serves 127.0.0.1:8765 and opens the b
 
 **Updating:** `npm run install:local` rebuilds and reinstalls in one step. Then restart a running `bookvie` (Ctrl+C, run it again) and hard-reload open tabs so the browser picks up the new bundle.
 
-**Options:** `--data-dir DIR` (default `~/bookvie-data`), `--port N`, `--no-browser`, `--dev` (accepts the Vite dev origin on `:5173`) and `--fake-today YYYY-MM-DD` (tests only, with `--no-browser`). Only one `bookvie` runs per data folder; a second launch reopens it.
+**Options:** `--data-dir DIR` (default `~/bookvie-data`, or `~/bookvie-data-dev` with `--dev`), `--port N` (default 8765, or 8766 with `--dev`), `--no-browser`, `--dev` (a development server: its own folder and port, accepts the Vite dev origin on `:5173`, and refuses `~/bookvie-data`) and `--fake-today YYYY-MM-DD` (tests only, with `--no-browser`). Only one `bookvie` runs per data folder; a second launch reopens it.
 
 **Data folder:** `library.json` holds the whole library and is written atomically; `covers/` holds the cover images, and `local-state.json` remembers "Last export" on this machine. Back up and restore from the Backup page: an export is a zip of `library.json` and `covers/`, and a restore checks the whole file before replacing anything.
 
-**Development:** run `bookvie --dev --no-browser --data-dir <scratch folder>` in one terminal and `npm run dev` in another, then open `http://127.0.0.1:5173`. Vite proxies `/api` and `/media` to port 8765, so stop any normal `bookvie` first.
+**Development:** run `bookvie --dev --no-browser` in one terminal and `npm run dev` in another, then open `http://127.0.0.1:5173`. A dev server uses `~/bookvie-data-dev` on port 8766 (pass `--data-dir` for a scratch folder), so it runs beside your normal `bookvie`, and it refuses to open your real library (`~/bookvie-data`) in any form. `npm run dev` proxies `/api`, `/media` and `/favicon.svg` to port 8766. A dev tab shows an amber favicon, a DEV pill after the wordmark and a `DEV · ` title prefix.
 
 **Tests:** `npm run check` runs `check:py` (ruff and pytest with coverage gates), `check:api` (API type drift, frontend lint, type check and unit tests), `check:e2e` (Playwright) and `check:smoke` (install and serve), stopping at the first failure; each also runs alone. `npm run format` applies both formatters. No check touches `~/bookvie-data`. See [`frontend/e2e/README.md`](frontend/e2e/README.md) for the e2e suite.
 

@@ -21,8 +21,6 @@ import bookvie
 from bookvie import cli, instance
 from bookvie.instance import LOCK_NAME
 
-RED = "ATDD red phase (Story 11.2): --dev has no defaults, refusal or app-info yet"
-
 REFUSAL = (
     "bookvie: --dev won't use your real library (~/bookvie-data). "
     "Leave out --data-dir to use ~/bookvie-data-dev, or pass a scratch folder."
@@ -101,7 +99,6 @@ def checkout_commit() -> str:
     return result.stdout.strip()
 
 
-@pytest.mark.skip(reason=RED)
 def test_dev_defaults_to_its_own_folder_and_port_and_help_shows_both(
     home: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -130,8 +127,7 @@ def test_dev_defaults_to_its_own_folder_and_port_and_help_shows_both(
     assert "8766" in text
 
 
-@pytest.mark.skip(reason=RED)
-@pytest.mark.parametrize("form", ["direct", "tilde", "symlink", "dotdot", "missing"])
+@pytest.mark.parametrize("form", ["direct", "tilde", "symlink", "dotdot", "missing", "case"])
 def test_dev_refuses_the_real_library_before_the_lock_or_the_store(
     form: str,
     home: Path,
@@ -145,6 +141,8 @@ def test_dev_refuses_the_real_library_before_the_lock_or_the_store(
         (real / "covers").mkdir(parents=True)
         (real / "library.json").write_bytes(b'{"real": true}')
         (real / "covers" / "c.jpg").write_bytes(b"cover")
+    if form == "case" and not (home / "BOOKVIE-DATA").exists():
+        pytest.skip("the temporary disk is case-sensitive")
     (home / "scratch").mkdir()
     (tmp_path / "link").symlink_to(real, target_is_directory=True)
     named = {
@@ -153,6 +151,7 @@ def test_dev_refuses_the_real_library_before_the_lock_or_the_store(
         "symlink": str(tmp_path / "link"),
         "dotdot": str(home / "scratch" / ".." / "bookvie-data"),
         "missing": str(real),
+        "case": "~/BOOKVIE-DATA",
     }[form]
     before = tree(real)
 
@@ -179,7 +178,6 @@ def test_dev_refuses_the_real_library_before_the_lock_or_the_store(
     assert real.exists() == (form != "missing")
 
 
-@pytest.mark.skip(reason=RED)
 def test_app_info_reports_version_mode_data_dir_and_commit_per_mode(
     home: Path,
     tmp_path: Path,
@@ -243,3 +241,123 @@ def test_app_info_reports_version_mode_data_dir_and_commit_per_mode(
     generated = SCHEMA_D_TS.read_text(encoding="utf-8")
     assert '"/api/views/app-info"' in generated
     assert f"{name}: {{" in generated
+
+
+def test_dev_refuses_its_default_folder_when_it_links_to_the_real_library(
+    home: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # AC-2: with no flags, ~/bookvie-data-dev as a symlink to ~/bookvie-data is refused too.
+    real = home / "bookvie-data"
+    real.mkdir()
+    (real / "library.json").write_bytes(b'{"real": true}')
+    (home / "bookvie-data-dev").symlink_to(real, target_is_directory=True)
+    before = tree(real)
+    monkeypatch.setattr(cli.instance, "bind_socket", lambda port: REAL_BIND(0))
+    monkeypatch.setattr(cli, "_Server", _CapturedServer)
+
+    code = exit_code(lambda: cli.main(["--dev", "--no-browser"]))
+
+    assert code == 2
+    out, err = capsys.readouterr()
+    assert err == REFUSAL + "\n"
+    assert out == ""
+    assert not (real / LOCK_NAME).exists()
+    assert tree(real) == before
+
+
+@pytest.mark.parametrize("name", ["bookvie-data2", "bookvie-data/sub", "bookvie-data-dev"])
+def test_dev_starts_on_a_folder_that_only_looks_like_the_real_library(
+    name: str, home: Path, start: Callable[[Sequence[str]], FastAPI]
+) -> None:
+    # AC-2 near misses: only the real library itself is refused.
+    folder = home / name
+    start(["--dev", "--no-browser", "--port", "8799", "--data-dir", str(folder)])
+    assert folder.is_dir()
+
+
+def test_plain_bookvie_still_opens_the_real_library(
+    home: Path, start: Callable[[Sequence[str]], FastAPI]
+) -> None:
+    # AC-2: the refusal is --dev only.
+    start(["--no-browser", "--port", "8799", "--data-dir", "~/bookvie-data"])
+    assert (home / "bookvie-data").is_dir()
+
+
+def test_dev_refuses_the_real_library_when_home_is_a_symlink(
+    home: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    # AC-2: both sides are resolved, so HOME through a symlink is refused too.
+    (tmp_path / "home-link").symlink_to(home, target_is_directory=True)
+    monkeypatch.setenv("HOME", str(tmp_path / "home-link"))
+
+    code = exit_code(
+        lambda: cli.main(["--dev", "--no-browser", "--data-dir", str(home / "bookvie-data")])
+    )
+
+    assert code == 2
+    assert capsys.readouterr().err == REFUSAL + "\n"
+    assert not (home / "bookvie-data").exists()
+
+
+def test_data_dir_shows_tilde_only_inside_the_home_folder(home: Path, tmp_path: Path) -> None:
+    # AC-3 edges: the home folder itself is ~, a sibling sharing its name as a prefix is absolute.
+    from bookvie.views.app_info import display_path
+
+    assert display_path(home, home) == "~"
+    assert display_path(home / "a" / "b", home) == "~/a/b"
+    sibling = tmp_path / "home2"
+    assert display_path(sibling, home) == str(sibling.resolve())
+
+
+def test_commit_is_read_once_per_dev_start_and_never_in_production(
+    home: Path, monkeypatch: pytest.MonkeyPatch, start: Callable[[Sequence[str]], FastAPI]
+) -> None:
+    calls: list[Sequence[str]] = []
+    real_run = subprocess.run
+
+    def run(args, *rest, **kwargs):
+        calls.append(args)
+        return real_run(args, *rest, **kwargs)
+
+    monkeypatch.setattr(cli.subprocess, "run", run)
+    start(["--no-browser", "--port", "8799", "--data-dir", str(home / "a")])
+    assert calls == []
+    start(["--dev", "--no-browser", "--port", "8799", "--data-dir", str(home / "b")])
+    assert len(calls) == 1
+    assert calls[0][0] == "git"
+
+
+@pytest.mark.parametrize(("dev", "served"), [(True, "favicon-dev.svg"), (False, "favicon.svg")])
+def test_favicon_route_serves_the_file_for_its_mode(dev: bool, served: str, tmp_path: Path) -> None:
+    # AC-4: one route, the file chosen by mode, same headers on GET and HEAD.
+    from bookvie.http.app import create_app
+
+    static = tmp_path / "static"
+    static.mkdir()
+    (static / "index.html").write_text("<p>spa</p>")
+    (static / "favicon.svg").write_text("<svg>sage</svg>")
+    (static / "favicon-dev.svg").write_text("<svg>amber</svg>")
+    client = TestClient(create_app(static, dev=dev), base_url="http://127.0.0.1:8765")
+
+    for method in ("GET", "HEAD"):
+        response = client.request(method, "/favicon.svg")
+        assert response.status_code == 200
+        assert response.headers["content-type"] == "image/svg+xml"
+        assert response.headers["cache-control"] == "no-cache"
+    assert client.get("/favicon.svg").text == (static / served).read_text()
+
+
+def test_dev_favicon_route_answers_404_when_the_dev_icon_is_not_built(tmp_path: Path) -> None:
+    # AC-4: never the sage file or index.html in its place.
+    from bookvie.http.app import create_app
+
+    static = tmp_path / "static"
+    static.mkdir()
+    (static / "index.html").write_text("<p>spa</p>")
+    (static / "favicon.svg").write_text("<svg>sage</svg>")
+    client = TestClient(create_app(static, dev=True), base_url="http://127.0.0.1:8765")
+
+    assert client.get("/favicon.svg").status_code == 404

@@ -2,10 +2,12 @@ import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 
 // The SPA is built into the backend package so the installed tool can serve it.
-// In dev, Vite serves the SPA and proxies server paths to `bookvie --dev`.
-// `changeOrigin` rewrites Host to 127.0.0.1:8765 so the server's Host guard
-// accepts it; Origin stays the Vite origin, which `--dev` allows.
-const backend = { target: 'http://127.0.0.1:8765', changeOrigin: true }
+// In dev, Vite serves the SPA and proxies server paths to `bookvie --dev`,
+// which listens on 8766 by default. `changeOrigin` rewrites Host to
+// 127.0.0.1:8766 so the server's Host guard accepts it; Origin stays the Vite
+// origin, which `--dev` allows. `/favicon.svg` goes to the server too, so a
+// Vite tab gets the dev server's amber icon, not public/'s sage copy.
+const backend = { target: 'http://127.0.0.1:8766', changeOrigin: true }
 
 export default defineConfig({
   plugins: [react()],
@@ -23,6 +25,7 @@ export default defineConfig({
     proxy: {
       '/api': backend,
       '/media': backend,
+      '/favicon.svg': backend,
     },
   },
 })

@@ -1,5 +1,6 @@
 """views layer."""
 
+from .app_info import AppInfoView, app_info
 from .backup import backup
 from .card_notes import card_notes
 from .models import (
@@ -23,6 +24,7 @@ from .shelf import book_detail, catalog, cover_path, home, home_for
 from .stats import stats
 
 __all__ = [
+    "AppInfoView",
     "BackupView",
     "BookCardNote",
     "BookDetailView",
@@ -38,6 +40,7 @@ __all__ = [
     "ShelfBook",
     "StatsBucket",
     "StatsView",
+    "app_info",
     "backup",
     "book_detail",
     "card_notes",

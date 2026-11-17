@@ -335,6 +335,12 @@ def export(request: Request) -> ExportResponse:
     )
 
 
+@router.get("/views/app-info", response_model=views.AppInfoView)
+def app_info_view(request: Request) -> views.AppInfoView:
+    """Which bookvie answers: version, mode, data folder and (dev only) commit (AD-6)."""
+    return request.app.state.app_info
+
+
 @router.get("/views/backup", response_model=views.BackupView)
 def backup_view(request: Request) -> views.BackupView:
     return views.backup(request.app.state.store)

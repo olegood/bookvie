@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- bookvie's own drawing (a shelf of three spines), MIT License like the rest of the repository. -->
+  <style>
+    path { fill: #8C5E0E; }
+    @media (prefers-color-scheme: dark) { path { fill: #EBC27A; } }
+  </style>
+  <path d="M3 11a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v14H3z M12.5 5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v20h-8z M22 13a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v12h-7z M1 26h30v4H1z"/>
+</svg>

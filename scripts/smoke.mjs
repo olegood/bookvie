@@ -15,6 +15,7 @@ import { fileURLToPath } from 'node:url'
 
 const REPO = fileURLToPath(new URL('..', import.meta.url))
 const BUILT_FAVICON = path.join(REPO, 'backend', 'bookvie', 'http', 'static', 'favicon.svg')
+const BUILT_DEV_FAVICON = path.join(REPO, 'backend', 'bookvie', 'http', 'static', 'favicon-dev.svg')
 const START_TIMEOUT_MS = 30_000
 const STOP_TIMEOUT_MS = 15_000
 
@@ -93,6 +94,25 @@ async function main() {
 
     say(`uv tool install --reinstall ./backend (UV_TOOL_DIR=${env.UV_TOOL_DIR})`)
     run('uv', ['tool', 'install', '--reinstall', './backend'], { env })
+
+    // A --dev server serves static/favicon-dev.svg: the installed package must carry the built file.
+    const toolPython = path.join(env.UV_TOOL_DIR, 'bookvie', 'bin', 'python')
+    const installedDevFavicon = run(
+      toolPython,
+      [
+        '-I',
+        '-c',
+        "import pathlib, bookvie; print(pathlib.Path(bookvie.__file__).parent / 'http' / 'static' / 'favicon-dev.svg')",
+      ],
+      { cwd: temp, env },
+    ).trim()
+    if (!existsSync(installedDevFavicon)) {
+      throw new Error(`the installed package has no ${installedDevFavicon}`)
+    }
+    if (readFileSync(installedDevFavicon, 'utf8') !== readFileSync(BUILT_DEV_FAVICON, 'utf8')) {
+      throw new Error(`${installedDevFavicon} is not ${BUILT_DEV_FAVICON}`)
+    }
+    say(`installed favicon-dev.svg is the built file`)
 
     const port = await freePort()
     const bookvie = path.join(binDir, 'bookvie')

@@ -48,8 +48,10 @@ def ephemeral_bind(monkeypatch: pytest.MonkeyPatch) -> None:
 def expose_data_dir(monkeypatch: pytest.MonkeyPatch) -> None:
     real = cli.create_app
 
-    def create_app(static_dir, *, data_dir, port, dev, store=None, clock=None):
-        app = real(static_dir, data_dir=data_dir, port=port, dev=dev, store=store, clock=clock)
+    def create_app(static_dir, *, data_dir, port, dev, store=None, clock=None, **rest):
+        app = real(
+            static_dir, data_dir=data_dir, port=port, dev=dev, store=store, clock=clock, **rest
+        )
         app.state.data_dir_for_tests = data_dir
         return app
 

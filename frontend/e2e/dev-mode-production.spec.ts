@@ -4,9 +4,6 @@
 // A production server, once `app-info` says so, shows no DEV pill, no
 // `DEV · ` prefix and no dev amber (AC-7). AC-10 and AC-11 read the source
 // files. The dev-server leaves are in dev-mode.spec.ts.
-//
-// ATDD red phase: every leaf is `test.skip` until the build lands what it
-// checks; the build removes each skip as its criterion turns green.
 
 import { readdirSync, statSync } from 'node:fs'
 import path from 'node:path'
@@ -28,7 +25,7 @@ import {
 import { DUNE } from './home.ts'
 
 test.describe('Story 11.2 Keep development apart from the real library, on a production server (ATDD)', () => {
-  test.skip('[P1] AC-7 on a production server, once app-info says production, there is no DEV pill, titles are "Page — bookvie" and nothing is dev amber', async ({
+  test('[P1] AC-7 on a production server, once app-info says production, there is no DEV pill, titles are "Page — bookvie" and nothing is dev amber', async ({
     page,
     seededServer,
   }) => {
@@ -57,7 +54,7 @@ test.describe('Story 11.2 Keep development apart from the real library, on a pro
 })
 
 test.describe('Story 11.2 Keep development apart from the real library, in the source (ATDD)', () => {
-  test.skip('[P2] AC-10 dev amber lives as literals in favicon-dev.svg and the pill CSS Module, never in tokens.css or anywhere else in the source', () => {
+  test('[P2] AC-10 dev amber lives as literals in favicon-dev.svg and the pill CSS Module, never in tokens.css or anywhere else in the source', () => {
     const amber = [designComponentColor('favicon', 'dev-fill'), designComponentColor('favicon', 'dev-fill-dark')]
     const has = (text: string, hex: string) => text.toLowerCase().includes(hex.toLowerCase())
     const files = readdirSync(FRONTEND_SRC, { recursive: true, encoding: 'utf8' })
@@ -76,7 +73,7 @@ test.describe('Story 11.2 Keep development apart from the real library, in the s
     expect(amber.some((hex) => has(readText(SOURCE_FAVICON), hex))).toBe(false)
   })
 
-  test.skip('[P2] AC-11 the README says bookvie --dev --no-browser uses ~/bookvie-data-dev on 8766 and refuses the real library, npm run dev proxies to 8766, and never says to stop a normal bookvie first', () => {
+  test('[P2] AC-11 the README says bookvie --dev --no-browser uses ~/bookvie-data-dev on 8766 and refuses the real library, npm run dev proxies to 8766, and never says to stop a normal bookvie first', () => {
     const readme = readText(README)
     const paragraph = (label: string) =>
       readme.split(/\n[ \t]*\n/).find((block) => block.startsWith(`**${label}:**`)) ?? ''

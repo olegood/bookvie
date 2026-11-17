@@ -79,12 +79,17 @@ const shouting = (copy) => copy.filter(({ text }) => text.includes('!'))
 
 const greetingsOrPraise = (copy) => copy.filter(({ text }) => GREETING_OR_PRAISE.test(text))
 
+// Dev amber (DESIGN.md Colors, Story 11.2): the DEV pill's fill on a `--dev`
+// server only, not a warning. dev-mode-production.spec.ts AC-10 pins where it lives.
+const DEV_AMBER = new Set(['#8c5e0e', '#ebc27a'])
+
 /** Red or warning colors in CSS: named, or a saturated hex with a red-orange hue. */
 const redColors = (css) =>
   css.flatMap(({ file, source }) => [
     ...[...source.matchAll(/:\s*[^;{}]*/g)].filter((m) => RED_NAMES.test(m[0])).map((m) => `${file}: ${m[0]}`),
     ...[...source.matchAll(/#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3}\b/g)]
       .filter((m) => {
+        if (DEV_AMBER.has(m[0].toLowerCase())) return false
         const { hue, saturation } = hexHueSaturation(m[0])
         return saturation > 0.55 && (hue < 40 || hue > 345)
       })

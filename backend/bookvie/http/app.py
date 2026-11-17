@@ -48,6 +48,8 @@ COVER_CACHE_CONTROL = "public, max-age=31536000, immutable"
 # again each time, so a tab never keeps an icon the server no longer serves;
 # the file is tiny.
 FAVICON_FILE = "favicon.svg"
+# A `--dev` server's amber icon, served at the same path (AD-16).
+DEV_FAVICON_FILE = "favicon-dev.svg"
 FAVICON_PATH = "/" + FAVICON_FILE
 FAVICON_MEDIA_TYPE = "image/svg+xml"
 FAVICON_CACHE_CONTROL = "no-cache"
@@ -145,11 +147,15 @@ def create_app(
     dev: bool = False,
     store=None,
     clock: Clock | None = None,
+    version: str = "",
+    commit: str | None = None,
 ) -> FastAPI:
     """Build the app. ``store`` is the opened ``bookvie.store.Store``, if any.
 
     ``clock`` is what intents read "now" and "today" from (AD-20); the
-    system clock unless ``--fake-today`` or a test pins one.
+    system clock unless ``--fake-today`` or a test pins one. ``version`` and
+    ``commit`` come from the CLI for the ``app-info`` view (AD-6); the empty
+    default version is only for tests that build an app directly.
     """
     static_dir = Path(static_dir).resolve()
     resolved_data_dir = str(Path(data_dir).resolve()) if data_dir is not None else None
@@ -164,6 +170,12 @@ def create_app(
     app.state.store = store
     app.state.clock = clock if clock is not None else SystemClock()
     app.state.write_lock = store.lock if store is not None else threading.Lock()
+    app.state.app_info = views.app_info(
+        version=version,
+        dev=dev,
+        data_dir=Path(resolved_data_dir) if resolved_data_dir is not None else None,
+        commit=commit if dev else None,
+    )
     # Added first, so it runs inside the guard.
     app.add_middleware(BodySizeCap)
     app.add_middleware(HostOriginGuard, port=port, extra_origins=DEV_ORIGINS if dev else ())
@@ -194,8 +206,9 @@ def create_app(
     # Before the SPA catch-all, which would otherwise serve the file uncached.
     @app.api_route(FAVICON_PATH, methods=["GET", "HEAD"], include_in_schema=False)
     def favicon():
-        """The built favicon, read per request; 404 (never index.html) when not built."""
-        path = static_dir / FAVICON_FILE
+        """The built favicon (amber with ``--dev``), read per request; 404 (never
+        index.html) when that file is not built."""
+        path = static_dir / (DEV_FAVICON_FILE if dev else FAVICON_FILE)
         if not path.is_file():
             raise HTTPException(status_code=404)
         return FileResponse(

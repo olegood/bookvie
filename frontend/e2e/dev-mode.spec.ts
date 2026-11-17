@@ -5,9 +5,6 @@
 // them while `app-info` hasn't loaded (AC-8). AC-9 is the pill under forced
 // colors. dev-mode-production.spec.ts has AC-7, AC-10 and AC-11; AC-1 to AC-3
 // are in backend/tests/test_dev_mode.py and AC-5 is in dev-proxy.spec.ts.
-//
-// ATDD red phase: every leaf is `test.skip` until the build lands what it
-// checks; the build removes each skip as its criterion turns green.
 
 import { readdirSync, readFileSync, rmSync, statSync } from 'node:fs'
 import path from 'node:path'
@@ -37,7 +34,7 @@ const ALLOWED_ELEMENTS = new Set(['path', 'style', 'title', 'desc'])
 test.use({ serverDev: true })
 
 test.describe('Story 11.2 Keep development apart from the real library, on a dev server (ATDD)', () => {
-  test.skip('[P0] AC-4 a dev server serves the amber favicon-dev.svg at /favicon.svg and a production server the sage favicon.svg, both uncached SVG', async ({
+  test('[P0] AC-4 a dev server serves the amber favicon-dev.svg at /favicon.svg and a production server the sage favicon.svg, both uncached SVG', async ({
     page,
     server,
   }, testInfo) => {
@@ -86,7 +83,7 @@ test.describe('Story 11.2 Keep development apart from the real library, on a dev
     expect(readText(SMOKE_SCRIPT)).toContain('favicon-dev.svg')
   })
 
-  test.skip('[P0] AC-6 on a dev server the wordmark reads "bookvie DEV" with the amber pill after the word, not interactive, and every title is "DEV · Page — bookvie"', async ({
+  test('[P0] AC-6 on a dev server the wordmark reads "bookvie DEV" with the amber pill after the word, not interactive, and every title is "DEV · Page — bookvie"', async ({
     page,
     seededServer,
   }) => {
@@ -147,7 +144,7 @@ test.describe('Story 11.2 Keep development apart from the real library, on a dev
     expect(usesViteDev).toEqual([])
   })
 
-  test.skip('[P1] AC-8 on a dev server the shell looks like production while app-info is pending or failing, and a failed refetch after a success keeps the pill and the DEV prefix', async ({
+  test('[P1] AC-8 on a dev server the shell looks like production while app-info is pending or failing, and a failed refetch after a success keeps the pill and the DEV prefix', async ({
     page,
     server,
   }) => {
@@ -195,7 +192,7 @@ test.describe('Story 11.2 Keep development apart from the real library, on a dev
     expect(await liveRegionText(page)).toBe('')
   })
 
-  test.skip('[P2] AC-9 under forced colors the DEV pill is Canvas with CanvasText text and a 1px CanvasText border', async ({
+  test('[P2] AC-9 under forced colors the DEV pill is Canvas with CanvasText text and a 1px CanvasText border', async ({
     page,
     server,
   }) => {

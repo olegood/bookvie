@@ -24,11 +24,13 @@ export type CardNotesGroup = Schemas['CardNotesGroup']
 export type CardNotesScope = Schemas['CardNotesScope']
 export type StatsView = Schemas['StatsView']
 export type StatsBucket = Schemas['StatsBucket']
+export type AppInfoView = Schemas['AppInfoView']
 
 export interface Views {
   home: HomeView
   catalog: CatalogView
   backup: BackupView
+  'app-info': AppInfoView
 }
 export type ViewName = keyof Views
 
@@ -86,6 +88,16 @@ export function useCatalogView(): ViewState<CatalogView> {
 
 export function useBackupView(): ViewState<BackupView> {
   return useView('backup')
+}
+
+/**
+ * Which bookvie answers (version, mode, data folder, commit): the last loaded
+ * copy, or `undefined` while it is pending or has never loaded. A failed
+ * refetch keeps the last copy, so the dev frame never flickers away; the
+ * caller treats `undefined` as production and says nothing about a failure.
+ */
+export function useAppInfo(): AppInfoView | undefined {
+  return useQuery({ queryKey: viewKey('app-info'), queryFn: () => fetchView('app-info') }).data
 }
 
 /** The `book` view's key: under 'view', so every intent refetches it. */

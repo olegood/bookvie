@@ -1054,3 +1054,21 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-11-1-a-favicon-for-bookvie.md`
   summary: Spine drift (AD-16, Capability → Architecture Map), reconciled before the next epic. The map's preamble still reads "Every row below is built, except FR-26 and FR-27 (Epic 11, planned)", and the FR-26 row lists `GET /favicon.svg` in `http/` and `frontend/public/` favicons, which Story 11.1 built. The rest of FR-26 (dev defaults, `app_info` `mode`, the Vite proxy, the DEV pill, the title prefix) is Stories 11.2 to 11.4's. Neither of the build's two spine drift entries names the map. Low.
   evidence: ARCHITECTURE-SPINE.md:399 and :415; `backend/bookvie/http/app.py` `favicon` route; `frontend/public/favicon.svg` (spine check, code review of Story 11.1).
+
+## Deferred from: build-auto review of spec-11-2-keep-development-apart-from-the-real-library (2026-11-17)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-11-2-keep-development-apart-from-the-real-library.md`
+  summary: Spine drift (AD-6, "App info" bullet), reconciled before the next epic. The bullet still reads "(Epic 11, planned)"; Story 11.2 built `GET /api/views/app-info` (`views/app_info.py` `AppInfoView`, the route in `http/api.py`, `app.state.app_info` from `create_app`, `version`/`commit` passed by the CLI because `views` can't import the package's top level). Low.
+  evidence: ARCHITECTURE-SPINE.md:98; `backend/bookvie/views/app_info.py`, `backend/bookvie/http/api.py` `app_info_view` (spine check, build-auto review of Story 11.2).
+- source_spec: `_bmad-output/implementation-artifacts/spec-11-2-keep-development-apart-from-the-real-library.md`
+  summary: Spine drift (AD-7, "App info is an ordinary view"), reconciled before the next epic. The line still reads "(Epic 11, planned)"; Story 11.2 built the client half (`useAppInfo` keyed `['view','app-info']`, read by `AppShell.tsx` and `lib/page.ts`). The version comparison and update notice stay planned for Stories 11.3 and 11.4. Low.
+  evidence: ARCHITECTURE-SPINE.md:121; `frontend/src/api/views.ts` `useAppInfo` (spine check, build-auto review of Story 11.2).
+- source_spec: `_bmad-output/implementation-artifacts/spec-11-2-keep-development-apart-from-the-real-library.md`
+  summary: Spine drift (AD-16, "Binding" and "Real library refused" bullets), reconciled before the next epic. Both still read "(Epic 11, planned)"; Story 11.2 built them in `cli.py` (`DEV_PORT`, `DEV_DATA_DIR`, defaults filled after parsing, `_refuses_real_library` through `instance.same_folder` so case variants and firmlinks are refused too, exit 2 before the lock or store). The spine says "resolved"; the code also compares by file identity. Low.
+  evidence: ARCHITECTURE-SPINE.md:223, :224; `backend/bookvie/cli.py` (spine check, build-auto review of Story 11.2).
+- source_spec: `_bmad-output/implementation-artifacts/spec-11-2-keep-development-apart-from-the-real-library.md`
+  summary: Spine drift (Structural Seed `views/`), reconciled before the next epic. The Seed lists "app_info (planned)"; `backend/bookvie/views/app_info.py` now exists. Low.
+  evidence: ARCHITECTURE-SPINE.md:382 (spine check, build-auto review of Story 11.2).
+- source_spec: `_bmad-output/implementation-artifacts/spec-11-2-keep-development-apart-from-the-real-library.md`
+  summary: Spine drift (AD-16 Favicon bullet and Seed `public/`; Capability map FR-26 row; Testing row and Seed "Build and install"), reconciled before the next epic. These extend the Story 11.1 entries above: 11.2 finished the dev half of the favicon (`favicon-dev.svg`, the route's `--dev` switch, the Vite `/favicon.svg` proxy), the whole FR-26 row is now built (only FR-27 stays planned), and `scripts/smoke.mjs` also checks that the installed package carries `static/favicon-dev.svg` with the built file's bytes. Low.
+  evidence: ARCHITECTURE-SPINE.md:230, :297, :346, :387, :399, :415; `frontend/public/favicon-dev.svg`, `frontend/vite.config.ts`, `scripts/smoke.mjs` (spine check, build-auto review of Story 11.2).

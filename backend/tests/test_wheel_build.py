@@ -77,6 +77,22 @@ def test_wheel_contains_the_top_level_favicon(source: Path, tmp_path: Path) -> N
         assert archive.read("bookvie/http/static/favicon.svg") == b"<svg/>"
 
 
+def test_wheel_contains_the_dev_favicon(source: Path, tmp_path: Path) -> None:
+    # Story 11.2 AC-4: a --dev server serves static/favicon-dev.svg, so the wheel ships it.
+    static = source / "bookvie" / "http" / "static"
+    static.mkdir(parents=True)
+    (static / "index.html").write_text("<p>spa</p>")
+    (static / "favicon.svg").write_text("<svg/>")
+    (static / "favicon-dev.svg").write_text("<svg>dev</svg>")
+
+    result = _build_wheel(source, tmp_path / "out")
+
+    assert result.returncode == 0, result.stderr
+    (wheel,) = (tmp_path / "out").glob("bookvie-*.whl")
+    with zipfile.ZipFile(wheel) as archive:
+        assert archive.read("bookvie/http/static/favicon-dev.svg") == b"<svg>dev</svg>"
+
+
 def test_build_refuses_without_the_spa(source: Path, tmp_path: Path) -> None:
     result = _build_wheel(source, tmp_path / "out")
 

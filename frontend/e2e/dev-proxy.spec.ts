@@ -32,7 +32,11 @@ test('GET /api/health through the Vite proxy answers 200', async ({ server, page
     server: {
       port,
       strictPort: true,
-      proxy: { '/api': { target: server.url }, '/media': { target: server.url } },
+      proxy: {
+        '/api': { target: server.url },
+        '/media': { target: server.url },
+        '/favicon.svg': { target: server.url },
+      },
     },
   })
   await vite.listen()
@@ -54,9 +58,9 @@ test('GET /api/health through the Vite proxy answers 200', async ({ server, page
   expect(media.headers.get('content-type') ?? '').not.toContain('text/html')
 })
 
-// Story 11.2 AC-5. ATDD red phase: skipped until vite.config.ts proxies
-// /favicon.svg to the --dev default port and a dev server serves the amber icon.
-test.skip('[P1] AC-5 vite.config.ts proxies /api, /media and /favicon.svg to 127.0.0.1:8766, and a tab through Vite gets the backend amber favicon, not public/', async ({
+// Story 11.2 AC-5: vite.config.ts proxies /favicon.svg to the --dev default
+// port, and a dev server serves the amber icon through Vite.
+test('[P1] AC-5 vite.config.ts proxies /api, /media and /favicon.svg to 127.0.0.1:8766, and a tab through Vite gets the backend amber favicon, not public/', async ({
   server,
   page,
 }) => {

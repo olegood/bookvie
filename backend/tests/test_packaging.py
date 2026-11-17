@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from bookvie.cli import DEFAULT_PORT, HOST
+from bookvie.cli import DEV_PORT, HOST
 from bookvie.http.app import STATIC_DIR
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
@@ -28,9 +28,11 @@ def test_vite_dev_proxy_targets_the_cli_server() -> None:
     config = VITE_CONFIG.read_text(encoding="utf-8")
     match = re.search(r"const backend = \{\s*target: '([^']+)',\s*changeOrigin: true\s*\}", config)
     assert match, "vite.config.ts has no backend target with changeOrigin: true"
-    assert match.group(1) == f"http://{HOST}:{DEFAULT_PORT}"
+    # Vite runs beside `bookvie --dev`, which defaults to its own port (Story 11.2).
+    assert match.group(1) == f"http://{HOST}:{DEV_PORT}"
     assert re.search(r"'/api':\s*backend", config), "/api is not proxied"
     assert re.search(r"'/media':\s*backend", config), "/media is not proxied"
+    assert re.search(r"'/favicon.svg':\s*backend", config), "/favicon.svg is not proxied"
     assert re.search(r"port:\s*5173\b", config), "Vite dev server is not on :5173"
 
 

@@ -42,6 +42,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/views/app-info": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * App Info View
+         * @description Which bookvie answers: version, mode, data folder and (dev only) commit (AD-6).
+         */
+        get: operations["app_info_view_api_views_app_info_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/views/backup": {
         parameters: {
             query?: never;
@@ -494,6 +514,23 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * AppInfoView
+         * @description Which bookvie answers: its version, mode, data folder and (dev only) commit.
+         */
+        AppInfoView: {
+            /** Version */
+            version: string;
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "dev" | "production";
+            /** Datadir */
+            dataDir: string;
+            /** Commit */
+            commit: string | null;
+        };
         /**
          * BackupView
          * @description What the Backup page shows.
@@ -1132,6 +1169,62 @@ export interface operations {
                 };
             };
             /** @description Couldn't export */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    app_info_view_api_views_app_info_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppInfoView"];
+                };
+            };
+            /** @description Refused by a library rule */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Invalid fields */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Couldn't save */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Couldn't save */
             503: {
                 headers: {
                     [name: string]: unknown;
