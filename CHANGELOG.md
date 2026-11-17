@@ -6,6 +6,10 @@ All notable changes to bookvie are recorded here. The format follows
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [1.1.0] - 2026-11-17
+
 ### Added
 
 - See the catalog as a grid of covers (Epic 8).
@@ -92,5 +96,6 @@ The first complete version: all seven v1 epics (41 stories) are done.
 - The Change color refusal is still announced after its popover closes.
 - The pace calculator agrees with Home's days-left figure.
 
-[Unreleased]: https://github.com/olegood/bookvie/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/olegood/bookvie/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/olegood/bookvie/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/olegood/bookvie/releases/tag/v1.0.0
