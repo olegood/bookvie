@@ -6,7 +6,18 @@ All notable changes to bookvie are recorded here. The format follows
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+
+- See the catalog as a grid of covers (Epic 8).
+- Cover tiles show which Books are read and which one is being read (Epic 8).
+- Books without a cover get a typeset cover (Epic 8).
+- Save a card note with Cmd+Enter or Ctrl+Enter (Epic 9).
+- Add several card notes in a row: with Add another on, the Card note panel stays open after a save (Epic 9).
+- Reverse the catalog's sort order (Epic 10).
+
+### Fixed
+
+- The dropdown arrow lines up with the field's text inset.
 
 ## [1.0.0] - 2026-11-12
 
