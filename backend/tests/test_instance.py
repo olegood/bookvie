@@ -229,6 +229,26 @@ def test_probe_pid_reads_health() -> None:
         sock.close()
 
 
+@pytest.mark.parametrize(
+    ("body", "expected"),
+    [
+        ({"app": "bookvie", "dataDir": "/x", "pid": 1, "checkout": "/w/a/bookvie"}, "/w/a/bookvie"),
+        ({"app": "bookvie", "dataDir": "/x", "pid": 1}, None),
+        ({"app": "bookvie", "dataDir": "/x", "pid": 1, "checkout": 7}, None),
+        ({"app": "other", "checkout": "/w/a/bookvie"}, None),
+    ],
+)
+def test_probe_checkout_reads_health(body: dict, expected: str | None) -> None:
+    # Epic 11 retro item 80: a --dev server's checkout; anything else reads as none.
+    sock = instance.bind_socket(0)
+    thread = _serve_once(sock, _http_ok(body))
+    try:
+        assert instance.probe_checkout(sock.getsockname()[1], timeout=2) == expected
+    finally:
+        thread.join(5)
+        sock.close()
+
+
 def test_probe_health_does_not_follow_redirects() -> None:
     target = instance.bind_socket(0)
     target.settimeout(0.5)

@@ -922,5 +922,5 @@ action_items:
       `_bmad-output/planning-artifacts/architecture/architecture-bookvie-2026-10-29/ARCHITECTURE-SPINE.md`.
       Due: before Epic 12."
     owner: "Amelia (dev)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-11-retro-2026-11-17.md"

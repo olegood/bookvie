@@ -163,6 +163,13 @@ def probe_pid(port: int, timeout: float = _PROBE_TIMEOUT) -> int | None:
     return pid if type(pid) is int and pid > 0 else None
 
 
+def probe_checkout(port: int, timeout: float = _PROBE_TIMEOUT) -> str | None:
+    """``checkout`` reported by a ``--dev`` bookvie on ``port``, or ``None``."""
+    data = _health(port, timeout)
+    checkout = data.get("checkout") if data else None
+    return checkout if isinstance(checkout, str) else None
+
+
 def same_folder(reported: str | None, data_dir: Path) -> bool:
     if reported is None:
         return False

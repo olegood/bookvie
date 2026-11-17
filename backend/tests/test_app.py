@@ -157,6 +157,22 @@ def test_health_reports_resolved_data_dir(tmp_path: Path, static_dir: Path) -> N
     }
 
 
+def test_dev_health_also_reports_the_checkout(tmp_path: Path, static_dir: Path) -> None:
+    # Epic 11 retro item 80: only a --dev health names the checkout it runs from.
+    (tmp_path / "data").mkdir()
+    checkout = str(tmp_path / "checkout")
+    for dev, extra in [(True, {"checkout": checkout}), (False, {})]:
+        app = create_app(static_dir, data_dir=tmp_path / "data", dev=dev, checkout=checkout)
+        response = TestClient(app, base_url=BASE_URL).get("/api/health")
+        assert response.status_code == 200
+        assert response.json() == {
+            "app": "bookvie",
+            "dataDir": str((tmp_path / "data").resolve()),
+            "pid": os.getpid(),
+            **extra,
+        }, dev
+
+
 def test_app_has_write_lock(static_dir: Path) -> None:
     lock = create_app(static_dir).state.write_lock
     assert lock.acquire(blocking=False)

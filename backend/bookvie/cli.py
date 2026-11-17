@@ -22,6 +22,7 @@ from bookvie.domain.clock import FakeClock, SystemClock
 from bookvie.http.app import STATIC_DIR, create_app
 from bookvie.instance import HOST
 from bookvie.store import StartupError, Store, ensure_writable
+from bookvie.views.app_info import display_path
 
 DEFAULT_PORT = 8765
 DEFAULT_DATA_DIR = "~/bookvie-data"
@@ -131,6 +132,12 @@ def _case_insensitive_disk(path: Path) -> bool:
     return sys.platform in ("darwin", "win32")
 
 
+def _checkout_folder() -> Path:
+    """The resolved folder the ``bookvie`` package runs from: a ``--dev``
+    server's identity, so a launch from another checkout doesn't join it (AD-16)."""
+    return Path(__file__).resolve().parent
+
+
 def _checkout_commit() -> str | None:
     """The short git hash of the checkout this package runs from, or None.
 
@@ -141,7 +148,7 @@ def _checkout_commit() -> str | None:
     try:
         result = subprocess.run(
             ["git", "rev-parse", "--short", "HEAD"],
-            cwd=Path(__file__).resolve().parent,
+            cwd=_checkout_folder(),
             capture_output=True,
             text=True,
             timeout=_GIT_TIMEOUT_SECONDS,
@@ -200,7 +207,26 @@ def _show(url: str, no_browser: bool) -> None:
         webbrowser.open(url)
 
 
-def _port_conflict(port: int, data_dir: Path, pid: int, no_browser: bool) -> tuple[int, bool]:
+def _other_checkout(port: int, data_dir: Path) -> bool:
+    """With ``--dev``: whether the live server on ``port`` runs from another
+    checkout. One that reports no checkout counts as another (fails closed);
+    when so, prints the refusal."""
+    reported = instance.probe_checkout(port)
+    if instance.same_folder(reported, _checkout_folder()):
+        return False
+    home = Path.home()
+    checkout = display_path(Path(reported), home) if reported is not None else "an unknown checkout"
+    _say(
+        f"bookvie: a --dev server from another checkout ({checkout}) is already running "
+        f"on port {port} with {display_path(data_dir, home)}. "
+        f"Stop it, or start this one with --port <number> --data-dir <folder>."
+    )
+    return True
+
+
+def _port_conflict(
+    port: int, data_dir: Path, pid: int, no_browser: bool, dev: bool
+) -> tuple[int, bool]:
     """Return the exit code, and whether to skip releasing ``bookvie.lock``.
 
     True on the same-folder branch: after a hand-over the lock names the
@@ -220,6 +246,8 @@ def _port_conflict(port: int, data_dir: Path, pid: int, no_browser: bool) -> tup
         # With no live pid (a pre-1.2 bookvie) there is no one to hand the lock
         # to. Leave it rather than delete it; it names this launch, so it goes
         # stale when this launch exits and a later launch takes it over.
+        if dev and _other_checkout(port, data_dir):
+            return 1, True
         _show(f"http://{HOST}:{port}/", no_browser)
         return 0, True
     else:
@@ -245,6 +273,8 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     claim = instance.claim_lock(data_dir, args.port)
     if claim.kind == "running":
+        if args.dev and _other_checkout(claim.port, data_dir):
+            return 1
         _show(f"http://{HOST}:{claim.port}/", args.no_browser)
         return 0
     if claim.kind == "starting":
@@ -257,7 +287,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         try:
             sock = instance.bind_socket(args.port)
         except OSError:
-            code, keep_lock = _port_conflict(args.port, data_dir, pid, args.no_browser)
+            code, keep_lock = _port_conflict(args.port, data_dir, pid, args.no_browser, args.dev)
             return code
 
         # After the bind: a launch that loses to a live server never sweeps
@@ -279,6 +309,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             clock=clock,
             version=__version__,
             commit=_checkout_commit() if args.dev else None,
+            checkout=str(_checkout_folder()) if args.dev else None,
         )
 
         def release() -> None:

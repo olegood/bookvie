@@ -156,13 +156,17 @@ def create_app(
     clock: Clock | None = None,
     version: str = "",
     commit: str | None = None,
+    checkout: str | None = None,
 ) -> FastAPI:
     """Build the app. ``store`` is the opened ``bookvie.store.Store``, if any.
 
     ``clock`` is what intents read "now" and "today" from (AD-20); the
     system clock unless ``--fake-today`` or a test pins one. ``version`` and
     ``commit`` come from the CLI for the ``app-info`` view (AD-6); the empty
-    default version is only for tests that build an app directly.
+    default version is only for tests that build an app directly. ``checkout``
+    is the folder the ``bookvie`` package runs from; only a ``--dev`` health
+    reports it, so a second ``--dev`` launch can tell its own checkout's
+    server from another's (AD-16).
     """
     static_dir = Path(static_dir).resolve()
     resolved_data_dir = str(Path(data_dir).resolve()) if data_dir is not None else None
@@ -189,7 +193,14 @@ def create_app(
 
     @app.get("/api/health")
     async def health() -> dict[str, str | int | None]:
-        return {"app": "bookvie", "dataDir": resolved_data_dir, "pid": os.getpid()}
+        payload: dict[str, str | int | None] = {
+            "app": "bookvie",
+            "dataDir": resolved_data_dir,
+            "pid": os.getpid(),
+        }
+        if dev:
+            payload["checkout"] = checkout
+        return payload
 
     # Before the SPA catch-all, so /api/views/* match first.
     install_api(app)

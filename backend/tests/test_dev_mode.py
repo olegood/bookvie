@@ -202,11 +202,12 @@ def test_app_info_reports_version_mode_data_dir_and_commit_per_mode(
     with monkeypatch.context() as m:
         m.setenv("PATH", str(tmp_path / "no-git"))
         assert client.get("/api/views/app-info").json()["commit"] == commit
-    # /api/health is unchanged.
+    # /api/health adds only the checkout the package runs from (Epic 11 retro item 80).
     assert client.get("/api/health").json() == {
         "app": "bookvie",
         "dataDir": str(home / "lib"),
         "pid": os.getpid(),
+        "checkout": str(Path(bookvie.__file__).resolve().parent),
     }
 
     outside = tmp_path / "outside"
@@ -512,3 +513,157 @@ def test_a_real_dev_process_refuses_the_real_library_with_exit_2(form: str, home
     assert tree(real) == before
     assert real.exists() == (form == "existing")
     assert not (home / "bookvie-data-dev").exists()
+
+
+# Epic 11 retro item 80 (E11-S2): a second --dev from another checkout doesn't
+# silently join the first. The running server is faked: a real lock naming a
+# live pid, and stand-in health probes. Nothing binds 8766.
+
+OWN_CHECKOUT = Path(bookvie.__file__).resolve().parent
+
+
+def _other_checkout_refusal(checkout: str, port: int, data_folder: str) -> str:
+    return (
+        f"bookvie: a --dev server from another checkout ({checkout}) is already running "
+        f"on port {port} with {data_folder}. "
+        f"Stop it, or start this one with --port <number> --data-dir <folder>.\n"
+    )
+
+
+def _live_lock(data_dir: Path, pid: int, port: int) -> bytes:
+    """A lock old enough to be judged at once (not a starting server)."""
+    data_dir.mkdir(parents=True, exist_ok=True)
+    path = data_dir / LOCK_NAME
+    path.write_text(f'{{"pid": {pid}, "port": {port}}}')
+    old = path.stat().st_mtime - 60
+    os.utime(path, (old, old))
+    return path.read_bytes()
+
+
+@pytest.fixture
+def running(
+    home: Path, monkeypatch: pytest.MonkeyPatch
+) -> Callable[[str | None], tuple[Path, bytes, list[int]]]:
+    """A live dev server on ``~/bookvie-data-dev`` at 8766 reporting ``checkout``.
+
+    Returns the data folder, the lock's bytes and the ports ``probe_checkout`` saw.
+    """
+
+    def fake(checkout: str | None) -> tuple[Path, bytes, list[int]]:
+        data_dir = home / "bookvie-data-dev"
+        raw = _live_lock(data_dir, os.getpid(), 8766)
+        probed: list[int] = []
+        monkeypatch.setattr(instance, "probe_health", lambda port, timeout=0.5: str(data_dir))
+        monkeypatch.setattr(
+            instance, "probe_checkout", lambda port, timeout=0.5: probed.append(port) or checkout
+        )
+        monkeypatch.setattr(cli.instance, "bind_socket", lambda port: REAL_BIND(0))
+        monkeypatch.setattr(cli, "_Server", _CapturedServer)
+        _CapturedServer.apps = []
+        return data_dir, raw, probed
+
+    return fake
+
+
+def test_a_second_dev_from_the_same_checkout_joins_the_running_server(
+    running, capsys: pytest.CaptureFixture[str]
+) -> None:
+    data_dir, raw, probed = running(str(OWN_CHECKOUT))
+
+    code = exit_code(lambda: cli.main(["--dev", "--no-browser"]))
+
+    assert code == 0
+    assert capsys.readouterr().err == "bookvie is already running at http://127.0.0.1:8766/\n"
+    assert probed == [8766]
+    assert (data_dir / LOCK_NAME).read_bytes() == raw
+    assert _CapturedServer.apps == []
+
+
+def test_a_second_dev_from_another_checkout_is_refused(
+    running, home: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    other = home / "worktrees" / "a" / "backend" / "bookvie"
+    data_dir, raw, probed = running(str(other))
+
+    code = exit_code(lambda: cli.main(["--dev", "--no-browser"]))
+
+    assert code == 1
+    out, err = capsys.readouterr()
+    assert out == ""
+    assert err == _other_checkout_refusal(
+        "~/worktrees/a/backend/bookvie", 8766, "~/bookvie-data-dev"
+    )
+    assert probed == [8766]
+    assert (data_dir / LOCK_NAME).read_bytes() == raw
+    assert _CapturedServer.apps == []
+
+
+def test_a_dev_server_that_reports_no_checkout_counts_as_another_checkout(
+    running, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # Fails closed: an older server's health has no checkout.
+    data_dir, raw, _ = running(None)
+
+    code = exit_code(lambda: cli.main(["--dev", "--no-browser"]))
+
+    assert code == 1
+    assert capsys.readouterr().err == _other_checkout_refusal(
+        "an unknown checkout", 8766, "~/bookvie-data-dev"
+    )
+    assert (data_dir / LOCK_NAME).read_bytes() == raw
+
+
+def test_production_never_compares_checkouts(
+    running, home: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    data_dir, raw, probed = running(None)
+
+    code = exit_code(lambda: cli.main(["--no-browser", "--data-dir", str(data_dir)]))
+
+    assert code == 0
+    assert capsys.readouterr().err == "bookvie is already running at http://127.0.0.1:8766/\n"
+    assert probed == []
+    assert (data_dir / LOCK_NAME).read_bytes() == raw
+
+
+@pytest.mark.parametrize("same", [True, False])
+def test_a_dev_port_conflict_on_the_same_folder_compares_checkouts(
+    same: bool,
+    home: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    # This launch took the lock, the bind failed, and health on the port answers
+    # for this folder: the lock goes back to the running server either way.
+    data_dir = home / "bookvie-data-dev"
+    other = tmp_path / "elsewhere" / "bookvie"
+    running_pid = os.getppid()
+    probed: list[int] = []
+
+    def taken(port: int):
+        raise OSError(48, f"port {port} is already in use")
+
+    monkeypatch.setattr(cli.instance, "bind_socket", taken)
+    monkeypatch.setattr(cli, "_Server", _CapturedServer)
+    monkeypatch.setattr(instance, "probe_health", lambda port, timeout=0.5: str(data_dir))
+    monkeypatch.setattr(instance, "probe_pid", lambda port, timeout=0.5: running_pid)
+    monkeypatch.setattr(
+        instance,
+        "probe_checkout",
+        lambda port, timeout=0.5: probed.append(port) or str(OWN_CHECKOUT if same else other),
+    )
+    _CapturedServer.apps = []
+
+    code = exit_code(lambda: cli.main(["--dev", "--no-browser"]))
+
+    err = capsys.readouterr().err
+    if same:
+        assert code == 0
+        assert err == "bookvie is already running at http://127.0.0.1:8766/\n"
+    else:
+        assert code == 1
+        assert err == _other_checkout_refusal(str(other.resolve()), 8766, "~/bookvie-data-dev")
+    assert probed == [8766]
+    assert (data_dir / LOCK_NAME).read_text() == f'{{"pid": {running_pid}, "port": 8766}}'
+    assert _CapturedServer.apps == []

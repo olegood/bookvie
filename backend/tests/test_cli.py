@@ -257,6 +257,7 @@ def test_app_gets_data_dir_port_and_dev(
         "app": "bookvie",
         "dataDir": str(data_dir.resolve()),
         "pid": os.getpid(),
+        "checkout": str(Path(cli.__file__).resolve().parent),
     }
 
 
