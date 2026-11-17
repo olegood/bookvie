@@ -1,6 +1,6 @@
 ---
 status: final
-stepsCompleted: ['step-01-validate-prerequisites', 'step-02-design-epics', 'step-03-create-stories', 'step-04-final-validation']
+stepsCompleted: [step-01-validate-prerequisites, step-02-design-epics, step-03-create-stories, step-04-final-validation]
 inputDocuments:
   - _bmad-output/planning-artifacts/prds/prd-bookvie-2026-10-28/prd.md
   - _bmad-output/planning-artifacts/prds/prd-bookvie-2026-10-28/addendum.md
@@ -12,13 +12,14 @@ inputDocuments:
   - _bmad-output/planning-artifacts/catalog-tiles-plan-2026-11-13.md
   - _bmad-output/planning-artifacts/card-note-entry-plan-2026-11-14.md
   - _bmad-output/planning-artifacts/catalog-sort-direction-plan-2026-11-15.md
+  - _bmad-output/planning-artifacts/dev-prod-favicon-plan-2026-11-17.md
 ---
 
 # bookvie - Epic Breakdown
 
 ## Overview
 
-This document breaks bookvie's PRD, UX design (DESIGN.md, EXPERIENCE.md) and architecture spine into ten epics of implementable stories. Each story names the requirement IDs it satisfies and lists Given/When/Then acceptance criteria.
+This document breaks bookvie's PRD, UX design (DESIGN.md, EXPERIENCE.md) and architecture spine into eleven epics of implementable stories. Each story names the requirement IDs it satisfies and lists Given/When/Then acceptance criteria.
 
 **How to read it.** The Epic List gives the build order and what each epic delivers. Each epic section starts with its gate. Every story follows the conventions in "Conventions for every story", just before Epic 1. The Requirements Inventory is a lookup table; the source documents stay authoritative.
 
@@ -46,6 +47,7 @@ Gates are in each epic's section.
 | 8. See the catalog as covers | A third Catalog view, Tiles: a grid of covers in the current sort and filters, a spine-color ribbon on read Books, a progress bar on Books being read, and a typeset cover for Books without one; each tile opens its Book. | FR-25 |
 | 9. Add card notes faster | Save a card note with Cmd+Enter or Ctrl+Enter, and add several in a row with a remembered Add another that keeps the panel open, keeps the page and shows a running count. | FR-17 (keyboard save, Add another) |
 | 10. Reverse the catalog order | A Sort direction toggle joined to the Sort select reverses the current key's natural order and says which order is in effect; remembered on this computer, reset on a key change, and followed by Home's slice. | FR-20 (Sort direction) |
+| 11. Know which bookvie you're looking at | Its own sage favicon. A development server keeps to its own library and port, refuses the real library, and is marked by an amber favicon, a `DEV · ` title and a DEV pill; Backup shows the version and data folder; a tab older than the app offers Reload. | FR-26, FR-27 |
 
 ## Requirements Inventory
 
@@ -99,6 +101,10 @@ FR-24 [Must]: Bookcase. The main screen shows a slice of the bookcase and the ca
 
 FR-25 [Should]: Catalog tiles. The user can see the catalog as tiles: one tile per Book with its cover, title and author, as a third view next to the bookcase and the list. Bookcase (default) · List · Tiles; the last choice is remembered on this computer and isn't exported. The cover keeps its own shape and the covers in a row share a bottom line; under it the title and first author, one line each, cut short when too long. A read Book carries a bookmark ribbon in its spine color; a Book with an unfinished Reading shows a progress bar for its current page; a re-read shows both; an unread Book has no mark. Status never depends on color alone, and each tile's accessible name includes it. A Book without a cover shows a typeset cover (on its spine color if read, outlined if unread). Search by title, sort and filters apply; opening a tile opens the Book. With 500 Books that have covers, the first screen of tiles appears in about 1 second and the grid doesn't jump while covers load.
 
+FR-26 [Must]: Development and production stay apart. A Development server (bookvie started in development mode) keeps away from the user's real library and is plainly marked as development. Without extra options it uses its own library and its own address; an explicitly chosen library or address still wins, and starting bookvie normally is unchanged. It refuses to start on the real library, even when that is named through a link or a roundabout path; it says why and how to start instead, and changes nothing. Whatever delivered the page, the server alone decides whether a tab is development. In development only, the tab title starts with "DEV", the header shows a "DEV" label (a word, not just a color), and the tab icon turns amber (NFR9); the real app shows none of these marks.
+
+FR-27 [Must]: The version is visible. The Backup page shows the version and the library's folder in About this copy; on a Development server it also says so and shows the exact build (the source commit); the real app shows no build. When the running app's version differs from the version an open tab was loaded with (a rollback counts too), the tab shows a quiet notice that bookvie was updated, with a Reload button; if the app can't be reached, for example while it restarts, there's no notice. The notice is announced once, never on every check; it's never a dialog and blocks nothing: the old tab keeps working until the user reloads it.
+
 ### NonFunctional Requirements
 
 NFR1 (Local-first): bookvie runs in a browser on one laptop or desktop. No account and no network connection for any feature; no database server; all data lives locally. A Book saved from any browser on this machine appears in every other browser.
@@ -109,13 +115,15 @@ NFR3 (Accessibility): WCAG 2.2 AA in both themes, with one accepted deviation: t
 
 NFR4 (Speed): Catch-up (one page update) takes under 30 seconds and at most 2 interactions after opening the app.
 
-NFR5 (Data safety): No action silently deletes data. Every destructive action needs confirmation. A failed save is never silent: the UI says "Couldn't save. Your data wasn't changed." and keeps the user's input.
+NFR5 (Data safety): No action silently deletes data. Every destructive action needs confirmation. A Development server never opens the real library (FR-26). A failed save is never silent: the UI says "Couldn't save. Your data wasn't changed." and keeps the user's input.
 
 NFR6 (Tone): No guilt mechanics: no streaks, no "you missed a day", no red failure states. No greetings, exclamation marks or praise. Finish copy is "Finished *X*."; the finish moment is a single ~600ms spine fill that never replays.
 
 NFR7 (Scale, from architecture): Sized for about 500 Books and a few thousand Card notes; the Catalog bookcase renders all ~500 spines in the page with no lazy rows.
 
 NFR8 (Unattended operation): Cataloging runs with nobody watching; every outcome of the add-book form is machine-readable by role, accessible name and live-region text. Renaming any Agent Label Contract entry is a breaking change.
+
+NFR9 (Look and feel): bookvie has its own tab icon, drawn for bookvie: a small shelf of three book spines on a plank, readable at 16×16, in the accent sage, with a lighter fill on a dark tab strip. A Development server shows the same drawing in amber (FR-26).
 
 ### Additional Requirements
 
@@ -156,6 +164,14 @@ From ARCHITECTURE-SPINE.md and the TEA handoff. Each line names the source decis
 - AR26 (AD-15, Deferred → Cover thumbnails): The remembered Catalog view gains `tiles`. No thumbnails unless Epic 8's 500-cover check fails; that follow-up would amend AD-12 and AD-14.
 - AR27 (AD-15): The Card note panel's Add another choice is a `localStorage` UI preference, `bookvie.cardNoteAddAnother`, read and written by `lib/cardNoteAddAnother` inside try/catch. Off by default and whenever storage is empty, junk or unreadable; never exported, and a restore neither brings nor replaces it.
 - AR28 (AD-6, AD-15): `sortBooks(books, key, reversed)` negates only the primary compare; the tie-break chain (title, `createdAt` older first, Book id) never flips. The reversal is its own `localStorage` key, `bookvie.catalogSortReversed`, read and written by `lib/catalogSort` inside try/catch; the format of `bookvie.catalogSort` doesn't change. Not reversed by default and whenever the value is empty, junk or unreadable, or the stored key isn't one of the four; a key change resets it and stores that; never exported, and a restore neither brings nor replaces it. Home's slice reads both keys.
+
+**Development, production and the version (Epic 11).**
+- AR29 (AD-16): With `--dev` the defaults are port `8766` and the data folder `~/bookvie-data-dev`, so a development server and the real app run side by side; an explicit `--port` or `--data-dir` still wins, and plain `bookvie` keeps `8765` and `~/bookvie-data`. The Vite dev proxy targets `8766`.
+- AR30 (AD-16): With `--dev`, `cli.py` resolves the data folder (symlinks and `..` included) right after parsing and, when it equals the resolved `~/bookvie-data`, prints "bookvie: --dev won't use your real library (~/bookvie-data). Leave out --data-dir to use ~/bookvie-data-dev, or pass a scratch folder." and exits 2, before `instance.py` takes the lock or the store opens. No test touches the real `~/bookvie-data`: they set `HOME` to a temporary folder.
+- AR31 (AD-6, AD-8): `GET /api/views/app-info` (`views/app_info`, a Pydantic model, then `api:gen`) returns `{ version, mode: "dev" | "production", dataDir, commit }`. `version` is `bookvie.__version__`; `mode` is `dev` exactly when the server was started with `--dev` and is the only dev signal the client reads, never `import.meta.env.DEV`; `dataDir` is formatted by the server, `~` for the home folder and a full absolute path outside it; `commit` is the short git hash read once at startup and only with `--dev` (`git rev-parse --short HEAD` in the package's source folder), `null` in production and when git or a checkout isn't there, never an error. `/api/health` doesn't change.
+- AR32 (AD-7): `app-info` is an ordinary view keyed `['view', 'app-info']`: invalidated after every intent and refetched on window focus. A failed fetch keeps the last data; with no data yet, the shell looks like production and shows no notice.
+- AR33 (AD-16, Structural Seed): A dedicated `GET /favicon.svg` route, registered before the SPA catch-all, serves `favicon.svg` (sage) from a production server and `favicon-dev.svg` (amber) from a `--dev` one, as `image/svg+xml` with `Cache-Control: no-cache`. Both files live in `frontend/public/`; the build copies them into `http/static/`, the wheel ships them and the smoke test checks `/favicon.svg`. `index.html` links `/favicon.svg` once and the client never changes it. The Vite dev proxy forwards `/favicon.svg` with `/api` and `/media`.
+- AR34 (AD-8): One version: the bundle bakes its version at build time from `frontend/package.json` (a Vite `define`, declared for `tsc -b`); `scripts/release.sh` sets every copy, and a test in `npm run check` fails unless `bookvie.__version__`, `backend/pyproject.toml`, `package.json` and `frontend/package.json` agree.
 
 **Test harness and quality gates (TEA handoff).**
 - TR1 (TC-1): `LibraryBuilder` fixture and pre-start seeding of a data folder.
@@ -257,6 +273,16 @@ Each line names the UX section that holds the full requirement. D = DESIGN.md, E
 - UX-DR63: Sort direction toggle, visual: joined to the Sort select's right edge as one compound field (same height and border, the shared edge drawn once, the select's right corners square), `surface-inset` fill, an arrow in `ink-secondary` (↑ natural, ↓ reversed) then the order's text in `body-sm`/`ink`, minimum width of the key's wider label, no hover change, the focused half raised, forced colors as `ButtonFace`/`ButtonText` (D → Components → Sort direction toggle, `components.sort-direction-toggle`, Forced colors)
 - UX-DR64: Sort direction toggle, behavior: a plain `button` named by its visible text ("A–Z" ⇄ "Z–A", "Newest first" ⇄ "Oldest first", "Fewest first" ⇄ "Most first"), no `aria-pressed`, the arrow `aria-hidden`, select and toggle in a `role="group"` labelled "Sort"; a press reorders bookcase, list and tiles in place, keeps focus, and `status` stays silent; next Tab stop after the select; hidden on an empty catalog (E → Component Patterns: Sort select, Sort direction toggle; Accessibility Floor → Names)
 
+**Which bookvie you're looking at (FR-26, FR-27, NFR9)**
+- UX-DR65: Favicon: our own drawing (MIT, noted in a comment in the file), SVG only, a 32-unit grid with three spines of different heights on one plank, path `M3 11a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v14H3z M12.5 5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v20h-8z M22 13a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v12h-7z M1 26h30v4H1z`, one flat fill, transparent elsewhere; production `accent` `#557059`, and `accent-dark` `#93B597` under `@media (prefers-color-scheme: dark)` inside the SVG; dev the same drawing in `#8C5E0E`, `#EBC27A` under the dark scheme (D → Components → Favicon, `components.favicon`; E → Favicon)
+- UX-DR66: Dev amber only on a `--dev` server and only on the dev favicon and the DEV pill, as literals in `components.favicon` and `components.dev-pill`, not a `colors` primitive, so `tokens.css` and its `app-shell.spec.ts` comparison don't change; production never shows amber (D → Colors → Dev amber, Do's and Don'ts)
+- UX-DR67: DEV pill, visual: "DEV" in `section-label` (12px, 600, 0.08em, uppercase), `#FFFFFF` on `#8C5E0E` (light) and `#191B18` on `#EBC27A` (dark), `rounded.sm`, `4px 7px` padding, `spacing.2` after the word "bookvie", centered on the wordmark's line, no hover; under forced colors `Canvas` with `CanvasText` text and a 1px `CanvasText` border (D → DEV pill, `components.dev-pill`, Forced colors)
+- UX-DR68: DEV pill and tab title, behavior: the pill is plain text inside the wordmark, not a control, link or Tab stop, with a DOM space before it so the wordmark reads "bookvie DEV"; on a dev server every route's title is "DEV · *Page* — bookvie"; both appear once `app-info` says `mode: "dev"`, and the nav's one-time shift when the pill appears is accepted (E → Foundation, DEV pill, Tab title, Accessibility Floor → Structure)
+- UX-DR69: Update notice, visual: a full-width `surface` band directly under the top nav with a 1px `line` bottom hairline, `10px {spacing.page-x}` padding, one sentence in `body-sm`/`ink`, then `spacing.4` later a compact **Reload** `button-secondary` (30px, `body-sm`, `0 {spacing.3}`); no icon, no close button, no amber or accent fill; it pushes the page down and never overlaps; under forced colors the border is `CanvasText` and Reload takes system button colors (D → Update notice, `components.update-notice`, Layout & Spacing, Forced colors)
+- UX-DR70: Update notice, behavior: "bookvie was updated to *X*. Reload to use it." with the server's version, shown while the bundle's and the last successful `app-info`'s versions differ (newer or older), hidden when a refetch finds them equal again, unchanged by a failed fetch; no dismiss; **Reload** reloads at once without asking; inside the `header` landmark after the top bar, reached by Tab after the theme toggle and before the page, skipped by "Skip to content"; not a dialog, not an `alert`, not itself a live region; announced once per server version through the polite `status` region, and a lost announcement (emptied by a save or an opening panel) is accepted (E → Update notice, Accessibility Floor → Keyboard, Live regions; Flow 12)
+- UX-DR71: About this copy: the third `surface` card on Backup, under Export and Restore, a `section` labelled by its `h2` "About this copy" (shown in `section-label`/`ink-tertiary`); line 1 "bookvie 1.1.0", or on a dev server "bookvie 1.1.0 (a1b2c3d) · Development server" (no brackets when `commit` is null); line 2 "Data folder: ~/bookvie-data" as the server sends it; both in `body-sm`/`ink-secondary`, sans, wrapping anywhere, read-only with no copy button; the commit never shows in production; left out silently until `app-info` loads (D → Backup page, About this copy, `components.about-card`; E → About this copy; Flow 11)
+- UX-DR72: `app-info` states: not loaded yet, or never loaded, means the header and title look like production, no notice and no About this copy card, and nothing says it failed; a refetch that fails after a success keeps the last data for the pill, the title, the card and any notice (E → State Patterns)
+
 ### FR Coverage Map
 
 FR-1: Epic 1 - Book fields, create/edit/delete, Finished on back-fill, tags field, spine color
@@ -282,6 +308,8 @@ FR-22: Epic 2 - Export; Epic 3 - Last export on Home
 FR-23: Epic 2 - Restore
 FR-24: Epic 1 - Catalog bookcase (spines, colors, meter, popover, keyboard); Epic 3 - Home slice and Main-book fill; Epic 4 - Up next / Waiting markers
 FR-25: Epic 8 - Tiles view: grid, covers, ribbon, reading bar, typeset covers
+FR-26: Epic 11 - Dev defaults and the real-library refusal, `app-info` mode, the amber favicon, the DEV pill and the `DEV · ` title
+FR-27: Epic 11 - About this copy on Backup, the update notice and the one version
 
 ## Conventions for every story
 
@@ -2387,3 +2415,209 @@ So that I can find the longest book, my oldest additions, or authors from Z with
 **Given** the select or the toggle has focus
 **When** it renders, in light, dark or `forced-colors: active`
 **Then** the focused half is drawn above the other so its halo or focus ring isn't hidden by the shared edge, there is no hover change, and under forced colors the toggle is `ButtonFace` with `ButtonText` text, border and arrow, the shared edge still visible.
+
+## Epic 11: Know which bookvie you're looking at
+
+bookvie gets its own favicon, a sage shelf of three spines. A development server keeps to its own library and port, refuses the real library, and is marked in every tab: an amber favicon, a `DEV · ` title and a DEV pill in the header. The Backup page says which version is running and which data folder it uses, and a tab left open across an update says so quietly and offers Reload.
+
+**Gate:** per-epic quality gates (TR7); the plan's P0 risks green (real library refused, including through a symlink or `..`, with `HOME` set to a temporary folder; dev defaults; `app-info` per mode; favicon by mode, also through Vite; the dev frame; the stale-tab notice); the version equality test in `npm run check`; the existing e2e specs pass unchanged on a production server; `~/bookvie-data` untouched by `npm run check`. Plan: `dev-prod-favicon-plan-2026-11-17.md`.
+
+### Story 11.1: A favicon for bookvie
+
+As Oleg,
+I want bookvie's tab to carry its own icon,
+So that I can find it among my other tabs at a glance.
+
+**Requirements:** NFR9, AR33 (production file and route), UX-DR65 (production fills)
+
+**Acceptance Criteria:**
+
+**Given** the built app
+**When** I look at `frontend/public/favicon.svg`
+**Then** it is the F3 drawing on a `0 0 32 32` viewBox with exactly the DESIGN.md path, one flat fill and no outline or labels, and a comment names it as bookvie's own drawing under the repo's MIT license
+**And** its fill is `#557059` (`accent`), and `#93B597` (`accent-dark`) under `@media (prefers-color-scheme: dark)` inside the SVG
+**And** a test reads both fills and fails unless they equal DESIGN.md's `accent` and `accent-dark`, in the spirit of `app-shell.spec.ts`.
+
+**Given** `frontend/index.html`
+**When** any page loads
+**Then** its head has exactly one icon link, `<link rel="icon" href="/favicon.svg" type="image/svg+xml">`, and no PNG or `.ico` fallback (Chrome only, AGENTS.md).
+
+**Given** a running production server
+**When** the browser requests `/favicon.svg`
+**Then** a dedicated route, registered before the SPA catch-all, answers 200 with the built `favicon.svg`, `Content-Type: image/svg+xml` and `Cache-Control: no-cache`
+**And** a request for `/favicon.ico` or any other unknown top-level file behaves as before this story.
+
+**Given** `npm run build`, then the wheel installed in isolation
+**When** the smoke test runs (`scripts/smoke.mjs`)
+**Then** `favicon.svg` is in `backend/bookvie/http/static/` and in the wheel, and the installed `bookvie` serves `/favicon.svg` as `image/svg+xml`.
+
+**Given** Chrome's Mode set opposite to the OS
+**When** Oleg looks at the tab once by hand
+**Then** the fill matches the tab strip's scheme, as DESIGN.md → Favicon describes; the result is noted in the story.
+
+**Given** the existing e2e suite
+**When** it runs
+**Then** every spec passes unchanged; nothing in the page looks different.
+
+### Story 11.2: Keep development apart from the real library
+
+As Oleg, and the agents that start bookvie for me,
+I want a development server to keep to its own library and port and to look different in every tab,
+So that a forgotten `--data-dir` or a habit can't touch my real library, and I always know which tab is which.
+
+**Requirements:** FR-26, NFR5, AR29, AR30, AR31, AR32, AR33, UX-DR65 (dev fills), UX-DR66, UX-DR67, UX-DR68, UX-DR72
+
+**Acceptance Criteria:**
+
+**Given** `HOME` set to a temporary folder
+**When** `bookvie --dev` starts with no `--data-dir` and no `--port`
+**Then** it uses `~/bookvie-data-dev` and port `8766`
+**And** `--dev --data-dir <scratch>` and `--dev --port <n>` use exactly what was given
+**And** plain `bookvie` still uses `~/bookvie-data` and `8765`, and `--help` shows both defaults (AR29).
+
+**Given** `HOME` set to a temporary folder
+**When** `bookvie --dev` is started with `--data-dir` naming `~/bookvie-data` directly, through a symlink to it, or through a path with `..` that resolves to it
+**Then** it prints "bookvie: --dev won't use your real library (~/bookvie-data). Leave out --data-dir to use ~/bookvie-data-dev, or pass a scratch folder." to stderr and exits 2
+**And** no lock file is written, no store is opened, and nothing in that folder changes (AR30)
+**And** no test reads or writes the real `~/bookvie-data`.
+
+**Given** a server
+**When** the client requests `GET /api/views/app-info`
+**Then** the response is `{ version, mode, dataDir, commit }` from a Pydantic model in `views/app_info`, and `schema.d.ts` is regenerated so `check:api` passes
+**And** `version` equals `bookvie.__version__`; `mode` is `"dev"` exactly when the server was started with `--dev`, else `"production"`
+**And** `dataDir` is the resolved data folder with `~` for the home folder, and a full absolute path outside it
+**And** `commit` is the short git hash read once at startup with `--dev`, `null` in production, and `null` (never an error or a failed start) when git isn't on the path or the package isn't in a checkout
+**And** `/api/health` is unchanged (AR31).
+
+**Given** a dev server and a production server
+**When** each is asked for `/favicon.svg`
+**Then** production serves the sage `favicon.svg` and the dev server serves `frontend/public/favicon-dev.svg`, both as `image/svg+xml` with `Cache-Control: no-cache`
+**And** `favicon-dev.svg` is the same drawing with `#8C5E0E`, and `#EBC27A` under the dark scheme; a test checks both fills against DESIGN.md's `components.favicon.dev-fill` and `dev-fill-dark`
+**And** the wheel ships `favicon-dev.svg` too (AR33).
+
+**Given** `vite.config.ts`
+**When** the Vite dev server runs
+**Then** it proxies `/api`, `/media` and `/favicon.svg` to `http://127.0.0.1:8766`
+**And** `dev-proxy.spec.ts` adds `/favicon.svg` to its inline `proxy` map and checks that a dev tab through Vite gets the backend's amber file, not Vite's own `public/` copy.
+
+**Given** a page served by a `serverDev` server, whether through Vite or the built SPA
+**When** `app-info` has loaded
+**Then** the header's wordmark reads "bookvie DEV": the pill sits after the word with a space between them in the DOM, "DEV" in `section-label` on the dev amber fill, `rounded.sm`, `4px 7px` padding, `spacing.2` after the word (UX-DR67)
+**And** the pill is not a link, button or Tab stop
+**And** every route's title is "DEV · *Page* — bookvie", Book detail included ("DEV · Catalog — bookvie")
+**And** the client reads dev only from `app-info.mode`; nothing uses `import.meta.env.DEV` for it (UX-DR68).
+
+**Given** a production server
+**When** any page renders
+**Then** there is no DEV pill, titles are "*Page* — bookvie" as before, and no amber appears anywhere on the page.
+
+**Given** a dev server whose `app-info` hasn't loaded yet, or never loads
+**When** the shell renders
+**Then** the header and title look like production and nothing says anything failed
+**And** after a successful load, a refetch that fails keeps the pill and the `DEV · ` prefix (UX-DR72).
+
+**Given** `forced-colors: active` on a dev server
+**When** the pill renders
+**Then** it is `Canvas` with `CanvasText` text and a 1px `CanvasText` border.
+
+**Given** the dev amber values
+**When** they are written
+**Then** they live as literals in the favicon files and the pill's CSS Module, not in `tokens.css`, and `app-shell.spec.ts`'s token comparison passes unchanged (UX-DR66).
+
+**Given** the README
+**When** Oleg reads Development and Options
+**Then** they say `bookvie --dev --no-browser` uses `~/bookvie-data-dev` on port 8766 and refuses the real library, `npm run dev` proxies to 8766, and the "stop any normal `bookvie` first" line is gone.
+
+### Story 11.3: Show the version on the Backup page
+
+As Oleg,
+I want the Backup page to say which version is running and which folder it keeps my library in,
+So that I can check I'm looking at the right copy before I export or restore.
+
+**Requirements:** FR-27 (About this copy), UX-DR71, UX-DR72
+
+**Acceptance Criteria:**
+
+**Given** a production server with `app-info` loaded
+**When** I open Backup
+**Then** a third `surface` card follows Export and Restore, in the same frame: a `section` labelled by its `h2` "About this copy" (shown uppercase in `section-label`/`ink-tertiary`), then "bookvie 1.1.0" and "Data folder: ~/bookvie-data" on two lines in `body-sm`/`ink-secondary`, sans, with the version and folder taken from `app-info`
+**And** no commit and no "Development server" appear.
+
+**Given** a dev server with a commit
+**When** I open Backup
+**Then** line 1 reads "bookvie 1.1.0 (a1b2c3d) · Development server", with " · " as text (space, middle dot, space), and line 2 "Data folder: ~/bookvie-data-dev" (or the folder given)
+**And** with `commit: null`, line 1 reads "bookvie 1.1.0 · Development server", with no brackets.
+
+**Given** a data folder outside the home folder, such as an e2e temp folder
+**When** the card renders
+**Then** the folder shows as the full absolute path the server sends, wrapping anywhere inside the card (`overflow-wrap: anywhere`) and never cut short.
+
+**Given** `app-info` not loaded yet, or failing
+**When** I open Backup
+**Then** the card is left out silently, nothing says it failed, and Export and Restore work as before
+**And** a refetch that fails after a success keeps the card as it was.
+
+**Given** the card
+**When** a screen reader or keyboard user reaches it
+**Then** it is plain read-only text, with no copy button and no Tab stop, and the page's headings run `h1` "Backup" then `h2` "About this copy"
+**And** the axe check for Backup passes in light and dark.
+
+**Given** the existing Backup e2e specs
+**When** they run
+**Then** they pass unchanged.
+
+### Story 11.4: Tell me when a tab is older than the app
+
+As Oleg,
+I want an open tab to tell me when bookvie has been updated under it,
+So that I reload when it suits me instead of remembering to hard-reload every tab after an install.
+
+**Requirements:** FR-27 (update notice), AR32, AR34, UX-DR69, UX-DR70, UX-DR72
+
+**Acceptance Criteria:**
+
+**Given** the build
+**When** the bundle is made
+**Then** it bakes its own version from `frontend/package.json` through a Vite `define`, declared so `tsc -b` knows its type
+**And** a test in `npm run check` fails unless `bookvie.__version__`, `backend/pyproject.toml`, `package.json` and `frontend/package.json` hold the same version (AR34).
+
+**Given** a tab whose baked version equals `app-info.version`
+**When** any page renders, and after any refetch
+**Then** no update notice shows and nothing is announced.
+
+**Given** a tab whose baked version differs from `app-info.version`, newer or older
+**When** `app-info` loads or refetches (also on window focus)
+**Then** a full-width `surface` band appears directly under the top nav with a `line` hairline at the bottom: "bookvie was updated to *X*. Reload to use it." in `body-sm`/`ink`, where *X* is the server's version, then **Reload** as a compact 30px `button-secondary` `spacing.4` after the sentence
+**And** it has no icon, no close button, no amber and no accent fill; it pushes the page down and never overlaps content (UX-DR69).
+
+**Given** the notice is showing
+**When** I go to another route, or keep using the tab
+**Then** the notice stays on every route until the tab reloads, nothing is blocked, and saving a page or a card note still works
+**And** it is not a dialog, not an `alert`, and not itself a live region.
+
+**Given** the notice
+**When** I press **Reload** (click, Enter or Space)
+**Then** the page reloads at once, without asking.
+
+**Given** the notice first appears in a tab
+**When** it is set
+**Then** the polite `status` region announces its sentence once, after the usual tick
+**And** a refetch that finds the same server version announces nothing
+**And** a later, different server version updates the sentence and announces the new one once
+**And** a refetch that finds the bundle's own version again hides the notice (UX-DR70).
+
+**Given** a tab with no notice
+**When** the `app-info` refetch fails (for example while bookvie restarts)
+**Then** no notice appears and nothing complains; with the notice showing, a failed refetch leaves it showing (UX-DR72).
+
+**Given** the notice is showing
+**When** a keyboard user tabs from the top
+**Then** **Reload** is reached after the theme toggle and before the page's content; "Skip to content" skips it; the notice sits inside the `header` landmark, after the top bar.
+
+**Given** `forced-colors: active`
+**When** the notice renders
+**Then** its bottom border is `CanvasText` and **Reload** takes the system button colors.
+
+**Given** the README
+**When** Oleg reads Updating
+**Then** the "hard-reload open tabs" instruction is replaced by a line saying open tabs show a notice with Reload.
