@@ -1,0 +1,24 @@
+{
+  "schema_version": "0.1.0",
+  "evaluated_at": "2026-11-17T17:43:53.000000Z",
+  "repo": "bookvie",
+  "target": {
+    "type": "epic",
+    "id": "11",
+    "label": "Epic 11: Know which bookvie you're looking at"
+  },
+  "collection_status": "COLLECTED",
+  "gate_basis": "priority_thresholds",
+  "gate_status": "PASS",
+  "rationale": "P0 coverage is 100% (16/16), P1 coverage is 100% (11/11; TR7 target: 95%; workflow default 90%), and overall coverage is 100% (33/33; minimum: 80%). The Epic 11 gate holds: the plan's six P0 risks are green (real library refused incl. symlink, .. and case variants with HOME in a temp folder; dev defaults; app-info per mode; favicon by mode, also through Vite; the dev frame; the stale-tab notice); the version equality test (scripts/version.test.mjs) runs in check:api; no e2e spec that predates Epic 11 had an assertion changed (dev-proxy.spec.ts gained the /favicon.svg proxy entry that 11.2 AC-5 requires); ~/bookvie-data was untouched by npm run check. Epic 11 added no error code; check:api is clean and the coverage gates hold (domain 100.00%, intents+store 98.08%). This trace added no test.",
+  "p0_status": "MET",
+  "p1_status": "MET",
+  "overall_status": "MET",
+  "critical_open": 0,
+  "links": {
+    "trace_report_path": "_bmad-output/test-artifacts/traceability/epic-11-traceability-matrix.md",
+    "trace_report_url": "",
+    "artifact_url": "",
+    "journey_evidence_url": ""
+  }
+}

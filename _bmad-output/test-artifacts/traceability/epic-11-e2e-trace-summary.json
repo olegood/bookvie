@@ -1,0 +1,160 @@
+{
+  "schema_version": "0.3.0",
+  "snapshot_at": "2026-11-17T17:43:53.000000Z",
+  "repo": "bookvie",
+  "collection_mode": "contract_static",
+  "collection_status": "COLLECTED",
+  "inventory_basis": "acceptance_criteria",
+  "gate_basis": "priority_thresholds",
+  "source_sha": "59c75e1e5c65b0f12d1663478833dabd693a2529",
+  "target": {
+    "type": "epic",
+    "id": "11",
+    "label": "Epic 11: Know which bookvie you're looking at"
+  },
+  "decision_mode": "deterministic",
+  "evaluator": "Oleg",
+  "confidence": "high",
+  "oracle": {
+    "resolution_mode": "formal_requirements",
+    "confidence": "high",
+    "sources": [
+      "_bmad-output/planning-artifacts/epics.md (TR7 :183, Epic 11 gate :2423, Stories 11.1-11.4 :2425-2640)",
+      "_bmad-output/planning-artifacts/dev-prod-favicon-plan-2026-11-17.md (section 5, P0 and P1 risks :89-99)",
+      "_bmad-output/implementation-artifacts/epic-11-context.md (Epic gate :26)",
+      "_bmad-output/implementation-artifacts/epic-11-retro-2026-11-17.md (action 74)",
+      "_bmad-output/test-artifacts/atdd-checklist-11-{1,2,3,4}-*.md (story ACs and priority markers)"
+    ],
+    "external_pointer_status": "not_used",
+    "synthetic": false
+  },
+  "coverage": {
+    "inventory": {
+      "covered": 33,
+      "total": 33,
+      "pct": 100
+    },
+    "priority_breakdown": {
+      "P0": {
+        "total": 16,
+        "covered": 16,
+        "pct": 100
+      },
+      "P1": {
+        "total": 11,
+        "covered": 11,
+        "pct": 100
+      },
+      "P2": {
+        "total": 6,
+        "covered": 6,
+        "pct": 100
+      },
+      "P3": {
+        "total": 0,
+        "covered": 0,
+        "pct": 100
+      }
+    },
+    "by_level": {
+      "e2e": {
+        "tests": 59,
+        "criteria_covered": 28
+      },
+      "api": {
+        "tests": 53,
+        "criteria_covered": 7
+      },
+      "component": {
+        "tests": 0,
+        "criteria_covered": 0
+      },
+      "unit": {
+        "tests": 19,
+        "criteria_covered": 8
+      },
+      "live": {
+        "tests": 0,
+        "criteria_covered": 0
+      },
+      "other": {
+        "tests": 0,
+        "criteria_covered": 0
+      }
+    }
+  },
+  "tests": {
+    "files": 19,
+    "cases": 131,
+    "skipped_cases": 0,
+    "fixme_cases": 0,
+    "pending_cases": 0,
+    "note": "Counts the Epic 11 cases only. e2e 59: favicon 5, favicon-automate 4, dev-mode 4, dev-mode-automate 8, dev-mode-production 3, dev-proxy 1 (the AC-5 leaf), about-this-copy 5, about-this-copy-dev 1, about-this-copy-automate 8, update-notice 11, update-notice-automate 9. api 53 (pytest, collected cases): test_dev_mode.py 33, test_app.py 18 (favicon route, index.html no-cache, catch-all never serves an icon), test_wheel_build.py 2. unit 19: lib/aboutThisCopy 6, lib/updateNotice 8, lib/page 2, lib/announce 1, scripts/version.test.mjs 2. The Epic 11 edits to dev-proxy.spec.ts:35-39, test_packaging.py:32-35, test_cli.py and scripts/copy.test.mjs are mapped but not counted here. Priority is the higher of the test marker and the plan risk, which raises 11.2 AC-5, 11.2 AC-7 and 11.4 AC-7 to P0. P3 has no item, so its 0/0 is reported as 100% (n/a)."
+  },
+  "risk_summary": {
+    "critical_open": 0,
+    "high_open": 0,
+    "medium_open": 0,
+    "low_open": 3
+  },
+  "heuristics": {
+    "endpoint_gaps": 0,
+    "auth_negative_path_status": "present",
+    "error_path_status": "present",
+    "ui_journey_status": "not_applicable",
+    "ui_state_status": "not_applicable"
+  },
+  "live_evidence": {
+    "present": false,
+    "results_file": "_bmad-output/test-artifacts/live-verification-results.json",
+    "freshness": "not_present",
+    "recorded_source_sha": "",
+    "current_source_sha": "59c75e1e5c65b0f12d1663478833dabd693a2529",
+    "producer": "",
+    "counted": 0,
+    "stale": 0,
+    "unverifiable": 0,
+    "failed": 0,
+    "contradicted": 0,
+    "blocked": 0,
+    "skipped": 0,
+    "unmatched": 0,
+    "invalid": 0,
+    "requirements_live_only": 0
+  },
+  "blockers": [],
+  "rejected_evidence": [],
+  "recommendations": [
+    {
+      "priority": "LOW",
+      "action": "Retro actions 77 to 80 (one e2e home for DESIGN.md reading and app-info faking, two ATDD habits, the UX wording, a second --dev from another checkout), all due before Epic 12",
+      "requirements": [
+        "11.4 · AC-6"
+      ]
+    },
+    {
+      "priority": "LOW",
+      "action": "Run /bmad-testarch-test-review on the Epic 11 suites",
+      "requirements": []
+    }
+  ],
+  "links": {
+    "trace_report_path": "_bmad-output/test-artifacts/traceability/epic-11-traceability-matrix.md",
+    "trace_report_url": "",
+    "artifact_url": "",
+    "journey_evidence_url": ""
+  },
+  "gate_status": "PASS",
+  "gate_criteria": {
+    "p0_coverage_required": "100%",
+    "p0_coverage_actual": "100%",
+    "p0_status": "MET",
+    "p1_coverage_target": "95%",
+    "p1_coverage_minimum": "80%",
+    "p1_coverage_actual": "100%",
+    "p1_status": "MET",
+    "overall_coverage_minimum": "80%",
+    "overall_coverage_actual": "100%",
+    "overall_status": "MET"
+  }
+}
