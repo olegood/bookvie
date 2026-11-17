@@ -251,6 +251,7 @@ test.describe('Story 2.1 Export all data with one click (ATDD)', () => {
   test("[P1] AC-6 an export that fails shows the couldn't-export line and keeps Last export", async ({
     page,
   }, testInfo) => {
+    // The export fails only because the cover is chmod 000; root reads it anyway, so the test can't fail the export.
     test.skip(process.getuid?.() === 0, 'root can read a chmod 000 cover')
     const server = await serverWithLastExport(testInfo, localNoonDaysAgo(3), { cover: Buffer.from('not read') })
     const cover = path.join(server.dataDir, COVER_FILE)
