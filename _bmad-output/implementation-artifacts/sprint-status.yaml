@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-29-2026 17:21
-last_updated: 11-17-2026 16:47
+last_updated: 11-17-2026 17:50
 project: bookvie
 project_key: NOKEY
 tracking_system: file-system
@@ -112,12 +112,12 @@ development_status:
   10-1-reverse-the-catalog-order: done
   epic-10-retrospective: done
 
-  epic-11: in-progress
+  epic-11: done
   11-1-a-favicon-for-bookvie: done
   11-2-keep-development-apart-from-the-real-library: done
   11-3-show-the-version-on-the-backup-page: done
   11-4-tell-me-when-a-tab-is-older-than-the-app: done
-  epic-11-retrospective: optional
+  epic-11-retrospective: done
 action_items:
   - id: "epic-1-retro-item-1-run-an-epic-1-trace-and-gate-against-tr7"
     epic: 1
@@ -830,3 +830,97 @@ action_items:
     owner: "Murat (TEA)"
     status: done
     ref: "_bmad-output/implementation-artifacts/epic-10-retro-2026-11-16.md"
+  - id: "epic-11-retro-item-74-trace-and-gate-epic-11"
+    epic: 11
+    action: "Run the Epic 11 trace and gate with `bmad-testarch-trace` against TR7
+      and the Epic 11 gate (P0 risks green: real library refused incl. symlink/`..`,
+      dev defaults, `app-info` per mode, favicon by mode also through Vite, dev frame,
+      stale-tab notice; version equality test in `npm run check`; existing e2e unchanged).
+      Changes: `_bmad-output/test-artifacts/traceability/epic-11-traceability-matrix.md`,
+      `_bmad-output/test-artifacts/traceability/epic-11-gate-decision.json`. Due:
+      before Epic 12."
+    owner: "Murat (TEA)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-11-retro-2026-11-17.md"
+  - id: "epic-11-retro-item-75-reconcile-the-spine-with-epic-11"
+    epic: 11
+    action: "Reconcile the spine with Epic 11: mark AD-6 App info, AD-7, AD-8 One
+      version and AD-16 Favicon, Binding and Real library refused as built; add the
+      file-identity comparison (and item 76's case-insensitive fallback) to AD-16
+      and the notice's once-per-version status announcement to AD-7; add `views/app_info`,
+      `public/` favicons, `lib/aboutThisCopy`, `lib/updateNotice` and `components/UpdateNotice`
+      to the Structural Seed; extend the Testing row and Seed Build and install with
+      the smoke favicon checks; drop the Epic 11 planned exception from the Capability
+      map preamble and name the new modules in the FR-26/FR-27 rows; add a `resolved:`
+      line to the fifteen entries at `deferred-work.md:1046`, `:1049`, `:1055`, `:1061`,
+      `:1064`, `:1067`, `:1070`, `:1073`, `:1085`, `:1088`, `:1094`, `:1103`, `:1106`,
+      `:1109`, `:1112`. Changes: `_bmad-output/planning-artifacts/architecture/architecture-bookvie-2026-10-29/ARCHITECTURE-SPINE.md`,
+      `_bmad-output/implementation-artifacts/deferred-work.md`. Due: before Epic 12."
+    owner: "Winston (architect)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-11-retro-2026-11-17.md"
+  - id: "epic-11-retro-item-76-close-dev-mode-refusal-and-serving-gaps"
+    epic: 11
+    action: "Close the dev-mode refusal and serving gaps (E11-B1, E11-B2, E11-B3):
+      `_refuses_real_library` also refuses a case variant of `~/bookvie-data` on a
+      case-insensitive disk when that folder doesn't exist yet (a leaf that doesn't
+      create the folder, plus a disk-independent leaf); the SPA catch-all never serves
+      `favicon-dev.svg` from a production server; correct the favicon route's uncached
+      comment; serve `index.html` with `Cache-Control: no-cache`. Changes: `backend/bookvie/cli.py`,
+      `backend/bookvie/http/app.py`, `backend/tests/test_dev_mode.py`, `backend/tests/test_app.py`.
+      Due: before Epic 12."
+    owner: "Amelia (dev)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-11-retro-2026-11-17.md"
+  - id: "epic-11-retro-item-77-one-home-for-design-md-and-app-info-e2e-helpers"
+    epic: 11
+    action: "One e2e home for DESIGN.md reading and app-info faking (E11-D1): one
+      DESIGN.md frontmatter reader (primitives and component literals) and one `app-info`
+      route helper in `frontend/e2e/library.ts`, used instead of `designColor`, `designComponentColor`,
+      the parser in `app-shell.spec.ts`, `fulfilAppInfo`, `answerAppInfo` and the
+      inline app-info routes where behavior is the same; type `AppInfo` from the generated
+      schema; no assertion changes. Changes: `frontend/e2e/library.ts`, `frontend/e2e/favicon.ts`,
+      `frontend/e2e/dev-mode.ts`, `frontend/e2e/about-this-copy.ts`, `frontend/e2e/update-notice.ts`,
+      `frontend/e2e/app-shell.spec.ts`, `frontend/e2e/about-this-copy.spec.ts`, `frontend/e2e/about-this-copy-automate.spec.ts`,
+      `frontend/e2e/dev-mode.spec.ts`, `frontend/e2e/dev-mode-automate.spec.ts`. Due:
+      before Epic 12."
+    owner: "Murat (TEA)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-11-retro-2026-11-17.md"
+  - id: "epic-11-retro-item-78-teach-atdd-helper-reuse-and-measuring-shipped-ui"
+    epic: 11
+    action: "Teach ATDD two habits (E11-D1, E11-R1) as persistent facts: (a) before
+      adding a helper or type to an e2e helper module, search `frontend/e2e/*.ts`
+      (`library.ts` first) and reuse or extend, recording Helpers reused in the checklist;
+      (b) any number an AC quotes for UI that already ships (width, height, token
+      value) is measured on the running app or read from `tokens.css` in the probe
+      step before it becomes an assertion, recorded under Helper probes. Changes:
+      `_bmad/custom/bmad-testarch-atdd.toml`. Due: before Epic 12."
+    owner: "Murat (TEA)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-11-retro-2026-11-17.md"
+  - id: "epic-11-retro-item-79-reconcile-ux-wording-with-epic-11"
+    epic: 11
+    action: "Reconcile the UX wording with what Epic 11 accepted (E11-S1): EXPERIENCE.md's
+      update notice and Live regions text and Story 11.4's AC-6 in epics.md say the
+      notice is announced once per new version unless another message is pending or
+      an intent's message follows it, when the band and Reload stay and the announcement
+      is not retried; fix the About this copy row's like the page's other headings
+      (Backup has one h2). Changes: `_bmad-output/planning-artifacts/ux-designs/ux-bookvie-2026-10-28/EXPERIENCE.md`,
+      `_bmad-output/planning-artifacts/epics.md`. Due: before Epic 12."
+    owner: "Sally (UX)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-11-retro-2026-11-17.md"
+  - id: "epic-11-retro-item-80-second-dev-server-from-another-checkout"
+    epic: 11
+    action: "A second `bookvie --dev` from another checkout doesn't silently join
+      the first (E11-S2): when the lock shows a live dev server whose checkout (its
+      `app-info.commit` and reported checkout path) differs from this one, refuse
+      with a message naming `--port` and `--data-dir` instead of printing already
+      running and exiting 0; update the README Development paragraph and spine AD-16.
+      Changes: `backend/bookvie/cli.py`, `backend/tests/test_dev_mode.py`, `README.md`,
+      `_bmad-output/planning-artifacts/architecture/architecture-bookvie-2026-10-29/ARCHITECTURE-SPINE.md`.
+      Due: before Epic 12."
+    owner: "Amelia (dev)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-11-retro-2026-11-17.md"
