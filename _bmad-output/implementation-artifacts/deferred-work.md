@@ -1072,3 +1072,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-11-2-keep-development-apart-from-the-real-library.md`
   summary: Spine drift (AD-16 Favicon bullet and Seed `public/`; Capability map FR-26 row; Testing row and Seed "Build and install"), reconciled before the next epic. These extend the Story 11.1 entries above: 11.2 finished the dev half of the favicon (`favicon-dev.svg`, the route's `--dev` switch, the Vite `/favicon.svg` proxy), the whole FR-26 row is now built (only FR-27 stays planned), and `scripts/smoke.mjs` also checks that the installed package carries `static/favicon-dev.svg` with the built file's bytes. Low.
   evidence: ARCHITECTURE-SPINE.md:230, :297, :346, :387, :399, :415; `frontend/public/favicon-dev.svg`, `frontend/vite.config.ts`, `scripts/smoke.mjs` (spine check, build-auto review of Story 11.2).
+
+## Deferred from: code review of spec-11-2-keep-development-apart-from-the-real-library (2026-11-17)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-11-2-keep-development-apart-from-the-real-library.md`
+  summary: The case-variant refusal of the real library is never exercised in CI. The `case` form of `test_dev_refuses_the_real_library_before_the_lock_or_the_store` and `test_instance.py` `test_same_folder_sees_case_variant` skip on a case-sensitive disk, and every CI job runs on ubuntu-latest, so a revert of `_refuses_real_library` to a resolved-path comparison would pass CI. They run in the local `npm run check` on macOS, which is the gate today. If CI becomes the gate, add a disk-independent leaf (fake `os.path.samefile`, assert exit 2). Low.
+  evidence: `backend/tests/test_dev_mode.py:144`, `backend/tests/test_instance.py:269`, `.github/workflows/test.yml` (verification gap, code review of Story 11.2).

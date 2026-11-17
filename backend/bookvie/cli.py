@@ -106,8 +106,9 @@ def _refuses_real_library(args: argparse.Namespace) -> bool:
 def _checkout_commit() -> str | None:
     """The short git hash of the checkout this package runs from, or None.
 
-    Any failure (no git on PATH, not a checkout, a timeout) gives None: the
-    commit is shown for information and must never stop a start.
+    Any failure (no git on PATH, not a checkout, a timeout, output that won't
+    decode) gives None: the commit is shown for information and must never
+    stop a start.
     """
     try:
         result = subprocess.run(
@@ -118,7 +119,7 @@ def _checkout_commit() -> str | None:
             timeout=_GIT_TIMEOUT_SECONDS,
             check=True,
         )
-    except OSError, subprocess.SubprocessError:
+    except OSError, subprocess.SubprocessError, ValueError:
         return None
     commit = result.stdout.strip()
     return commit or None

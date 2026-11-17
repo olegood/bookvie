@@ -3,7 +3,7 @@ title: 'Story 11.2: Keep development apart from the real library'
 type: 'feature'
 created: '2026-11-17'
 baseline_revision: 'ac279ecf8052bf6d8a3c2e76b9d2db8086898461'
-status: 'in-review'
+status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -108,6 +108,28 @@ deferred:
 - Given `vite.config.ts`, when it is loaded, then it proxies exactly `/api`, `/media` and `/favicon.svg` to 8766, and a Vite tab gets the amber icon (AC-5).
 - Given a dev server whose `app-info` has loaded, when any route renders, then the wordmark reads "bookvie DEV" with the amber pill (not focusable), and the title is `DEV · Page — bookvie` (AC-6). On production nothing changes (AC-7). While `app-info` is pending or failed, the shell looks like production, and a failed refetch keeps the mark (AC-8). Under forced colors the pill is Canvas/CanvasText with a 1px border (AC-9).
 - Given the source, when it is scanned, then the amber appears only in `favicon-dev.svg` and one CSS Module (AC-10), and the README says what AC-11 checks.
+
+### Review Findings
+
+Code review (`bmad-code-review`, new session), 2026-11-17. Layers: Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor, Spine Check; none failed. 0 decision-needed, 1 patch, 2 defer, 11 rejected.
+
+- [x] [Review][Patch] `_checkout_commit` lets a `UnicodeDecodeError` from git's output escape, so a dev start fails instead of getting `commit: null` (Always: "any failure gives `null`, never a failed start"); catch `ValueError` too and add a leaf [backend/bookvie/cli.py:120] — fixed: `except OSError, subprocess.SubprocessError, ValueError`; `test_commit_is_null_whatever_reading_it_raises` (no git, timeout, undecodable output) fails without it
+- [x] [Review][Defer] The case-variant refusal leaves (`test_dev_mode.py` `case` form, `test_instance.py` `test_same_folder_sees_case_variant`) skip on a case-sensitive disk, so CI (ubuntu-latest) never runs them [backend/tests/test_dev_mode.py:144] — deferred: the gate is the local `npm run check` on macOS, where they run; a disk-independent leaf needs a faked `samefile`, worth it only if CI becomes the gate
+- [x] [Review][Defer] Spine drift (AD-6, AD-7, AD-16 Binding / Real library refused / Favicon, Seed `views/` and `public/`, Capability map FR-26, Testing row) [ARCHITECTURE-SPINE.md] — deferred: spine drift, reconciled before the next epic; already recorded by the build in `deferred-work.md` ("build-auto review of spec-11-2-…"), no new entry
+- Full check after the patch, 2026-11-17: `npm run check` exit 0 — pytest 1603 passed, unit 371 passed (0 skipped), e2e 741 passed, smoke ok; no `~/bookvie-data-dev` created.
+
+**Rejected:**
+- `low` (Edge+Blind+Acceptance) `--dev --data-dir ~/BOOKVIE-DATA` passes the refusal when `~/bookvie-data` doesn't exist yet (samefile raises, the fallback compares case-sensitively), so the folder dev creates is the real library's spelling on APFS: needs both a case-variant spelling and no real library, and no existing library is harmed; the fix adds a case-fold branch that would also over-refuse on case-sensitive disks.
+- `low` (Blind) a folder inside the real library (`~/bookvie-data/sub`) isn't refused: the spec's matrix "Near miss" row explicitly starts it normally; changing that edits the spec.
+- `low` (Blind) only the default `~/bookvie-data` is guarded, not a real library elsewhere: AD-16 and the spec define the real library as `~/bookvie-data`; a configurable guard is new surface.
+- `low` (Blind) `_checkout_commit` runs after the lock, bind and `Store.open`, so a slow git holds a "starting" lock up to 5 s: `git rev-parse` takes milliseconds; a hang is not an everyday case.
+- `low` (Blind) parallel worktrees share `~/bookvie-data-dev` and 8766, and Vite has no port override: explicit `--data-dir`/`--port` exist; an env override for Vite was already rejected in the build's review (the AC fixes 8766).
+- `low` (Blind) `test_commit_is_read_once…` counts every `subprocess.run` during start: a future extra call fails it loudly, which is a visible, cheap update, not a hidden gap.
+- `low` (Blind) the spec's `deferred:` count, Verification command and post-patch re-run don't line up: the fix edits the spec under review.
+- `false` (Blind) AGENTS.md doesn't tell agents about `--dev`: the harm named (an agent opening the real library) is prevented by the refusal and the dev defaults themselves, whatever an agent reads.
+- `false` (Acceptance) the dark-theme rule outranks the forced-colors pill rule: Chromium's forced-colors mode overrides background and text colors anyway, and the AC-9 e2e leaf passes in Chromium.
+- `false` (Acceptance) the amber hexes in `copy.test.mjs` break AC-10: it's a test guard's exemption, not source that shows amber; AC-10 scans `frontend/src`.
+- `false` (Acceptance) an existing test assertion was edited: `test_packaging.py` is pytest, not an e2e spec, and AC-5's port change requires it; no e2e `expect` changed.
 
 ## Spec Change Log
 

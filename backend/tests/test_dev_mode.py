@@ -330,6 +330,29 @@ def test_commit_is_read_once_per_dev_start_and_never_in_production(
     assert calls[0][0] == "git"
 
 
+@pytest.mark.parametrize(
+    "error",
+    [
+        FileNotFoundError("git"),
+        subprocess.TimeoutExpired("git", 5.0),
+        UnicodeDecodeError("utf-8", b"\xff", 0, 1, "invalid start byte"),
+    ],
+)
+def test_commit_is_null_whatever_reading_it_raises(
+    error: Exception,
+    home: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    start: Callable[[Sequence[str]], FastAPI],
+) -> None:
+    # Always: any failure gives `commit: null`, never a failed start (code review of 11.2).
+    def run(*args, **kwargs):
+        raise error
+
+    monkeypatch.setattr(cli.subprocess, "run", run)
+    app = start(["--dev", "--no-browser", "--port", "8799", "--data-dir", str(home / "dev")])
+    assert app.state.app_info.commit is None
+
+
 @pytest.mark.parametrize(("dev", "served"), [(True, "favicon-dev.svg"), (False, "favicon.svg")])
 def test_favicon_route_serves_the_file_for_its_mode(dev: bool, served: str, tmp_path: Path) -> None:
     # AC-4: one route, the file chosen by mode, same headers on GET and HEAD.
