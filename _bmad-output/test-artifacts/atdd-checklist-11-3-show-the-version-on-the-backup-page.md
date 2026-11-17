@@ -108,14 +108,14 @@ None. AC-6 requires `backup.spec.ts`, `restore.spec.ts` and `restore-refusals.sp
 
 ## Green-phase follow-ups (secondary branches, not red leaves)
 
-- [ ] **E2E, AC-1 dark:** in dark, the heading is `ink-tertiary-dark` `rgb(154, 158, 148)`, the lines `ink-secondary-dark` `rgb(179, 183, 173)`, and the card `surface-dark` (Theme System under OS dark, and Theme Dark under OS light).
-- [ ] **E2E, AC-1 line spacing:** the gap between the heading and line 1, and between the lines, follows the card's gap (or whatever DESIGN.md settles on). The AC doesn't pin it, so automate records the built value.
-- [ ] **E2E, AC-2 refetch:** on a dev server, after a failed refetch the dev line 1 stays (the same guarantee as AC-4, in dev).
-- [ ] **E2E, AC-3 a real temp folder:** on the production worker server, the folder line equals the real `app-info.dataDir`, which starts with `/` (AC-1 already reads it; add the explicit absolute check).
-- [ ] **E2E, AC-4 a stale tab:** `app-info` answers a different version on a focus refetch, and the card updates to it (the "reads bookvie 1.2.0" climax of Flow 12, ahead of 11.4).
-- [ ] **E2E, AC-5 forced colors:** under `forced-colors: active` the card's text is readable (`CanvasText`) and the card keeps a visible border.
-- [ ] **E2E, AC-5 screen reader text:** the region's accessible text reads "About this copy, bookvie 1.1.0, Data folder: …" in that order (aria snapshot).
-- [ ] **Unit (node:test), AC-1/AC-2:** if line 1 is a pure function, cover production, dev with a commit, dev without one, and production with a commit sent.
+- [x] **E2E, AC-1 dark:** in dark, the heading is `ink-tertiary-dark` `rgb(154, 158, 148)`, the lines `ink-secondary-dark` `rgb(179, 183, 173)`, and the card `surface-dark` (Theme System under OS dark, and Theme Dark under OS light). (done: frontend/e2e/about-this-copy-automate.spec.ts:53)
+- [x] **E2E, AC-1 line spacing:** the gap between the heading and line 1, and between the lines, follows the card's gap (or whatever DESIGN.md settles on). The AC doesn't pin it, so automate records the built value. (done: frontend/e2e/about-this-copy-automate.spec.ts:79; built value: line 1 starts 12px (the card gap) below the heading, line 2 directly under line 1)
+- [x] **E2E, AC-2 refetch:** on a dev server, after a failed refetch the dev line 1 stays (the same guarantee as AC-4, in dev). (done: frontend/e2e/about-this-copy-automate.spec.ts:97; a fulfilled `mode: 'dev'` answer on the production worker server, since the card reads only `app-info`)
+- [x] **E2E, AC-3 a real temp folder:** on the production worker server, the folder line equals the real `app-info.dataDir`, which starts with `/` (AC-1 already reads it; add the explicit absolute check). (done: frontend/e2e/about-this-copy-automate.spec.ts:119)
+- [x] **E2E, AC-4 a stale tab:** `app-info` answers a different version on a focus refetch, and the card updates to it (the "reads bookvie 1.2.0" climax of Flow 12, ahead of 11.4). (done: frontend/e2e/about-this-copy-automate.spec.ts:133)
+- [x] **E2E, AC-5 forced colors:** under `forced-colors: active` the card's text is readable (`CanvasText`) and the card keeps a visible border. (done: frontend/e2e/about-this-copy-automate.spec.ts:151)
+- [x] **E2E, AC-5 screen reader text:** the region's accessible text reads "About this copy, bookvie 1.1.0, Data folder: …" in that order (aria snapshot). (done: frontend/e2e/about-this-copy-automate.spec.ts:178 (`toMatchAriaSnapshot`: region, h2, version paragraph, folder paragraph))
+- [x] **Unit (node:test), AC-1/AC-2:** if line 1 is a pure function, cover production, dev with a commit, dev without one, and production with a commit sent. (done: frontend/src/lib/aboutThisCopy.test.ts (6 cases: production, production with a commit sent, dev with and without a commit, dev with another version, the folder verbatim))
 
 ## Helper probes
 
@@ -180,10 +180,10 @@ The helpers are in `frontend/e2e/about-this-copy.ts`.
 
 ## Implementation checklist (for `bmad-build-auto`)
 
-- [ ] `BackupPage.tsx`: once `useAppInfo()` has data, a third `section` after Restore, `aria-labelledby` its `h2` "About this copy". Two lines as pinned above (AC-1, AC-2, AC-4).
-- [ ] `BackupPage.module.css`: the card reuses `.card`. The heading is `section-label` + `ink-tertiary` + uppercase. The lines are `body-sm` + `ink-secondary` with `overflow-wrap: anywhere`. No new tokens; `tokens.css` doesn't change (AC-1, AC-3).
-- [ ] Nothing focusable in the card. Check that axe passes in light and dark (AC-5).
-- [ ] Un-skip the 6 leaves and see them pass. Run `npm run check` with no existing spec edited (AC-6).
+- [x] `BackupPage.tsx`: once `useAppInfo()` has data, a third `section` after Restore, `aria-labelledby` its `h2` "About this copy". Two lines as pinned above (AC-1, AC-2, AC-4). (done: frontend/e2e/about-this-copy.spec.ts:45, :132; about-this-copy-dev.spec.ts:16 (green in this run))
+- [x] `BackupPage.module.css`: the card reuses `.card`. The heading is `section-label` + `ink-tertiary` + uppercase. The lines are `body-sm` + `ink-secondary` with `overflow-wrap: anywhere`. No new tokens; `tokens.css` doesn't change (AC-1, AC-3). (done: frontend/e2e/about-this-copy.spec.ts:45, :106; about-this-copy-automate.spec.ts:53; `tokens.css` unchanged since the baseline)
+- [x] Nothing focusable in the card. Check that axe passes in light and dark (AC-5). (done: frontend/e2e/about-this-copy.spec.ts:189)
+- [x] Un-skip the 6 leaves and see them pass. Run `npm run check` with no existing spec edited (AC-6). (done: the 6 leaves run unskipped; `npm run check` exit 0 on 2026-11-17 in the automate run, e2e 763 passed; `backup.spec.ts`, `restore.spec.ts`, `restore-refusals.spec.ts` unchanged since the baseline)
 
 ## Next
 
