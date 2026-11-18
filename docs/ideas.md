@@ -92,6 +92,8 @@ Use cases:
 Notes:
 
 - The first two are thin wrappers over existing API calls; the last three need the agent to reason over the catalog (topics, purposes, notes, pace), so the MCP mostly has to expose good read tools.
+- The bookvie skills (`bookvie-new-book`, `bookvie-notes-summary` and any others) have to be reworked once the MCP server is available, so they use it instead of the HTTP API.
+- The MCP server should start and run with the same `bookvie` CLI command that starts the app today, if possible, so there's nothing extra to launch. Decide whether it's always on, or turned on by a flag or subcommand.
 
 ## Implemented
 
