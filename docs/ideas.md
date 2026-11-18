@@ -95,6 +95,26 @@ Notes:
 - The bookvie skills (`bookvie-new-book`, `bookvie-notes-summary` and any others) have to be reworked once the MCP server is available, so they use it instead of the HTTP API.
 - The MCP server should start and run with the same `bookvie` CLI command that starts the app today, if possible, so there's nothing extra to launch. Decide whether it's always on, or turned on by a flag or subcommand.
 
+### Daily backup to Dropbox
+
+**Status:** new
+
+Back up the library automatically once a day and upload the backup to Dropbox, so a copy exists off this machine without remembering to export by hand.
+
+Notes:
+
+- The backup itself already exists: the export from the Backup page (`GET /api/export` with the `X-Bookvie-Export: 1` header) is a zip of `library.json` and `covers/`, and a restore checks it before replacing anything. This idea is about running it on a schedule and getting it off the machine.
+- Possible shapes:
+  - **A new bookvie skill** (for example `bookvie-backup`) that calls the export and uploads the zip through a Dropbox MCP integration, run daily by a scheduled task or `/loop`.
+  - **Built into the app:** the backend makes the daily export itself and uploads it with the Dropbox API, with no agent involved.
+  - **Simplest:** a daily export written into the local Dropbox folder (the Dropbox desktop app syncs it), via launchd/cron or the app.
+- Decide what "once per day" means when the app isn't running all day: catch up on the next start if the last backup is older than a day? The "Last export" time in `local-state.json` could drive that.
+- Retention: keep the last N daily zips (for example 7 daily plus a few weekly) so Dropbox doesn't fill up, and a bad day doesn't overwrite the only good copy.
+- Name the files with the date (for example `bookvie-backup-2026-11-18.zip`), and skip the upload when nothing changed since the last one.
+- Dropbox credentials (an OAuth token) must stay out of the library data and out of the repo.
+- Show the last successful upload somewhere (the Backup page?), and make a failed upload visible rather than silent.
+- If the "bookvie MCP server" idea is picked up, a backup tool there could be what the skill calls.
+
 ## Implemented
 
 Ideas already built and delivered.
