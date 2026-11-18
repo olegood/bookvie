@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import type { BookCardNote } from '../api/index.ts'
 import CardNotesPile from '../components/CardNotesPile.tsx'
+import { prefersReducedMotion } from './motion.ts'
 
 type Options = {
   /** A shown note's Edit, if it is rendered now (after the search filter and any first-three cut). */
@@ -30,7 +31,7 @@ type Opened = PileBook & { startNoteId?: string; key: number }
 type Closed = { bookId: string; noteId: string }
 
 function scrollBehavior(): ScrollBehavior {
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'
+  return prefersReducedMotion() ? 'auto' : 'smooth'
 }
 
 export function usePileFlow({ editButton, fallback }: Options): PileFlow {

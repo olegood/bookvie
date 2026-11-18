@@ -1154,3 +1154,12 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-epic-11-retro-item-80-second-dev-server-from-another-checkout.md`
   summary: Only one Vite dev stack can run at a time. `frontend/vite.config.ts` always proxies to port 8766 with `strictPort` on 5173, and `DEV_ORIGINS` allows only 5173. So a second worktree that follows the refusal's advice (`--port`, `--data-dir`) gets a backend, but its `npm run dev` can't start, or would proxy to the first worktree. Making the proxy target and Vite port configurable (for example from an environment variable) would let two worktrees each run a full dev stack. Medium.
   evidence: `frontend/vite.config.ts:18,34-36`; `backend/bookvie/http/app.py:74` (Blind Hunter, bmad-build review of epic 11 retro item 80). The README now says one Vite dev stack runs at a time.
+
+## Deferred from: build-auto review of spec-back-to-top-button (2026-11-18)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-back-to-top-button.md`
+  summary: Spine drift, AD-6 (reconciled before the next epic). The Structural Seed's `frontend/src/lib/` listing doesn't name `motion` (the shared `prefersReducedMotion`, which replaced the copies in `CatalogPage.tsx`, `useFinishMoment.ts` and `usePileFlow.tsx`). Low.
+  evidence: `frontend/src/lib/motion.ts`; `ARCHITECTURE-SPINE.md` Structural Seed (Spine Check, build-auto review of spec-back-to-top-button).
+- source_spec: `_bmad-output/implementation-artifacts/spec-back-to-top-button.md`
+  summary: Spine drift, AD-6 (reconciled before the next epic). The Capability map rows for Catalog (FR-4, FR-20, FR-24) and Card notes (FR-17 to FR-19), and the Seed's `components/` line, don't name `components/BackToTop`. Low.
+  evidence: `frontend/src/components/BackToTop.tsx`, mounted in `CatalogPage.tsx` and `CardNotesPage.tsx`; `ARCHITECTURE-SPINE.md` Capability map (Spine Check, build-auto review of spec-back-to-top-button).

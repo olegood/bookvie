@@ -52,8 +52,7 @@ test.describe('Back to top', () => {
     await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'no-preference' })
   })
 
-  // RED (ATDD): there is no Back to top button yet; un-skip when building spec-back-to-top-button.
-  test.skip('[P0] AC-1 in Bookcase, List and Tiles the button shows once the Catalog is scrolled past one window height, fixed bottom-right, and hides again near the top', async ({
+  test('[P0] AC-1 in Bookcase, List and Tiles the button shows once the Catalog is scrolled past one window height, fixed bottom-right, and hides again near the top', async ({
     page,
     seededServer,
   }) => {
@@ -85,10 +84,20 @@ test.describe('Back to top', () => {
       await scrollToY(page, 0)
       await expect(backToTop(page)).toHaveCount(0)
     }
+
+    // Resize alone: a taller window (the page still overflows, so scrollY stays) hides it, and back shows it.
+    await page.setViewportSize({ width: 1280, height: 720 })
+    await showView(page, 'Bookcase')
+    expect(await scrollToY(page, 1080)).toBe(1080)
+    await expect(backToTop(page)).toBeVisible()
+    await page.setViewportSize({ width: 1280, height: 1200 })
+    expect(await page.evaluate(() => window.scrollY)).toBe(1080)
+    await expect(backToTop(page)).toHaveCount(0)
+    await page.setViewportSize({ width: 1280, height: 720 })
+    await expect(backToTop(page)).toBeVisible()
   })
 
-  // RED (ATDD): there is no Back to top button yet; un-skip when building spec-back-to-top-button.
-  test.skip('[P0] AC-2 on Catalog a click, Enter or Space scrolls to the top and focuses Search titles, keeping its text', async ({
+  test('[P0] AC-2 on Catalog a click, Enter or Space scrolls to the top and focuses Search titles, keeping its text', async ({
     page,
     seededServer,
   }) => {
@@ -114,8 +123,7 @@ test.describe('Back to top', () => {
     }
   })
 
-  // RED (ATDD): there is no Back to top button yet; un-skip when building spec-back-to-top-button.
-  test.skip('[P0] AC-3 on Card notes the button shows past one window height, hides near the top, and a press scrolls up and focuses Search card notes, keeping its text', async ({
+  test('[P0] AC-3 on Card notes the button shows past one window height, hides near the top, and a press scrolls up and focuses Search card notes, keeping its text', async ({
     page,
     seededServer,
   }) => {
@@ -138,8 +146,7 @@ test.describe('Back to top', () => {
     await expect(searchNotes(page)).toHaveValue(MATCHES_ALL_NOTES)
   })
 
-  // RED (ATDD): there is no Back to top button yet; un-skip when building spec-back-to-top-button.
-  test.skip('[P1] AC-4 the scroll is smooth by default and instant under reduced motion, ending at the top with focus on the search field either way', async ({
+  test('[P1] AC-4 the scroll is smooth by default and instant under reduced motion, ending at the top with focus on the search field either way', async ({
     page,
     seededServer,
   }) => {
@@ -165,8 +172,7 @@ test.describe('Back to top', () => {
     await expect(search(page)).toBeFocused()
   })
 
-  // RED (ATDD): the control step needs the button; un-skip when building spec-back-to-top-button.
-  test.skip('[P1] AC-5 a Catalog shorter than two windows never shows the button, even scrolled to the bottom; made long by a shorter window, it does', async ({
+  test('[P1] AC-5 a Catalog shorter than two windows never shows the button, even scrolled to the bottom; made long by a shorter window, it does', async ({
     page,
     seededServer,
   }) => {
@@ -190,8 +196,33 @@ test.describe('Back to top', () => {
     await expect(backToTop(page)).toHaveCount(0)
   })
 
-  // RED (ATDD): there is no Back to top button yet; un-skip when building spec-back-to-top-button.
-  test.skip('[P1] AC-6 hidden it is no Tab stop and no accessible node; shown it is the last Tab stop in main with the accent focus ring', async ({
+  test('[P2] AC-5 an empty Catalog and a Card notes page with no notes have no search field and never show the button, even past one window height of a short window', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: [] })
+    await page.setViewportSize({ width: 1280, height: 200 })
+
+    await page.goto(`${server.url}/catalog`)
+    await expect(page.getByText('Your shelf is empty. Add your first book.', { exact: true })).toBeVisible()
+    await expect(search(page)).toHaveCount(0)
+    expect(await scrollToY(page, 'bottom')).toBeGreaterThan(200)
+    await expect(backToTop(page)).toHaveCount(0)
+
+    await page.goto(`${server.url}/card-notes`)
+    await expect(page.getByRole('heading', { level: 1, name: 'Card notes' })).toBeVisible()
+    await expect(searchNotes(page)).toHaveCount(0)
+    // The empty page can't scroll past one window by itself, so pad it, or the absence below is vacuous.
+    await page.evaluate(() => {
+      const padding = document.createElement('div')
+      padding.style.height = '3000px'
+      document.querySelector('main')?.append(padding)
+    })
+    expect(await scrollToY(page, 'bottom')).toBeGreaterThan(200)
+    await expect(backToTop(page)).toHaveCount(0)
+  })
+
+  test('[P1] AC-6 hidden it is no Tab stop and no accessible node; shown it is the last Tab stop in main with the accent focus ring', async ({
     page,
     seededServer,
   }) => {
@@ -201,16 +232,23 @@ test.describe('Back to top', () => {
     await scrollToY(page, 'bottom')
     await expect(backToTop(page)).toBeVisible()
 
-    // Keyboard focus on the button: the focus ring shows.
+    // Nothing in main comes after it.
     await backToTop(page).focus()
-    await page.keyboard.press('Shift+Tab')
     await page.keyboard.press('Tab')
+    expect(await page.evaluate(() => document.querySelector('main')?.contains(document.activeElement))).toBe(false)
+    // Keyboard focus on the button (Shift+Tab back from after main): the focus ring shows.
+    // Not Shift+Tab from the button then Tab: in Bookcase the previous Tab stop is the
+    // roving spine at the top, so that scrolls the page up and hides the button.
+    await page.keyboard.press('Shift+Tab')
     await expect(backToTop(page)).toBeFocused()
     await expect(backToTop(page)).toHaveCSS('outline-style', 'solid')
     await expect(backToTop(page)).toHaveCSS('outline-color', ACCENT)
-    // Nothing in main comes after it.
-    await page.keyboard.press('Tab')
-    expect(await page.evaluate(() => document.querySelector('main')?.contains(document.activeElement))).toBe(false)
+
+    // Scrolled back up while it has keyboard focus (Home): focus moves to Search titles, not body.
+    await page.keyboard.press('Home')
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0)
+    await expect(backToTop(page)).toHaveCount(0)
+    await expect(search(page)).toBeFocused()
 
     // Hidden at the top: no accessible node, nothing focusable carries its text.
     await scrollToY(page, 0)
@@ -224,8 +262,7 @@ test.describe('Back to top', () => {
     ).toBe(false)
   })
 
-  // RED (ATDD): there is no Back to top button yet; un-skip when building spec-back-to-top-button.
-  test.skip('[P1] AC-7 at the very bottom the button covers no spine, row, tile, card note or control', async ({
+  test('[P1] AC-7 at the very bottom the button covers no spine, row, tile, card note or control', async ({
     page,
     seededServer,
   }) => {
@@ -247,8 +284,7 @@ test.describe('Back to top', () => {
     expect(await coveredBy(backToTop(page)), 'Card notes').toEqual([])
   })
 
-  // RED (ATDD): the control step needs the button; un-skip when building spec-back-to-top-button.
-  test.skip('[P2] AC-8 Home, Stats, Backup and Book detail have no Back to top button, even scrolled past one window height of a short window', async ({
+  test('[P2] AC-8 Home, Stats, Backup and Book detail have no Back to top button, even scrolled past one window height of a short window', async ({
     page,
     seededServer,
   }) => {
@@ -272,8 +308,7 @@ test.describe('Back to top', () => {
     }
   })
 
-  // RED (ATDD): DESIGN.md and EXPERIENCE.md don't describe the button yet; un-skip when building spec-back-to-top-button.
-  test.skip('[P2] AC-9 DESIGN.md has a back-to-top component and EXPERIENCE.md a Back to top row, and the button wears the secondary-button colors', async ({
+  test('[P2] AC-9 DESIGN.md has a back-to-top component and EXPERIENCE.md a Back to top row, and the button wears the secondary-button colors', async ({
     page,
     seededServer,
   }) => {

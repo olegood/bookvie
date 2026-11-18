@@ -100,7 +100,7 @@ Shipped numbers:
 - AC-8 at a 200px window, bottom `scrollY`: Home 1259, Stats 361, Backup 381, Book detail 875, all > 200. At 300px Stats (261) and Backup (281) didn't pass one window height, so the leaf uses 200px and asserts the reached `scrollY` first, so the absence isn't vacuous.
 - Colors: AC-6's `ACCENT` and AC-9's `SURFACE_INSET`, `INK`, `INPUT_BORDER` are the shipped light values already exported and used by Story 10.1's suite. No width or other number is asserted.
 
-Render-before-read: checked on all 9 leaves. Every read waits first on a shipped element with its expected count or name (`Bookcase, 400 books`, `bookRows` 400, `tileLinks` 400, the last note attached, the `h1`), and the docs reads in AC-9 need no render. No leaf needed a fix.
+Render-before-read: checked on all 10 leaves. Every read waits first on a shipped element with its expected count or name (`Bookcase, 400 books`, `bookRows` 400, `tileLinks` 400, the last note attached, the `h1`, the empty shelf's line), and the docs reads in AC-9 need no render. No leaf needed a fix.
 
 Storage keys: no new localStorage key.
 
@@ -108,9 +108,9 @@ Storage keys: no new localStorage key.
 
 ## TDD Red Phase
 
-There are 9 leaves in `frontend/e2e/back-to-top.spec.ts`, one per criterion. Each is `test.skip(...)` with the reason in a comment on the line above. Each title carries exactly one `[P#] AC-n`; the `describe` is "Back to top".
+There are 10 leaves in `frontend/e2e/back-to-top.spec.ts`, one per criterion and a second for AC-5 (the empty pages, added after the build; see Changed during the build). Each is `test.skip(...)` with the reason in a comment on the line above. Each title carries exactly one `[P#] AC-n`; the `describe` is "Back to top".
 
-**Red check** (after the probes passed): each leaf run once un-skipped on the current code, using a throwaway copy (`back-to-top-redcopy.spec.ts`, removed with `rm`). All 9 failed:
+**Red check** (after the probes passed): each leaf run once un-skipped on the current code, using a throwaway copy (`back-to-top-redcopy.spec.ts`, removed with `rm`). The 9 leaves of the red phase all failed:
 
 | Leaf | Fails at | Today |
 |---|---|---|
@@ -126,7 +126,7 @@ There are 9 leaves in `frontend/e2e/back-to-top.spec.ts`, one per criterion. Eac
 
 **AC-5 and AC-8 are guards** that today's code already satisfies on its own (there's no button anywhere). Each leaf therefore also needs the button to show once: AC-5 on the same short Catalog made scrollable by a 200px window, AC-8 on Catalog with the same library. That control makes the leaf red now and keeps "no button" from being vacuous after the build. This follows the pile spec's exception to "the first failing assertion is the criterion's own".
 
-**Skipped as committed:** `playwright test e2e/back-to-top.spec.ts --list` lists 9 tests. Prettier, `oxlint` and `tsc -b` pass on both files.
+**Skipped as committed:** `playwright test e2e/back-to-top.spec.ts --list` listed 9 tests (10 once the empty-pages leaf was added). Prettier, `oxlint` and `tsc -b` pass on both files.
 
 ---
 
@@ -139,6 +139,14 @@ There are 9 leaves in `frontend/e2e/back-to-top.spec.ts`, one per criterion. Eac
 - **Look:** background `surface-inset`, text `ink`, border color `input-border` (DESIGN.md `button-secondary`); the shipped `:focus-visible` outline (solid, `accent`).
 - **Room at the bottom:** at the very bottom nothing in `main` (li, tr, a, button, input, select, textarea, summary, `[tabindex]`) overlaps the button's box, in all three views and on Card notes.
 - **Docs:** DESIGN.md gets a `  back-to-top:` component; EXPERIENCE.md a component-table row starting `| Back to top |`.
+
+## Changed during the build
+
+- **AC-6's keyboard steps** (2026-11-18, build). The scaffold focused the button, pressed Shift+Tab, then Tab to give it keyboard focus. In Bookcase the Tab stop before the button is the roving spine, which starts on the first spine at the top of the page. Shift+Tab therefore scrolled the page to the top, the button hid (spec: shown only past one window height), and the Tab could not land on it. The assertions are unchanged; only the order is: focus the button, Tab (nothing in `main` after it), then Shift+Tab back onto it, which is keyboard focus and shows the ring.
+
+- **A second AC-5 leaf, `[P2] AC-5 an empty Catalog and a Card notes page with no notes …`** (added after the build, from the spec's I/O matrix row "Empty pages"). At a 200px window, the empty Catalog and Card notes with no notes have no search field and no button. The empty Catalog scrolls past one window by itself; the empty Card notes page can't (measured: `scrollY` 0 at 200px, 57 at 120px), so the leaf appends a 3000px `div` to `main` and asserts the reached `scrollY` > 200 first, or the absence would be vacuous.
+- **AC-6, Home key step** (review). With the button keyboard-focused at the bottom, Home scrolls to the top; the button goes (`toHaveCount(0)`, `scrollY` polled to 0) and Search titles has focus, not `body`. The component now moves focus to the press's target before it hides the focused button.
+- **AC-1, resize step** (review). At 1280×720 in Bookcase, `scrollY` 1080 shows the button; a 1200px-tall window (the page still overflows, so `scrollY` stays 1080, asserted) hides it with no scroll, and back to 720 shows it. AC-5's resize also clamps `scrollY`, which fires `scroll`, so it didn't prove the resize listener on its own.
 
 ## Existing tests that must change with the implementation
 
@@ -159,12 +167,12 @@ There are 9 leaves in `frontend/e2e/back-to-top.spec.ts`, one per criterion. Eac
 Activate one leaf at a time: change `test.skip(` to `test(` and delete its RED comment. Watch it fail, implement, then watch it pass.
 - **Command:** `TZ=Europe/Madrid npm --prefix frontend run e2e -- e2e/back-to-top.spec.ts -g "AC-1"`
 
-- [ ] **`BackToTop` component** (`frontend/src/components/BackToTop.tsx` + CSS module): threshold, fixed placement, press behavior, reduced motion (share one helper with the three existing `matchMedia` copies).
-- [ ] **Catalog:** mount it after the views with `searchRef`; leave room at the bottom of the page.
-- [ ] **Card notes:** give `SearchTitles` an `inputRef` and mount it.
-- [ ] **DESIGN.md** `back-to-top` component and **EXPERIENCE.md** row.
-- [ ] Activate AC-1, AC-2, AC-3, then AC-4, AC-6, AC-7, AC-5, AC-8, AC-9.
-- [ ] Re-run the full e2e suite (`npm run check`).
+- [x] **`BackToTop` component** (`frontend/src/components/BackToTop.tsx` + CSS module): threshold, fixed placement, press behavior, reduced motion (share one helper with the three existing `matchMedia` copies).
+- [x] **Catalog:** mount it after the views with `searchRef`; leave room at the bottom of the page.
+- [x] **Card notes:** give `SearchTitles` an `inputRef` and mount it.
+- [x] **DESIGN.md** `back-to-top` component and **EXPERIENCE.md** row.
+- [x] Activate AC-1, AC-2, AC-3, then AC-4, AC-6, AC-7, AC-5, AC-8, AC-9.
+- [x] Re-run the full e2e suite (`npm run check`).
 
 ### Green-phase follow-ups (for `bmad-testarch-automate`, not red leaves)
 

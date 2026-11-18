@@ -1,6 +1,7 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useLocation } from 'react-router'
 import { useCatalogView, type LibraryMeter, type ShelfBook } from '../api/index.ts'
+import BackToTop from '../components/BackToTop.tsx'
 import Button from '../components/Button.tsx'
 import FailureMessage from '../components/FailureMessage.tsx'
 import FilterChips from '../components/FilterChips.tsx'
@@ -28,6 +29,7 @@ import {
 } from '../lib/catalogSort.ts'
 import { readCatalogView, writeCatalogView, type CatalogViewChoice } from '../lib/catalogView.ts'
 import { COULDNT_LOAD } from '../lib/copy.ts'
+import { prefersReducedMotion } from '../lib/motion.ts'
 import { usePageTitle } from '../lib/page.ts'
 // The count is announced once typing pauses, after the same pause as Search card notes.
 import { SEARCH_PAUSE_MS } from '../lib/useSearchCount.ts'
@@ -88,10 +90,6 @@ function shownIds(books: readonly ShelfBook[], query: string, filters: CatalogFi
   return new Set(
     books.filter((book) => matchesTitle(book.title, query) && matchesFilters(book, filters)).map((book) => book.id),
   )
-}
-
-function prefersReducedMotion(): boolean {
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches
 }
 
 /**
@@ -380,6 +378,7 @@ export default function CatalogPage() {
         />
       )}
       {panelOpen && <NewBookPanel tags={view.data.tags} onClose={() => setPanelOpen(false)} onSaved={onSaved} />}
+      {!empty && <BackToTop targetRef={searchRef} />}
     </div>
   )
 }

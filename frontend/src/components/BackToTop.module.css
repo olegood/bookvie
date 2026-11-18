@@ -1,0 +1,18 @@
+/*
+ * Ends the page with room for the fixed button, so at the very bottom it covers nothing.
+ * It clears the button's band (24px + 42px from the viewport's bottom) only together with
+ * `.page`'s 24px bottom padding and 20px flex gap (CatalogPage.module.css,
+ * CardNotesPage.module.css): the last content ends 24 + 42 + 20 = 86px above the page's end.
+ */
+.spacer {
+  flex: none;
+  height: var(--button-height);
+}
+
+.button {
+  position: fixed;
+  right: var(--space-page-x);
+  bottom: var(--space-6);
+  z-index: 10;
+  gap: var(--space-2);
+}

@@ -213,6 +213,16 @@ components:
     foreground: '{colors.ink}'
     border: '1px solid {colors.input-border}'
     radius: '{rounded.md}'
+  back-to-top:
+    background: '{colors.surface-inset}'
+    foreground: '{colors.ink}'
+    border: '1px solid {colors.input-border}'
+    radius: '{rounded.md}'
+    height: 42px
+    offset-bottom: '{spacing.6}'
+    offset-right: '{spacing.page-x}'
+    gap: '{spacing.2}'
+    glyph: '↑'
   link:
     foreground: '{colors.accent}'
     decoration: 'underline 1px, offset 3px'
@@ -616,6 +626,7 @@ Under `forced-colors: active`:
 - The Sort direction toggle becomes `ButtonFace` with `ButtonText` text, border and glyph. The shared edge with the select stays visible.
 - The DEV pill becomes `Canvas` with `CanvasText` text and a 1px `CanvasText` border, so it still reads as a pill.
 - The update notice keeps its bottom border as `CanvasText`; Reload is a button and takes the system button colors.
+- The Back to top button is a native button: it takes the system button colors (`ButtonFace`, `ButtonText`) and keeps its border.
 - The favicon is outside the page and isn't affected.
 - Catalog tiles: the finished ribbon and the reading bar's fill use `forced-color-adjust: none` with `CanvasText`, the bar's track becomes `Canvas` with a `CanvasText` outline, the typeset cover becomes `Canvas` with a `CanvasText` border, its text `CanvasText`, and the cover hairline and the loading box's border become `CanvasText`.
 
@@ -723,6 +734,7 @@ Visual specs. Behavior lives in EXPERIENCE.md → Component Patterns, under the 
 | **List view** | Compact table: Title (`book-title-sm`), Author, Pages, Status, Date added. `{components.list-view-row}`; header in `section-label`. Status shown as text plus a mini spine glyph (colored or outlined). |
 | **Catalog tile** | See [Catalog tile](#catalog-tile) below. |
 | **Search field** | Text field with a leading magnifier glyph and a visible label in `body-sm`/`ink-secondary` to its left: "Search titles" (Catalog) or "Search card notes" (Card notes). No placeholder text. |
+| **Back to top button** | `{components.back-to-top}`. A `button-secondary` (42px tall, `body-sm`, `0 {spacing.4}` padding): an up arrow "↑" (`aria-hidden`), then `{spacing.2}`, then the visible text "Back to top". Not an icon-only circle. On Catalog and Card notes only, fixed in the viewport's bottom-right corner, `{spacing.6}` above its bottom edge and `{spacing.page-x}` from its right edge, above the page's content (`z-index: 10`); the spine popover and the More actions menu (`z-index: 20`) open above it, and so do modal panels and dialogs. Shown only once the page is scrolled more than one window height (EXPERIENCE.md → Back to top). Flat: no shadow; its `input-border` border separates it from the content scrolling under it. The page ends with an empty block of the button's height, so at the very bottom it covers no Book, row, tile, card note or control. Focus: `{components.focus-ring}`. Light and dark come from the tokens. |
 | **Book detail** | See [Book detail](#book-detail) below. |
 | **New book panel** | `{components.side-panel}` with `side-panel` shadow. Header: "New book" (or "Edit book") in `panel-heading`, close "×" icon button. Body: one column of Text fields in Agent Label Contract order; Finished on is a date field; Tags is a text field with a suggestion list (`surface`, `rounded.lg`, `body-sm`). Spine color row: hex field plus the "From cover" chip and the eight swatches. Sticky footer: **Add book** (or **Save changes**) `button-primary`, **Cancel** `button-secondary`. |
 | **Duplicate dialog** | `{components.dialog}`, centered, 440px. Heading "Possible duplicate", one sentence naming the matching Books (serif title, author, ISBN if present). Buttons right-aligned: **Don't add** (`button-secondary`), **Add anyway** (`button-primary`). No icon, no warning color. |

@@ -10,6 +10,7 @@
 
 import { useCallback, useEffect, useRef, useState, type RefObject, type TransitionEvent } from 'react'
 import type { ShelfBook } from '../api/index.ts'
+import { prefersReducedMotion } from './motion.ts'
 
 /**
  * Home's finish moment (Story 3.7), from this tab's successful
@@ -30,10 +31,6 @@ const RING_HOLD_MS = 600
 /** Fallbacks when `scrollend` or `transitionend` never comes (a hidden tab, an interrupted scroll). */
 const SCROLL_FALLBACK_MS = 800
 const FILL_FALLBACK_MS = 1000
-
-function prefersReducedMotion(): boolean {
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches
-}
 
 function fullyInViewport(element: Element): boolean {
   const rect = element.getBoundingClientRect()

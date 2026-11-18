@@ -7,6 +7,7 @@ import {
   type BookCardNote,
   type CardNotesGroup,
 } from '../api/index.ts'
+import BackToTop from '../components/BackToTop.tsx'
 import Button from '../components/Button.tsx'
 import CardNoteItem from '../components/CardNoteItem.tsx'
 import FailureMessage from '../components/FailureMessage.tsx'
@@ -141,6 +142,7 @@ function CardNotesBody({ bookId }: { bookId: string | undefined }) {
   const scope = data?.scope ?? null
 
   const [query, setQuery] = useState('')
+  const searchRef = useRef<HTMLInputElement | null>(null)
   // No field without notes, so no filter either.
   const shownQuery = groups.length === 0 ? '' : query
   const shown = visibleGroups(groups, shownQuery)
@@ -279,7 +281,7 @@ function CardNotesBody({ bookId }: { bookId: string | undefined }) {
           </div>
         ) : (
           <>
-            <SearchTitles label={SEARCH_CARD_NOTES} value={query} onChange={search} />
+            <SearchTitles label={SEARCH_CARD_NOTES} value={query} onChange={search} inputRef={searchRef} />
             {shown.length === 0 ? (
               <>
                 <p className={styles.none}>{noNotesMatchCopy(query)}</p>
@@ -316,6 +318,7 @@ function CardNotesBody({ bookId }: { bookId: string | undefined }) {
         {addPanel}
         {editPanel}
         {pile}
+        {groups.length > 0 && <BackToTop targetRef={searchRef} />}
       </>
     )
   }
