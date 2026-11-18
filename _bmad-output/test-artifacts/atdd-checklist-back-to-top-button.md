@@ -108,7 +108,7 @@ Storage keys: no new localStorage key.
 
 ## TDD Red Phase
 
-There are 10 leaves in `frontend/e2e/back-to-top.spec.ts`, one per criterion and a second for AC-5 (the empty pages, added after the build; see Changed during the build). Each is `test.skip(...)` with the reason in a comment on the line above. Each title carries exactly one `[P#] AC-n`; the `describe` is "Back to top".
+There are 10 leaves in `frontend/e2e/back-to-top.spec.ts`, one per criterion and a second for AC-5 (the empty pages, added after the build; see Changed during the build). The 9 red-phase leaves were each `test.skip(...)` with the reason in a comment on the line above; the 10th was added as a plain `test(` and never skipped. Each title carries exactly one `[P#] AC-n`; the `describe` is "Back to top".
 
 **Red check** (after the probes passed): each leaf run once un-skipped on the current code, using a throwaway copy (`back-to-top-redcopy.spec.ts`, removed with `rm`). The 9 leaves of the red phase all failed:
 
@@ -123,6 +123,8 @@ There are 10 leaves in `frontend/e2e/back-to-top.spec.ts`, one per criterion and
 | AC-7 | button visible at the bottom (Bookcase), before the overlap check | not found |
 | AC-8 | its control step: button visible on Catalog | not found |
 | AC-9 | its first assertion: DESIGN.md has a `back-to-top:` component | no match |
+
+**The 10th leaf's red check** (code review, 2026-11-18): it was added after the build, so it was checked by mutation instead. With `{!empty && …}` dropped from CatalogPage's mount, the leaf failed at `back-to-top.spec.ts:210` (Catalog half). With only `{groups.length > 0 && …}` dropped from CardNotesPage's mount, it failed at `:222` (Card notes half). Both edits were reverted.
 
 **AC-5 and AC-8 are guards** that today's code already satisfies on its own (there's no button anywhere). Each leaf therefore also needs the button to show once: AC-5 on the same short Catalog made scrollable by a 200px window, AC-8 on Catalog with the same library. That control makes the leaf red now and keeps "no button" from being vacuous after the build. This follows the pile spec's exception to "the first failing assertion is the criterion's own".
 
@@ -143,9 +145,8 @@ There are 10 leaves in `frontend/e2e/back-to-top.spec.ts`, one per criterion and
 ## Changed during the build
 
 - **AC-6's keyboard steps** (2026-11-18, build). The scaffold focused the button, pressed Shift+Tab, then Tab to give it keyboard focus. In Bookcase the Tab stop before the button is the roving spine, which starts on the first spine at the top of the page. Shift+Tab therefore scrolled the page to the top, the button hid (spec: shown only past one window height), and the Tab could not land on it. The assertions are unchanged; only the order is: focus the button, Tab (nothing in `main` after it), then Shift+Tab back onto it, which is keyboard focus and shows the ring.
-
 - **A second AC-5 leaf, `[P2] AC-5 an empty Catalog and a Card notes page with no notes …`** (added after the build, from the spec's I/O matrix row "Empty pages"). At a 200px window, the empty Catalog and Card notes with no notes have no search field and no button. The empty Catalog scrolls past one window by itself; the empty Card notes page can't (measured: `scrollY` 0 at 200px, 57 at 120px), so the leaf appends a 3000px `div` to `main` and asserts the reached `scrollY` > 200 first, or the absence would be vacuous.
-- **AC-6, Home key step** (review). With the button keyboard-focused at the bottom, Home scrolls to the top; the button goes (`toHaveCount(0)`, `scrollY` polled to 0) and Search titles has focus, not `body`. The component now moves focus to the press's target before it hides the focused button.
+- **AC-6, Home key step** (build review; changed in code review 2026-11-18 on Oleg's decision). With the button keyboard-focused at the bottom, Home scrolls to the top (`scrollY` polled to 0) and the button stays shown and focused; Shift+Tab moves focus off it, and then it goes (`toHaveCount(0)`) with focus not on `body`. The build first moved focus to the search field when the focused button hid. The review replaced that, because a keyboard user scrolling up with PageUp would land in an off-screen field and type into it.
 - **AC-1, resize step** (review). At 1280×720 in Bookcase, `scrollY` 1080 shows the button; a 1200px-tall window (the page still overflows, so `scrollY` stays 1080, asserted) hides it with no scroll, and back to 720 shows it. AC-5's resize also clamps `scrollY`, which fires `scroll`, so it didn't prove the resize listener on its own.
 
 ## Existing tests that must change with the implementation

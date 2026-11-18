@@ -2,7 +2,7 @@
 title: 'Back to top button on Catalog and Card notes'
 type: 'feature'
 created: '2026-11-18'
-status: 'in-review'
+status: 'done'
 baseline_revision: '928b5789aa8279bd030d2aea7f7bcf28d5139279'
 review_loop_iteration: 0
 followup_review_recommended: true
@@ -114,6 +114,30 @@ Oleg's decisions (2026-11-18):
 - **AC-7** Given the page is scrolled to its very bottom, when the button shows, then it doesn't overlap the last Book (spine, row or tile), the last card note, or any control.
 - **AC-8** Given Home, Stats, Backup or Book detail, when scrolled down, then no "Back to top" button is rendered there.
 - **AC-9** Given the shipped button, when DESIGN.md and EXPERIENCE.md are read, then they describe it (look, placement, threshold, focus target, reduced motion) as it ships, and `npm run check` passes.
+
+### Review Findings
+
+Code review 2026-11-18 (bmad-code-review, new session; layers: Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor, Spine Check).
+
+- [x] [Review][Decision] Focus moves to the search field when the focused button hides — the build added it in review, so it isn't in the intent (D2 moves focus only "after a press"). A keyboard user who Tabs to the button and scrolls up with PageUp or the arrows has focus jump to Search titles / Search card notes. The field is still off-screen (`preventScroll`), so Space then types into it and filters, and Up/Down move the caret instead of scrolling. It also fires on a resize with no scroll. Options: keep it and record it in the Spec Change Log, or keep the button rendered while it has focus and hide it on blur. [frontend/src/components/BackToTop.tsx:371] — resolved (Oleg, 2026-11-18): keep it shown while it has focus and hide it once focus leaves. Patched in `BackToTop.tsx` (rendered while `past || focused`; the focus move on hide removed), in AC-6's Home step (stays shown and focused; Shift+Tab, then it goes and focus isn't on `body`), in the EXPERIENCE.md row and in the checklist.
+- [x] [Review][Patch] The reduced-motion scroll uses `'instant'`, while EXPERIENCE.md → Motion says reduced-motion scrolls use `behavior: 'auto'`, and its list doesn't name the Back to top scroll. Use `'auto'` (base.css:81 makes it instant) and name it in the Motion bullet. [frontend/src/components/BackToTop.tsx:386]
+- [x] [Review][Patch] The ATDD checklist is out of date for the 10th leaf: "Each is `test.skip(...)`" includes a leaf that was never skipped, the red check doesn't record that leaf, and a stray blank line splits "Changed during the build". This review's mutation run (both mount guards dropped one at a time) failed the leaf at `back-to-top.spec.ts:210` (Catalog) and `:222` (Card notes). [_bmad-output/test-artifacts/atdd-checklist-back-to-top-button.md:85]
+- [x] [Review][Defer] No test opens a spine popover over the shown button to prove the popover (z-index 20) paints above it (z-index 10). [frontend/src/components/BackToTop.module.css:16] — deferred: the values hold today; a test needs a seed that puts a popover below a spine in the button's corner. For `bmad-testarch-automate`.
+- [x] [Review][Defer] The two spine-drift entries from this standalone spec are caught by neither the retro's filter ("this epic's stories") nor the next-epic gate's (`source_spec` `spec-{N-1}-*`), so they may never be reconciled. [_bmad/custom/bmad-build-auto.toml:18] — deferred: the fix edits the skill customizations and the process.
+- [x] [Review][Defer] Spine drift, AD-6: the Seed `lib/` line doesn't name `motion`, and the Capability map and Seed `components/` line don't name `BackToTop`. [frontend/src/lib/motion.ts:1] — deferred: already recorded by the build in deferred-work.md (two entries). No new entry.
+
+- Full check after the patches (2026-11-18, this review session): `TZ=Europe/Madrid npm run check` exit 0. pytest 1638 passed, unit 388 passed, e2e 793 passed (all 10 `back-to-top.spec.ts` leaves), smoke ok. oxlint's `set-state-in-effect` warning on the mount-time `setPast` remains (a warning; see Rejected).
+
+**Rejected:**
+- `low` Focus falls to `body` if the button has focus when it unmounts (Edge Case Hunter, Blind Hunter). Catalog's `empty` flips only after a delete on Book detail, which is another route. Card notes' last note is deleted from a modal dialog, which holds focus. The fix would add an unmount guard for a state no one reaches.
+- `low` The focus-on-hide behavior is tested only for Home on Catalog (Blind Hunter). Every trigger runs the same rAF path, and AC-3 covers the Card notes target. The Decision above may replace the behavior anyway.
+- `low` `motion.ts` shares only the media query, not a `scrollBehavior()` (Blind Hunter). This is developer-only, the fix adds an API, and the patch above already settles the inconsistent value.
+- `false` The 10th leaf was never seen failing (Blind Hunter). This review's mutation run failed it on each half, at :210 and :222.
+- `false` CHANGELOG.md lacks the feature (Blind Hunter). The changelog is written in a separate docs commit before each release (`966051f`, `215f41e`), not per change.
+- `low` DESIGN.md's `back-to-top` token repeats `button-secondary`'s values (Blind Hunter). The spec's Task lists exactly those values.
+- `reject` The spec's Verification and Tasks still say 9 leaves, and the Spec Change Log is empty (Acceptance Auditor). The fix edits the spec under review.
+- `low` The mount-time `setShown` is redundant and draws an oxlint warning (Acceptance Auditor). It re-reads the scroll position after the listeners attach, which covers a scroll between render and subscription. Removing it trades a warning for a possibly stale state.
+- `false` The DESIGN.md `glyph` differs from the Task's wording (Acceptance Auditor). This is informational: the meaning is kept, and the Components row carries the `aria-hidden` note.
 
 ## Spec Change Log
 

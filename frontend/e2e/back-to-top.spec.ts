@@ -244,11 +244,14 @@ test.describe('Back to top', () => {
     await expect(backToTop(page)).toHaveCSS('outline-style', 'solid')
     await expect(backToTop(page)).toHaveCSS('outline-color', ACCENT)
 
-    // Scrolled back up while it has keyboard focus (Home): focus moves to Search titles, not body.
+    // Scrolled back up while it has keyboard focus (Home): it stays, focused, until focus leaves it.
     await page.keyboard.press('Home')
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0)
+    await expect(backToTop(page)).toBeVisible()
+    await expect(backToTop(page)).toBeFocused()
+    await page.keyboard.press('Shift+Tab')
     await expect(backToTop(page)).toHaveCount(0)
-    await expect(search(page)).toBeFocused()
+    expect(await page.evaluate(() => document.activeElement !== document.body)).toBe(true)
 
     // Hidden at the top: no accessible node, nothing focusable carries its text.
     await scrollToY(page, 0)

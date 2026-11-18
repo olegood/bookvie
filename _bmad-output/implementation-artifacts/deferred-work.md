@@ -1163,3 +1163,12 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-back-to-top-button.md`
   summary: Spine drift, AD-6 (reconciled before the next epic). The Capability map rows for Catalog (FR-4, FR-20, FR-24) and Card notes (FR-17 to FR-19), and the Seed's `components/` line, don't name `components/BackToTop`. Low.
   evidence: `frontend/src/components/BackToTop.tsx`, mounted in `CatalogPage.tsx` and `CardNotesPage.tsx`; `ARCHITECTURE-SPINE.md` Capability map (Spine Check, build-auto review of spec-back-to-top-button).
+
+## Deferred from: code review of spec-back-to-top-button (2026-11-18)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-back-to-top-button.md`
+  summary: No test proves that the spine popover (`z-index: 20`) paints above the shown Back to top button (`z-index: 10`), as DESIGN.md → Back to top button says. AC-7's `coveredBy` checks only overlap with `main` content at the page bottom. If either value changed, the button could cover popover content with no test failing. Low.
+  evidence: `frontend/src/components/BackToTop.module.css:16`; `frontend/src/components/SpinePopover.module.css:5-6`; `frontend/e2e/back-to-top.ts:75-91` (Verification Gap, code review of spec-back-to-top-button). A test needs a seed and placement that put a popover below a spine in the button's corner; `e2e/sort-direction.ts:160-182` has an effective z-index helper. For `bmad-testarch-automate`.
+- source_spec: `_bmad-output/implementation-artifacts/spec-back-to-top-button.md`
+  summary: Spine drift entries from a standalone spec (not an epic story) can slip through reconciliation. The retro lists "this epic's stories'" entries, and the next-epic gate matches `source_spec` `spec-{N-1}-*`. Neither picks up `spec-back-to-top-button.md`'s two AD-6 entries above, so the spine may stay stale on `lib/motion` and `components/BackToTop`. The next spine reconciliation should also sweep unresolved "spine drift" entries from standalone specs, or the filters should include them. Low.
+  evidence: `_bmad/custom/bmad-build-auto.toml:18`, `_bmad/custom/bmad-build.toml:15`, `_bmad/custom/bmad-retrospective.toml:8` (Blind Hunter, code review of spec-back-to-top-button).
