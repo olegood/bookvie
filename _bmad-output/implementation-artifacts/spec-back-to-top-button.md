@@ -4,7 +4,8 @@ type: 'feature'
 created: '2026-11-18'
 status: 'draft'
 review_loop_iteration: 0
-context: []
+context:
+  - '{project-root}/_bmad-output/test-artifacts/atdd-checklist-back-to-top-button.md'
 ---
 
 <frozen-after-approval reason="human-owned intent — do not modify unless human renegotiates">
