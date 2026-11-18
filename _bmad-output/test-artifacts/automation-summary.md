@@ -81,7 +81,7 @@ Priority coverage: P0 0, P1 0, P2 6, P3 0. The spec's P0 and P1 paths are the AT
 ## Validation
 
 - `TZ=Europe/Madrid npm --prefix frontend run e2e -- e2e/back-to-top-automate.spec.ts e2e/back-to-top.spec.ts --repeat-each=2`: 32 passed, 0 flaky.
-- Full `npm run check`: see the line below.
+- Full `TZ=Europe/Madrid npm run check` (2026-11-18, this run, with the new spec): exit 0. pytest 1638 passed, unit 388 passed, e2e 799 passed (793 before plus the 6 new leaves), smoke ok.
 - No CLI browser session was opened. Temp artifacts are in the session scratchpad only.
 - ATDD checklist: all 6 green-phase follow-ups ticked with their test lines. `grep -cF '[ ]'` gives 0.
 - `deferred-work.md`: the popover layering entry has a `resolved:` line.
