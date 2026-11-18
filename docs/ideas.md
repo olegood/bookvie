@@ -159,7 +159,7 @@ Notes:
 
 ## Back to top button
 
-**Status:** new
+**Status:** planned (standalone spec, see [the spec](../_bmad-output/implementation-artifacts/spec-back-to-top-button.md))
 
 Add a button that takes the user back to the top of the page. Scrolling a catalog of 500+ Books is long, and a quick way to jump back to the top (to the search field, filter chips and sort) saves a lot of scrolling.
 
