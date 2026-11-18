@@ -177,9 +177,9 @@ Activate one leaf at a time: change `test.skip(` to `test(` and delete its RED c
 
 ### Green-phase follow-ups (for `bmad-testarch-automate`, not red leaves)
 
-- [ ] **AC-1, resize:** a window made taller hides the button without a scroll (AC-5 covers the reverse).
-- [ ] **AC-1, filters:** with a filter chip on, the threshold still follows the page's height.
-- [ ] **AC-6, dark and forced colors:** dark twins of the colors; under forced colors the border is still drawn.
-- [ ] **AC-3, scoped Card notes:** `?book=` scope with many notes behaves the same.
-- [ ] **Side panel:** with Book detail's side panel or New book open, the button isn't reachable (the page is inert).
-- [ ] **axe:** no violations on Catalog and Card notes with the button shown, light and dark.
+- [x] **AC-1, resize:** a window made taller hides the button without a scroll (AC-5 covers the reverse). (done: frontend/e2e/back-to-top.spec.ts:88, AC-1's resize step from the build review)
+- [x] **AC-1, filters:** with a filter chip on, the threshold still follows the page's height. (done: frontend/e2e/back-to-top-automate.spec.ts:52)
+- [x] **AC-6, dark and forced colors:** dark twins of the colors; under forced colors the border is still drawn. (done: frontend/e2e/back-to-top-automate.spec.ts:98)
+- [x] **AC-3, scoped Card notes:** `?book=` scope with many notes behaves the same. (done: frontend/e2e/back-to-top-automate.spec.ts:78)
+- [x] **Side panel:** with Book detail's side panel or New book open, the button isn't reachable (the page is inert). (done: frontend/e2e/back-to-top-automate.spec.ts:153, New book; Book detail has no button, AC-8)
+- [x] **axe:** no violations on Catalog and Card notes with the button shown, light and dark. (done: frontend/e2e/back-to-top-automate.spec.ts:180)
