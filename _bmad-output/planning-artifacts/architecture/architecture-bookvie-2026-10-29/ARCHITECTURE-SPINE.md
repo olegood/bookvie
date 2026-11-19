@@ -8,7 +8,7 @@ scope: 'bookvie MVP: whole system (CLI launcher, Python server, data folder, Rea
 status: final
 created: '2026-10-29'
 updated: '2026-11-19'
-binds: [FR-1, FR-2, FR-3, FR-4, FR-5, FR-6, FR-7, FR-8, FR-9, FR-10, FR-11, FR-14, FR-15, FR-16, FR-17, FR-18, FR-19, FR-20, FR-21, FR-22, FR-23, FR-24, FR-25, FR-26, FR-27, A1, A2, A3, A4, A5, A6]
+binds: [FR-1, FR-3, FR-4, FR-5, FR-6, FR-7, FR-8, FR-9, FR-10, FR-11, FR-14, FR-15, FR-16, FR-17, FR-18, FR-19, FR-20, FR-21, FR-22, FR-23, FR-24, FR-25, FR-26, FR-27, FR-28, A1, A2, A3, A4, A5, A6]
 sources:
   - _bmad-output/planning-artifacts/prds/prd-bookvie-2026-10-28/prd.md
   - _bmad-output/planning-artifacts/prds/prd-bookvie-2026-10-28/addendum.md
@@ -17,6 +17,7 @@ sources:
   - _bmad-output/planning-artifacts/ux-designs/ux-bookvie-2026-10-28/prd-deltas.md
   - _bmad-output/planning-artifacts/catalog-tiles-plan-2026-11-13.md
   - _bmad-output/planning-artifacts/dev-prod-favicon-plan-2026-11-17.md
+  - _bmad-output/planning-artifacts/mcp-server-plan-2026-11-19.md
 companions: []
 ---
 
@@ -24,7 +25,7 @@ companions: []
 
 ## Design Paradigm
 
-**Server-owned domain, intent API, server-computed views.** One local Python process is the only reader and writer of the data folder. Its clients are the user's browser and the cataloging skill (`bookvie-new-book`), which calls the HTTP API directly, with no browser (skill 2.0.0, 2026-11-11). They send **intents** (one user action each) and read **views** (read models the server computes), which the browser renders. No client holds domain state of its own. The diagram shows the browser client; the skill calls `http/` the same way (Structural Seed, AD-8).
+**Server-owned domain, intent API, server-computed views.** One local Python process is the only reader and writer of the data folder. Its clients are the user's browser, the cataloging skill (`bookvie-new-book`), which calls the HTTP API directly, with no browser (skill 2.0.0, 2026-11-11), and AI agents in Claude Code through the agent tools at `/mcp` (AD-21, planned for Epic 12). They send **intents** (one user action each) and read **views** (read models the server computes), which the browser renders. No client holds domain state of its own. The diagram shows the browser client; the skill calls `http/` the same way (Structural Seed, AD-8), and an agent's tool call reaches the same `intents/` and `views/` through `agent/` (AD-21).
 
 ```mermaid
 flowchart LR
@@ -39,20 +40,24 @@ flowchart LR
     INT --> STORE[store/ document + covers + lock]
     VIEWS --> STORE
     CLI[cli.py launcher] --> HTTP
+    HTTP -- "mounts /mcp" --> AGT[agent/ MCP tools]
+    AGT --> INT
+    AGT --> VIEWS
   end
   API -- "HTTP, 127.0.0.1:8765" --> HTTP
+  CC[Claude Code] -- "MCP over HTTP, /mcp" --> HTTP
   STORE --> FS[("~/bookvie-data/")]
 ```
 
-Dependency direction (an arrow means "may import"): `http → intents, views → domain`; `intents, views → store`; `domain` imports nothing from the other layers; `store` imports only `domain` types. Export is `GET /api/export`, implemented in `intents/export` but not under `/api/intents/`; restore is the intent `POST /api/intents/restore` (`intents/restore`). The frontend imports only `api/`, never server internals.
+Dependency direction (an arrow means "may import"): `http → intents, views → domain`; `intents, views → store`; `agent → intents, views` (`http/app` mounts `agent/`; `agent` never imports `http/api`); `domain` imports nothing from the other layers; `store` imports only `domain` types. Export is `GET /api/export`, implemented in `intents/export` but not under `/api/intents/`; restore is the intent `POST /api/intents/restore` (`intents/restore`). The frontend imports only `api/`, never server internals.
 
 ## Invariants & Rules
 
 ### AD-1: One local process owns the data folder [ADOPTED]
 
-- **Binds:** A1, all persistence, FR-2 (agent entry)
+- **Binds:** A1, all persistence, FR-28
 - **Prevents:** browser-local storage (IndexedDB, localStorage, File System Access) splitting the agent's catalog from the user's; any code other than `store/` writing data files, or reading them outside the AD-4 lock.
-- **Rule:** All data lives in one folder on disk, and only the server touches it. Every write goes through `store/`, except `bookvie.lock`, which the launcher's `instance.py` creates, hands over and removes before and after the server runs (AD-5). The one read outside `store/` is export: `intents/export` packages `library.json` (the bytes on disk) and the referenced covers itself, while holding the AD-4 lock, because export *is* the data folder packaged (AD-14; decided in story 2.1, reconciled in Epic 2 retro item 1). No feature may persist domain data in the browser.
+- **Rule:** All data lives in one folder on disk, and only the server touches it. Every write goes through `store/`, except `bookvie.lock`, which the launcher's `instance.py` creates, hands over and removes before and after the server runs (AD-5). The one read outside `store/` is export: `intents/export` packages `library.json` (the bytes on disk) and the referenced covers itself, while holding the AD-4 lock, because export *is* the data folder packaged (AD-14; decided in story 2.1, reconciled in Epic 2 retro item 1). No feature may persist domain data in the browser. The one file written outside the data folder is an agent's backup zip in the backups folder (AD-21); it is a copy, never read back except by a restore the user runs.
 
 ### AD-2: The text store is one JSON document, written atomically [ADOPTED]
 
@@ -62,7 +67,7 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
 
 ### AD-3: Domain rules live only in the server; mutations arrive only as intents [ADOPTED]
 
-- **Binds:** FR-1, FR-3, FR-5 to FR-10, FR-14, FR-16 (Custom's pre-check), FR-17, FR-22, FR-23, A2, A3
+- **Binds:** FR-1, FR-3, FR-5 to FR-10, FR-14, FR-16 (Custom's pre-check), FR-17, FR-22, FR-23, FR-28, A2, A3
 - **Prevents:** rules duplicated in TypeScript and Python without a shared check (the sanctioned pre-checks are below); stale whole-library writes overwriting another browser's changes; one user action split across several calls that can half-fail.
 - **Rule:** Each user action is exactly one intent call: `POST /api/intents/<verb>`. An intent validates, applies **every** consequence, runs `domain.check_invariants()`, and commits once (AD-2), or it changes nothing: it returns a refusal, or, when it asks for what is already so, a 200 no-op that commits nothing and so runs no `check_invariants()` (AD-9; story 4.4). An edit is never such a no-op: `edit-book` and `edit-card-note` commit an unchanged edit (AD-9; story 5.2). No CRUD or PATCH endpoints on entities, and no whole-document write endpoint. A client may pre-check an input against a rule the server also enforces, to refuse or correct it without a round trip, showing the server's exact copy whenever it shows one:
   - the page field's range check ("Page must be between 0 and N.", story 3.3, `frontend/src/lib/pageField.ts`);
@@ -70,13 +75,14 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
   - the Stats page's Custom range (story 6.3, `frontend/src/lib/stats.ts` `orderedRange`, `frontend/src/pages/StatsPage.tsx`). It sends no request while either date is empty or invalid, sends the earlier date as `from`, and swaps a To before From in the fields silently when focus leaves them. So the user never meets the stats view's 422s for a half range or a `to` before `from` (AD-9). These have no copy shown in the app; the server still refuses such a request.
 
   The server still refuses the same input; the two dialogs show its exact copy. A shared case table keeps the range check in step (`frontend/src/lib/pageField.cases.json`, read by both the client's unit tests and `backend/tests/test_update_page.py`). Known gap: nothing shared keeps "Which page?"'s empty-value copy in step. Each side's tests hard-code it, and the e2e test never reaches the server (open in `deferred-work.md`). A pre-check never adds a rule the server lacks. Every intent is `multipart/form-data` with a JSON part named `intent`, including those with no file (`delete-book`, `set-spine-color`), so every route parses its body one way. Intents that carry a file (`add-book`, `edit-book`, `restore`) add a file part. Each is still one call and at most one commit.
-- **Concurrency across tabs:** intents carry no version and no precondition. Each applies to the server's current state (AD-4 serializes them; AD-19 Targeting), so the last intent wins for every field it sends (A2). An open form keeps the values it opened with, and AD-7's refetch doesn't change them, so a stale form in one tab can undo a change made in another: an Edit panel opened before a popover color change puts the old color back on save, and a stale "Remove cover" removes a cover uploaded later. Within one tab the Edit panel is modal, so this can't happen; reloading shows the current data. This is A2 as written; the silent loss it allows (retro F-R1) is closed as an accepted deviation for single-tab use (Oleg, 2026-11-03). Revisit, with a document `revision` and an `expectedRevision` refusal, if the cataloging agent ever edits an existing Book while the app is open in a tab.
+- **Agent tools are a second way in, not a second set of rules:** an agent's write tool is one intent call made in-process. It hands the route's own `parse_*_intent` the same JSON and calls the same handler, so it validates, refuses and commits exactly as the route does (AD-21). No tool mutates through any other path.
+- **Concurrency across tabs:** intents carry no version and no precondition. Each applies to the server's current state (AD-4 serializes them; AD-19 Targeting), so the last intent wins for every field it sends (A2). An open form keeps the values it opened with, and AD-7's refetch doesn't change them, so a stale form in one tab can undo a change made in another: an Edit panel opened before a popover color change puts the old color back on save, and a stale "Remove cover" removes a cover uploaded later. Within one tab the Edit panel is modal, so this can't happen; reloading shows the current data. This is A2 as written; the silent loss it allows (retro F-R1) is closed as an accepted deviation for single-tab use (Oleg, 2026-11-03). The agent's `edit_book` tool (AD-21) makes that case possible: a tab's open Edit panel can undo an agent's edit when it saves. That is accepted too, for the same reason (Oleg is both; 2026-11-19). Revisit, with a document `revision` and an `expectedRevision` refusal, if it ever loses an edit in practice.
 
 ### AD-4: All writes, export and restore are serialized
 
 - **Binds:** AD-2, AD-3, AD-14
 - **Prevents:** two concurrent requests both loading state and one silently discarding the other; an intent overwriting a restore; an export capturing a half-replaced cover.
-- **Rule:** One in-process lock covers *apply intent → write files → commit document → swap in-memory state*. `export` and `restore` hold the same lock: export while it builds the zip (not while it sends it), and restore for the whole operation, staging included. Views read the committed in-memory state. The one write outside the lock is `local-state.json` ("Last export", AD-15), written after the download has gone out. It never touches `library.json` or `covers/`, and it is atomic on its own (story 2.1). Two views read it from disk, outside the lock: `views/backup` and `views/shelf` (home, story 3.1).
+- **Rule:** One in-process lock covers *apply intent → write files → commit document → swap in-memory state*. `export` and `restore` hold the same lock: export while it builds the zip (not while it sends it), and restore for the whole operation, staging included. Views read the committed in-memory state. The writes outside the lock are `local-state.json` ("Last export", AD-15), written after the download has gone out or the backup file is in place, and an agent's backup file (AD-21). It never touches `library.json` or `covers/`, and it is atomic on its own (story 2.1). Two views read it from disk, outside the lock: `views/backup` and `views/shelf` (home, story 3.1).
 
 ### AD-5: One server instance per data folder [ADOPTED]
 
@@ -122,14 +128,14 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
 
 ### AD-8: Python is the contract's source of truth; TS types are generated [ADOPTED]
 
-- **Binds:** all intents, views and error codes; the app version (FR-27)
+- **Binds:** all intents, views and error codes; the agent tools' schemas (FR-28); the app version (FR-27)
 - **Prevents:** hand-written TS types drifting from the Python models; the bundle and the server disagreeing about the version they ship as.
-- **Rule:** Pydantic models define every intent body, view, success response and error code. TS types are generated from FastAPI's OpenAPI, using alias names, with `openapi-typescript` into `frontend/src/api/generated/`. They're never edited by hand. `npm run check:api` regenerates the types and fails on any diff. The cataloging skill is a second client with no generated types: its scripts (`.claude/skills/bookvie-new-book/scripts/`) build the `add-book` intent body, read the `catalog` and `book` views, and read the AD-9 envelope (`ok`, `ids.bookId`, and `error.code` for `duplicate_book`, `invalid_fields` and `couldnt_save` with its `duplicates`, `fields` and `message`), all by their JSON keys. Renaming one of those keys or codes breaks the skill without failing `check:api`. Known gap: the skill's duplicate pre-check (`check_catalog.py`) copies `domain/duplicates`' rule with no shared check, which AD-3 prevents for the app. It only decides what the skill asks the user; the server still refuses a duplicate `add-book` with 409 `duplicate_book` unless the intent carries `confirmDuplicate: true` (AD-10). Open in `deferred-work.md`.
+- **Rule:** Pydantic models define every intent body, view, success response and error code. TS types are generated from FastAPI's OpenAPI, using alias names, with `openapi-typescript` into `frontend/src/api/generated/`. They're never edited by hand. `npm run check:api` regenerates the types and fails on any diff. The cataloging skill is a second client with no generated types: its scripts (`.claude/skills/bookvie-new-book/scripts/`) build the `add-book` intent body, read the `catalog` and `book` views, and read the AD-9 envelope (`ok`, `ids.bookId`, and `error.code` for `duplicate_book`, `invalid_fields` and `couldnt_save` with its `duplicates`, `fields` and `message`), all by their JSON keys. Renaming one of those keys or codes breaks the skill without failing `check:api`. Known gap: the skill's duplicate pre-check (`check_catalog.py`) copies `domain/duplicates`' rule with no shared check, which AD-3 prevents for the app. It only decides what the skill asks the user; the server still refuses a duplicate `add-book` with 409 `duplicate_book` unless the intent carries `confirmDuplicate: true` (AD-10). Open in `deferred-work.md`. Both notes about the skill hold until Story 12.7 moves it onto the agent tools. The tools' advertised schemas are generated from the same Pydantic models, and a test compares them (AD-21).
 - **One version** (story 11.4): the bundle bakes its version at build time from `frontend/package.json` (`__BOOKVIE_VERSION__`, a Vite `define` declared for `tsc -b` in `src/globals.d.ts`); the server reports `bookvie.__version__` (AD-6 App info). `scripts/release.sh` sets both, and `frontend/scripts/version.test.mjs`, run by `check:api`, fails unless `bookvie.__version__`, `backend/pyproject.toml`, `package.json` and `frontend/package.json` agree, so a hand edit or a merge can't leave every tab showing a false update notice.
 
 ### AD-9: One response contract for success and failure
 
-- **Binds:** all intents, the views that refuse (`book`, `card-notes`, `stats`), A3, FR-2 outcome exposure
+- **Binds:** all intents, the views that refuse (`book`, `card-notes`, `stats`), A3, the agent tools' errors (AD-21)
 - **Prevents:** endpoints inventing their own error shapes; FastAPI's default `{"detail":[…]}` reaching the client; the UI unable to tell "refused" from "not saved", or unable to report several fields at once.
 - **Rule:**
   - **Success:** HTTP 200 with `{ "ok": true, "ids"?: {<name>: <uuid>}, "reachedLastPage"?: true }`.
@@ -200,7 +206,7 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
 - **Binds:** FR-22, FR-23, A6
 - **Prevents:** an export format that drifts from storage; a restore that fails halfway; malicious or damaged archives.
 - **Rule:**
-  - **Export:** `GET /api/export` returns one `.zip` holding `library.json` (the bytes on disk) and `covers/` (always present as a directory entry, even when empty) with every cover the library references, and nothing else. Unreferenced files in `covers/` are left out: the startup sweep would delete them anyway (story 2.1). The request guard requires `X-Bookvie-Export: 1` on this route (AD-16). Under the AD-4 lock the zip is built into a spooled temp file (in memory up to ~10 MB, then on disk); the lock is released, then the file is sent. A read failure happens before any header is sent and returns 503 `couldnt_export`. "Last export" (AD-15) is recorded only after the last byte has been sent with no client disconnect; a HEAD request or an aborted download records nothing. The server can't know whether the browser kept the file, so "Last export" means "last complete download".
+  - **Export:** `GET /api/export` returns one `.zip` holding `library.json` (the bytes on disk) and `covers/` (always present as a directory entry, even when empty) with every cover the library references, and nothing else. Unreferenced files in `covers/` are left out: the startup sweep would delete them anyway (story 2.1). The request guard requires `X-Bookvie-Export: 1` on this route (AD-16). Under the AD-4 lock the zip is built into a spooled temp file (in memory up to ~10 MB, then on disk); the lock is released, then the file is sent. A read failure happens before any header is sent and returns 503 `couldnt_export`. "Last export" (AD-15) is recorded only after the last byte has been sent with no client disconnect; a HEAD request or an aborted download records nothing. The server can't know whether the browser kept the file, so "Last export" means "last complete download", or the last backup file an agent wrote (AD-21).
   - **Restore route:** `POST /api/intents/restore`, multipart (AD-3), with the file in the `archive` part. Refusals are 422: `restore_invalid` (not a zip, damaged, no `library.json`, schema or invariant failure, missing or undecodable cover), `restore_newer_version`, and `restore_unsafe` (a path, symlink, duplicate, entry or size rule; same user copy as `restore_invalid`). A write fault before the commit is 503 `couldnt_save` (AD-9).
   - **Restore validation:** restore empties `.staging/`, then unpacks into it. It accepts only the entries `library.json`, the `covers/` directory and `covers/<name>` with a plain name: no absolute paths, no `..`, no symlinks. Names are compared under NFC + casefold (`NFC(casefold(NFC(name)))`): two names equal that way are duplicates, and so is a cover whose name differs only in case or Unicode form from one already in `covers/`, because on a case-insensitive filesystem, or on APFS (which ignores Unicode normalization), they would share one file (story 2.3; Unicode form added by Epic 2 retro action 2). Full casefolding also matches pairs APFS keeps apart, such as `ß` and `ss`; those are refused too, on the safe side. A cover whose name inside `covers/` is over 200 UTF-8 bytes is refused, which keeps it and its `<name>.tmp` + 8-character temp under the 255-byte file-name limit (minted names are 77 bytes); if the filesystem still rejects a staged file's name (ENAMETOOLONG, EILSEQ, EINVAL), that is `restore_unsafe` too, while any other write failure stays `couldnt_save`. A missing `covers/` counts as empty.
   - **Restore limits:** the upload is at most 1 GiB, the archive holds at most 5,000 entries (directory entries included), and at most 1 GiB is extracted. A central directory over 1 KiB per allowed entry is refused before it is parsed. The extracted size is counted on the bytes actually written, never on sizes declared in the zip headers, and extraction stops before the chunk that would pass the limit. An entry that inflates past its declared size is `restore_unsafe` even under the limit (story 2.3). These limits fit about 2,000 Books with downscaled covers (about 300 KB each) plus `library.json` up to its 10 MB performance ceiling. Then it validates the whole archive: schema, migrations, AD-18 invariants, and every referenced cover present and decodable.
@@ -217,23 +223,23 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
 
 ### AD-16: Stable loopback address, local trust
 
-- **Binds:** CLI, FR-2 (agent navigation), FR-26, §5 Look and feel (the favicon), security
+- **Binds:** CLI, FR-26, FR-28 (the `/mcp` mount is guarded like `/api`), §5 Look and feel (the favicon), security
 - **Prevents:** the cataloging skill losing the app behind a random port; LAN or cross-site access to the user's data; a development server opening the real library or taking the real app's port.
 - **Rule:**
   - **Binding:** the server binds `127.0.0.1` only, on port `8765` by default. `--port` overrides it, and the lock records the actual port. With `--dev` the defaults are port `8766` and the data folder `~/bookvie-data-dev`, so a development server and the real app run side by side; an explicit `--port` or `--data-dir` still wins (FR-26; story 11.2). A `--dev` server's `/api/health` also reports `checkout`, the resolved folder its `bookvie` package runs from. A `--dev` launch that finds a live server on its data folder (through the lock, or through a port conflict on the same folder after handing the lock back) joins it only when that checkout is the same folder as its own (`instance.same_folder`). A server that reports no checkout counts as another checkout. Otherwise the launch prints "bookvie: a --dev server from another checkout (<its checkout>) is already running on port <port> with <data folder>. Stop it, or start this one with --port <number> --data-dir <folder>." and exits 1. Production launches never compare (Epic 11 retro item 80).
   - **Real library refused:** with `--dev`, `cli.py` resolves the data folder (`~`, symlinks and `..` included) right after parsing and, when it is the same folder as the resolved `~/bookvie-data`, prints "bookvie: --dev won't use your real library (~/bookvie-data). Leave out --data-dir to use ~/bookvie-data-dev, or pass a scratch folder." and exits 2, before `instance.py` takes the lock or the store opens. "The same folder" is `instance.same_folder`: file identity (`os.path.samefile`, so firmlinks and case variants of an existing folder count), or equal resolved paths when a folder doesn't exist yet. Failing both, the two paths are also compared NFC-normalized and casefolded when the disk ignores case. That is probed on the real library's nearest existing ancestor whose name has a cased letter (its swapcase twin is the same folder); a probe error refuses, and the platform decides when no ancestor can be probed. On a case-sensitive disk a case variant is another folder and is allowed. No test touches the real `~/bookvie-data`: they set `HOME` to a temporary folder (story 11.2; Epic 11 retro item 76).
   - **Port conflict:** if the port is held by a process that isn't bookvie, startup exits with a message naming the port and `--port`. If `GET /api/health` on that port answers as bookvie for another data folder, the message says so and names that folder instead. If it answers for this data folder, this launch took over the lock of a server that is in fact alive. When health reports a live `pid`, it hands the lock back by rewriting `bookvie.lock` as the running server's `{pid, port}`; when it reports no live `pid` (only a pre-1.2 bookvie), the launch leaves `bookvie.lock` in place rather than removing it. That lock still names the exiting launch, so under AD-5 it is stale and the next launch takes it over. Either way it then opens the browser at that server (prints the URL with `--no-browser`) and exits 0 (decided in story 1.2), unless, with `--dev`, that server runs from another checkout (see Binding), when it exits 1 after the hand-back.
   - **Request guard:** requests are rejected when their `Host` isn't `127.0.0.1:<port>` or `localhost:<port>`, or when an `Origin` is present and isn't one of those. With `--dev`, the Vite dev origin is also allowed.
-  - **Fetch metadata:** a simple cross-site GET carries no `Origin`, so requests to `/api/*` and `/media/*` are also rejected when `Sec-Fetch-Site` is present and isn't `same-origin` or `none`. `same-site` is refused because any app on another loopback port is same-site. A missing header passes (curl, the cataloging agent, browsers too old to send it), so GET routes still avoid side effects where they can. The one GET with a side effect, `/api/export` (it records "Last export"), also requires exactly one `X-Bookvie-Export: 1`, which the app's export fetch sends: a cross-site `<img>` or no-cors GET can't set a custom header, and a cross-site fetch that sets one needs a CORS preflight, whose foreign `Origin` the guard refuses. This holds in browsers that send no `Sec-Fetch-Site`; scripts add the header. SPA routes and `/assets` stay open to cross-site links. `--dev` needs no exception: the Vite proxy forwards the browser's `same-origin` value.
+  - **Fetch metadata:** a simple cross-site GET carries no `Origin`, so requests to `/api/*`, `/media/*` and `/mcp` are also rejected when `Sec-Fetch-Site` is present and isn't `same-origin` or `none`. `same-site` is refused because any app on another loopback port is same-site. A missing header passes (curl, the cataloging agent, browsers too old to send it), so GET routes still avoid side effects where they can. The one GET with a side effect, `/api/export` (it records "Last export"), also requires exactly one `X-Bookvie-Export: 1`, which the app's export fetch sends: a cross-site `<img>` or no-cors GET can't set a custom header, and a cross-site fetch that sets one needs a CORS preflight, whose foreign `Origin` the guard refuses. This holds in browsers that send no `Sec-Fetch-Site`; scripts add the header. SPA routes and `/assets` stay open to cross-site links. `--dev` needs no exception: the Vite proxy forwards the browser's `same-origin` value.
   - **No authentication:** anything on the machine that can reach the loopback port is trusted.
   - **SPA routes:** the server serves the built SPA and falls back to `index.html` for client routes, with `Cache-Control: no-cache`, because it names the build's hashed assets, which a rebuild deletes. Other build files are served as is, except files named `index.html`, `favicon.svg` or `favicon-dev.svg` in any letter case: those get the fallback, so only the favicon route serves an icon and a production server serves no amber (Epic 11 retro item 76).
   - **Favicon** (stories 11.1 and 11.2): a dedicated `GET`/`HEAD` `/favicon.svg` route, registered before the SPA catch-all, serves the build's `favicon.svg` (sage) from a production server and `favicon-dev.svg` (amber) from a `--dev` one, as `image/svg+xml` with `Cache-Control: no-cache`, because a dev server on an explicit `--port 8765` shares the real app's origin. `index.html` links `/favicon.svg` once and the client never changes it. The Vite dev proxy forwards `/favicon.svg` with `/api` and `/media`, so a dev tab gets the backend's file, not Vite's own `public/` copy.
 
-### AD-17: The Agent Label Contract is a public interface
+### AD-17: Accessible names are stable, and e2e drives by them
 
-- **Binds:** FR-2, the New book panel, the Duplicate dialog, Search titles
-- **Prevents:** a refactor renaming a label and silently breaking unattended cataloging.
-- **Rule:** EXPERIENCE.md → Agent Label Contract is the single source of truth. The Playwright e2e suite drives those flows only by the exact accessible names in that table. Changing a name there is a breaking change that needs a contract update first.
+- **Binds:** the New book panel, the Duplicate dialog, Search titles, every flow the e2e suite drives
+- **Prevents:** e2e tests coupled to markup or CSS classes for the controls the table names; a label renamed in one place and left stale in EXPERIENCE.md.
+- **Rule:** EXPERIENCE.md's table of accessible names is the source of truth for the names it lists, and the Playwright suite finds the controls it lists by role and that name, not by test ids or classes. Renaming one is an ordinary change: EXPERIENCE.md, the component and the e2e tests change together. No agent depends on these names; agents use the tools (AD-21). (Narrowed on 2026-11-19 when FR-2 was retired; it was "The Agent Label Contract is a public interface".)
 
 ### AD-18: Canonical document shape and its invariants
 
@@ -283,6 +289,26 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
 - **Prevents:** tests and code disagreeing on "today"; finish dates shifting by timezone.
 - **Rule:** `domain/` never calls the system clock directly. It receives a `Clock` (now, plus today as a local date in the machine timezone) that tests replace. Local dates are `YYYY-MM-DD`; timestamps are ISO 8601 with offset. Measured pace (`domain/pace`) is Σ pages read ÷ Σ (finishDate − startDate + 1) over every finished Reading with a start date, re-reads included, where a Reading's pages read are Σ max(`endPage` − `startPage`, 0) over its `earlierSegments` plus max(`finishedPages` − `startPage`, 0). Only tracked pages count, so a Side read started at p.300 adds only the pages after it (Epic 4 retro item 35), and a resume at another page skips the pages between (spec-pace-counts-only-pages-read). It excludes back-filled Readings and any Reading finished before it started, counts a missing `finishedPages` as 0, and lives only in `domain/` (story 3.4). The browser computes its own "today" for presentation (AD-6), so in e2e tests the Playwright fixture sets the browser clock (`page.clock`) to the same date it passes as `--fake-today`, and the browser `timezoneId` to the server's pinned `TZ`. The pinned zone is `Europe/Madrid`: `check:py` and `check:e2e` run with `TZ=Europe/Madrid`, and Playwright sets `timezoneId: 'Europe/Madrid'`. DST boundary tests use the last Sundays of March and October. Views don't carry the server's date.
 
+### AD-21: The agent tools are an in-process MCP surface over the same intents and views
+
+- **Binds:** FR-28, AD-3, AD-4, AD-5, AD-8, AD-9, AD-12, AD-14, AD-15, AD-16
+- **Prevents:** a second process opening the Store; an agent write validating, coercing or answering differently from its intent; a partial edit wiping a Book; a destructive action reachable without its confirm dialog; a cover download reaching the app itself or the local network; a scratch, test or development server writing over the real backups.
+- **Rule** (planned for Epic 12):
+  - **Mount:** `create_app` builds a fresh MCP server (the SDK's `MCPServer`) each time and mounts its streamable-HTTP app so the endpoint is `/mcp` exactly: no `/mcp/mcp`, no redirect to `/mcp/`. It is registered before the SPA catch-all, `mcp` joins the server prefixes the catch-all never serves, and the session manager runs in the app's lifespan. Production and `--dev` alike, so starting `bookvie` starts the tools. Stateless, with JSON responses, so a restart never strands a client's session. The body cap is the intents' 1 MB. There is no stdio transport and no subcommand. Claude Code is the only supported client.
+  - **Guard:** `/mcp` sits behind the AD-16 request guard and its `Sec-Fetch-Site` check, like `/api`. The SDK's own Host/Origin check is turned off (`enable_dns_rebinding_protection=False`), so AD-16 is the only guard and every refusal is its 403.
+  - **Tools** (snake_case of the intent or view):
+    - read: `get_app_info`, `find_book`, `get_book`, `list_catalog`, `get_card_notes` (all, or one Book's), `get_home`, `get_stats` (optional `from`, `to`);
+    - write: `start_reading`, `update_page`, `finish_reading`, `pause`, `set_up_next`, `edit_purpose`, `add_card_note`, `edit_card_note`, `mark_side_read`, `unmark_side_read`, `add_book`, `edit_book`;
+    - backup: `export_backup`.
+
+    `delete-book`, `delete-card-note`, `restore` and `set-spine-color` are never registered. A test asserts the exact tool list.
+  - **One validator:** a write tool's arguments are its intent's JSON body, with the same camelCase keys; `add_book` and `edit_book` add an optional `coverUrl`. Each tool advertises an explicit input schema generated from its intent model by alias (plus `coverUrl`; `null` left out where the parser refuses it; no extra properties), and the SDK neither validates nor coerces the arguments. The route's own `parse_*_intent` is the only validator. A test compares each advertised schema with its model's.
+  - **Same handler, same answers:** the whole tool body runs in one worker-thread call (handlers block on the AD-4 lock). It hands the arguments to the route's `parse_*_intent` and calls the same handler. Success returns the route's `OkResponse` by alias (`ids`, `reachedLastPage`) as structured content, with the same JSON as text. A no-op success is a success. An `IntentError` returns an error result (`isError`) whose one text content is the AD-9 `error` object as JSON: `kind`, `code`, `message`, `fields` and `duplicates`. One wrapper turns any other exception into `couldnt_save`. No HTTP status crosses MCP. A read tool returns its view's model by alias, and refuses the way its route does (`book_not_found` for an unknown id, the stats `invalid_fields`). Parsing or refusing a tool needs that now lives in an `http/api.py` route (the stats range, a view's not-found) moves into `views/` first, and `agent/` never imports `http/api`. A contract test per write tool sends the same input through the tool and the route and compares the stored result and the error.
+  - **Edits are whole:** `edit_book` replaces the Book's form fields as the route does. Its input schema requires every form key (only `removeCover`, `confirmDuplicate` and `coverUrl` are optional), the tool never merges with the stored Book, and its description says to read `get_book` first and send every field.
+  - **Find, never guess:** `find_book` (in `views/find_book`, reachable only as a tool) matches a free-text query against title, subtitle, authors, the normalized ISBN and the initials of the title's words ("DDIA"), and returns `[{id, title, subtitle, authors, edition, type, role}]`, empty when nothing matches. Every other tool takes a Book's `bookId`. Each tool's description is part of the interface: Epic 12's acceptance criteria fix the description text.
+  - **Cover by URL** (`intents/cover_fetch`), in this order: the tool takes `coverUrl` out of the arguments; `parse_*_intent` runs, with `has_cover` set when a `coverUrl` was sent (so `removeCover` with a `coverUrl` is refused as the route refuses it with a file); `edit_book` checks that the Book exists; the download runs, before the AD-4 lock; then the handler runs with the result as an ordinary `UploadedCover` (AD-12). Download rules: `https` on every hop, redirects followed by hand (at most 3); every address the host resolves to, on every hop, must be global (IPv4-mapped, 6to4, NAT64 and Teredo addresses unwrapped first), so loopback, private, link-local, shared, unspecified and metadata addresses are refused; the connection goes to the checked address, with TLS verified against the hostname; proxy environment variables are ignored; `Accept-Encoding: identity`; a 30-second deadline for the whole download; the body capped at 20 MB while streaming; the bytes sniffed for JPEG, PNG or WebP, with `Content-Type` ignored. A body over 20 MB is `cover_too_large`, any other download failure is `invalid_fields`, and a refusal on the handler's `cover` field is reported on `coverUrl`: every cover failure names `coverUrl`, and nothing is saved. There is no host allow-list. This is bookvie's only outbound request.
+  - **Backup** (`intents/backup_file`): `export_backup` builds the same zip as `GET /api/export` while holding the AD-4 lock (AD-14) and releases it, then writes `bookvie-backup-YYYY-MM-DD.zip` into the backup folder atomically: a uniquely named temp file, fsync, rename, which replaces that day's file. The date comes from the injected `Clock` (AD-20). Only after the rename does it record `lastExportAt` (AD-15), and then it returns `{path, size, createdAt}`. A read failure is `couldnt_export` and a write failure `couldnt_save`. The backup folder follows the data folder, not the mode: `~/bookvie-backups` when the data folder is the default `~/bookvie-data`, `~/bookvie-backups-dev` when it is the `--dev` default `~/bookvie-data-dev`, and a sibling `<data folder>-backups` for any other. `cli.py` resolves it and passes it into `create_app`. There is no flag and no retention. No test writes a real backup folder: pytest sets `HOME` to a temporary folder for every test, and Playwright's servers get a temporary `HOME` too.
+
 ## Consistency Conventions
 
 | Concern | Convention |
@@ -292,9 +318,9 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
 | Dates | AD-20. Server and browser share the machine timezone. |
 | Title ordering (server) | One key for every server-side title ordering: NFKD, strip combining marks, casefold; ties by Book id. The client's catalog sort uses `Intl.Collator` (AD-6). |
 | Errors | AD-9. User-facing copy follows PRD §5 Tone (no exclamation marks, no praise, no red failure states). |
-| Logging | Server logs to stderr in the launching terminal. No telemetry, no network calls out. |
+| Logging | Server logs to stderr in the launching terminal. No telemetry, and no network calls out except an agent's cover download (AD-21). |
 | Config | CLI flags `--data-dir` (default `~/bookvie-data`; `~/bookvie-data-dev` with `--dev`), `--port` (default 8765; 8766 with `--dev`), `--no-browser` (tests), `--fake-today` (tests, AD-20) and `--dev`. No config file. |
-| Testing | pytest for `domain/` and `intents/` (every FR consequence, refusal code and `check_invariants` rule) with a fake `Clock`. Playwright e2e for flows and the label contract (AD-17), run against a temporary `--data-dir`. One install smoke test: build, `uv tool install`, check that the installed package carries the built `favicon-dev.svg`, start, load `/` and a client route, and fetch `/favicon.svg` (200, `image/svg+xml`, the built file's bytes). `npm run check` runs them all (Structural Seed). |
+| Testing | pytest for `domain/` and `intents/` (every FR consequence, refusal code and `check_invariants` rule) with a fake `Clock`. Playwright e2e for flows, driven by accessible names (AD-17), pytest for the agent tools (AD-21: tool list, same-handler contract per write tool, guard on `/mcp`, the cover downloader against a local fake server with a patched resolver, the backup file), run against a temporary `--data-dir`. One install smoke test: build, `uv tool install`, check that the installed package carries the built `favicon-dev.svg`, start, load `/` and a client route, and fetch `/favicon.svg` (200, `image/svg+xml`, the built file's bytes). `npm run check` runs them all (Structural Seed). |
 
 ## Stack
 
@@ -308,6 +334,8 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
 | Uvicorn | 0.54.x |
 | python-multipart (multipart intents) | 0.0.x |
 | Pillow (cover downscale, color derivation) | 13.x |
+| mcp (MCP Python SDK, `MCPServer`, streamable HTTP; planned, Story 12.1 pins it) | 2.3.x |
+| httpx2 (the cover download; already an `mcp` dependency; planned) | 2.16.x |
 | React | 19.3.x |
 | TypeScript | 5.9.x |
 | Vite (react-ts template) | 8.3.x |
@@ -338,6 +366,7 @@ flowchart TB
     C["bookvie (CLI)"] --> S["FastAPI on 127.0.0.1:8765<br/>serves API + media + built SPA"]
     C -- opens --> B[default browser]
     AG["cataloging skill (HTTP client of the intent API)"] --> S
+    CC["Claude Code (MCP client, /mcp)"] --> S
     B --> S
     S --> D[("~/bookvie-data/")]
   end
@@ -357,7 +386,7 @@ flowchart TB
   bookvie.lock            # pid + port (AD-5)
 ```
 
-A `--dev` server's default folder, `~/bookvie-data-dev/`, has the same layout (AD-16).
+A `--dev` server's default folder, `~/bookvie-data-dev/`, has the same layout (AD-16). An agent's backups go outside the data folder: `~/bookvie-backups/` for the default library, `~/bookvie-backups-dev/` for the `--dev` default, a sibling `<data folder>-backups/` otherwise (AD-21).
 
 ```mermaid
 erDiagram
@@ -375,11 +404,12 @@ bookvie/
   backend/
     pyproject.toml          # hatchling; console script bookvie = bookvie.cli:main; wheel artifacts bookvie/http/static/**
     bookvie/
-      cli.py                # flags (dev defaults, the real-library refusal and, through `_checkout_folder`, the other-checkout refusal, AD-16), commit read at startup, start server, open browser, signals
+      cli.py                # flags (dev defaults, the backup folder (AD-21), the real-library refusal and, through `_checkout_folder`, the other-checkout refusal, AD-16), commit read at startup, start server, open browser, signals
       instance.py           # bookvie.lock, loopback socket, health probe (AD-5); probe_checkout (the `checkout` a live `--dev` server reports, AD-16); same_folder (the port check, AD-5, and the real-library and other-checkout refusals, AD-16)
-      http/                 # FastAPI app (`create_app`; its `checkout` keyword is what a `--dev` `/api/health` reports, AD-16), routes, Host/Origin guard, error handler, static/
-      intents/              # one module per intent (add_book, edit_book, delete_book, set_spine_color, start_reading, edit_purpose, update_page, finish_reading, pause, set_up_next, add_card_note (its `check_card_note_fields` function is reused by edit_card_note), edit_card_note, delete_card_note, restore), except side_reads (mark-side-read and unmark-side-read), export; shared: book_form, intent_model, commit, cover (decode, downscale), contract (error enum)
-      views/                # read models: shelf (home, catalog, book detail), card_notes, stats, backup, app_info; models (view shapes)
+      agent/                # planned (AD-21): the MCP server mounted at /mcp; read tools, write tools, export_backup. Named agent/, not mcp/, so it never reads as the SDK's `mcp` package
+      http/                 # FastAPI app (`create_app`, which mounts agent/ at /mcp; its `checkout` keyword is what a `--dev` `/api/health` reports, AD-16), routes, Host/Origin guard, error handler, static/
+      intents/              # one module per intent (add_book, edit_book, delete_book, set_spine_color, start_reading, edit_purpose, update_page, finish_reading, pause, set_up_next, add_card_note (its `check_card_note_fields` function is reused by edit_card_note), edit_card_note, delete_card_note, restore), except side_reads (mark-side-read and unmark-side-read), export; planned: cover_fetch (the agent's cover download), backup_file (export_backup's file) (AD-21); shared: book_form, intent_model, commit, cover (decode, downscale), contract (error enum)
+      views/                # read models: shelf (home, catalog, book detail), card_notes, stats, backup, app_info; planned: find_book (AD-21); models (view shapes)
       domain/               # model (entities), invariants (check_invariants), book_fields (form parser), labels (form order, shared failures), finished_on (Finished on parser, long date), spine_color (curated rotation, AD-11 resolve), duplicates (ISBN), cover_color, clock, progress (percent, current_reading, pages_left, reading_status), pace (Measured pace, days left), purpose, ordering (title key), note_pages (Card note Page parser), cover_file (COVERS_DIR, cover_name)
       store/                # store.py (serialize, load/commit, covers, AD-4 lock, staging); fs.py (filesystem seam); restore.py (unpack); local_state.py; migrations/
     tests/
@@ -392,17 +422,16 @@ bookvie/
       styles/tokens.css     # DESIGN.md custom properties; components use CSS Modules
       lib/                  # client rules and presentation: pageField (+ .cases.json, AD-3), gauge, slice, cardNotes (page refs, search, highlight, pile order), useSearchCount ("N notes match."), pace (+ .cases.json; the calculator's days, months, years and line), stats (presets, Custom's order, the bars' share and labels), catalog (sort and the shared collator, title search, spine names), catalogSort and catalogView (remembered Sort with its direction, and Bookcase · List · Tiles, AD-15), cardNoteAddAnother (the remembered Add another, `bookvie.cardNoteAddAnother`, off by default, AD-15), catalogFilter (filter rules and value lists), aboutThisCopy (Backup's About this copy lines), updateNotice (the version comparison and the notice's sentence), motion (`prefersReducedMotion`, read each time a smooth scroll or animation runs) (AD-6; stats also AD-3; updateNotice also AD-7)
       pages/  components/   # pages include Bookcase, CatalogList and CatalogTiles, Catalog's three views; components include SortSelect, SortDirectionToggle, FilterChips and ViewToggle, Catalog's toolbar (AD-6), UpdateNotice, the shell's update band (AD-7), and BackToTop, the Back to top button on Catalog and Card notes (AD-6)
-    e2e/                    # Playwright, label-contract driven
+    e2e/                    # Playwright, driven by accessible names (AD-17)
 ```
 
 ## Capability → Architecture Map
 
-Every row below is built.
+Every row below is built, except FR-28, planned for Epic 12.
 
 | Capability / Area | Lives in | Governed by |
 | --- | --- | --- |
 | FR-1 Book fields, FR-3 Duplicate | `intents/add_book`, `edit_book`, `delete_book`, `set_spine_color`; `domain/` | AD-3, AD-9, AD-10, AD-11, AD-12, AD-18 |
-| FR-2 Agent-friendly form | `frontend` New book panel | AD-9, AD-16, AD-17 |
 | FR-4, FR-20, FR-24 Catalog, filter/sort, bookcase | `views/shelf`, `views/models` (`ShelfBook`'s `type`, `language`, `tags` for the filters, `edition` for twin spine names); `lib/catalog` (`sortBooks`), `lib/catalogSort`, `lib/catalogFilter`, `lib/catalogView`, `components/SortSelect`, `components/SortDirectionToggle`, `components/FilterChips`, `components/ViewToggle`, `components/BackToTop`, `pages/CatalogPage`, `pages/Bookcase`, `pages/CatalogList`; Home's slice via `lib/slice` | AD-6, AD-11, AD-15 |
 | FR-25 Catalog tiles | `views/models` (`ShelfBook.coverFile`), `views/shelf`; `lib/catalogView` (`tiles`), `lib/catalog` (`tilesName`, `spineNames`), `components/ViewToggle`, `pages/CatalogPage`, `pages/CatalogTiles` (tiles, ribbon, reading bar, typeset cover); covers from `/media/covers` | AD-6, AD-8, AD-12, AD-15 |
 | FR-5 to FR-9 Main book, pause, Up next, Side reads, Purpose | `intents/start_reading`, `pause`, `set_up_next`, `side_reads` (mark, unmark), `edit_purpose`; `views/shelf` (home `upNext` with `paused`, `waiting`, `sideReads`); Home's Up next, Waiting for you and On the side panes | AD-3, AD-4, AD-6, AD-7, AD-9, AD-18, AD-19 |
@@ -415,11 +444,15 @@ Every row below is built.
 | FR-22, FR-23 Export / restore | `GET /api/export` (`intents/export`), `POST /api/intents/restore` (`intents/restore`); `store/restore` (unpack), `store/store.py` (`replace_all`), `store/local_state`; `views/backup`, `views/shelf` (home's "Last export") | AD-4, AD-13, AD-14, AD-15 |
 | FR-26 Development and production apart, §5 Look and feel (favicon) | `cli.py` (dev defaults, real-library refusal through `instance.same_folder`, other-checkout refusal through `instance.probe_checkout` and `_checkout_folder`, commit); `create_app`'s `checkout`, reported by a `--dev` `/api/health`; `views/app_info` (`mode`); `GET /favicon.svg` and the SPA catch-all's icon exclusion in `http/`; `frontend/public/` favicons; `vite.config.ts` proxy; `AppShell` DEV pill, `lib/page` title prefix | AD-6, AD-7, AD-16 |
 | FR-27 Version visible | `views/app_info` (`version`, `dataDir`, `commit`); `pages/BackupPage` About this copy with `lib/aboutThisCopy`; the bundle's baked version (`__BOOKVIE_VERSION__`) and `components/UpdateNotice` with `lib/updateNotice` in `AppShell`; the version equality test (`frontend/scripts/version.test.mjs`) | AD-6, AD-7, AD-8 |
+| FR-28 Agents through MCP | `agent/` (mounted at `/mcp` by `create_app`); `views/find_book`; `intents/cover_fetch`, `intents/backup_file`; the existing `parse_*_intent` functions and handlers | AD-3, AD-8, AD-9, AD-14, AD-16, AD-21 |
 | A1 shared storage | `store/`, `cli.py`, `instance.py` | AD-1, AD-5, AD-16 |
 
 ## Deferred
 
-- **Exact intent and view list and their field shapes beyond AD-18 and AD-19:** owned by the Pydantic models once written (AD-8).
+- **Exact intent and view list and their field shapes beyond AD-18 and AD-19:** owned by the Pydantic models once written (AD-8). The agent tools mirror them (AD-21).
+- **`find_book`'s ranking and match details** (normalization, how many candidates): Story 12.2, within AD-21's shape.
+- **Skills on the agent tools (Stories 12.6, 12.7):** Claude Code connects to MCP servers when a session starts, so tools of a server a skill has just started may not appear until it reconnects, and tool names differ between the `bookvie` and `bookvie-dev` entries. Story 12.6 settles both, within D15.
+- **Backup retention, a chosen folder, skipping unchanged backups, and the upload:** the "Daily backup to Dropbox" idea (D11).
 - **Spine-color derivation algorithm and curated-palette assignment order:** a `domain/` detail, constrained only by AD-11.
 - **Distribution beyond the user's machine** (PyPI, Homebrew, signed binaries): out of scope.
 - **CI provider:** none is required. pytest, Playwright, `check:api` and the install smoke test run locally until a CI is chosen.
