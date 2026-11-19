@@ -2719,13 +2719,13 @@ So that I can ask it about my library and it never guesses which book I mean.
 **When** the agent calls `find_book` with `query` "DDIA", "Designing", "Kleppmann", or an ISBN with or without hyphens
 **Then** it returns every matching Book as `{id, title, subtitle, authors, edition, type, role}`, both editions included, each with its own edition and type
 **And** a query that matches nothing returns an empty list, not an error, and an empty query is refused as `invalid_fields` on `query`.
-**Description:** "Find Books in the library by a free-text query: part of a title or subtitle, an author, an ISBN, or a title's initials such as DDIA. Returns every likely match with its id, edition and type, or an empty list. Never pick a Book for the user: when more than one matches, ask which one. Every other tool takes the Book's id from here."
+**Description:** "Find Books in the library by a free-text query: part of a title or subtitle, an author, an ISBN, or a title's initials such as DDIA. Returns every likely match with its id, edition and type, or an empty list. Never pick a Book for the user: when more than one matches, ask which one, unless only one of them fits the request (update_page and pause work only on the Main book, whose role is main). Every other tool takes the Book's id from here."
 
 **Given** a Book id
 **When** the agent calls `get_book` with `bookId`
 **Then** it returns the `book` view (the same model as `GET /api/views/book`, by alias)
 **And** an unknown id is refused with `book_not_found`, as the route refuses it.
-**Description:** "One Book in full: its fields, tags, role (Main book, Up next, waiting, Side read or none), its Readings, the current page, pages left, measured pace and its Card notes. Takes the Book's id from find_book."
+**Description:** "One Book in full: its fields, tags, its role (main for the Main book, upNext, waiting for a paused Book, or null), whether it is a Side read, its Readings, pages left, the user's measured pace, and its Card notes. Takes the Book's id from find_book."
 
 **Given** the library
 **When** the agent calls `list_catalog`
@@ -2777,13 +2777,13 @@ So that I keep my reading up to date without opening the app.
 **Given** the descriptions
 **When** the tools are registered
 **Then** each equals its text below.
-- `start_reading` **Description:** "Make a Book the Main book and start or resume its Reading, with an optional one-sentence Purpose. This pauses the current Main book. For a Side read, page is required. Tell the user which Book will be paused before you call it."
-- `update_page` **Description:** "Save the page the user has reached in the Main book (an absolute page from 0 to its page count). Use the Book's id from find_book; never guess a Book from its title. reachedLastPage means the user is at the last page: ask whether to finish the Book."
+- `start_reading` **Description:** "Make a Book the Main book and start or resume its Reading, with an optional one-sentence Purpose. This pauses the current Main book, and it may change Up next. Tell the user what will change and get a yes before you call it. When the Book is a Side read, also send page: the page the user is on."
+- `update_page` **Description:** "Save the page the user has reached in the Main book: the page number they are on, from 0 to its page count, not the number of pages read. If the user says how many pages they read, add them to the current page from get_home. Use the Book's id from find_book; never guess a Book from its title. reachedLastPage means the user is at the last page: ask whether to finish the Book."
 - `finish_reading` **Description:** "Finish a Book's current Reading, or record a past finish for a Book never read, on finishedOn (YYYY-MM-DD, not in the future). purposeFulfilled is yes, partly or notYet, and rating is 1 to 5; send null for either when the user doesn't say."
 - `pause` **Description:** "Pause the Main book at its current page. It stays in Waiting for you until the user picks it up again."
-- `set_up_next` **Description:** "Choose the Book to read next. It can be unread or paused, but not the Main book."
+- `set_up_next` **Description:** "Choose the Book to read next. It can be unread or paused, but not the Main book. It replaces the current Up next, which stays paused or unread."
 - `edit_purpose` **Description:** "Change the Purpose of a Book's current Reading (active or paused): one sentence on what the user needs to be able to do with this Book. null clears it."
-- `add_card_note` **Description:** "Add a Card note to a Book: text (a quote or a note) and the page or page range where the user found it, such as 212 or 212-214."
+- `add_card_note` **Description:** "Add a Card note to a Book: text (a quote or a note, in the user's words; don't rewrite it) and the page or page range where the user found it, such as 212 or 212-214."
 - `edit_card_note` **Description:** "Change a Card note's text and page. Takes the Book's id and the Card note's id from get_book or get_card_notes."
 - `mark_side_read` **Description:** "Mark a Book as read on the side, next to the Main book. At most 3 Side reads; it doesn't start a Reading."
 - `unmark_side_read` **Description:** "Stop reading a Book on the side. Its Readings and page don't change."
@@ -2805,7 +2805,7 @@ So that cataloging from Claude Code can't create duplicates or half-filled Books
 **Given** `add_book`
 **When** a client lists it
 **Then** its input schema equals the `add-book` intent model's by alias (every form key optional, as in the route, and `confirmDuplicate`), with no `coverUrl` yet.
-**Description:** "Add a Book to the catalog. Required: title, pages, authors (separated by semicolons), language, publisher, type (Paperback, Hardcover or Ebook); edition defaults to 1. A likely duplicate is refused with duplicate_book and the matching Books: show them to the user, and send confirmDuplicate true only if the user says to add it anyway. Returns the new Book's id."
+**Description:** "Add a Book to the catalog. Every field is a string. Required: title, pages, authors (separated by semicolons), language, publisher, type (paperback, hardcover or ebook); edition defaults to 1. Optional: subtitle, isbn, year, tags (separated by commas), and finishedOn (YYYY-MM-DD) for a Book the user has already read. A likely duplicate is refused with duplicate_book and the matching Books: show them to the user, and send confirmDuplicate true only if the user says to add it anyway. Returns the new Book's id."
 
 **Given** `edit_book`
 **When** a client lists it

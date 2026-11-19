@@ -1,7 +1,7 @@
 ---
 name: bookvie
 status: final
-updated: 2026-11-17
+updated: 2026-11-19
 design: ./DESIGN.md
 sources:
   - _bmad-output/planning-artifacts/prds/prd-bookvie-2026-10-28/prd.md
@@ -10,6 +10,7 @@ sources:
   - _bmad-output/planning-artifacts/card-note-entry-plan-2026-11-14.md
   - _bmad-output/planning-artifacts/catalog-sort-direction-plan-2026-11-15.md
   - _bmad-output/planning-artifacts/dev-prod-favicon-plan-2026-11-17.md
+  - _bmad-output/planning-artifacts/mcp-server-plan-2026-11-19.md
 ---
 
 # bookvie — Experience Spine
@@ -23,10 +24,10 @@ Mocks illustrate this spine; they are not the contract. If a mock and a spine di
 - **Platform.** Web app in desktop Chrome on a desktop or laptop (DESIGN.md → Viewport; AGENTS.md → Supported browser). Minimum viewport 1024px; below that the page scrolls horizontally. No phone or tablet layout (PRD §6.3) (documented deviation: Accessibility Floor → Reflow).
 - **UI system.** None named. Plain, semantic HTML controls styled by DESIGN.md tokens. Native elements (`button`, `input`, `select`, `dialog`) are preferred so roles and names come for free.
 - **Local-first.** All data lives on this computer; no account, no network (PRD §5). No sync or connection status is shown. There is no loading indicator: before a page's first view response, only the header and nav render (no spinner, no skeleton). A view that can't be loaded shows "Couldn't load" (see State Patterns); a failed background refetch keeps the last data silently. The only busy states are Export and Restore (see Backup page). A save that fails is never silent (see State Patterns → Couldn't save).
-- **One store, two operators.** The user's browser and the cataloging skill's browser must see the same data (PRD §5: a Book saved from any browser on this machine appears in every other). How they share it is an architecture decision (prd-deltas → For architecture, A1). UX rule for two open tabs or browsers: last write wins; reloading shows the current data. No cross-tab warning is shown.
+- **One store, two operators.** The user's browsers and the agents' tools see the same data (PRD §5: a Book saved from any browser on this machine appears in every other; FR-28). One local server owns it (spine AD-1). UX rule for two open tabs, or a tab and an agent: last write wins; reloading shows the current data. No cross-tab warning is shown.
 - **Production and development.** A server started with `--dev` is a development server; anything else is production (plan D3). The mode comes from the `app-info` view (`mode`, `version`, `dataDir`, `commit`), never from how the page was served. Production looks exactly as before Epic 11, apart from the favicon, the About this copy card and, after an update, the update notice. A development server adds three marks, so a dev tab can't be taken for the real library: the amber favicon, the `DEV · ` tab-title prefix and the DEV pill.
 - **Theme.** Light · Dark · System toggle in the top nav. Default is System; the choice is remembered on this computer.
-- **Users.** One person, who is also the builder. A browser-driven AI cataloging skill acts as a second, unattended operator of the add-book form (see Agent Label Contract).
+- **Users.** One person, who is also the builder. AI agents in Claude Code read and update the library through bookvie's agent tools (PRD FR-28), not through the UI; they have no screens here.
 - **Language.** UI is English only.
 - **Dates.** Relative times ("today", "yesterday", "N days ago") count local calendar days. A timestamp in the future (clock change) shows as "today". Beyond 365 days: "over a year ago". All relative times and the Home date recompute when the window regains focus or becomes visible, so a tab left open past midnight stays right.
 
@@ -219,7 +220,7 @@ Use: page.
 
 Use: Catalog; Book detail (edit).
 
-- **Role:** modal side panel (`dialog`, name "New book"; "Edit book" in edit mode). Fields and buttons per the Agent Label Contract.
+- **Role:** modal side panel (`dialog`, name "New book"; "Edit book" in edit mode). Fields and buttons per Form Names.
 - **Opening:** opens from **New book**; focus moves to Title. When opened from Home's empty state, the app first navigates to Catalog.
 - **Submitting:** on every **Add book** or **Save changes** press, all rules in the validation table are checked.
 - **Success (add):** the panel closes, `status` announces "Added *Title*.", and the Catalog scrolls the new spine into view in the current sort with the highlight ring.
@@ -351,7 +352,7 @@ Tiles show the library as a grid of covers, so the user can find a Book by its c
 | No cover | Main book card, Up next, Book detail, catalog tile | No-cover placeholder; spine uses its curated color when read; "From cover" option absent in color pickers.. A catalog tile shows the typeset cover instead (DESIGN.md → Catalog tile); so does a tile whose cover image fails to load. |
 | Validation error | New book panel | Nothing saved, panel stays open. Each invalid field: `aria-invalid="true"`, message linked by `aria-describedby` ("Pages is required."). `alert` region: "Not saved. 2 fields need attention: Pages, Language." Focus moves to the first invalid field. No red. |
 | Validation error | Page field, Card note panel, Finish dialog, Start dialog | Inline message, nothing saved, value kept; `aria-invalid`, `aria-describedby`, message announced in `alert`. Messages: see Validation messages (other forms). |
-| Couldn't save | Any save (New book panel, page field, Card note, color, Finish, Start, Pause, Set as Up next, Side read, Edit Purpose, delete) | The write to storage failed (storage full, unavailable, or cleared). `alert` region: "Couldn't save. Your data wasn't changed." in `ink`, one line below the action, never red. One-click buttons (Set as Up next, Mark as Side read, Remove from side) show the line directly below the button, with focus kept on it. Confirm dialogs (Pause, Delete book, Delete card note) show it inside the dialog above its buttons and stay open. Restore's Confirm dialog closes on confirm, so its couldn't-save line shows under **Restore from file…** instead (see Confirm dialog). The panel or dialog stays open with every typed value kept, so the user (or the skill) can retry. Nothing on screen claims a change that didn't happen. |
+| Couldn't save | Any save (New book panel, page field, Card note, color, Finish, Start, Pause, Set as Up next, Side read, Edit Purpose, delete) | The write to storage failed (storage full, unavailable, or cleared). `alert` region: "Couldn't save. Your data wasn't changed." in `ink`, one line below the action, never red. One-click buttons (Set as Up next, Mark as Side read, Remove from side) show the line directly below the button, with focus kept on it. Confirm dialogs (Pause, Delete book, Delete card note) show it inside the dialog above its buttons and stay open. Restore's Confirm dialog closes on confirm, so its couldn't-save line shows under **Restore from file…** instead (see Confirm dialog). The panel or dialog stays open with every typed value kept, so the user can retry. Nothing on screen claims a change that didn't happen. |
 | Couldn't load | Any page | A view fetch failed before the page had any data. The page body shows "Couldn't load. Is bookvie still running?" in an `alert` region with a **Try again** button, never red. A failed background refetch keeps the last data on screen silently. Before the first view response, only the header and nav render. |
 | Duplicate warning | New book panel | Duplicate dialog (Don't add, Add anyway; in edit mode Don't save, Save anyway). Don't add or Don't save returns to the panel unchanged. |
 | Saved | New book panel | `status` "Added *Title*." (edit: "Saved *Title*."); highlight after add. |
@@ -375,7 +376,7 @@ Tiles show the library as a grid of covers, so the user can find a Book by its c
 
 ### Validation messages (other forms)
 
-Messages for forms outside the Agent Label Contract's validation table. Each is shown under its field and announced in `alert`.
+Messages for forms outside the Form Names validation table. Each is shown under its field and announced in `alert`.
 
 | Form | Field | Rule | Message |
 |---|---|---|---|
@@ -419,7 +420,7 @@ Behavioral. Visual contrast lives in DESIGN.md → Colors.
 - **Reduced motion.** Global rule in Interaction Primitives → Motion.
 - **Forced colors.** Read and unread spines, fills and markers stay distinct (DESIGN.md → Colors → Forced colors).
 - **Reflow — documented deviation from WCAG 2.2 SC 1.4.10.** bookvie is desktop-only with a 1024px minimum width; below that, including at 200–400% zoom, pages scroll horizontally instead of reflowing. The user accepted this deviation: bookvie has one user, who is also the builder, and PRD §6.3 lists phone layouts as Won't. The spine popover is still capped at the viewport width minus 32px.
-- **Unattended operation.** Cataloging runs with nobody watching. Every outcome of the add-book form — saved, duplicate warning, validation error, couldn't save — is exposed by role, accessible name, and live-region text, not only by visual cues. Contract: Agent Label Contract.
+- **Every outcome is announced.** Every outcome of the add-book form — saved, duplicate warning, validation error, couldn't save — is exposed by role, accessible name, and live-region text, not only by visual cues. Names: Form Names.
 
 ### Focus after close
 
@@ -454,11 +455,11 @@ When a panel, dialog, popover or menu closes, focus goes to:
 | Pile | Close or Esc | The last viewed note's Edit button if the list shows it (a search, or Book detail's first-three cut, can hide it), else that Book's "Go through as a pile" (on the Card notes page a search can hide the whole group), else the page `h1` |
 | Anything whose opener no longer exists | — | The page `h1` |
 
-## Agent Label Contract
+## Form Names
 
-The add-book and edit-book forms are an interface for the AI cataloging skill as well as for the user (FR-2). This table is the single source for labels, accessible names, and roles; tests read from it (addendum, "AI entry is UI-only"). It covers only what the skill operates: the New book panel, the Duplicate dialog and Search titles. Other controls (for example, the Pile's Close) follow Accessibility Floor → Names but are not part of the contract. Mock of the panel and the Duplicate dialog: [key-catalog](mockups/key-catalog.html) (Alternates B1, B2).
+Formerly the Agent Label Contract. Since 2026-11-19 agents use the agent tools (PRD FR-28) and no agent drives these forms (FR-2 retired; spine AD-17). This table is the single source for the labels, accessible names and roles of the New book panel, the Duplicate dialog and Search titles; the e2e tests find these controls by them. Renaming one is an ordinary change: this table, the component and the e2e tests change together. Other controls (for example, the Pile's Close) follow Accessibility Floor → Names. Mock of the panel and the Duplicate dialog: [key-catalog](mockups/key-catalog.html) (Alternates B1, B2).
 
-**Lookup rule.** The skill and the tests match labels **exactly** (for example, Playwright `getByLabel('Title', { exact: true })`). Substring matching is not supported: "Title" must never match "Subtitle". The accessible name of every field is exactly its label below; "(required)" is outside the label.
+**Lookup rule.** The tests match labels **exactly** (for example, Playwright `getByLabel('Title', { exact: true })`). Substring matching is not supported: "Title" must never match "Subtitle". The accessible name of every field is exactly its label below; "(required)" is outside the label.
 
 | Label / accessible name | Element | Role | Required | Notes |
 |---|---|---|---|---|
@@ -507,15 +508,15 @@ Validation rules and messages (each shown under its field and listed in the `ale
 | Cover | JPEG, PNG or WebP | "Cover must be a JPEG, PNG or WebP image." |
 | Cover | 20 MB or smaller | "Cover must be 20 MB or smaller." |
 
-Outcome signals the skill reads (all within the page, no visual inspection needed). Both live regions are emptied at each **Add book** press, so any text present afterwards belongs to this attempt.
+Outcome signals (all within the page, no visual inspection needed; the e2e tests and a screen reader rely on them). Both live regions are emptied at each **Add book** press, so any text present afterwards belongs to this attempt.
 
 - **Panel open:** `dialog` named "New book".
-- **Saved:** panel closes; `status` text "Added *Title*.". To verify, the skill types the title into **Search titles** and looks for a spine whose accessible name begins "*Title* by", or a List view row whose title equals *Title* exactly. It does not rely on the match count (a search for "Dune" also matches "Dune Messiah").
+- **Saved:** panel closes; `status` text "Added *Title*.". To verify, a test types the title into **Search titles** and looks for a spine whose accessible name begins "*Title* by", or a List view row whose title equals *Title* exactly. It does not rely on the match count (a search for "Dune" also matches "Dune Messiah").
 - **Duplicate:** `alertdialog` named "Possible duplicate"; its description names the existing Book(s); the panel behind is inert.
 - **Validation error:** panel stays open; `alert` text "Not saved. N fields need attention: …"; each failing field has `aria-invalid="true"` and a described-by message.
 - **Couldn't save:** panel stays open with all values; `alert` text "Couldn't save. Your data wasn't changed."
 
-**Breaking-change rule.** Renaming, removing, or changing the role of any entry above, or changing an outcome signal's role or name, is a breaking change: it needs a version note in the changelog and an update to this table and to the tests in the same change. Visible label and accessible name always stay identical. New optional fields may be added without breaking the contract.
+**Changing a name.** Renaming, removing, or changing the role of any entry above, or an outcome signal's role or name, updates this table, the component and the e2e tests in the same change. No changelog note is needed: no agent depends on them (spine AD-17). Visible label and accessible name always stay identical.
 
 ## Key Flows
 
@@ -525,18 +526,17 @@ Oleg, Thursday evening, 20 books from the hallway shelf.
 
 Mock: [key-catalog](mockups/key-catalog.html).
 
-Precondition: the skill's browser reaches the same bookvie data as Oleg's own browser (PRD §5; prd-deltas → For architecture). The catalog holds 54 Books, 23 of them finished.
+Precondition: bookvie is running, and Claude Code has the `bookvie` agent tools (PRD FR-28). The catalog holds 54 Books, 23 of them finished.
 
-1. Oleg stacks 20 books by the laptop, opens bookvie on Catalog, starts the AI cataloging skill, and goes to make dinner.
-2. The skill activates **New book**. The `dialog` "New book" opens with focus on **Title**.
-3. It fills **Title**, **Pages**, **Author(s)**, **Edition**, **Language**, **Publisher**, **Type**, **ISBN**, **Year** by exact label, and attaches a photo to **Cover**. It leaves **Finished on** empty.
-4. It activates **Add book**. The panel closes, the status region reads "Added *Title*.", the new outlined spine is scrolled into view with a brief sage ring.
-5. It types the title into **Search titles**, finds the spine named "*Title* by …", clears the field, and moves to the next book.
-6. Book 14 is a second copy of a book already cataloged. On **Add book**, the `alertdialog` "Possible duplicate" appears naming the existing Book. Following its own instructions, the skill activates **Don't add**, then **Cancel** on the panel; nothing is saved and it moves on to book 15.
-7. Book 17 has no page count on the cover. The skill skips **Pages**; on **Add book** the `alert` reads "Not saved. 1 field needs attention: Pages." The skill finds the number inside the book, fills **Pages**, and saves.
-8. **Climax:** Oleg comes back with dinner. The Catalog bookcase has 19 new outlined spines in author order among the colored ones, and the meter reads "23 of 73 finished". The hallway shelf is in the catalog.
+1. Oleg stacks 20 books by the laptop, asks Claude Code to add them with the `bookvie-new-book` skill, giving it each book's store link, and goes to make dinner.
+2. For each book the skill looks up its metadata and front cover, then checks the catalog with `find_book` (title and ISBN).
+3. It calls `add_book` with the fields and the cover's web address. bookvie downloads the cover and saves the Book; the skill reads it back with `get_book` and reports it in the terminal.
+4. Book 14 is a second copy of a book already cataloged. `find_book` returns it, and `add_book` would be refused with `duplicate_book`. The skill shows Oleg the match in the terminal and adds nothing; it moves on to book 15.
+5. Book 17 has no page count on its store page. The skill adds it with the placeholder page count and the `0-pages` tag, as the skill's own rules say, so Oleg can fill it in later.
+6. Book 19's cover address answers with an error page. `add_book` is refused on `coverUrl` and nothing is saved; the skill offers to add it without a cover and leaves it for Oleg's answer.
+7. **Climax:** Oleg comes back with dinner. The Catalog bookcase has 18 new outlined spines in author order among the colored ones, and the meter reads "23 of 72 finished". Two questions wait in the terminal: book 14 and book 19.
 
-Failure path: If the skill had chosen **Add anyway** on book 14, Oleg would open the copy's spine → **Open book →** → Book detail → **Delete** → Confirm dialog "Delete *X*?" → **Delete book**. The original stays.
+Failure path: if Oleg had told the skill to add book 14 anyway, it would resend with `confirmDuplicate`. To undo it, Oleg opens the copy's spine → **Open book →** → Book detail → **Delete** → Confirm dialog "Delete *X*?" → **Delete book**. The original stays. No agent can delete a Book.
 
 ### Flow 2 — Catch up after three busy days (UJ-2)
 
@@ -704,4 +704,4 @@ The user offered no external references; the visual reference is the user's own 
 
 ## Open Questions
 
-1. **Shared storage across browsers.** The cataloging skill drives its own browser; it must reach the same data as the user's browser (PRD §5). Owned by architecture (prd-deltas → For architecture). *(Blocks architecture.)*
+1. **Shared storage across browsers.** Resolved by architecture: one local server owns the data folder (spine AD-1), and agents reach it through the agent tools (AD-21), not a browser.
