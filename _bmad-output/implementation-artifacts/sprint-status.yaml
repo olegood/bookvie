@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-29-2026 17:21
-last_updated: 11-17-2026 18:45
+last_updated: 11-19-2026 13:10
 project: bookvie
 project_key: NOKEY
 tracking_system: file-system
@@ -118,6 +118,17 @@ development_status:
   11-3-show-the-version-on-the-backup-page: done
   11-4-tell-me-when-a-tab-is-older-than-the-app: done
   epic-11-retrospective: done
+
+  epic-12: backlog
+  12-1-mount-the-mcp-server: backlog
+  12-2-let-an-agent-read-my-library: backlog
+  12-3-let-an-agent-record-my-reading: backlog
+  12-4-let-an-agent-add-and-edit-a-book: backlog
+  12-5-let-an-agent-fetch-a-book-s-cover-from-its-address: backlog
+  12-6-let-an-agent-back-up-my-library-to-disk: backlog
+  12-7-summarize-a-book-s-notes-through-the-agent-tools: backlog
+  12-8-add-a-book-through-the-agent-tools: backlog
+  epic-12-retrospective: optional
 action_items:
   - id: "epic-1-retro-item-1-run-an-epic-1-trace-and-gate-against-tr7"
     epic: 1
