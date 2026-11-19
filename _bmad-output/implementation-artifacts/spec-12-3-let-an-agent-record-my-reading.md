@@ -2,7 +2,7 @@
 title: 'Story 12.3: Let an agent record my reading'
 type: 'feature'
 created: '2026-11-19'
-status: 'in-review'
+status: 'done'
 baseline_revision: 'ee842a7c3271f51cdad0db0b929a8847d0f6a74f'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -98,6 +98,28 @@ Deferred-work intake:
 - Given the registered tools, when their descriptions are listed, then each equals its Story 12.3 text (AC-3).
 - Given `delete_book`, `delete_card_note`, `restore` or `set_spine_color`, when a client calls one, then the call fails as an unknown tool, nothing changes, and none of them is listed (AC-4).
 - Given a write tool call in flight on a real uvicorn server, when the server is asked to exit, then shutdown waits for the call: the agent gets the tool's `{ok: true}` answer, `library.json` holds the committed page, and the lifespan (with the session manager) exits only after that (deferred-work 1202-1204).
+
+### Review Findings
+
+Code review, 2026-11-19 (`aeeeadd..a627357`). Layers: Blind Hunter, Edge Case Hunter (returned no findings), Verification Gap, Acceptance Auditor, Spine Check.
+
+- [x] [Review][Patch] The `resolved:` note on the Story 12.1 shutdown entry claims more than the shutdown test pins [_bmad-output/implementation-artifacts/deferred-work.md:1205] — It says the test "pins it" and that the lock is "still released only after" the commit on a force exit "since `cli.py` releases it under `app.state.write_lock`". But the test uses its own copy of `cli.main`'s `release()` and `uvicorn.Config`, it blocks before `update_page.run`, so the AD-4 lock is never held during shutdown, no test covers a force exit, and the `timeout_graceful_shutdown` mutation isn't in the repo. Narrow the note: the test pins the graceful order; the force-exit and the release under the write lock are read from `cli.py`, not tested. (blind-hunter+verification-gap+acceptance-auditor)
+- [x] [Review][Defer] The shutdown test doesn't run `cli.main`'s own `uvicorn.Config` and `release` [backend/bookvie/cli.py:315] — deferred: pre-existing `cli.main` code. Adding `timeout_graceful_shutdown`, or dropping `with app.state.write_lock:` from `release`, would pass every test. Add a `test_cli.py` test that pins both, at the Epic 12 retro. Low. (verification-gap+blind-hunter+acceptance-auditor)
+- [x] [Review][Defer] The `set_up_next` description says the Book "can be unread or paused", but a finished Book can be Up next for a re-read [backend/bookvie/agent/tools.py:369] — deferred: the text is pinned by AC-3 from `epics.md` Story 12.3. `set_up_next.py` refuses only an unknown Book and the Main book, and AD-6 names a finished Book queued for a re-read, so an agent may wrongly refuse a re-read. Change `epics.md` first, with the `pause` text. Low. (spine-check)
+- [x] [Review][Defer] The `pause` description says the Book "stays in Waiting for you", but it becomes Up next [backend/bookvie/agent/tools.py:352] — deferred: already recorded by the build review (`deferred-work.md`, "build-auto review of spec-12-3", medium). It isn't spine drift: the spine (AD-6, AD-19) is right and the text is wrong. It is fixed in `epics.md` first, because AC-3 pins it. No new entry. (blind-hunter+spine-check+acceptance-auditor+verification-gap)
+- [x] [Review][Defer] Spine drift (AD-21, Structural Seed): `intents/answers.py` is named nowhere in the spine [backend/bookvie/intents/answers.py:1] — deferred: already recorded by the build review, reconciled before the next epic. No new entry. (spine-check+acceptance-auditor)
+
+- 2026-11-19: full `npm run check` after the patch: exit 0. ruff clean, 1805 pytest passed, 388 unit passed, 799 e2e passed, smoke ok.
+
+Rejected:
+- `low`: three tools take a `lambda` and seven take a named wrapper (Blind Hunter). Nobody is harmed, and the fix adds a parameter or adapter. The build review rejected this too.
+- `false`: the bare `ok` export is too generic (Blind Hunter). No module that imports it has a local `ok` that shadows it (`http/api.py`, `agent/tools.py`), and it names the `{ok: true}` answer it builds.
+- `false`: `answers.py` covers only part of the routes, so Story 12.4 might build a second mapping (Blind Hunter). The docstring states that scope exactly ("The other intent routes build their `OkResponse` themselves"). Story 12.4's spec decides its own routes.
+- `low`: `test_the_only_tool_is_get_app_info_…` is a stale name for a 17-tool assertion (Blind Hunter). It is already deferred to the Epic 12 retro (`deferred-work.md`, Story 12.2), and a rename means editing the Story 12.1 documents.
+- `low`: the README doesn't say an agent can write (Blind Hunter). Stories don't update `README.md` (Oleg, 2026-11-14).
+- `false`: a duplicate key in the arguments could differ between the tool and the route (Blind Hunter). The JSON-RPC body is parsed (last key wins) before `arguments` exists, so the tool never sees a duplicate. The route's `parse_form_intent` also parses through pydantic, where the last key wins.
+- `false`: `answers.py`'s docstring cites AD-9 for a success answer (Acceptance Auditor). AD-9 is the whole answer envelope, `ok` and `ids` included (spine AD-8 rule: "the AD-9 envelope (`ok`, `ids.bookId`, …)").
+- `low`: no test calls a tool with `arguments` absent (Acceptance Auditor). `server.call_tool` maps `None` to `{}`, which the `{}` cases already cover. The ATDD checklist hands it to `bmad-testarch-automate`.
 
 ## Spec Change Log
 
