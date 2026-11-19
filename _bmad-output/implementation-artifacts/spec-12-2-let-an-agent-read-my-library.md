@@ -2,7 +2,7 @@
 title: 'Story 12.2: Let an agent read my library'
 type: 'feature'
 created: '2026-11-19'
-status: 'in-review'
+status: 'done'
 baseline_revision: '924904ef7058d3399cd8de4c9ff4b64faf8087f0'
 review_loop_iteration: 0
 followup_review_recommended: true
@@ -139,6 +139,42 @@ deferred:
 **Acceptance Criteria:**
 - AC-1 to AC-7 as in `epics.md` Story 12.2, pinned by `backend/tests/test_agent_read.py` (each leaf names its AC).
 - Given the route changes, when `npm run check` runs, then `check:api` finds the OpenAPI schema and generated types unchanged and `test_stats.py` passes unedited.
+
+### Review Findings
+
+Code review 2026-11-19 (`bmad-code-review`, new session; layers: Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor, Spine Check; diff `924904e..2b1ba0b`). 30 findings: 5 patch, 10 defer, 15 rejected.
+
+- [x] [Review][Patch] A query made only of spacing accents (`´`, `¨`, `˜`, a lone combining mark) passes the blank check on `query.strip()` but folds to an empty key, and `title.startswith("")` makes every Book a title-prefix candidate (probed: `_fold("´") == ""`) — the blank check should run on the folded key (Edge Case Hunter) [backend/bookvie/views/find_book.py:91] — fixed: `find_book` refuses when the folded key is empty; `´`, `¨ ˜` and a lone U+0301 added to the blank-query loop; mutation probe (accent-only query not refused) fails it.
+- [x] [Review][Patch] Nothing tests an ISBN-10 whose check digit is `X`/`x`: dropping `or compact[9] == "X"` or the `.upper()` in `_isbn_query` keeps every leaf green while such a query finds nothing (Verification Gap) [backend/tests/test_agent_read.py:516] — fixed: `test_find_book_finds_an_isbn_10_whose_check_digit_is_x_as_its_isbn_13` (`080442957X`, `0-8044-2957-x` → the Book stored as `9780804429573`); mutation probe (drop the `X` branch) fails it.
+- [x] [Review][Patch] `_ISO_DATE` went from `\d` to `[0-9]`, which changes the stats route's answer for non-ASCII digits, but the Arabic-Indic case is only in the tool-only `cases` list, not in `_STATS_REFUSALS`, the list asserted against the route too (Blind Hunter) [backend/tests/test_agent_read.py:349] — fixed: the Arabic-Indic case added to `_STATS_REFUSALS`, so route and tool both answer "Use YYYY-MM-DD." on `from`.
+- [x] [Review][Patch] `StatsArguments`' docstring is published as `get_stats`' `inputSchema.description` ("``from`` and ``to`` as the stats route takes them: lax, so a date string parses."): reST and an implementation note shown to the agent (Blind Hunter) [backend/bookvie/agent/tools.py:132] — fixed: a comment instead of the docstring; `get_stats`' `inputSchema` has no `description` now.
+- [x] [Review][Patch] One new line of the `tools.py` module docstring is 111 characters, past the 100-column `line-length` (E501 is ignored, so nothing flags it) and unlike the reflowed lines around it (Blind Hunter) [backend/bookvie/agent/tools.py:13] — fixed: reflowed.
+- [x] [Review][Defer] Spine drift (AD-21): `find_book` answers `{"books": [...]}`, not a bare list (Spine Check) [backend/bookvie/views/models.py] — deferred: spine drift, reconciled before the next epic; already in `deferred-work.md` (build-auto review of spec-12-2).
+- [x] [Review][Defer] Spine drift (AD-21, AD-9): no `views → intents.contract` edge in the dependency direction (Spine Check) [backend/tests/test_layers.py] — deferred: spine drift, already recorded.
+- [x] [Review][Defer] Spine drift (AD-21): `find_book`'s ranking and matching unrecorded; the Deferred list still assigns them to 12.2 (Spine Check) [backend/bookvie/views/find_book.py] — deferred: spine drift, already recorded.
+- [x] [Review][Defer] Spine drift (AD-21): the Structural Seed lists `views/find_book` as planned (Spine Check) [backend/bookvie/views/find_book.py] — deferred: spine drift, already recorded.
+- [x] [Review][Defer] Spine drift (AD-9): the stats copy lives in `views/stats.py`, not `http/api.py` `stats_view` (Spine Check) [backend/bookvie/views/stats.py] — deferred: spine drift, already recorded.
+- [x] [Review][Defer] Spine drift (AD-9, AD-21): `find_book`'s blank-query refusal is undescribed (Spine Check) [backend/bookvie/views/find_book.py] — deferred: spine drift, already recorded.
+- [x] [Review][Defer] Spine drift (AD-21): "One validator" has no field-naming parser for the read tools (Spine Check) [backend/bookvie/agent/tools.py] — deferred: spine drift, already recorded.
+- [x] [Review][Defer] Spine drift (Consistency Conventions): `find_book` breaks ties by edition before id (Spine Check) [backend/bookvie/views/find_book.py] — deferred: spine drift, already recorded.
+- [x] [Review][Defer] Spine drift (AD-21): the rule, Seed `agent/`, Capability Map and Design Paradigm still say "planned for Epic 12" (Spine Check) [ARCHITECTURE-SPINE.md] — deferred: spine drift, covered by Story 12.1's entries.
+- [x] [Review][Defer] `test_the_only_tool_is_get_app_info_and_it_returns_the_app_info_view` now asserts seven tools; renaming it means editing the Story 12.1 spec and documents that cite the name (Blind Hunter, Acceptance Auditor) [backend/tests/test_agent_mount.py] — deferred: edits other specs; rename at the Epic 12 retro or with the AD-21 reconciliation. Blind's suggestion to move `AGENT_TOOL_NAMES` to a shared module rides with it.
+
+Full check after the patches, 2026-11-19: `npm run check` exit 0 — pytest 1711 passed, unit 388 passed, e2e 799 passed, smoke ok.
+
+**Rejected:**
+- `low` ×2 (Blind, Acceptance): `ALLOWED["views"]` wording in Always/Tasks/Never doesn't describe the narrowed `ALLOWED_MODULES` — the fix is an edit to the spec under review; the narrowing is recorded in the Review Triage Log.
+- `low` ×2 (Blind, Acceptance): the matching rule names only `title_key`, not `fold_typography`, apostrophes or ISBN whitespace — spec edit; the code's docstring and the Triage Log record them.
+- `low` ×2 (Blind, Acceptance): the Never boundary — `(tool,) = tools` became a by-name lookup, and `test_no_forbidden_import`'s body calls `_forbidden` — spec edit; both are forced by the cumulative tool list and the narrowed allowance.
+- `low` Blind: the Auto Run Result's tallies differ from the Triage Log's line counts — spec edit; it counts fix entries, not lines.
+- `low` Blind: add `dependentRequired` for "both or neither" to `get_stats`' schema — adds public schema surface; the description states the rule and the refusal names the missing half.
+- `false` Blind: field naming is implemented twice and can drift (an empty `loc` gives `""`) — the argument models have no model-level validators, so no error has an empty `loc`; the parity tests pin the tool's refusals against the route's.
+- `false` Blind: the tie-break uses `title_key`, not `_fold` — the order stays deterministic, as the spec requires; no candidate is lost or listed twice.
+- `low` Blind: the `_ISBN` rank between exact title and title prefix is never exercised — an ISBN-shaped query can't be a real title's prefix in everyday use.
+- `low` Blind: candidates carry no `isbn` — the seven-key shape is fixed by AD-21 and the ATDD checklist; `get_book` gives the rest.
+- `low` Edge: an ISBN-10 with a wrong check digit still matches — rejected in the build review too: the 9-digit stem names the same Book.
+- `low` Edge: fullwidth ISBN digits find nothing — not everyday, and the fix adds a normalization branch.
+- `low` Acceptance: the `_success` guard's comment cites AD-21 rather than MCP's object rule — AD-21 governs the tool answers' shape; cosmetic.
 
 ## Spec Change Log
 

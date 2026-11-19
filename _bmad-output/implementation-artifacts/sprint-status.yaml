@@ -121,7 +121,7 @@ development_status:
 
   epic-12: in-progress
   12-1-mount-the-mcp-server: done
-  12-2-let-an-agent-read-my-library: review
+  12-2-let-an-agent-read-my-library: done
   12-3-let-an-agent-record-my-reading: backlog
   12-4-let-an-agent-add-and-edit-a-book: backlog
   12-5-let-an-agent-fetch-a-book-s-cover-from-its-address: backlog

@@ -86,12 +86,12 @@ def _rank(book: Book, key: str, initials: str, isbn: str | None) -> int | None:
 
 def find_book(library: Library, query: str) -> FindBookView:
     """Every Book ``query`` matches, best first; 422 ``invalid_fields`` on a blank query."""
-    stripped = query.strip()
-    if not stripped:
+    # Blank once folded: a lone accent such as "´" folds to "", which every title starts with.
+    key = _fold(query).strip()
+    if not key:
         raise invalid_fields([FieldError(field=QUERY_FIELD, message=BLANK_QUERY_MESSAGE)])
-    key = _fold(stripped)
     initials = "".join(ch for ch in key if ch.isalnum())
-    isbn = _isbn_query(stripped)
+    isbn = _isbn_query(query.strip())
     ranked = [
         (rank, title_key(book.title), book.edition, book.id, book)
         for book in library.books

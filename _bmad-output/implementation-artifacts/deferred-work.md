@@ -1237,3 +1237,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-12-2-let-an-agent-read-my-library.md`
   summary: Spine drift (Consistency Conventions), reconciled before the next epic: the "Title ordering (server)" convention breaks title ties by Book id; `find_book`'s ranked candidates break them by edition, then id. A ranked list isn't a title-ordered one; the convention can name the exception. Low.
   evidence: `backend/bookvie/views/find_book.py` `find_book` sort; spine Consistency Conventions, Title ordering (server) (Spine Check, build-auto review of Story 12.2).
+
+## Deferred from: code review of spec-12-2-let-an-agent-read-my-library (2026-11-19)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-12-2-let-an-agent-read-my-library.md`
+  summary: `test_the_only_tool_is_get_app_info_and_it_returns_the_app_info_view` now asserts the cumulative tool list (seven tools after Story 12.2), so its name is stale and will mislead every later Epic 12 story. Renaming it means editing the Story 12.1 spec and documents that cite it; do it at the Epic 12 retro or with the AD-21 spine reconciliation. Low.
+  evidence: `backend/tests/test_agent_mount.py` (Blind Hunter, code review of Story 12.2). The review's 9 spine drift findings are already recorded under "Deferred from: build-auto review of spec-12-2" and Story 12.1's entries, so they are not repeated here.

@@ -10,8 +10,9 @@ or a view, or raises.
 The read tools (Story 12.2) other than ``find_book`` answer the views their
 ``GET /api/views/*`` routes answer and refuse as those routes refuse, through
 the same functions in ``views``. ``find_book`` is tool-only: it has no route,
-and answers ``views.find_book``'s candidates. Their arguments go through :func:`parse_view_arguments`, which
-names the failing argument as a route names a failing query parameter.
+and answers ``views.find_book``'s candidates. Their arguments go through
+:func:`parse_view_arguments`, which names the failing argument as a route
+names a failing query parameter.
 """
 
 import copy
@@ -129,8 +130,8 @@ class CardNotesArguments(IntentModel):
 
 
 class StatsArguments(IntentModel):
-    """``from`` and ``to`` as the stats route takes them: lax, so a date string parses."""
-
+    # `from` and `to` as the stats route takes them: lax, so a date string parses. A comment,
+    # not a docstring, because a model's docstring becomes its input schema's description.
     model_config = ConfigDict(strict=False)
 
     start: views.IsoDate | None = Field(default=None, alias="from")

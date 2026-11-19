@@ -365,6 +365,11 @@ _STATS_REFUSALS: list[tuple[dict[str, str], list[dict[str, str]]]] = [
         {"from": "2026-01-01", "to": "86400"},
         [{"field": "to", "message": "Value error, Use YYYY-MM-DD."}],
     ),
+    # Arabic-Indic digits are digits to a regex's \d, not to YYYY-MM-DD: route and tool alike.
+    (
+        {"from": "٢٠٢٦-01-01", "to": "2026-12-31"},
+        [{"field": "from", "message": "Value error, Use YYYY-MM-DD."}],
+    ),
     (
         {"from": "2026-13-01", "to": "2026-12-31"},
         [
@@ -530,10 +535,26 @@ def test_find_book_finds_an_isbn_10_as_its_isbn_13_and_refuses_a_whitespace_quer
     assert _candidate_ids(client, "abcdefghij") == set()
 
     message = "Give part of a title, an author or an ISBN."
-    for blank in ("", "   ", "\t\n"):
+    # A lone spacing accent folds to nothing, so it is blank too, not a prefix of every title.
+    for blank in ("", "   ", "\t\n", "´", "¨ ˜", "́"):
         assert _field_refusal(client.call_tool("find_book", {"query": blank})) == [
             ("query", message)
         ], blank
+
+
+def test_find_book_finds_an_isbn_10_whose_check_digit_is_x_as_its_isbn_13(
+    connect_mcp: Callable[..., McpClient], tmp_path: Path
+) -> None:
+    # [P1] AC-1 an ISBN-10 ending in X (either case) is an ISBN, not text: it finds the Book
+    # stored under its ISBN-13 (080442957X is 9780804429573).
+    folder = tmp_path / "library"
+    builder = LibraryBuilder()
+    book = builder.book(title="Ex Check", authors=["A. Writer"], isbn="9780804429573")
+    builder.write(folder)
+    client = connect_mcp(data_dir=folder)
+
+    assert _candidate_ids(client, "080442957X") == {book}
+    assert _candidate_ids(client, "0-8044-2957-x") == {book}
 
 
 def test_find_book_gives_each_candidate_its_role_waiting_and_null_included(
