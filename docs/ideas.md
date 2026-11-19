@@ -115,6 +115,31 @@ Notes:
 - Show the last successful upload somewhere (the Backup page?), and make a failed upload visible rather than silent.
 - If the "bookvie MCP server" idea is picked up, a backup tool there could be what the skill calls.
 
+### Finished Books behind the Stats numbers
+
+**Status:** new
+
+Let the Stats page show which Books were finished, not only how many. Today it shows the totals ("books finished", "pages finished") and one bar per month or year, but there's no way to see the Books behind a number.
+
+Suggested shape: click a bar to see the list of Books finished in that month or year.
+
+UX suggestions:
+
+- **A list under the chart, not a popup.** Clicking a bar selects it (highlighted, the others dimmed) and shows "Finished in March 2026" with its Books below the chart. A popover or tooltip is cramped for a long year, and a list on the page is easy to read, scroll and click through.
+- **A list for the whole range too.** With no bar selected, the list shows every Book finished in the chosen range (This year, All time, Custom...), so the "books finished" total has its Books as well. Selecting a bar narrows it to that period; clicking the bar again (or a "Show the whole range" link) goes back.
+- **Each row:** cover thumbnail, title, author, pages and the finish date, newest first, and it links to the Book's detail page.
+- Empty bars (0 books) aren't clickable.
+- Changing the range clears the selected bar.
+
+Notes:
+
+- Today the chart is decorative (`aria-hidden` in `StatsBars.tsx`) with a visually hidden table for screen readers. Clickable bars must become real buttons with an accessible name (for example "March 2026, 3 books, 912 pages") and `aria-pressed` for the selected one, reachable with the keyboard (arrow keys between bars would be a nice touch).
+- When a bar is selected, announce the list's heading politely (for example "Finished in March 2026: 3 books").
+- The stats API sends only counts per bucket today. Either it also returns the finished Books (id, title, author, pages, finish date) for the range, or the page asks for them separately when a bar is chosen. A year of finishes is small, so sending them with the range is probably simplest.
+- A re-read Book finished twice in the range: decide whether it's listed once per finish (matching how the counts work) or once with both dates. The list should add up to the bar's number.
+- Decide whether the selected bar is kept in the URL (for example `?period=2026-03`), so going back from a Book's detail returns to the same list.
+- Possible extra: a "pages finished" figure per row helps explain a tall bar with few books.
+
 ## Implemented
 
 Ideas already built and delivered.
