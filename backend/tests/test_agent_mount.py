@@ -561,3 +561,294 @@ def test_an_answer_that_cannot_be_serialized_is_couldnt_save(
     broken = AgentTool(name="broken_tool", description="Test only.", model=NoArguments, run=run)
     client = connect_mcp(tools=(*TOOLS, broken))
     assert error_of(client.call_tool("broken_tool")) == COULDNT_SAVE_BODY["error"]
+
+
+# --- Automation (bmad-testarch-automate): the ATDD green-phase follow-ups --------
+
+
+def test_an_app_whose_lifespan_never_ran_answers_no_mcp_request_and_runs_its_lifespan_once(
+    tmp_path: Path,
+) -> None:
+    # [P2] AC-2. The session manager starts in the lifespan, and an SDK manager runs once.
+    from fastapi.testclient import TestClient
+
+    from bookvie.http.app import create_app
+
+    app = create_app(tmp_path / "no-static", data_dir=tmp_path / "library")
+    not_started = TestClient(app, base_url=BASE_URL, raise_server_exceptions=False)
+    answer = _post_initialize(McpClient(not_started))
+    assert answer.status_code == 500, (answer.status_code, answer.text[:200])
+    assert PROTOCOL_VERSION not in answer.text
+
+    with TestClient(app, base_url=BASE_URL) as started:
+        assert _post_initialize(McpClient(started)).status_code == 200
+    with pytest.raises(RuntimeError, match="only be called once"), TestClient(app):
+        pass
+
+
+MODERN_VERSION = "2026-07-28"
+_MODERN_META = {
+    "io.modelcontextprotocol/protocolVersion": MODERN_VERSION,
+    "io.modelcontextprotocol/clientCapabilities": {},
+}
+
+
+def _post_modern(
+    client: McpClient, method: str, params: dict[str, Any], *, name: str | None = None
+) -> dict[str, Any]:
+    """One 2026-07-28 request: no handshake, the envelope in ``_meta`` and the headers."""
+    headers = {"MCP-Protocol-Version": MODERN_VERSION, "Mcp-Method": method}
+    if name is not None:
+        headers["Mcp-Name"] = name
+    message = {
+        "jsonrpc": "2.0",
+        "id": 7,
+        "method": method,
+        "params": {**params, "_meta": _MODERN_META},
+    }
+    answer = client.post(message, headers=headers)
+    assert answer.status_code == 200, (answer.status_code, answer.text[:300])
+    assert answer.headers["content-type"].split(";")[0] == "application/json"
+    assert SESSION_HEADER not in answer.headers
+    return answer.json()
+
+
+def test_the_2026_07_28_stateless_envelope_is_served_and_its_handshake_falls_back(
+    mcp_client: McpClient,
+) -> None:
+    # [P2] AC-2. A newer client sends no `initialize`: every request carries its envelope.
+    listed = _post_modern(mcp_client, "tools/list", {})
+    assert [tool["name"] for tool in listed["result"]["tools"]] == ["get_app_info"]
+    called = _post_modern(
+        mcp_client, "tools/call", {"name": "get_app_info", "arguments": {}}, name="get_app_info"
+    )
+    view = mcp_client.http.get("/api/views/app-info").json()
+    assert called["result"]["isError"] is False, called
+    assert called["result"]["structuredContent"] == view
+
+    # An `initialize` asking for it is answered with the handshake revision instead.
+    answer = mcp_client.rpc(
+        "initialize",
+        {
+            "protocolVersion": MODERN_VERSION,
+            "capabilities": {},
+            "clientInfo": {"name": "bookvie-tests", "version": "0"},
+        },
+    )
+    assert answer["result"]["protocolVersion"] == PROTOCOL_VERSION, answer
+
+
+def test_a_dev_app_serves_the_vite_origins_on_mcp_and_still_refuses_a_foreign_one(
+    connect_mcp: Callable[..., McpClient],
+) -> None:
+    # [P1] AC-3. AD-16's dev origins reach /mcp only on a --dev app (REFUSED covers production).
+    client = connect_mcp(dev=True)
+    for origin in ("http://127.0.0.1:5173", "http://localhost:5173"):
+        answer = _post_initialize(client, {"Origin": origin})
+        assert answer.status_code == 200, (origin, answer.status_code)
+        assert answer.json()["result"]["protocolVersion"] == PROTOCOL_VERSION
+    refused = _post_initialize(client, {"Origin": "https://evil.example"})
+    assert (refused.status_code, refused.text) == (403, "Forbidden\n")
+
+
+@pytest.mark.parametrize("method", ["GET", "DELETE"])
+@pytest.mark.parametrize("headers", REFUSED)
+def test_the_guard_refuses_a_cross_origin_get_or_delete_on_mcp_too(
+    mcp_client: McpClient, method: str, headers: dict[str, str]
+) -> None:
+    # [P1] AC-3. Not only POST: the guard answers before the MCP app sees the method.
+    answer = mcp_client.http.request(
+        method, "/mcp", headers={"Accept": "application/json, text/event-stream", **headers}
+    )
+    assert (answer.status_code, answer.text) == (403, "Forbidden\n")
+
+
+def _counting_tool(calls: list[dict[str, Any]]) -> Any:
+    from bookvie.agent import AgentTool, NoArguments
+
+    def run(state: Any, arguments: dict[str, Any]) -> OkResponse:
+        calls.append(arguments)
+        return OkResponse(ok=True)
+
+    return AgentTool(name="counting_tool", description="Test only.", model=NoArguments, run=run)
+
+
+def _chunked_tool_call(size: int) -> list[bytes]:
+    """A ``tools/call`` of ``counting_tool`` padded with whitespace to ``size``, in 64 KiB chunks."""
+    body = json.dumps(
+        {"jsonrpc": "2.0", "id": 9, "method": "tools/call", "params": {"name": "counting_tool"}}
+    ).encode()
+    body = body[:-1] + b" " * (size - len(body)) + b"}"
+    return [body[i : i + 65536] for i in range(0, len(body), 65536)]
+
+
+def _post_chunked(client: McpClient, chunks: list[bytes]) -> tuple[int, int, bytes]:
+    """POST ``chunks`` to ``/mcp`` with no Content-Length, on the app's own event loop.
+
+    Returns the status, how many chunks the app read, and the response body.
+    """
+    app = client.http.app
+    pending = list(chunks)
+    reads = 0
+    sent: list[dict[str, Any]] = []
+
+    async def receive() -> dict[str, Any]:
+        nonlocal reads
+        reads += 1
+        chunk = pending.pop(0)
+        return {"type": "http.request", "body": chunk, "more_body": bool(pending)}
+
+    async def send(message: dict[str, Any]) -> None:
+        sent.append(message)
+
+    scope = {
+        "type": "http",
+        "asgi": {"version": "3.0"},
+        "http_version": "1.1",
+        "method": "POST",
+        "scheme": "http",
+        "path": "/mcp",
+        "raw_path": b"/mcp",
+        "query_string": b"",
+        "root_path": "",
+        "headers": [
+            (b"host", b"127.0.0.1:8765"),
+            (b"content-type", b"application/json"),
+            (b"accept", b"application/json, text/event-stream"),
+            (b"mcp-protocol-version", PROTOCOL_VERSION.encode()),
+            (b"transfer-encoding", b"chunked"),
+        ],
+        "client": ("127.0.0.1", 50000),
+        "server": ("127.0.0.1", 8765),
+    }
+
+    async def call() -> None:
+        await app(scope, receive, send)
+
+    client.http.portal.call(call)
+    (start,) = [m for m in sent if m["type"] == "http.response.start"]
+    body = b"".join(m.get("body", b"") for m in sent if m["type"] == "http.response.body")
+    return start["status"], reads, body
+
+
+def test_a_chunked_body_past_1_mb_is_refused_while_it_streams_and_no_tool_runs(
+    connect_mcp: Callable[..., McpClient],
+) -> None:
+    # [P1] AC-4. No Content-Length to refuse up front: the cap counts the bytes as they come.
+    calls: list[dict[str, Any]] = []
+    client = connect_mcp(tools=(_counting_tool(calls),))
+    client.ensure_initialized()
+
+    over = _chunked_tool_call(4 * BODY_CAP)
+    status, reads, _ = _post_chunked(client, over)
+    assert status == 413
+    assert reads < len(over), (reads, len(over))
+    assert calls == []
+
+    # The same call under the cap, chunked too, is served and runs the tool once.
+    status, _, body = _post_chunked(client, _chunked_tool_call(BODY_CAP // 2))
+    assert status == 200, body[:300]
+    assert json.loads(body)["result"]["structuredContent"] == {"ok": True}
+    assert calls == [{}]
+
+
+def _raising_tool(error: Any) -> Any:
+    from bookvie.agent import AgentTool, NoArguments
+
+    def run(state: Any, arguments: dict[str, Any]) -> OkResponse:
+        raise error
+
+    return AgentTool(name="raising_tool", description="Test only.", model=NoArguments, run=run)
+
+
+def _with_fields() -> Any:
+    from bookvie.intents import FieldError, invalid_fields
+
+    return invalid_fields(
+        [
+            FieldError(field="pages", message="Enter a whole number."),
+            FieldError(field="authors.0", message="Enter an author."),
+        ]
+    )
+
+
+def _with_duplicates() -> Any:
+    from bookvie.intents import DuplicateMatch, duplicate_book
+
+    return duplicate_book(
+        [
+            DuplicateMatch(title="Refactoring", authors=["Martin Fowler"], isbn=None),
+            DuplicateMatch(title="Refactoring", authors=["Martin Fowler"], isbn="9780134757599"),
+        ]
+    )
+
+
+@pytest.mark.parametrize(
+    "build",
+    [pytest.param(_with_fields, id="fields"), pytest.param(_with_duplicates, id="duplicates")],
+)
+def test_an_intent_error_with_fields_or_duplicates_comes_back_whole(
+    connect_mcp: Callable[..., McpClient], build: Callable[[], Any]
+) -> None:
+    # [P1] AC-5. The AD-9 error object as the routes send it, `isbn: null` kept.
+    error = build()
+    client = connect_mcp(tools=(_raising_tool(error),))
+    sent = error_of(client.call_tool("raising_tool"))
+    assert sent == error.response_body()["error"]
+    assert set(sent) & {"fields", "duplicates"}
+    for match in sent.get("duplicates", []):
+        assert "isbn" in match
+    if "duplicates" in sent:
+        assert sent["duplicates"][0]["isbn"] is None
+
+
+def test_the_mcp_fixture_never_reaches_the_real_home_or_its_library(
+    mcp_client: McpClient, tmp_path_factory: pytest.TempPathFactory
+) -> None:
+    # [P1] AC-7. The temp HOME (`_isolated_home`), and the app's folder is the test's own.
+    import os
+    import pwd
+
+    real_home = Path(pwd.getpwuid(os.getuid()).pw_dir).resolve()
+    home = Path.home().resolve()
+    assert home != real_home
+    assert home.is_relative_to(tmp_path_factory.getbasetemp().resolve())
+
+    info = mcp_client.call_tool("get_app_info")["structuredContent"]
+    data_dir = Path(info["dataDir"])
+    assert not data_dir.is_relative_to(real_home), data_dir
+    assert data_dir != home / "bookvie-data"
+    assert not (home / "bookvie-data").exists()
+
+
+class _UnionIntent(IntentModel):
+    """Non-nullable optional fields: a two-type union, and one with a real default."""
+
+    either: int | str | None = None
+    count: int | None = 5
+
+
+def test_a_union_keeps_its_other_branches_and_a_real_default_once_null_is_dropped() -> None:
+    # [P2] AC-5. `_without_null` with two branches left, and a default that isn't None.
+    from bookvie.agent import input_schema
+
+    properties = input_schema(_UnionIntent)["properties"]
+    either = properties["either"]
+    assert sorted(branch["type"] for branch in either["anyOf"]) == ["integer", "string"]
+    assert "default" not in either
+    assert _types(properties["count"]) == {"integer"}
+    assert properties["count"]["default"] == 5
+
+
+def test_an_unexpected_failure_is_logged_with_the_tool_name(
+    connect_mcp: Callable[..., McpClient], caplog: pytest.LogCaptureFixture
+) -> None:
+    # [P2] AC-5. Anything but an IntentError is couldnt_save, and logged with its traceback.
+    client = connect_mcp(tools=(_raising_tool(RuntimeError("the tool broke")),))
+    with caplog.at_level("ERROR", logger="bookvie.agent.server"):
+        answer = client.call_tool("raising_tool")
+    assert error_of(answer) == COULDNT_SAVE_BODY["error"]
+    (record,) = [r for r in caplog.records if r.name == "bookvie.agent.server"]
+    assert record.getMessage() == "agent tool raising_tool failed"
+    assert record.exc_info is not None
+    assert str(record.exc_info[1]) == "the tool broke"

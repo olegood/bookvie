@@ -159,6 +159,30 @@ async function main() {
     }
     say(`GET /favicon.svg -> ${favicon.status} as ${favicon.type}, the built file`)
 
+    // The agent tools (AD-21): the installed wheel must carry `mcp` and answer at /mcp.
+    const mcp = await fetch(`${origin}/mcp`, {
+      method: 'POST',
+      headers: { Accept: 'application/json, text/event-stream', 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'initialize',
+        params: { protocolVersion: '2025-11-25', capabilities: {}, clientInfo: { name: 'smoke', version: '0' } },
+      }),
+      signal: AbortSignal.timeout(5_000),
+    })
+    const mcpBody = await mcp.text()
+    let mcpResult
+    try {
+      mcpResult = JSON.parse(mcpBody).result
+    } catch {
+      mcpResult = undefined
+    }
+    if (mcp.status !== 200 || mcpResult?.protocolVersion !== '2025-11-25' || !mcpResult?.capabilities?.tools) {
+      throw new Error(`POST /mcp initialize answered ${mcp.status}:\n${mcpBody.slice(0, 500)}`)
+    }
+    say(`POST /mcp initialize -> ${mcp.status}, protocol ${mcpResult.protocolVersion} with tools`)
+
     server.kill('SIGTERM')
     const timer = setTimeout(() => server.kill('SIGKILL'), STOP_TIMEOUT_MS)
     await exited
