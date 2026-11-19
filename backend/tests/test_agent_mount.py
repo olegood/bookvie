@@ -51,6 +51,16 @@ AGENT_TOOL_NAMES = [
     "get_card_notes",
     "get_home",
     "get_stats",
+    "start_reading",
+    "update_page",
+    "finish_reading",
+    "pause",
+    "set_up_next",
+    "edit_purpose",
+    "add_card_note",
+    "edit_card_note",
+    "mark_side_read",
+    "unmark_side_read",
 ]
 # The intents' cap on a body part (Starlette's multipart limit), 1 MiB.
 BODY_CAP = 1024 * 1024

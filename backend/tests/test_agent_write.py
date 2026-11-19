@@ -45,10 +45,8 @@ from tests.agent_client import McpClient, error_of, text_of
 from tests.builder import LibraryBuilder
 from tests.helpers import FaultyFs, assert_invariants, library_bytes, temp_files
 
-RED = "Story 12.3 red phase: the write tools are not registered yet"
-
-# 12.1's and 12.2's tools, in the order they are listed (test_agent_mount.py's
-# AGENT_TOOL_NAMES until the build extends it).
+# 12.1's and 12.2's tools, in the order they are listed (the first seven of
+# test_agent_mount.py's AGENT_TOOL_NAMES, which Story 12.3 extends).
 EARLIER_TOOL_NAMES = [
     "get_app_info",
     "find_book",
@@ -372,7 +370,6 @@ def _tool_answer(client: McpClient, tool: str, arguments: dict[str, Any]) -> tup
 # --- AC-1: the input schemas and the tool list --------------------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_the_ten_write_tools_advertise_their_intent_models_schemas_and_join_the_tool_list(
     mcp_client: McpClient,
 ) -> None:
@@ -402,7 +399,6 @@ def test_the_ten_write_tools_advertise_their_intent_models_schemas_and_join_the_
 # --- AC-2: the same answers as the intent routes --------------------------------
 
 
-@pytest.mark.skip(reason=RED)
 @pytest.mark.parametrize("case", CASES, ids=lambda case: case.id)
 def test_each_write_tool_stores_and_answers_exactly_as_its_intent_route(
     connect_mcp: Callable[..., McpClient],
@@ -442,7 +438,6 @@ def test_each_write_tool_stores_and_answers_exactly_as_its_intent_route(
 # --- AC-3: the descriptions -----------------------------------------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_each_write_tools_description_is_the_storys_text(mcp_client: McpClient) -> None:
     # [P1] AC-3. Character for character: the descriptions are the interface (D13).
     described = {
@@ -456,7 +451,6 @@ def test_each_write_tools_description_is_the_storys_text(mcp_client: McpClient) 
 # --- AC-4: no destructive tools -----------------------------------------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_the_destructive_intents_stay_unlisted_and_calling_one_changes_nothing(
     connect_mcp: Callable[..., McpClient], tmp_path: Path
 ) -> None:

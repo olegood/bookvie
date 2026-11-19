@@ -1202,6 +1202,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-12-1-mount-the-mcp-server.md`
   summary: Unverified, medium if true once write tools exist: a tool call still running when the lifespan's session manager exits keeps its worker thread (holding the AD-4 lock from Story 12.3) but its answer is dropped, and nothing says what the agent gets or how `cli.py`'s lock-waiting shutdown orders with the manager's teardown. Settle in Story 12.3 with a shutdown-during-call test.
   evidence: `backend/bookvie/http/app.py` `lifespan`; `backend/bookvie/agent/server.py` `call_tool` (Blind Hunter, code review of Story 12.1).
+  resolved: Story 12.3 (2026-11-19). uvicorn's graceful shutdown waits for the in-flight `/mcp` request before it runs the lifespan's shutdown, so the call finishes, the agent gets its answer (`{ok: true}`), the commit lands, and only then does the session manager exit and `cli._Server.shutdown` release `bookvie.lock` under the AD-4 write lock. `backend/tests/test_agent_shutdown.py::test_shutdown_waits_for_a_write_tool_call_in_flight` pins it on a real uvicorn server (with `timeout_graceful_shutdown` forced low, the answer is dropped and the test fails). This covers graceful shutdown only, and that wait is unbounded: on a force exit (a second Ctrl-C) uvicorn stops waiting and the agent's answer is dropped, but the commit stays atomic and `bookvie.lock` is still released only after it, since `cli.py` releases it under `app.state.write_lock`.
 - source_spec: `_bmad-output/implementation-artifacts/spec-12-1-mount-the-mcp-server.md`
   summary: Any non-`IntentError` failure in a tool answers `couldnt_save` ("Couldn't save. Your data wasn't changed."), as Story 12.1's spec says; for a read tool that wording is wrong. Decide the read tools' unexpected-error answer before Story 12.2. Low.
   evidence: `backend/bookvie/agent/server.py` `_answer` (Blind Hunter, code review of Story 12.1).
@@ -1243,3 +1244,12 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-12-2-let-an-agent-read-my-library.md`
   summary: `test_the_only_tool_is_get_app_info_and_it_returns_the_app_info_view` now asserts the cumulative tool list (seven tools after Story 12.2), so its name is stale and will mislead every later Epic 12 story. Renaming it means editing the Story 12.1 spec and documents that cite it; do it at the Epic 12 retro or with the AD-21 spine reconciliation. Low.
   evidence: `backend/tests/test_agent_mount.py` (Blind Hunter, code review of Story 12.2). The review's 9 spine drift findings are already recorded under "Deferred from: build-auto review of spec-12-2" and Story 12.1's entries, so they are not repeated here.
+
+## Deferred from: build-auto review of spec-12-3-let-an-agent-record-my-reading (2026-11-19)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-12-3-let-an-agent-record-my-reading.md`
+  summary: Spine drift (AD-21, Structural Seed), reconciled before the next epic: the success mapping that the ten intent routes and their agent write tools share lives in the new `intents/answers.py` (`ok`, `page_answer`, `card_note_answer`). AD-21 says the tool returns "the route's `OkResponse`", and the Seed's `intents/` line names no `answers` module. Low.
+  evidence: `backend/bookvie/intents/answers.py`; `backend/bookvie/http/api.py` (the ten routes); `backend/bookvie/agent/tools.py` `_write_tool` (Spine Check, build-auto review of Story 12.3).
+- source_spec: `_bmad-output/implementation-artifacts/spec-12-3-let-an-agent-record-my-reading.md`
+  summary: The `pause` tool's description (epics.md Story 12.3) says the paused Book "stays in Waiting for you until the user picks it up again", but `pause` makes it Up next (role `upNext`, not `waiting`), so an agent tells the user the wrong place. AC-3 pins the text character for character, so change `epics.md` first, then `DESCRIPTIONS` in `test_agent_write.py` and `PAUSE` in `agent/tools.py`. Medium.
+  evidence: `backend/bookvie/intents/pause.py` `pause` (sets `up_next_book_id`); `backend/bookvie/views/models.py` `Role` (Blind Hunter, build-auto review of Story 12.3).
