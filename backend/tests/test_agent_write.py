@@ -9,7 +9,12 @@ exactly as ``POST /api/intents/<verb>`` answers: the same stored
 text Story 12.3 quotes, character for character. The destructive intents stay
 unregistered.
 
-The contract leaf seeds one library, copies it, and opens both copies through
+Story 12.4 adds ``add_book`` and ``edit_book`` (the last section). Both
+answer as their routes do, but ``edit_book`` is a whole edit: its schema
+requires every form key, and a call that leaves one out is refused naming the
+missing keys, where the route would clear those fields.
+
+The contract leaves seed one library, copies it, and opens both copies through
 ``connect_mcp``: the input goes through the tool on one app and through the
 route on the other. The ids an intent mints come from a counter that restarts
 before each call, so both sides mint the same ones. Every test runs with
@@ -30,7 +35,9 @@ from typing import Any
 import pytest
 
 from bookvie.intents import (
+    AddBookIntent,
     AddCardNoteIntent,
+    EditBookIntent,
     EditCardNoteIntent,
     EditPurposeIntent,
     FinishReadingIntent,
@@ -43,7 +50,14 @@ from bookvie.intents import (
 )
 from tests.agent_client import McpClient, error_of, text_of
 from tests.builder import LibraryBuilder
-from tests.helpers import FaultyFs, assert_invariants, library_bytes, temp_files
+from tests.helpers import (
+    DUNE_ISBN13,
+    FaultyFs,
+    assert_invariants,
+    library_bytes,
+    stored_book,
+    temp_files,
+)
 
 # 12.1's and 12.2's tools, in the order they are listed (the first seven of
 # test_agent_mount.py's AGENT_TOOL_NAMES, which Story 12.3 extends).
@@ -132,7 +146,7 @@ DESCRIPTIONS = {
 MAIN = "a0000000-0000-4000-8000-000000000001"  # the Main book, at page 120 of 616, a Purpose
 UPNEXT = "a0000000-0000-4000-8000-000000000002"  # Up next, never started
 PAUSED = "a0000000-0000-4000-8000-000000000003"  # waiting, paused at page 200 of 448, no Purpose
-FINISHED = "a0000000-0000-4000-8000-000000000004"  # read once, finished
+FINISHED = "a0000000-0000-4000-8000-000000000004"  # Dune: finished, every optional field set
 UNREAD = "a0000000-0000-4000-8000-000000000005"  # no Readings, no role
 SIDE1 = "a0000000-0000-4000-8000-000000000006"  # a Side read
 SIDE2 = "a0000000-0000-4000-8000-000000000007"  # a Side read
@@ -145,6 +159,8 @@ PAUSED_PAGES = 448
 # A page the paused Book (at 200) resumes at that isn't its current one.
 RESUME_PAGE = 230
 UNREAD_COVER = "covers/neuromancer.png"
+DUNE_SUBTITLE = "Dune Chronicles 1"
+DUNE_SPINE_COLOR = "#749076"
 
 
 def _seed(folder: Path, *, side_reads: int, cover: bool = False) -> None:
@@ -156,7 +172,18 @@ def _seed(folder: Path, *, side_reads: int, cover: bool = False) -> None:
     builder.book(id=MAIN, title="Designing Data-Intensive Applications", pages=MAIN_PAGES)
     builder.book(id=UPNEXT, title="Designing Interfaces", pages=599)
     builder.book(id=PAUSED, title="Refactoring", pages=PAUSED_PAGES)
-    builder.book(id=FINISHED, title="Dune", pages=412)
+    # Every optional field set, for Story 12.4's edits; no 12.3 case reads them.
+    builder.book(
+        id=FINISHED,
+        title="Dune",
+        subtitle=DUNE_SUBTITLE,
+        authors=["Frank Herbert"],
+        pages=412,
+        isbn=DUNE_ISBN13,
+        year=1965,
+        tags=["sci-fi", "classic"],
+        spine_color_user=DUNE_SPINE_COLOR,
+    )
     builder.book(
         id=UNREAD, title="Neuromancer", pages=271, cover_file=UNREAD_COVER if cover else None
     )
@@ -188,7 +215,8 @@ class Case:
     """One input for one tool, and what the route answers it (checked after the comparison).
 
     ``expect`` is ``"ok"``, ``"noop"`` (ok and nothing written), ``"lastPage"`` (ok with
-    ``reachedLastPage``) or the error ``code``; ``fields`` names an ``invalid_fields``
+    ``reachedLastPage``), ``"unchanged"`` (Story 12.4: ok, committed, the same bytes) or the
+    error ``code``; ``fields`` names an ``invalid_fields``
     refusal's fields in order. ``fault`` is the filesystem step that fails at write.
     """
 
@@ -325,8 +353,8 @@ CASES: list[Case] = [
     *(Case(tool, f"fault-at-{fault}", arguments, "couldnt_save", fault=fault) for fault in ("fsync", "replace") for tool, arguments in SUCCESSES.items()),
 ]  # fmt: skip
 
-# The intent modules that mint ids with uuid.uuid4().
-MINTING_MODULES = ("start_reading", "finish_reading", "add_card_note")
+# The intent modules that mint ids with uuid.uuid4() (add_book and edit_book: Story 12.4).
+MINTING_MODULES = ("start_reading", "finish_reading", "add_card_note", "add_book", "edit_book")
 
 
 @pytest.fixture
@@ -672,3 +700,267 @@ def test_a_real_bookvie_process_advertises_and_commits_a_write_tool(tmp_path: Pa
     stored = json.loads((folder / "library.json").read_text(encoding="utf-8"))
     (book,) = [book for book in stored["books"] if book["id"] == MAIN]
     assert book["readings"][-1]["currentPage"] == UPDATE["page"]
+
+
+# --- Story 12.4: add_book and edit_book -------------------------------------------
+
+RED = "Story 12.4 red phase: add_book and edit_book are not registered yet"
+
+# The book form's keys, in form order: every one optional on add_book, required on edit_book.
+FORM_KEYS = [
+    "title",
+    "subtitle",
+    "pages",
+    "authors",
+    "edition",
+    "language",
+    "publisher",
+    "type",
+    "isbn",
+    "year",
+    "finishedOn",
+    "tags",
+    "spineColor",
+]
+BOOK_TOOL_NAMES = ["add_book", "edit_book"]
+
+BOOK_DESCRIPTIONS = {
+    "add_book": (
+        "Add a Book to the catalog. Every field is a string. Required: title, pages, authors "
+        "(separated by semicolons), language, publisher, type (paperback, hardcover or ebook); "
+        "edition defaults to 1. Optional: subtitle, isbn, year, tags (separated by commas), and "
+        "finishedOn (YYYY-MM-DD) for a Book the user has already read. A likely duplicate is "
+        "refused with duplicate_book and the matching Books: show them to the user, and send "
+        "confirmDuplicate true only if the user says to add it anyway. Returns the new Book's "
+        "id."
+    ),
+    "edit_book": (
+        "Replace a Book's fields. This is a whole edit: a field you leave empty is cleared. Call "
+        "get_book first and send every field, changing only what the user asked for. A changed "
+        "title, author or ISBN that makes it a likely duplicate is refused like add_book."
+    ),
+}
+
+# A new Book, as an agent sends it: the required fields, Tags and an ISBN.
+ADD = {
+    "title": "The Dispossessed",
+    "pages": "387",
+    "authors": "Ursula K. Le Guin",
+    "language": "English",
+    "publisher": "Harper",
+    "type": "paperback",
+    "isbn": "9780061054884",
+    "tags": "sci-fi, anarchism",
+}
+# Every form field that can fail, failing (add-book and edit-book refuse each one).
+BAD_FIELDS = {
+    "title": "  ",
+    "pages": "0",
+    "authors": " ; ",
+    "edition": "0",
+    "language": "",
+    "publisher": "",
+    "type": "kindle",
+    "isbn": "123",
+    "year": "20",
+    "finishedOn": "2099-01-01",
+    "spineColor": "red",
+}
+BAD_FIELD_ORDER = tuple(key for key in FORM_KEYS if key in BAD_FIELDS)
+# Dune as a duplicate: its ISBN, title and author.
+DUNE_AGAIN = {"title": "Dune", "authors": "Frank Herbert", "isbn": DUNE_ISBN13}
+
+# The seeded Books' Edit book forms, every key prefilled as the panel and get_book give them.
+FINISHED_FORM = {
+    "bookId": FINISHED,
+    "title": "Dune",
+    "subtitle": DUNE_SUBTITLE,
+    "pages": "412",
+    "authors": "Frank Herbert",
+    "edition": "1",
+    "language": "English",
+    "publisher": "Publisher",
+    "type": "paperback",
+    "isbn": DUNE_ISBN13,
+    "year": "1965",
+    "finishedOn": "2026-04-10",
+    "tags": "sci-fi, classic",
+    "spineColor": DUNE_SPINE_COLOR,
+}
+PAUSED_FORM = {
+    "bookId": PAUSED,
+    "title": "Refactoring",
+    "subtitle": "",
+    "pages": str(PAUSED_PAGES),
+    "authors": "Author 3",
+    "edition": "1",
+    "language": "English",
+    "publisher": "Publisher",
+    "type": "paperback",
+    "isbn": "",
+    "year": "",
+    "finishedOn": "",
+    "tags": "",
+    "spineColor": "",
+}
+UNREAD_FORM = {
+    **PAUSED_FORM,
+    "bookId": UNREAD,
+    "title": "Neuromancer",
+    "pages": "271",
+    "authors": "Author 5",
+}
+EDIT = {**PAUSED_FORM, "publisher": "Addison-Wesley", "tags": "craft"}
+COVER_URL = "https://covers.example/dispossessed.jpg"
+
+BOOK_CASES: list[Case] = [
+    # add_book
+    Case("add_book", "success", ADD, "ok"),
+    Case("add_book", "success-back-filled", {**ADD, "finishedOn": "2026-10-01"}, "ok"),
+    Case("add_book", "every-field-invalid", BAD_FIELDS, "invalid_fields", BAD_FIELD_ORDER),
+    Case("add_book", "duplicate-book", {**ADD, **DUNE_AGAIN}, "duplicate_book"),
+    Case("add_book", "success-confirm-duplicate", {**ADD, **DUNE_AGAIN, "confirmDuplicate": True}, "ok"),
+    Case("add_book", "wrong-type", {**ADD, "pages": 387}, "invalid_fields", ("intent",)),
+    # No coverUrl yet (Story 12.5 adds it): the route refuses it as an unknown key.
+    Case("add_book", "unknown-key-cover-url", {**ADD, "coverUrl": COVER_URL}, "invalid_fields", ("intent",)),
+    Case("add_book", "fault-at-write", ADD, "couldnt_save", fault="write"),
+    # edit_book: every key sent, as the tool requires.
+    Case("edit_book", "success", EDIT, "ok"),
+    Case("edit_book", "success-back-filled", {**UNREAD_FORM, "finishedOn": "2026-01-15"}, "ok"),
+    Case("edit_book", "unchanged-still-commits", FINISHED_FORM, "unchanged"),
+    # The same unchanged edit reaches the commit: a fault at write refuses it.
+    Case("edit_book", "unchanged-fault-at-write", FINISHED_FORM, "couldnt_save", fault="write"),
+    Case("edit_book", "every-field-invalid", {**PAUSED_FORM, **BAD_FIELDS}, "invalid_fields", BAD_FIELD_ORDER),
+    Case("edit_book", "pages-below-current-page", {**PAUSED_FORM, "pages": "150"}, "pages_below_current_page", ("pages",)),
+    Case("edit_book", "duplicate-book", {**PAUSED_FORM, "title": "Dune", "authors": "Frank Herbert"}, "duplicate_book"),
+    Case("edit_book", "success-confirm-duplicate", {**PAUSED_FORM, "title": "Dune", "authors": "Frank Herbert", "confirmDuplicate": True}, "ok"),
+    Case("edit_book", "book-not-found", {**FINISHED_FORM, "bookId": GONE}, "book_not_found"),
+    Case("edit_book", "wrong-type", {**PAUSED_FORM, "pages": PAUSED_PAGES}, "invalid_fields", ("intent",)),
+    Case("edit_book", "unknown-key-cover-url", {**PAUSED_FORM, "coverUrl": COVER_URL}, "invalid_fields", ("intent",)),
+    Case("edit_book", "fault-at-write", EDIT, "couldnt_save", fault="write"),
+]  # fmt: skip
+
+
+@pytest.mark.skip(reason=RED)
+def test_add_book_advertises_the_add_book_intent_models_schema_and_the_storys_description(
+    mcp_client: McpClient,
+) -> None:
+    # [P0] AC-1. The add-book intent model's schema by alias: every key optional, no coverUrl.
+    from bookvie.agent import input_schema
+
+    tools = mcp_client.list_tools()
+    listed = {tool["name"]: tool for tool in tools}
+    assert listed.get("add_book", {}).get("inputSchema") == input_schema(AddBookIntent)
+
+    schema = listed["add_book"]["inputSchema"]
+    assert schema["type"] == "object" and schema["additionalProperties"] is False, schema
+    assert list(schema["properties"]) == [*FORM_KEYS, "confirmDuplicate"], schema
+    assert "coverUrl" not in schema["properties"]
+    assert schema.get("required", []) == [], schema
+    for key in FORM_KEYS:
+        assert schema["properties"][key]["type"] == "string", (key, schema["properties"][key])
+    assert schema["properties"]["confirmDuplicate"]["type"] == "boolean"
+    assert listed["add_book"]["description"] == BOOK_DESCRIPTIONS["add_book"]
+    # The cumulative list: 12.1's to 12.3's tools, then add_book and edit_book.
+    names = [tool["name"] for tool in tools]
+    assert names == EARLIER_TOOL_NAMES + WRITE_TOOL_NAMES + BOOK_TOOL_NAMES
+
+
+@pytest.mark.skip(reason=RED)
+def test_edit_book_requires_every_form_key_and_advertises_the_storys_description(
+    mcp_client: McpClient,
+) -> None:
+    # [P0] AC-2. A whole edit: every form key and bookId required; removeCover and
+    # confirmDuplicate optional.
+    from bookvie.agent import input_schema
+
+    listed = {tool["name"]: tool for tool in mcp_client.list_tools()}
+    schema = listed.get("edit_book", {}).get("inputSchema", {})
+    assert sorted(schema.get("required", [])) == sorted([*FORM_KEYS, "bookId"])
+
+    # Otherwise the edit-book intent model's schema by alias (its name and docstring aside).
+    def rest(advertised: dict[str, Any]) -> dict[str, Any]:
+        return {
+            key: value
+            for key, value in advertised.items()
+            if key not in ("required", "title", "description")
+        }
+
+    assert rest(schema) == rest(input_schema(EditBookIntent))
+    assert schema["type"] == "object" and schema["additionalProperties"] is False, schema
+    assert set(schema["properties"]) == {*FORM_KEYS, "bookId", "removeCover", "confirmDuplicate"}
+    assert "coverUrl" not in schema["properties"]
+    for key in [*FORM_KEYS, "bookId"]:
+        assert schema["properties"][key]["type"] == "string", (key, schema["properties"][key])
+    assert listed["edit_book"]["description"] == BOOK_DESCRIPTIONS["edit_book"]
+
+
+@pytest.mark.skip(reason=RED)
+@pytest.mark.parametrize("case", BOOK_CASES, ids=lambda case: case.id)
+def test_add_book_and_edit_book_store_and_answer_exactly_as_their_intent_routes(
+    connect_mcp: Callable[..., McpClient],
+    tmp_path: Path,
+    same_ids: Callable[[], None],
+    case: Case,
+) -> None:
+    # [P0] AC-3. One input, two identical libraries: through the tool on one, the route on the other.
+    tool_side, route_side = _twins(connect_mcp, tmp_path, case)
+    before = library_bytes(tool_side.data_dir)
+
+    same_ids()
+    route = _route_answer(route_side, case.tool, case.arguments)
+    same_ids()
+    tool = _tool_answer(tool_side, case.tool, case.arguments)
+    assert tool == route, case.id
+    assert library_bytes(tool_side.data_dir) == library_bytes(route_side.data_dir), case.id
+
+    # The case reaches the branch it names (on the route, which is the reference).
+    kind, answer = route
+    if case.expect in ("ok", "unchanged"):
+        assert kind == "ok" and answer["ok"] is True, (case.id, answer)
+        assert_invariants(tool_side.data_dir)
+        changed = library_bytes(tool_side.data_dir) != before
+        assert changed is (case.expect == "ok"), case.id
+    else:
+        assert kind == "error" and answer["code"] == case.expect, (case.id, answer)
+        assert [f["field"] for f in answer.get("fields", [])] == list(case.fields), answer
+        if case.expect == "duplicate_book":
+            assert [match["title"] for match in answer["duplicates"]] == ["Dune"], answer
+        # A refusal or a fault changes nothing and leaves no temporary file (TR8).
+        assert library_bytes(tool_side.data_dir) == before, case.id
+        assert temp_files(tool_side.data_dir) == [], case.id
+    if case.tool == "add_book" and kind == "ok":
+        # The new Book's id, which get_book and every other tool take next.
+        assert set(answer["ids"]) == {"bookId"}, answer
+        assert (
+            stored_book(tool_side.data_dir, answer["ids"]["bookId"])["title"]
+            == case.arguments["title"]
+        )
+    elif kind == "ok":
+        assert "ids" not in answer, answer
+
+
+@pytest.mark.skip(reason=RED)
+def test_a_partial_edit_book_is_refused_naming_the_missing_keys_and_changes_nothing(
+    connect_mcp: Callable[..., McpClient], tmp_path: Path
+) -> None:
+    # [P0] AC-4. The route would clear every field left out; the tool refuses the call.
+    folder = tmp_path / "library"
+    _seed(folder, side_reads=2)
+    client = connect_mcp(data_dir=folder)
+    before = library_bytes(folder)
+
+    answer = client.call_tool("edit_book", {"bookId": FINISHED, "title": "Dune Messiah"})
+    refused = json.loads(text_of(answer))
+    missing = sorted(key for key in FORM_KEYS if key != "title")
+    named = sorted(field["field"] for field in refused.get("fields", []))
+    assert (answer.get("isError"), named) == (True, missing), refused
+
+    assert refused["code"] == "invalid_fields" and refused["kind"] == "refusal", refused
+    assert library_bytes(folder) == before
+    book = stored_book(folder, FINISHED)
+    assert book["title"] == "Dune"
+    assert book["subtitle"] == DUNE_SUBTITLE
+    assert book["isbn"] == DUNE_ISBN13
+    assert book["tags"] == ["sci-fi", "classic"]
+    assert book["spineColorUser"] == DUNE_SPINE_COLOR
