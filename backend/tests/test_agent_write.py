@@ -101,12 +101,12 @@ DESCRIPTIONS = {
         "notYet, and rating is 1 to 5; send null for either when the user doesn't say."
     ),
     "pause": (
-        "Pause the Main book at its current page. It stays in Waiting for you until the user "
-        "picks it up again."
+        "Pause the Main book at its current page. It becomes Up next, in place of any Book that "
+        "was Up next."
     ),
     "set_up_next": (
-        "Choose the Book to read next. It can be unread or paused, but not the Main book. It "
-        "replaces the current Up next, which stays paused or unread."
+        "Choose the Book to read next: any Book except the Main book, including a finished one "
+        "to re-read. It replaces the current Up next, which keeps its state."
     ),
     "edit_purpose": (
         "Change the Purpose of a Book's current Reading (active or paused): one sentence on "

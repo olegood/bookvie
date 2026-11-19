@@ -351,8 +351,8 @@ def _pause(state: Any, intent: PauseIntent) -> OkResponse:
 PAUSE = _write_tool(
     "pause",
     (
-        "Pause the Main book at its current page. It stays in Waiting for you until the user "
-        "picks it up again."
+        "Pause the Main book at its current page. It becomes Up next, in place of any Book that "
+        "was Up next."
     ),
     PauseIntent,
     parse_pause_intent,
@@ -368,8 +368,8 @@ def _set_up_next(state: Any, intent: SetUpNextIntent) -> OkResponse:
 SET_UP_NEXT = _write_tool(
     "set_up_next",
     (
-        "Choose the Book to read next. It can be unread or paused, but not the Main book. It "
-        "replaces the current Up next, which stays paused or unread."
+        "Choose the Book to read next: any Book except the Main book, including a finished one "
+        "to re-read. It replaces the current Up next, which keeps its state."
     ),
     SetUpNextIntent,
     parse_set_up_next_intent,

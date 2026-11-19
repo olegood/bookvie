@@ -1253,6 +1253,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-12-3-let-an-agent-record-my-reading.md`
   summary: The `pause` tool's description (epics.md Story 12.3) says the paused Book "stays in Waiting for you until the user picks it up again", but `pause` makes it Up next (role `upNext`, not `waiting`), so an agent tells the user the wrong place. AC-3 pins the text character for character, so change `epics.md` first, then `DESCRIPTIONS` in `test_agent_write.py` and `PAUSE` in `agent/tools.py`. Medium.
   evidence: `backend/bookvie/intents/pause.py` `pause` (sets `up_next_book_id`); `backend/bookvie/views/models.py` `Role` (Blind Hunter, build-auto review of Story 12.3).
+  resolved: standalone fix (2026-11-19). `epics.md` Story 12.3, `PAUSE` in `backend/bookvie/agent/tools.py` and `DESCRIPTIONS` in `backend/tests/test_agent_write.py` now say: "Pause the Main book at its current page. It becomes Up next, in place of any Book that was Up next."
 
 ## Deferred from: code review of spec-12-3-let-an-agent-record-my-reading (2026-11-19)
 
@@ -1262,3 +1263,4 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-12-3-let-an-agent-record-my-reading.md`
   summary: The `set_up_next` tool's description (epics.md Story 12.3) says the Book "can be unread or paused, but not the Main book". But `set_up_next` accepts any Book except the Main book, and AD-6 names a finished Book queued for a re-read, so an agent may refuse a re-read it could make. AC-3 pins the text, so change `epics.md` first, together with the `pause` text above, then `DESCRIPTIONS` and `SET_UP_NEXT`. Low.
   evidence: `backend/bookvie/intents/set_up_next.py` `set_up_next`; spine AD-6 (Spine Check, code review of Story 12.3).
+  resolved: standalone fix (2026-11-19). `epics.md` Story 12.3, `SET_UP_NEXT` in `backend/bookvie/agent/tools.py` and `DESCRIPTIONS` in `backend/tests/test_agent_write.py` now say: "Choose the Book to read next: any Book except the Main book, including a finished one to re-read. It replaces the current Up next, which keeps its state." The PRD glossary's Up next entry now names a finished Book queued for a re-read too.

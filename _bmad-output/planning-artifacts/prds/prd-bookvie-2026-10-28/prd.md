@@ -58,7 +58,7 @@ Anyone other than the single user.
 - **Main book**: the single Book whose Reading is currently tracked. There is at most one Main book.
 - **Side read**: a marker on a Book showing that it's currently being read on the side. It doesn't change the Book's status and doesn't create a Reading.
 - **Pause**: puts the active Reading back on the shelf, keeps its current page, and records the date it was paused. Pause also covers interruption by an urgent book.
-- **Up next**: the single Book the user has chosen to read next. It can be unread or paused.
+- **Up next**: the single Book the user has chosen to read next. It can be unread, paused, or finished and queued for a re-read.
 - **Waiting for you**: the list of paused Readings, except the Up next Book's.
 - **Purpose**: one sentence written when a Reading starts, answering "what do I need to be able to do with this knowledge?"
 - **Catch-up**: entering, on a later visit, the current page reached.
