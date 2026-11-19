@@ -1,8 +1,14 @@
 """FastAPI application factory.
 
 Serves the built SPA from ``static/``: ``/assets`` holds the hashed build
-output, and every other path outside ``/api`` and ``/media`` falls back to
-``index.html`` so client-side routes work on reload.
+output, and every other path outside ``/api``, ``/media`` and ``/mcp`` falls
+back to ``index.html`` so client-side routes work on reload.
+
+The agent tools (AD-21) are an MCP server at exactly ``/mcp``: stateless,
+with JSON responses, built fresh by every :func:`create_app`, its session
+manager running in the app's lifespan. Any other ``/mcp...`` path (``/mcp/x``,
+``/MCP``) is 404. The SDK's own Host/Origin check is off, so the guard below
+is the only one and every refusal is its 403; bodies are capped at 1 MiB.
 
 Covers are served at ``/media/covers/<name>`` (AD-12), only while a Book's
 ``coverFile`` names them, with immutable caching.
@@ -23,15 +29,19 @@ the guard refuses. This holds in browsers too old to send Sec-Fetch-Site.
 
 import os
 import threading
-from collections.abc import Iterable
+from collections.abc import AsyncIterator, Iterable, Sequence
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse, PlainTextResponse
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
+from mcp.server.streamable_http_manager import StreamableHTTPASGIApp
+from mcp.server.transport_security import TransportSecuritySettings
+from starlette.routing import BaseRoute, Match, NoMatchFound
 from starlette.types import ASGIApp, Receive, Scope, Send
 
-from bookvie import views
+from bookvie import agent, views
 from bookvie.intents import Clock, SystemClock
 
 from .api import BodySizeCap, install_api
@@ -39,7 +49,13 @@ from .api import BodySizeCap, install_api
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 
 # Path prefixes that belong to the server and must never fall back to the SPA.
-_SERVER_PREFIXES = ("api", "media")
+_SERVER_PREFIXES = ("api", "media", "mcp")
+
+# The agent tools' MCP endpoint (AD-21), and its body cap: the intents' 1 MiB
+# (Starlette's multipart part limit). The SDK refuses a declared Content-Length
+# over it with 413 before reading the body.
+MCP_PATH = "/mcp"
+MCP_BODY_CAP = 1024 * 1024
 
 # Cover names are never reused (AD-12), so a served cover never changes.
 COVER_CACHE_CONTROL = "public, max-age=31536000, immutable"
@@ -140,10 +156,38 @@ class HostOriginGuard:
         await self.app(scope, receive, send)
 
 
-def _is_server_path(path: str) -> bool:
+def _first_segment(path: str) -> str:
     # Tolerate `//api/x` and `/API/x` so they 404 instead of getting the SPA.
-    first = path.lstrip("/").split("/", 1)[0].lower()
-    return first in _SERVER_PREFIXES
+    return path.lstrip("/").split("/", 1)[0].lower()
+
+
+def _is_server_path(path: str) -> bool:
+    return _first_segment(path) in _SERVER_PREFIXES
+
+
+class _McpRoute(BaseRoute):
+    """Every method on any ``/mcp...`` path: :data:`MCP_PATH` itself goes to
+    the MCP app, and anything else (``/mcp/mcp``, ``/MCP``, ``//mcp/x``) is
+    404. A plain ``Route`` would let a POST to ``/mcp/x`` reach the GET-only
+    catch-all and answer 405, and a ``Mount`` would redirect ``/mcp`` to
+    ``/mcp/``."""
+
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    def matches(self, scope: Scope) -> tuple[Match, Scope]:
+        if scope["type"] == "http" and _first_segment(scope["path"]) == "mcp":
+            return Match.FULL, {}
+        return Match.NONE, {}
+
+    def url_path_for(self, name: str, /, **path_params: object):
+        raise NoMatchFound(name, path_params)
+
+    async def handle(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["path"] == MCP_PATH:
+            await self.app(scope, receive, send)
+            return
+        await JSONResponse({"detail": "Not Found"}, status_code=404)(scope, receive, send)
 
 
 def create_app(
@@ -157,6 +201,7 @@ def create_app(
     version: str = "",
     commit: str | None = None,
     checkout: str | None = None,
+    tools: Sequence[agent.AgentTool] | None = None,
 ) -> FastAPI:
     """Build the app. ``store`` is the opened ``bookvie.store.Store``, if any.
 
@@ -166,16 +211,25 @@ def create_app(
     default version is only for tests that build an app directly. ``checkout``
     is the folder the ``bookvie`` package runs from; only a ``--dev`` health
     reports it, so a second ``--dev`` launch can tell its own checkout's
-    server from another's (AD-16).
+    server from another's (AD-16). ``tools`` are the agent tools served at
+    ``/mcp`` (AD-21); only tests pass it, so every real server registers
+    :data:`bookvie.agent.TOOLS`.
     """
     static_dir = Path(static_dir).resolve()
     resolved_data_dir = str(Path(data_dir).resolve()) if data_dir is not None else None
+
+    @asynccontextmanager
+    async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+        async with mcp_server.session_manager.run():
+            yield
+
     app = FastAPI(
         title="bookvie",
         docs_url=None,
         redoc_url=None,
         # One schema per model, so the generated TS types have one name each.
         separate_input_output_schemas=False,
+        lifespan=lifespan,
     )
     # AD-4: serializes every write; shutdown waits on it before releasing the lock.
     app.state.store = store
@@ -187,6 +241,20 @@ def create_app(
         data_dir=Path(resolved_data_dir) if resolved_data_dir is not None else None,
         commit=commit if dev else None,
     )
+    # A fresh MCP server per app: an SDK session manager runs only once.
+    mcp_server = agent.build_mcp_server(
+        app.state, agent.TOOLS if tools is None else tools, version=version
+    )
+    mcp_server.streamable_http_app(
+        streamable_http_path=MCP_PATH,
+        json_response=True,
+        stateless_http=True,
+        max_request_body_size=MCP_BODY_CAP,
+        # The AD-16 guard is the only Host/Origin check, so no refusal is a 421.
+        transport_security=TransportSecuritySettings(enable_dns_rebinding_protection=False),
+    )
+    # Before every route registered below: the API, media, assets, favicon and SPA catch-all.
+    app.router.routes.append(_McpRoute(StreamableHTTPASGIApp(mcp_server.session_manager)))
     # Added first, so it runs inside the guard.
     app.add_middleware(BodySizeCap)
     app.add_middleware(HostOriginGuard, port=port, extra_origins=DEV_ORIGINS if dev else ())

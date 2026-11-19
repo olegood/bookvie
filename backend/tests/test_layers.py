@@ -17,7 +17,7 @@ import pytest
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[1] / "bookvie"
 
-LAYERS = {"http", "intents", "views", "domain", "store"}
+LAYERS = {"http", "agent", "intents", "views", "domain", "store"}
 TOP_LEVEL_MODULES = {"__init__", "cli", "instance"}
 # Any `bookvie.<name>` that is not a layer is grouped under this target.
 TOP_LEVEL = "toplevel"
@@ -26,7 +26,8 @@ ALLOWED: dict[str, set[str]] = {
     "store": {"domain"},
     "intents": {"domain", "store"},
     "views": {"domain", "store"},
-    "http": {"intents", "views"},
+    "agent": {"intents", "views"},
+    "http": {"agent", "intents", "views"},
 }
 
 

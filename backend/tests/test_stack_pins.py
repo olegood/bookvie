@@ -36,6 +36,8 @@ STACK_ROWS: dict[str, tuple[str, str] | None] = {
     "Uvicorn": ("pypi", "uvicorn"),
     "python-multipart": ("pypi", "python-multipart"),
     "Pillow": ("pypi", "pillow"),
+    "mcp": ("pypi", "mcp"),
+    "httpx2": ("pypi", "httpx2"),
     "pytest": ("pypi", "pytest"),
     "pytest-cov": ("pypi", "pytest-cov"),
     "Hypothesis": ("pypi", "hypothesis"),

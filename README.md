@@ -100,6 +100,17 @@ bookvie                                  # serves 127.0.0.1:8765 and opens the b
 
 **CI:** GitHub Actions runs the same four checks on every push to `master` and every pull request, plus a weekly and per-PR e2e burn-in. See [`docs/ci.md`](docs/ci.md).
 
+## Agent tools
+
+A running `bookvie` serves MCP tools at `/mcp`, so an agent in Claude Code can talk to your library with nothing else to start. A production server and a `--dev` server each serve their own tools on their own library. Add both to Claude Code once:
+
+```sh
+claude mcp add --transport http --scope user bookvie http://127.0.0.1:8765/mcp
+claude mcp add --transport http --scope user bookvie-dev http://127.0.0.1:8766/mcp
+```
+
+bookvie must be running for its tools to appear. If you start `bookvie` (or `bookvie --dev`) after the Claude Code session started, run `/mcp` in Claude Code, pick the entry and choose reconnect. The URL is exactly `/mcp`, with no trailing slash. A request from a web page is refused by the same guard as the app's API: a foreign `Origin` or `Host`, or a cross-site `Sec-Fetch-Site`.
+
 ## AI skills
 
 The repo ships two Claude Code skills in [`.claude/skills/`](.claude/skills/). Both talk to a local `bookvie` on `127.0.0.1:8765`.

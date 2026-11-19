@@ -1177,3 +1177,12 @@
   summary: Spine drift entries from a standalone spec (not an epic story) can slip through reconciliation. The retro lists "this epic's stories'" entries, and the next-epic gate matches `source_spec` `spec-{N-1}-*`. Neither picks up `spec-back-to-top-button.md`'s two AD-6 entries above, so the spine may stay stale on `lib/motion` and `components/BackToTop`. The next spine reconciliation should also sweep unresolved "spine drift" entries from standalone specs, or the filters should include them. Low.
   evidence: `_bmad/custom/bmad-build-auto.toml:18`, `_bmad/custom/bmad-build.toml:15`, `_bmad/custom/bmad-retrospective.toml:8` (Blind Hunter, code review of spec-back-to-top-button).
   resolved: spine reconciliation before Epic 12 (2026-11-19). The reconciliation swept every unresolved "spine drift" entry, so the two AD-6 entries above and item 80's AD-5/AD-16 entry (a retro-item spec, which `spec-{N-1}-*` also misses) are closed. The next-epic gate in `bmad-build-auto.toml` and `bmad-build.toml` now matches every unresolved "spine drift" entry whatever its `source_spec`, and the retrospective's reconciliation item lists them too.
+
+## Deferred from: build-auto review of spec-12-1-mount-the-mcp-server (2026-11-19)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-12-1-mount-the-mcp-server.md`
+  summary: Spine drift (AD-21), reconciled before the next epic: AD-21 Mount and the Stack row for `mcp` name the SDK's `MCPServer` and a mount of its streamable-HTTP app, but the build uses the low-level `mcp.server.lowlevel.Server` and a custom `_McpRoute`. `MCPServer`'s tool registration validates and coerces arguments and wraps errors as "Error executing tool", which AD-21 One validator forbids, and a `Mount` at `/mcp` redirects `/mcp` to `/mcp/`. Low.
+  evidence: `backend/bookvie/agent/server.py` `build_mcp_server`; `backend/bookvie/http/app.py` `_McpRoute` (Spine Check, build-auto review of Story 12.1).
+- source_spec: `_bmad-output/implementation-artifacts/spec-12-1-mount-the-mcp-server.md`
+  summary: Spine drift (AD-21), reconciled before the next epic: the spine still marks AD-21's rule, the `mcp` and `httpx2` Stack rows, the Structural Seed's `agent/` and the capability map's FR-28 row as planned, though Story 12.1 pins both packages, creates `agent/` and mounts `/mcp` with `get_app_info`. Low.
+  evidence: `backend/pyproject.toml` (`mcp>=2.3.0,<2.4`, `httpx2>=2.16.2,<2.17`); `backend/bookvie/agent/`; `backend/tests/test_layers.py` `LAYERS` (Spine Check, build-auto review of Story 12.1).

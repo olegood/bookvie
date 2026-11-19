@@ -29,10 +29,8 @@ from bookvie import instance
 from bookvie.intents import OkResponse, book_not_found
 from bookvie.intents.intent_model import IntentModel, malformed, parse_form_intent
 from tests.agent_client import PROTOCOL_VERSION, SESSION_HEADER, McpClient, error_of, text_of
-from tests.helpers import COULDNT_SAVE_BODY
+from tests.helpers import BASE_URL, COULDNT_SAVE_BODY
 from tests.servers import wait_for_health
-
-RED = "ATDD red phase (Story 12.1): nothing is mounted at /mcp yet"
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 README = BACKEND_ROOT.parent / "README.md"
@@ -140,7 +138,6 @@ def _section(text: str, title: str) -> str | None:
 # --- AC-1: the dependencies ------------------------------------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_mcp_and_httpx2_are_pinned_runtime_dependencies_and_httpx_stays_dev_only() -> None:
     # [P1] AC-1. Current on PyPI on 2026-11-19: mcp 2.3.0, httpx2 2.16.2.
     pyproject = tomllib.loads((BACKEND_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
@@ -189,7 +186,6 @@ def _start(data_dir: Path, *, dev: bool) -> tuple[subprocess.Popen, int]:
     return server, port
 
 
-@pytest.mark.skip(reason=RED)
 def test_a_production_and_a_dev_server_both_answer_mcp_at_exactly_slash_mcp(
     tmp_path: Path,
 ) -> None:
@@ -213,7 +209,6 @@ def test_a_production_and_a_dev_server_both_answer_mcp_at_exactly_slash_mcp(
             server.wait(timeout=20)
 
 
-@pytest.mark.skip(reason=RED)
 def test_each_app_builds_its_own_stateless_json_mcp_server_and_a_restart_needs_no_new_session(
     connect_mcp: Callable[..., McpClient], tmp_path: Path
 ) -> None:
@@ -270,7 +265,6 @@ SERVED = [
 ]
 
 
-@pytest.mark.skip(reason=RED)
 @pytest.mark.parametrize("headers", REFUSED)
 def test_the_ad16_guard_refuses_cross_origin_mcp_requests_with_its_403(
     mcp_client: McpClient, headers: dict[str, str]
@@ -288,7 +282,6 @@ def test_the_ad16_guard_refuses_cross_origin_mcp_requests_with_its_403(
 # --- AC-4: a server prefix, and the body cap --------------------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_the_spa_never_answers_an_mcp_path_and_a_body_over_1_mb_is_refused_unread(
     connect_mcp: Callable[..., McpClient], tmp_path: Path
 ) -> None:
@@ -297,8 +290,9 @@ def test_the_spa_never_answers_an_mcp_path_and_a_body_over_1_mb_is_refused_unrea
     static.mkdir()
     (static / "index.html").write_text("<p>spa</p>")
     client = connect_mcp(static_dir=static)
-    for path in ("/mcp/anything", "/MCP", "/Mcp/x", "/mcp/mcp", "//mcp/x"):
-        answer = client.http.get(path, follow_redirects=False)
+    for path in ("/mcp/anything", "/mcp/", "/MCP", "/Mcp/x", "/mcp/mcp", "//mcp/x"):
+        # Absolute URL: httpx would read a bare `//mcp/x` as host `mcp`, path `/x`.
+        answer = client.http.get(f"{BASE_URL}{path}", follow_redirects=False)
         assert answer.status_code == 404, (path, answer.status_code)
         assert "<p>spa</p>" not in answer.text, path
 
@@ -365,7 +359,6 @@ def _types(schema: dict[str, Any]) -> set[str]:
     return found
 
 
-@pytest.mark.skip(reason=RED)
 def test_the_tool_helper_advertises_the_models_schema_and_answers_like_the_routes(
     connect_mcp: Callable[..., McpClient],
 ) -> None:
@@ -420,7 +413,6 @@ def test_the_tool_helper_advertises_the_models_schema_and_answers_like_the_route
 # --- AC-6: the tool list ------------------------------------------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_the_only_tool_is_get_app_info_and_it_returns_the_app_info_view(
     mcp_client: McpClient,
 ) -> None:
@@ -446,7 +438,6 @@ def test_the_only_tool_is_get_app_info_and_it_returns_the_app_info_view(
 # --- AC-7: the shared fixture -------------------------------------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_the_shared_mcp_client_reaches_a_real_app_on_a_temporary_folder(
     mcp_client: McpClient, tmp_path: Path
 ) -> None:
@@ -461,7 +452,6 @@ def test_the_shared_mcp_client_reaches_a_real_app_on_a_temporary_folder(
 # --- AC-9: the README ---------------------------------------------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_the_readme_says_how_to_add_bookvie_and_bookvie_dev_to_claude_code() -> None:
     # [P2] AC-9. The reconnect step's wording comes from AC-8 (Oleg's real session).
     section = _section(README.read_text(encoding="utf-8"), "Agent tools")
@@ -474,3 +464,77 @@ def test_the_readme_says_how_to_add_bookvie_and_bookvie_dev_to_claude_code() -> 
         in section
     )
     assert "running" in section
+
+
+# --- The spec's I/O matrix: an unknown tool -------------------------------------
+
+
+@pytest.mark.parametrize("name", ["delete_book", "restore", "delete_card_note", "nope"])
+def test_an_unknown_tool_is_a_json_rpc_error_and_changes_nothing(
+    mcp_client: McpClient, name: str
+) -> None:
+    # Spec I/O matrix "Unknown tool": no tool runs, the data folder is unchanged.
+    before = _tree(mcp_client.data_dir)
+    mcp_client.ensure_initialized()
+    body = mcp_client.rpc("tools/call", {"name": name, "arguments": {"bookId": "b1"}})
+    assert "result" not in body, body
+    assert body["error"]["code"] == -32602, body
+    assert name in body["error"]["message"]
+    assert _tree(mcp_client.data_dir) == before
+
+
+def _tree(folder: Path) -> dict[str, bytes]:
+    """Every file under ``folder``, by relative path, with its bytes."""
+    return {
+        path.relative_to(folder).as_posix(): path.read_bytes()
+        for path in sorted(folder.rglob("*"))
+        if path.is_file()
+    }
+
+
+# --- The registration helper: more of its edges ----------------------------------
+
+
+class _MultiWordIntent(IntentModel):
+    """A nullable and a non-nullable optional field, both with a camelCase alias."""
+
+    nullable: ClassVar[frozenset[str]] = frozenset({"spine_color"})
+
+    spine_color: str | None = None
+    cover_note: str | None = None
+
+
+def test_the_schema_matches_nullable_by_python_field_name_not_alias() -> None:
+    from bookvie.agent import input_schema
+
+    properties = input_schema(_MultiWordIntent)["properties"]
+    assert properties.keys() == {"spineColor", "coverNote"}
+    assert _types(properties["spineColor"]) == {"string", "null"}
+    assert _types(properties["coverNote"]) == {"string"}
+    assert "default" not in properties["coverNote"]
+
+
+def test_get_app_info_refuses_an_argument(mcp_client: McpClient) -> None:
+    refused = mcp_client.call_tool("get_app_info", {"x": 1})
+    assert error_of(refused) == malformed().response_body()["error"]
+
+
+def test_two_tools_with_one_name_are_refused(tmp_path: Path) -> None:
+    from bookvie.agent import GET_APP_INFO
+    from bookvie.http.app import create_app
+
+    with pytest.raises(ValueError):
+        create_app(tmp_path / "no-static", tools=(GET_APP_INFO, GET_APP_INFO))
+
+
+def test_an_answer_that_cannot_be_serialized_is_couldnt_save(
+    connect_mcp: Callable[..., McpClient],
+) -> None:
+    from bookvie.agent import TOOLS, AgentTool, NoArguments
+
+    def run(state: Any, arguments: dict[str, Any]) -> Any:
+        return {"ok": True}  # not a model: model_dump fails
+
+    broken = AgentTool(name="broken_tool", description="Test only.", model=NoArguments, run=run)
+    client = connect_mcp(tools=(*TOOLS, broken))
+    assert error_of(client.call_tool("broken_tool")) == COULDNT_SAVE_BODY["error"]
