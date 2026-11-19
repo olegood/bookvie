@@ -71,44 +71,52 @@ Each step is its own skill run, in a fresh context. Docs and planning commits go
 | 0 | Spine | Before Epic 12's first story: reconcile the spine. `deferred-work.md` still has unresolved "spine drift" entries: AD-5/AD-16 (other-checkout refusal, `probe_checkout`, `create_app`'s `checkout`), and AD-6 (`lib/motion`, `components/BackToTop`) from the standalone back-to-top spec, which the next-epic gate doesn't pick up on its own (AGENTS.md → Architecture spine). | `bmad-architecture` (update) |
 | 1 | PRD | **FR-28 Agents read and update the library through MCP** (D1, D3, D4, D6, D7, D10, D12–D14), with the use cases from the idea. Bump `updated:`. | `bmad-prd` (update) |
 | 2 | Architecture spine | New **AD-21 MCP surface**: mounted in-process behind the guard (D1, D2, D4), tools share the intent handlers (D5, and a note in AD-3 that MCP tools are a second way in for the same intents), no destructive tools (D6), the outbound cover fetch and its rules (D8, D9), the backup folder (D10). Stack: the `mcp` SDK and the HTTP client (D16). Structural Seed: the MCP module. Capability map: FR-28. | `bmad-architecture` (update) |
-| 3 | Epics (`epics.md`) | New **Epic 12: bookvie MCP server**, covering FR-28, with the seven stories below. Add it to the Epic List and the FR coverage map. | `bmad-create-epics-and-stories` |
-| 4 | Sprint status | Add Epic 12 and Stories 12.1–12.7. | `bmad-sprint-planning` |
-| 5 | Stories 12.1–12.7 | ATDD → `bmad-build-auto` → `bmad-code-review` (new session) → `bmad-testarch-automate`, per AGENTS.md → Story pipeline. Then the Epic 12 retro. | per story |
+| 3 | Epics (`epics.md`) | New **Epic 12: bookvie MCP server**, covering FR-28, with the eight stories below. Add it to the Epic List and the FR coverage map. | `bmad-create-epics-and-stories` |
+| 4 | Sprint status | Add Epic 12 and Stories 12.1–12.8. | `bmad-sprint-planning` |
+| 5 | Stories 12.1–12.8 | ATDD → `bmad-build-auto` → `bmad-code-review` (new session) → `bmad-testarch-automate`, per AGENTS.md → Story pipeline. Then the Epic 12 retro. | per story |
 | 6 | `docs/ideas.md` | Status → `planned`, linking Epic 12 and this plan. Done with this plan. | — |
 
 No DESIGN.md or EXPERIENCE.md change: the epic has no UI. (The Backup page's "Last export" picks up MCP exports through D10 with no change.)
 
 ## 5. Story cut (Epic 12)
 
-**12.1 Mount the MCP server** (D1–D4, D16). The plumbing on its own, so the review isn't a 1,500-line diff (Amelia).
+Eight stories. The cut was refined on 2026-11-19 (advanced elicitation, pre-mortem and problem decomposition): 12.1 also builds the shared tool helper, the MCP test client and the reconnect probe; add/edit and the cover download are split so the security-heavy downloader gets its own review; tool descriptions are verbatim ACs.
 
-- Add and pin the `mcp` SDK. Mount its streamable-HTTP app at `/mcp` inside `HostOriginGuard`, with its session manager in the lifespan. The same in `--dev`.
-- One trivial tool (`ping` or `get_app_info`) to prove the round trip.
-- README: the two `claude mcp add` lines (D3), and that the app must be running.
+**12.1 Mount the MCP server** (D1–D4, D16). Needs nothing.
+
+- Add and pin the `mcp` SDK and `httpx2`. Mount at `/mcp` inside `HostOriginGuard`, session manager in the lifespan, the same in `--dev` (spine AD-21).
+- The one tool-registration helper in `agent/` every later tool uses: explicit input schema from a model, no SDK validation, `OkResponse` / AD-9 `error` results, worker thread, any other exception as `couldnt_save`. Proved with `get_app_info` and a test-only tool that takes arguments and fails.
+- The pytest MCP client fixture (the SDK client against the real app and its lifespan) that every later ATDD reuses.
+- Probe and record how Claude Code behaves when `/mcp` comes up after a session started, and the start-step pattern the skills will use.
+- README: the two `claude mcp add --scope user` lines (D3), and that the app must be running.
 
 **12.2 Read tools** (D12–D14). Needs 12.1.
 
-- `find_book` (candidates), `get_book`, `list_catalog`, `get_card_notes`, `get_home`, `get_stats`, each a thin call to its view.
+- `find_book` (candidates), `get_book`, `list_catalog`, `get_card_notes`, `get_home`, `get_stats`; the stats range parsing and the views' not-found refusal move into `views/`.
 
 **12.3 Daily-loop write tools** (D5, D6, D13). Needs 12.2 (`find_book` gives the ids).
 
-- The reading and card-note intents in §3, each calling the route's own parse and handler, each with its contract test.
+- The ten reading and card-note tools, with one parametrized tool-vs-route contract test.
 
-**12.4 Add and edit a Book, with a cover URL** (D7–D9). Needs 12.3.
+**12.4 Add and edit a Book** (D5, D12). Needs 12.3.
 
-- `add_book` and `edit_book`, and the cover downloader with D8's rules.
+- `add_book` and `edit_book` without a cover: whole edits, the duplicate refusal and `confirmDuplicate`.
 
-**12.5 Export a backup to disk** (D10, D11). Needs 12.1.
+**12.5 Fetch a cover from its address** (D7–D9). Needs 12.4.
 
-- `export_backup`: the dated zip in `~/bookvie-backups/` (or `-dev`), `lastExportAt` updated.
+- `coverUrl` on both tools and the downloader with D8's rules, with resolver and connection seams so no test touches the network.
 
-**12.6 Move `bookvie-notes-summary` onto MCP** (D15). Needs 12.2. Read-only, so it proves the read tools first.
+**12.6 Export a backup to disk** (D10, D11). Needs 12.1.
 
-- Replace its HTTP calls with the MCP tools. Keep the start step.
+- `export_backup`, the backup folder that follows the data folder, `lastExportAt`, and `HOME` isolation in pytest and Playwright.
 
-**12.7 Move `bookvie-new-book` onto MCP** (D15). Needs 12.4.
+**12.7 Move `bookvie-notes-summary` onto MCP** (D15). Needs 12.2.
 
-- Replace `add_book.py`'s multipart post with `find_book` (the duplicate check), `add_book` with `cover_url`, and `get_book` to verify. The skill no longer downloads the cover itself. The `added-by-skill` tag and the report stay as they are.
+- Replace its HTTP calls with the tools; keep the start step. Oleg verifies a real run against `--dev`.
+
+**12.8 Move `bookvie-new-book` onto MCP** (D15). Needs 12.5.
+
+- `find_book` (the duplicate check), `add_book` with `coverUrl`, `get_book` to verify. The skill no longer downloads covers. The `added-by-skill` tag and the report stay. Oleg verifies a real run against `--dev`.
 
 ## 6. Tests
 

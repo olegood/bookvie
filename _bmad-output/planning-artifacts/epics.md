@@ -13,13 +13,14 @@ inputDocuments:
   - _bmad-output/planning-artifacts/card-note-entry-plan-2026-11-14.md
   - _bmad-output/planning-artifacts/catalog-sort-direction-plan-2026-11-15.md
   - _bmad-output/planning-artifacts/dev-prod-favicon-plan-2026-11-17.md
+  - _bmad-output/planning-artifacts/mcp-server-plan-2026-11-19.md
 ---
 
 # bookvie - Epic Breakdown
 
 ## Overview
 
-This document breaks bookvie's PRD, UX design (DESIGN.md, EXPERIENCE.md) and architecture spine into eleven epics of implementable stories. Each story names the requirement IDs it satisfies and lists Given/When/Then acceptance criteria.
+This document breaks bookvie's PRD, UX design (DESIGN.md, EXPERIENCE.md) and architecture spine into twelve epics of implementable stories. Each story names the requirement IDs it satisfies and lists Given/When/Then acceptance criteria.
 
 **How to read it.** The Epic List gives the build order and what each epic delivers. Each epic section starts with its gate. Every story follows the conventions in "Conventions for every story", just before Epic 1. The Requirements Inventory is a lookup table; the source documents stay authoritative.
 
@@ -48,16 +49,17 @@ Gates are in each epic's section.
 | 9. Add card notes faster | Save a card note with Cmd+Enter or Ctrl+Enter, and add several in a row with a remembered Add another that keeps the panel open, keeps the page and shows a running count. | FR-17 (keyboard save, Add another) |
 | 10. Reverse the catalog order | A Sort direction toggle joined to the Sort select reverses the current key's natural order and says which order is in effect; remembered on this computer, reset on a key change, and followed by Home's slice. | FR-20 (Sort direction) |
 | 11. Know which bookvie you're looking at | Its own sage favicon. A development server keeps to its own library and port, refuses the real library, and is marked by an amber favicon, a `DEV · ` title and a DEV pill; Backup shows the version and data folder; a tab older than the app offers Reload. | FR-26, FR-27 |
+| 12. Talk to bookvie from Claude Code | Claude Code connects to the running bookvie at `/mcp` (its own entry for the real app and for a development server). An agent finds a Book without guessing; reads the catalog, a Book, Home, Card notes and Stats; logs pages, starts, pauses and finishes Readings, chooses Up next, edits Purposes, and adds and edits Card notes and Side reads; adds and edits Books, with a cover fetched from its web address; and writes a dated backup to disk. It can't delete or restore anything. The two bookvie skills move onto the tools. | FR-28 |
 
 ## Requirements Inventory
 
 ### Functional Requirements
 
-The PRD is authoritative; this text is a copy so each story can be read on its own. FR IDs are the PRD's own stable IDs. FR-12 and FR-13 (Day types, Reading calendar) were retired on 2026-10-28 and are not listed. Priority in brackets.
+The PRD is authoritative; this text is a copy so each story can be read on its own. FR IDs are the PRD's own stable IDs. FR-12 and FR-13 (Day types, Reading calendar) were retired on 2026-10-28 and are not listed. FR-2 was retired on 2026-11-19 and stays listed because Epic 1's stories cite it. Priority in brackets.
 
 FR-1 [Must]: Book fields. The user can create, edit and delete a Book. Required: title, pages, at least one author, edition (default 1), language, publisher, type (Paperback / Hardcover / Ebook). Optional: subtitle, ISBN, year, cover image, spine color, tags, Finished on. Saving is refused while any required field is empty. Pages is always a page count. Edition is displayed only when it isn't 1. A Book without a cover shows a "no cover" placeholder. New Books default to Ownership = owned. An empty spine color means automatic (from cover, else curated palette). An empty Finished on means not read; a date (not in the future) creates a back-filled Reading (no start date) finished on that date, and on a Book with an active or paused Reading adds a past Reading and leaves the current one untouched. In edit, Finished on shows the most recent finish date and changing it changes that date; clearing it is refused. Tags: many per Book, comma-separated free text with suggestions from existing tags, shown on Book detail. Editing Pages below the current page of an active or paused Reading, or below the highest Card note page, is refused with a message; finished Readings keep the page count they finished with. Deleting a Book requires confirmation and removes its Readings and Card notes.
 
-FR-2 [Must]: Agent-friendly form. Add-book and edit-book forms expose stable, labeled fields and buttons reachable by label, so a browser-driven AI skill can fill them as a person would. Every field has a visible label and a stable accessible name; labels don't change between releases without notice. Every form outcome (saved, duplicate warning, validation error, couldn't save) is exposed through roles, accessible names and live-region text. After saving, the new Book can be found by searching its title.
+FR-2 [Retired 2026-11-19, replaced by FR-28]: Agent-friendly form. Add-book and edit-book forms expose stable, labeled fields and buttons reachable by label, so a browser-driven AI skill can fill them as a person would. Every field has a visible label and a stable accessible name; labels don't change between releases without notice. Every form outcome (saved, duplicate warning, validation error, couldn't save) is exposed through roles, accessible names and live-region text. After saving, the new Book can be found by searching its title. Built in Epic 1; agents now use the agent tools (FR-28), and the form's labels stay as ordinary accessible names (AR23).
 
 FR-3 [Must]: Duplicate warning. A new Book matching an existing one triggers a warning before saving. Matching ISBN triggers it (ISBNs compared after removing hyphens/spaces and converting ISBN-10 to ISBN-13). When either Book has no ISBN, matching title (case- and extra-whitespace-insensitive) plus at least one shared author (set of semicolon-separated names, case- and surrounding-space-insensitive) triggers it. The warning offers exactly **Don't add** (closes, keeps typed fields) and **Add anyway**; the form behind is inert. On edit, the check runs only if title, an author or ISBN changed.
 
@@ -105,9 +107,11 @@ FR-26 [Must]: Development and production stay apart. A Development server (bookv
 
 FR-27 [Must]: The version is visible. The Backup page shows the version and the library's folder in About this copy; on a Development server it also says so and shows the exact build (the source commit); the real app shows no build. When the running app's version differs from the version an open tab was loaded with (a rollback counts too), the tab shows a quiet notice that bookvie was updated, with a Reload button; if the app can't be reached, for example while it restarts, there's no notice. The notice is announced once, never on every check; it's never a dialog and blocks nothing: the old tab keeps working until the user reloads it.
 
+FR-28 [Should]: Agents read and update the library through MCP. An AI agent in Claude Code can read the library and record reading through bookvie's agent tools, under the same rules as the UI and with no way to delete anything (uses: "I'm on page X of Y", the bookvie skills, reading lists, time-boxed plans, reading order). The tools are on whenever bookvie runs, with nothing extra to start; a Development server offers its own against its own library, so an agent trying something out never writes to the real library. Claude Code is the only supported client; the README gives the setup. A request from another site or host is refused. A write follows the same rules as the same action in the UI and is refused with the same reason and fields; adding a likely duplicate is refused until the agent confirms it. A free-text search (abbreviation, author, part of a title) returns every likely match with edition and type, or an empty list; every other tool names the Book by id, so a page is never logged on the wrong edition. Agents can read the catalog, a Book, Home, Card notes and Stats; start, update, pause and finish a Reading, choose Up next, edit a Purpose; add and edit Card notes; mark and unmark Side reads; add and edit Books; export a backup. They can't delete a Book or a Card note, or restore an export. Adding or editing a Book can take a cover's web address, which bookvie downloads; only an image from a public address is accepted, and a failed download saves nothing. An agent's export writes a dated backup file to a fixed folder (separate for a Development server), says where, replaces a same-day file, and counts as the last export. Each tool's description says what it does and how to use it; a refusal gives the same reason and fields as the UI. There are no planning tools: the agent answers from titles, tags, Purposes, Card notes, pages left and measured pace.
+
 ### NonFunctional Requirements
 
-NFR1 (Local-first): bookvie runs in a browser on one laptop or desktop. No account and no network connection for any feature; no database server; all data lives locally. A Book saved from any browser on this machine appears in every other browser.
+NFR1 (Local-first): bookvie runs in a browser on one laptop or desktop. No account and no network connection for any feature (the only outbound request is a cover download an agent asks for by address, FR-28); no database server; all data lives locally. A Book saved from any browser on this machine appears in every other browser.
 
 NFR2 (Display): UI in English only. Minimum viewport 1024px; below that the page scrolls horizontally; no phone layout. Light, dark or system theme selectable.
 
@@ -115,13 +119,13 @@ NFR3 (Accessibility): WCAG 2.2 AA in both themes, with one accepted deviation: t
 
 NFR4 (Speed): Catch-up (one page update) takes under 30 seconds and at most 2 interactions after opening the app.
 
-NFR5 (Data safety): No action silently deletes data. Every destructive action needs confirmation. A Development server never opens the real library (FR-26). A failed save is never silent: the UI says "Couldn't save. Your data wasn't changed." and keeps the user's input.
+NFR5 (Data safety): No action silently deletes data. Every destructive action needs confirmation. A Development server never opens the real library (FR-26). No agent tool deletes data (FR-28). A failed save is never silent: the UI says "Couldn't save. Your data wasn't changed." and keeps the user's input.
 
 NFR6 (Tone): No guilt mechanics: no streaks, no "you missed a day", no red failure states. No greetings, exclamation marks or praise. Finish copy is "Finished *X*."; the finish moment is a single ~600ms spine fill that never replays.
 
 NFR7 (Scale, from architecture): Sized for about 500 Books and a few thousand Card notes; the Catalog bookcase renders all ~500 spines in the page with no lazy rows.
 
-NFR8 (Unattended operation): Cataloging runs with nobody watching; every outcome of the add-book form is machine-readable by role, accessible name and live-region text. Renaming any Agent Label Contract entry is a breaking change.
+NFR8 (Unattended operation): Cataloging and other agent work run with nobody watching, through the agent tools (FR-28): every outcome is machine-readable as the AD-9 success or error object. (Until 2026-11-19 this bound the add-book form's labels; renaming a label is no longer a breaking change, AR23.)
 
 NFR9 (Look and feel): bookvie has its own tab icon, drawn for bookvie: a small shelf of three book spines on a plank, readable at 16×16, in the accent sage, with a lighter fill on a dark tab strip. A Development server shows the same drawing in amber (FR-26).
 
@@ -156,9 +160,9 @@ From ARCHITECTURE-SPINE.md and the TEA handoff. Each line names the source decis
 **CLI, process and security.**
 - AR19 (AD-5): One server per data folder through a health-checked lock.
 - AR20 (AD-16): Loopback bind, port handling, the Host/Origin guard and the SPA fallback.
-- AR21 (Consistency Conventions): CLI flags, stderr logging, no outbound network calls.
+- AR21 (Consistency Conventions): CLI flags, stderr logging, no outbound network calls except an agent's cover download (AR41).
 - AR22 (Stack, Structural Seed): Build into `backend/bookvie/http/static/`, shipped in the hatchling wheel, install with `uv tool install`, Vite dev proxy; React Router 8.5 and CSS Modules over one `tokens.css`.
-- AR23 (AD-17): The Agent Label Contract is a public interface; e2e drives it by exact accessible names, with no `data-testid`.
+- AR23 (AD-17): Accessible names are stable, and e2e finds the controls EXPERIENCE.md's table lists by role and that name, with no `data-testid`. Renaming one changes EXPERIENCE.md, the component and the e2e together; no agent depends on them (narrowed 2026-11-19 with FR-2's retirement).
 - AR24 (AD-6): The Tiles view is client presentation over the same sorted, filtered array as the bookcase and List. The ribbon reads the view's `finished`; the reading bar shows only when `percent` is not null and fills to `percent`, never recomputed; the tile's accessible name comes from the spine's name builder.
 - AR25 (AD-8, AD-12): `ShelfBook.coverFile` is added in the Python model first, then `api:gen`. Tiles load covers from `/media/covers/<coverFile>` at their stored size, lazily.
 - AR26 (AD-15, Deferred → Cover thumbnails): The remembered Catalog view gains `tiles`. No thumbnails unless Epic 8's 500-cover check fails; that follow-up would amend AD-12 and AD-14.
@@ -172,6 +176,17 @@ From ARCHITECTURE-SPINE.md and the TEA handoff. Each line names the source decis
 - AR32 (AD-7): `app-info` is an ordinary view keyed `['view', 'app-info']`: invalidated after every intent and refetched on window focus. A failed fetch keeps the last data; with no data yet, the shell looks like production and shows no notice.
 - AR33 (AD-16, Structural Seed): A dedicated `GET /favicon.svg` route, registered before the SPA catch-all, serves `favicon.svg` (sage) from a production server and `favicon-dev.svg` (amber) from a `--dev` one, as `image/svg+xml` with `Cache-Control: no-cache`. Both files live in `frontend/public/`; the build copies them into `http/static/`, the wheel ships them and the smoke test checks `/favicon.svg`. `index.html` links `/favicon.svg` once and the client never changes it. The Vite dev proxy forwards `/favicon.svg` with `/api` and `/media`.
 - AR34 (AD-8): One version: the bundle bakes its version at build time from `frontend/package.json` (a Vite `define`, declared for `tsc -b`); `scripts/release.sh` sets every copy, and a test in `npm run check` fails unless `bookvie.__version__`, `backend/pyproject.toml`, `package.json` and `frontend/package.json` agree.
+
+**Agent tools (Epic 12).** All from AD-21.
+- AR35 (AD-21, AD-16): `create_app` builds a fresh `MCPServer` each time and mounts its streamable-HTTP app at `/mcp` exactly (no `/mcp/mcp`, no redirect), before the SPA catch-all, with `mcp` among the server prefixes; its session manager runs in the app's lifespan; stateless with JSON responses; on in production and `--dev`; the intents' 1 MB body cap. `/mcp` is behind the AD-16 guard and `Sec-Fetch-Site` check; the SDK's own Host/Origin check is off (`enable_dns_rebinding_protection=False`), so refusals are AD-16's 403.
+- AR36 (AD-21): The tools, exactly: read `get_app_info`, `find_book`, `get_book`, `list_catalog`, `get_card_notes`, `get_home`, `get_stats`; write `start_reading`, `update_page`, `finish_reading`, `pause`, `set_up_next`, `edit_purpose`, `add_card_note`, `edit_card_note`, `mark_side_read`, `unmark_side_read`, `add_book`, `edit_book`; backup `export_backup`. `delete-book`, `delete-card-note`, `restore` and `set-spine-color` are never registered; a test asserts the list.
+- AR37 (AD-21, AD-8): One validator. A write tool's arguments are its intent's JSON body with the same camelCase keys (`add_book` and `edit_book` add optional `coverUrl`). Each tool advertises an input schema generated from its intent model by alias (plus `coverUrl`, `null` left out where the parser refuses it, no extra properties); the SDK neither validates nor coerces; `parse_*_intent` is the only validator; a test compares each advertised schema with its model.
+- AR38 (AD-21, AD-9): Same handler, same answers. The tool body runs in one worker-thread call, passes the arguments to the route's `parse_*_intent` and calls the same handler. Success: the route's `OkResponse` by alias (`ids`, `reachedLastPage`) as structured content, same JSON as text. Failure: `isError` with one text content, the AD-9 `error` object as JSON (`kind`, `code`, `message`, `fields`, `duplicates`); any other exception becomes `couldnt_save`. Read tools return their view model by alias and refuse as their routes do; parsing or refusing they need that lives in `http/api.py` (stats range, not-found) moves into `views/` first; `agent/` never imports `http/api`. A contract test per write tool compares tool and route: stored result and error.
+- AR39 (AD-21, AD-3): `edit_book` is a whole edit: its input schema requires every form key (only `removeCover`, `confirmDuplicate`, `coverUrl` optional) and the tool never merges with the stored Book. The stale-tab deviation is accepted for agent edits too.
+- AR40 (AD-21): `find_book` (`views/find_book`, a tool only) matches title, subtitle, authors, normalized ISBN and title-word initials ("DDIA") and returns `[{id, title, subtitle, authors, edition, type, role}]`, empty when nothing matches. Every other tool takes `bookId`. Tool descriptions are part of the interface and are fixed by the stories' ACs.
+- AR41 (AD-21, AD-12): Cover by URL (`intents/cover_fetch`), in order: take `coverUrl` out; `parse_*_intent` with `has_cover` when it was sent; `edit_book` checks the Book exists; download (before the AD-4 lock); the handler with an `UploadedCover`. Rules: `https` on every hop, redirects by hand (at most 3), every resolved address on every hop global (mapped, 6to4, NAT64, Teredo unwrapped), connect to the checked address with TLS verified against the hostname, proxy variables ignored, `Accept-Encoding: identity`, 30-second deadline, 20 MB cap while streaming, bytes sniffed for JPEG, PNG or WebP. Over 20 MB is `cover_too_large`, any other download failure `invalid_fields`, a handler `cover` refusal is reported on `coverUrl`; nothing is saved. No host allow-list.
+- AR42 (AD-21, AD-14, AD-15): `export_backup` (`intents/backup_file`) builds the export zip under the AD-4 lock, releases it, writes `bookvie-backup-YYYY-MM-DD.zip` (date from the `Clock`) atomically (unique temp, fsync, rename replacing the day's file), then records `lastExportAt` and returns `{path, size, createdAt}`; read failure `couldnt_export`, write failure `couldnt_save`. The backup folder follows the data folder: `~/bookvie-backups` for the default `~/bookvie-data`, `~/bookvie-backups-dev` for the default `~/bookvie-data-dev`, a sibling `<data folder>-backups` otherwise; `cli.py` resolves it and passes it to `create_app`; no flag, no retention.
+- AR43 (Stack, AD-21): `mcp` 2.3.x and `httpx2` 2.16.x become runtime dependencies, pinned in Story 12.1 after a fresh version check; `httpx` stays dev-only. pytest sets `HOME` to a temporary folder for every test and Playwright's servers get a temporary `HOME`, so no test writes a real backup folder.
 
 **Test harness and quality gates (TEA handoff).**
 - TR1 (TC-1): `LibraryBuilder` fixture and pre-start seeding of a data folder.
@@ -286,7 +301,7 @@ Each line names the UX section that holds the full requirement. D = DESIGN.md, E
 ### FR Coverage Map
 
 FR-1: Epic 1 - Book fields, create/edit/delete, Finished on back-fill, tags field, spine color
-FR-2: Epic 1 - Agent-friendly form (Agent Label Contract)
+FR-2: Epic 1 - Agent-friendly form (retired 2026-11-19; agents use FR-28)
 FR-3: Epic 1 - Duplicate warning
 FR-4: Epic 1 - Browse, search titles, open Book detail
 FR-5: Epic 3 - Start dialog, start/resume/re-read, pausing the previous Main with "This pauses *Y*…"; Epic 4 - Up next displacement lines
@@ -310,6 +325,7 @@ FR-24: Epic 1 - Catalog bookcase (spines, colors, meter, popover, keyboard); Epi
 FR-25: Epic 8 - Tiles view: grid, covers, ribbon, reading bar, typeset covers
 FR-26: Epic 11 - Dev defaults and the real-library refusal, `app-info` mode, the amber favicon, the DEV pill and the `DEV · ` title
 FR-27: Epic 11 - About this copy on Backup, the update notice and the one version
+FR-28: Epic 12 - The agent tools at `/mcp`: read tools and `find_book`, daily-loop write tools, add and edit a Book with a cover URL, `export_backup`, and the two bookvie skills moved onto them
 
 ## Conventions for every story
 
@@ -2625,3 +2641,306 @@ So that I reload when it suits me instead of remembering to hard-reload every ta
 **Given** the README
 **When** Oleg reads Updating
 **Then** the "hard-reload open tabs" instruction is replaced by a line saying open tabs show a notice with Reload.
+
+## Epic 12: Talk to bookvie from Claude Code
+
+Claude Code connects to the running bookvie at `/mcp`, the real app and a development server each through their own entry. An agent finds a Book without guessing, reads the library, records reading and Card notes, adds and edits Books with a cover fetched from its web address, and writes a dated backup to disk, under the same rules as the UI and with no way to delete or restore anything. The two bookvie skills move onto the tools.
+
+**Gate:** per-epic quality gates (TR7); the plan's P0 risks green (cross-origin refused on `/mcp`; mounted in production and `--dev`, the dev one on the dev data folder; same handler per write tool, errors included; no destructive tools; `find_book` candidates; the cover downloader's refusals, all against local fakes with no network; `export_backup` into a temporary `HOME`); every tool's registered description equals its story's AC text; existing pytest and e2e pass unchanged; `~/bookvie-data` and the real backup folders untouched by `npm run check`. Plan: `mcp-server-plan-2026-11-19.md`; spine AD-21.
+
+**Tool descriptions (all stories).** Each tool's registered description is the exact text its story quotes under "Description:". A test in each story fails unless the registered text equals it. Changing a description is a change to `epics.md` first.
+
+### Story 12.1: Mount the MCP server
+
+As Oleg,
+I want Claude Code to connect to the bookvie that's already running,
+So that an agent can reach my library with nothing extra to start.
+
+**Requirements:** FR-28, AR35, AR37, AR38, AR43
+
+**Acceptance Criteria:**
+
+**Given** `backend/pyproject.toml`
+**When** this story lands
+**Then** `mcp` and `httpx2` are runtime dependencies pinned to the versions current on the day (checked on PyPI and recorded in the spec), `httpx` stays dev-only, and `uv.lock` is updated.
+
+**Given** a production server and a `--dev` server
+**When** an MCP client connects to `http://127.0.0.1:<port>/mcp`
+**Then** it initializes and lists tools on both, with no `/mcp/mcp` path and no redirect to `/mcp/`
+**And** `create_app` builds a fresh MCP server each time (two apps in one pytest run both work), the session manager runs in the app's lifespan, the server is stateless with JSON responses, and a server restart needs no new session.
+
+**Given** a request to `/mcp` with a foreign `Origin`, a foreign `Host`, or a `Sec-Fetch-Site` other than `same-origin` or `none`
+**When** it arrives
+**Then** the AD-16 guard refuses it with 403, as it does `/api`
+**And** a request from the loopback address with no `Origin` (as Claude Code sends) is served
+**And** the SDK's own Host/Origin check is off, so no refusal is a 421.
+
+**Given** a GET to `/mcp/anything` or `/MCP`
+**When** it reaches the server
+**Then** the SPA catch-all doesn't answer it with `index.html` (`mcp` is a server prefix)
+**And** an `/mcp` body over 1 MB is refused before it is read.
+
+**Given** the tool-registration helper in `agent/`
+**When** a tool is declared with an intent or argument model
+**Then** its advertised input schema is generated from the model by alias, with no extra properties and `null` left out where the parser refuses it, and the SDK neither validates nor coerces the arguments
+**And** the tool body runs in one worker-thread call
+**And** a success returns its `OkResponse` (or view) by alias as structured content with the same JSON as text; an `IntentError` returns `isError` with one text content holding the AD-9 `error` object as JSON; any other exception returns `couldnt_save` with "Couldn't save. Your data wasn't changed."
+**And** a test-only tool with an argument proves all four: a schema equal to its model's, a `"212"` sent for an integer refused by the model and not coerced, an `IntentError` as the AD-9 object without an "Error executing tool" prefix, and an unexpected exception as `couldnt_save`. The test-only tool isn't registered outside tests.
+
+**Given** the tool list
+**When** a client lists tools after this story
+**Then** it holds exactly `get_app_info`
+**And** `get_app_info` returns the `app-info` view (`version`, `mode`, `dataDir`, `commit`) by alias.
+**Description:** "Which bookvie this is: its version, whether it is the real app (production) or a development server (dev), and the library folder it uses. Call it first to check you are talking to the bookvie you mean."
+
+**Given** the pytest suite
+**When** a later story writes an agent-tool test
+**Then** a shared fixture gives it an MCP client connected to a real app (with its lifespan) on a temporary data folder, and this story's tests use it.
+
+**Given** Claude Code with the `bookvie-dev` entry added while no server runs
+**When** Oleg starts `bookvie --dev` after the session has started
+**Then** the spec records what Claude Code does (connects on its own, needs `/mcp` reconnect, or needs a new session) and the start step the skills will use, verified by Oleg in a real session.
+
+**Given** the README
+**When** Oleg reads its new "Agent tools" section
+**Then** it gives `claude mcp add --transport http --scope user bookvie http://127.0.0.1:8765/mcp` and the same for `bookvie-dev` on `8766`, says bookvie must be running for the tools to appear, and gives the reconnect step this story found.
+
+### Story 12.2: Let an agent read my library
+
+As Oleg,
+I want an agent to find my books and read my reading,
+So that I can ask it about my library and it never guesses which book I mean.
+
+**Requirements:** FR-28, AR36, AR38, AR40
+
+**Acceptance Criteria:**
+
+**Given** a seeded library with "Designing Data-Intensive Applications" in two editions, and other Books
+**When** the agent calls `find_book` with `query` "DDIA", "Designing", "Kleppmann", or an ISBN with or without hyphens
+**Then** it returns every matching Book as `{id, title, subtitle, authors, edition, type, role}`, both editions included, each with its own edition and type
+**And** a query that matches nothing returns an empty list, not an error, and an empty query is refused as `invalid_fields` on `query`.
+**Description:** "Find Books in the library by a free-text query: part of a title or subtitle, an author, an ISBN, or a title's initials such as DDIA. Returns every likely match with its id, edition and type, or an empty list. Never pick a Book for the user: when more than one matches, ask which one. Every other tool takes the Book's id from here."
+
+**Given** a Book id
+**When** the agent calls `get_book` with `bookId`
+**Then** it returns the `book` view (the same model as `GET /api/views/book`, by alias)
+**And** an unknown id is refused with `book_not_found`, as the route refuses it.
+**Description:** "One Book in full: its fields, tags, role (Main book, Up next, waiting, Side read or none), its Readings, the current page, pages left, measured pace and its Card notes. Takes the Book's id from find_book."
+
+**Given** the library
+**When** the agent calls `list_catalog`
+**Then** it returns the `catalog` view by alias.
+**Description:** "Every Book in the catalog with its title, authors, type, tags, role, current page and percent read. Use it to answer questions across the library, such as which unread Books are about a topic."
+
+**Given** Card notes on several Books
+**When** the agent calls `get_card_notes` with no arguments, or with `bookId`
+**Then** it returns the `card-notes` view for all Books, or for that Book, by alias
+**And** an unknown `bookId` is refused with `book_not_found`.
+**Description:** "The user's Card notes (quotes and notes with their pages), for every Book or for one Book's id."
+
+**Given** the library
+**When** the agent calls `get_home`
+**Then** it returns the `home` view by alias.
+**Description:** "What the user is reading now: the Main book with its page and days left, Up next, the paused Books waiting, the Side reads, and when the library was last exported."
+
+**Given** finished Readings
+**When** the agent calls `get_stats` with no range, or with `from` and `to` as `YYYY-MM-DD`
+**Then** it returns the `stats` view by alias, as `GET /api/views/stats` does for the same range
+**And** a half range, a value that isn't a date, or a `to` before `from` is refused with `invalid_fields` on `from` or `to` with the route's copy
+**And** that parsing now lives in `views/`, and the route and the tool both use it.
+**Description:** "Books and pages finished, overall or for a period given as from and to dates (YYYY-MM-DD, both or neither)."
+
+**Given** `agent/`
+**When** the import graph is checked
+**Then** `agent/` imports nothing from `http/api`; the views' not-found refusal and the stats range parsing live in `views/`.
+
+### Story 12.3: Let an agent record my reading
+
+As Oleg,
+I want to tell an agent "I'm on page 212 of DDIA" and have it saved,
+So that I keep my reading up to date without opening the app.
+
+**Requirements:** FR-28, AR36, AR37, AR38, TR8
+
+**Acceptance Criteria:**
+
+**Given** the ten write tools `start_reading`, `update_page`, `finish_reading`, `pause`, `set_up_next`, `edit_purpose`, `add_card_note`, `edit_card_note`, `mark_side_read`, `unmark_side_read`
+**When** a client lists them
+**Then** each one's input schema equals its intent model's by alias (`bookId`, `page`, `purpose`, `finishedOn`, `purposeFulfilled`, `rating`, `cardNoteId`, `text`), and the tool list holds exactly 12.1's and 12.2's tools plus these ten.
+
+**Given** one parametrized contract test over the ten tools
+**When** each case sends the same input through the tool and through `POST /api/intents/<verb>` on two identical seeded libraries
+**Then** both give the same stored `library.json` and the same result: the same `ok`, `ids` and `reachedLastPage`, or the same `kind`, `code`, `message` and `fields`
+**And** the cases include, per tool where it applies: success; a no-op success (`set_up_next` for the Book already Up next, `mark_side_read` for a Side read, `unmark_side_read` for a Book that isn't one); `book_not_found`; `invalid_fields` with its fields; a wrong JSON type, an unknown key and a missing key refused as the route refuses them; and the state refusals (`not_main_book`, `already_main`, `reading_already_finished`, `main_cannot_be_up_next`, `main_cannot_be_side_read`, `side_reads_full`, `card_note_not_found`)
+**And** a filesystem fault at write gives `couldnt_save` and an unchanged `library.json` through the tool too (TR8).
+
+**Given** the descriptions
+**When** the tools are registered
+**Then** each equals its text below.
+- `start_reading` **Description:** "Make a Book the Main book and start or resume its Reading, with an optional one-sentence Purpose. This pauses the current Main book. For a Side read, page is required. Tell the user which Book will be paused before you call it."
+- `update_page` **Description:** "Save the page the user has reached in the Main book (an absolute page from 0 to its page count). Use the Book's id from find_book; never guess a Book from its title. reachedLastPage means the user is at the last page: ask whether to finish the Book."
+- `finish_reading` **Description:** "Finish a Book's current Reading, or record a past finish for a Book never read, on finishedOn (YYYY-MM-DD, not in the future). purposeFulfilled is yes, partly or notYet, and rating is 1 to 5; send null for either when the user doesn't say."
+- `pause` **Description:** "Pause the Main book at its current page. It stays in Waiting for you until the user picks it up again."
+- `set_up_next` **Description:** "Choose the Book to read next. It can be unread or paused, but not the Main book."
+- `edit_purpose` **Description:** "Change the Purpose of a Book's current Reading (active or paused): one sentence on what the user needs to be able to do with this Book. null clears it."
+- `add_card_note` **Description:** "Add a Card note to a Book: text (a quote or a note) and the page or page range where the user found it, such as 212 or 212-214."
+- `edit_card_note` **Description:** "Change a Card note's text and page. Takes the Book's id and the Card note's id from get_book or get_card_notes."
+- `mark_side_read` **Description:** "Mark a Book as read on the side, next to the Main book. At most 3 Side reads; it doesn't start a Reading."
+- `unmark_side_read` **Description:** "Stop reading a Book on the side. Its Readings and page don't change."
+
+**Given** the tool list
+**When** a client calls `delete_book`, `delete_card_note`, `restore` or `set_spine_color`
+**Then** the call fails as an unknown tool and nothing changes, and a test asserts none of them is listed.
+
+### Story 12.4: Let an agent add and edit a Book
+
+As Oleg,
+I want an agent to add a Book, or fix one, with the same checks as the New book panel,
+So that cataloging from Claude Code can't create duplicates or half-filled Books.
+
+**Requirements:** FR-28, FR-1, FR-3, AR36, AR37, AR38, AR39, TR8
+
+**Acceptance Criteria:**
+
+**Given** `add_book`
+**When** a client lists it
+**Then** its input schema equals the `add-book` intent model's by alias (every form key optional, as in the route, and `confirmDuplicate`), with no `coverUrl` yet.
+**Description:** "Add a Book to the catalog. Required: title, pages, authors (separated by semicolons), language, publisher, type (Paperback, Hardcover or Ebook); edition defaults to 1. A likely duplicate is refused with duplicate_book and the matching Books: show them to the user, and send confirmDuplicate true only if the user says to add it anyway. Returns the new Book's id."
+
+**Given** `edit_book`
+**When** a client lists it
+**Then** its input schema equals the `edit-book` intent model's by alias, except that every form key is required; only `removeCover` and `confirmDuplicate` are optional.
+**Description:** "Replace a Book's fields. This is a whole edit: a field you leave empty is cleared. Call get_book first and send every field, changing only what the user asked for. A changed title, author or ISBN that makes it a likely duplicate is refused like add_book."
+
+**Given** a contract test over both tools, as 12.3's
+**When** the same input goes through the tool and through the intent route on identical seeded libraries
+**Then** the stored result and the result or error are the same, for: success with the new `bookId`; `invalid_fields` with every failing field; `duplicate_book` with its `duplicates`, then success with `confirmDuplicate: true`; `pages_below_current_page`; `book_not_found` on edit; an unchanged edit that still commits; and a filesystem fault giving `couldnt_save` (TR8).
+
+**Given** a Book with a subtitle, ISBN, tags and a chosen spine color
+**When** `edit_book` is called with only `bookId` and `title`
+**Then** it is refused as invalid arguments naming the missing keys, and the Book is unchanged.
+
+### Story 12.5: Let an agent fetch a Book's cover from its address
+
+As Oleg,
+I want an agent to give bookvie a cover's web address and have bookvie fetch it,
+So that a cover never has to pass through the conversation, and fetching it can't reach anything on my machine or network.
+
+**Requirements:** FR-28, NFR1, AR21, AR41
+
+**Acceptance Criteria:**
+
+**Given** `add_book` and `edit_book`
+**When** a client lists them
+**Then** each also takes an optional `coverUrl` (a string), and the schema-equality tests include it.
+**Description addition:** both tools' descriptions end with: "coverUrl is the https address of the front cover image; bookvie downloads it. If the download fails, nothing is saved: tell the user why."
+
+**Given** `edit_book` with `removeCover: true` and a `coverUrl`
+**When** it is called
+**Then** it is refused as the route refuses `removeCover` with a cover file, before any download.
+
+**Given** `edit_book` for a Book that doesn't exist, with a `coverUrl`
+**When** it is called
+**Then** it is refused with `book_not_found` and nothing is downloaded.
+
+**Given** the downloader's resolver and connection seams, a local TLS fake server and a test resolver
+**When** a `coverUrl` points at it
+**Then** a JPEG served as `binary/octet-stream` is accepted and stored as the Book's cover through the existing cover path, as an uploaded JPEG would be
+**And** these are refused with `invalid_fields` on `coverUrl` and nothing saved: an `http` URL; a host that resolves to a loopback, private, link-local, shared (`100.64.0.0/10`), unspecified or metadata address, including when any one of several records does, and including IPv4-mapped, 6to4, NAT64 and Teredo forms; a redirect from a public host to any of those; a redirect to `http`; a fourth redirect; a body that isn't JPEG, PNG or WebP whatever its `Content-Type`; a download past 30 seconds
+**And** a body over 20 MB stops reading at the cap and is refused with `cover_too_large` on `coverUrl`
+**And** an image the cover path can't decode is reported on `coverUrl`, not `cover`
+**And** the connection goes to the address that was checked, with TLS verified against the hostname, `Accept-Encoding: identity`, and proxy variables ignored
+**And** on a refused `add_book` no Book is added; on a refused `edit_book` the Book is unchanged.
+
+**Given** the whole test suite
+**When** it runs
+**Then** no test opens a connection off the machine.
+
+### Story 12.6: Let an agent back up my library to disk
+
+As Oleg,
+I want an agent to write a dated backup file,
+So that a backup exists without me clicking Export, ready for a later upload.
+
+**Requirements:** FR-28, FR-22, AR36, AR42, AR43
+
+**Acceptance Criteria:**
+
+**Given** a server on the default `~/bookvie-data`, a `--dev` server on the default `~/bookvie-data-dev`, and a server on any other `--data-dir` (with `HOME` a temporary folder)
+**When** `export_backup` is called on 2026-11-19 (fake clock)
+**Then** it writes `bookvie-backup-2026-11-19.zip` into `~/bookvie-backups/`, `~/bookvie-backups-dev/`, or `<data folder>-backups/` respectively, creating the folder
+**And** returns `{path, size, createdAt}` with the absolute path.
+**Description:** "Write a dated backup of the whole library (library.json and covers, the same file as the Backup page's Export) to the backups folder, and return its path, size and time. A second backup on the same day replaces that day's file. It counts as the library's last export."
+
+**Given** the backup file
+**When** it is restored through the existing restore check
+**Then** it is accepted and reproduces the library (AD-14 round trip).
+
+**Given** a backup already written today
+**When** `export_backup` runs again the same day
+**Then** that day's file is replaced, no other file in the folder changes, and no temp file is left behind.
+
+**Given** a successful backup
+**When** the `backup` and `home` views are read
+**Then** "Last export" is the backup's time; a failed backup leaves it unchanged.
+
+**Given** a read failure while building the zip, or a write failure in the backup folder (filesystem seam)
+**When** `export_backup` runs
+**Then** it returns `couldnt_export` or `couldnt_save` respectively, the folder holds no partial file, and `lastExportAt` doesn't move.
+
+**Given** pytest and Playwright
+**When** `npm run check` runs
+**Then** every pytest test has `HOME` set to a temporary folder and every Playwright server gets a temporary `HOME`, and no real `~/bookvie-backups*` folder is created or changed.
+
+### Story 12.7: Summarize a book's notes through the agent tools
+
+As Oleg,
+I want `bookvie-notes-summary` to read my notes through the agent tools,
+So that it uses the same interface as everything else and needs no HTTP calls.
+
+**Requirements:** FR-28
+
+**Acceptance Criteria:**
+
+**Given** `.claude/skills/bookvie-notes-summary/`
+**When** this story lands
+**Then** it reads the Book through `find_book`, `get_book` and `get_card_notes` (or `get_home` for the Main book) and makes no `curl` or HTTP call to `/api/views/*` or `/api/intents/*`
+**And** it keeps its start step: check `/api/health` and start `bookvie` when it isn't running, then the reconnect step Story 12.1 found
+**And** the output (the one-page .docx) is unchanged in content and layout.
+
+**Given** a title that matches two editions
+**When** the skill runs
+**Then** it asks which one, and never picks one itself.
+
+**Given** a `--dev` server with a seeded Book that has a Purpose and Card notes
+**When** Oleg runs the skill in a real Claude Code session
+**Then** the summary is produced, and the spec records that run (manual verification).
+
+### Story 12.8: Add a book through the agent tools
+
+As Oleg,
+I want `bookvie-new-book` to add books through the agent tools,
+So that it checks duplicates with the server's own rule and bookvie fetches the cover itself.
+
+**Requirements:** FR-28, FR-3
+
+**Acceptance Criteria:**
+
+**Given** `.claude/skills/bookvie-new-book/`
+**When** this story lands
+**Then** it checks for the book with `find_book`, adds it with `add_book` and its `coverUrl`, and verifies it with `get_book`
+**And** it no longer downloads the cover itself, and its multipart `add_book.py` post and its duplicate pre-check copy (`check_catalog.py`) are gone, closing that `deferred-work.md` entry
+**And** it makes no `curl` or HTTP call to `/api/intents/*`
+**And** the `added-by-skill` tag, the `not-finished` and `0-pages` rules, and the terminal report stay as they are.
+
+**Given** `add_book` refuses with `duplicate_book`
+**When** the skill gets that result
+**Then** it shows the user the matching Books and adds with `confirmDuplicate: true` only on the user's say-so.
+
+**Given** a cover download refused on `coverUrl`
+**When** the skill gets that result
+**Then** it tells the user why, and offers to add the Book without a cover.
+
+**Given** a `--dev` server
+**When** Oleg runs the skill in a real Claude Code session on a book from amazon.com and one from leanpub.com
+**Then** both are added with their covers, and the spec records the runs (manual verification).
