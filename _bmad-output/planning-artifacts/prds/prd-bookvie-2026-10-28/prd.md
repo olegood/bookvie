@@ -2,10 +2,11 @@
 title: bookvie PRD
 status: final
 created: 2026-10-28
-updated: 2026-11-17
+updated: 2026-11-19
 inputs:
   - _bmad-output/brainstorming/brainstorm-personal-library-tracker-2026-10-27/brainstorm-intent.md
   - _bmad-output/planning-artifacts/ux-designs/ux-bookvie-2026-10-28/prd-deltas.md
+  - _bmad-output/planning-artifacts/mcp-server-plan-2026-11-19.md
 assumptions: all confirmed by the user on 2026-10-28
 ---
 
@@ -13,7 +14,7 @@ assumptions: all confirmed by the user on 2026-10-28
 
 ## 0. Document Purpose
 
-This PRD is for the builder, who is also the only user, and for the downstream UX, architecture, and epics work. §3 defines the terms the rest of the PRD uses. FR IDs are stable: FR-12 and FR-13 (Day types and the Reading calendar) were retired on 2026-10-28, and new requirements get new numbers. The addendum (`addendum.md`) holds the rules for Later features, the design rationale, and the competitive research.
+This PRD is for the builder, who is also the only user, and for the downstream UX, architecture, and epics work. §3 defines the terms the rest of the PRD uses. FR IDs are stable: FR-12 and FR-13 (Day types and the Reading calendar) were retired on 2026-10-28, FR-2 (Agent-friendly form) was retired on 2026-11-19 when agents moved to the MCP tools (FR-28), and new requirements get new numbers. The addendum (`addendum.md`) holds the rules for Later features, the design rationale, and the competitive research.
 
 ## 1. Vision
 
@@ -36,16 +37,18 @@ The Must features (§6.1) deliver Visible progress, Simplicity, and the Purpose.
 - Show me how far I am through the book I'm reading, and through my whole unread library.
 - When something urgent interrupts, let me park the current book without losing my place, and keep reminding me of it.
 - Don't lose my Readings and Card notes to a dead disk.
+- Let me tell an agent where I am in a book, and ask it about my library, without opening the app.
 
 ### 2.2 Non-Users (v1)
 Anyone other than the single user.
 
 ### 2.3 Key User Journeys
-- **UJ-1. The user catalogs a shelf.** The user points an AI skill at a stack of books. The skill fills the labeled add-book form the way a person would. bookvie warns when a book is a likely duplicate, and by the end of the evening the whole shelf is in the catalog.
+- **UJ-1. The user catalogs a shelf.** The user points an AI skill at a stack of books. For each one the skill looks the book up, adds it through bookvie's agent tools with its cover's web address, and checks the result. bookvie refuses a likely duplicate until the skill confirms it, and by the end of the evening the whole shelf is in the catalog.
 - **UJ-2. The user catches up after three busy days.** The user opens bookvie, enters p.212, and presses Update. The gauge jumps to 64%, and "~7 days left" appears next to it.
 - **UJ-3. An urgent work book arrives.** The user picks the work book, *X*, as the new Main book. bookvie asks: "Start *X*? This pauses *Y* at p.120 (64%)." The user confirms, and *Y* goes to Up next.
 - **UJ-4. The user finishes a book.** The user enters the last page. bookvie asks whether the Purpose was fulfilled and asks for a 1–5 star rating, then counts every page of the Book toward the period it finished in.
 - **UJ-5. The user wonders "how long until…".** The user types 30 pages/day into the quick pace calculator in the catalog and sees the unread library finishing in about 9 months.
+- **UJ-6. The user talks to an agent.** In Claude Code the user says "I'm on page 212 of DDIA". The agent finds two editions, asks which one, and records the page. Then the user asks "which of my books on distributed systems can I finish in two months?", and the agent answers from the Books' tags, Purposes, pages left and the measured pace.
 
 ## 3. Glossary
 
@@ -66,6 +69,7 @@ Anyone other than the single user.
 - **Measured pace**: total pages read in finished Readings, counted from each Reading's starting page and, after a resume at another page, from that page (pages skipped on a resume don't count), divided by the total days from their start dates to their finish dates. Both the start and the finish day count, so a same-day start and finish is 1 day. Back-filled Readings are excluded.
 - **Ownership**: *owned*, or *donated* once Donation ships (see addendum).
 - **Development server**: bookvie started in development mode, for building and testing bookvie. It keeps its own library and is marked "DEV" (FR-26). Anything else is the real app.
+- **Agent tools**: bookvie's MCP tools, through which an AI agent in Claude Code reads and updates the library (FR-28).
 - **Card note**: a piece of text (a quote or a note) plus the page or page range where the user found it, attached to a Book. It has one side only; it isn't a flash card.
 
 ## 4. Features
@@ -89,13 +93,6 @@ The user can create, edit, and delete a Book.
   - Tags: many per Book, in a free-text, comma-separated field with suggestions from existing tags. Tags are shown on Book detail.
   - Editing Pages below the current page of an active or paused Reading, or below the highest Card note page, is refused with a message. Finished Readings keep the page count they finished with.
   - Deleting a Book requires confirmation and removes its Readings and Card notes.
-
-#### FR-2: Agent-friendly form
-The add-book and edit-book forms expose stable, labeled fields and buttons that can be reached by their labels, so a browser-driven AI skill can fill them exactly as a person would.
-- **Consequences:**
-  - Every field has a visible label and a stable accessible name. Labels and accessible names don't change between releases without notice.
-  - Every outcome of the form (saved, duplicate warning, validation error, couldn't save) is exposed through roles, accessible names, and live-region text, because cataloging runs unattended.
-  - After saving, the user can find the new Book by searching for its title.
 
 #### FR-3: Duplicate warning
 When a new Book matches an existing one, bookvie warns before saving.
@@ -287,12 +284,30 @@ The user can see which version of bookvie is running and which library it uses, 
   - **Update notice:** when the running app's version differs from the version an open tab was loaded with, the tab shows a quiet notice that bookvie was updated, with a Reload button. A rollback counts as a difference too. If the app can't be reached, for example while it restarts, there's no notice.
   - The notice is announced once, never on every check. It's never a dialog and blocks nothing: the old tab keeps working until the user reloads it.
 
+### 4.11 Agents *(Should)*
+Realizes UJ-1 and UJ-6.
+
+#### FR-28: Agents read and update the library through MCP
+An AI agent in Claude Code can read the library and record the user's reading through bookvie's agent tools, under the same rules as the UI and with no way to delete anything. Typical uses: "I'm on page X of Y"; the bookvie skills that add a Book or summarize its Card notes; "which Books do I need to read to learn X?"; "which Books on X can I finish in two months?"; "in what order should I read X, Y and Z?".
+- **Consequences:**
+  - **On with the app:** the agent tools are available whenever bookvie runs, with nothing extra to start. When bookvie isn't running, the tools aren't available. A Development server offers its own tools against its own library (FR-26), so an agent trying something out never writes to the real library.
+  - **One client:** Claude Code is the only supported client. The README gives the setup for the real app and for a Development server.
+  - **Local only:** a request from another site or host is refused, like any other request to bookvie.
+  - **Same rules as the UI:** a write through the agent tools follows the same rules as the same action in the UI, and is refused with the same reason and the same fields. Adding a likely duplicate (FR-3) is refused until the agent confirms it explicitly.
+  - **Find, never guess:** an agent finds a Book with a free-text search (an abbreviation, an author, part of a title). The search returns every likely match with its edition and type, and an empty list when nothing matches. Every other tool names the Book by its id, so a page is never logged on the wrong edition.
+  - **What agents can do:** read the catalog, a Book, Home, Card notes and Stats for any period; start, update, pause and finish a Reading, choose Up next and edit a Purpose; add and edit Card notes; mark and unmark Side reads; add and edit Books; export a backup.
+  - **What agents can't do:** delete a Book or a Card note, or restore an export. These stay in the UI, behind their confirmation.
+  - **Covers by address:** adding or editing a Book can take the web address of its cover, and bookvie downloads it. Only an image from a public address is accepted. A failed download leaves the new Book unsaved, or the edited Book unchanged, with a clear error.
+  - **Backup to a folder:** an agent's export writes a dated backup file to a fixed backups folder (a separate one for a Development server) and says where it is. A second export on the same day replaces that day's file. It counts as the last export (FR-22).
+  - **Descriptions are the interface:** each tool's description says what it does and how to use it, for example that the Book's id comes from the search. A refusal gives the same reason and fields the UI would.
+  - **No planning tools:** reading lists, time-boxed plans and reading orders are questions the agent answers from what the read tools return: titles, tags, Purposes, Card notes, pages left and measured pace. Books have no topics; the agent matches titles and tags and fills in from its own knowledge of the books.
+
 ## 5. Cross-Cutting NFRs
-- **Local-first:** bookvie runs in a browser on one laptop or desktop. No account and no network connection are needed for any feature. There's no database server, and all data lives locally. A Book saved from any browser on this machine appears in every other browser.
+- **Local-first:** bookvie runs in a browser on one laptop or desktop. No account and no network connection are needed for any feature. The only outbound request is a cover download that an agent asks for with the cover's web address (FR-28). There's no database server, and all data lives locally. A Book saved from any browser on this machine appears in every other browser.
 - **Display:** The UI is in English only. The minimum viewport is 1024px; below that the page scrolls horizontally, and there's no phone layout. The user can choose a light, dark, or system theme.
 - **Accessibility deviation (accepted):** The 1024px minimum width doesn't meet WCAG 2.2 SC 1.4.10 Reflow; at 200–400% zoom the page scrolls horizontally. Accepted because bookvie has a single user, runs on desktop only, and phone layouts are Won't (§6.3).
 - **Speed:** Catch-up (one page update) takes under 30 seconds and at most 2 interactions after opening the app.
-- **Data safety:** No action silently deletes data. Every destructive action needs confirmation. A Development server never opens the real library (FR-26). A save that fails is never silent: the UI says "Couldn't save. Your data wasn't changed." and keeps the user's input.
+- **Data safety:** No action silently deletes data. Every destructive action needs confirmation. A Development server never opens the real library (FR-26). No agent tool deletes data (FR-28). A save that fails is never silent: the UI says "Couldn't save. Your data wasn't changed." and keeps the user's input.
 - **Look and feel:** bookvie has its own tab icon, drawn for bookvie: a small shelf of three book spines on a plank, readable at 16×16, in the accent sage, with a lighter fill on a dark tab strip. A Development server shows the same drawing in amber (FR-26).
 - **Tone:** No guilt mechanics. bookvie has no streaks, no "you missed a day" message, and no red failure states. There are no greetings, exclamation marks, or praise. The finish copy is "Finished *X*." ("Finished *X* again." for a re-read), and the finish moment is a single ~600ms spine fill that never replays.
 
@@ -320,7 +335,6 @@ Each item below is a one-line summary; the addendum has the full rules.
 - phone support or phone layouts
 - borrowed Books
 - batch or in-app import (restore from an export file is the only import)
-- a local API for entry
 - a session timer
 - per-day page logs
 - an abandoned status, or any history of abandons or of exclusions from Sequences
@@ -329,6 +343,6 @@ Each item below is a one-line summary; the addendum has the full rules.
 
 ## 7. Success Metrics
 - **SM-1:** The user retires the paper diary as the source of truth. The app's current page stays up to date at least weekly for 3 months. Validates FR-10.
-- **SM-2:** The whole existing library is in the catalog within the first month of the MVP. Validates FR-1 to FR-3.
+- **SM-2:** The whole existing library is in the catalog within the first month of the MVP. Validates FR-1, FR-3 and FR-28.
 - **SM-3 (the thesis):** Most paused Readings are finished within 6 months of their paused-at date. An urgent book is the usual cause of a pause, and bookvie doesn't record the cause. Validates FR-5 to FR-7.
 - **SM-C1 (do not optimize):** The number of visits or page updates. More updates aren't the goal; see §5 Tone. Counterbalances SM-1.
