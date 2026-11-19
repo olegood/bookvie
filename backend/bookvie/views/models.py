@@ -325,3 +325,25 @@ class StatsView(_View):
     """The bars' buckets, oldest first: one for every calendar month (or year) from the
     range's start to its end, empty ones included as 0 books and 0 pages. All time runs
     from the earliest finish's period to the latest's, and is ``[]`` with no finishes."""
+
+
+class BookCandidate(_View):
+    """One Book ``find_book`` found: enough to tell editions and types apart."""
+
+    id: str
+    title: str
+    subtitle: str | None
+    authors: list[str]
+    edition: int
+    type: Literal["paperback", "hardcover", "ebook"]
+    role: Role
+    """The Book's place in the reading plan, as ``BookDetailView.role`` defines it."""
+
+
+class FindBookView(_View):
+    """Every Book a ``find_book`` query matches, best match first; empty when none does.
+
+    An object, not a bare list, because MCP structured content is a JSON object.
+    """
+
+    books: list[BookCandidate]

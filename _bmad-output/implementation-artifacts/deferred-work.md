@@ -1198,12 +1198,42 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-12-1-mount-the-mcp-server.md`
   summary: `_success` passes any `model_dump` result as `structuredContent`. A `RootModel` or list view (as `find_book`'s candidates may be) dumps to a JSON array, which MCP doesn't allow for structured content. For Story 12.2: wrap a non-object answer in an object, or refuse it. Low.
   evidence: `backend/bookvie/agent/server.py` `_success` (Edge Case Hunter, code review of Story 12.1).
+  resolved: Story 12.2 (2026-11-19). `find_book` answers the object `{"books": [...]}` (`views.FindBookView`), and `_success` now raises on a body that isn't a JSON object, so such an answer is logged and refused as `couldnt_save`; `backend/tests/test_agent_read.py::test_an_answer_that_is_not_a_json_object_is_refused_as_couldnt_save` pins it (without the guard the SDK answers JSON-RPC -32603).
 - source_spec: `_bmad-output/implementation-artifacts/spec-12-1-mount-the-mcp-server.md`
   summary: Unverified, medium if true once write tools exist: a tool call still running when the lifespan's session manager exits keeps its worker thread (holding the AD-4 lock from Story 12.3) but its answer is dropped, and nothing says what the agent gets or how `cli.py`'s lock-waiting shutdown orders with the manager's teardown. Settle in Story 12.3 with a shutdown-during-call test.
   evidence: `backend/bookvie/http/app.py` `lifespan`; `backend/bookvie/agent/server.py` `call_tool` (Blind Hunter, code review of Story 12.1).
 - source_spec: `_bmad-output/implementation-artifacts/spec-12-1-mount-the-mcp-server.md`
   summary: Any non-`IntentError` failure in a tool answers `couldnt_save` ("Couldn't save. Your data wasn't changed."), as Story 12.1's spec says; for a read tool that wording is wrong. Decide the read tools' unexpected-error answer before Story 12.2. Low.
   evidence: `backend/bookvie/agent/server.py` `_answer` (Blind Hunter, code review of Story 12.1).
+  resolved: Story 12.2 (2026-11-19), decided to keep `couldnt_save`: the view routes answer an unexpected failure with the same `couldnt_save` (`http/api.py` `_unexpected_error`), so a read tool refuses as its route does. `backend/tests/test_agent_read.py::test_a_read_tools_unexpected_failure_is_couldnt_save_as_its_route_answers` pins it for `list_catalog` against `GET /api/views/catalog`.
 - source_spec: `_bmad-output/implementation-artifacts/spec-12-1-mount-the-mcp-server.md`
   summary: A malformed tool call reports the `malformed()` error on `field: "intent"` (the multipart part's name, via `parse_form_intent`), a field the tool's advertised schema doesn't have, so an agent is told to fix an argument that doesn't exist. Spec-mandated for 12.1; decide before Story 12.2's first tool with arguments whether the agent error should name the argument instead. Low.
   evidence: `backend/bookvie/agent/tools.py` `parse_arguments` (Blind Hunter, code review of Story 12.1).
+  resolved: Story 12.2 (2026-11-19) for the read tools: `parse_view_arguments` in `backend/bookvie/agent/tools.py` answers `invalid_fields` with one field per validation error, named by the argument's alias path, with Pydantic's message, as a view route names a bad query parameter. `parse_arguments` (on `intent`) stays for `get_app_info` and for Story 12.3's intent tools, which share the intent routes' parser. `backend/tests/test_agent_read.py::test_the_read_tools_refuse_a_bad_argument_by_naming_it` pins it.
+
+## Deferred from: build-auto review of spec-12-2-let-an-agent-read-my-library (2026-11-19)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-12-2-let-an-agent-read-my-library.md`
+  summary: Spine drift (AD-21), reconciled before the next epic: AD-21 "Find, never guess" says `find_book` returns a bare `[{id, title, subtitle, authors, edition, type, role}]`, but MCP 2025-11-25 structured content is a JSON object, so the tool answers `{"books": [...]}` with those candidates inside (Oleg's decision, ATDD checklist for Story 12.2). Low.
+  evidence: `backend/bookvie/views/models.py` `FindBookView`; `backend/bookvie/views/find_book.py`; spine AD-21 "Find, never guess" (Spine Check, build-auto review of Story 12.2).
+- source_spec: `_bmad-output/implementation-artifacts/spec-12-2-let-an-agent-read-my-library.md`
+  summary: Spine drift (AD-21), reconciled before the next epic: the Design Paradigm's dependency-direction line has no `views → intents` edge, but AD-21 and AD-9 put the views' refusals (book not found, the stats range rules, `find_book`'s blank query) in `views/`, which raise `bookvie.intents.contract`'s errors. `intents` never imports `views`; `backend/tests/test_layers.py` lets `views` import `bookvie.intents.contract` only (`ALLOWED_MODULES`), every other `intents` module stays forbidden. Low.
+  evidence: `backend/bookvie/views/shelf.py` `require_book_detail`, `views/card_notes.py` `require_card_notes`, `views/stats.py` `check_stats_range`, `views/find_book.py`; `backend/tests/test_layers.py` `ALLOWED_MODULES`; spine Design Paradigm, dependency direction (Spine Check, build-auto review of Story 12.2).
+- source_spec: `_bmad-output/implementation-artifacts/spec-12-2-let-an-agent-read-my-library.md`
+  summary: Spine drift (AD-21), reconciled before the next epic: AD-21 doesn't record the `find_book` ranking and matching Story 12.2 settled (exact title, ISBN, title prefix, title part or initials, author, subtitle; ties by `title_key`, edition, id; no cap; typographic folding as the duplicates rule; initials from 2 characters; ISBN only for an ISBN-10/13-shaped query), and the spine's Deferred list still says Story 12.2 decides it. Low.
+  evidence: `backend/bookvie/views/find_book.py` module docstring; spine AD-21, Deferred ("`find_book`'s ranking and match details") (Spine Check, build-auto review of Story 12.2).
+- source_spec: `_bmad-output/implementation-artifacts/spec-12-2-let-an-agent-read-my-library.md`
+  summary: Spine drift (AD-21), reconciled before the next epic: the Structural Seed still lists `find_book` under `views/` as planned, though Story 12.2 adds `views/find_book.py`. Low.
+  evidence: `backend/bookvie/views/find_book.py`; spine Structural Seed, `views/` line (Spine Check, build-auto review of Story 12.2).
+- source_spec: `_bmad-output/implementation-artifacts/spec-12-2-let-an-agent-read-my-library.md`
+  summary: Spine drift (AD-9), reconciled before the next epic: AD-9 says the stats refusal copy is in `http/api.py` `stats_view`; it now lives in `views/stats.py` (`IsoDate`, `check_stats_range`), shared by the route and `get_stats`. Low.
+  evidence: `backend/bookvie/views/stats.py`; `backend/bookvie/http/api.py` `stats_view`; spine AD-9, the stats `invalid_fields` sentence (Spine Check, build-auto review of Story 12.2).
+- source_spec: `_bmad-output/implementation-artifacts/spec-12-2-let-an-agent-read-my-library.md`
+  summary: Spine drift (AD-9, AD-21), reconciled before the next epic: neither AD-9's list of refusing views nor AD-21 names `find_book`'s refusal of a blank query (422 `invalid_fields` on `query`, "Give part of a title, an author or an ISBN."). Low.
+  evidence: `backend/bookvie/views/find_book.py` `find_book`; spine AD-9 Binds, AD-21 "Find, never guess" (Spine Check, build-auto review of Story 12.2).
+- source_spec: `_bmad-output/implementation-artifacts/spec-12-2-let-an-agent-read-my-library.md`
+  summary: Spine drift (AD-21), reconciled before the next epic: AD-21's "One validator" covers only the write tools; the read tools parse their arguments with `parse_view_arguments`, which names each failing argument by alias with Pydantic's message (as a view route names a bad query parameter), refuses an explicit `null` and coerces nothing but `get_stats`' date strings. Low.
+  evidence: `backend/bookvie/agent/tools.py` `parse_view_arguments`, `StatsArguments`; spine AD-21 "Same handler, same answers" (Spine Check, build-auto review of Story 12.2).
+- source_spec: `_bmad-output/implementation-artifacts/spec-12-2-let-an-agent-read-my-library.md`
+  summary: Spine drift (Consistency Conventions), reconciled before the next epic: the "Title ordering (server)" convention breaks title ties by Book id; `find_book`'s ranked candidates break them by edition, then id. A ranked list isn't a title-ordered one; the convention can name the exception. Low.
+  evidence: `backend/bookvie/views/find_book.py` `find_book` sort; spine Consistency Conventions, Title ordering (server) (Spine Check, build-auto review of Story 12.2).

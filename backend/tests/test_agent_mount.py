@@ -42,6 +42,16 @@ APP_INFO_DESCRIPTION = (
     "are talking to the bookvie you mean."
 )
 APP_INFO_KEYS = {"version", "mode", "dataDir", "commit"}
+# The tool list, cumulative across Epic 12's stories (each story extends it).
+AGENT_TOOL_NAMES = [
+    "get_app_info",
+    "find_book",
+    "get_book",
+    "list_catalog",
+    "get_card_notes",
+    "get_home",
+    "get_stats",
+]
 # The intents' cap on a body part (Starlette's multipart limit), 1 MiB.
 BODY_CAP = 1024 * 1024
 OWN = "http://127.0.0.1:8765"
@@ -200,7 +210,7 @@ def test_a_production_and_a_dev_server_both_answer_mcp_at_exactly_slash_mcp(
                 init = client.initialize()
                 assert init["protocolVersion"] == PROTOCOL_VERSION, (mode, init)
                 assert "tools" in init["capabilities"], (mode, init)
-                assert [tool["name"] for tool in client.list_tools()] == ["get_app_info"]
+                assert [tool["name"] for tool in client.list_tools()] == AGENT_TOOL_NAMES
                 info = client.call_tool("get_app_info")["structuredContent"]
                 assert info["mode"] == mode
                 assert info["dataDir"] == str(data_dir.resolve())
@@ -233,7 +243,7 @@ def test_each_app_builds_its_own_stateless_json_mcp_server_and_a_restart_needs_n
     # handshake and no session id, as Claude Code would after `bookvie` restarts.
     restarted = connect_mcp(data_dir=tmp_path / "first")
     first.http = restarted.http
-    assert [tool["name"] for tool in first.list_tools()] == ["get_app_info"]
+    assert [tool["name"] for tool in first.list_tools()] == AGENT_TOOL_NAMES
     assert first.call_tool("get_app_info").get("isError") in (None, False)
 
     # Exactly /mcp: no /mcp/mcp, and /mcp is never redirected to /mcp/.
@@ -419,8 +429,8 @@ def test_the_only_tool_is_get_app_info_and_it_returns_the_app_info_view(
 ) -> None:
     # [P0] AC-6.
     tools = mcp_client.list_tools()
-    assert [tool["name"] for tool in tools] == ["get_app_info"]
-    (tool,) = tools
+    assert [tool["name"] for tool in tools] == AGENT_TOOL_NAMES
+    tool = mcp_client.tool("get_app_info")
     assert tool["description"] == APP_INFO_DESCRIPTION
     assert tool["inputSchema"]["type"] == "object"
     assert tool["inputSchema"].get("properties", {}) == {}
@@ -618,7 +628,7 @@ def test_the_2026_07_28_stateless_envelope_is_served_and_its_handshake_falls_bac
 ) -> None:
     # [P2] AC-2. A newer client sends no `initialize`: every request carries its envelope.
     listed = _post_modern(mcp_client, "tools/list", {})
-    assert [tool["name"] for tool in listed["result"]["tools"]] == ["get_app_info"]
+    assert [tool["name"] for tool in listed["result"]["tools"]] == AGENT_TOOL_NAMES
     called = _post_modern(
         mcp_client, "tools/call", {"name": "get_app_info", "arguments": {}}, name="get_app_info"
     )

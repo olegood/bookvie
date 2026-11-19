@@ -20,6 +20,7 @@ from bookvie.domain import (
     title_key,
 )
 from bookvie.domain.book_fields import merge_tags
+from bookvie.intents.contract import book_not_found
 from bookvie.store import COVERS_DIR, Store, read_last_export, referenced_covers
 
 from .models import (
@@ -338,6 +339,19 @@ def book_detail(library: Library, book_id: str) -> BookDetailView | None:
         pages_left=pages_left(book),
         measured_pace=None if pace is None else float(pace),
     )
+
+
+def require_book_detail(library: Library, book_id: str) -> BookDetailView:
+    """:func:`book_detail`, refusing a missing Book with 404 ``book_not_found`` (AD-9)."""
+    view = book_detail(library, book_id)
+    if view is None:
+        raise book_not_found(404)
+    return view
+
+
+def role_of(library: Library, book: Book) -> Role:
+    """The Book's role in the reading plan, as ``BookDetailView.role`` defines it."""
+    return _role_reading(library, book)[0]
 
 
 def cover_path(store: Store, name: str) -> Path | None:

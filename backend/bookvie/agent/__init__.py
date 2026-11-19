@@ -5,7 +5,15 @@ Named ``agent`` so it isn't confused with the SDK's ``mcp``. It imports only
 """
 
 from .server import build_mcp_server
-from .tools import GET_APP_INFO, TOOLS, AgentTool, NoArguments, input_schema, parse_arguments
+from .tools import (
+    GET_APP_INFO,
+    TOOLS,
+    AgentTool,
+    NoArguments,
+    input_schema,
+    parse_arguments,
+    parse_view_arguments,
+)
 
 __all__ = [
     "GET_APP_INFO",
@@ -15,4 +23,5 @@ __all__ = [
     "build_mcp_server",
     "input_schema",
     "parse_arguments",
+    "parse_view_arguments",
 ]

@@ -24,8 +24,6 @@ import pytest
 from tests.agent_client import McpClient, error_of, text_of
 from tests.builder import LibraryBuilder
 
-RED = "red phase: Story 12.2's read tools aren't built yet"
-
 PACKAGE_ROOT = Path(__file__).resolve().parents[1] / "bookvie"
 
 DDIA = "Designing Data-Intensive Applications"
@@ -189,7 +187,6 @@ def _assert_no_arguments(client: McpClient, name: str) -> None:
 # --- AC-1: find_book --------------------------------------------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_find_book_returns_every_candidate_with_its_edition_and_type_and_never_guesses(
     connect_mcp: Callable[..., McpClient], tmp_path: Path
 ) -> None:
@@ -250,7 +247,6 @@ def test_find_book_returns_every_candidate_with_its_edition_and_type_and_never_g
 # --- AC-2: get_book ---------------------------------------------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_get_book_returns_the_book_view_and_refuses_an_unknown_id_as_the_route_does(
     connect_mcp: Callable[..., McpClient], tmp_path: Path
 ) -> None:
@@ -280,7 +276,6 @@ def test_get_book_returns_the_book_view_and_refuses_an_unknown_id_as_the_route_d
 # --- AC-3: list_catalog -----------------------------------------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_list_catalog_returns_the_catalog_view(
     connect_mcp: Callable[..., McpClient], tmp_path: Path
 ) -> None:
@@ -298,7 +293,6 @@ def test_list_catalog_returns_the_catalog_view(
 # --- AC-4: get_card_notes ---------------------------------------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_get_card_notes_returns_every_books_notes_or_one_books_and_refuses_an_unknown_id(
     connect_mcp: Callable[..., McpClient], tmp_path: Path
 ) -> None:
@@ -332,7 +326,6 @@ def test_get_card_notes_returns_every_books_notes_or_one_books_and_refuses_an_un
 # --- AC-5: get_home ---------------------------------------------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_get_home_returns_the_home_view(
     connect_mcp: Callable[..., McpClient], tmp_path: Path
 ) -> None:
@@ -407,7 +400,6 @@ def _invalid_fields(fields: list[dict[str, str]]) -> dict[str, Any]:
     }
 
 
-@pytest.mark.skip(reason=RED)
 def test_get_stats_returns_the_stats_view_and_refuses_a_bad_range_with_the_routes_copy(
     connect_mcp: Callable[..., McpClient], tmp_path: Path
 ) -> None:
@@ -458,7 +450,6 @@ def _raises_in(tree: ast.Module, names: tuple[str, ...]) -> dict[str, int]:
     return found
 
 
-@pytest.mark.skip(reason=RED)
 def test_agent_never_imports_http_api_and_the_view_refusals_live_in_views() -> None:
     # [P1] AC-7 agent/ imports nothing from http/api; the views' not-found refusal and
     # the stats range parsing live in views/, used by both the route and the tool.
@@ -486,3 +477,225 @@ def test_agent_never_imports_http_api_and_the_view_refusals_live_in_views() -> N
         cwd=PACKAGE_ROOT.parent,
     )
     assert loaded.stdout.strip() == "[]", loaded.stdout
+
+
+# --- Build (bmad-build-auto): the spec's added leaves -----------------------
+
+
+def _field_refusal(result: dict[str, Any]) -> list[tuple[str, str]]:
+    """An ``invalid_fields`` refusal's ``(field, message)`` pairs."""
+    error = error_of(result)
+    assert (error["kind"], error["code"]) == ("refusal", "invalid_fields"), error
+    return [(field["field"], field["message"]) for field in error["fields"]]
+
+
+def test_find_book_folds_case_and_accents_and_matches_a_subtitle_and_a_co_author(
+    connect_mcp: Callable[..., McpClient], tmp_path: Path
+) -> None:
+    # [P1] AC-1 case and accents fold, a subtitle word and a co-author match.
+    folder = tmp_path / "library"
+    ids = _seed(folder)
+    builder = LibraryBuilder.from_partial(json.loads((folder / "library.json").read_text()))
+    emile = builder.book(title="Émile, ou De l'éducation", authors=["Jean-Jacques Rousseau"])
+    builder.write(folder)
+    client = connect_mcp(data_dir=folder)
+    ddia = {ids["ddia1"], ids["ddia2"]}
+
+    assert _candidate_ids(client, "designing data") == ddia
+    assert _candidate_ids(client, "ddia") == ddia
+    assert _candidate_ids(client, "d.d.i.a") == ddia
+    assert _candidate_ids(client, "KLEPPMANN") == ddia
+    assert _candidate_ids(client, "emile") == {emile}
+    assert _candidate_ids(client, "ROUSSEAU") == {emile}
+    assert _candidate_ids(client, "Interaction Design") == {ids["interfaces"]}
+    assert _candidate_ids(client, "Riccomini") == {ids["ddia2"]}
+    # One letter is no set of initials, only a substring.
+    assert _candidate_ids(client, "D") == ddia | {ids["interfaces"], ids["dune"], emile}
+
+
+def test_find_book_finds_an_isbn_10_as_its_isbn_13_and_refuses_a_whitespace_query(
+    connect_mcp: Callable[..., McpClient], tmp_path: Path
+) -> None:
+    # [P1] AC-1 an ISBN-10 finds its ISBN-13; a whitespace-only query is refused like "".
+    client, ids = _open(connect_mcp, tmp_path)
+
+    assert _candidate_ids(client, "1449373321") == {ids["ddia1"]}
+    assert _candidate_ids(client, "1-4493-7332-1") == {ids["ddia1"]}
+    assert _candidate_ids(client, "978 1 098 11906 5") == {ids["ddia2"]}
+    # Any whitespace inside an ISBN is dropped: a tab, a no-break space.
+    assert _candidate_ids(client, "978\t1449373320") == {ids["ddia1"]}
+    assert _candidate_ids(client, "1449\u00a0373321") == {ids["ddia1"]}
+    # Ten characters that aren't an ISBN-10 are text, not a crash.
+    assert _candidate_ids(client, "123456789Y") == set()
+    assert _candidate_ids(client, "abcdefghij") == set()
+
+    message = "Give part of a title, an author or an ISBN."
+    for blank in ("", "   ", "\t\n"):
+        assert _field_refusal(client.call_tool("find_book", {"query": blank})) == [
+            ("query", message)
+        ], blank
+
+
+def test_find_book_gives_each_candidate_its_role_waiting_and_null_included(
+    connect_mcp: Callable[..., McpClient], tmp_path: Path
+) -> None:
+    # [P1] AC-1 a paused Book's candidate is waiting; a Side read with no Reading is null.
+    folder = tmp_path / "library"
+    builder = LibraryBuilder()
+    paused = builder.book(title="Paused Book", authors=["A"], pages=300)
+    side = builder.book(title="Side Book", authors=["B"], pages=200)
+    builder.reading(paused, start_date="2026-09-01", current_page=40)
+    builder.side_read(side)
+    builder.write(folder)
+    client = connect_mcp(data_dir=folder)
+
+    books = {
+        book["id"]: book["role"]
+        for book in _books(client.call_tool("find_book", {"query": "Book"}))
+    }
+    assert books == {paused: "waiting", side: None}
+
+
+def test_find_book_orders_by_how_a_book_matches_then_by_title_edition_and_id(
+    connect_mcp: Callable[..., McpClient], tmp_path: Path
+) -> None:
+    # [P1] AC-1 the order is deterministic: exact title, ISBN, title prefix, title part or
+    # initials, author, subtitle; ties by title, edition, id.
+    folder = tmp_path / "library"
+    builder = LibraryBuilder()
+    subtitle = builder.book(title="Zebra", subtitle="A Design Story", authors=["Z"])
+    author = builder.book(title="Yak", authors=["Ann Design"])
+    part = builder.book(title="Domain Design", authors=["X"])
+    initials = builder.book(title="Dark Energy Systems In Gravity Now", authors=["W"])
+    prefix_2 = builder.book(title="Design Patterns", authors=["V"], edition=2)
+    # Same title and edition, another type: only the id tells them apart. The larger id
+    # is stored first, so library order alone would list them the wrong way round.
+    prefix_1 = builder.book(
+        id="ffffffff-0000-4000-8000-000000000000", title="Design Patterns", authors=["V"], edition=1
+    )
+    prefix_1_ebook = builder.book(
+        id="00000000-0000-4000-8000-000000000001",
+        title="Design Patterns",
+        authors=["V"],
+        edition=1,
+        type="ebook",
+    )
+    exact = builder.book(title="Design", authors=["U"])
+    builder.write(folder)
+    client = connect_mcp(data_dir=folder)
+
+    expected = [exact, prefix_1_ebook, prefix_1, prefix_2, initials, part, author, subtitle]
+    for _ in range(2):
+        books = _books(client.call_tool("find_book", {"query": "design"}))
+        assert [book["id"] for book in books] == expected
+
+
+def test_the_read_tools_refuse_a_bad_argument_by_naming_it(
+    connect_mcp: Callable[..., McpClient], tmp_path: Path
+) -> None:
+    # [P1] AC-1/2/4/6 an extra, missing, non-string or null argument is invalid_fields on
+    # that argument, with Pydantic's message, never on `intent`; nothing is coerced.
+    client, ids = _open(connect_mcp, tmp_path)
+    extra = "Extra inputs are not permitted"
+    null = "Value error, null is not allowed here"
+    cases: list[tuple[str, dict[str, Any], list[tuple[str, str]]]] = [
+        ("find_book", {}, [("query", "Field required")]),
+        ("find_book", {"query": 7}, [("query", "Input should be a valid string")]),
+        ("find_book", {"query": None}, [("query", null)]),
+        ("find_book", {"query": "DDIA", "x": 1}, [("x", extra)]),
+        ("get_book", {}, [("bookId", "Field required")]),
+        ("get_book", {"bookId": 1}, [("bookId", "Input should be a valid string")]),
+        ("get_book", {"bookId": None}, [("bookId", null)]),
+        ("get_book", {"bookId": ids["ddia1"], "id": ids["ddia1"]}, [("id", extra)]),
+        ("get_card_notes", {"bookId": None}, [("bookId", null)]),
+        ("get_card_notes", {"book": ids["ddia1"]}, [("book", extra)]),
+        ("list_catalog", {"x": 1}, [("x", extra)]),
+        ("get_home", {"x": 1}, [("x", extra)]),
+        (
+            "get_stats",
+            {"from": 20260101, "to": "2026-12-31"},
+            [("from", "Value error, Use YYYY-MM-DD.")],
+        ),
+        # Arabic-Indic digits are digits to a regex's \d, not to YYYY-MM-DD.
+        (
+            "get_stats",
+            {"from": "\u0662\u0660\u0662\u0666-01-01", "to": "2026-12-31"},
+            [("from", "Value error, Use YYYY-MM-DD.")],
+        ),
+        ("get_stats", {"from": None, "to": None}, [("from", null), ("to", null)]),
+        ("get_stats", {"x": 1}, [("x", extra)]),
+        (
+            "get_stats",
+            {"from": "someday", "to": "never"},
+            [("from", "Value error, Use YYYY-MM-DD."), ("to", "Value error, Use YYYY-MM-DD.")],
+        ),
+    ]
+    for name, arguments, expected in cases:
+        assert _field_refusal(client.call_tool(name, arguments)) == expected, (name, arguments)
+
+    # Both ends bad: the tool names them in the route's order and copy.
+    both = {"from": "", "to": ""}
+    assert error_of(client.call_tool("get_stats", both)) == _view_error(client, "stats", both)
+
+
+def test_a_read_tools_unexpected_failure_is_couldnt_save_as_its_route_answers(
+    connect_mcp: Callable[..., McpClient], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # [P2] A read tool refuses an unexpected failure as its view route does: couldnt_save.
+    from fastapi.testclient import TestClient
+
+    from bookvie import views
+
+    client, _ids = _open(connect_mcp, tmp_path)
+    # The route's 500 envelope, not the exception TestClient re-raises by default.
+    http = TestClient(
+        client.http.app, base_url=str(client.http.base_url), raise_server_exceptions=False
+    )
+
+    def broken(library: Any) -> Any:
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(views, "catalog", broken)
+    error = error_of(client.call_tool("list_catalog"))
+    response = http.get("/api/views/catalog")
+    assert response.status_code == 500, response.text
+    assert error == response.json()["error"]
+    assert (error["kind"], error["code"]) == ("couldnt_save", "couldnt_save"), error
+
+
+def test_an_answer_that_is_not_a_json_object_is_refused_as_couldnt_save(
+    connect_mcp: Callable[..., McpClient],
+) -> None:
+    # [P2] MCP structured content is an object: a tool answering a list is couldnt_save.
+    from pydantic import RootModel
+
+    from bookvie.agent import TOOLS, AgentTool, NoArguments
+
+    def run(state: Any, arguments: dict[str, Any]) -> Any:
+        return RootModel[list[int]]([1, 2])
+
+    listing = AgentTool(name="list_tool", description="Test only.", model=NoArguments, run=run)
+    client = connect_mcp(tools=(*TOOLS, listing))
+    error = error_of(client.call_tool("list_tool"))
+    assert (error["kind"], error["code"]) == ("couldnt_save", "couldnt_save"), error
+
+
+def test_find_book_folds_typographic_dashes_apostrophes_and_runs_of_spaces(
+    connect_mcp: Callable[..., McpClient], tmp_path: Path
+) -> None:
+    # [P1] AC-1 a query typed with - or ' finds a title stored with \u2013 or \u2019, and the
+    # reverse; a run of spaces is one space; an apostrophe doesn't split a word's initial.
+    folder = tmp_path / "library"
+    builder = LibraryBuilder()
+    dash = builder.book(title="Clean Code \u2013 A Handbook", authors=["Robert Martin"])
+    curly = builder.book(title="Don\u2019t Make Me Think", authors=["Steve Krug"])
+    straight = builder.book(title="The Hitchhiker's Guide", authors=["Douglas Adams"])
+    builder.write(folder)
+    client = connect_mcp(data_dir=folder)
+
+    assert _candidate_ids(client, "code - a") == {dash}
+    assert _candidate_ids(client, "Don't make") == {curly}
+    assert _candidate_ids(client, "Hitchhiker\u2019s") == {straight}
+    assert _candidate_ids(client, "don\u2019t  make   me") == {curly}
+    assert _candidate_ids(client, "DMMT") == {curly}
+    assert _candidate_ids(client, "THG") == {straight}

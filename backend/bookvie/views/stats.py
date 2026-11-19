@@ -4,16 +4,49 @@ Each finished Reading counts once by its ``finishDate``, back-fills and re-reads
 included, with its stored ``finishedPages`` (AD-11). Side read marks change
 nothing. The client resolves the presets to dates; the server only counts, and
 fills one bucket per calendar month (or year, past 24 months) the range touches.
+
+The range rules live here too, so the stats route and the ``get_stats`` agent
+tool refuse a bad range alike (AD-21): :data:`IsoDate` parses each end, and
+:func:`check_stats_range` checks the pair.
 """
 
+import re
 from datetime import date
+from typing import Annotated
+
+from pydantic import BeforeValidator
 
 from bookvie.domain import Library
+from bookvie.intents.contract import FieldError, invalid_fields
 
 from .models import StatsBucket, StatsView
 
 MONTH_BUCKET_LIMIT = 24
 """Ranges spanning more calendar months than this are bucketed by year (AD-6)."""
+
+_ISO_DATE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}")
+
+
+def _iso_date(value: object) -> object:
+    """Refuse anything but a ``YYYY-MM-DD`` string: a lax ``date`` also takes datetimes,
+    timestamps and numbers."""
+    if not isinstance(value, str) or not _ISO_DATE.fullmatch(value):
+        raise ValueError("Use YYYY-MM-DD.")
+    return value
+
+
+IsoDate = Annotated[date, BeforeValidator(_iso_date)]
+"""One end of a stats range: a ``YYYY-MM-DD`` string, parsed laxly into a ``date``."""
+
+
+def check_stats_range(start: date | None, end: date | None) -> None:
+    """Refuse a half range, or an ``end`` before ``start``, with 422 ``invalid_fields``."""
+    if start is None and end is not None:
+        raise invalid_fields([FieldError(field="from", message="Give both from and to.")])
+    if end is None and start is not None:
+        raise invalid_fields([FieldError(field="to", message="Give both from and to.")])
+    if start is not None and end is not None and end < start:
+        raise invalid_fields([FieldError(field="to", message="To is before From.")])
 
 
 def months_spanned(start: date, end: date) -> int:

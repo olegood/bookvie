@@ -5,6 +5,7 @@ highlighting run in the client.
 """
 
 from bookvie.domain import Book, Library, title_key
+from bookvie.intents.contract import book_not_found
 
 from .models import CardNotesGroup, CardNotesScope, CardNotesView
 from .shelf import card_note_views
@@ -33,3 +34,11 @@ def card_notes(library: Library, book_id: str | None) -> CardNotesView | None:
         (b for b in library.books if b.card_notes), key=lambda b: (title_key(b.title), b.id)
     )
     return CardNotesView(scope=None, groups=[_group(b) for b in books])
+
+
+def require_card_notes(library: Library, book_id: str | None) -> CardNotesView:
+    """:func:`card_notes`, refusing a missing Book with 404 ``book_not_found`` (AD-9)."""
+    view = card_notes(library, book_id)
+    if view is None:
+        raise book_not_found(404)
+    return view

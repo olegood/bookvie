@@ -7,7 +7,8 @@ one, since an SDK session manager runs only once.
 
 Answers follow the intent and view routes: an ``OkResponse`` without its
 ``None`` fields, a view as is, both by alias as structured content with the
-same JSON as the one text content. An ``IntentError`` is ``isError`` with
+same JSON as the one text content; an answer that isn't a JSON object is
+refused as unexpected. An ``IntentError`` is ``isError`` with
 the AD-9 ``error`` object as JSON; anything else is ``couldnt_save``.
 """
 
@@ -74,6 +75,9 @@ def _success(result: BaseModel) -> mcp_types.CallToolResult:
     body = result.model_dump(
         mode="json", by_alias=True, exclude_none=isinstance(result, OkResponse)
     )
+    if not isinstance(body, dict):
+        # MCP structured content is a JSON object; a list or scalar view is a bug (AD-21).
+        raise TypeError(f"an agent tool answered a {type(body).__name__}, not an object")
     return mcp_types.CallToolResult(
         content=[mcp_types.TextContent(text=json.dumps(body))], structured_content=body
     )

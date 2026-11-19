@@ -2,9 +2,11 @@
 
 from .app_info import AppInfoView, app_info
 from .backup import backup
-from .card_notes import card_notes
+from .card_notes import card_notes, require_card_notes
+from .find_book import find_book
 from .models import (
     BackupView,
+    BookCandidate,
     BookCardNote,
     BookDetailView,
     BookReading,
@@ -13,6 +15,7 @@ from .models import (
     CardNotesView,
     CatalogView,
     CurrentReading,
+    FindBookView,
     HomeMainBook,
     HomeView,
     LibraryMeter,
@@ -20,12 +23,13 @@ from .models import (
     StatsBucket,
     StatsView,
 )
-from .shelf import book_detail, catalog, cover_path, home, home_for
-from .stats import stats
+from .shelf import book_detail, catalog, cover_path, home, home_for, require_book_detail
+from .stats import IsoDate, check_stats_range, stats
 
 __all__ = [
     "AppInfoView",
     "BackupView",
+    "BookCandidate",
     "BookCardNote",
     "BookDetailView",
     "BookReading",
@@ -34,8 +38,10 @@ __all__ = [
     "CardNotesView",
     "CatalogView",
     "CurrentReading",
+    "FindBookView",
     "HomeMainBook",
     "HomeView",
+    "IsoDate",
     "LibraryMeter",
     "ShelfBook",
     "StatsBucket",
@@ -45,8 +51,12 @@ __all__ = [
     "book_detail",
     "card_notes",
     "catalog",
+    "check_stats_range",
     "cover_path",
+    "find_book",
     "home",
     "home_for",
+    "require_book_detail",
+    "require_card_notes",
     "stats",
 ]

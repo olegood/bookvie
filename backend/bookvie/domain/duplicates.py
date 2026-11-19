@@ -50,10 +50,16 @@ def isbns_match(a: str, b: str) -> bool:
     return normalize_isbn(a) == normalize_isbn(b)
 
 
-def _key(text: str) -> str:
-    """NFKC normalized, quotes and dashes folded, trimmed, whitespace runs collapsed, casefolded."""
+def fold_typography(text: str) -> str:
+    """NFKC normalized, typographic quotes and dashes folded to ASCII, trimmed, and runs of
+    whitespace collapsed to one space; case is kept."""
     folded = unicodedata.normalize("NFKC", text).translate(_TYPOGRAPHIC)
-    return _WHITESPACE.sub(" ", folded.strip()).casefold()
+    return _WHITESPACE.sub(" ", folded.strip())
+
+
+def _key(text: str) -> str:
+    """:func:`fold_typography`, then casefolded."""
+    return fold_typography(text).casefold()
 
 
 def titles_match(a: str, b: str) -> bool:

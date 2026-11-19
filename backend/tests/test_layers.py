@@ -1,7 +1,10 @@
 """Enforce the layer import direction (ARCHITECTURE-SPINE: Design Paradigm).
 
 Allowed edges: ``domain`` imports no other layer; ``store`` imports ``domain``;
-``intents`` and ``views`` import ``domain`` and ``store``; ``http`` imports
+``intents`` imports ``domain`` and ``store``; ``views`` imports ``domain``,
+``store`` and, of ``intents``, only ``intents.contract`` (the AD-9 error
+types, for the views that refuse);
+``agent`` imports ``intents`` and ``views``; ``http`` imports ``agent``,
 ``intents`` and ``views``. Every other cross-layer import is forbidden.
 
 Outside the layers, the package holds only ``__init__``, ``cli`` (the
@@ -28,6 +31,11 @@ ALLOWED: dict[str, set[str]] = {
     "views": {"domain", "store"},
     "agent": {"intents", "views"},
     "http": {"agent", "intents", "views"},
+}
+# Single modules (and the names they define) a layer may import from a layer it
+# may not import as a whole.
+ALLOWED_MODULES: dict[str, tuple[str, ...]] = {
+    "views": ("bookvie.intents.contract",),
 }
 
 
@@ -69,6 +77,25 @@ def _target_layer(module: str) -> str | None:
     return parts[1] if parts[1] in LAYERS else TOP_LEVEL
 
 
+def _allowed_module(layer: str, module: str) -> bool:
+    return any(
+        module == allowed or module.startswith(f"{allowed}.")
+        for allowed in ALLOWED_MODULES.get(layer, ())
+    )
+
+
+def _forbidden(layer: str, modules: list[str]) -> list[str]:
+    """The imported ``modules`` that ``layer`` may not import."""
+    forbidden = []
+    for module in modules:
+        target = _target_layer(module)
+        if target is None or target == layer:
+            continue
+        if target not in ALLOWED[layer] and not _allowed_module(layer, module):
+            forbidden.append(module)
+    return forbidden
+
+
 def _layer_sources() -> list[tuple[str, Path]]:
     return [
         (layer, path)
@@ -95,13 +122,7 @@ def test_top_level_holds_only_cli_instance_and_layers() -> None:
     ids=lambda v: str(v.relative_to(PACKAGE_ROOT)) if isinstance(v, Path) else v,
 )
 def test_no_forbidden_import(layer: str, path: Path) -> None:
-    forbidden = []
-    for module in _imported_modules(path):
-        target = _target_layer(module)
-        if target is None or target == layer:
-            continue
-        if target not in ALLOWED[layer]:
-            forbidden.append(module)
+    forbidden = _forbidden(layer, _imported_modules(path))
     assert not forbidden, f"{path.relative_to(PACKAGE_ROOT)} imports {forbidden}"
 
 
@@ -115,3 +136,22 @@ def test_scanner_catches_violations(tmp_path: Path) -> None:
     )
     targets = {_target_layer(m) for m in _imported_modules(bad, root)} - {None}
     assert targets == {"store", "http", "views", TOP_LEVEL}
+
+
+def test_views_may_import_only_intents_contract_of_the_intents_layer(tmp_path: Path) -> None:
+    root = tmp_path / "bookvie"
+    (root / "views").mkdir(parents=True)
+    view = root / "views" / "view.py"
+    view.write_text(
+        "from bookvie.intents.contract import book_not_found\n"
+        "from bookvie.intents.add_book import add_book\n"
+        "from bookvie.intents import commit\n"
+        "import bookvie.intents.contracts_extra\n"
+    )
+    assert _forbidden("views", _imported_modules(view, root)) == [
+        "bookvie.intents.add_book",
+        "bookvie.intents.add_book.add_book",
+        "bookvie.intents",
+        "bookvie.intents.commit",
+        "bookvie.intents.contracts_extra",
+    ]

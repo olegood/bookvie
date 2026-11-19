@@ -21,11 +21,9 @@ the lock is taken; the exact limit is checked on the spooled file.
 ``app.state.store`` is duck-typed and only its ``library`` is read.
 """
 
-import re
 import sys
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from datetime import date
 from typing import IO, Annotated, Any
 
 import anyio
@@ -38,7 +36,7 @@ from fastapi.exception_handlers import (
 )
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, PlainTextResponse, Response
-from pydantic import BaseModel, BeforeValidator
+from pydantic import BaseModel
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
@@ -53,7 +51,6 @@ from bookvie.intents import (
     UploadedCover,
     add_book,
     add_card_note,
-    book_not_found,
     build_export,
     couldnt_save,
     cover_too_large,
@@ -363,10 +360,7 @@ def catalog_view(request: Request) -> views.CatalogView:
 )
 def book_view(request: Request, id: str) -> views.BookDetailView:
     """One Book as Book detail shows it; 404 ``book_not_found`` when it is gone."""
-    view = views.book_detail(request.app.state.store.library, id)
-    if view is None:
-        raise book_not_found(404)
-    return view
+    return views.require_book_detail(request.app.state.store.library, id)
 
 
 @router.get(
@@ -377,44 +371,23 @@ def book_view(request: Request, id: str) -> views.BookDetailView:
 def card_notes_view(request: Request, book: str | None = None) -> views.CardNotesView:
     """Every Card note grouped by Book, or one Book's with ``book``; 404 ``book_not_found``
     when that Book is gone."""
-    view = views.card_notes(request.app.state.store.library, book)
-    if view is None:
-        raise book_not_found(404)
-    return view
-
-
-_ISO_DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
-
-
-def _iso_date(value: object) -> object:
-    """Refuse anything but ``YYYY-MM-DD``: a lax ``date`` also takes datetimes and timestamps."""
-    if isinstance(value, str) and not _ISO_DATE.fullmatch(value):
-        raise ValueError("Use YYYY-MM-DD.")
-    return value
-
-
-_IsoDate = Annotated[date, BeforeValidator(_iso_date)]
+    return views.require_card_notes(request.app.state.store.library, book)
 
 
 @router.get("/views/stats", response_model=views.StatsView)
 def stats_view(
     request: Request,
     start: Annotated[
-        _IsoDate | None, Query(alias="from", description="First day of the range (inclusive).")
+        views.IsoDate | None, Query(alias="from", description="First day of the range (inclusive).")
     ] = None,
     end: Annotated[
-        _IsoDate | None, Query(alias="to", description="Last day of the range (inclusive).")
+        views.IsoDate | None, Query(alias="to", description="Last day of the range (inclusive).")
     ] = None,
 ) -> views.StatsView:
     """Books and pages finished from ``from`` to ``to``, both inclusive local dates;
     All time without either. 422 ``invalid_fields`` names a missing half of the
     range, a value that isn't a ``YYYY-MM-DD`` date, or a ``to`` before ``from``."""
-    if start is None and end is not None:
-        raise invalid_fields([FieldError(field="from", message="Give both from and to.")])
-    if end is None and start is not None:
-        raise invalid_fields([FieldError(field="to", message="Give both from and to.")])
-    if start is not None and end is not None and end < start:
-        raise invalid_fields([FieldError(field="to", message="To is before From.")])
+    views.check_stats_range(start, end)
     return views.stats(request.app.state.store.library, start, end)
 
 
