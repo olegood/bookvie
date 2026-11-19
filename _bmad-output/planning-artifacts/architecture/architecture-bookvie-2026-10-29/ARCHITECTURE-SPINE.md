@@ -7,7 +7,7 @@ paradigm: 'server-owned domain behind an intent (command) API with server-comput
 scope: 'bookvie MVP: whole system (CLI launcher, Python server, data folder, React client)'
 status: final
 created: '2026-10-29'
-updated: '2026-11-17'
+updated: '2026-11-19'
 binds: [FR-1, FR-2, FR-3, FR-4, FR-5, FR-6, FR-7, FR-8, FR-9, FR-10, FR-11, FR-14, FR-15, FR-16, FR-17, FR-18, FR-19, FR-20, FR-21, FR-22, FR-23, FR-24, FR-25, FR-26, FR-27, A1, A2, A3, A4, A5, A6]
 sources:
   - _bmad-output/planning-artifacts/prds/prd-bookvie-2026-10-28/prd.md
@@ -375,9 +375,9 @@ bookvie/
   backend/
     pyproject.toml          # hatchling; console script bookvie = bookvie.cli:main; wheel artifacts bookvie/http/static/**
     bookvie/
-      cli.py                # flags (dev defaults and the real-library refusal, AD-16), commit read at startup, start server, open browser, signals
-      instance.py           # bookvie.lock, loopback socket, health probe (AD-5); same_folder (the port check, AD-5, and the real-library refusal, AD-16)
-      http/                 # FastAPI app, routes, Host/Origin guard, error handler, static/
+      cli.py                # flags (dev defaults, the real-library refusal and, through `_checkout_folder`, the other-checkout refusal, AD-16), commit read at startup, start server, open browser, signals
+      instance.py           # bookvie.lock, loopback socket, health probe (AD-5); probe_checkout (the `checkout` a live `--dev` server reports, AD-16); same_folder (the port check, AD-5, and the real-library and other-checkout refusals, AD-16)
+      http/                 # FastAPI app (`create_app`; its `checkout` keyword is what a `--dev` `/api/health` reports, AD-16), routes, Host/Origin guard, error handler, static/
       intents/              # one module per intent (add_book, edit_book, delete_book, set_spine_color, start_reading, edit_purpose, update_page, finish_reading, pause, set_up_next, add_card_note (its `check_card_note_fields` function is reused by edit_card_note), edit_card_note, delete_card_note, restore), except side_reads (mark-side-read and unmark-side-read), export; shared: book_form, intent_model, commit, cover (decode, downscale), contract (error enum)
       views/                # read models: shelf (home, catalog, book detail), card_notes, stats, backup, app_info; models (view shapes)
       domain/               # model (entities), invariants (check_invariants), book_fields (form parser), labels (form order, shared failures), finished_on (Finished on parser, long date), spine_color (curated rotation, AD-11 resolve), duplicates (ISBN), cover_color, clock, progress (percent, current_reading, pages_left, reading_status), pace (Measured pace, days left), purpose, ordering (title key), note_pages (Card note Page parser), cover_file (COVERS_DIR, cover_name)
@@ -390,8 +390,8 @@ bookvie/
       api/generated/        # openapi-typescript output, never edited (AD-8)
       api/                  # fetch wrapper, AD-9 envelope, query keys, invalidate-all
       styles/tokens.css     # DESIGN.md custom properties; components use CSS Modules
-      lib/                  # client rules and presentation: pageField (+ .cases.json, AD-3), gauge, slice, cardNotes (page refs, search, highlight, pile order), useSearchCount ("N notes match."), pace (+ .cases.json; the calculator's days, months, years and line), stats (presets, Custom's order, the bars' share and labels), catalog (sort and the shared collator, title search, spine names), catalogSort and catalogView (remembered Sort with its direction, and Bookcase · List · Tiles, AD-15), cardNoteAddAnother (the remembered Add another, `bookvie.cardNoteAddAnother`, off by default, AD-15), catalogFilter (filter rules and value lists), aboutThisCopy (Backup's About this copy lines), updateNotice (the version comparison and the notice's sentence) (AD-6; stats also AD-3; updateNotice also AD-7)
-      pages/  components/   # pages include Bookcase, CatalogList and CatalogTiles, Catalog's three views; components include SortSelect, SortDirectionToggle, FilterChips and ViewToggle, Catalog's toolbar (AD-6), and UpdateNotice, the shell's update band (AD-7)
+      lib/                  # client rules and presentation: pageField (+ .cases.json, AD-3), gauge, slice, cardNotes (page refs, search, highlight, pile order), useSearchCount ("N notes match."), pace (+ .cases.json; the calculator's days, months, years and line), stats (presets, Custom's order, the bars' share and labels), catalog (sort and the shared collator, title search, spine names), catalogSort and catalogView (remembered Sort with its direction, and Bookcase · List · Tiles, AD-15), cardNoteAddAnother (the remembered Add another, `bookvie.cardNoteAddAnother`, off by default, AD-15), catalogFilter (filter rules and value lists), aboutThisCopy (Backup's About this copy lines), updateNotice (the version comparison and the notice's sentence), motion (`prefersReducedMotion`, read each time a smooth scroll or animation runs) (AD-6; stats also AD-3; updateNotice also AD-7)
+      pages/  components/   # pages include Bookcase, CatalogList and CatalogTiles, Catalog's three views; components include SortSelect, SortDirectionToggle, FilterChips and ViewToggle, Catalog's toolbar (AD-6), UpdateNotice, the shell's update band (AD-7), and BackToTop, the Back to top button on Catalog and Card notes (AD-6)
     e2e/                    # Playwright, label-contract driven
 ```
 
@@ -403,17 +403,17 @@ Every row below is built.
 | --- | --- | --- |
 | FR-1 Book fields, FR-3 Duplicate | `intents/add_book`, `edit_book`, `delete_book`, `set_spine_color`; `domain/` | AD-3, AD-9, AD-10, AD-11, AD-12, AD-18 |
 | FR-2 Agent-friendly form | `frontend` New book panel | AD-9, AD-16, AD-17 |
-| FR-4, FR-20, FR-24 Catalog, filter/sort, bookcase | `views/shelf`, `views/models` (`ShelfBook`'s `type`, `language`, `tags` for the filters, `edition` for twin spine names); `lib/catalog` (`sortBooks`), `lib/catalogSort`, `lib/catalogFilter`, `lib/catalogView`, `components/SortSelect`, `components/SortDirectionToggle`, `components/FilterChips`, `components/ViewToggle`, `pages/CatalogPage`, `pages/Bookcase`, `pages/CatalogList`; Home's slice via `lib/slice` | AD-6, AD-11, AD-15 |
+| FR-4, FR-20, FR-24 Catalog, filter/sort, bookcase | `views/shelf`, `views/models` (`ShelfBook`'s `type`, `language`, `tags` for the filters, `edition` for twin spine names); `lib/catalog` (`sortBooks`), `lib/catalogSort`, `lib/catalogFilter`, `lib/catalogView`, `components/SortSelect`, `components/SortDirectionToggle`, `components/FilterChips`, `components/ViewToggle`, `components/BackToTop`, `pages/CatalogPage`, `pages/Bookcase`, `pages/CatalogList`; Home's slice via `lib/slice` | AD-6, AD-11, AD-15 |
 | FR-25 Catalog tiles | `views/models` (`ShelfBook.coverFile`), `views/shelf`; `lib/catalogView` (`tiles`), `lib/catalog` (`tilesName`, `spineNames`), `components/ViewToggle`, `pages/CatalogPage`, `pages/CatalogTiles` (tiles, ribbon, reading bar, typeset cover); covers from `/media/covers` | AD-6, AD-8, AD-12, AD-15 |
 | FR-5 to FR-9 Main book, pause, Up next, Side reads, Purpose | `intents/start_reading`, `pause`, `set_up_next`, `side_reads` (mark, unmark), `edit_purpose`; `views/shelf` (home `upNext` with `paused`, `waiting`, `sideReads`); Home's Up next, Waiting for you and On the side panes | AD-3, AD-4, AD-6, AD-7, AD-9, AD-18, AD-19 |
 | FR-10, FR-11 Page update, re-entry | `intents/update_page`; `views/shelf` (home); `domain/pace`, `domain/progress` | AD-6, AD-7, AD-19, AD-20 |
 | FR-14 Finish | `intents/finish_reading` | AD-7, AD-11, AD-18, AD-19, AD-20 |
 | FR-15 Quick pace calculator | `domain/progress` (`pages_left`), `domain/pace`; `views/shelf` (`book` and `catalog` views' `pagesLeft`, `measuredPace`); `lib/pace`, `components/PaceCalculator` on Book detail and Catalog | AD-6, AD-20 |
 | FR-16 Stats | `views/stats`, `GET /api/views/stats`; `lib/stats`, `pages/StatsPage`, `components/RangePicker`, `components/StatsBars` | AD-3, AD-6, AD-9, AD-11, AD-20 |
-| FR-17 to FR-19 Card notes | `intents/add_card_note`, `edit_card_note`, `delete_card_note`; `domain/note_pages`; `views/card_notes` (Card notes page), `views/shelf` (Book detail's `cardNotes`, home `cardNoteCount`); `components/CardNotePanel` (keyboard save, Add another) with `lib/cardNoteAddAnother`; the Card notes page, Book detail's Card notes block and the pile | AD-3, AD-6, AD-7, AD-9, AD-15, AD-18, AD-19 |
+| FR-17 to FR-19 Card notes | `intents/add_card_note`, `edit_card_note`, `delete_card_note`; `domain/note_pages`; `views/card_notes` (Card notes page), `views/shelf` (Book detail's `cardNotes`, home `cardNoteCount`); `components/CardNotePanel` (keyboard save, Add another) with `lib/cardNoteAddAnother`; the Card notes page (with `components/BackToTop`), Book detail's Card notes block and the pile | AD-3, AD-6, AD-7, AD-9, AD-15, AD-18, AD-19 |
 | FR-21 Cover | `intents/cover` (decode, downscale); `store/store.py` (write, sweep); `intents/edit_book` (Remove cover); `/media/covers` | AD-11, AD-12 |
 | FR-22, FR-23 Export / restore | `GET /api/export` (`intents/export`), `POST /api/intents/restore` (`intents/restore`); `store/restore` (unpack), `store/store.py` (`replace_all`), `store/local_state`; `views/backup`, `views/shelf` (home's "Last export") | AD-4, AD-13, AD-14, AD-15 |
-| FR-26 Development and production apart, §5 Look and feel (favicon) | `cli.py` (dev defaults, real-library refusal through `instance.same_folder`, commit); `views/app_info` (`mode`); `GET /favicon.svg` and the SPA catch-all's icon exclusion in `http/`; `frontend/public/` favicons; `vite.config.ts` proxy; `AppShell` DEV pill, `lib/page` title prefix | AD-6, AD-7, AD-16 |
+| FR-26 Development and production apart, §5 Look and feel (favicon) | `cli.py` (dev defaults, real-library refusal through `instance.same_folder`, other-checkout refusal through `instance.probe_checkout` and `_checkout_folder`, commit); `create_app`'s `checkout`, reported by a `--dev` `/api/health`; `views/app_info` (`mode`); `GET /favicon.svg` and the SPA catch-all's icon exclusion in `http/`; `frontend/public/` favicons; `vite.config.ts` proxy; `AppShell` DEV pill, `lib/page` title prefix | AD-6, AD-7, AD-16 |
 | FR-27 Version visible | `views/app_info` (`version`, `dataDir`, `commit`); `pages/BackupPage` About this copy with `lib/aboutThisCopy`; the bundle's baked version (`__BOOKVIE_VERSION__`) and `components/UpdateNotice` with `lib/updateNotice` in `AppShell`; the version equality test (`frontend/scripts/version.test.mjs`) | AD-6, AD-7, AD-8 |
 | A1 shared storage | `store/`, `cli.py`, `instance.py` | AD-1, AD-5, AD-16 |
 

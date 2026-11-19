@@ -824,7 +824,7 @@
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-6-4-see-my-reading-month-by-month.md`
   summary: The `StatsBucket.period` and `StatsView.buckets` field docstrings never reach the OpenAPI. `_View` doesn't set `use_attribute_docstrings`, and no view model uses `Field(description=…)`, so `schema.d.ts` still reads `/** Period */`. The `YYYY-MM` / `YYYY` format the client's `splitPeriod` depends on is documented only in Python. Turning the flag on changes every view model's schema, so it is a project-wide choice, not a story fix. The spec's Code Map assumed the docstrings would reach it.
-  evidence: `backend/bookvie/views/models.py` `_View`, `StatsBucket`, `StatsView`; `frontend/src/api/generated/schema.d.ts` `StatsBucket` (Blind Hunter and Acceptance Auditor, code review of 6.4). The AD-6 spine drift that this review's Spine Check also found is the build-auto entry above; it is not repeated here.
+  evidence: `backend/bookvie/views/models.py` `_View`, `StatsBucket`, `StatsView`; `frontend/src/api/generated/schema.d.ts` `StatsBucket` (Blind Hunter and Acceptance Auditor, code review of 6.4). The AD-6 drift that this review's Spine Check also found is the build-auto entry above (resolved by Epic 6 retro item 52); it is not repeated here.
 
 ## Deferred from: spec-epic-6-retro-item-52-reconcile-the-spine-with-epic-6 (2026-11-11)
 
@@ -1151,6 +1151,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-epic-11-retro-item-80-second-dev-server-from-another-checkout.md`
   summary: Spine drift, AD-5 and AD-16 (reconciled before the next epic). The Structural Seed's `instance.py` and `cli.py` lines and the FR-26 row of the Capability map don't name `instance.probe_checkout`, `cli._checkout_folder` and the other-checkout refusal, or `create_app`'s `checkout` keyword. Low.
   evidence: `ARCHITECTURE-SPINE.md` Structural Seed and Capability map; `backend/bookvie/instance.py` `probe_checkout`; `backend/bookvie/cli.py` `_checkout_folder`, `_other_checkout` (Spine Check, bmad-build review of epic 11 retro item 80).
+  resolved: spine reconciliation before Epic 12 (2026-11-19). The Seed's `cli.py` line names the other-checkout refusal through `_checkout_folder`, `instance.py` names `probe_checkout`, and `http/` names `create_app`'s `checkout` keyword; the FR-26 map row names the refusal through `instance.probe_checkout` and `_checkout_folder` and `create_app`'s `checkout`.
 - source_spec: `_bmad-output/implementation-artifacts/spec-epic-11-retro-item-80-second-dev-server-from-another-checkout.md`
   summary: Only one Vite dev stack can run at a time. `frontend/vite.config.ts` always proxies to port 8766 with `strictPort` on 5173, and `DEV_ORIGINS` allows only 5173. So a second worktree that follows the refusal's advice (`--port`, `--data-dir`) gets a backend, but its `npm run dev` can't start, or would proxy to the first worktree. Making the proxy target and Vite port configurable (for example from an environment variable) would let two worktrees each run a full dev stack. Medium.
   evidence: `frontend/vite.config.ts:18,34-36`; `backend/bookvie/http/app.py:74` (Blind Hunter, bmad-build review of epic 11 retro item 80). The README now says one Vite dev stack runs at a time.
@@ -1160,9 +1161,11 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-back-to-top-button.md`
   summary: Spine drift, AD-6 (reconciled before the next epic). The Structural Seed's `frontend/src/lib/` listing doesn't name `motion` (the shared `prefersReducedMotion`, which replaced the copies in `CatalogPage.tsx`, `useFinishMoment.ts` and `usePileFlow.tsx`). Low.
   evidence: `frontend/src/lib/motion.ts`; `ARCHITECTURE-SPINE.md` Structural Seed (Spine Check, build-auto review of spec-back-to-top-button).
+  resolved: spine reconciliation before Epic 12 (2026-11-19). The Seed's `lib/` listing names `motion` (`prefersReducedMotion`).
 - source_spec: `_bmad-output/implementation-artifacts/spec-back-to-top-button.md`
   summary: Spine drift, AD-6 (reconciled before the next epic). The Capability map rows for Catalog (FR-4, FR-20, FR-24) and Card notes (FR-17 to FR-19), and the Seed's `components/` line, don't name `components/BackToTop`. Low.
   evidence: `frontend/src/components/BackToTop.tsx`, mounted in `CatalogPage.tsx` and `CardNotesPage.tsx`; `ARCHITECTURE-SPINE.md` Capability map (Spine Check, build-auto review of spec-back-to-top-button).
+  resolved: spine reconciliation before Epic 12 (2026-11-19). The Seed's `components/` line and the FR-4/FR-20/FR-24 and FR-17 to FR-19 map rows name `components/BackToTop`.
 
 ## Deferred from: code review of spec-back-to-top-button (2026-11-18)
 
@@ -1173,3 +1176,4 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-back-to-top-button.md`
   summary: Spine drift entries from a standalone spec (not an epic story) can slip through reconciliation. The retro lists "this epic's stories'" entries, and the next-epic gate matches `source_spec` `spec-{N-1}-*`. Neither picks up `spec-back-to-top-button.md`'s two AD-6 entries above, so the spine may stay stale on `lib/motion` and `components/BackToTop`. The next spine reconciliation should also sweep unresolved "spine drift" entries from standalone specs, or the filters should include them. Low.
   evidence: `_bmad/custom/bmad-build-auto.toml:18`, `_bmad/custom/bmad-build.toml:15`, `_bmad/custom/bmad-retrospective.toml:8` (Blind Hunter, code review of spec-back-to-top-button).
+  resolved: spine reconciliation before Epic 12 (2026-11-19). The reconciliation swept every unresolved "spine drift" entry, so the two AD-6 entries above and item 80's AD-5/AD-16 entry (a retro-item spec, which `spec-{N-1}-*` also misses) are closed. The next-epic gate in `bmad-build-auto.toml` and `bmad-build.toml` now matches every unresolved "spine drift" entry whatever its `source_spec`, and the retrospective's reconciliation item lists them too.
