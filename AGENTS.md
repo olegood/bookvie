@@ -37,7 +37,7 @@ The spine is `_bmad-output/planning-artifacts/architecture/architecture-bookvie-
 - **During a story,** the spine-check review layer still runs. A finding where the code is right and the spine is out of date is spine drift: defer it to `_bmad-output/implementation-artifacts/deferred-work.md` with the words "spine drift" and the AD it names, and close the story. The marker is what the retro and the next-epic gate look for, since "spine" alone also means a Book's spine. They match it in any letter case, because entries usually write "Spine drift" (Epic 4 retro item 39). Drift doesn't block a story. Don't edit the spine inside a story.
 - **A finding where the code breaks a decision it should follow** is not drift. Fix it in the story like any other review finding.
 - **The retrospective** always proposes an action item to reconcile the spine with the epic, listing that epic's unresolved "spine drift" entries in `deferred-work.md`.
-- **Before the next epic's first story,** that reconciliation lands: one pass edits the spine and adds a `resolved:` line to each drift entry it closes. `bmad-build` and `bmad-build-auto` stop at the first story of an epic while the previous epic has unresolved "spine drift" entries, unless you tell them to proceed.
+- **Before the next epic's first story,** that reconciliation lands: one pass edits the spine and adds a `resolved:` line to each drift entry it closes. `bmad-build` and `bmad-build-auto` stop at the first story of an epic while `deferred-work.md` has any unresolved "spine drift" entry, unless you tell them to proceed. That counts entries from the previous epic's stories, its retro items and standalone specs alike.
 
 ## Story pipeline
 
