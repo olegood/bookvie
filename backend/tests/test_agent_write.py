@@ -142,16 +142,24 @@ GONE = "00000000-0000-4000-8000-000000000000"  # no Book or Card note has this i
 
 MAIN_PAGES = 616
 PAUSED_PAGES = 448
+# A page the paused Book (at 200) resumes at that isn't its current one.
+RESUME_PAGE = 230
+UNREAD_COVER = "covers/neuromancer.png"
 
 
-def _seed(folder: Path, *, side_reads: int) -> None:
-    """The library every contract case starts from (see the ids above)."""
+def _seed(folder: Path, *, side_reads: int, cover: bool = False) -> None:
+    """The library every contract case starts from (see the ids above).
+
+    ``cover`` gives the unread Book a cover file in ``covers/``.
+    """
     builder = LibraryBuilder()
     builder.book(id=MAIN, title="Designing Data-Intensive Applications", pages=MAIN_PAGES)
     builder.book(id=UPNEXT, title="Designing Interfaces", pages=599)
     builder.book(id=PAUSED, title="Refactoring", pages=PAUSED_PAGES)
     builder.book(id=FINISHED, title="Dune", pages=412)
-    builder.book(id=UNREAD, title="Neuromancer", pages=271)
+    builder.book(
+        id=UNREAD, title="Neuromancer", pages=271, cover_file=UNREAD_COVER if cover else None
+    )
     builder.book(id=SIDE1, title="The Pragmatic Programmer", pages=352)
     builder.book(id=SIDE2, title="Sapiens", pages=443)
     builder.book(id=SIDE3, title="Thinking, Fast and Slow", pages=499)
@@ -170,6 +178,9 @@ def _seed(folder: Path, *, side_reads: int) -> None:
     for side in (SIDE1, SIDE2, SIDE3)[:side_reads]:
         builder.side_read(side)
     builder.write(folder)
+    if cover:
+        (folder / UNREAD_COVER).parent.mkdir(exist_ok=True)
+        (folder / UNREAD_COVER).write_bytes(b"\x89PNG\r\n\x1a\n a cover")
 
 
 @dataclass(frozen=True)
@@ -304,6 +315,14 @@ CASES: list[Case] = [
     *_malformed("unmark_side_read", UNMARK, "bookId"),
     # TR8: a filesystem fault at write, through every tool's success input.
     *(Case(tool, "fault-at-write", arguments, "couldnt_save", fault="write") for tool, arguments in SUCCESSES.items()),
+    # Green-phase follow-ups (Story 12.3 automation).
+    # A null where the model takes only a string is refused on intent by tool and route alike.
+    *(Case(tool, "null-book-id", {**arguments, "bookId": None}, "invalid_fields", ("intent",)) for tool, arguments in SUCCESSES.items()),
+    Case("add_card_note", "null-text", {**ADD_NOTE, "text": None}, "invalid_fields", ("intent",)),
+    # Resuming the paused Book at another page closes a segment (earlierSegments).
+    Case("start_reading", "success-resume-at-another-page", {"bookId": PAUSED, "purpose": None, "page": RESUME_PAGE}, "ok"),
+    # TR8's other commit steps: the temp file's fsync and the rename.
+    *(Case(tool, f"fault-at-{fault}", arguments, "couldnt_save", fault=fault) for fault in ("fsync", "replace") for tool, arguments in SUCCESSES.items()),
 ]  # fmt: skip
 
 # The intent modules that mint ids with uuid.uuid4().
@@ -456,13 +475,22 @@ def test_the_destructive_intents_stay_unlisted_and_calling_one_changes_nothing(
 ) -> None:
     # [P0] AC-4. Next to the ten write tools, none of their destructive siblings is listed.
     folder = tmp_path / "library"
-    _seed(folder, side_reads=2)
+    _seed(folder, side_reads=2, cover=True)
     client = connect_mcp(data_dir=folder)
     names = {tool["name"] for tool in client.list_tools()}
     assert sorted(names & {*WRITE_TOOL_NAMES, *DESTRUCTIVE_TOOL_NAMES}) == sorted(WRITE_TOOL_NAMES)
+    # An export writes local-state.json, so the folder holds all three kinds of file.
+    exported = client.http.get("/api/export", headers={"X-Bookvie-Export": "1"})
+    assert exported.status_code == 200, exported.text[:300]
 
     before = library_bytes(folder)
     files = sorted(path.name for path in folder.iterdir())
+    # Every file under the folder, local-state.json and covers/ included.
+    tree = {
+        str(path.relative_to(folder)): path.read_bytes()
+        for path in folder.rglob("*")
+        if path.is_file()
+    }
     # Arguments each route would act on: a Book to delete, the Main book's note, a color.
     for name, arguments in (
         ("delete_book", {"bookId": UNREAD}),
@@ -476,3 +504,171 @@ def test_the_destructive_intents_stay_unlisted_and_calling_one_changes_nothing(
         assert name in body["error"]["message"], (name, body)
     assert library_bytes(folder) == before
     assert sorted(path.name for path in folder.iterdir()) == files
+    after = {
+        str(path.relative_to(folder)): path.read_bytes()
+        for path in folder.rglob("*")
+        if path.is_file()
+    }
+    assert after == tree
+    assert {"local-state.json", UNREAD_COVER} <= set(tree), sorted(tree)
+
+
+# --- Green-phase follow-ups (Story 12.3 automation) -----------------------------
+
+# The Books each tool's success input names, by title, so a leaf can find them.
+TITLES = {
+    MAIN: "Designing Data-Intensive Applications",
+    UPNEXT: "Designing Interfaces",
+    PAUSED: "Refactoring",
+    UNREAD: "Neuromancer",
+    SIDE1: "The Pragmatic Programmer",
+}
+
+
+def test_resuming_the_paused_book_at_another_page_closes_a_segment_through_the_tool(
+    connect_mcp: Callable[..., McpClient], tmp_path: Path
+) -> None:
+    # [P2] AC-2. The case table proves tool and route store the same bytes; this pins what.
+    folder = tmp_path / "library"
+    _seed(folder, side_reads=2)
+    client = connect_mcp(data_dir=folder)
+    answer = client.call_tool(
+        "start_reading", {"bookId": PAUSED, "purpose": None, "page": RESUME_PAGE}
+    )
+    assert answer.get("isError") is not True, answer
+    stored = json.loads((folder / "library.json").read_text(encoding="utf-8"))
+    (book,) = [book for book in stored["books"] if book["id"] == PAUSED]
+    (reading,) = book["readings"]
+    assert reading["currentPage"] == RESUME_PAGE, reading
+    assert [segment["endPage"] for segment in reading["earlierSegments"]] == [200], reading
+    assert stored["mainBookId"] == PAUSED
+
+
+@pytest.mark.parametrize("tool", WRITE_TOOL_NAMES)
+def test_a_write_tool_called_without_arguments_is_refused_like_a_route_without_its_intent_part(
+    connect_mcp: Callable[..., McpClient], tmp_path: Path, tool: str
+) -> None:
+    # [P2] AC-2. MCP lets a client leave `arguments` out; the tool gets `{}`, which is malformed.
+    tool_side, route_side = _twins(
+        connect_mcp, tmp_path, Case(tool, "no-arguments", {}, "invalid_fields")
+    )
+    before = library_bytes(tool_side.data_dir)
+
+    response = route_side.http.post(f"/api/intents/{tool.replace('_', '-')}", files={})
+    assert response.status_code == 422, response.text
+    tool_side.ensure_initialized()
+    body = tool_side.rpc("tools/call", {"name": tool})
+    assert "error" not in body, body
+    assert error_of(body["result"]) == response.json()["error"]
+    assert error_of(body["result"])["code"] == "invalid_fields"
+    assert library_bytes(tool_side.data_dir) == before
+
+
+@pytest.mark.parametrize("tool", WRITE_TOOL_NAMES)
+def test_an_unexpected_failure_in_a_write_tools_handler_is_couldnt_save_as_the_routes_500(
+    connect_mcp: Callable[..., McpClient],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    tool: str,
+) -> None:
+    # [P2] AC-2. The tool and the route call the same handler; one that breaks breaks both alike.
+    from fastapi.testclient import TestClient
+
+    tool_side, route_side = _twins(
+        connect_mcp, tmp_path, Case(tool, "handler-breaks", {}, "couldnt_save")
+    )
+    before = library_bytes(tool_side.data_dir)
+
+    def broken(*_: Any) -> None:
+        raise RuntimeError(f"{tool} broke")
+
+    # The handler is named after its tool in both modules that call it.
+    monkeypatch.setattr(f"bookvie.agent.tools.{tool}", broken)
+    monkeypatch.setattr(f"bookvie.http.api.{tool}", broken)
+
+    route_client = TestClient(
+        route_side.http.app, base_url=str(route_side.http.base_url), raise_server_exceptions=False
+    )
+    response = route_client.post(
+        f"/api/intents/{tool.replace('_', '-')}",
+        files={"intent": (None, json.dumps(SUCCESSES[tool]), "application/json")},
+    )
+    assert response.status_code == 500, response.text
+    with caplog.at_level("ERROR", logger="bookvie.agent.server"):
+        answer = tool_side.call_tool(tool, SUCCESSES[tool])
+    assert error_of(answer) == response.json()["error"]
+    assert error_of(answer)["code"] == "couldnt_save"
+    (record,) = [r for r in caplog.records if r.name == "bookvie.agent.server"]
+    assert record.getMessage() == f"agent tool {tool} failed"
+    assert library_bytes(tool_side.data_dir) == before
+
+
+@pytest.mark.parametrize("tool", WRITE_TOOL_NAMES)
+def test_a_book_found_and_then_deleted_in_the_app_is_book_not_found_for_each_write_tool(
+    connect_mcp: Callable[..., McpClient], tmp_path: Path, tool: str
+) -> None:
+    # [P1] AC-2. The agent takes the id from find_book; the user deletes the Book in the app.
+    folder = tmp_path / "library"
+    _seed(folder, side_reads=2)
+    client = connect_mcp(data_dir=folder)
+    title = TITLES[SUCCESSES[tool]["bookId"]]
+    found = client.call_tool("find_book", {"query": title})["structuredContent"]["books"]
+    (book_id,) = [book["id"] for book in found if book["title"] == title]
+    assert book_id == SUCCESSES[tool]["bookId"]
+
+    deleted = client.http.post(
+        "/api/intents/delete-book",
+        files={"intent": (None, json.dumps({"bookId": book_id}), "application/json")},
+    )
+    assert deleted.status_code == 200, deleted.text
+    before = library_bytes(folder)
+
+    answer = client.call_tool(tool, {**SUCCESSES[tool], "bookId": book_id})
+    assert error_of(answer)["code"] == "book_not_found", answer
+    assert library_bytes(folder) == before
+
+
+def test_a_real_bookvie_process_advertises_and_commits_a_write_tool(tmp_path: Path) -> None:
+    # [P1] AC-1, AC-2. The leaves above use TestClient; this one is the process Claude Code reaches.
+    import subprocess
+    import sys
+
+    import httpx
+
+    from bookvie import instance
+    from bookvie.agent import input_schema
+    from tests.servers import wait_for_health
+
+    folder = tmp_path / "library"
+    _seed(folder, side_reads=2)
+    sock = instance.bind_socket(0)
+    port = sock.getsockname()[1]
+    sock.close()
+    cmd = [
+        sys.executable,
+        "-m",
+        "bookvie.cli",
+        "--no-browser",
+        "--port",
+        str(port),
+        "--data-dir",
+        str(folder),
+    ]
+    server = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    try:
+        wait_for_health(server, port, folder)
+        with httpx.Client(base_url=f"http://127.0.0.1:{port}", timeout=10) as http:
+            client = McpClient(http, data_dir=folder)
+            listed = {tool["name"]: tool for tool in client.list_tools()}
+            assert list(listed) == EARLIER_TOOL_NAMES + WRITE_TOOL_NAMES
+            for name, (model, _, _) in WRITE_TOOLS.items():
+                assert listed[name]["inputSchema"] == input_schema(model), name
+            answer = client.call_tool("update_page", UPDATE)
+            assert answer["structuredContent"] == {"ok": True}, answer
+    finally:
+        server.terminate()
+        server.wait(timeout=20)
+    stored = json.loads((folder / "library.json").read_text(encoding="utf-8"))
+    (book,) = [book for book in stored["books"] if book["id"] == MAIN]
+    assert book["readings"][-1]["currentPage"] == UPDATE["page"]

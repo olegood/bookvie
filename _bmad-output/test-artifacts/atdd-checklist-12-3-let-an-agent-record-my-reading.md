@@ -91,14 +91,14 @@ acceptanceCriteria:
 
 ## Green-phase follow-ups (secondary branches, not red leaves)
 
-- [ ] **Pytest, AC-2 `null` where refused:** `bookId: null` on every tool, and `text: null` on `add_card_note`, are refused on `intent` by tool and route alike.
-- [ ] **Pytest, AC-2 no arguments:** a `tools/call` with no `arguments` on a write tool is refused like the route's missing `intent` part (both `malformed`), and changes nothing.
-- [ ] **Pytest, AC-2 the paused Book's segment:** `start_reading` resuming at a page other than its current one closes a segment (`earlierSegments`), on tool and route alike.
-- [ ] **Pytest, AC-2 unexpected failure:** a handler that raises something other than `IntentError` (monkeypatched) answers `couldnt_save` through the tool, as the route's 500 does, and is logged with the tool's name.
-- [ ] **Pytest, AC-2 other fault steps:** `fsync` and `replace` faults (TR8 names write, fsync and rename) give `couldnt_save` and an unchanged `library.json` through the tool.
-- [ ] **Pytest, AC-2 book gone mid-session:** a Book `find_book` returned and then deleted through the UI route is refused with `book_not_found` by each write tool (the standard intent AC).
-- [ ] **Pytest, AC-1 schemas from a real server:** the cumulative list and one write tool's schema on a `bookvie` subprocess (12.1's `_start`), not only `TestClient`.
-- [ ] **Pytest, AC-4 every name:** `delete_book`, `delete_card_note`, `restore` and `set_spine_color` also leave `local-state.json` and `covers/` untouched.
+- [x] **Pytest, AC-2 `null` where refused:** `bookId: null` on every tool, and `text: null` on `add_card_note`, are refused on `intent` by tool and route alike. (done: backend/tests/test_agent_write.py:320-321, the `null-book-id` and `null-text` cases)
+- [x] **Pytest, AC-2 no arguments:** a `tools/call` with no `arguments` on a write tool is refused like the route's missing `intent` part (both `malformed`), and changes nothing. (done: backend/tests/test_agent_write.py:548 `test_a_write_tool_called_without_arguments_is_refused_like_a_route_without_its_intent_part`)
+- [x] **Pytest, AC-2 the paused Book's segment:** `start_reading` resuming at a page other than its current one closes a segment (`earlierSegments`), on tool and route alike. (done: backend/tests/test_agent_write.py:323, the `success-resume-at-another-page` case, and backend/tests/test_agent_write.py:528 `test_resuming_the_paused_book_at_another_page_closes_a_segment_through_the_tool`)
+- [x] **Pytest, AC-2 unexpected failure:** a handler that raises something other than `IntentError` (monkeypatched) answers `couldnt_save` through the tool, as the route's 500 does, and is logged with the tool's name. (done: backend/tests/test_agent_write.py:568 `test_an_unexpected_failure_in_a_write_tools_handler_is_couldnt_save_as_the_routes_500`)
+- [x] **Pytest, AC-2 other fault steps:** `fsync` and `replace` faults (TR8 names write, fsync and rename) give `couldnt_save` and an unchanged `library.json` through the tool. (done: backend/tests/test_agent_write.py:325, the `fault-at-fsync` and `fault-at-replace` cases)
+- [x] **Pytest, AC-2 book gone mid-session:** a Book `find_book` returned and then deleted through the UI route is refused with `book_not_found` by each write tool (the standard intent AC). (done: backend/tests/test_agent_write.py:608 `test_a_book_found_and_then_deleted_in_the_app_is_book_not_found_for_each_write_tool`)
+- [x] **Pytest, AC-1 schemas from a real server:** the cumulative list and one write tool's schema on a `bookvie` subprocess (12.1's `_start`), not only `TestClient`. (done: backend/tests/test_agent_write.py:632 `test_a_real_bookvie_process_advertises_and_commits_a_write_tool`, every write tool's schema and an `update_page` commit)
+- [x] **Pytest, AC-4 every name:** `delete_book`, `delete_card_note`, `restore` and `set_spine_color` also leave `local-state.json` and `covers/` untouched. (done: backend/tests/test_agent_write.py:473 `test_the_destructive_intents_stay_unlisted_and_calling_one_changes_nothing`, a whole-tree byte snapshot after an export and with a cover)
 
 ## Helper probes
 
@@ -149,11 +149,11 @@ With the skips in place, `uv run pytest -q -p no:cacheprovider --no-cov` (the fu
 
 ## Implementation checklist (for `bmad-build-auto`)
 
-- [ ] Add the ten write tools to `TOOLS` after `get_stats`, each with its intent model and the AC's description (AC-1, AC-3).
-- [ ] Each tool: parse the arguments as the route parses `intent`, call the route's handler with `state.store` (and `state.clock` where the route passes it), and answer the route's `OkResponse` (AC-2).
-- [ ] Keep `delete_book`, `delete_card_note`, `restore` and `set_spine_color` unregistered (AC-4).
-- [ ] Update `AGENT_TOOL_NAMES` in `test_agent_mount.py` to the cumulative 17.
-- [ ] Un-skip the 4 leaves and see them pass, then run `npm run check` with no other existing leaf's assertions edited.
+- [x] Add the ten write tools to `TOOLS` after `get_stats`, each with its intent model and the AC's description (AC-1, AC-3). (done: backend/tests/test_agent_write.py:392 and :460, green)
+- [x] Each tool: parse the arguments as the route parses `intent`, call the route's handler with `state.store` (and `state.clock` where the route passes it), and answer the route's `OkResponse` (AC-2). (done: backend/tests/test_agent_write.py:422, 119 cases green)
+- [x] Keep `delete_book`, `delete_card_note`, `restore` and `set_spine_color` unregistered (AC-4). (done: backend/tests/test_agent_write.py:473, green)
+- [x] Update `AGENT_TOOL_NAMES` in `test_agent_mount.py` to the cumulative 17. (done: backend/tests/test_agent_mount.py:46)
+- [x] Un-skip the 4 leaves and see them pass, then run `npm run check` with no other existing leaf's assertions edited. (done: no `skip` left in backend/tests/test_agent_write.py; `npm run check` exit 0 in this run, see automation-summary.md)
 
 ## Next
 
