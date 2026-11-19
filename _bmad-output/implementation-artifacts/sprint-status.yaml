@@ -123,7 +123,7 @@ development_status:
   12-1-mount-the-mcp-server: done
   12-2-let-an-agent-read-my-library: done
   12-3-let-an-agent-record-my-reading: done
-  12-4-let-an-agent-add-and-edit-a-book: review
+  12-4-let-an-agent-add-and-edit-a-book: done
   12-5-let-an-agent-fetch-a-book-s-cover-from-its-address: backlog
   12-6-let-an-agent-back-up-my-library-to-disk: backlog
   12-7-summarize-a-book-s-notes-through-the-agent-tools: backlog

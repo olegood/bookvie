@@ -2,7 +2,7 @@
 title: 'Story 12.4: Let an agent add and edit a Book'
 type: 'feature'
 created: '2026-11-19'
-status: 'in-review'
+status: 'done'
 baseline_revision: '51466692153354c36bcfe9cd6923b298db412c4f'
 review_loop_iteration: 1
 followup_review_recommended: false
@@ -164,6 +164,26 @@ deferred:
   - `[low]` `[defer]` (edge 2) An unchanged future latest finish date is refused on round trip — verified: parse_finished_on refuses before the unchanged-date rules; pre-existing route behavior the panel shares; deferred.
   - `[low]` `[defer]` (edge 3) Store invariants don't check subtitle/ISBN trimming, so such Books don't round-trip — pre-existing; whether restore admits them is unverified; deferred low (unverified).
   - `[false]` `[reject]` (edge 4) The AC says 20 BOOK_CASES, there are 22 — a spec edit.
+
+### Review Findings
+
+2026-11-19, `bmad-code-review` in a new session. The diff is `51466692..HEAD` (`598f8a1`, `18f253d`). Five layers ran: Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor and Spine Check. They raised 25 findings, and all of them were rejected: 0 decision-needed, 0 patch and 0 new defer. The Verification Gap layer found no gaps. Spine Check's five findings (AD-21, AD-3, AD-6 and the Mount/Stack row) are all already in `deferred-work.md` as spine drift (lines 1184, 1252, 1276 and 1282), so this review adds no new entry. No patch was applied, so this review doesn't re-run `npm run check`.
+
+Rejected:
+- **(edge 1) The missing-key refusal's summary names raw keys, not form labels:** `low`. The spec pins the refusal as fields "named by its key" with "Field required". An agent reads `fields`, and raw keys are what it sends back. Passing `LABELS` would add a `bookvie.domain` import to `agent/`, outside "imports only intents and views".
+- **(edge 2) A stale `editForm` silently reverts a change made between `get_book` and `edit_book`:** `false`. This is the designed whole-edit behavior. The spec says "No merge with the stored Book", and AD-3 is last-write-wins. The Edit book panel has the same window.
+- **(edge 3) `add_book` "edition defaults to 1", but sending edition `""` is refused:** `low`. `parse_book_fields` defaults only when the key is absent or null (`book_fields.py:146`). The refusal is safe, `invalid_fields` on edition, and the agent can retry. The description is the story's pinned text (AC-1), so any fix would amend epics.md.
+- **(edge 4, blind 8) "Every field is a string" while `confirmDuplicate` is a boolean, and edit_book's text doesn't name `confirmDuplicate`:** `low`. The advertised schema types `confirmDuplicate` as a boolean on both tools, and add_book's text says "send confirmDuplicate true". The wording is the story's pinned text, so any fix would amend epics.md.
+- **(blind 1) `AgentTool.required` is enforced only inside `_write_tool`:** `low`. No tool sets `required` other than through `_write_tool`. Enforcing it centrally would add a code path that no caller needs.
+- **(blind 2) The required list is computed twice:** `false`. `expected` and `advertised_schema` both call `_required_schema(model, required)` with the same arguments, so they can't diverge.
+- **(blind 3, 4, 5; acceptance 1, 2, 3) Stale spec text:** rejected as spec edits. The text in question is "OpenAPI unchanged" in Verification, "20 `BOOK_CASES`" in AC-3, the duplicated description AC, the frontmatter's resolved medium deferral and the Code Map's `bookDetail.test.ts`.
+- **(blind 6, acceptance 4) No parity test between `toPanelFields` and `editForm`:** already deferred as spine drift (AD-6/AD-21, `deferred-work.md:1282`). The proposed `views.test.ts` check would compare two hand-written values, so it can't catch the server drifting from the client.
+- **(blind 7) `BookEditForm.type` is a plain `str`:** `false`. The spec defines `BookEditForm` as 13 `str` fields, matching the panel's `BookFields` (all strings).
+- **(blind 9) The round-trip test crosses `cover` with every Book and imports `_seed` from `test_agent_write.py`:** `low`. These are test style. The extra runs are cheap and correct.
+- **(blind 10, acceptance 6) No HTTP-route round trip, and the real-process test doesn't check `edit_book`'s `required`:** `low`. The tool and the route share the parser and handler, and the 22 twin `BOOK_CASES` pin equal answers. `advertised_schema` is covered in process through the same `build_mcp_server`. Pass 1 already rejected this (blind 11).
+- **(blind 11) The test name `test_the_ten_write_tools_…` is stale:** `false`. That test still checks exactly the ten 12.3 tools' schemas. Only its cumulative name list grew, which the spec allows.
+- **(blind 12, acceptance 5) The `epic-12-context.md` edits go beyond the Mount line:** `low`. The file was regenerated because it was stale, and the version pins live in `backend/pyproject.toml`. Pass 1 already rejected this (blind 7).
+- **(spine 1–5) Spine drift in AD-21, AD-3 and AD-6, and the Mount/Stack row:** already deferred as spine drift (`deferred-work.md` 1184, 1252, 1276 and 1282). It is reconciled before the next epic, and it doesn't block the story.
 
 ## Design Notes
 
