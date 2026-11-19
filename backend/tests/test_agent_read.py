@@ -720,3 +720,61 @@ def test_find_book_folds_typographic_dashes_apostrophes_and_runs_of_spaces(
     assert _candidate_ids(client, "don\u2019t  make   me") == {curly}
     assert _candidate_ids(client, "DMMT") == {curly}
     assert _candidate_ids(client, "THG") == {straight}
+
+
+# --- Automation (bmad-testarch-automate, Story 12.2) -------------------------
+
+
+def _tree(folder: Path) -> dict[str, bytes]:
+    """Every file under ``folder``, by relative path, with its bytes."""
+    return {
+        path.relative_to(folder).as_posix(): path.read_bytes()
+        for path in sorted(folder.rglob("*"))
+        if path.is_file()
+    }
+
+
+def test_the_read_tools_write_nothing_when_they_answer_or_refuse(
+    connect_mcp: Callable[..., McpClient], tmp_path: Path
+) -> None:
+    # [P1] AC-1 to AC-6 read only: every read tool, answering or refusing, leaves the folder
+    # byte-identical and writes no local-state.json.
+    client, ids = _open(connect_mcp, tmp_path)
+    folder = tmp_path / "library"
+    before = _tree(folder)
+    assert "local-state.json" not in before, sorted(before)
+
+    calls: list[tuple[str, dict[str, Any]]] = [
+        ("find_book", {"query": "DDIA"}),
+        ("find_book", {"query": ""}),
+        ("find_book", {"query": "DDIA", "x": 1}),
+        ("get_book", {"bookId": ids["ddia1"]}),
+        ("get_book", {"bookId": UNKNOWN_ID}),
+        ("list_catalog", {}),
+        ("get_card_notes", {}),
+        ("get_card_notes", {"bookId": ids["ddia1"]}),
+        ("get_card_notes", {"bookId": UNKNOWN_ID}),
+        ("get_home", {}),
+        ("get_stats", {}),
+        ("get_stats", {"from": "2026-01-01", "to": "2026-12-31"}),
+        ("get_stats", {"from": "2026-12-31", "to": "2026-01-01"}),
+    ]
+    for name, arguments in calls:
+        client.call_tool(name, arguments)
+        assert _tree(folder) == before, (name, arguments)
+
+
+def test_get_home_reports_the_last_export_as_its_route_does(
+    connect_mcp: Callable[..., McpClient], tmp_path: Path
+) -> None:
+    # [P1] AC-5 after an export, get_home's lastExportAt is the route's: it reads
+    # local-state.json, which the export writes outside library.json (AD-4, AD-15).
+    client, _ids = _open(connect_mcp, tmp_path)
+    assert _structured(client.call_tool("get_home"))["lastExportAt"] is None
+
+    response = client.http.get("/api/export", headers={"X-Bookvie-Export": "1"})
+    assert response.status_code == 200, response.text[:300]
+
+    home = _structured(client.call_tool("get_home"))
+    assert home["lastExportAt"] is not None, home
+    assert home == _view(client, "home")

@@ -91,17 +91,17 @@ acceptanceCriteria:
 
 ## Green-phase follow-ups (secondary branches, not red leaves)
 
-- [ ] **Pytest, AC-1 case and subtitle:** "designing", "ddia" and "KLEPPMANN" find the same Books; a subtitle word ("Interaction Design") finds "Designing Interfaces"; a co-author ("Riccomini") finds only the 2nd edition.
-- [ ] **Pytest, AC-1 whitespace and malformed:** a whitespace-only `query` is refused like `""` (or say why not); a missing `query`, a non-string `query` and an extra key are refused as the helper refuses them, and change nothing.
-- [ ] **Pytest, AC-1 ISBN-10:** the ISBN-10 `1449373321` finds the 1st edition (through `normalize_isbn`), or the build records that it doesn't.
-- [ ] **Pytest, AC-1 waiting role:** a paused Book's candidate has `role: "waiting"`, and a Side read with no role has `null`.
-- [ ] **Pytest, AC-1 order:** two calls with the same query return the same order (the ranking is deterministic).
-- [ ] **Pytest, AC-2 to AC-5 read only:** each read tool leaves `library.json` byte-identical and writes no `local-state.json`.
-- [ ] **Pytest, AC-2/AC-4 bad id type:** a non-string `bookId` and a missing `bookId` on `get_book` are refused, not coerced.
-- [ ] **Pytest, AC-5 last export:** after an export, `get_home`'s `lastExportAt` equals the route's (it reads `local-state.json` outside the lock, AD-4).
-- [ ] **Pytest, AC-6 non-string dates:** `from: 20260101` (a number) and `from: null` are refused, not coerced.
-- [ ] **Pytest, AC-6 both bad:** `{"from": "", "to": ""}` and `{"from": "someday", "to": "never"}` give two fields, in the route's order and copy.
-- [ ] **Pytest, cumulative tool list:** the list equals the seven names exactly, and no destructive name appears (12.1's unknown-tool leaf still passes).
+- [x] **Pytest, AC-1 case and subtitle:** "designing", "ddia" and "KLEPPMANN" find the same Books; a subtitle word ("Interaction Design") finds "Designing Interfaces"; a co-author ("Riccomini") finds only the 2nd edition. (done: backend/tests/test_agent_read.py:497 `test_find_book_folds_case_and_accents_and_matches_a_subtitle_and_a_co_author`)
+- [x] **Pytest, AC-1 whitespace and malformed:** a whitespace-only `query` is refused like `""` (or say why not); a missing `query`, a non-string `query` and an extra key are refused as the helper refuses them, and change nothing. (done: backend/tests/test_agent_read.py:521 `test_find_book_finds_an_isbn_10_as_its_isbn_13_and_refuses_a_whitespace_query` (blank queries), backend/tests/test_agent_read.py:614 `test_the_read_tools_refuse_a_bad_argument_by_naming_it` (missing, non-string, extra), backend/tests/test_agent_read.py:737 `test_the_read_tools_write_nothing_when_they_answer_or_refuse` (changes nothing))
+- [x] **Pytest, AC-1 ISBN-10:** the ISBN-10 `1449373321` finds the 1st edition (through `normalize_isbn`), or the build records that it doesn't. (done: backend/tests/test_agent_read.py:521 `test_find_book_finds_an_isbn_10_as_its_isbn_13_and_refuses_a_whitespace_query`; X check digit backend/tests/test_agent_read.py:545)
+- [x] **Pytest, AC-1 waiting role:** a paused Book's candidate has `role: "waiting"`, and a Side read with no role has `null`. (done: backend/tests/test_agent_read.py:560 `test_find_book_gives_each_candidate_its_role_waiting_and_null_included`)
+- [x] **Pytest, AC-1 order:** two calls with the same query return the same order (the ranking is deterministic). (done: backend/tests/test_agent_read.py:580 `test_find_book_orders_by_how_a_book_matches_then_by_title_edition_and_id`)
+- [x] **Pytest, AC-2 to AC-5 read only:** each read tool leaves `library.json` byte-identical and writes no `local-state.json`. (done: backend/tests/test_agent_read.py:737 `test_the_read_tools_write_nothing_when_they_answer_or_refuse` (all six read tools, answers and refusals; mutation probe: `list_catalog` writing `local-state.json` fails it))
+- [x] **Pytest, AC-2/AC-4 bad id type:** a non-string `bookId` and a missing `bookId` on `get_book` are refused, not coerced. (done: backend/tests/test_agent_read.py:614 `test_the_read_tools_refuse_a_bad_argument_by_naming_it`)
+- [x] **Pytest, AC-5 last export:** after an export, `get_home`'s `lastExportAt` equals the route's (it reads `local-state.json` outside the lock, AD-4). (done: backend/tests/test_agent_read.py:767 `test_get_home_reports_the_last_export_as_its_route_does` (mutation probe: `home_for` passing `None` fails it))
+- [x] **Pytest, AC-6 non-string dates:** `from: 20260101` (a number) and `from: null` are refused, not coerced. (done: backend/tests/test_agent_read.py:614 `test_the_read_tools_refuse_a_bad_argument_by_naming_it`)
+- [x] **Pytest, AC-6 both bad:** `{"from": "", "to": ""}` and `{"from": "someday", "to": "never"}` give two fields, in the route's order and copy. (done: backend/tests/test_agent_read.py:614 `test_the_read_tools_refuse_a_bad_argument_by_naming_it`)
+- [x] **Pytest, cumulative tool list:** the list equals the seven names exactly, and no destructive name appears (12.1's unknown-tool leaf still passes). (done: backend/tests/test_agent_mount.py:46 `AGENT_TOOL_NAMES`, asserted at :213, :246, :432, :631; destructive names refused at backend/tests/test_agent_mount.py:484 `test_an_unknown_tool_is_a_json_rpc_error_and_changes_nothing`)
 
 ## Helper probes
 
@@ -158,13 +158,13 @@ With the skips in place, `uv run pytest -q -p no:cacheprovider` (the full backen
 
 ## Implementation checklist (for `bmad-build-auto`)
 
-- [ ] `views/find_book`: match title, subtitle, authors, the normalized ISBN and title-word initials; return the candidates with their shelf role. Add the `find_book` tool, `{"books": [...]}`, with `query` required and an empty one refused on `query`. Record the `{"books": ...}` wrapper as AD-21 spine drift in `deferred-work.md` (AC-1).
-- [ ] Move the not-found refusal into `views/` for the book and card-notes views, and settle the layer question above. Add `get_book` and `get_card_notes` (AC-2, AC-4, AC-7).
-- [ ] Add `list_catalog` and `get_home` (no arguments) (AC-3, AC-5).
-- [ ] Move the stats range parsing (both-or-neither, `YYYY-MM-DD` only, `to` not before `from`) into `views/`, keeping today's copy. Have `stats_view` and `get_stats` both use it, with the OpenAPI schema unchanged (AC-6, AC-7).
-- [ ] Each tool's description is the AC's text exactly.
-- [ ] Update the four `["get_app_info"]` assertions in `test_agent_mount.py` to the cumulative list.
-- [ ] Un-skip the 7 leaves and see them pass, then run `npm run check` with no other existing leaf's assertions edited.
+- [x] `views/find_book`: match title, subtitle, authors, the normalized ISBN and title-word initials; return the candidates with their shelf role. Add the `find_book` tool, `{"books": [...]}`, with `query` required and an empty one refused on `query`. Record the `{"books": ...}` wrapper as AD-21 spine drift in `deferred-work.md` (AC-1). (done: backend/bookvie/views/find_book.py; AC-1 leaf backend/tests/test_agent_read.py:190; drift entry in deferred-work.md (AD-21 `{"books": [...]}`))
+- [x] Move the not-found refusal into `views/` for the book and card-notes views, and settle the layer question above. Add `get_book` and `get_card_notes` (AC-2, AC-4, AC-7). (done: `views.require_book_detail`, `views.require_card_notes`; backend/tests/test_agent_read.py:250, :296, :458; `views → intents.contract` recorded in backend/tests/test_layers.py:4-8)
+- [x] Add `list_catalog` and `get_home` (no arguments) (AC-3, AC-5). (done: backend/tests/test_agent_read.py:279, :329)
+- [x] Move the stats range parsing (both-or-neither, `YYYY-MM-DD` only, `to` not before `from`) into `views/`, keeping today's copy. Have `stats_view` and `get_stats` both use it, with the OpenAPI schema unchanged (AC-6, AC-7). (done: `views.check_stats_range`; backend/tests/test_agent_read.py:408, :458; `npm run check:py` green (test_stats.py unedited))
+- [x] Each tool's description is the AC's text exactly. (done: backend/tests/test_agent_read.py:241, :270, :289, :320, :340, :431)
+- [x] Update the four `["get_app_info"]` assertions in `test_agent_mount.py` to the cumulative list. (done: backend/tests/test_agent_mount.py:213, :246, :432, :631 assert `AGENT_TOOL_NAMES`)
+- [x] Un-skip the 7 leaves and see them pass, then run `npm run check` with no other existing leaf's assertions edited. (done: no `mark.skip` left in backend/tests/test_agent_read.py; `npm run check:py` this run: 1713 passed)
 
 ## Next
 
