@@ -1,0 +1,476 @@
+"""Story 12.1: the agent tools are mounted at ``/mcp`` in the running app (AD-21).
+
+The MCP server is part of the app: on in production and ``--dev``, behind the
+AD-16 guard, stateless with JSON responses, and built fresh by every
+``create_app``. One registration helper in ``bookvie.agent`` gives every tool
+its schema and its answers; ``get_app_info`` is the only tool so far.
+
+The tests speak MCP's wire format through :class:`tests.agent_client.McpClient`
+(the ``mcp_client`` and ``connect_mcp`` fixtures), and every one runs with
+``HOME`` set to a temporary folder (``conftest.py``).
+"""
+
+import asyncio
+import json
+import re
+import subprocess
+import sys
+import tomllib
+from collections.abc import Callable
+from pathlib import Path
+from typing import Any, ClassVar
+
+import httpx
+import pytest
+from packaging.requirements import Requirement
+from packaging.version import Version
+
+from bookvie import instance
+from bookvie.intents import OkResponse, book_not_found
+from bookvie.intents.intent_model import IntentModel, malformed, parse_form_intent
+from tests.agent_client import PROTOCOL_VERSION, SESSION_HEADER, McpClient, error_of, text_of
+from tests.helpers import COULDNT_SAVE_BODY
+from tests.servers import wait_for_health
+
+RED = "ATDD red phase (Story 12.1): nothing is mounted at /mcp yet"
+
+BACKEND_ROOT = Path(__file__).resolve().parents[1]
+README = BACKEND_ROOT.parent / "README.md"
+
+APP_INFO_DESCRIPTION = (
+    "Which bookvie this is: its version, whether it is the real app (production) or a "
+    "development server (dev), and the library folder it uses. Call it first to check you "
+    "are talking to the bookvie you mean."
+)
+APP_INFO_KEYS = {"version", "mode", "dataDir", "commit"}
+# The intents' cap on a body part (Starlette's multipart limit), 1 MiB.
+BODY_CAP = 1024 * 1024
+OWN = "http://127.0.0.1:8765"
+
+
+def _initialize_message(size: int | None = None) -> bytes:
+    """An ``initialize`` request as bytes, padded with JSON whitespace to ``size``."""
+    body = json.dumps(
+        {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "initialize",
+            "params": {
+                "protocolVersion": PROTOCOL_VERSION,
+                "capabilities": {},
+                "clientInfo": {"name": "bookvie-tests", "version": "0"},
+            },
+        }
+    ).encode()
+    if size is None:
+        return body
+    assert len(body) < size
+    return body[:-1] + b" " * (size - len(body)) + b"}"
+
+
+def _post_initialize(
+    client: McpClient, headers: dict[str, str] | None = None, *, size: int | None = None
+) -> httpx.Response:
+    """POST an ``initialize`` to ``/mcp`` as Claude Code would, plus ``headers``."""
+    return client.http.post(
+        client.path,
+        content=_initialize_message(size),
+        headers={
+            "Accept": "application/json, text/event-stream",
+            "Content-Type": "application/json",
+            **(headers or {}),
+        },
+        follow_redirects=False,
+    )
+
+
+def _post_unread(app: Any, content_length: int) -> tuple[int, int]:
+    """POST ``/mcp`` straight into the ASGI ``app`` declaring ``content_length``.
+
+    Returns the response status and how many times the app called ``receive``:
+    0 means it answered before reading any of the body.
+    """
+    reads = 0
+    sent: list[dict[str, Any]] = []
+
+    async def receive() -> dict[str, Any]:
+        nonlocal reads
+        reads += 1
+        return {"type": "http.request", "body": b" " * 65536, "more_body": True}
+
+    async def send(message: dict[str, Any]) -> None:
+        sent.append(message)
+
+    scope = {
+        "type": "http",
+        "asgi": {"version": "3.0"},
+        "http_version": "1.1",
+        "method": "POST",
+        "scheme": "http",
+        "path": "/mcp",
+        "raw_path": b"/mcp",
+        "query_string": b"",
+        "root_path": "",
+        "headers": [
+            (b"host", b"127.0.0.1:8765"),
+            (b"content-type", b"application/json"),
+            (b"accept", b"application/json, text/event-stream"),
+            (b"content-length", str(content_length).encode()),
+        ],
+        "client": ("127.0.0.1", 50000),
+        "server": ("127.0.0.1", 8765),
+    }
+    asyncio.run(app(scope, receive, send))
+    starts = [m for m in sent if m["type"] == "http.response.start"]
+    assert len(starts) == 1, sent
+    return starts[0]["status"], reads
+
+
+def _section(text: str, title: str) -> str | None:
+    """The Markdown section headed ``## title`` or ``### title``, up to the next
+    heading of the same or a higher level; ``None`` when there is none."""
+    heading = re.search(rf"^(#{{2,3}}) {re.escape(title)}[ \t]*$", text, re.M)
+    if heading is None:
+        return None
+    rest = text[heading.end() :]
+    end = re.search(rf"^#{{1,{len(heading.group(1))}}} ", rest, re.M)
+    return rest[: end.start()] if end else rest
+
+
+# --- AC-1: the dependencies ------------------------------------------------
+
+
+@pytest.mark.skip(reason=RED)
+def test_mcp_and_httpx2_are_pinned_runtime_dependencies_and_httpx_stays_dev_only() -> None:
+    # [P1] AC-1. Current on PyPI on 2026-11-19: mcp 2.3.0, httpx2 2.16.2.
+    pyproject = tomllib.loads((BACKEND_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    runtime = {
+        Requirement(e).name.lower(): Requirement(e) for e in pyproject["project"]["dependencies"]
+    }
+    dev = {Requirement(e).name.lower() for e in pyproject["dependency-groups"]["dev"]}
+    assert {"mcp", "httpx2"} <= runtime.keys(), sorted(runtime)
+    for name, current, below, above in (
+        ("mcp", "2.3.0", "2.2.999", "2.4.0"),
+        ("httpx2", "2.16.2", "2.15.999", "2.17.0"),
+    ):
+        spec = runtime[name].specifier
+        assert spec.contains(current), f"{name} {spec} refuses {current}"
+        assert not spec.contains(below) and not spec.contains(above), f"{name} {spec}"
+        assert name not in dev
+    assert "httpx" not in runtime
+    assert "httpx" in dev
+
+    lock = tomllib.loads((BACKEND_ROOT / "uv.lock").read_text(encoding="utf-8"))
+    locked = {p["name"]: p for p in lock["package"]}
+    for name, current, series in (("mcp", "2.3.0", (2, 3)), ("httpx2", "2.16.2", (2, 16))):
+        version = Version(locked[name]["version"])
+        assert version >= Version(current) and version.release[:2] == series, (name, version)
+    bookvie_deps = {d["name"] for d in locked["bookvie"]["dependencies"]}
+    assert {"mcp", "httpx2"} <= bookvie_deps
+    assert "httpx" not in bookvie_deps
+
+
+# --- AC-2: mounted at exactly /mcp, in both modes ---------------------------
+
+
+def _start(data_dir: Path, *, dev: bool) -> tuple[subprocess.Popen, int]:
+    sock = instance.bind_socket(0)
+    port = sock.getsockname()[1]
+    sock.close()
+    cmd = [sys.executable, "-m", "bookvie.cli", "--no-browser", "--port", str(port)]
+    cmd += ["--data-dir", str(data_dir), *(["--dev"] if dev else [])]
+    server = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    try:
+        wait_for_health(server, port, data_dir)
+    except BaseException:
+        server.kill()
+        server.wait()
+        raise
+    return server, port
+
+
+@pytest.mark.skip(reason=RED)
+def test_a_production_and_a_dev_server_both_answer_mcp_at_exactly_slash_mcp(
+    tmp_path: Path,
+) -> None:
+    # [P0] AC-2. Real processes, as Claude Code reaches them on 127.0.0.1:<port>/mcp.
+    for mode, dev in (("production", False), ("dev", True)):
+        data_dir = tmp_path / f"{mode}-library"
+        server, port = _start(data_dir, dev=dev)
+        try:
+            with httpx.Client(base_url=f"http://127.0.0.1:{port}", timeout=10) as http:
+                client = McpClient(http)
+                init = client.initialize()
+                assert init["protocolVersion"] == PROTOCOL_VERSION, (mode, init)
+                assert "tools" in init["capabilities"], (mode, init)
+                assert [tool["name"] for tool in client.list_tools()] == ["get_app_info"]
+                info = client.call_tool("get_app_info")["structuredContent"]
+                assert info["mode"] == mode
+                assert info["dataDir"] == str(data_dir.resolve())
+                assert http.post("/mcp/mcp", content=_initialize_message()).status_code == 404
+        finally:
+            server.terminate()
+            server.wait(timeout=20)
+
+
+@pytest.mark.skip(reason=RED)
+def test_each_app_builds_its_own_stateless_json_mcp_server_and_a_restart_needs_no_new_session(
+    connect_mcp: Callable[..., McpClient], tmp_path: Path
+) -> None:
+    # [P0] AC-2. Two apps open at once: a shared MCP server could run only one
+    # session manager, so both answering proves each create_app built its own.
+    first = connect_mcp(data_dir=tmp_path / "first")
+    second = connect_mcp(data_dir=tmp_path / "second")
+    for client in (first, second):
+        init = client.initialize()
+        assert init["protocolVersion"] == PROTOCOL_VERSION
+        assert "tools" in init["capabilities"]
+
+    # Stateless, with JSON responses: no session id, never an event stream.
+    answer = first.post({"jsonrpc": "2.0", "id": 5, "method": "tools/list"})
+    assert answer.status_code == 200
+    assert answer.headers["content-type"].split(";")[0] == "application/json"
+    assert SESSION_HEADER not in answer.headers
+    assert SESSION_HEADER not in _post_initialize(second).headers
+
+    # A restart: a new app on the same folder. The client goes on with no new
+    # handshake and no session id, as Claude Code would after `bookvie` restarts.
+    restarted = connect_mcp(data_dir=tmp_path / "first")
+    first.http = restarted.http
+    assert [tool["name"] for tool in first.list_tools()] == ["get_app_info"]
+    assert first.call_tool("get_app_info").get("isError") in (None, False)
+
+    # Exactly /mcp: no /mcp/mcp, and /mcp is never redirected to /mcp/.
+    assert first.http.post("/mcp/mcp", content=_initialize_message()).status_code == 404
+    direct = _post_initialize(first)
+    assert direct.status_code == 200, direct.headers
+
+
+# --- AC-3: the AD-16 guard, and no SDK refusal -------------------------------
+
+
+REFUSED = [
+    pytest.param({"Origin": "https://evil.example"}, id="foreign-origin"),
+    pytest.param({"Origin": "http://127.0.0.1:5173"}, id="vite-origin-without-dev"),
+    pytest.param({"Origin": "null"}, id="null-origin"),
+    pytest.param({"Host": "evil.example"}, id="foreign-host"),
+    pytest.param({"Host": "127.0.0.1:8766"}, id="other-port-host"),
+    pytest.param({"Sec-Fetch-Site": "cross-site"}, id="cross-site"),
+    pytest.param({"Sec-Fetch-Site": "same-site"}, id="same-site"),
+]
+
+SERVED = [
+    {},  # Claude Code: loopback, no Origin
+    {"Origin": OWN},
+    {"Origin": "http://localhost:8765"},
+    {"Sec-Fetch-Site": "same-origin"},
+    {"Sec-Fetch-Site": "none"},
+    # AD-16 lowercases the Host; the SDK's own check would answer this with 421.
+    {"Host": "LOCALHOST:8765"},
+]
+
+
+@pytest.mark.skip(reason=RED)
+@pytest.mark.parametrize("headers", REFUSED)
+def test_the_ad16_guard_refuses_cross_origin_mcp_requests_with_its_403(
+    mcp_client: McpClient, headers: dict[str, str]
+) -> None:
+    # [P0] AC-3.
+    refused = _post_initialize(mcp_client, headers)
+    served = _post_initialize(mcp_client)
+    assert (refused.status_code, refused.text, served.status_code) == (403, "Forbidden\n", 200)
+    for extra in SERVED:
+        answer = _post_initialize(mcp_client, extra)
+        assert answer.status_code == 200, (extra, answer.status_code, answer.text[:200])
+        assert answer.json()["result"]["protocolVersion"] == PROTOCOL_VERSION
+
+
+# --- AC-4: a server prefix, and the body cap --------------------------------
+
+
+@pytest.mark.skip(reason=RED)
+def test_the_spa_never_answers_an_mcp_path_and_a_body_over_1_mb_is_refused_unread(
+    connect_mcp: Callable[..., McpClient], tmp_path: Path
+) -> None:
+    # [P1] AC-4.
+    static = tmp_path / "static"
+    static.mkdir()
+    (static / "index.html").write_text("<p>spa</p>")
+    client = connect_mcp(static_dir=static)
+    for path in ("/mcp/anything", "/MCP", "/Mcp/x", "/mcp/mcp", "//mcp/x"):
+        answer = client.http.get(path, follow_redirects=False)
+        assert answer.status_code == 404, (path, answer.status_code)
+        assert "<p>spa</p>" not in answer.text, path
+
+    # Exactly 1 MiB is read and served; one byte more is refused.
+    at_cap = _post_initialize(client, size=BODY_CAP)
+    assert at_cap.status_code == 200, at_cap.text[:200]
+    assert _post_initialize(client, size=BODY_CAP + 1).status_code == 413
+
+    # Before it is read: a Content-Length over the cap is refused with no receive.
+    assert _post_unread(client.http.app, 2 * BODY_CAP) == (413, 0)
+
+
+# --- AC-5: the registration helper -------------------------------------------
+
+
+class ProbeIntent(IntentModel):
+    """The test-only tool's arguments: an int, a str, and both kinds of optional."""
+
+    nullable: ClassVar[frozenset[str]] = frozenset({"purpose"})
+
+    book_id: str
+    page: int
+    note: str | None = None
+    purpose: str | None = None
+
+
+PROBE_NAME = "probe_tool"
+
+
+def _on_event_loop() -> bool:
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return False
+    return True
+
+
+def _probe_tool(calls: list[dict[str, Any]]) -> Any:
+    """A test-only tool: the route pattern (parse, then a handler) with every outcome.
+
+    Page 13 is refused with ``book_not_found``, page 99 raises an unexpected
+    error, and any other valid page succeeds with the Book's id.
+    """
+    from bookvie.agent import AgentTool
+
+    def run(state: Any, arguments: dict[str, Any]) -> OkResponse:
+        calls.append({"state": state, "arguments": arguments, "on_event_loop": _on_event_loop()})
+        intent = parse_form_intent(ProbeIntent, json.dumps(arguments))
+        if intent.page == 13:
+            raise book_not_found()
+        if intent.page == 99:
+            raise RuntimeError("the probe tool broke")
+        return OkResponse(ok=True, ids={"bookId": intent.book_id})
+
+    return AgentTool(name=PROBE_NAME, description="Test only.", model=ProbeIntent, run=run)
+
+
+def _types(schema: dict[str, Any]) -> set[str]:
+    """Every JSON type a property schema admits, through ``anyOf``/``oneOf``."""
+    found = {schema["type"]} if isinstance(schema.get("type"), str) else set(schema.get("type", []))
+    for key in ("anyOf", "oneOf"):
+        for branch in schema.get(key, []):
+            found |= _types(branch)
+    return found
+
+
+@pytest.mark.skip(reason=RED)
+def test_the_tool_helper_advertises_the_models_schema_and_answers_like_the_routes(
+    connect_mcp: Callable[..., McpClient],
+) -> None:
+    # [P0] AC-5. A test-only tool, registered only here.
+    from bookvie.agent import TOOLS
+
+    calls: list[dict[str, Any]] = []
+    client = connect_mcp(tools=(*TOOLS, _probe_tool(calls)))
+
+    # The advertised schema is the model's, by alias, closed, no null where refused.
+    schema = client.tool(PROBE_NAME)["inputSchema"]
+    model = ProbeIntent.model_json_schema(by_alias=True)
+    assert schema["properties"].keys() == {"bookId", "page", "note", "purpose"}
+    assert schema["type"] == "object"
+    assert schema["additionalProperties"] is False
+    assert sorted(schema["required"]) == ["bookId", "page"]
+    for key in ("bookId", "page", "purpose"):
+        assert schema["properties"][key] == model["properties"][key], key
+    assert _types(schema["properties"]["note"]) == {"string"}
+    assert _types(schema["properties"]["purpose"]) == {"string", "null"}
+
+    # Success: the OkResponse by alias as structured content, the same JSON as text.
+    ok = client.call_tool(PROBE_NAME, {"bookId": "b1", "page": 212})
+    assert ok.get("isError") in (None, False), ok
+    assert ok["structuredContent"] == {"ok": True, "ids": {"bookId": "b1"}}
+    assert json.loads(text_of(ok)) == ok["structuredContent"]
+    (call,) = calls
+    assert call["state"] is client.http.app.state
+    assert call["on_event_loop"] is False
+
+    # Neither validated nor coerced by the SDK: "212" and an extra key reach the
+    # body as sent, and the model refuses them as the route's parser would.
+    for sent in ({"bookId": "b1", "page": "212"}, {"bookId": "b1", "page": 212, "extra": 1}):
+        refused = client.call_tool(PROBE_NAME, sent)
+        assert error_of(refused) == malformed().response_body()["error"], sent
+        assert calls[-1]["arguments"] == sent
+
+    # An IntentError: the AD-9 error object, no "Error executing tool" prefix.
+    refusal = client.call_tool(PROBE_NAME, {"bookId": "b1", "page": 13})
+    assert error_of(refusal) == book_not_found().response_body()["error"]
+    assert not text_of(refusal).startswith("Error executing tool")
+
+    # Anything else: couldnt_save.
+    broken = client.call_tool(PROBE_NAME, {"bookId": "b1", "page": 99})
+    assert error_of(broken) == COULDNT_SAVE_BODY["error"]
+
+    # One worker-thread call per tool call, never on the event loop.
+    assert len(calls) == 5
+    assert not any(c["on_event_loop"] for c in calls)
+
+
+# --- AC-6: the tool list ------------------------------------------------------
+
+
+@pytest.mark.skip(reason=RED)
+def test_the_only_tool_is_get_app_info_and_it_returns_the_app_info_view(
+    mcp_client: McpClient,
+) -> None:
+    # [P0] AC-6.
+    tools = mcp_client.list_tools()
+    assert [tool["name"] for tool in tools] == ["get_app_info"]
+    (tool,) = tools
+    assert tool["description"] == APP_INFO_DESCRIPTION
+    assert tool["inputSchema"]["type"] == "object"
+    assert tool["inputSchema"].get("properties", {}) == {}
+    assert tool["inputSchema"]["additionalProperties"] is False
+
+    result = mcp_client.call_tool("get_app_info")
+    view = mcp_client.http.get("/api/views/app-info").json()
+    assert set(view) == APP_INFO_KEYS
+    assert result.get("isError") in (None, False), result
+    assert result["structuredContent"] == view
+    assert json.loads(text_of(result)) == view
+    assert view["mode"] == "production"
+    assert view["dataDir"] == str(mcp_client.data_dir.resolve())
+
+
+# --- AC-7: the shared fixture -------------------------------------------------
+
+
+@pytest.mark.skip(reason=RED)
+def test_the_shared_mcp_client_reaches_a_real_app_on_a_temporary_folder(
+    mcp_client: McpClient, tmp_path: Path
+) -> None:
+    # [P1] AC-7. The fixture later stories' agent-tool tests use.
+    info = mcp_client.call_tool("get_app_info")["structuredContent"]
+    assert info["dataDir"] == str(mcp_client.data_dir.resolve())
+    assert mcp_client.data_dir.resolve().is_relative_to(tmp_path.resolve())
+    assert (mcp_client.data_dir / "library.json").is_file()
+    assert mcp_client.http.app.state.store.data_dir == mcp_client.data_dir
+
+
+# --- AC-9: the README ---------------------------------------------------------
+
+
+@pytest.mark.skip(reason=RED)
+def test_the_readme_says_how_to_add_bookvie_and_bookvie_dev_to_claude_code() -> None:
+    # [P2] AC-9. The reconnect step's wording comes from AC-8 (Oleg's real session).
+    section = _section(README.read_text(encoding="utf-8"), "Agent tools")
+    assert section is not None, "no Agent tools section"
+    assert (
+        "claude mcp add --transport http --scope user bookvie http://127.0.0.1:8765/mcp" in section
+    )
+    assert (
+        "claude mcp add --transport http --scope user bookvie-dev http://127.0.0.1:8766/mcp"
+        in section
+    )
+    assert "running" in section
