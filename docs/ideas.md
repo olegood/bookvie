@@ -140,6 +140,24 @@ Notes:
 - Decide whether the selected bar is kept in the URL (for example `?period=2026-03`), so going back from a Book's detail returns to the same list.
 - Possible extra: a "pages finished" figure per row helps explain a tall bar with few books.
 
+### Edit a Reading
+
+**Status:** new
+
+Let me edit a Reading after the fact: change my mind about the rating, rethink whether the purpose was fulfilled, fix a wrong finish date, and so on. Today a finished Reading can't be changed at all.
+
+Notes:
+
+- What exists today: `finish-reading` sets the finish date, Purpose fulfilled and rating once, when the Reading is finished. `edit-purpose` changes the Purpose, but only on the current (unfinished) Reading; a finished one gets `reading_already_finished`. There's no way to change any of these on a finished Reading.
+- Which fields are editable? Likely candidates: rating, Purpose fulfilled, Purpose, finish date, start date. Probably not the page fields (`startPage`, `currentPage`, `finishedPages`, the earlier segments), since they drive Measured pace and Stats; decide whether those are in or out.
+- Where it lives: an "Edit" action on each Reading in the Book's detail page (the reading history), opening a dialog like the Finish one, prefilled with the current values.
+- Same rules as when finishing: rating 1 to 5 or none; Purpose fulfilled only when the Reading has a Purpose. If the Purpose is cleared, Purpose fulfilled has to be cleared too.
+- Dates: the finish date can't be before the start date or in the future. Changing it moves the Book between Stats buckets, and that's expected.
+- Re-reads: a Book can have several Readings, so the edit must target one Reading by its id, not "the Book's latest".
+- Editing isn't progress, so `lastProgressUpdate` stays as it is (like `edit-purpose` today).
+- Possible extra: also allow un-finishing a Reading (finished by mistake), or deleting a Reading. Decide whether that belongs here or is its own idea.
+- If the "bookvie MCP server" is in place, an edit-reading tool there would let me say "change my rating of X to 4 stars".
+
 ## Implemented
 
 Ideas already built and delivered.
