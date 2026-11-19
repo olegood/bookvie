@@ -4,7 +4,7 @@
 the 13 form fields as strings, with the user's own spine color only. Sending
 it back to ``edit_book`` with the ``bookId`` commits the Book unchanged, so an
 agent that follows ``edit_book``'s description changes only what it means to.
-The seed and the forms are ``test_agent_write.py``'s. Every test runs with
+The seed is ``test_agent_write.py``'s and the forms ``test_agent_book_write.py``'s. Every test runs with
 ``HOME`` set to a temporary folder (``conftest.py``).
 """
 
@@ -16,10 +16,9 @@ import pytest
 from tests.agent_client import McpClient, text_of
 from tests.builder import LibraryBuilder
 from tests.helpers import library_bytes, stored_book, temp_files
+from tests.test_agent_book_write import FINISHED_FORM, FORM_KEYS
 from tests.test_agent_write import (
     FINISHED,
-    FINISHED_FORM,
-    FORM_KEYS,
     MAIN,
     MAIN_PAGES,
     PAUSED,

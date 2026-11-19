@@ -9,10 +9,8 @@ exactly as ``POST /api/intents/<verb>`` answers: the same stored
 text Story 12.3 quotes, character for character. The destructive intents stay
 unregistered.
 
-Story 12.4 adds ``add_book`` and ``edit_book`` (the last section). Both
-answer as their routes do, but ``edit_book`` is a whole edit: its schema
-requires every form key, and a call that leaves one out is refused naming the
-missing keys, where the route would clear those fields.
+Story 12.4's ``add_book`` and ``edit_book`` are in ``test_agent_book_write.py``,
+which reuses this file's seed, twins and case shape.
 
 The contract leaves seed one library, copies it, and opens both copies through
 ``connect_mcp``: the input goes through the tool on one app and through the
@@ -26,7 +24,8 @@ import itertools
 import json
 import shutil
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from types import SimpleNamespace
@@ -35,9 +34,7 @@ from typing import Any
 import pytest
 
 from bookvie.intents import (
-    AddBookIntent,
     AddCardNoteIntent,
-    EditBookIntent,
     EditCardNoteIntent,
     EditPurposeIntent,
     FinishReadingIntent,
@@ -55,7 +52,6 @@ from tests.helpers import (
     FaultyFs,
     assert_invariants,
     library_bytes,
-    stored_book,
     temp_files,
 )
 
@@ -94,6 +90,8 @@ WRITE_TOOLS: dict[str, tuple[type, set[str], set[str]]] = {
 }
 WRITE_TOOL_NAMES = list(WRITE_TOOLS)
 DESTRUCTIVE_TOOL_NAMES = ["delete_book", "delete_card_note", "restore", "set_spine_color"]
+# Story 12.4's two tools (tests/test_agent_book_write.py), listed after the ten.
+BOOK_TOOL_NAMES = ["add_book", "edit_book"]
 
 DESCRIPTIONS = {
     "start_reading": (
@@ -355,7 +353,7 @@ CASES: list[Case] = [
     *(Case(tool, f"fault-at-{fault}", arguments, "couldnt_save", fault=fault) for fault in ("fsync", "replace") for tool, arguments in SUCCESSES.items()),
 ]  # fmt: skip
 
-# The intent modules that mint ids with uuid.uuid4() (add_book and edit_book: Story 12.4).
+# The intent modules that mint ids with uuid.uuid4() (add_book and edit_book: Story 12.4's file).
 MINTING_MODULES = ("start_reading", "finish_reading", "add_card_note", "add_book", "edit_book")
 
 
@@ -605,6 +603,20 @@ def test_an_unexpected_failure_in_a_write_tools_handler_is_couldnt_save_as_the_r
     tool: str,
 ) -> None:
     # [P2] AC-2. The tool and the route call the same handler; one that breaks breaks both alike.
+    _assert_a_broken_handler_breaks_tool_and_route_alike(
+        connect_mcp, tmp_path, monkeypatch, caplog, tool, SUCCESSES[tool]
+    )
+
+
+def _assert_a_broken_handler_breaks_tool_and_route_alike(
+    connect_mcp: Callable[..., McpClient],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    tool: str,
+    arguments: dict[str, Any],
+) -> None:
+    """The route's 500 body and the tool's ``couldnt_save``, logged with the tool's name."""
     from fastapi.testclient import TestClient
 
     tool_side, route_side = _twins(
@@ -624,11 +636,11 @@ def test_an_unexpected_failure_in_a_write_tools_handler_is_couldnt_save_as_the_r
     )
     response = route_client.post(
         f"/api/intents/{tool.replace('_', '-')}",
-        files={"intent": (None, json.dumps(SUCCESSES[tool]), "application/json")},
+        files={"intent": (None, json.dumps(arguments), "application/json")},
     )
     assert response.status_code == 500, response.text
     with caplog.at_level("ERROR", logger="bookvie.agent.server"):
-        answer = tool_side.call_tool(tool, SUCCESSES[tool])
+        answer = tool_side.call_tool(tool, arguments)
     assert error_of(answer) == response.json()["error"]
     assert error_of(answer)["code"] == "couldnt_save"
     (record,) = [r for r in caplog.records if r.name == "bookvie.agent.server"]
@@ -663,17 +675,33 @@ def test_a_book_found_and_then_deleted_in_the_app_is_book_not_found_for_each_wri
 
 def test_a_real_bookvie_process_advertises_and_commits_a_write_tool(tmp_path: Path) -> None:
     # [P1] AC-1, AC-2. The leaves above use TestClient; this one is the process Claude Code reaches.
+    from bookvie.agent import input_schema
+
+    folder = tmp_path / "library"
+    _seed(folder, side_reads=2)
+    with running_bookvie(folder) as client:
+        listed = {tool["name"]: tool for tool in client.list_tools()}
+        assert list(listed) == EARLIER_TOOL_NAMES + WRITE_TOOL_NAMES + BOOK_TOOL_NAMES
+        for name, (model, _, _) in WRITE_TOOLS.items():
+            assert listed[name]["inputSchema"] == input_schema(model), name
+        answer = client.call_tool("update_page", UPDATE)
+        assert answer["structuredContent"] == {"ok": True}, answer
+    stored = json.loads((folder / "library.json").read_text(encoding="utf-8"))
+    (book,) = [book for book in stored["books"] if book["id"] == MAIN]
+    assert book["readings"][-1]["currentPage"] == UPDATE["page"]
+
+
+@contextmanager
+def running_bookvie(folder: Path) -> Iterator[McpClient]:
+    """A ``bookvie`` process on ``folder`` and a free port, and an MCP client to it; stopped after."""
     import subprocess
     import sys
 
     import httpx
 
     from bookvie import instance
-    from bookvie.agent import input_schema
     from tests.servers import wait_for_health
 
-    folder = tmp_path / "library"
-    _seed(folder, side_reads=2)
     sock = instance.bind_socket(0)
     port = sock.getsockname()[1]
     sock.close()
@@ -691,296 +719,7 @@ def test_a_real_bookvie_process_advertises_and_commits_a_write_tool(tmp_path: Pa
     try:
         wait_for_health(server, port, folder)
         with httpx.Client(base_url=f"http://127.0.0.1:{port}", timeout=10) as http:
-            client = McpClient(http, data_dir=folder)
-            listed = {tool["name"]: tool for tool in client.list_tools()}
-            assert list(listed) == EARLIER_TOOL_NAMES + WRITE_TOOL_NAMES + BOOK_TOOL_NAMES
-            for name, (model, _, _) in WRITE_TOOLS.items():
-                assert listed[name]["inputSchema"] == input_schema(model), name
-            answer = client.call_tool("update_page", UPDATE)
-            assert answer["structuredContent"] == {"ok": True}, answer
+            yield McpClient(http, data_dir=folder)
     finally:
         server.terminate()
         server.wait(timeout=20)
-    stored = json.loads((folder / "library.json").read_text(encoding="utf-8"))
-    (book,) = [book for book in stored["books"] if book["id"] == MAIN]
-    assert book["readings"][-1]["currentPage"] == UPDATE["page"]
-
-
-# --- Story 12.4: add_book and edit_book -------------------------------------------
-
-# The book form's keys, in form order: every one optional on add_book, required on edit_book.
-FORM_KEYS = [
-    "title",
-    "subtitle",
-    "pages",
-    "authors",
-    "edition",
-    "language",
-    "publisher",
-    "type",
-    "isbn",
-    "year",
-    "finishedOn",
-    "tags",
-    "spineColor",
-]
-BOOK_TOOL_NAMES = ["add_book", "edit_book"]
-
-BOOK_DESCRIPTIONS = {
-    "add_book": (
-        "Add a Book to the catalog. Every field is a string. Required: title, pages, authors "
-        "(separated by semicolons), language, publisher, type (paperback, hardcover or ebook); "
-        "edition defaults to 1. Optional: subtitle, isbn, year, tags (separated by commas), and "
-        "finishedOn (YYYY-MM-DD) for a Book the user has already read. A likely duplicate is "
-        "refused with duplicate_book and the matching Books: show them to the user, and send "
-        "confirmDuplicate true only if the user says to add it anyway. Returns the new Book's "
-        "id."
-    ),
-    "edit_book": (
-        "Replace a Book's fields. This is a whole edit: a field you leave empty is cleared. Call "
-        "get_book first and send its editForm with bookId, changing only what the user asked "
-        "for. A finished Book's finishedOn can be changed but not emptied. removeCover true "
-        "deletes the Book's cover: send it only when the user asks. A changed title, author or "
-        "ISBN that makes it a likely duplicate is refused like add_book."
-    ),
-}
-
-# A new Book, as an agent sends it: the required fields, Tags and an ISBN.
-ADD = {
-    "title": "The Dispossessed",
-    "pages": "387",
-    "authors": "Ursula K. Le Guin",
-    "language": "English",
-    "publisher": "Harper",
-    "type": "paperback",
-    "isbn": "9780061054884",
-    "tags": "sci-fi, anarchism",
-}
-# Every form field that can fail, failing (add-book and edit-book refuse each one).
-BAD_FIELDS = {
-    "title": "  ",
-    "pages": "0",
-    "authors": " ; ",
-    "edition": "0",
-    "language": "",
-    "publisher": "",
-    "type": "kindle",
-    "isbn": "123",
-    "year": "20",
-    "finishedOn": "2099-01-01",
-    "spineColor": "red",
-}
-BAD_FIELD_ORDER = tuple(key for key in FORM_KEYS if key in BAD_FIELDS)
-# Dune as a duplicate: its ISBN, title and author.
-DUNE_AGAIN = {"title": "Dune", "authors": "Frank Herbert", "isbn": DUNE_ISBN13}
-
-# The seeded Books' Edit book forms, every key prefilled as the panel and get_book give them.
-FINISHED_FORM = {
-    "bookId": FINISHED,
-    "title": "Dune",
-    "subtitle": DUNE_SUBTITLE,
-    "pages": "412",
-    "authors": "Frank Herbert",
-    "edition": "1",
-    "language": "English",
-    "publisher": "Publisher",
-    "type": "paperback",
-    "isbn": DUNE_ISBN13,
-    "year": "1965",
-    "finishedOn": "2026-04-10",
-    "tags": "sci-fi, classic",
-    "spineColor": DUNE_SPINE_COLOR,
-}
-PAUSED_FORM = {
-    "bookId": PAUSED,
-    "title": "Refactoring",
-    "subtitle": "",
-    "pages": str(PAUSED_PAGES),
-    "authors": "Author 3",
-    "edition": "1",
-    "language": "English",
-    "publisher": "Publisher",
-    "type": "paperback",
-    "isbn": "",
-    "year": "",
-    "finishedOn": "",
-    "tags": "",
-    "spineColor": "",
-}
-UNREAD_FORM = {
-    **PAUSED_FORM,
-    "bookId": UNREAD,
-    "title": "Neuromancer",
-    "pages": "271",
-    "authors": "Author 5",
-}
-EDIT = {**PAUSED_FORM, "publisher": "Addison-Wesley", "tags": "craft"}
-COVER_URL = "https://covers.example/dispossessed.jpg"
-
-BOOK_CASES: list[Case] = [
-    # add_book
-    Case("add_book", "success", ADD, "ok"),
-    Case("add_book", "success-back-filled", {**ADD, "finishedOn": "2026-10-01"}, "ok"),
-    Case("add_book", "every-field-invalid", BAD_FIELDS, "invalid_fields", BAD_FIELD_ORDER),
-    Case("add_book", "duplicate-book", {**ADD, **DUNE_AGAIN}, "duplicate_book"),
-    Case("add_book", "success-confirm-duplicate", {**ADD, **DUNE_AGAIN, "confirmDuplicate": True}, "ok"),
-    Case("add_book", "wrong-type", {**ADD, "pages": 387}, "invalid_fields", ("intent",)),
-    # No coverUrl yet (Story 12.5 adds it): the route refuses it as an unknown key.
-    Case("add_book", "unknown-key-cover-url", {**ADD, "coverUrl": COVER_URL}, "invalid_fields", ("intent",)),
-    Case("add_book", "fault-at-write", ADD, "couldnt_save", fault="write"),
-    # edit_book: every key sent, as the tool requires.
-    Case("edit_book", "success", EDIT, "ok"),
-    Case("edit_book", "success-back-filled", {**UNREAD_FORM, "finishedOn": "2026-01-15"}, "ok"),
-    Case("edit_book", "unchanged-still-commits", FINISHED_FORM, "unchanged"),
-    # The same unchanged edit reaches the commit: a fault at write refuses it.
-    Case("edit_book", "unchanged-fault-at-write", FINISHED_FORM, "couldnt_save", fault="write"),
-    Case("edit_book", "every-field-invalid", {**PAUSED_FORM, **BAD_FIELDS}, "invalid_fields", BAD_FIELD_ORDER),
-    Case("edit_book", "pages-below-current-page", {**PAUSED_FORM, "pages": "150"}, "pages_below_current_page", ("pages",)),
-    Case("edit_book", "duplicate-book", {**PAUSED_FORM, "title": "Dune", "authors": "Frank Herbert"}, "duplicate_book"),
-    Case("edit_book", "success-confirm-duplicate", {**PAUSED_FORM, "title": "Dune", "authors": "Frank Herbert", "confirmDuplicate": True}, "ok"),
-    Case("edit_book", "book-not-found", {**FINISHED_FORM, "bookId": GONE}, "book_not_found"),
-    Case("edit_book", "wrong-type", {**PAUSED_FORM, "pages": PAUSED_PAGES}, "invalid_fields", ("intent",)),
-    Case("edit_book", "unknown-key-cover-url", {**PAUSED_FORM, "coverUrl": COVER_URL}, "invalid_fields", ("intent",)),
-    Case("edit_book", "fault-at-write", EDIT, "couldnt_save", fault="write"),
-    # A whole edit without removeCover keeps the cover; removeCover clears it, file and all.
-    Case("edit_book", "keeps-cover", UNREAD_FORM, "unchanged", cover=True),
-    Case("edit_book", "remove-cover", {**UNREAD_FORM, "removeCover": True}, "ok", cover=True),
-]  # fmt: skip
-
-
-def test_add_book_advertises_the_add_book_intent_models_schema_and_the_storys_description(
-    mcp_client: McpClient,
-) -> None:
-    # [P0] AC-1. The add-book intent model's schema by alias: every key optional, no coverUrl.
-    from bookvie.agent import input_schema
-
-    tools = mcp_client.list_tools()
-    listed = {tool["name"]: tool for tool in tools}
-    assert listed.get("add_book", {}).get("inputSchema") == input_schema(AddBookIntent)
-
-    schema = listed["add_book"]["inputSchema"]
-    assert schema["type"] == "object" and schema["additionalProperties"] is False, schema
-    assert list(schema["properties"]) == [*FORM_KEYS, "confirmDuplicate"], schema
-    assert "coverUrl" not in schema["properties"]
-    assert schema.get("required", []) == [], schema
-    for key in FORM_KEYS:
-        assert schema["properties"][key]["type"] == "string", (key, schema["properties"][key])
-    assert schema["properties"]["confirmDuplicate"]["type"] == "boolean"
-    assert listed["add_book"]["description"] == BOOK_DESCRIPTIONS["add_book"]
-    # The cumulative list: 12.1's to 12.3's tools, then add_book and edit_book.
-    names = [tool["name"] for tool in tools]
-    assert names == EARLIER_TOOL_NAMES + WRITE_TOOL_NAMES + BOOK_TOOL_NAMES
-
-
-def test_edit_book_requires_every_form_key_and_advertises_the_storys_description(
-    mcp_client: McpClient,
-) -> None:
-    # [P0] AC-2. A whole edit: every form key and bookId required; removeCover and
-    # confirmDuplicate optional.
-    from bookvie.agent import input_schema
-
-    listed = {tool["name"]: tool for tool in mcp_client.list_tools()}
-    schema = listed.get("edit_book", {}).get("inputSchema", {})
-    assert sorted(schema.get("required", [])) == sorted([*FORM_KEYS, "bookId"])
-
-    # Otherwise the edit-book intent model's schema by alias (its name and docstring aside).
-    def rest(advertised: dict[str, Any]) -> dict[str, Any]:
-        return {
-            key: value
-            for key, value in advertised.items()
-            if key not in ("required", "title", "description")
-        }
-
-    assert rest(schema) == rest(input_schema(EditBookIntent))
-    assert schema["type"] == "object" and schema["additionalProperties"] is False, schema
-    assert set(schema["properties"]) == {*FORM_KEYS, "bookId", "removeCover", "confirmDuplicate"}
-    assert "coverUrl" not in schema["properties"]
-    for key in [*FORM_KEYS, "bookId"]:
-        assert schema["properties"][key]["type"] == "string", (key, schema["properties"][key])
-    assert listed["edit_book"]["description"] == BOOK_DESCRIPTIONS["edit_book"]
-
-
-@pytest.mark.parametrize("case", BOOK_CASES, ids=lambda case: case.id)
-def test_add_book_and_edit_book_store_and_answer_exactly_as_their_intent_routes(
-    connect_mcp: Callable[..., McpClient],
-    tmp_path: Path,
-    same_ids: Callable[[], None],
-    case: Case,
-) -> None:
-    # [P0] AC-3. One input, two identical libraries: through the tool on one, the route on the other.
-    tool_side, route_side = _twins(connect_mcp, tmp_path, case)
-    before = library_bytes(tool_side.data_dir)
-
-    same_ids()
-    route = _route_answer(route_side, case.tool, case.arguments)
-    same_ids()
-    tool = _tool_answer(tool_side, case.tool, case.arguments)
-    assert tool == route, case.id
-    assert library_bytes(tool_side.data_dir) == library_bytes(route_side.data_dir), case.id
-
-    # The case reaches the branch it names (on the route, which is the reference).
-    kind, answer = route
-    if case.expect in ("ok", "unchanged"):
-        assert kind == "ok" and answer["ok"] is True, (case.id, answer)
-        assert_invariants(tool_side.data_dir)
-        changed = library_bytes(tool_side.data_dir) != before
-        assert changed is (case.expect == "ok"), case.id
-    else:
-        assert kind == "error" and answer["code"] == case.expect, (case.id, answer)
-        assert [f["field"] for f in answer.get("fields", [])] == list(case.fields), answer
-        if case.expect == "duplicate_book":
-            assert [match["title"] for match in answer["duplicates"]] == ["Dune"], answer
-        # A refusal or a fault changes nothing and leaves no temporary file (TR8).
-        assert library_bytes(tool_side.data_dir) == before, case.id
-        assert temp_files(tool_side.data_dir) == [], case.id
-    if case.tool == "add_book" and kind == "ok":
-        # The new Book's id, which get_book and every other tool take next.
-        assert set(answer["ids"]) == {"bookId"}, answer
-        assert (
-            stored_book(tool_side.data_dir, answer["ids"]["bookId"])["title"]
-            == case.arguments["title"]
-        )
-    elif kind == "ok":
-        assert "ids" not in answer, answer
-
-
-def test_a_partial_edit_book_is_refused_naming_the_missing_keys_and_changes_nothing(
-    connect_mcp: Callable[..., McpClient], tmp_path: Path
-) -> None:
-    # [P0] AC-4. The route would clear every field left out; the tool refuses the call.
-    folder = tmp_path / "library"
-    _seed(folder, side_reads=2)
-    client = connect_mcp(data_dir=folder)
-    before = library_bytes(folder)
-
-    answer = client.call_tool("edit_book", {"bookId": FINISHED, "title": "Dune Messiah"})
-    refused = json.loads(text_of(answer))
-    missing = sorted(key for key in FORM_KEYS if key != "title")
-    named = sorted(field["field"] for field in refused.get("fields", []))
-    assert (answer.get("isError"), named) == (True, missing), refused
-
-    assert refused["code"] == "invalid_fields" and refused["kind"] == "refusal", refused
-    assert library_bytes(folder) == before
-    book = stored_book(folder, FINISHED)
-    assert book["title"] == "Dune"
-    assert book["subtitle"] == DUNE_SUBTITLE
-    assert book["isbn"] == DUNE_ISBN13
-    assert book["tags"] == ["sci-fi", "classic"]
-    assert book["spineColorUser"] == DUNE_SPINE_COLOR
-
-
-def test_a_partial_edit_book_names_each_missing_key_in_schema_order_with_pydantics_message(
-    connect_mcp: Callable[..., McpClient], tmp_path: Path
-) -> None:
-    # [P1] AC-4. The refusal's fields, in the advertised schema's order: bookId too when it's missing.
-    folder = tmp_path / "library"
-    _seed(folder, side_reads=2)
-    client = connect_mcp(data_dir=folder)
-    before = library_bytes(folder)
-
-    refused = error_of(client.call_tool("edit_book", {"title": "Dune Messiah"}))
-    assert refused["code"] == "invalid_fields", refused
-    assert refused["fields"] == [
-        {"field": key, "message": "Field required"} for key in FORM_KEYS if key != "title"
-    ] + [{"field": "bookId", "message": "Field required"}]
-    assert library_bytes(folder) == before

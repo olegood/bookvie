@@ -91,13 +91,15 @@ acceptanceCriteria:
 
 ## Green-phase follow-ups (secondary branches, not red leaves)
 
-- [ ] **Pytest, AC-3 more refusals:** `pages_below_card_note` on the Main book (a note at 162), `null` for a form key (refused on `intent` by tool and route alike), and `removeCover: true` on a Book with a cover (seeded with `cover=True`) stored as the route stores it.
-- [ ] **Pytest, AC-3 other fault steps:** `fsync` and `replace` faults (TR8) through both tools.
-- [ ] **Pytest, AC-3 back-fill side effect:** `edit_book` with `finishedOn` on a Side read with no Readings takes it off the Side reads through the tool, as through the route.
-- [ ] **Pytest, AC-4 more partial edits:** `{bookId}` alone, `{}` (no `bookId` either: `bookId` named too), and every key but `spineColor`. Each is refused naming exactly its missing keys and changes nothing; an extra `coverUrl` next to the missing keys is still refused (the build decides which refusal comes first).
-- [ ] **Pytest, AC-1/AC-2 from a real server:** both schemas and one `add_book` commit on a `bookvie` subprocess, as 12.3's real-process leaf does.
-- [ ] **Pytest, AC-3 find then edit:** `find_book` gives Dune's id, `get_book` gives its fields, and `edit_book` with those fields and one change commits only that change (the description's "Call get_book first" flow).
-- [ ] **Pytest, unexpected failure:** a monkeypatched `add_book` / `edit_book` that raises answers `couldnt_save` through the tool, as the route's 500 does, and is logged with the tool's name.
+Story 12.4's automation moved this story's leaves, forms and `BOOK_CASES` out of `backend/tests/test_agent_write.py` into `backend/tests/test_agent_book_write.py` (the file had passed 1000 lines). The red-phase line numbers below are as they were then.
+
+- [x] **Pytest, AC-3 more refusals:** `pages_below_card_note` on the Main book (a note at 162), `null` for a form key (refused on `intent` by tool and route alike), and `removeCover: true` on a Book with a cover (seeded with `cover=True`) stored as the route stores it. (done: `backend/tests/test_agent_book_write.py:215` `edit_book-pages-below-card-note`, `:217-218` `add_book-null-title` and `edit_book-null-title`, `:212` `edit_book-remove-cover` from the build's review)
+- [x] **Pytest, AC-3 other fault steps:** `fsync` and `replace` faults (TR8) through both tools. (done: `backend/tests/test_agent_book_write.py:222`, 4 cases `{add_book,edit_book}-fault-at-{fsync,replace}`)
+- [x] **Pytest, AC-3 back-fill side effect:** `edit_book` with `finishedOn` on a Side read with no Readings takes it off the Side reads through the tool, as through the route. (done: `backend/tests/test_agent_book_write.py:220` `edit_book-success-back-fills-a-side-read`, and `test_a_finish_date_on_a_side_read_with_no_readings_takes_it_off_the_side_reads`)
+- [x] **Pytest, AC-4 more partial edits:** `{bookId}` alone, `{}` (no `bookId` either: `bookId` named too), and every key but `spineColor`. Each is refused naming exactly its missing keys and changes nothing; an extra `coverUrl` next to the missing keys is still refused (the build decides which refusal comes first). (done: `backend/tests/test_agent_book_write.py` `test_each_partial_edit_book_is_refused_naming_exactly_its_missing_keys`, 4 cases; the missing-key refusal comes first. A call with no `arguments` at all: `test_book_tools_called_without_arguments_are_refused_as_an_empty_intent`)
+- [x] **Pytest, AC-1/AC-2 from a real server:** both schemas and one `add_book` commit on a `bookvie` subprocess, as 12.3's real-process leaf does. (done: `backend/tests/test_agent_book_write.py` `test_a_real_bookvie_process_advertises_both_book_tools_and_commits_an_add`, which also checks `edit_book`'s `required`)
+- [x] **Pytest, AC-3 find then edit:** `find_book` gives Dune's id, `get_book` gives its fields, and `edit_book` with those fields and one change commits only that change (the description's "Call get_book first" flow). (done: `backend/tests/test_agent_book_write.py` `test_find_book_then_get_book_then_edit_book_changes_only_what_was_asked`; the unchanged round trip of every seeded Book is `backend/tests/test_agent_edit_form.py:43`)
+- [x] **Pytest, unexpected failure:** a monkeypatched `add_book` / `edit_book` that raises answers `couldnt_save` through the tool, as the route's 500 does, and is logged with the tool's name. (done: `backend/tests/test_agent_book_write.py` `test_an_unexpected_failure_in_a_book_tools_handler_is_couldnt_save_as_the_routes_500`, 2 cases, through 12.3's shared `_assert_a_broken_handler_breaks_tool_and_route_alike`)
 
 ## Helper probes
 
@@ -145,12 +147,12 @@ With the skips in place, `uv run pytest -q -p no:cacheprovider --no-cov` (the fu
 
 ## Implementation checklist (for `bmad-build-auto`)
 
-- [ ] Add `add_book` and then `edit_book` to `TOOLS` after `unmark_side_read`, each with the AC's description (AC-1, AC-2).
-- [ ] `add_book`: advertise `AddBookIntent`, parse with `parse_add_book_intent`, call `add_book(state.store, state.clock, intent)`, and answer `{ok: true, ids: {bookId}}` (AC-1, AC-3).
-- [ ] `edit_book`: advertise `EditBookIntent`'s schema with every form key and `bookId` required. Refuse a call missing any of them with `invalid_fields` naming each key, before `parse_edit_book_intent` runs. Then call `edit_book(state.store, state.clock, intent)` and answer `{ok: true}` (AC-2, AC-3, AC-4).
-- [ ] Keep `agent/` free of `http/api` imports (`test_layers.py`), and leave `coverUrl` for Story 12.5.
-- [ ] Update `AGENT_TOOL_NAMES` and the two 12.3 list assertions to the cumulative 19 (see above).
-- [ ] Un-skip the 4 leaves and see them pass, then run `npm run check` with no other existing leaf's assertions edited.
+- [x] Add `add_book` and then `edit_book` to `TOOLS` after `unmark_side_read`, each with the AC's description (AC-1, AC-2). (done: `backend/tests/test_agent_book_write.py:226` and `:250`)
+- [x] `add_book`: advertise `AddBookIntent`, parse with `parse_add_book_intent`, call `add_book(state.store, state.clock, intent)`, and answer `{ok: true, ids: {bookId}}` (AC-1, AC-3). (done: `backend/tests/test_agent_book_write.py:226`, `:279` `add_book-*` cases)
+- [x] `edit_book`: advertise `EditBookIntent`'s schema with every form key and `bookId` required. Refuse a call missing any of them with `invalid_fields` naming each key, before `parse_edit_book_intent` runs. Then call `edit_book(state.store, state.clock, intent)` and answer `{ok: true}` (AC-2, AC-3, AC-4). (done: `backend/tests/test_agent_book_write.py:250`, `:279` `edit_book-*` cases, `:322`, `:347`, `:385`)
+- [x] Keep `agent/` free of `http/api` imports (`test_layers.py`), and leave `coverUrl` for Story 12.5. (done: `backend/tests/test_layers.py:124` `test_no_forbidden_import`; `backend/tests/test_agent_book_write.py:194` and `:208` `unknown-key-cover-url`)
+- [x] Update `AGENT_TOOL_NAMES` and the two 12.3 list assertions to the cumulative 19 (see above). (done: `backend/tests/test_agent_mount.py:46`; `backend/tests/test_agent_write.py:429` and `:684`)
+- [x] Un-skip the 4 leaves and see them pass, then run `npm run check` with no other existing leaf's assertions edited. (done: `backend/tests/test_agent_book_write.py:226`, `:250`, `:279`, `:322`, no skip left; `npm run check` exited 0 in Story 12.4's automation run)
 
 ## Next
 
