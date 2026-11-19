@@ -77,7 +77,7 @@ Notes:
 
 ### bookvie MCP server
 
-**Status:** new
+**Status:** planned (Epic 12, see [the plan](../_bmad-output/planning-artifacts/mcp-server-plan-2026-11-19.md))
 
 Expose bookvie as an MCP server so Claude (and other agents) can read and update the catalog and reading progress directly.
 

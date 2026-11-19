@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The MCP Round-Table</title>
+<style>
+  :root {
+    --paper: #f6f2ea; --ink: #2b2a27; --muted: #6d675d; --rule: #ddd4c4;
+    --sage: #557059; --sage-soft: #e3ebe2; --card: #fffdf8; --amber: #b7791f;
+    --mary: #8a5a9c; --john: #3f6ea8; --sally: #c0577a; --winston: #6b6257; --amelia: #2f8a83; --murat: #b8632b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #1d1c1a; --ink: #ece6da; --muted: #a39b8d; --rule: #3a3731;
+      --sage: #93b597; --sage-soft: #26302a; --card: #262420; --amber: #e0a85a;
+      --mary: #c79bd8; --john: #8db3e6; --sally: #ee9bb6; --winston: #c2b8aa; --amelia: #7fd1c9; --murat: #eba77a;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #1d1c1a; --ink: #ece6da; --muted: #a39b8d; --rule: #3a3731;
+    --sage: #93b597; --sage-soft: #26302a; --card: #262420; --amber: #e0a85a;
+    --mary: #c79bd8; --john: #8db3e6; --sally: #ee9bb6; --winston: #c2b8aa; --amelia: #7fd1c9; --murat: #eba77a;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink);
+    font: 16px/1.6 Georgia, "Iowan Old Style", serif; }
+  main { max-width: 860px; margin: 0 auto; padding: 40px 16px 80px; }
+  header { text-align: center; margin-bottom: 40px; }
+  .kicker { font: 600 12px/1 ui-sans-serif, system-ui, sans-serif; letter-spacing: .18em; text-transform: uppercase; color: var(--sage); }
+  h1 { font-size: clamp(30px, 6vw, 48px); line-height: 1.1; margin: 12px 0 8px; }
+  .sub { color: var(--muted); font-style: italic; margin: 0; }
+  .shelf { display: block; margin: 28px auto 0; max-width: 100%; height: auto; }
+  .spine { transform-origin: bottom; animation: rise .9s cubic-bezier(.2,.8,.2,1) both; }
+  .spine:nth-child(2){animation-delay:.08s}.spine:nth-child(3){animation-delay:.16s}.spine:nth-child(4){animation-delay:.24s}
+  .spine:nth-child(5){animation-delay:.32s}.spine:nth-child(6){animation-delay:.40s}.spine:nth-child(7){animation-delay:.48s}
+  @keyframes rise { from { transform: scaleY(0); opacity: 0; } to { transform: scaleY(1); opacity: 1; } }
+  .pulse { animation: pulse 2.4s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .35; } }
+  @media (prefers-reduced-motion: reduce) { .spine, .pulse { animation: none; } }
+
+  h2 { font: 600 13px/1 ui-sans-serif, system-ui, sans-serif; letter-spacing: .16em; text-transform: uppercase;
+    color: var(--muted); border-bottom: 1px solid var(--rule); padding-bottom: 10px; margin: 48px 0 20px; }
+  .cast { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+  .who { background: var(--card); border: 1px solid var(--rule); border-left: 5px solid var(--c); border-radius: 10px; padding: 14px 16px; }
+  .who b { display: block; font-size: 18px; }
+  .who .role { font: 12px/1.3 ui-sans-serif, system-ui, sans-serif; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+  .who q { display: block; margin-top: 10px; font-style: italic; }
+  .who q::before, .who q::after { content: none; }
+
+  .scene { margin: 28px 0; }
+  .scene h3 { font-size: 21px; margin: 0 0 4px; }
+  .stage { color: var(--muted); font-style: italic; margin: 0 0 14px; }
+  .line { display: grid; grid-template-columns: 34px 1fr; gap: 10px; margin: 10px 0; }
+  .line .ico { font-size: 22px; line-height: 1.4; text-align: center; }
+  .bubble { background: var(--card); border: 1px solid var(--rule); border-radius: 4px 14px 14px 14px; padding: 10px 14px; }
+  .bubble .n { font: 700 13px/1 ui-sans-serif, system-ui, sans-serif; color: var(--c); display: block; margin-bottom: 4px; }
+  .call { margin: 16px 0 6px 44px; background: var(--sage-soft); border-radius: 12px; padding: 12px 16px;
+    font: 15px/1.5 ui-sans-serif, system-ui, sans-serif; }
+  .call strong { color: var(--sage); }
+  code { font: 13px ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--sage-soft); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+
+  .tally { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; background: var(--card); border: 1px dashed var(--amber);
+    border-radius: 12px; padding: 14px 18px; font: 15px/1.4 ui-sans-serif, system-ui, sans-serif; }
+  .marks { font: 700 26px/1 ui-monospace, monospace; color: var(--amber); letter-spacing: 2px; }
+
+  .stories { counter-reset: s; list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+  .stories li { display: grid; grid-template-columns: 54px 1fr; align-items: center; gap: 12px; background: var(--card);
+    border: 1px solid var(--rule); border-radius: 8px; padding: 10px 14px; font: 15px/1.4 ui-sans-serif, system-ui, sans-serif; }
+  .stories .num { font: 700 15px ui-monospace, monospace; color: var(--paper); background: var(--sage); border-radius: 6px; text-align: center; padding: 4px 0; }
+
+  footer { margin-top: 56px; text-align: center; color: var(--muted); font-size: 14px; }
+  footer a { color: var(--sage); }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="kicker">bookvie · party mode · 19 November 2026</div>
+    <h1>The MCP Round-Table</h1>
+    <p class="sub">In which six people and Oleg teach a home library to talk to Claude, and decide what it must never be allowed to say.</p>
+    <svg class="shelf" width="520" height="150" viewBox="0 0 520 150" role="img" aria-label="Seven book spines rising on a shelf, one per story of Epic 12, with a signal pulsing above them">
+      <g>
+        <rect class="spine" x="70"  y="40" width="40" height="96" rx="4" fill="var(--sage)"/>
+        <rect class="spine" x="116" y="56" width="34" height="80" rx="4" fill="var(--john)"/>
+        <rect class="spine" x="156" y="30" width="44" height="106" rx="4" fill="var(--amelia)"/>
+        <rect class="spine" x="206" y="50" width="36" height="86" rx="4" fill="var(--murat)"/>
+        <rect class="spine" x="248" y="44" width="40" height="92" rx="4" fill="var(--sally)"/>
+        <rect class="spine" x="294" y="62" width="32" height="74" rx="4" fill="var(--mary)"/>
+        <rect class="spine" x="332" y="36" width="42" height="100" rx="4" fill="var(--winston)"/>
+      </g>
+      <rect x="50" y="136" width="420" height="8" rx="3" fill="var(--rule)"/>
+      <g class="pulse" fill="none" stroke="var(--sage)" stroke-width="3" stroke-linecap="round">
+        <path d="M410 70 a22 22 0 0 1 0 -32"/><path d="M398 64 a12 12 0 0 1 0 -20"/>
+        <path d="M434 76 a34 34 0 0 0 0 -44" opacity=".6"/>
+      </g>
+      <circle cx="420" cy="54" r="5" fill="var(--sage)"/>
+      <text x="420" y="104" text-anchor="middle" font-family="ui-monospace, monospace" font-size="13" fill="var(--muted)">/mcp</text>
+    </svg>
+  </header>
+
+  <h2>Around the table</h2>
+  <div class="cast">
+    <div class="who" style="--c:var(--amelia)">💻 <b>Amelia</b><span class="role">Senior Software Engineer</span>
+      <q>"A base64 cover in a tool call is about a million tokens of nonsense. Not happening."</q></div>
+    <div class="who" style="--c:var(--winston)">🏗️ <b>Winston</b><span class="role">System Architect</span>
+      <q>"(b) means no extra process, but MCP becomes a second public surface."</q></div>
+    <div class="who" style="--c:var(--murat)">🧪 <b>Murat</b><span class="role">Test Architect</span>
+      <q>"Refuse loopback and private addresses — after every redirect, not only the first hop."</q></div>
+    <div class="who" style="--c:var(--john)">📋 <b>John</b><span class="role">Product Manager</span>
+      <q>"Those aren't features. They're prompts. Don't build a <code>plan_reading</code> tool."</q></div>
+    <div class="who" style="--c:var(--sally)">🎨 <b>Sally</b><span class="role">UX Designer</span>
+      <q>"Logging a page on the wrong edition is a scene I don't want to film."</q></div>
+    <div class="who" style="--c:var(--mary)">📊 <b>Mary</b><span class="role">Business Analyst</span>
+      <q>"'Every write through MCP' wasn't the job, John."</q></div>
+  </div>
+
+  <h2>The evening, in four rounds</h2>
+
+  <section class="scene">
+    <h3>I. The lock on the door</h3>
+    <p class="stage">Amelia already has <code>cli.py</code> and <code>instance.py</code> open in two panes before anyone sits down.</p>
+    <div class="line" style="--c:var(--amelia)"><span class="ico">💻</span><div class="bubble"><span class="n">Amelia</span>That's the fifth correction in a row, John, keep counting. AD-5 puts a lock on the data folder. A stdio MCP server is a <em>second process</em>. It can't open the Store.</div></div>
+    <div class="line" style="--c:var(--winston)"><span class="ico">🏗️</span><div class="bubble"><span class="n">Winston</span>Two shapes, then. (a) A stdio shim that calls the HTTP API. (b) Mount <code>/mcp</code> in the same process.</div></div>
+    <div class="line" style="--c:var(--sally)"><span class="ico">🎨</span><div class="bubble"><span class="n">Sally</span>Nobody types the full title. People say "DDIA." <code>find_book</code> returns candidates. It never guesses.</div></div>
+    <div class="line" style="--c:var(--john)"><span class="ico">📋</span><div class="bubble"><span class="n">John</span>Keep the skills rework out of this epic.</div></div>
+    <div class="line" style="--c:var(--amelia)"><span class="ico">💻</span><div class="bubble"><span class="n">Amelia</span>Then the epic ships a server nobody's tooling uses.</div></div>
+    <div class="call"><strong>Oleg:</strong> (b), Claude Code only, skills rework in this epic.</div>
+  </section>
+
+  <section class="scene">
+    <h3>II. The cover problem</h3>
+    <p class="stage">Sally slides a sticky note across the table: "delete_book? restore? 😬"</p>
+    <div class="line" style="--c:var(--murat)"><span class="ico">🧪</span><div class="bubble"><span class="n">Murat</span>The tools call the <em>same handler functions</em> the routes call. One contract test per tool, or the two drift.</div></div>
+    <div class="line" style="--c:var(--mary)"><span class="ico">📊</span><div class="bubble"><span class="n">Mary</span>The cover could still go up through the existing HTTP form. No new power, no new attack surface.</div></div>
+    <div class="line" style="--c:var(--john)"><span class="ico">📋</span><div class="bubble"><span class="n">John</span>Then the skill is only half on MCP.</div></div>
+    <div class="line" style="--c:var(--sally)"><span class="ico">🎨</span><div class="bubble"><span class="n">Sally</span>An agent that "cleans up duplicates" deletes one of your editions. Delete stays in the UI, behind its confirm dialog.</div></div>
+    <div class="call"><strong>Oleg:</strong> The server downloads the cover. Ban destructive operations, but keep backup, because the Dropbox upload will need it.</div>
+  </section>
+
+  <section class="scene">
+    <h3>III. SSRF on the whiteboard</h3>
+    <p class="stage">Murat writes "SSRF" on the whiteboard and underlines it twice.</p>
+    <div class="line" style="--c:var(--murat)"><span class="ico">🧪</span><div class="bubble"><span class="n">Murat</span>https only. Refuse internal addresses after every redirect. Enforce the 20 MB cap while streaming. Sniff the bytes, because Amazon sends <code>binary/octet-stream</code> half the time.</div></div>
+    <div class="line" style="--c:var(--winston)"><span class="ico">🏗️</span><div class="bubble"><span class="n">Winston</span>And a host allow-list. Small and boring.</div></div>
+    <div class="line" style="--c:var(--amelia)"><span class="ico">💻</span><div class="bubble"><span class="n">Amelia</span>A seatbelt on a seatbelt, Winston. <em>(I'm reusing your line from last week on purpose.)</em></div></div>
+    <div class="line" style="--c:var(--winston)"><span class="ico">🏗️</span><div class="bubble"><span class="n">Winston</span><em>(dryly)</em> I'll allow it.</div></div>
+    <div class="line" style="--c:var(--mary)"><span class="ico">📊</span><div class="bubble"><span class="n">Mary</span>The backup tool writes the zip to disk and returns the path. That's what the Dropbox step needs.</div></div>
+    <div class="call"><strong>Oleg:</strong> No allow-list, a fixed <code>~/bookvie-backups</code>, and Amelia's seven stories.</div>
+  </section>
+
+  <section class="scene">
+    <h3>IV. One more thing</h3>
+    <p class="stage">John crosses out 12.1 and writes it again as two lines.</p>
+    <div class="line" style="--c:var(--amelia)"><span class="ico">💻</span><div class="bubble"><span class="n">Amelia</span>Last correction of the night, and it's about the room's own plan: <code>--dev</code> backups go to <code>~/bookvie-backups-dev</code>.</div></div>
+    <div class="line" style="--c:var(--winston)"><span class="ico">🏗️</span><div class="bubble"><span class="n">Winston</span>This one isn't drift. It's a new decision. AD-21.</div></div>
+    <div class="call"><strong>Oleg:</strong> Write it down.</div>
+  </section>
+
+  <div class="tally" role="note">
+    <span class="marks" aria-hidden="true">卌 |</span>
+    <span><b>The running tally.</b> Amelia says five corrections. John counts six, because tonight she corrected her own plan as well. The disagreement is filed as unresolved.</span>
+  </div>
+
+  <h2>What we built tonight: Epic 12</h2>
+  <ol class="stories">
+    <li><span class="num">12.1</span><span>Mount <code>/mcp</code> behind the Host/Origin guard, on in <code>--dev</code> too</span></li>
+    <li><span class="num">12.2</span><span>Read tools, with <code>find_book</code> returning candidates</span></li>
+    <li><span class="num">12.3</span><span>Daily write tools, each tested against its intent's own handler</span></li>
+    <li><span class="num">12.4</span><span><code>add_book</code> / <code>edit_book</code> with a <code>cover_url</code> and a safe downloader</span></li>
+    <li><span class="num">12.5</span><span><code>export_backup</code> to a dated zip in <code>~/bookvie-backups</code></span></li>
+    <li><span class="num">12.6</span><span>Move <code>bookvie-notes-summary</code> onto MCP</span></li>
+    <li><span class="num">12.7</span><span>Move <code>bookvie-new-book</code> onto MCP</span></li>
+  </ol>
+
+  <footer>
+    FR-28 · AD-21 · no destructive tools · no planning tools, only good questions<br>
+    The plan: <code>_bmad-output/planning-artifacts/mcp-server-plan-2026-11-19.md</code>
+  </footer>
+</main>
+</body>
+</html>
