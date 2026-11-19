@@ -747,6 +747,7 @@ export interface components {
             finished: boolean;
             /** Latestfinishdate */
             latestFinishDate: string | null;
+            editForm: components["schemas"]["BookEditForm"];
             /** Readings */
             readings: components["schemas"]["BookReading"][];
             /** Role */
@@ -764,6 +765,43 @@ export interface components {
             pagesLeft: number;
             /** Measuredpace */
             measuredPace: number | null;
+        };
+        /**
+         * BookEditForm
+         * @description The Edit book panel's 13 fields as it prefills them, every one a string, in form order.
+         *
+         *     What ``edit-book`` takes back with the ``bookId``: authors joined by "; ", tags by
+         *     ", ", numbers as decimal strings, Finished on the latest finish date, and Spine
+         *     color the user's own color (never the curated or cover one); ``""`` for a field
+         *     with no value. Mirrors the client's ``toPanelFields``.
+         */
+        BookEditForm: {
+            /** Title */
+            title: string;
+            /** Subtitle */
+            subtitle: string;
+            /** Pages */
+            pages: string;
+            /** Authors */
+            authors: string;
+            /** Edition */
+            edition: string;
+            /** Language */
+            language: string;
+            /** Publisher */
+            publisher: string;
+            /** Type */
+            type: string;
+            /** Isbn */
+            isbn: string;
+            /** Year */
+            year: string;
+            /** Finishedon */
+            finishedOn: string;
+            /** Tags */
+            tags: string;
+            /** Spinecolor */
+            spineColor: string;
         };
         /** BookReading */
         BookReading: {

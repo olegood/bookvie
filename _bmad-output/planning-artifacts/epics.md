@@ -2810,7 +2810,11 @@ So that cataloging from Claude Code can't create duplicates or half-filled Books
 **Given** `edit_book`
 **When** a client lists it
 **Then** its input schema equals the `edit-book` intent model's by alias, except that every form key is required; only `removeCover` and `confirmDuplicate` are optional.
-**Description:** "Replace a Book's fields. This is a whole edit: a field you leave empty is cleared. Call get_book first and send every field, changing only what the user asked for. A changed title, author or ISBN that makes it a likely duplicate is refused like add_book."
+**Description:** "Replace a Book's fields. This is a whole edit: a field you leave empty is cleared. Call get_book first and send its editForm with bookId, changing only what the user asked for. A finished Book's finishedOn can be changed but not emptied. removeCover true deletes the Book's cover: send it only when the user asks. A changed title, author or ISBN that makes it a likely duplicate is refused like add_book."
+
+**Given** any Book
+**When** `get_book` (or `GET /api/views/book`) answers
+**Then** it carries `editForm`: the Edit book panel's 13 form fields as the panel prefills them, every one a string (authors joined by "; ", tags by ", ", Finished on from the latest finish date, and Spine color the user's own color or empty, never the curated or cover color), and `edit_book` with that `editForm` and the `bookId` alone commits the Book unchanged.
 
 **Given** a contract test over both tools, as 12.3's
 **When** the same input goes through the tool and through the intent route on identical seeded libraries

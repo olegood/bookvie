@@ -235,6 +235,30 @@ class CardNotesView(_View):
     only that Book's group, or none when it has no notes."""
 
 
+class BookEditForm(_View):
+    """The Edit book panel's 13 fields as it prefills them, every one a string, in form order.
+
+    What ``edit-book`` takes back with the ``bookId``: authors joined by "; ", tags by
+    ", ", numbers as decimal strings, Finished on the latest finish date, and Spine
+    color the user's own color (never the curated or cover one); ``""`` for a field
+    with no value. Mirrors the client's ``toPanelFields``.
+    """
+
+    title: str
+    subtitle: str
+    pages: str
+    authors: str
+    edition: str
+    language: str
+    publisher: str
+    type: str
+    isbn: str
+    year: str
+    finished_on: str
+    tags: str
+    spine_color: str
+
+
 class BookDetailView(_View):
     """One Book as Book detail and the Edit book panel show it."""
 
@@ -264,6 +288,8 @@ class BookDetailView(_View):
     """Whether any Reading is finished, as ``ShelfBook`` says (the "shown once read" note)."""
     latest_finish_date: date | None
     """The most recent finish date: what the Edit book panel prefills in Finished on."""
+    edit_form: BookEditForm
+    """The Edit book panel's prefill: what ``edit_book`` takes back to commit the Book unchanged."""
     readings: list[BookReading]
     """In stored order; the client lists them newest first."""
     role: Role

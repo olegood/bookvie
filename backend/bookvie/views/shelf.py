@@ -26,6 +26,7 @@ from bookvie.store import COVERS_DIR, Store, read_last_export, referenced_covers
 from .models import (
     BookCardNote,
     BookDetailView,
+    BookEditForm,
     BookReading,
     CatalogView,
     CurrentReading,
@@ -291,6 +292,25 @@ def card_note_views(book: Book) -> list[BookCardNote]:
     ]
 
 
+def _edit_form(book: Book, latest_finish_date: date | None) -> BookEditForm:
+    """The Edit book panel's prefill, as the client's ``toPanelFields`` builds it."""
+    return BookEditForm(
+        title=book.title,
+        subtitle=book.subtitle or "",
+        pages=str(book.pages),
+        authors="; ".join(book.authors),
+        edition=str(book.edition),
+        language=book.language,
+        publisher=book.publisher,
+        type=book.type,
+        isbn=book.isbn or "",
+        year="" if book.year is None else str(book.year),
+        finished_on="" if latest_finish_date is None else latest_finish_date.isoformat(),
+        tags=", ".join(book.tags),
+        spine_color=book.spine_color_user or "",
+    )
+
+
 def book_detail(library: Library, book_id: str) -> BookDetailView | None:
     """One Book for Book detail, or ``None`` when there is no such Book."""
     book = library.book(book_id)
@@ -320,6 +340,7 @@ def book_detail(library: Library, book_id: str) -> BookDetailView | None:
         has_cover=_has_cover(book),
         finished=_finished(book),
         latest_finish_date=latest.finish_date if latest else None,
+        edit_form=_edit_form(book, latest.finish_date if latest else None),
         readings=[
             BookReading(
                 id=r.id,

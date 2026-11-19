@@ -527,18 +527,19 @@ def _edit_book(state: Any, intent: EditBookIntent) -> OkResponse:
 
 
 BOOK_FORM_KEYS: tuple[str, ...] = tuple(
-    field.alias or name
-    for name, field in AddBookIntent.model_fields.items()
-    if name != "confirm_duplicate"
+    field.alias or name for name, field in views.BookEditForm.model_fields.items()
 )
-"""The book form's keys by alias, in form order: what a whole edit sends."""
+"""The book form's keys by alias, in form order: ``get_book``'s ``editForm``, what a whole
+edit sends. Not the intent model's, which a tool-only key such as ``coverUrl`` may join."""
 
 EDIT_BOOK = _write_tool(
     "edit_book",
     (
         "Replace a Book's fields. This is a whole edit: a field you leave empty is cleared. Call "
-        "get_book first and send every field, changing only what the user asked for. A changed "
-        "title, author or ISBN that makes it a likely duplicate is refused like add_book."
+        "get_book first and send its editForm with bookId, changing only what the user asked "
+        "for. A finished Book's finishedOn can be changed but not emptied. removeCover true "
+        "deletes the Book's cover: send it only when the user asks. A changed title, author or "
+        "ISBN that makes it a likely duplicate is refused like add_book."
     ),
     EditBookIntent,
     parse_edit_book_intent,

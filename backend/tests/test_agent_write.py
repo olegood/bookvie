@@ -738,8 +738,10 @@ BOOK_DESCRIPTIONS = {
     ),
     "edit_book": (
         "Replace a Book's fields. This is a whole edit: a field you leave empty is cleared. Call "
-        "get_book first and send every field, changing only what the user asked for. A changed "
-        "title, author or ISBN that makes it a likely duplicate is refused like add_book."
+        "get_book first and send its editForm with bookId, changing only what the user asked "
+        "for. A finished Book's finishedOn can be changed but not emptied. removeCover true "
+        "deletes the Book's cover: send it only when the user asks. A changed title, author or "
+        "ISBN that makes it a likely duplicate is refused like add_book."
     ),
 }
 
