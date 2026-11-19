@@ -1,7 +1,8 @@
 """The agent tools and the one helper that declares them (AD-21).
 
 A tool is an :class:`AgentTool`: a name, the description the agent reads, the
-Pydantic model its input schema comes from, and ``run(state, arguments)``.
+Pydantic model its input schema comes from, the keys it requires though the
+model leaves them optional, and ``run(state, arguments)``.
 ``run`` gets the app's ``app.state`` and the arguments exactly as sent: the
 SDK neither validates nor coerces them, so the model's parser is the only
 validator, as it is for the intent routes. ``run`` returns an ``OkResponse``
@@ -19,14 +20,19 @@ and advertise its model. They parse the arguments with the route's own
 ``parse_*_intent``, call the route's handler on the app's ``store`` (and
 ``clock`` where the route passes it), and answer through the same
 ``intents.answers`` mapping as the route, so a tool stores, answers and
-refuses exactly as ``POST /api/intents/<verb>`` does. ``add_book`` and
-``edit_book`` come in Story 12.4. The destructive intents (``delete_book``,
+refuses exactly as ``POST /api/intents/<verb>`` does.
+
+``add_book`` and ``edit_book`` (Story 12.4) are write tools too, without a
+cover. ``edit_book`` is a whole edit: it requires every form key, which its
+route's model leaves optional, and refuses a call missing any of them with
+``invalid_fields`` before the route's parser runs, so it never clears a field
+the agent left out. The destructive intents (``delete_book``,
 ``delete_card_note``, ``restore``, ``set_spine_color``) are never tools.
 """
 
 import copy
 import json
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -34,7 +40,9 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from bookvie import views
 from bookvie.intents import (
+    AddBookIntent,
     AddCardNoteIntent,
+    EditBookIntent,
     EditCardNoteIntent,
     EditPurposeIntent,
     FieldError,
@@ -46,8 +54,11 @@ from bookvie.intents import (
     StartReadingIntent,
     UnmarkSideReadIntent,
     UpdatePageIntent,
+    add_book,
     add_card_note,
+    book_answer,
     card_note_answer,
+    edit_book,
     edit_card_note,
     edit_purpose,
     finish_reading,
@@ -55,7 +66,9 @@ from bookvie.intents import (
     mark_side_read,
     ok,
     page_answer,
+    parse_add_book_intent,
     parse_add_card_note_intent,
+    parse_edit_book_intent,
     parse_edit_card_note_intent,
     parse_edit_purpose_intent,
     parse_finish_reading_intent,
@@ -82,6 +95,8 @@ class AgentTool:
     description: str
     model: type[BaseModel]
     run: Callable[[Any, dict[str, Any]], BaseModel]
+    required: tuple[str, ...] = ()
+    """Keys (by alias) the tool requires though its model leaves them optional."""
 
 
 def input_schema(model: type[BaseModel]) -> dict[str, Any]:
@@ -99,6 +114,25 @@ def input_schema(model: type[BaseModel]) -> dict[str, Any]:
         if name in nullable or key not in properties:
             continue
         properties[key] = _without_null(properties[key])
+    return schema
+
+
+def advertised_schema(tool: AgentTool) -> dict[str, Any]:
+    """The schema ``tool`` is listed with: :func:`input_schema` plus its ``required`` keys."""
+    return _required_schema(tool.model, tool.required)
+
+
+def _required_schema(model: type[BaseModel], required: Sequence[str]) -> dict[str, Any]:
+    schema = input_schema(model)
+    if not required:
+        return schema
+    properties = schema.get("properties", {})
+    unknown = [key for key in required if key not in properties]
+    if unknown:
+        raise ValueError(f"required keys {unknown} aren't properties of {model.__name__}")
+    wanted = {*schema.get("required", []), *required}
+    # In property order, so the schema reads as the form does.
+    schema["required"] = [key for key in properties if key in wanted]
     return schema
 
 
@@ -282,19 +316,36 @@ GET_STATS = AgentTool(
 )
 
 
+MISSING_MESSAGE = "Field required"
+"""A missing required key's message: Pydantic's, as :func:`parse_view_arguments` names one."""
+
+
 def _write_tool[T: IntentModel](
     name: str,
     description: str,
     model: type[T],
     parse: Callable[[str | None], T],
     call: Callable[[Any, T], OkResponse],
+    required: tuple[str, ...] = (),
 ) -> AgentTool:
-    """A write tool: ``parse`` the arguments as the route parses its ``intent`` part, then ``call``."""
+    """A write tool: ``parse`` the arguments as the route parses its ``intent`` part, then ``call``.
+
+    With ``required``, a call missing any key the advertised schema requires
+    (those keys and the model's own) is refused first, with ``invalid_fields``
+    naming each missing key in schema order. Without it, and for everything
+    else, the route's parser refuses as the route does.
+    """
+    expected = _required_schema(model, required).get("required", []) if required else []
 
     def run(state: Any, arguments: dict[str, Any]) -> OkResponse:
+        missing = [key for key in expected if key not in arguments]
+        if missing:
+            raise invalid_fields(
+                [FieldError(field=key, message=MISSING_MESSAGE) for key in missing]
+            )
         return call(state, parse(json.dumps(arguments)))
 
-    return AgentTool(name=name, description=description, model=model, run=run)
+    return AgentTool(name=name, description=description, model=model, run=run, required=required)
 
 
 START_READING = _write_tool(
@@ -453,6 +504,48 @@ UNMARK_SIDE_READ = _write_tool(
     _unmark_side_read,
 )
 
+ADD_BOOK = _write_tool(
+    "add_book",
+    (
+        "Add a Book to the catalog. Every field is a string. Required: title, pages, authors "
+        "(separated by semicolons), language, publisher, type (paperback, hardcover or ebook); "
+        "edition defaults to 1. Optional: subtitle, isbn, year, tags (separated by commas), and "
+        "finishedOn (YYYY-MM-DD) for a Book the user has already read. A likely duplicate is "
+        "refused with duplicate_book and the matching Books: show them to the user, and send "
+        "confirmDuplicate true only if the user says to add it anyway. Returns the new Book's "
+        "id."
+    ),
+    AddBookIntent,
+    parse_add_book_intent,
+    lambda state, intent: book_answer(add_book(state.store, state.clock, intent)),
+)
+
+
+def _edit_book(state: Any, intent: EditBookIntent) -> OkResponse:
+    edit_book(state.store, state.clock, intent)
+    return ok()
+
+
+BOOK_FORM_KEYS: tuple[str, ...] = tuple(
+    field.alias or name
+    for name, field in AddBookIntent.model_fields.items()
+    if name != "confirm_duplicate"
+)
+"""The book form's keys by alias, in form order: what a whole edit sends."""
+
+EDIT_BOOK = _write_tool(
+    "edit_book",
+    (
+        "Replace a Book's fields. This is a whole edit: a field you leave empty is cleared. Call "
+        "get_book first and send every field, changing only what the user asked for. A changed "
+        "title, author or ISBN that makes it a likely duplicate is refused like add_book."
+    ),
+    EditBookIntent,
+    parse_edit_book_intent,
+    _edit_book,
+    required=BOOK_FORM_KEYS,
+)
+
 TOOLS: tuple[AgentTool, ...] = (
     GET_APP_INFO,
     FIND_BOOK,
@@ -471,5 +564,7 @@ TOOLS: tuple[AgentTool, ...] = (
     EDIT_CARD_NOTE,
     MARK_SIDE_READ,
     UNMARK_SIDE_READ,
+    ADD_BOOK,
+    EDIT_BOOK,
 )
 """The tools every ``create_app`` registers unless a test passes its own."""

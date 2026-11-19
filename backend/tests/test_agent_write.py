@@ -218,6 +218,7 @@ class Case:
     ``reachedLastPage``), ``"unchanged"`` (Story 12.4: ok, committed, the same bytes) or the
     error ``code``; ``fields`` names an ``invalid_fields``
     refusal's fields in order. ``fault`` is the filesystem step that fails at write.
+    ``cover`` seeds the unread Book with a cover file.
     """
 
     tool: str
@@ -227,6 +228,7 @@ class Case:
     fields: tuple[str, ...] = ()
     side_reads: int = 2
     fault: str | None = None
+    cover: bool = False
 
     @property
     def id(self) -> str:
@@ -381,7 +383,7 @@ def _twins(
 ) -> tuple[McpClient, McpClient]:
     """Two apps on two identical copies of the seed: one for the tool, one for the route."""
     tool_dir, route_dir = tmp_path / "tool", tmp_path / "route"
-    _seed(tool_dir, side_reads=case.side_reads)
+    _seed(tool_dir, side_reads=case.side_reads, cover=case.cover)
     shutil.copytree(tool_dir, route_dir)
     tool_side = connect_mcp(data_dir=tool_dir)
     route_side = connect_mcp(data_dir=route_dir)
@@ -424,7 +426,9 @@ def test_the_ten_write_tools_advertise_their_intent_models_schemas_and_join_the_
     from bookvie.agent import input_schema
 
     tools = mcp_client.list_tools()
-    assert [tool["name"] for tool in tools] == EARLIER_TOOL_NAMES + WRITE_TOOL_NAMES
+    assert [
+        tool["name"] for tool in tools
+    ] == EARLIER_TOOL_NAMES + WRITE_TOOL_NAMES + BOOK_TOOL_NAMES
 
     listed = {tool["name"]: tool for tool in tools}
     for name, (model, keys, required) in WRITE_TOOLS.items():
@@ -689,7 +693,7 @@ def test_a_real_bookvie_process_advertises_and_commits_a_write_tool(tmp_path: Pa
         with httpx.Client(base_url=f"http://127.0.0.1:{port}", timeout=10) as http:
             client = McpClient(http, data_dir=folder)
             listed = {tool["name"]: tool for tool in client.list_tools()}
-            assert list(listed) == EARLIER_TOOL_NAMES + WRITE_TOOL_NAMES
+            assert list(listed) == EARLIER_TOOL_NAMES + WRITE_TOOL_NAMES + BOOK_TOOL_NAMES
             for name, (model, _, _) in WRITE_TOOLS.items():
                 assert listed[name]["inputSchema"] == input_schema(model), name
             answer = client.call_tool("update_page", UPDATE)
@@ -703,8 +707,6 @@ def test_a_real_bookvie_process_advertises_and_commits_a_write_tool(tmp_path: Pa
 
 
 # --- Story 12.4: add_book and edit_book -------------------------------------------
-
-RED = "Story 12.4 red phase: add_book and edit_book are not registered yet"
 
 # The book form's keys, in form order: every one optional on add_book, required on edit_book.
 FORM_KEYS = [
@@ -838,10 +840,12 @@ BOOK_CASES: list[Case] = [
     Case("edit_book", "wrong-type", {**PAUSED_FORM, "pages": PAUSED_PAGES}, "invalid_fields", ("intent",)),
     Case("edit_book", "unknown-key-cover-url", {**PAUSED_FORM, "coverUrl": COVER_URL}, "invalid_fields", ("intent",)),
     Case("edit_book", "fault-at-write", EDIT, "couldnt_save", fault="write"),
+    # A whole edit without removeCover keeps the cover; removeCover clears it, file and all.
+    Case("edit_book", "keeps-cover", UNREAD_FORM, "unchanged", cover=True),
+    Case("edit_book", "remove-cover", {**UNREAD_FORM, "removeCover": True}, "ok", cover=True),
 ]  # fmt: skip
 
 
-@pytest.mark.skip(reason=RED)
 def test_add_book_advertises_the_add_book_intent_models_schema_and_the_storys_description(
     mcp_client: McpClient,
 ) -> None:
@@ -866,7 +870,6 @@ def test_add_book_advertises_the_add_book_intent_models_schema_and_the_storys_de
     assert names == EARLIER_TOOL_NAMES + WRITE_TOOL_NAMES + BOOK_TOOL_NAMES
 
 
-@pytest.mark.skip(reason=RED)
 def test_edit_book_requires_every_form_key_and_advertises_the_storys_description(
     mcp_client: McpClient,
 ) -> None:
@@ -895,7 +898,6 @@ def test_edit_book_requires_every_form_key_and_advertises_the_storys_description
     assert listed["edit_book"]["description"] == BOOK_DESCRIPTIONS["edit_book"]
 
 
-@pytest.mark.skip(reason=RED)
 @pytest.mark.parametrize("case", BOOK_CASES, ids=lambda case: case.id)
 def test_add_book_and_edit_book_store_and_answer_exactly_as_their_intent_routes(
     connect_mcp: Callable[..., McpClient],
@@ -940,7 +942,6 @@ def test_add_book_and_edit_book_store_and_answer_exactly_as_their_intent_routes(
         assert "ids" not in answer, answer
 
 
-@pytest.mark.skip(reason=RED)
 def test_a_partial_edit_book_is_refused_naming_the_missing_keys_and_changes_nothing(
     connect_mcp: Callable[..., McpClient], tmp_path: Path
 ) -> None:
@@ -964,3 +965,20 @@ def test_a_partial_edit_book_is_refused_naming_the_missing_keys_and_changes_noth
     assert book["isbn"] == DUNE_ISBN13
     assert book["tags"] == ["sci-fi", "classic"]
     assert book["spineColorUser"] == DUNE_SPINE_COLOR
+
+
+def test_a_partial_edit_book_names_each_missing_key_in_schema_order_with_pydantics_message(
+    connect_mcp: Callable[..., McpClient], tmp_path: Path
+) -> None:
+    # [P1] AC-4. The refusal's fields, in the advertised schema's order: bookId too when it's missing.
+    folder = tmp_path / "library"
+    _seed(folder, side_reads=2)
+    client = connect_mcp(data_dir=folder)
+    before = library_bytes(folder)
+
+    refused = error_of(client.call_tool("edit_book", {"title": "Dune Messiah"}))
+    assert refused["code"] == "invalid_fields", refused
+    assert refused["fields"] == [
+        {"field": key, "message": "Field required"} for key in FORM_KEYS if key != "title"
+    ] + [{"field": "bookId", "message": "Field required"}]
+    assert library_bytes(folder) == before

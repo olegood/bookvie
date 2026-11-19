@@ -25,7 +25,7 @@ from pydantic import BaseModel
 
 from bookvie.intents import IntentError, OkResponse, couldnt_save
 
-from .tools import AgentTool, input_schema
+from .tools import AgentTool, advertised_schema
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +39,7 @@ def build_mcp_server(state: Any, tools: Sequence[AgentTool], *, version: str = "
         raise ValueError("two agent tools share a name")
     listed = [
         mcp_types.Tool(
-            name=tool.name, description=tool.description, input_schema=input_schema(tool.model)
+            name=tool.name, description=tool.description, input_schema=advertised_schema(tool)
         )
         for tool in tools
     ]

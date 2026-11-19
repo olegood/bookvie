@@ -1,6 +1,6 @@
-"""The ``OkResponse`` of the ten intents an agent write tool shares with its route (AD-9).
+"""The ``OkResponse`` of the twelve intents an agent write tool shares with its route (AD-9).
 
-Each is built from the handler's result. Those ten routes (``http/api.py``)
+Each is built from the handler's result. Those twelve routes (``http/api.py``)
 and their write tools (``agent/``) both answer through these, so a route and
 its tool can't drift apart. The other intent routes build their
 ``OkResponse`` themselves.
@@ -22,3 +22,8 @@ def page_answer(reached: bool) -> OkResponse:
 def card_note_answer(note_id: str) -> OkResponse:
     """``add-card-note``: the minted Card note's id as ``ids.cardNoteId``."""
     return OkResponse(ok=True, ids={"cardNoteId": note_id})
+
+
+def book_answer(book_id: str) -> OkResponse:
+    """``add-book``: the minted Book's id as ``ids.bookId``."""
+    return OkResponse(ok=True, ids={"bookId": book_id})

@@ -51,6 +51,7 @@ from bookvie.intents import (
     UploadedCover,
     add_book,
     add_card_note,
+    book_answer,
     build_export,
     card_note_answer,
     couldnt_save,
@@ -415,7 +416,7 @@ def add_book_intent(
     parsed = parse_add_book_intent(intent)
     uploaded = _uploaded_cover(cover)
     book_id = add_book(request.app.state.store, request.app.state.clock, parsed, uploaded)
-    return OkResponse(ok=True, ids={"bookId": book_id})
+    return book_answer(book_id)
 
 
 @router.post(
@@ -442,7 +443,7 @@ def edit_book_intent(
     parsed = parse_edit_book_intent(intent, has_cover=cover is not None)
     uploaded = _uploaded_cover(cover)
     edit_book(request.app.state.store, request.app.state.clock, parsed, uploaded)
-    return OkResponse(ok=True)
+    return ok()
 
 
 @router.post("/intents/delete-book", response_model=OkResponse, response_model_exclude_none=True)

@@ -4,7 +4,7 @@ from bookvie.domain import Clock, FakeClock, SystemClock
 
 from .add_book import AddBookIntent, add_book, parse_add_book_intent
 from .add_card_note import AddCardNoteIntent, add_card_note, parse_add_card_note_intent
-from .answers import card_note_answer, ok, page_answer
+from .answers import book_answer, card_note_answer, ok, page_answer
 from .commit import commit
 from .contract import (
     COULDNT_EXPORT_MESSAGE,
@@ -114,6 +114,7 @@ __all__ = [
     "add_book",
     "add_card_note",
     "already_main",
+    "book_answer",
     "book_not_found",
     "build_export",
     "card_note_answer",
