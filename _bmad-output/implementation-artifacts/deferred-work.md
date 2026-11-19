@@ -1186,3 +1186,24 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-12-1-mount-the-mcp-server.md`
   summary: Spine drift (AD-21), reconciled before the next epic: the spine still marks AD-21's rule, the `mcp` and `httpx2` Stack rows, the Structural Seed's `agent/` and the capability map's FR-28 row as planned, though Story 12.1 pins both packages, creates `agent/` and mounts `/mcp` with `get_app_info`. Low.
   evidence: `backend/pyproject.toml` (`mcp>=2.3.0,<2.4`, `httpx2>=2.16.2,<2.17`); `backend/bookvie/agent/`; `backend/tests/test_layers.py` `LAYERS` (Spine Check, build-auto review of Story 12.1).
+
+## Deferred from: code review of spec-12-1-mount-the-mcp-server (2026-11-19)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-12-1-mount-the-mcp-server.md`
+  summary: Spine drift (AD-21), reconciled before the next epic: the Design Paradigm paragraph still says "agent tools at `/mcp` (AD-21, planned for Epic 12)", a further "planned" mention the build-auto review's second AD-21 entry doesn't list. Low.
+  evidence: `ARCHITECTURE-SPINE.md:28` (Spine Check, code review of Story 12.1).
+- source_spec: `_bmad-output/implementation-artifacts/spec-12-1-mount-the-mcp-server.md`
+  summary: `epic-12-context.md` (Technical Decisions, Mount) still says the app "builds a fresh SDK `MCPServer` and mounts its streamable-HTTP app at exactly `/mcp`". Stories 12.2–12.4 read it as build context, and the code deliberately uses the low-level `Server` and `_McpRoute` (Story 12.1's Never list forbids `MCPServer.tool`). Correct it alongside the AD-21 spine reconciliation, or note the deviation in the file before Story 12.2. Low.
+  evidence: `_bmad-output/implementation-artifacts/epic-12-context.md`; `backend/bookvie/agent/server.py` (Blind Hunter, code review of Story 12.1).
+- source_spec: `_bmad-output/implementation-artifacts/spec-12-1-mount-the-mcp-server.md`
+  summary: `_success` passes any `model_dump` result as `structuredContent`. A `RootModel` or list view (as `find_book`'s candidates may be) dumps to a JSON array, which MCP doesn't allow for structured content. For Story 12.2: wrap a non-object answer in an object, or refuse it. Low.
+  evidence: `backend/bookvie/agent/server.py` `_success` (Edge Case Hunter, code review of Story 12.1).
+- source_spec: `_bmad-output/implementation-artifacts/spec-12-1-mount-the-mcp-server.md`
+  summary: Unverified, medium if true once write tools exist: a tool call still running when the lifespan's session manager exits keeps its worker thread (holding the AD-4 lock from Story 12.3) but its answer is dropped, and nothing says what the agent gets or how `cli.py`'s lock-waiting shutdown orders with the manager's teardown. Settle in Story 12.3 with a shutdown-during-call test.
+  evidence: `backend/bookvie/http/app.py` `lifespan`; `backend/bookvie/agent/server.py` `call_tool` (Blind Hunter, code review of Story 12.1).
+- source_spec: `_bmad-output/implementation-artifacts/spec-12-1-mount-the-mcp-server.md`
+  summary: Any non-`IntentError` failure in a tool answers `couldnt_save` ("Couldn't save. Your data wasn't changed."), as Story 12.1's spec says; for a read tool that wording is wrong. Decide the read tools' unexpected-error answer before Story 12.2. Low.
+  evidence: `backend/bookvie/agent/server.py` `_answer` (Blind Hunter, code review of Story 12.1).
+- source_spec: `_bmad-output/implementation-artifacts/spec-12-1-mount-the-mcp-server.md`
+  summary: A malformed tool call reports the `malformed()` error on `field: "intent"` (the multipart part's name, via `parse_form_intent`), a field the tool's advertised schema doesn't have, so an agent is told to fix an argument that doesn't exist. Spec-mandated for 12.1; decide before Story 12.2's first tool with arguments whether the agent error should name the argument instead. Low.
+  evidence: `backend/bookvie/agent/tools.py` `parse_arguments` (Blind Hunter, code review of Story 12.1).

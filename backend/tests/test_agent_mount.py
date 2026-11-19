@@ -24,6 +24,7 @@ import httpx
 import pytest
 from packaging.requirements import Requirement
 from packaging.version import Version
+from pydantic import BaseModel
 
 from bookvie import instance
 from bookvie.intents import OkResponse, book_not_found
@@ -514,6 +515,16 @@ def test_the_schema_matches_nullable_by_python_field_name_not_alias() -> None:
     assert "default" not in properties["coverNote"]
 
 
+def test_a_tool_call_without_arguments_is_an_empty_object(mcp_client: McpClient) -> None:
+    # MCP lets a client leave `arguments` out; the tool then gets `{}`, not `None`.
+    mcp_client.ensure_initialized()
+    body = mcp_client.rpc("tools/call", {"name": "get_app_info"})
+    assert "error" not in body, body
+    result = body["result"]
+    assert result.get("isError") in (None, False), result
+    assert result["structuredContent"] == mcp_client.http.get("/api/views/app-info").json()
+
+
 def test_get_app_info_refuses_an_argument(mcp_client: McpClient) -> None:
     refused = mcp_client.call_tool("get_app_info", {"x": 1})
     assert error_of(refused) == malformed().response_body()["error"]
@@ -523,17 +534,29 @@ def test_two_tools_with_one_name_are_refused(tmp_path: Path) -> None:
     from bookvie.agent import GET_APP_INFO
     from bookvie.http.app import create_app
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="share a name"):
         create_app(tmp_path / "no-static", tools=(GET_APP_INFO, GET_APP_INFO))
 
 
+class _UnserializableView(BaseModel):
+    value: Any
+
+
+@pytest.mark.parametrize(
+    "answer",
+    [
+        pytest.param(lambda: {"ok": True}, id="not-a-model"),
+        # A real model whose `model_dump(mode="json")` raises PydanticSerializationError.
+        pytest.param(lambda: _UnserializableView(value=object()), id="model-dump-fails"),
+    ],
+)
 def test_an_answer_that_cannot_be_serialized_is_couldnt_save(
-    connect_mcp: Callable[..., McpClient],
+    connect_mcp: Callable[..., McpClient], answer: Callable[[], Any]
 ) -> None:
     from bookvie.agent import TOOLS, AgentTool, NoArguments
 
     def run(state: Any, arguments: dict[str, Any]) -> Any:
-        return {"ok": True}  # not a model: model_dump fails
+        return answer()
 
     broken = AgentTool(name="broken_tool", description="Test only.", model=NoArguments, run=run)
     client = connect_mcp(tools=(*TOOLS, broken))

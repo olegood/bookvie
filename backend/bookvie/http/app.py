@@ -110,7 +110,7 @@ class HostOriginGuard:
 
     On server paths it also refuses a cross-site or same-site
     ``Sec-Fetch-Site``, so a simple GET from another page (an ``<img>``, a
-    no-cors fetch, a link) cannot reach an ``/api`` or ``/media`` route.
+    no-cors fetch, a link) cannot reach an ``/api``, ``/media`` or ``/mcp`` route.
     ``same-site`` is refused too: ports don't count toward a site, so any
     other app on a loopback port is same-site. :data:`EXPORT_PATH` also
     needs exactly one ``X-Bookvie-Export: 1``.
@@ -245,8 +245,10 @@ def create_app(
     mcp_server = agent.build_mcp_server(
         app.state, agent.TOOLS if tools is None else tools, version=version
     )
+    # Called for its side effect: it builds `session_manager`, which holds the
+    # body cap and transport security. Its Starlette app is not used: `_McpRoute`
+    # serves the manager at exactly MCP_PATH.
     mcp_server.streamable_http_app(
-        streamable_http_path=MCP_PATH,
         json_response=True,
         stateless_http=True,
         max_request_body_size=MCP_BODY_CAP,

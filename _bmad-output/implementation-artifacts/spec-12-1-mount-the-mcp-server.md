@@ -2,7 +2,7 @@
 title: 'Story 12.1: Mount the MCP server'
 type: 'feature'
 created: '2026-11-19'
-status: 'in-review'
+status: 'done'
 baseline_revision: 'f9cf49bb1ad755f56aea9d877bd1f3a33e8fdc79'
 review_loop_iteration: 0
 followup_review_recommended: true
@@ -93,6 +93,35 @@ deferred:
 - AC-1 to AC-7 and AC-9: as in `epics.md` Story 12.1, pinned by `backend/tests/test_agent_mount.py` (each leaf names its AC).
 - AC-8 (manual): Given Claude Code with `bookvie-dev` added while no server runs, when Oleg starts `bookvie --dev` after the session started, then this spec records what Claude Code does and the start step the skills will use, verified by Oleg in a real session. An unattended build can't run it: it stays open for Oleg before `bmad-code-review` closes the story.
 
+### Review Findings
+
+Code review 2026-11-19 (`bmad-code-review`, new session; layers: Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor, Spine Check; diff `f9cf49b..b84fa66`).
+
+- [x] [Review][Decision] AC-8 is open, and the README states its reconnect step as fact — AC-9 asks for "the reconnect step this story found", and AC-8 allows three outcomes (connects on its own, `/mcp` reconnect, new session). Only one of them makes the README sentence ("run `/mcp` in Claude Code, pick the entry and choose reconnect") true, and the AC-9 leaf checks only the `claude mcp add` lines and "running". The story can't be `done` until Oleg runs AC-8 and the README matches (Acceptance Auditor, Blind Hunter) [README.md:111] — resolved 2026-11-19: Oleg ran AC-8 (option 1). With `bookvie-dev` added while no server ran and `bookvie --dev` started after the session began, `/mcp` → pick `bookvie-dev` → reconnect connected it, and `get_app_info` answered `environment: dev`. The README's step matches; no change.
+- [x] [Review][Patch] Nothing tests a `tools/call` that leaves out `arguments`: mutating `arguments = params.arguments if params.arguments is not None else {}` to `params.arguments` keeps all 23 leaves green, while `get_app_info` then refuses with `invalid_fields` (Verification Gap, mutation probe) [backend/bookvie/agent/server.py:55] — fixed: `test_a_tool_call_without_arguments_is_an_empty_object` posts `tools/call` with no `arguments`; mutation probe (drop the `{}` default) fails it, restored passes.
+- [x] [Review][Patch] `HostOriginGuard`'s docstring says the `Sec-Fetch-Site` check keeps a page from reaching "an `/api` or `/media` route"; `mcp` is now a server prefix, so `/mcp` is covered too (Acceptance Auditor, Blind Hunter) [backend/bookvie/http/app.py:111] — fixed: the docstring names `/mcp`.
+- [x] [Review][Patch] The README says a cross-site `Sec-Fetch-Site` is refused; the guard refuses `same-site` too (`_ALLOWED_FETCH_SITES = {"same-origin", "none"}`, AC-3's `REFUSED`) (Blind Hunter) [README.md:111] — fixed: "a cross-site or same-site `Sec-Fetch-Site`".
+- [x] [Review][Patch] `test_two_tools_with_one_name_are_refused` accepts any `ValueError` raised while building the app — add `match="share a name"` (Blind Hunter) [backend/tests/test_agent_mount.py] — fixed.
+- [x] [Review][Patch] `test_an_answer_that_cannot_be_serialized_is_couldnt_save` returns a plain `dict`, so it fails on the missing `.model_dump` attribute, not in serialization as its comment says; the patched case (a real model whose `model_dump` raises) is untested (Blind Hunter) [backend/tests/test_agent_mount.py:536] — fixed: parametrized with a real model holding `object()`, whose `model_dump(mode="json")` raises `PydanticSerializationError` (probed); the dict case is kept.
+- [x] [Review][Patch] `streamable_http_app(streamable_http_path=MCP_PATH, …)` is called only for its side effect (it sets `session_manager`); the Starlette app it returns, the only user of `streamable_http_path`, is discarded, so the argument reads as if it configured the path (Acceptance Auditor) [backend/bookvie/http/app.py:248] — fixed: the argument is dropped, with a comment that the call is for `session_manager` only and `_McpRoute` serves `MCP_PATH`.
+- [x] [Review][Defer] Spine drift (AD-21): the Design Paradigm paragraph (spine line 28, "agent tools at `/mcp` (AD-21, planned for Epic 12)") is a further "planned" mention the build's second drift entry doesn't list [ARCHITECTURE-SPINE.md:28] — deferred: spine drift, reconciled before the next epic.
+- [x] [Review][Defer] `epic-12-context.md` (Technical Decisions, Mount) still says "builds a fresh SDK `MCPServer` and mounts its streamable-HTTP app"; 12.2–12.4 builds read it as context and could reach for `MCPServer.tool`, which this spec's Never list forbids [epic-12-context.md] — deferred: context-doc edit, outside a story review; fold into the AD-21 reconciliation.
+- [x] [Review][Defer] `_success` passes any `model_dump` result as `structuredContent`; a `RootModel` or list view (as `find_book`'s candidates may be) dumps to a JSON array, which MCP doesn't allow for structured content [backend/bookvie/agent/server.py:73] — deferred: no such tool yet; Story 12.2 should wrap or refuse a non-object.
+- [x] [Review][Defer] A tool call still running when the lifespan's session manager exits: the worker thread keeps running (and from 12.3 holds the AD-4 lock) but its answer is dropped; nothing says what the agent gets [backend/bookvie/http/app.py:222] — deferred: maybe-false, medium if true once write tools exist; settle in Story 12.3 with a shutdown-during-call test.
+- [x] [Review][Defer] An unexpected failure in a read tool answers `couldnt_save` ("Couldn't save. Your data wasn't changed."), which the spec mandates but which is wrong wording for a read [backend/bookvie/agent/server.py:65] — deferred: spec-mandated for 12.1; decide the read-tool error before Story 12.2's read tools.
+- [x] [Review][Defer] A malformed tool call reports `field: "intent"` (the form part's name, from `parse_form_intent`), a field the tool's schema doesn't have [backend/bookvie/agent/tools.py:63] — deferred: spec-mandated (the model's `malformed()`); decide before Story 12.2's first tool with arguments whether the agent error names the argument.
+
+- Full check after the patches, 2026-11-19: `npm run check` exit 0 — pytest 1670 passed, unit 388 passed (0 skipped), e2e 799 passed, smoke ok.
+
+**Rejected:**
+- `false` (Spine Check 1 and 2, Acceptance Auditor 3) AD-21 Mount names `MCPServer`; AD-21, the Stack rows, the Seed and FR-28 still say planned — true drift, but already deferred by the build (both "Spine drift (AD-21)" entries in `deferred-work.md`); not a new finding.
+- `false` (Acceptance Auditor 2) An ATDD leaf's inputs changed despite the Never list — the Never list forbids editing assertions; the assert lines are unchanged, and the added `/mcp/` and absolute URL make the leaf stricter.
+- `false` (Acceptance Auditor 5) `run` gets `{}` when `arguments` is omitted, not "exactly as sent" — MCP makes `arguments` optional; `{}` is the same empty argument object, nothing is coerced, and a required field is still refused by the parser.
+- `low` (Blind Hunter 3) `mcp_types` and `anyio` imported but not declared — `anyio.to_thread` was already imported in `http/api.py` before this story; `mcp` 2.3.0 pins `mcp-types==2.3.0` exactly. Declaring them would add Stack rows for a split that isn't happening.
+- `low` (Blind Hunter 7, 8) The Verification section's "15 passed" and the Auto Run Result's totals are stale — the fix is a spec edit.
+- `low` (Blind Hunter 11) The README doesn't say `get_app_info` is the one tool or how to check the connection — AC-9 doesn't ask for it; the tool's own description tells the agent to call it first.
+- `false` (Blind Hunter 13) `lifespan` reads `mcp_server`, assigned later — it can't be built first: `build_mcp_server` takes `app.state`, which needs the `FastAPI(lifespan=…)` call.
+
 ## Spec Change Log
 
 ## Review Triage Log
@@ -145,6 +174,7 @@ deferred:
 
 **Manual checks:**
 - AC-8 in a real Claude Code session (Oleg).
+  - **Result (2026-11-19, Oleg, real session):** started after the Claude Code session, `/mcp` → `bookvie-dev` → reconnect connects it, and `get_app_info` reports `dev`. Start step for the skills: start `bookvie --dev` (or `bookvie`), then reconnect the entry with `/mcp` if the session began before the server.
 
 ## Auto Run Result
 
