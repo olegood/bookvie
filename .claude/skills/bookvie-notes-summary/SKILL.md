@@ -32,14 +32,14 @@ If it doesn't answer, start it in the background with the Bash tool's `run_in_ba
 
 The book is read through bookvie's agent tools, which the running app serves at `/mcp`: the `bookvie` entry in Claude Code for port 8765. When the user asks to try the skill on the dev library, use `bookvie --dev --no-browser` instead, check `curl -fsS http://127.0.0.1:8766/api/health`, and call the tools of the `bookvie-dev` entry.
 
-If the tools aren't available because bookvie started after this Claude Code session did, ask the user to run `/mcp` in Claude Code, pick the entry (`bookvie` or `bookvie-dev`) and choose reconnect. Then go on. Never fall back to calling bookvie's HTTP API for the book.
+If the tools aren't available because bookvie started after this Claude Code session did, ask the user to run `/mcp` in Claude Code, pick the entry (`bookvie` or `bookvie-dev`) and choose reconnect. Then go on. If reconnecting doesn't bring the tools (the entry was never added, or its URL is wrong), give the user the README's one-time setup line for that entry, `claude mcp add --transport http --scope user bookvie http://127.0.0.1:8765/mcp` (or `bookvie-dev` with `http://127.0.0.1:8766/mcp`), and stop. Never fall back to calling bookvie's HTTP API for the book.
 
 ## 2. Find the book and read its notes
 
 **Find the book.**
 
 - **No book named** ("my current book", "what I'm reading", or nothing at all): call `get_home` and take `mainBook.id`. When `mainBook` is `null`, there's no Main book: ask the user for a title.
-- **A title or an author:** call `find_book` with the words the user used (part of the title or subtitle, an author, an ISBN, or initials such as DDIA). It returns candidates under `books`, each with `id`, `title`, `subtitle`, `authors`, `edition`, `type` and `role`.
+- **A title or an author:** call `find_book` with the words the user used (part of the title or subtitle, an author, an ISBN, or initials such as DDIA). It returns candidates under `books`, each with `id`, `title`, `subtitle`, `authors`, `edition`, `type` and `role`. A book matches only when the whole query is part of its title, its subtitle or one author (or is its ISBN or the title's initials), so send one thing at a time: when the user gives both a title and an author ("the Dune book by Herbert"), query the title and keep only the candidates whose `authors` include that author; then go on as below.
   - **One match:** use its `id`.
   - **Several matches** (two editions of one title, say): never pick one yourself, even when one looks likelier. List each with its title, subtitle, authors, edition and type, ask which one, and use the `id` of the one the user names.
   - **No match** (an empty list): ask the user for a fuller title or the author, and search again.

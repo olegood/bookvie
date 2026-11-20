@@ -204,3 +204,27 @@ def test_a_missing_prerequisite_stops_with_no_document() -> None:
     )
     assert "**No purpose:**" in step
     assert "**No card notes:**" in step
+
+
+def test_with_a_title_and_an_author_the_skill_queries_the_title_and_keeps_that_authors_books() -> (
+    None
+):
+    # Code review: find_book matches the whole query against one field, so
+    # "Dune Herbert" finds nothing; the old script's --author narrowed instead.
+    step = _step_2()
+    assert re.search(
+        r"query the title and keep only the candidates whose `authors` include that author", step
+    )
+
+
+def test_when_reconnecting_brings_no_tools_the_skill_gives_the_setup_line_and_stops() -> None:
+    # Code review: an entry never added (or a wrong URL) can't be fixed by reconnecting,
+    # and the HTTP fallback is banned, so the skill needs an exit.
+    step = _section(
+        SKILL_MD.read_text(encoding="utf-8"), "Make sure bookvie is running", numbered=True
+    )
+    assert step is not None
+    step = " ".join(step.split())
+    assert re.search(r"If reconnecting doesn't bring the tools.*and stop\.", step)
+    assert "claude mcp add --transport http --scope user bookvie http://127.0.0.1:8765/mcp" in step
+    assert "http://127.0.0.1:8766/mcp" in step

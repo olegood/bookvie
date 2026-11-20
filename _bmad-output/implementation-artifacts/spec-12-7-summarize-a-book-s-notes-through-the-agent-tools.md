@@ -2,7 +2,7 @@
 title: "Story 12.7: Summarize a book's notes through the agent tools"
 type: 'feature'
 created: '2026-11-20'
-status: 'in-review'
+status: 'done'
 baseline_revision: 'da68cca0bce78bb21279715ad9d04a06649bc8e0'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -83,6 +83,35 @@ deferred:
 - Given a title that matches two editions, when the skill runs, then it asks which one and never picks.
 - Given a finished Book with a Purpose, when `get_book` is called, then `readings[*].purpose` carries it and `currentReading` is `null`.
 - Given a `--dev` server with a seeded Book that has a Purpose and Card notes, when Oleg runs the skill in a real Claude Code session, then the summary is produced and this spec records the run (manual; open until Oleg runs it).
+
+### Review Findings
+
+Code review, 2026-11-20 (`bmad-code-review`, new session; diff `da68cca..HEAD` without `_bmad-output/`, the build commit; layers: Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor, Spine Check). 24 findings: 2 patch entries (5 findings), 3 spine drift (2 entries) already deferred by the build, 16 rejected. Verification Gap found no gaps.
+
+- [x] [Review][Patch] A title plus an author ("the Dune book by Herbert") has no path: `find_book` matches only when the whole query is a substring of the title, the subtitle or one author (`views/find_book.py` `_rank`), so "Dune Herbert" returns `[]` and the skill asks for a fuller title, though the user gave one. The old script's `--author` narrowed the title's matches. Tell the agent to query one of them and keep only the candidates whose authors include the named author; several still means ask (Edge Case Hunter ×2 + Acceptance Auditor, low). Fixed: step 2 says to query the title and keep only the candidates whose `authors` include the named author; leaf `test_with_a_title_and_an_author_the_skill_queries_the_title_and_keeps_that_authors_books` [.claude/skills/bookvie-notes-summary/SKILL.md:47]
+- [x] [Review][Patch] Step 1 has no exit when the `bookvie` or `bookvie-dev` entry was never added, or points at a wrong URL: reconnecting can't bring the tools, the HTTP fallback is banned, and the skill gives no next move. Say: if reconnecting doesn't bring the tools, give the user the README's one-time `claude mcp add` line for that entry and stop (Blind Hunter + Edge Case Hunter, low). Fixed: step 1 gives the README's `claude mcp add` line for `bookvie` (8765) or `bookvie-dev` (8766) and stops; leaf `test_when_reconnecting_brings_no_tools_the_skill_gives_the_setup_line_and_stops` [.claude/skills/bookvie-notes-summary/SKILL.md:41]
+- [x] [Review][Defer] Spine drift (AD-8, Deferred "Skills on the agent tools"): AD-8 names 12.7 for the cataloging skill and the Deferred bullet names 12.6 for the reconnect step and entry names [.claude/skills/bookvie-notes-summary/SKILL.md] — deferred: already in `deferred-work.md` from the build's review (12.6 and 12.7 entries); no new entry.
+- [x] [Review][Defer] Spine drift (AD-6, AD-19): the agent derives the summary status and picks the Reading's Purpose from `get_book` [.claude/skills/bookvie-notes-summary/SKILL.md step 2] — deferred: already in `deferred-work.md` from the build's review; no new entry.
+
+**Rejected:**
+- Blind Hunter: a reread in progress whose current Reading has no Purpose is reported `finished` on the old Reading's date — low; the spec's Always keeps "the summary inputs the old script gave", and the old script gave exactly this; changing it is a spec decision, not a patch.
+- Blind Hunter: the "unfinished one after them" and `latestFinishDate` clauses can't fire — false as a defect: in every reachable case the rule picks the right Reading and date; the clauses only state the old script's order.
+- Blind Hunter: `groups[0]` isn't checked against the `bookId` — low; step 2 says to call `get_card_notes` with the same `bookId`, which scopes it to that Book's group; the check is a guard against the agent ignoring its own instruction.
+- Blind Hunter: a whitespace-only stored Purpose now counts — low; every Purpose bookvie stores goes through `normalize_purpose`, so it takes a hand-edited `library.json`; the fix adds normalization in the view.
+- Blind Hunter: one fuzzy match is used without naming the Book — low; step 6 reports the file path, which carries the title, and a lone loose hit (initials only) is rare.
+- Blind Hunter: the step-2 tests check wording, not behavior — low; the skill text is the rules' only surface, and the spec's Tasks ask for exactly these static leaves; AC-3's real run checks behavior.
+- Blind Hunter: the new view test has no blank Purpose and no waiting, Up next or side-read Book — low; the field is a direct `r.purpose` pass-through, and `currentReading.purpose` is earlier, tested code.
+- Blind Hunter: `bookDetail.test.ts` repeats every field in each literal — low; a test-helper refactor, no defect.
+- Blind Hunter: `BookReading.purpose` is in the schema but the UI doesn't show it — false as a defect: its docstring and this spec say why it exists (`get_book` for the agent); unused by the UI harms nothing.
+- Edge Case Hunter: an exact title also prefix-matching others ("Dune", "Dune Messiah") always asks — false: the spec's Boundaries ("Never pick a Book when `find_book` returns several") and AC-2 require it.
+- Edge Case Hunter: the old exact-title preference is retired — false: same rule as above.
+- Acceptance Auditor: AC-3's real run isn't recorded — not a code defect: AC-3 is manual by the story's text and stays open for Oleg, as Story 12.1's AC-8 did at `done`.
+- Acceptance Auditor: the "not started" fallback differs from the old script for an unfinished Reading with no `currentReading` — false: `current_reading` and `_role_reading` (`views/shelf.py:244`) give every unfinished Reading a role, so `currentReading` is set.
+- Acceptance Auditor: the candidate list drops `year` — false: the spec's I/O matrix names the fields (title, subtitle, authors, edition, type).
+- Acceptance Auditor: README "AI skills" still says the skills talk to `127.0.0.1:8765` — false: the tools are served at `127.0.0.1:8765/mcp`, so it still holds; stories don't edit the README.
+- Acceptance Auditor: the Design Notes word the Purpose rule differently from SKILL.md — the fix edits the spec under review; both pick the same Reading.
+
+**Full check after the patches** (2026-11-20, this review session, after the last patch): `npm run check` exit 0 — pytest 2146 passed, unit 388 passed, e2e 800 passed, smoke ok.
 
 ## Spec Change Log
 

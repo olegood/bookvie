@@ -126,7 +126,7 @@ development_status:
   12-4-let-an-agent-add-and-edit-a-book: done
   12-5-let-an-agent-fetch-a-book-s-cover-from-its-address: done
   12-6-let-an-agent-back-up-my-library-to-disk: done
-  12-7-summarize-a-book-s-notes-through-the-agent-tools: review
+  12-7-summarize-a-book-s-notes-through-the-agent-tools: done
   12-8-add-a-book-through-the-agent-tools: backlog
   epic-12-retrospective: optional
 action_items:
