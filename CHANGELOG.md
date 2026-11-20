@@ -6,7 +6,18 @@ All notable changes to bookvie are recorded here. The format follows
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+
+- AI agents can use bookvie through its agent tools, an MCP server at `/mcp` on the running app: read the library, record reading, and add and edit Books (Epic 12).
+- An agent can add a Book's cover by giving its https address; bookvie downloads and checks the image (Epic 12).
+- An agent can back up the library to disk with `export_backup` (Epic 12).
+- A back to top button on Catalog and Card notes.
+
+### Changed
+
+- The `bookvie-new-book` and `bookvie-notes-summary` skills work through the agent tools instead of bookvie's HTTP API (Epic 12).
+- Both skills recognize an older bookvie that has no agent tools, and ask you to stop it and start the new one.
+- To use the agent tools after updating, restart a running bookvie, and add the agent-tools entry to Claude Code once with the README's `claude mcp add` line.
 
 ## [1.2.0] - 2026-11-17
 

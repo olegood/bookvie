@@ -1372,3 +1372,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-12-8-add-a-book-through-the-agent-tools.md`
   summary: Spine drift (AD-3, AD-8 known gap), reconciled before the next epic: the copied-rule entry's `resolved:` line says the skill relies only on the server's duplicate rule, but `bookvie-new-book` step 2 keeps an agent-side same-book judgement (an ISBN hit, or the same title, a shared author, the same edition and type) that differs from `domain/duplicates.is_duplicate`. It only decides what the skill asks the user; `add_book`'s `duplicate_book` stays the guard. When AD-8 is reconciled, restate its known-gap note for that judgement rather than removing it. Low.
   evidence: `.claude/skills/bookvie-new-book/SKILL.md` step 2 "The same book" (Spine Check, code review of Story 12.8).
+
+## Deferred from: build review of spec-epic-12-retro-item-84-ship-mcp-and-skills-detect-older-bookvie (2026-11-20)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-epic-12-retro-item-84-ship-mcp-and-skills-detect-older-bookvie.md`
+  summary: Spine drift (AD-21, and the Deferred bullet "Skills on the agent tools"), reconciled before the next epic: both skills' step 1 now probes `/mcp` with a hand-written `curl` POST of a sessionless `tools/call get_app_info` (no `initialize`), which relies on the mount being stateless with JSON responses. AD-21 says Claude Code is the only supported client and gives stateless mode only as the reason a restart strands no session; neither AD-21, AD-8's skill notes nor the Deferred bullet records that the skills depend on it to tell an older bookvie apart. Folds into item 82's reconciliation. Low.
+  evidence: `.claude/skills/bookvie-new-book/SKILL.md` and `.claude/skills/bookvie-notes-summary/SKILL.md` step 1, pinned by `check_the_older_bookvie_probe` (Spine Check, build review of retro item 84).

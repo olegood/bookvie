@@ -25,6 +25,7 @@ from pathlib import Path
 
 from tests.agent_client import McpClient, structured_of
 from tests.builder import LibraryBuilder
+from tests.helpers import check_the_older_bookvie_probe, curl_lines, is_health_or_probe
 from tests.test_agent_mount import _section
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -79,13 +80,13 @@ def test_the_skill_reads_the_book_through_the_tools_keeps_its_start_step_and_its
     }
     assert {name: found for name, found in calls.items() if found} == {}
 
-    # No script talks HTTP, and every curl in the skill is the health check.
+    # No script talks HTTP, and every curl in the skill is the health check or
+    # the `get_app_info` probe of `/mcp` (retro item 84).
     scripts = {name: text for name, text in files.items() if name.startswith("scripts/")}
     assert {name for name, text in scripts.items() if HTTP_CLIENT.search(text)} == set()
     skill = SKILL_MD.read_text(encoding="utf-8")
-    # A curl command line, not the word in prose ("makes no `curl` call").
-    curls = re.findall(r"\bcurl\s+(?:-|https?://)[^\n`]*", skill)
-    assert curls and all("/api/health" in line for line in curls), curls
+    curls = curl_lines(skill)
+    assert curls and all(is_health_or_probe(line) for line in curls), curls
 
     # The Book comes from the tools.
     for tool in ("find_book", "get_book", "get_card_notes", "get_home"):
@@ -229,6 +230,16 @@ def test_when_reconnecting_brings_no_tools_the_skill_gives_the_setup_line_and_st
     assert "http://127.0.0.1:8766/mcp" in step
 
 
+def test_step_1_probes_get_app_info_after_the_health_check_and_stops_on_an_older_bookvie(
+    connect_mcp: Callable[..., McpClient],
+) -> None:
+    # Epic 12 retro item 84 (E12-S2): bookvie 1.2.0 answers /api/health but 405 on /mcp,
+    # and the reconnect and setup advice is wrong for it.
+    check_the_older_bookvie_probe(
+        SKILL_MD.read_text(encoding="utf-8"), "Make sure bookvie is running", connect_mcp()
+    )
+
+
 # --- Test automation: the skill's names against the tools, and the README ---------
 
 README = REPO_ROOT / "README.md"
@@ -263,10 +274,11 @@ def test_every_name_the_skill_reads_is_in_the_tools_answers_and_it_names_only_th
     skill = SKILL_MD.read_text(encoding="utf-8")
     client, dune = _seeded_tools(tmp_path, connect_mcp)
 
-    # Of the registered tools, the skill names only the four read tools.
+    # Of the registered tools, the skill names only the four read tools, plus
+    # get_app_info, the read step 1 probes `/mcp` with (retro item 84).
     registered = {tool["name"] for tool in client.list_tools()}
     named = set(re.findall(r"`([a-z]+(?:_[a-z]+)+)`", skill))
-    assert named & registered == READ_TOOLS
+    assert named & registered == READ_TOOLS | {"get_app_info"}
 
     # find_book's candidates carry exactly the fields the skill lists.
     listed = re.search(r"each with ((?:`\w+`(?:, | and )?)+)\.", skill)

@@ -16,7 +16,7 @@ bookvie is the user's local home-library app. While reading, the user captures *
 
 It works for **any book in the catalog**, whatever its state: the Main book, Up next, a paused (waiting) book, a side read or a finished one. When the user doesn't say which book, use the current Main book.
 
-This skill only reads from bookvie. It never changes the catalog: it calls only the read tools `find_book`, `get_book`, `get_card_notes` and `get_home`.
+This skill only reads from bookvie. It never changes the catalog: it calls only the read tools `find_book`, `get_book`, `get_card_notes` and `get_home`, and step 1 checks the server with the read `get_app_info`.
 
 **Prerequisites:** the book must have a **reading purpose** and **at least one card note**. The purpose frames the whole summary ("Why I am reading this"), and the notes are its content. Without either there's nothing faithful to write, so stop instead of making one up.
 
@@ -31,6 +31,20 @@ curl -fsS http://127.0.0.1:8765/api/health
 If it doesn't answer, start it in the background with the Bash tool's `run_in_background`: run `bookvie --no-browser`, or `backend/.venv/bin/bookvie --no-browser` when `bookvie` isn't on the PATH. Then poll the health URL. Use `--no-browser` and never Playwright: the user doesn't want windows opening.
 
 The book is read through bookvie's agent tools, which the running app serves at `/mcp`: the `bookvie` entry in Claude Code for port 8765. When the user asks to try the skill on the dev library, use `bookvie --dev --no-browser` instead, check `curl -fsS http://127.0.0.1:8766/api/health`, and call the tools of the `bookvie-dev` entry.
+
+Then make sure the running bookvie serves the agent tools: ask it for `get_app_info`, a read, at `/mcp` on the entry's port. For the `bookvie` entry (8765):
+
+```bash
+curl -sS -o /dev/null -w '%{http_code}\n' -m 5 -X POST http://127.0.0.1:8765/mcp -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"get_app_info","arguments":{}}}'
+```
+
+For `bookvie-dev` (8766):
+
+```bash
+curl -sS -o /dev/null -w '%{http_code}\n' -m 5 -X POST http://127.0.0.1:8766/mcp -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"get_app_info","arguments":{}}}'
+```
+
+It prints `200` when bookvie has the agent tools. `405` or `404`, or `000` when it doesn't answer, means an older bookvie, from before the agent tools, is running. Tell the user "An older bookvie is running: stop it and start the new one." and stop. If you started bookvie yourself in this step, the installed `bookvie` is older: tell the user instead to update it with `npm run install:local` (the README's Updating), and stop. Any other code: tell the user the code bookvie answered and stop, without the older-bookvie message. In each of these cases, don't give the reconnect or `claude mcp add` advice below: the entry is set up, the server is the problem. Don't stop or restart bookvie yourself.
 
 If the tools aren't available because bookvie started after this Claude Code session did, ask the user to run `/mcp` in Claude Code, pick the entry (`bookvie` or `bookvie-dev`) and choose reconnect. Then go on. If reconnecting doesn't bring the tools (the entry was never added, or its URL is wrong), give the user the README's one-time setup line for that entry, `claude mcp add --transport http --scope user bookvie http://127.0.0.1:8765/mcp` (or `bookvie-dev` with `http://127.0.0.1:8766/mcp`), and stop. Never fall back to calling bookvie's HTTP API for the book.
 

@@ -27,7 +27,13 @@ from typing import Any
 
 from tests.agent_client import McpClient, error_of, structured_of
 from tests.builder import LibraryBuilder
-from tests.helpers import image_bytes, library_bytes
+from tests.helpers import (
+    check_the_older_bookvie_probe,
+    curl_lines,
+    image_bytes,
+    is_health_or_probe,
+    library_bytes,
+)
 from tests.test_agent_mount import _section
 from tests.test_notes_summary_skill import HTTP_CLIENT, _skill_files
 
@@ -54,11 +60,6 @@ COPIED_RULE_ENTRY = "re-implements `domain/duplicates`' rule"
 
 def _skill() -> str:
     return SKILL_MD.read_text(encoding="utf-8")
-
-
-def _command_lines(text: str) -> list[str]:
-    """``curl`` or ``wget`` command lines, not the words in prose ("makes no `curl` call")."""
-    return re.findall(r"\b(?:curl|wget)\s+(?:-|https?://)[^\n`]*", text)
 
 
 def _lines_with(text: str, pattern: str) -> list[str]:
@@ -96,12 +97,13 @@ def test_the_skill_adds_through_the_tools_and_keeps_its_start_step_rules_and_rep
     } == {}
 
     # It no longer downloads the cover: no script talks HTTP (lookup.mjs reads
-    # pages through a headless Chromium), and every curl in SKILL.md is the health check.
+    # pages through a headless Chromium), and every curl in SKILL.md is the health
+    # check or the `get_app_info` probe of `/mcp` (retro item 84).
     scripts = {name: text for name, text in files.items() if name.startswith("scripts/")}
     assert {name for name, text in scripts.items() if HTTP_CLIENT.search(text)} == set()
     skill = _skill()
-    commands = _command_lines(skill)
-    assert commands and all("/api/health" in line for line in commands), commands
+    commands = curl_lines(skill)
+    assert commands and all(is_health_or_probe(line) for line in commands), commands
 
     # The tools: find_book to check, add_book with coverUrl to add, get_book to verify.
     for name in ("find_book", "add_book", "coverUrl", "get_book"):
@@ -228,10 +230,11 @@ def test_every_name_the_skill_reads_is_in_the_tools_answers_and_it_names_only_it
     fetcher = _FakeFetcher()
     client = connect_mcp(data_dir=folder, cover_fetcher=fetcher)
 
-    # Of the registered tools, the skill names only find_book, add_book and get_book.
+    # Of the registered tools, the skill names only find_book, add_book and get_book,
+    # plus get_app_info, the read step 1 probes `/mcp` with (retro item 84).
     registered = {tool["name"] for tool in client.list_tools()}
     named = set(re.findall(r"`([a-z]+(?:_[a-z]+)+)`", skill))
-    assert named & registered == TOOLS
+    assert named & registered == TOOLS | {"get_app_info"}
 
     # find_book's candidates carry exactly the fields the skill lists.
     listed = re.search(r"each with ((?:`\w+`(?:, | and )?)+), or an empty list", skill)
@@ -394,6 +397,27 @@ def test_a_cover_refusal_can_come_with_other_fields_and_a_resend_can_be_refused_
     assert re.search(r"One refusal can name `coverUrl` and other fields together", step)
     assert re.search(r"a resend without `coverUrl` can come back as `invalid_fields`", step)
     assert re.search(r"or as `duplicate_book`", step)
+    # Retro item 84 (E12-B2): the server's order, pinned against the server by
+    # test_a_cover_refusal_comes_with_other_fields_or_ahead_of_them_as_step_4_says.
+    assert re.search(
+        r"bookvie first checks that the call has every field in the right shape, then downloads "
+        r"the cover, and only then checks each field's value \(such as `pages`\) and the catalog",
+        step,
+    )
+    assert "downloads the cover before it checks the other fields" not in step
+    assert re.search(
+        r"a `duplicate_book` refusal comes after the download, and the resend with "
+        r"`confirmDuplicate: true` downloads the cover again",
+        step,
+    )
+
+
+def test_step_1_probes_get_app_info_after_the_health_check_and_stops_on_an_older_bookvie(
+    connect_mcp: Callable[..., McpClient],
+) -> None:
+    # Epic 12 retro item 84 (E12-S2): bookvie 1.2.0 answers /api/health but 405 on /mcp,
+    # and the reconnect and setup advice is wrong for it.
+    check_the_older_bookvie_probe(_skill(), "Start bookvie", connect_mcp())
 
 
 def test_another_invalid_field_is_fixed_and_couldnt_save_is_reported_without_a_retry_loop() -> None:
@@ -506,7 +530,7 @@ def test_a_cover_refusal_comes_with_other_fields_or_ahead_of_them_as_step_4_says
         "books": []
     }
 
-    # A download refused (http://, the real downloader) comes before the field check and
+    # A download refused (http://, the real downloader) comes before the value checks and
     # the duplicate check: the resend without coverUrl is refused on pages, then as a duplicate.
     builder = LibraryBuilder()
     builder.book(title="Dune", authors=["Frank Herbert"], pages=412, isbn="9780441013593")

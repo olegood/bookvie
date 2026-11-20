@@ -13,11 +13,16 @@
 - The lock's order of events: :class:`RecordingLock`.
 - Restore: :data:`RESTORE`, :func:`post_restore`, :func:`zip_archive`,
   :func:`covers_in`, :func:`staging_in` and :class:`RecordingFs`.
+- The skills' step 1 (Epic 12 retro item 84): :data:`PROBE_PORTS`,
+  :data:`OLDER_BOOKVIE`, :func:`curl_lines`, :func:`is_health_or_probe` and
+  :func:`check_the_older_bookvie_probe`.
 """
 
 import io
 import json
 import os
+import re
+import shlex
 import threading
 import zipfile
 from datetime import date
@@ -33,6 +38,7 @@ from bookvie.domain.clock import FakeClock
 from bookvie.http.app import create_app
 from bookvie.intents import COULDNT_SAVE_MESSAGE
 from bookvie.store import OsFileSystem, Store
+from tests.agent_client import McpClient
 from tests.builder import LibraryBuilder
 
 # The Host guard accepts only this server's own Host (see test_guard.py).
@@ -383,3 +389,91 @@ def seeded_store(data_dir: Path, fs: OsFileSystem | None = None) -> Store:
     builder.book(title="Dune", tags=[])
     builder.write(data_dir)
     return Store.open(data_dir, fs=fs)
+
+
+# Epic 12 retro item 84: after `/api/health`, step 1 of the two bookvie skills asks the
+# entry's port for `get_app_info` at `/mcp`. A bookvie from before the agent tools
+# answers 405 (or 404, or nothing), and the skill says so and stops, instead of the
+# reconnect and setup advice.
+PROBE_PORTS = {"bookvie": 8765, "bookvie-dev": 8766}
+OLDER_BOOKVIE = "An older bookvie is running: stop it and start the new one."
+INSTALLED_IS_OLDER = (
+    "If you started bookvie yourself in this step, the installed `bookvie` is older: "
+    "tell the user instead to update it with `npm run install:local` (the README's Updating), and stop."
+)
+
+
+def curl_lines(text: str) -> list[str]:
+    """``curl`` or ``wget`` command lines, not the words in prose ("makes no `curl` call")."""
+    return re.findall(r"\b(?:curl|wget)\s+(?:-|https?://)[^\n`]*", text)
+
+
+def _probe_port(line: str) -> int | None:
+    """The port a curl line probes: a POST of ``tools/call get_app_info`` to ``/mcp``."""
+    found = re.search(r"-X POST http://127\.0\.0\.1:(\d+)/mcp\s", line)
+    if found is None or '"method":"tools/call"' not in line:
+        return None
+    return int(found.group(1)) if '"params":{"name":"get_app_info"' in line else None
+
+
+def is_health_or_probe(line: str) -> bool:
+    """Whether a curl line is the health check or the ``get_app_info`` probe."""
+    health = re.fullmatch(r"curl -fsS http://127\.0\.0\.1:(?:8765|8766)/api/health\s*", line)
+    return health is not None or _probe_port(line) is not None
+
+
+def check_the_older_bookvie_probe(skill: str, start_step_title: str, client: McpClient) -> None:
+    """Step 1 probes each entry's port after the health check, and stops on an
+    older bookvie before the reconnect advice; the probe's headers and body,
+    sent to this checkout's ``/mcp``, answer 200 with the app info."""
+    # Imported here: test_agent_mount imports this module.
+    from tests.test_agent_mount import _section
+
+    step = _section(skill, start_step_title, numbered=True)
+    assert step is not None, start_step_title
+    probes = [(line, port) for line in curl_lines(skill) if (port := _probe_port(line))]
+    assert sorted(port for _, port in probes) == sorted(PROBE_PORTS.values()), probes
+    assert all(line in step for line, _ in probes), "every probe is in step 1"
+
+    # The order: health check, then the probe, then the older-bookvie stop, then reconnect.
+    health = step.index("curl -fsS http://127.0.0.1:8765/api/health")
+    probe = min(step.index(line) for line, _ in probes)
+    older = step.index(OLDER_BOOKVIE)
+    reconnect = step.index("choose reconnect")
+    assert health < probe < older < reconnect
+
+    # Only 405, 404 or 000 mean an older bookvie: the message, a stop, and no reconnect
+    # or setup advice. Any other code is reported as it is. A bookvie the skill started
+    # itself is the installed one, so that one needs updating. The skill never stops or
+    # restarts bookvie itself.
+    stop = " ".join(step[probe:reconnect].split())
+    assert re.search(
+        r"It prints `200` when bookvie has the agent tools\. `405` or `404`, or `000` when "
+        r"it doesn't answer, means an older bookvie",
+        stop,
+    )
+    assert f'Tell the user "{OLDER_BOOKVIE}" and stop.' in stop
+    assert INSTALLED_IS_OLDER in stop
+    assert re.search(
+        r"Any other code: tell the user the code bookvie answered and stop, without the "
+        r"older-bookvie message",
+        stop,
+    )
+    assert (
+        "In each of these cases, don't give the reconnect or `claude mcp add` advice below" in stop
+    )
+    assert "Don't stop or restart bookvie yourself." in stop
+
+    # The probe's headers and body, sent to this checkout's `/mcp`: 200 and the app info.
+    for line, _ in probes:
+        words = shlex.split(line)
+        assert words[words.index("-o") + 1] == "/dev/null", line
+        assert "-m" in words, line
+        assert words[words.index("-w") + 1] == "%{http_code}\\n", line
+        headers = dict(words[i + 1].split(": ", 1) for i, word in enumerate(words) if word == "-H")
+        body = words[words.index("-d") + 1]
+        answer = client.http.post(client.path, content=body, headers=headers)
+        assert answer.status_code == 200, (line, answer.text)
+        result = answer.json()["result"]
+        assert result["isError"] is False
+        assert set(result["structuredContent"]) >= {"version", "mode"}, result
