@@ -1004,7 +1004,7 @@ action_items:
       `backend/tests/test_notes_summary_skill.py`, `backend/pyproject.toml`, `frontend/package.json`,
       `CHANGELOG.md`. Due: before Epic 13."
     owner: "Amelia (dev)"
-    status: in-progress
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-12-retro-2026-11-20.md"
   - id: "epic-12-retro-item-85-code-review-keeps-unrecorded-manual-acs-in-review"
     epic: 12

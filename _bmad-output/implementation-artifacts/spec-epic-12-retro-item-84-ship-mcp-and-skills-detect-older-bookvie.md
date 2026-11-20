@@ -69,7 +69,7 @@ context:
 - **Tests:** the shared probe check (`check_the_older_bookvie_probe`, `curl_lines`, `is_health_or_probe`, `PROBE_PORTS`, `OLDER_BOOKVIE`, `INSTALLED_IS_OLDER`) lives in `backend/tests/helpers.py`; it pins the order health → probe → older message → reconnect, the wording, and sends each probe's headers and body to this checkout's `/mcp` (200 with `version` and `mode`). The curl-only-health assertions accept the probe and nothing else; the tool-name checks allow `get_app_info`.
 - **CHANGELOG:** `[Unreleased]` holds Epic 12, the back to top button, the skills' change, and an upgrade line (restart, `claude mcp add` once).
 - **Verified (2026-11-20):** the probe lines copied from each SKILL.md print `405` against the installed 1.2.0 on 8765, and `200` against a `--dev` server from this checkout; the two skill test files pass (29); `npm run check` exits 0.
-- **Still open for item 84:** the release and reinstall (frozen decision), so the sprint item stays `in-progress` until `scripts/release.sh 2.0.0` and the reinstall are done.
+- **Released (2026-11-20):** `scripts/release.sh 2.0.0` published v2.0.0 (https://github.com/olegood/bookvie/releases/tag/v2.0.0), and `uv tool install --reinstall` put `bookvie v2.0.0` on Oleg's PATH. Oleg restarts the running bookvie on 8765 himself; until then it is still 1.2.0 and the skills say so.
 
 ## Spec Change Log
 
