@@ -1287,3 +1287,18 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-12-4-let-an-agent-add-and-edit-a-book.md`
   summary: The store invariants check trimming only for title, authors, language, publisher and tags, so a stored subtitle or ISBN that is untrimmed or "" (if restore or a hand edit can load one) changes when saved unchanged through the panel or the `editForm` round trip. Unverified whether restore admits such values. Low.
   evidence: `backend/bookvie/domain/invariants.py:76-135` (Edge Case Hunter, build-auto review pass 2 of Story 12.4).
+
+## Deferred from: build-auto review of spec-12-5-let-an-agent-fetch-a-book-s-cover-from-its-address (2026-11-20)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-12-5-let-an-agent-fetch-a-book-s-cover-from-its-address.md`
+  summary: Spine drift (AD-21, Stack table), reconciled before the next epic: the spine lists `httpx2` as "the cover download", but `cover_fetch` downloads with `http.client` over its own socket; `httpx2` only supplies the TLS context (`create_ssl_context(trust_env=False)`). Low.
+  evidence: `backend/bookvie/intents/cover_fetch.py` `_default_ssl_context`, `_Connection` (Spine Check, build-auto review of Story 12.5).
+- source_spec: `_bmad-output/implementation-artifacts/spec-12-5-let-an-agent-fetch-a-book-s-cover-from-its-address.md`
+  summary: Spine drift (AD-21 Cover by URL), reconciled before the next epic: the downloader enforces rules AD-21 doesn't list. Multicast, IPv4-compatible `::/96` and scoped IPv6 addresses are refused. A `Content-Encoding` other than identity is refused, as are an empty body, a `Content-Length` past the cap (before reading) and a body shorter than its `Content-Length`. The OS trust store is used, with `SSL_CERT_FILE` and the like ignored. The DNS lookup is bounded by the deadline. Low.
+  evidence: `backend/bookvie/intents/cover_fetch.py` `is_public`, `_exchange`, `_read_capped`, `_resolved`, `_default_ssl_context` (Spine Check, build-auto review of Story 12.5).
+- source_spec: `_bmad-output/implementation-artifacts/spec-12-5-let-an-agent-fetch-a-book-s-cover-from-its-address.md`
+  summary: Spine drift (AD-21, Structural Seed), reconciled before the next epic: the Seed's `intents/` line still lists `cover_fetch` as planned; it now exists. Low.
+  evidence: `backend/bookvie/intents/cover_fetch.py` (Spine Check, build-auto review of Story 12.5).
+- source_spec: `_bmad-output/implementation-artifacts/spec-12-5-let-an-agent-fetch-a-book-s-cover-from-its-address.md`
+  summary: Spine drift (AD-21, Structural Seed `http/` line, Consistency Conventions Testing row), reconciled before the next epic: the spine names none of three things. `create_app`'s `cover_fetcher` seam (`app.state.cover_fetcher`). The tool's first step, which refuses a non-string `coverUrl` as the malformed intent on `intent`. The autouse pytest guard `_on_the_machine`, which keeps in-process lookups and connections on the machine. Low.
+  evidence: `backend/bookvie/http/app.py` `create_app`; `backend/bookvie/agent/tools.py` `_book_tool`; `backend/tests/conftest.py` `_on_the_machine` (Spine Check, build-auto review of Story 12.5).

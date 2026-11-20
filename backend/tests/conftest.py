@@ -13,10 +13,19 @@ check:py`` sets the same ``TZ`` before pytest starts.
 The agent tools (AD-21) are tested through ``mcp_client``: an MCP client on a
 real app, its lifespan running, over a fresh temporary data folder.
 ``connect_mcp`` builds more of them (another folder, ``--dev``, extra tools).
+
+No test leaves the machine (Story 12.5, AC-5): ``_on_the_machine`` refuses,
+in this process, a name lookup (``getaddrinfo``, ``gethostbyname``,
+``gethostbyname_ex``, ``gethostbyaddr``) of anything but ``localhost`` or an
+address, and an IPv4 or IPv6 ``connect`` to an address that isn't loopback,
+with "off the machine" in the message. Subprocesses, such as the ``bookvie``
+servers some tests start, are outside the guard; they use only loopback.
 """
 
+import ipaddress
 import os
 import shutil
+import socket
 import subprocess
 import time
 from collections.abc import Callable, Iterator, Sequence
@@ -77,6 +86,92 @@ def _isolated_home(
     monkeypatch.setenv("HOME", str(home))
     assert Path("~").expanduser() == home
     return home
+
+
+class OffTheMachineError(OSError):
+    """A test tried to look up or connect to something that isn't this machine.
+
+    An ``OSError``, so code under test handles it as it would a real network failure.
+    """
+
+
+_LOCAL_NAMES = frozenset({"localhost", "localhost."})
+_real_getaddrinfo = socket.getaddrinfo
+_real_lookups = {
+    name: getattr(socket, name) for name in ("gethostbyname", "gethostbyname_ex", "gethostbyaddr")
+}
+_real_connect = socket.socket.connect
+_real_connect_ex = socket.socket.connect_ex
+
+
+def _local_ip(host: str) -> bool | None:
+    """Whether ``host`` is a loopback address; ``None`` when it isn't an address at all."""
+    try:
+        ip = ipaddress.ip_address(host.split("%", 1)[0])
+    except ValueError:
+        return None
+    if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped is not None:
+        ip = ip.ipv4_mapped
+    return ip.is_loopback
+
+
+def _guard_lookup(host: Any) -> None:
+    if host is None:
+        return
+    name = host.decode("ascii", "replace") if isinstance(host, bytes) else str(host)
+    if name.lower() in _LOCAL_NAMES or _local_ip(name) is not None:
+        # A numeric host is looked up as itself: connect() checks where it goes.
+        return
+    raise OffTheMachineError(f"a test looked up {name!r}, off the machine")
+
+
+def _guard_connect(sock: socket.socket, address: Any) -> None:
+    if sock.family not in (socket.AF_INET, socket.AF_INET6):
+        return
+    host = address[0] if isinstance(address, tuple) else address
+    name = host.decode("ascii", "replace") if isinstance(host, bytes) else str(host)
+    local = _local_ip(name)
+    if local or (local is None and name.lower() in _LOCAL_NAMES):
+        return
+    raise OffTheMachineError(f"a test connected to {address!r}, off the machine")
+
+
+def _guarded_getaddrinfo(host: Any, *args: Any, **kwargs: Any) -> Any:
+    _guard_lookup(host)
+    return _real_getaddrinfo(host, *args, **kwargs)
+
+
+def _guarded_lookup(name: str) -> Callable[..., Any]:
+    real = _real_lookups[name]
+
+    def lookup(host: Any, *args: Any, **kwargs: Any) -> Any:
+        _guard_lookup(host)
+        return real(host, *args, **kwargs)
+
+    return lookup
+
+
+def _guarded_connect(sock: socket.socket, address: Any) -> None:
+    _guard_connect(sock, address)
+    return _real_connect(sock, address)
+
+
+def _guarded_connect_ex(sock: socket.socket, address: Any) -> int:
+    _guard_connect(sock, address)
+    return _real_connect_ex(sock, address)
+
+
+@pytest.fixture(autouse=True)
+def _on_the_machine(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Every test: no in-process name lookup or INET connect leaves the machine (AC-5).
+
+    Subprocesses aren't guarded (see the module docstring).
+    """
+    monkeypatch.setattr(socket, "getaddrinfo", _guarded_getaddrinfo)
+    for name in _real_lookups:
+        monkeypatch.setattr(socket, name, _guarded_lookup(name))
+    monkeypatch.setattr(socket.socket, "connect", _guarded_connect)
+    monkeypatch.setattr(socket.socket, "connect_ex", _guarded_connect_ex)
 
 
 @pytest.fixture

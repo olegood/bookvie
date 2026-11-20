@@ -1,6 +1,7 @@
 """Story 12.4: an agent adds and edits a Book through ``add_book`` and ``edit_book`` (AD-21).
 
-Both take their intent's JSON body as arguments, without a cover, and answer
+Both take their intent's JSON body as arguments (plus Story 12.5's optional
+``coverUrl``, tested in ``test_agent_cover_url.py``), and answer
 exactly as ``POST /api/intents/add-book`` and ``/edit-book`` answer: the same
 stored ``library.json`` and the same result or AD-9 error. ``edit_book`` is a
 whole edit: its schema requires every form key, and a call that leaves one out
@@ -81,14 +82,17 @@ BOOK_DESCRIPTIONS = {
         "finishedOn (YYYY-MM-DD) for a Book the user has already read. A likely duplicate is "
         "refused with duplicate_book and the matching Books: show them to the user, and send "
         "confirmDuplicate true only if the user says to add it anyway. Returns the new Book's "
-        "id."
+        "id. coverUrl is the https address of the front cover image; bookvie downloads it. If "
+        "the download fails, nothing is saved: tell the user why."
     ),
     "edit_book": (
         "Replace a Book's fields. This is a whole edit: a field you leave empty is cleared. Call "
         "get_book first and send its editForm with bookId, changing only what the user asked "
         "for. A finished Book's finishedOn can be changed but not emptied. removeCover true "
         "deletes the Book's cover: send it only when the user asks. A changed title, author or "
-        "ISBN that makes it a likely duplicate is refused like add_book."
+        "ISBN that makes it a likely duplicate is refused like add_book. coverUrl is the https "
+        "address of the front cover image; bookvie downloads it. If the download fails, nothing "
+        "is saved: tell the user why."
     ),
 }
 
@@ -190,8 +194,6 @@ BOOK_CASES: list[Case] = [
     Case("add_book", "duplicate-book", {**ADD, **DUNE_AGAIN}, "duplicate_book"),
     Case("add_book", "success-confirm-duplicate", {**ADD, **DUNE_AGAIN, "confirmDuplicate": True}, "ok"),
     Case("add_book", "wrong-type", {**ADD, "pages": 387}, "invalid_fields", ("intent",)),
-    # No coverUrl yet (Story 12.5 adds it): the route refuses it as an unknown key.
-    Case("add_book", "unknown-key-cover-url", {**ADD, "coverUrl": COVER_URL}, "invalid_fields", ("intent",)),
     Case("add_book", "fault-at-write", ADD, "couldnt_save", fault="write"),
     # edit_book: every key sent, as the tool requires.
     Case("edit_book", "success", EDIT, "ok"),
@@ -205,7 +207,6 @@ BOOK_CASES: list[Case] = [
     Case("edit_book", "success-confirm-duplicate", {**PAUSED_FORM, "title": "Dune", "authors": "Frank Herbert", "confirmDuplicate": True}, "ok"),
     Case("edit_book", "book-not-found", {**FINISHED_FORM, "bookId": GONE}, "book_not_found"),
     Case("edit_book", "wrong-type", {**PAUSED_FORM, "pages": PAUSED_PAGES}, "invalid_fields", ("intent",)),
-    Case("edit_book", "unknown-key-cover-url", {**PAUSED_FORM, "coverUrl": COVER_URL}, "invalid_fields", ("intent",)),
     Case("edit_book", "fault-at-write", EDIT, "couldnt_save", fault="write"),
     # A whole edit without removeCover keeps the cover; removeCover clears it, file and all.
     Case("edit_book", "keeps-cover", UNREAD_FORM, "unchanged", cover=True),
@@ -223,20 +224,27 @@ BOOK_CASES: list[Case] = [
 ]  # fmt: skip
 
 
+def _without_cover_url(schema: dict[str, Any]) -> dict[str, Any]:
+    """``schema`` without Story 12.5's tool-only ``coverUrl`` property."""
+    properties = {key: value for key, value in schema["properties"].items() if key != "coverUrl"}
+    return {**schema, "properties": properties}
+
+
 def test_add_book_advertises_the_add_book_intent_models_schema_and_the_storys_description(
     mcp_client: McpClient,
 ) -> None:
-    # [P0] AC-1. The add-book intent model's schema by alias: every key optional, no coverUrl.
+    # [P0] AC-1. The add-book intent model's schema by alias, every key optional, plus Story
+    # 12.5's optional coverUrl (tool-only, so not the model's).
     from bookvie.agent import input_schema
 
     tools = mcp_client.list_tools()
     listed = {tool["name"]: tool for tool in tools}
-    assert listed.get("add_book", {}).get("inputSchema") == input_schema(AddBookIntent)
+    schema = listed.get("add_book", {}).get("inputSchema", {})
+    assert _without_cover_url(schema) == input_schema(AddBookIntent)
 
-    schema = listed["add_book"]["inputSchema"]
     assert schema["type"] == "object" and schema["additionalProperties"] is False, schema
-    assert list(schema["properties"]) == [*FORM_KEYS, "confirmDuplicate"], schema
-    assert "coverUrl" not in schema["properties"]
+    assert list(schema["properties"]) == [*FORM_KEYS, "confirmDuplicate", "coverUrl"], schema
+    assert schema["properties"]["coverUrl"]["type"] == "string"
     assert schema.get("required", []) == [], schema
     for key in FORM_KEYS:
         assert schema["properties"][key]["type"] == "string", (key, schema["properties"][key])
@@ -266,10 +274,16 @@ def test_edit_book_requires_every_form_key_and_advertises_the_storys_description
             if key not in ("required", "title", "description")
         }
 
-    assert rest(schema) == rest(input_schema(EditBookIntent))
+    assert rest(_without_cover_url(schema)) == rest(input_schema(EditBookIntent))
     assert schema["type"] == "object" and schema["additionalProperties"] is False, schema
-    assert set(schema["properties"]) == {*FORM_KEYS, "bookId", "removeCover", "confirmDuplicate"}
-    assert "coverUrl" not in schema["properties"]
+    assert set(schema["properties"]) == {
+        *FORM_KEYS,
+        "bookId",
+        "removeCover",
+        "confirmDuplicate",
+        "coverUrl",
+    }
+    assert schema["properties"]["coverUrl"]["type"] == "string"
     for key in [*FORM_KEYS, "bookId"]:
         assert schema["properties"][key]["type"] == "string", (key, schema["properties"][key])
     assert listed["edit_book"]["description"] == BOOK_DESCRIPTIONS["edit_book"]
@@ -374,7 +388,8 @@ ALL_BUT_SPINE_COLOR = {key: value for key, value in FINISHED_FORM.items() if key
         pytest.param({"bookId": FINISHED}, FORM_KEYS, id="book-id-alone"),
         pytest.param({}, EDIT_REQUIRED, id="empty"),
         pytest.param(ALL_BUT_SPINE_COLOR, ["spineColor"], id="all-but-spine-color"),
-        # An unknown key next to the missing ones: the missing-key refusal comes first.
+        # A coverUrl next to the missing keys: the missing-key refusal comes first, so nothing
+        # is downloaded.
         pytest.param(
             {"bookId": FINISHED, "title": "Dune", "coverUrl": COVER_URL},
             [key for key in FORM_KEYS if key != "title"],

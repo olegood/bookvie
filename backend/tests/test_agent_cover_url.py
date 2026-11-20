@@ -71,12 +71,6 @@ from tests.test_agent_write import (
 # Story 12.3's fixture: intents mint ids (and cover file names) from a counter.
 same_ids = test_agent_write.same_ids
 
-RED = (
-    "Story 12.5 red phase: add_book and edit_book don't take coverUrl yet, and "
-    "bookvie.intents.cover_fetch doesn't exist"
-)
-RED_GUARD = "Story 12.5 red phase: the suite has no guard against connections off the machine yet"
-
 # Story 12.4's descriptions with Story 12.5's sentence appended, character for character
 # (epics.md). Spelled out here, not built from test_agent_book_write's constants, which the
 # build updates.
@@ -323,7 +317,6 @@ def _host(header: str | None) -> str | None:
 # --- AC-1: the schemas and descriptions ----------------------------------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_add_book_and_edit_book_take_an_optional_string_cover_url_and_say_so_in_their_descriptions(
     mcp_client: McpClient,
 ) -> None:
@@ -373,7 +366,6 @@ def test_add_book_and_edit_book_take_an_optional_string_cover_url_and_say_so_in_
 # --- AC-2 and AC-3: refusals that come before any download ---------------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_remove_cover_with_a_cover_url_is_refused_as_the_route_refuses_it_with_a_file_before_any_download(
     connect_mcp: Callable[..., McpClient], tmp_path: Path, cover_tls: TestTls
 ) -> None:
@@ -400,7 +392,6 @@ def test_remove_cover_with_a_cover_url_is_refused_as_the_route_refuses_it_with_a
         assert covers_in(tool_side.data_dir) == covers_before
 
 
-@pytest.mark.skip(reason=RED)
 def test_edit_book_with_a_cover_url_for_a_missing_book_is_book_not_found_and_downloads_nothing(
     connect_mcp: Callable[..., McpClient], tmp_path: Path, cover_tls: TestTls
 ) -> None:
@@ -429,7 +420,6 @@ def test_edit_book_with_a_cover_url_for_a_missing_book_is_book_not_found_and_dow
 # --- AC-4: the download -------------------------------------------------------------
 
 
-@pytest.mark.skip(reason=RED)
 @pytest.mark.parametrize("case", COVER_CASES, ids=lambda case: case.id)
 def test_a_cover_url_is_fetched_only_from_a_checked_public_https_address_and_stored_as_an_upload(
     connect_mcp: Callable[..., McpClient],
@@ -511,7 +501,6 @@ def test_a_cover_url_is_fetched_only_from_a_checked_public_https_address_and_sto
 # --- AC-5: the suite stays on the machine -----------------------------------------------
 
 
-@pytest.mark.skip(reason=RED_GUARD)
 def test_no_test_can_open_a_connection_off_the_machine() -> None:
     # [P0] AC-5. A guard every test runs under refuses a connection or a lookup that would leave
     # the machine (192.0.2.1 and 2001:db8::1 are documentation addresses), and lets loopback through.

@@ -161,6 +161,10 @@ class Reply:
     length: bool = True
     location: str | None = None
     trickle: float | None = None
+    encoding: str | None = None
+    """A ``Content-Encoding`` to claim (the body is sent as it is)."""
+    declared: int | None = None
+    """A ``Content-Length`` to claim instead of the body's: more, and the body ends short."""
 
 
 def redirect(location: str, status: int = 302) -> Reply:
@@ -265,8 +269,11 @@ class _Handler(http.server.BaseHTTPRequestHandler):
             self.send_header("Content-Type", reply.content_type)
         if reply.location is not None:
             self.send_header("Location", reply.location)
+        if reply.encoding is not None:
+            self.send_header("Content-Encoding", reply.encoding)
         if reply.length:
-            self.send_header("Content-Length", str(len(reply.body) * reply.repeat))
+            size = reply.declared if reply.declared is not None else len(reply.body) * reply.repeat
+            self.send_header("Content-Length", str(size))
         self.send_header("Connection", "close")
         self.end_headers()
         try:
