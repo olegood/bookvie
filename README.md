@@ -137,7 +137,7 @@ The repo ships two Claude Code skills in [`.claude/skills/`](.claude/skills/). B
 - [CI](docs/ci.md): the GitHub Actions jobs, quality gates, burn-in and artifacts
 - [Releasing](docs/release.md): keeping the changelog current with `scripts/changelog.sh` and releasing with `scripts/release.sh`
 - [Changelog](CHANGELOG.md): what changed in each release
-- [Ideas](docs/ideas.md): feature ideas waiting to be thought through, each with a status
+- [Ideas](https://github.com/olegood/bookvie/issues?q=label%3Aenhancement): feature ideas, tracked as GitHub issues
 - [Deferred work](_bmad-output/implementation-artifacts/deferred-work.md): review findings deferred to later stories, each marked with the story that resolved it once done
 - [Story 8.1 spec](_bmad-output/implementation-artifacts/spec-8-1-see-my-catalog-as-covers.md): Tiles, the Catalog's grid of covers
 - [Story 8.1 ATDD checklist](_bmad-output/test-artifacts/atdd-checklist-8-1-see-my-catalog-as-covers.md): the story's acceptance tests and green-phase follow-ups
