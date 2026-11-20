@@ -2,16 +2,17 @@
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03-generate-tests', 'step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
 lastSaved: '2026-11-20'
-storyId: '12.6'
-storyKey: '12-6-let-an-agent-back-up-my-library-to-disk'
+storyId: '12.7'
+storyKey: '12-7-summarize-a-book-s-notes-through-the-agent-tools'
 inputDocuments:
-  - _bmad-output/implementation-artifacts/spec-12-6-let-an-agent-back-up-my-library-to-disk.md (Boundaries, I/O matrix, Review Findings, Review Triage Log)
-  - _bmad-output/test-artifacts/atdd-checklist-12-6-let-an-agent-back-up-my-library-to-disk.md
-  - _bmad-output/implementation-artifacts/sprint-status.yaml (12-6 done)
-  - _bmad-output/implementation-artifacts/deferred-work.md (Story 12.6 entries)
+  - _bmad-output/implementation-artifacts/spec-12-7-summarize-a-book-s-notes-through-the-agent-tools.md (Boundaries, I/O matrix, Review Findings, Review Triage Log)
+  - _bmad-output/test-artifacts/atdd-checklist-12-7-summarize-a-book-s-notes-through-the-agent-tools.md
+  - _bmad-output/implementation-artifacts/epic-12-context.md
+  - _bmad-output/implementation-artifacts/sprint-status.yaml (12-7 done)
   - _bmad/tea/config.yaml
-  - backend/bookvie/intents/backup_file.py (`write_backup`, `_write_atomic`); backend/bookvie/agent/server.py (`_answer`)
-  - backend/tests/test_agent_backup.py; backend/tests/helpers.py (`FaultyFs`, `RecordingLock`); frontend/e2e/agent-backup.spec.ts; frontend/e2e/fixtures.ts
+  - .claude/skills/bookvie-notes-summary/SKILL.md; README.md ("Agent tools")
+  - backend/bookvie/views/shelf.py (`_role_reading`, `book_detail`); backend/bookvie/views/find_book.py; backend/bookvie/views/models.py (`BookCandidate`, `CardNotesView`)
+  - backend/tests/test_notes_summary_skill.py; backend/tests/test_book_view.py; backend/tests/test_agent_read.py (`_structured`, the scoped `get_card_notes` leaf); backend/tests/builder.py; backend/tests/agent_client.py
   - knowledge/test-levels-framework.md
   - knowledge/test-priorities-matrix.md
   - knowledge/data-factories.md
@@ -20,70 +21,61 @@ inputDocuments:
   - knowledge/test-quality.md
 ---
 
-# Automation Summary: Story 12.6 Let an agent back up my library to disk
+# Automation Summary: Story 12.7 Summarize a book's notes through the agent tools
 
 ## Preflight
 
-- **Stack:** `fullstack` (auto). The story's only browser-side change is the e2e fixture's temporary HOME, which `agent-backup.spec.ts` already covers. Every new test is pytest in `backend/tests/`. No browser session was opened, and the Playwright fragments weren't loaded.
-- **Mode:** BMad-integrated. The inputs were the spec with its review records, the ATDD checklist's ten green-phase follow-ups, and the review's two deferred verification gaps.
-- **Order:** this run started after the code review's commit `b7a34c1` landed, with a clean tree and the story `done`.
-- **Generation:** sequential, in this session, as for Stories 12.3 to 12.5. It is one Python module at one test level.
-- **Knowledge:** the six core fragments only. `tea_use_playwright_utils` and `tea_use_pactjs_utils` don't apply: the run wrote no Playwright test, and the repo has no Pact artifacts.
+- **Stack:** `fullstack` (auto). The story changes a skill's text, one view field (`BookReading.purpose`) and the generated types; there is no page to explore, so no browser session was opened and the Playwright fragments weren't loaded.
+- **Mode:** BMad-integrated. The inputs were the spec with its review records and the ATDD checklist's five green-phase follow-ups.
+- **Order:** this run started after the code review's commit `c2027fa` landed, with a clean tree and the story `done`.
+- **Generation:** sequential, in this session, as for Stories 12.3 to 12.6: one pytest module at one level.
+- **Knowledge:** the six core fragments only. `tea_use_playwright_utils` and `tea_use_pactjs_utils` don't apply: no Playwright test, no Pact artifacts.
 
 ## Coverage plan
 
-The build and the review already cover all ten ATDD follow-ups, plus the midnight read (the review's patch). This run added leaves for what was still open.
+The build covers the `purpose` field through the view and `get_book`, and the step-2 rules in the skill's text; the review added the title-plus-author and MCP-setup leaves. The scoped `get_card_notes` (one group, `[]` with no notes) is Story 12.2's leaf (`test_agent_read.py:296`). What was still open is drift between the skill's text and the things it names.
 
 | Target | Level | Priority | Why |
 |---|---|---|---|
-| An app with no backups folder refuses before it takes the AD-4 lock (no zip built) | API (MCP tool, `create_app` + `TestClient`) | P2 | It pins the review's reorder. Moving the check back below `build_export` holds the lock for nothing, and turns an unreadable cover into `couldnt_export`. |
-| A write step fails and removing the temp file fails too: still `couldnt_save`, nothing committed, and the log names the first fault | API (MCP tool, `connect_mcp`), 4 cases | P2 | The review deferred this gap. `FaultyFs` fails one step only, so no leaf reached the cleanup guard. |
+| Every field and path step 2 reads (`mainBook.id`, `groups[0].notes`, `currentReading.purpose`/`.currentPage`, `latestFinishDate`, `readings[]` with `startDate`/`finishDate`/`purpose`, `find_book`'s candidate fields) is in the real tool answers, and the only registered tools the skill names are the four read tools | API (MCP tools, `connect_mcp`) + static (SKILL.md) | P2 | The wording leaves pass if a view field is renamed, and the agent would then read nothing. The tool-name check also pins "no skill write to the catalog". |
+| An unfinished Reading on an Up next, Side read or paused Book is `currentReading`, with its Purpose and page | API (MCP `get_book`), 3 roles | P2 | Step 2's status rule (and two of the review's refutations) rest on it: anything not from `currentReading` or a finished Reading is "not started". |
+| The skill's `claude mcp add` line and reconnect step match the README's "Agent tools" section | Static (SKILL.md, README.md) | P2 | ATDD follow-up 3: one wording, no drift. |
 
 Not automated:
-- The HOME a Playwright server started without `home` actually ran with. That needs an observation point no endpoint offers, and it stays deferred in `deferred-work.md`.
+- An agent following the skill (AC-3) and the two manual follow-ups (two editions asked about; a finished Book's "Why I read this" line). Only a real Claude Code session against `--dev` shows them; they stay open for Oleg.
 
 ## Files
 
-- `backend/tests/test_agent_backup.py`: two leaves and one fs double.
-  - `test_an_app_with_no_backups_folder_refuses_before_it_takes_the_lock` (1 test).
-  - `test_a_write_failure_whose_cleanup_fails_too_reports_the_first_fault` (4 cases: `write`, `fsync`, `close`, `replace`).
-  - `_CleanupFailsFs`: a `FaultyFs` whose `remove` always fails.
-- `_bmad-output/test-artifacts/atdd-checklist-12-6-let-an-agent-back-up-my-library-to-disk.md`: all ten follow-ups ticked, each with its test.
-- `_bmad-output/implementation-artifacts/deferred-work.md`: a `resolved:` line on the double-fault entry.
-
-## Finding while automating
-
-The review's deferred entry said that dropping the guard around `fs.remove(temp)` would turn a double fault into an internal error. It wouldn't. `agent/server.py`'s `_answer` maps any escaping exception to `couldnt_save(500)`, so the agent's answer is the same either way.
-
-The first draft of the leaf asserted only the answer, and the mutation (dropping the guard) survived it. What the guard really keeps is the intent's log line naming the first fault: "couldn't save the backup: can't write … injected <step> fault". The leaf now asserts that line, and the mutation fails all four cases. The `resolved:` line in `deferred-work.md` records the correction.
+- `backend/tests/test_notes_summary_skill.py`: three leaves and one helper.
+  - `test_every_name_the_skill_reads_is_in_the_tools_answers_and_it_names_only_the_read_tools`
+  - `test_an_unfinished_reading_off_the_main_book_is_still_current_reading_with_its_purpose`
+  - `test_the_skills_setup_and_reconnect_steps_match_the_readme`
+  - `_seeded_tools`: a client on a library whose Main book has a finished Reading, a current one and a note.
+- `_bmad-output/test-artifacts/atdd-checklist-12-7-summarize-a-book-s-notes-through-the-agent-tools.md`: two follow-ups ticked, one retired, two left for AC-3's manual run.
 
 ## Validation
 
-- **New leaves:** `uv run pytest tests/test_agent_backup.py` gave 35 passed. The new leaves, together with the review's midnight leaf (6 tests), ran 10 times in a row with 6 passed each time, at about 0.3 s per run.
-- **Mutation checks** (each an edit, a run, and a revert of that same edit; `cmp` against a saved copy confirmed `backup_file.py` was restored):
-  - The `backups_dir is None` check moved back below `build_export`: the lock leaf fails.
-  - The `try/except` around `fs.remove(temp)` dropped: all four double-fault cases fail.
+- **New leaves:** `uv run pytest tests/test_notes_summary_skill.py` gave 13 passed.
+- **Mutation checks** (each an edit, a run, and a copy-back of the saved file; `git status` showed only the test file changed afterwards):
+  - `edition` dropped from the skill's candidate list: the names leaf fails.
+  - A write tool (`update_page`) named in step 2: the names leaf fails.
+  - `_role_reading` returning no role for a paused Book: the `currentReading` leaf fails (`currentReading` is `None`).
+  - The README's reconnect wording changed: the README leaf fails.
+  - The README's `bookvie-dev` port changed: the README leaf fails.
 - **Lint and format:** `ruff check` and `ruff format` are clean on the file.
-- **Full check:** `npm run check` exited 0 in this run.
-  - pytest: 2135 passed (the review's 2130 plus these 5).
-  - Coverage: intents+store 97.62%.
-  - Unit tests: 388 passed.
-  - e2e: 800 passed.
-  - Smoke test: ok.
-
-  No `~/bookvie-backups*` folder exists in the real home afterwards.
-- **Checklist:** no CLI or browser session was opened. Temporary scripts stayed in the session scratchpad, not the repo.
+- **Python check:** `npm run check:py` exited 0 in this run: ruff clean, pytest 2149 passed (the review's 2146 plus these 3), coverage gates domain 100.00% and intents+store 97.62%. Only a pytest file changed, so the frontend, e2e and smoke layers weren't re-run; the review's full `npm run check` (exit 0) covers them at `c2027fa`.
+- **Checklist:** no CLI or browser session was opened. Temporary files stayed in the session scratchpad, not the repo.
 
 ## ATDD checklist
 
-All ten green-phase follow-ups are `[x]`, each pointing at its test. Remaining `[ ]` lines: 0 (`grep -cF '[ ]'`).
+Ticked: the `purpose` through the view and `get_book` (the build's leaf) and the README reconnect wording (this run). Retired: the pure-transform comparison, since `fetch_notes.py` is deleted. Remaining `[ ]` lines: 2 (`grep -cF '[ ]'`), both manual and planned for AC-3's real session against `--dev` (Oleg).
 
 ## Risks and assumptions
 
-- The double-fault leaf leaves a temp file in the test's backups folder, because its removal is the injected failure. pytest's `tmp_path` cleans it up.
-- The test suite still never runs a real backup of a large library. The spec's residual risk stands: the first one will be Oleg's.
+- The skill's behaviour is still checked only through its text and the tool answers it names. AC-3, a real agent run, is open for Oleg.
+- The names leaf checks the paths the skill names today; a new path added to step 2 needs adding to its list.
 
 ## Next
 
-- Story 12.6 is complete. Story 12.7 (`summarize-a-book-s-notes-through-the-agent-tools`) is next in Epic 12.
+- Story 12.7 is complete apart from AC-3's manual run. Story 12.8 (`add-a-book-through-the-agent-tools`) is next in Epic 12.
 - `bmad-testarch-trace` for Epic 12 comes after its last story (12.8), before the retrospective.

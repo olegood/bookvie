@@ -228,3 +228,124 @@ def test_when_reconnecting_brings_no_tools_the_skill_gives_the_setup_line_and_st
     assert re.search(r"If reconnecting doesn't bring the tools.*and stop\.", step)
     assert "claude mcp add --transport http --scope user bookvie http://127.0.0.1:8765/mcp" in step
     assert "http://127.0.0.1:8766/mcp" in step
+
+
+# --- Test automation: the skill's names against the tools, and the README ---------
+
+README = REPO_ROOT / "README.md"
+READ_TOOLS = {"find_book", "get_book", "get_card_notes", "get_home"}
+
+
+def _seeded_tools(tmp_path: Path, connect_mcp: Callable[..., McpClient]) -> tuple[McpClient, str]:
+    """A client on a library whose Main book has a finished Reading, a current one and a note."""
+    builder = LibraryBuilder()
+    dune = builder.book(title="Dune", subtitle="Book One", authors=["Frank Herbert"], pages=412)
+    builder.reading(
+        dune,
+        start_date="2024-01-02",
+        finish_date="2024-02-10",
+        current_page=412,
+        finished_pages=412,
+        purpose="Why Arrakis",
+    )
+    builder.reading(dune, start_date="2026-03-01", current_page=40, purpose="Reread the ecology")
+    builder.card_note(dune, text="Fear is the mind-killer.", page_start=8)
+    builder.main(dune)
+    folder = tmp_path / "library"
+    builder.write(folder)
+    return connect_mcp(data_dir=folder), dune
+
+
+def test_every_name_the_skill_reads_is_in_the_tools_answers_and_it_names_only_the_read_tools(
+    connect_mcp: Callable[..., McpClient], tmp_path: Path
+) -> None:
+    # [P2] AC-1. Step 2 tells the agent which fields to read; a renamed view field
+    # would leave the skill reading nothing, with every wording leaf still green.
+    skill = SKILL_MD.read_text(encoding="utf-8")
+    client, dune = _seeded_tools(tmp_path, connect_mcp)
+
+    # Of the registered tools, the skill names only the four read tools.
+    registered = {tool["name"] for tool in client.list_tools()}
+    named = set(re.findall(r"`([a-z]+(?:_[a-z]+)+)`", skill))
+    assert named & registered == READ_TOOLS
+
+    # find_book's candidates carry exactly the fields the skill lists.
+    listed = re.search(r"each with ((?:`\w+`(?:, | and )?)+)\.", skill)
+    assert listed is not None
+    candidate = _structured(client.call_tool("find_book", {"query": "Dune"}))["books"][0]
+    assert set(re.findall(r"`(\w+)`", listed.group(1))) == set(candidate)
+
+    # Every path step 2 reads resolves in the tools' answers.
+    home = _structured(client.call_tool("get_home"))
+    book = _structured(client.call_tool("get_book", {"bookId": dune}))
+    notes = _structured(client.call_tool("get_card_notes", {"bookId": dune}))
+    assert home["mainBook"]["id"] == dune
+    assert [n["text"] for n in notes["groups"][0]["notes"]] == ["Fear is the mind-killer."]
+    assert book["currentReading"]["purpose"] == "Reread the ecology"
+    assert book["currentReading"]["currentPage"] == 40
+    assert book["latestFinishDate"] == "2024-02-10"
+    assert {"title", "subtitle", "authors", "pages"} <= set(book)
+    assert {"purpose", "startDate", "finishDate"} <= set(book["readings"][0])
+    for path in (
+        "`mainBook.id`",
+        "`groups[0].notes`",
+        "`currentReading.purpose`",
+        "`currentReading.currentPage`",
+        "`latestFinishDate`",
+        "`readings[]`",
+        "`startDate`",
+        "`finishDate`",
+    ):
+        assert path in skill, path
+
+
+def test_an_unfinished_reading_off_the_main_book_is_still_current_reading_with_its_purpose(
+    connect_mcp: Callable[..., McpClient], tmp_path: Path
+) -> None:
+    # [P2] AC-1. Step 2 reads an in-progress Purpose and page from `currentReading`
+    # and sends anything else to "not started"; that holds only while every
+    # unfinished Reading, on Up next, a Side read or a paused Book, is current.
+    builder = LibraryBuilder()
+    books = {}
+    for role in ("upNext", "sideRead", "paused"):
+        book = builder.book(title=f"Book {role}", pages=300)
+        builder.reading(book, start_date="2026-02-01", current_page=120, purpose=f"Why {role}")
+        books[role] = book
+    builder.up_next(books["upNext"])
+    builder.side_read(books["sideRead"])
+    folder = tmp_path / "library"
+    builder.write(folder)
+    client = connect_mcp(data_dir=folder)
+
+    current = {
+        role: _structured(client.call_tool("get_book", {"bookId": book}))["currentReading"]
+        for role, book in books.items()
+    }
+    assert {role: (r["purpose"], r["currentPage"]) for role, r in current.items()} == {
+        role: (f"Why {role}", 120) for role in books
+    }
+
+
+def test_the_skills_setup_and_reconnect_steps_match_the_readme() -> None:
+    # [P2] AC-1 (ATDD follow-up). The skill repeats the README's one-time setup
+    # lines and its reconnect step; one wording, no drift.
+    readme = _section(README.read_text(encoding="utf-8"), "Agent tools")
+    assert readme is not None
+    start = _section(
+        SKILL_MD.read_text(encoding="utf-8"), "Make sure bookvie is running", numbered=True
+    )
+    assert start is not None
+    start = " ".join(start.split())
+
+    setup = re.findall(r"claude mcp add [^\n`]*/mcp", readme)
+    assert len(setup) == 2, setup
+    assert setup[0] in start
+    # The dev entry is named in the skill by its name and URL, not repeated whole.
+    dev = re.search(r"--scope user (\S+) (\S+/mcp)", setup[1])
+    assert dev is not None
+    assert f"`{dev.group(1)}` with `{dev.group(2)}`" in start
+
+    assert "run `/mcp` in Claude Code, pick the entry and choose reconnect" in readme
+    assert re.search(
+        r"run `/mcp` in Claude Code, pick the entry \([^)]*\) and choose reconnect", start
+    )

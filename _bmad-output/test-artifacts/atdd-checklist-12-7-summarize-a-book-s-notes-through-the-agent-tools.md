@@ -80,9 +80,9 @@ This run extended one shared helper. The existing leaf that uses it still passes
 
 ## Green-phase follow-ups (secondary branches, not red leaves)
 
-- [ ] **Pytest, AC-1:** `get_book.readings[*].purpose` for a Book read twice (the finished Reading's and the current one's), for a Reading with no Purpose (`null`), and that `GET /api/views/book` gives the same (the tool is the view).
-- [ ] **Pytest, AC-1:** if `fetch_notes.py` (or a successor) is kept as a pure transform: fed `get_book` JSON for a finished Book, a Main book in progress, a Side read and a never-started Book, it gives the same `status`, `currentPage`, `finishDate`, `purpose`, notes order and `missing` as the old script gave for the same library.
-- [ ] **Pytest, AC-1:** the README's Agent tools section and the skill name the same reconnect step (one wording, no drift).
+- [x] **Pytest, AC-1:** `get_book.readings[*].purpose` for a Book read twice (the finished Reading's and the current one's), for a Reading with no Purpose (`null`), and that `GET /api/views/book` gives the same (the tool is the view). (done: backend/tests/test_book_view.py:test_each_reading_carries_its_own_purpose_in_the_view_and_through_get_book; the build)
+- ~~**Pytest, AC-1:** if `fetch_notes.py` (or a successor) is kept as a pure transform: fed `get_book` JSON for a finished Book, a Main book in progress, a Side read and a never-started Book, it gives the same `status`, `currentPage`, `finishDate`, `purpose`, notes order and `missing` as the old script gave for the same library.~~ **Retired:** the build deleted `fetch_notes.py`; its rules are prose in SKILL.md step 2 (spec Design Notes), pinned by the step-2 leaves in `backend/tests/test_notes_summary_skill.py`, and the fields they read by `test_every_name_the_skill_reads_is_in_the_tools_answers_and_it_names_only_the_read_tools`.
+- [x] **Pytest, AC-1:** the README's Agent tools section and the skill name the same reconnect step (one wording, no drift). (done: backend/tests/test_notes_summary_skill.py:test_the_skills_setup_and_reconnect_steps_match_the_readme)
 - [ ] **Manual, AC-2:** in AC-3's real session, name a title with two editions in the `--dev` library (e.g. seed DDIA 1st and 2nd edition) and record that the agent lists both and asks.
 - [ ] **Manual, AC-1:** in AC-3's real session, a finished Book's summary uses "Why I read this" and the "What I learned (finished <Month YYYY>)" progress line, as before.
 
