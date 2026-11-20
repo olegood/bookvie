@@ -250,7 +250,18 @@ def test_every_name_the_skill_reads_is_in_the_tools_answers_and_it_names_only_it
     assert book["title"] == "The Dispossessed"
     assert "added-by-skill" in book["tags"]
     assert book["hasCover"] is True
-    for name in ("Subtitle", "Edition", "Language", "Publisher", "Type", "ISBN", "Year", "Pages"):
+    for name in (
+        "Subtitle",
+        "Authors",
+        "Edition",
+        "Language",
+        "Publisher",
+        "Type",
+        "ISBN",
+        "Year",
+        "Pages",
+        "Tags",
+    ):
         assert name.lower() in {key.lower() for key in book}, name
 
     # A duplicate: duplicate_book with its duplicates (title, authors, ISBN).
@@ -364,6 +375,23 @@ def test_a_same_book_candidate_stops_the_skill_before_the_lookup_and_asks() -> N
     # find_book matches a whole query against one field: one thing at a time.
     assert re.search(r"send one thing at a time", step)
     assert re.search(r"exact Title, and once more with the ISBN", step)
+    # Before the lookup: the bare title, and the ISBN when the user gave one.
+    assert re.search(r"without an edition, a format or anything after a `:`", step)
+    assert re.search(r"once more with the ISBN when the user gave one", step)
+    assert re.search(r"only a URL, there is no title yet: skip this check", step)
+    # The same book: same edition, and same type once the format is known.
+    assert re.search(r"the same `edition` \(1 when none is stated\)", step)
+    assert re.search(r"when the format is known \(the user named it, or step 3 found it\)", step)
+    assert re.search(r"A different edition or format is another book", step)
+    assert re.search(r"when several candidates are the same book, show each of them", step)
+    assert re.search(r"Don't ask again about a book the user already said to add anyway", step)
+
+
+def test_a_cover_refusal_can_come_with_other_fields_and_a_resend_can_be_refused_again() -> None:
+    step = _flat("Add the book")
+    assert re.search(r"One refusal can name `coverUrl` and other fields together", step)
+    assert re.search(r"a resend without `coverUrl` can come back as `invalid_fields`", step)
+    assert re.search(r"or as `duplicate_book`", step)
 
 
 def test_another_invalid_field_is_fixed_and_couldnt_save_is_reported_without_a_retry_loop() -> None:

@@ -1364,3 +1364,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-12-8-add-a-book-through-the-agent-tools.md`
   summary: The new-book evals allow only the production entry's tools (`mcp__bookvie__*`), so an eval run adds books to the real library on port 8765, as the 2.0.0 HTTP evals did. Pointing them at `bookvie-dev` needs the dev entry's tool names and prompts that ask for the dev library. Low.
   evidence: `.claude/skills/bookvie-new-book/evals/*/prompt.md` `allowed_tools` (Blind Hunter, Edge Case Hunter, Intent Alignment, build-auto review of Story 12.8).
+
+## Deferred from: code review of spec-12-8-add-a-book-through-the-agent-tools (2026-11-20)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-12-8-add-a-book-through-the-agent-tools.md`
+  summary: Spine drift (AD-3, AD-8 known gap), reconciled before the next epic: the copied-rule entry's `resolved:` line says the skill relies only on the server's duplicate rule, but `bookvie-new-book` step 2 keeps an agent-side same-book judgement (an ISBN hit, or the same title, a shared author, the same edition and type) that differs from `domain/duplicates.is_duplicate`. It only decides what the skill asks the user; `add_book`'s `duplicate_book` stays the guard. When AD-8 is reconciled, restate its known-gap note for that judgement rather than removing it. Low.
+  evidence: `.claude/skills/bookvie-new-book/SKILL.md` step 2 "The same book" (Spine Check, code review of Story 12.8).

@@ -2,7 +2,7 @@
 title: 'Story 12.8: Add a book through the agent tools'
 type: 'feature'
 created: '2026-11-20'
-status: 'in-review'
+status: 'done'
 baseline_revision: '3ece967269c7183593448289efd525dc1f30ca67'
 review_loop_iteration: 0
 followup_review_recommended: true
@@ -103,6 +103,39 @@ deferred:
 - Given `add_book` refuses with `duplicate_book`, when the skill gets it, then it shows the `duplicates` and sends `confirmDuplicate: true` only if the user says so.
 - Given a refusal on `coverUrl`, when the skill gets it, then it tells the user why and offers to add the Book without a cover.
 - Given a `--dev` server, when Oleg runs the skill in a real Claude Code session on an amazon.com book and a leanpub.com book, then both are added with covers and this spec records the runs (manual; open after the build).
+
+### Review Findings
+
+Code review, 2026-11-20 (`bmad-code-review`, new session; diff `3ece967..HEAD`, the build commit; layers: Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor, Spine Check). 30 findings: 6 patch entries (9 findings), 1 new spine drift deferral, 3 spine drift items already deferred by the build, 17 rejected. Verification Gap found no gaps.
+
+- [x] [Review][Patch] Step 4's refusal branches assume one refusal at a time. A failed download on `coverUrl` is raised before the other fields are validated and before the duplicate check (`agent/tools.py` `_book_tool.run`: `fetch` runs before `call`), so a resend without the cover can still come back as `invalid_fields` on another field or as `duplicate_book`. An image that downloads but doesn't decode is a `RefusedCover` merged by `valid_fields` with every other field failure into one `invalid_fields` (`intents/add_book.py:51`, `book_form.py` `valid_fields`), so one refusal can name `coverUrl` and other fields together. This reverses the build review's rejection "`coverUrl` and another field refused together" (Blind Hunter + Edge Case Hunter ×3, low). Fixed: step 4 says one refusal can name `coverUrl` and other fields together (fix those, ask about the cover once) and a resend without `coverUrl` can still come back as `invalid_fields` or `duplicate_book`; leaf `test_a_cover_refusal_can_come_with_other_fields_and_a_resend_can_be_refused_again` [.claude/skills/bookvie-new-book/SKILL.md:139]
+- [x] [Review][Patch] Step 2's pre-lookup check never uses an ISBN the user gave: it queries only the title, so its "a candidate the ISBN query found" clause can't fire before the lookup (Blind Hunter, low). Fixed: step 2 also queries the ISBN when the user gave one [.claude/skills/bookvie-new-book/SKILL.md:57]
+- [x] [Review][Patch] Step 2 queries "the title as the user gave it": a prompt such as "DDIA 2nd edition paperback" or a title with its subtitle is not a substring of any stored field, so `find_book` returns nothing and the stop-before-lookup check is skipped (Edge Case Hunter, low). Fixed: step 2 queries the title without an edition, a format or anything after a `:` [.claude/skills/bookvie-new-book/SKILL.md:57]
+- [x] [Review][Patch] The same-book rule compares `type` only "when the user named a format"; in the re-check after step 3 the Type is known, so a hardcover or ebook candidate is still called the same book as the paperback being added and the skill stops and asks needlessly (Edge Case Hunter, low). Fixed: `type` is compared when the format is known (the user named it, or step 3 found it) [.claude/skills/bookvie-new-book/SKILL.md:61]
+- [x] [Review][Patch] The rules the build review patched into step 2 have no leaf: same `edition` and `type`, skip the check for a URL-only prompt, "show each of them", "Don't ask again" — a later edit could drop any of them with every test green (Blind Hunter, low). Fixed: `test_a_same_book_candidate_stops_the_skill_before_the_lookup_and_asks` pins all four, and the patches above [backend/tests/test_new_book_skill.py:358]
+- [x] [Review][Patch] The field-names leaf checks `get_book`'s keys for eight of step 5's report columns but not Author(s) and Tags (Blind Hunter, low). Fixed: the loop checks `authors` and `tags` too [backend/tests/test_new_book_skill.py:253]
+- [x] [Review][Defer] Spine drift (AD-3, AD-8 known gap), reconciled before the next epic: the copied-rule entry's `resolved:` line says the skill relies only on the server's duplicate rule, but step 2 keeps an agent-side same-book judgement (ISBN hit, or same title, a shared author, same edition and type) that differs from `domain/duplicates`. It only decides what the skill asks; `add_book`'s `duplicate_book` stays the guard. AD-8's known-gap note should be restated for that judgement rather than removed [.claude/skills/bookvie-new-book/SKILL.md:61] — deferred: spine drift, reconciled before the next epic.
+- [x] [Review][Defer] Spine drift (AD-8; Design Paradigm and Structural Seed; Deferred "Skills on the agent tools") [.claude/skills/bookvie-new-book/SKILL.md] — deferred: already in `deferred-work.md` from the build's review; no new entry.
+
+**Rejected:**
+- Blind Hunter: "go back to step 1" after a timeout can add the book twice — low; an MCP call outlasting a 30 s download is unlikely, the resend would most often get `duplicate_book` and ask, and the fix adds a branch.
+- Blind Hunter: `cover_too_large` has no test against the real tool — low; `test_contract.py` covers the 413 `cover_too_large` body and Story 12.5 owns the tool's cover path; the skill only names the code.
+- Blind Hunter: AVIF/GIF covers lose 2.0.0's conversion with no "try another source" step — low; rejected by the build review on the same grounds (the agent can already pick another address), and AC-4's runs will show whether it bites.
+- Blind Hunter: no eval exercises duplicates, cover refusal, the tag rules or a Leanpub book — low; new evals are more than a direct fix, and AC-4's real runs are the behavioral evidence.
+- Blind Hunter: the README AI skills preamble doesn't mention the MCP setup — false as a defect: the "Agent tools" section just above gives the setup, the skills are still served from `127.0.0.1:8765`, and stories don't edit the README beyond the skill's line.
+- Blind Hunter: the Auto Run Result's patch counts don't match the triage log — the fix edits the spec under review.
+- Blind Hunter: the I/O matrix lacks rows for `cover_too_large`, URL-only and the tag rules — the fix edits the spec under review.
+- Blind Hunter: comparing the stored title with "what you sent" can give false mismatches — false: the server only trims (`parse_book_fields`), which an agent comparing text reads as the same title; nothing folds quotes.
+- Blind Hunter: "Call no other bookvie tool that changes the library" still allows read tools — false: the spec's Never bans only other write tools ("No `edit_book` or any other write tool than `add_book`").
+- Edge Case Hunter: the no-cover resend may drop `confirmDuplicate` — false: "the same values again" means the call just refused, which carried it.
+- Edge Case Hunter / Acceptance Auditor: a step-2 "yes" sends `confirmDuplicate: true`, so a different server match is never shown — low; the user already chose to add another copy of that book, and the alternative re-asks, against "Don't ask again".
+- Acceptance Auditor: AC-4's real runs aren't recorded — not a code defect: AC-4 is manual by the story's text and stays open for Oleg, as Story 12.7's AC-3 did at `done`.
+- Acceptance Auditor: the same-book rule is narrower than the Design Note (same edition and type) — the build review chose it deliberately (different editions have different ISBNs, which the server never matches); aligning the note edits the spec under review.
+- Acceptance Auditor: two matrix rows share one leaf — low; cosmetic, both rows are pinned.
+- Acceptance Auditor: ATDD item "the `coverUrl` messages SKILL.md quotes" is unaddressed — false: SKILL.md quotes no server message, so the item's condition doesn't apply.
+- Acceptance Auditor: evals can't reach `bookvie-dev` — already deferred by the build.
+
+**Full check after the patches** (2026-11-20, this review session, after the last patch): `npm run check` exit 0 — pytest 2161 passed, unit 388 passed, e2e 800 passed, smoke ok.
 
 ## Design Notes
 

@@ -54,11 +54,11 @@ If the tools aren't available because bookvie started after this Claude Code ses
 
 ## 2. Check the catalog first
 
-Before any lookup, check whether the book is already there. Call `find_book` with the title as the user gave it. When the user gave only a URL, there is no title yet: skip this check and rely on the checks after step 3. It returns candidates under `books`, each with `id`, `title`, `subtitle`, `authors`, `edition`, `type` and `role`, or an empty list. A book matches only when the whole query is part of its title, its subtitle or one author (or is its ISBN or the title's initials, such as DDIA), so send one thing at a time: the title, never "title author".
+Before any lookup, check whether the book is already there. Call `find_book` with the title the user gave, without an edition, a format or anything after a `:` ("DDIA 2nd edition paperback" → `DDIA`), and once more with the ISBN when the user gave one. When the user gave only a URL, there is no title yet: skip this check and rely on the checks after step 3. It returns candidates under `books`, each with `id`, `title`, `subtitle`, `authors`, `edition`, `type` and `role`, or an empty list. A book matches only when the whole query is part of its title, its subtitle or one author (or is its ISBN or the title's initials, such as DDIA), so send one thing at a time: the title, never "title author".
 
 `find_book` lists likely matches; it is not the server's duplicate check (`add_book` runs that one, in step 4). Judge its candidates:
 
-- **The same book:** a candidate the ISBN query found, or a candidate with the same title, an author in common (when an author is known), the same `edition` (1 when none is stated) and, when the user named a format, the same `type`. A different edition or format is another book. Stop before the lookup: don't look the book up and don't add it. Call `get_book` with its `id` and tell the user which book matched (title, authors, edition, type, ISBN, year); when several candidates are the same book, show each of them. Ask whether to add another copy anyway, for example in a different format. Continue only if they say yes, and then send `confirmDuplicate: true` in step 4.
+- **The same book:** a candidate the ISBN query found, or a candidate with the same title, an author in common (when an author is known), the same `edition` (1 when none is stated) and, when the format is known (the user named it, or step 3 found it), the same `type`. A different edition or format is another book. Stop before the lookup: don't look the book up and don't add it. Call `get_book` with its `id` and tell the user which book matched (title, authors, edition, type, ISBN, year); when several candidates are the same book, show each of them. Ask whether to add another copy anyway, for example in a different format. Continue only if they say yes, and then send `confirmDuplicate: true` in step 4.
 - **Only other books:** the user may have typed a partial or slightly different title, as in "one minute architect" for "The One Minute Architect", or the candidates are other books (another in a series, say). Go on, and mention them in the report.
 - **No candidates** (an empty list): go on.
 
@@ -139,6 +139,8 @@ On success the answer is `{"ok": true, "ids": {"bookId": "…"}}`. Otherwise it 
 - **A refusal on `coverUrl`** (a field in `fields` is `coverUrl`: `invalid_fields`, or `cover_too_large` for an image over 20 MB): bookvie couldn't take the cover, for example an `http://` address, a host it couldn't reach, or an AVIF or GIF image. Tell the user why in the field's own message, and offer to add the book without a cover with `coverUrl` left out. On yes, send the same values again without `coverUrl`; otherwise stop.
 - **`invalid_fields` on another field:** fix the values from your sources and call `add_book` again. If the fix needs information you don't have, ask the user.
 - **`couldnt_save`:** "Couldn't save. Your data wasn't changed." Report it. Don't retry in a loop.
+
+One refusal can name `coverUrl` and other fields together: fix the other fields as above, and ask about the cover once. A resend can still be refused for another reason, because bookvie downloads the cover before it checks the other fields and the catalog: a resend without `coverUrl` can come back as `invalid_fields` on another field or as `duplicate_book`. Act on each answer as above.
 
 If the tools stop answering, go back to step 1. Never fall back to calling bookvie's HTTP API.
 
