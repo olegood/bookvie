@@ -19,6 +19,7 @@ instructions for an agent, so these leaves pin what its text must say and must
 not say. AC-4, real runs against ``--dev``, is Oleg's, recorded in the story spec.
 """
 
+import json
 import re
 from collections.abc import Callable
 from pathlib import Path
@@ -26,7 +27,7 @@ from typing import Any
 
 from tests.agent_client import McpClient, error_of
 from tests.builder import LibraryBuilder
-from tests.helpers import image_bytes
+from tests.helpers import image_bytes, library_bytes
 from tests.test_agent_mount import _section
 from tests.test_agent_read import _structured
 from tests.test_notes_summary_skill import HTTP_CLIENT, _skill_files
@@ -415,3 +416,123 @@ def test_the_skill_never_falls_back_to_bookvies_http_api() -> None:
     skill = " ".join(_skill().split())
     assert len(re.findall(r"Never fall back to calling bookvie's HTTP API", skill)) >= 2
     assert re.search(r"Never call bookvie's HTTP API for a book", skill)
+
+
+# --- Automation (Story 12.8): step 4's arguments and refusals against the real tools --
+
+ADD_BOOK_KEY = re.compile(r"^\| \*\*[^*]+\*\* \(`(\w+)`\) \|", re.M)
+
+
+class _BytesFetcher:
+    """A cover downloader that answers every address with the same bytes."""
+
+    def __init__(self, data: bytes) -> None:
+        self.data = data
+        self.urls: list[str] = []
+
+    def fetch(self, url: str) -> bytes:
+        self.urls.append(url)
+        return self.data
+
+
+def test_step_4s_example_and_field_keys_are_what_add_book_takes(
+    connect_mcp: Callable[..., McpClient],
+) -> None:
+    # [P2] AC-1. The agent copies step 4's example and step 3's `add_book` keys; a
+    # renamed tool key or an example the server refuses would pass every wording leaf.
+    step = _section(_skill(), "Add the book", numbered=True)
+    assert step is not None
+    block = re.search(r"```json\n(.*?)\n```", step, re.S)
+    assert block is not None
+    example = json.loads(block.group(1))
+    assert all(isinstance(value, str) for value in example.values()), example
+
+    fetcher = _BytesFetcher(image_bytes())
+    client = connect_mcp(cover_fetcher=fetcher)
+    schema = next(t for t in client.list_tools() if t["name"] == "add_book")["inputSchema"]
+    properties = set(schema["properties"])
+
+    gather = _section(_skill(), "Gather the metadata", numbered=True)
+    assert gather is not None
+    keys = set(ADD_BOOK_KEY.findall(gather))
+    assert {"title", "authors", "pages", "type", "tags", "coverUrl"} <= keys, keys
+    assert keys <= properties, keys - properties
+    assert {"finishedOn", "spineColor", "confirmDuplicate"} <= properties
+
+    # The example as written: saved, its cover downloaded from coverUrl.
+    added = _structured(client.call_tool("add_book", example))
+    assert fetcher.urls == [example["coverUrl"]]
+    book = _structured(client.call_tool("get_book", {"bookId": added["ids"]["bookId"]}))
+    assert book["title"] == example["title"]
+    assert book["hasCover"] is True
+
+    # Each lower-case type the table names, and Pages "1" (the 0-pages rule), are taken.
+    types = re.findall(r"`(paperback|hardcover|ebook)`", gather)
+    assert set(types) == {"paperback", "hardcover", "ebook"}
+    for kind in sorted(set(types)):
+        # No ISBN (an empty value is left out), so the three don't match each other.
+        arguments = {
+            key: value
+            for key, value in _book_arguments(
+                title=f"Type {kind}", type=kind, pages="1", tags="added-by-skill, 0-pages"
+            ).items()
+            if key != "isbn"
+        }
+        added = _structured(client.call_tool("add_book", arguments))
+        book = _structured(client.call_tool("get_book", {"bookId": added["ids"]["bookId"]}))
+        assert (book["type"], book["pages"]) == (kind, 1), book
+        assert {"added-by-skill", "0-pages"} <= {tag.lower() for tag in book["tags"]}
+
+
+def test_a_cover_refusal_comes_with_other_fields_or_ahead_of_them_as_step_4_says(
+    connect_mcp: Callable[..., McpClient], tmp_path: Path
+) -> None:
+    # [P2] AC-2, AC-3. Step 4 says one refusal can name coverUrl and other fields, and a
+    # resend without coverUrl can still be refused: pin the server order it describes.
+
+    # An image that downloads but doesn't decode is refused with the other bad fields.
+    broken = connect_mcp(
+        data_dir=tmp_path / "broken", cover_fetcher=_BytesFetcher(b"\xff\xd8\xff not a jpeg")
+    )
+    refusal = error_of(
+        broken.call_tool(
+            "add_book", {**_book_arguments(pages="0"), "coverUrl": "https://x.example/c.jpg"}
+        )
+    )
+    assert refusal["code"] == "invalid_fields"
+    assert sorted(field["field"] for field in refusal["fields"]) == ["coverUrl", "pages"]
+    assert _structured(broken.call_tool("find_book", {"query": "The Dispossessed"})) == {
+        "books": []
+    }
+
+    # A download refused (http://, the real downloader) comes before the field check and
+    # the duplicate check: the resend without coverUrl is refused on pages, then as a duplicate.
+    builder = LibraryBuilder()
+    builder.book(title="Dune", authors=["Frank Herbert"], pages=412, isbn="9780441013593")
+    folder = tmp_path / "library"
+    builder.write(folder)
+    client = connect_mcp(data_dir=folder)
+    before = library_bytes(folder)
+    dune = _book_arguments(title="Dune", authors="Frank Herbert", isbn="9780441013593")
+
+    first = error_of(
+        client.call_tool("add_book", {**dune, "pages": "0", "coverUrl": "http://x.example/c.jpg"})
+    )
+    assert (first["code"], [field["field"] for field in first["fields"]]) == (
+        "invalid_fields",
+        ["coverUrl"],
+    )
+    second = error_of(client.call_tool("add_book", {**dune, "pages": "0"}))
+    assert (second["code"], [field["field"] for field in second["fields"]]) == (
+        "invalid_fields",
+        ["pages"],
+    )
+    third = error_of(client.call_tool("add_book", dune))
+    assert third["code"] == "duplicate_book"
+    assert [d["title"] for d in third["duplicates"]] == ["Dune"]
+    assert library_bytes(folder) == before
+
+    # Only the user's say-so (confirmDuplicate: true) saves the copy.
+    added = _structured(client.call_tool("add_book", {**dune, "confirmDuplicate": True}))
+    assert added["ok"] is True
+    assert len(_structured(client.call_tool("find_book", {"query": "Dune"}))["books"]) == 2
