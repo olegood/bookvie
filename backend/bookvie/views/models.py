@@ -184,6 +184,8 @@ class BookReading(_View):
     """1 to 5 stars; ``null`` when unrated or not finished."""
     purpose_fulfilled: Literal["yes", "partly", "notYet"] | None
     """The Finish dialog's answer; ``null`` when skipped or not finished."""
+    purpose: str | None
+    """The Reading's stored Purpose; ``null`` when it has none."""
 
 
 class CurrentReading(_View):

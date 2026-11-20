@@ -3,8 +3,10 @@
 Split from ``test_edit_book.py``, whose edits this view shows.
 """
 
+from collections.abc import Callable
 from pathlib import Path
 
+from tests.agent_client import McpClient
 from tests.builder import LibraryBuilder
 from tests.helpers import (
     DUNE,
@@ -95,6 +97,7 @@ def test_book_view_returns_the_book_and_its_latest_finish(
                 "finishDate": "2019-08-14",
                 "rating": None,
                 "purposeFulfilled": None,
+                "purpose": None,
             },
             {
                 "id": new,
@@ -102,6 +105,7 @@ def test_book_view_returns_the_book_and_its_latest_finish(
                 "finishDate": "2024-02-10",
                 "rating": 4,
                 "purposeFulfilled": "partly",
+                "purpose": "Why Arrakis",
             },
         ],
         key=lambda r: r["id"],
@@ -120,6 +124,49 @@ def test_book_view_without_a_finish_has_no_latest_finish_date(
 
     assert body["latestFinishDate"] is None
     assert [r["finishDate"] for r in body["readings"]] == [None]
+
+
+def test_each_reading_carries_its_own_purpose_in_the_view_and_through_get_book(
+    tmp_path: Path, library_builder: LibraryBuilder, connect_mcp: Callable[..., McpClient]
+) -> None:
+    # Story 12.7: a Book read three times, finished twice (once with no Purpose) and
+    # now the Main book again. Each Reading carries its own Purpose, null for none,
+    # and get_book gives exactly what GET /api/views/book gives.
+    dune = library_builder.book(**DUNE)
+    first = library_builder.reading(
+        dune,
+        start_date="2019-07-01",
+        finish_date="2019-08-14",
+        current_page=412,
+        finished_pages=412,
+    )
+    second = library_builder.reading(
+        dune,
+        start_date="2024-01-02",
+        finish_date="2024-02-10",
+        current_page=412,
+        finished_pages=412,
+        purpose="Why Arrakis",
+    )
+    third = library_builder.reading(
+        dune, start_date="2026-03-01", current_page=40, purpose="Reread the ecology"
+    )
+    library_builder.main(dune)
+    folder = tmp_path / "library"
+    library_builder.write(folder)
+
+    body = api_client(folder).get("/api/views/book", params={"id": dune}).json()
+
+    assert {r["id"]: r["purpose"] for r in body["readings"]} == {
+        first: None,
+        second: "Why Arrakis",
+        third: "Reread the ecology",
+    }
+    assert body["currentReading"]["purpose"] == "Reread the ecology"
+
+    result = connect_mcp(data_dir=folder).call_tool("get_book", {"bookId": dune})
+    assert result.get("isError") is not True, result
+    assert result["structuredContent"] == body
 
 
 def test_book_view_for_an_unknown_id_is_404_book_not_found(tmp_path: Path) -> None:

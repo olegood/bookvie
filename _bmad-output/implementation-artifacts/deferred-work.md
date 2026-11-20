@@ -1339,3 +1339,12 @@
   summary: No test fails the backup's temp-file cleanup on top of a failed write step; `FaultyFs` fails exactly one step. Dropping the `try/except` around `fs.remove(temp)` in `_write_atomic` would turn a double fault into an internal error instead of `couldnt_save`. `Store._write_atomic`'s cleanup has the same coverage. Low.
   evidence: `backend/bookvie/intents/backup_file.py` `_write_atomic`; `backend/tests/helpers.py` `FaultyFs` (Verification Gap, code review of Story 12.6).
   resolved: Story 12.6, test automation (2026-11-20). `test_a_write_failure_whose_cleanup_fails_too_reports_the_first_fault` (`backend/tests/test_agent_backup.py`, four write steps) fails each step and then the remove. The entry's consequence was overstated: an escaping `OSError` would still read `couldnt_save`, through `agent/server.py`'s catch-all. What the cleanup guard keeps is the intent's log line naming the first fault, and the leaf pins that line. Dropping the guard fails all four cases.
+
+## Deferred from: build-auto review of spec-12-7-summarize-a-book-s-notes-through-the-agent-tools (2026-11-20)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-12-7-summarize-a-book-s-notes-through-the-agent-tools.md`
+  summary: Spine drift (AD-8, Deferred "Skills on the agent tools"), reconciled before the next epic: AD-8 says the skill notes hold until Story 12.7, but 12.7 moved only `bookvie-notes-summary` (`bookvie-new-book` moves in 12.8), and the Deferred bullet says 12.6 settles the reconnect step and the per-entry tool names, which 12.7 wrote into the notes skill. Overlaps the 12.6 entry above. Low.
+  evidence: `.claude/skills/bookvie-notes-summary/SKILL.md` steps 1–2 (Spine Check, build-auto review of Story 12.7).
+- source_spec: `_bmad-output/implementation-artifacts/spec-12-7-summarize-a-book-s-notes-through-the-agent-tools.md`
+  summary: Spine drift (AD-19, AD-6), reconciled before the next epic: the skill's step 2 has the agent derive the summary status (in progress, finished, not started) and choose which Reading's Purpose to use from `get_book`, a client-side derivation the spine reserves to the server. The deleted `fetch_notes.py` did the same. The spine should name it as an accepted agent-side rule, or `get_book` should carry it. Low.
+  evidence: `.claude/skills/bookvie-notes-summary/SKILL.md` step 2 "Work out the summary's inputs" (Spine Check, build-auto review of Story 12.7).

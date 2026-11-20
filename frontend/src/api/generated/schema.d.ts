@@ -815,6 +815,8 @@ export interface components {
             rating: number | null;
             /** Purposefulfilled */
             purposeFulfilled: ("yes" | "partly" | "notYet") | null;
+            /** Purpose */
+            purpose: string | null;
         };
         /**
          * CardNotesGroup

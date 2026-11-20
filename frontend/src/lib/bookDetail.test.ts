@@ -102,28 +102,44 @@ describe('readingLines', () => {
   it('formats each kind of Reading', () => {
     assert.deepEqual(
       readingLines([
-        { id: 'a', startDate: '2026-09-02', finishDate: '2026-10-03', rating: null, purposeFulfilled: null },
+        {
+          id: 'a',
+          startDate: '2026-09-02',
+          finishDate: '2026-10-03',
+          rating: null,
+          purposeFulfilled: null,
+          purpose: null,
+        },
       ]).map((line) => line.text),
       ['Started 2 Sep 2026 · Finished 3 Oct 2026'],
     )
     assert.deepEqual(
-      readingLines([{ id: 'b', startDate: null, finishDate: '2019-08-14', rating: null, purposeFulfilled: null }])[0]
-        .text,
+      readingLines([
+        { id: 'b', startDate: null, finishDate: '2019-08-14', rating: null, purposeFulfilled: null, purpose: null },
+      ])[0].text,
       'Finished 14 Aug 2019',
     )
     assert.deepEqual(
-      readingLines([{ id: 'c', startDate: '2026-09-02', finishDate: null, rating: null, purposeFulfilled: null }])[0]
-        .text,
+      readingLines([
+        { id: 'c', startDate: '2026-09-02', finishDate: null, rating: null, purposeFulfilled: null, purpose: null },
+      ])[0].text,
       'Started 2 Sep 2026',
     )
   })
 
   it('lists newest first: the unfinished Reading, then by finish date, later stored first on a tie', () => {
     const lines = readingLines([
-      { id: 'old', startDate: null, finishDate: '2019-08-14', rating: null, purposeFulfilled: null },
-      { id: 'now', startDate: '2026-09-02', finishDate: null, rating: null, purposeFulfilled: null },
-      { id: 'tie1', startDate: null, finishDate: '2024-02-10', rating: null, purposeFulfilled: null },
-      { id: 'tie2', startDate: '2024-01-02', finishDate: '2024-02-10', rating: null, purposeFulfilled: null },
+      { id: 'old', startDate: null, finishDate: '2019-08-14', rating: null, purposeFulfilled: null, purpose: null },
+      { id: 'now', startDate: '2026-09-02', finishDate: null, rating: null, purposeFulfilled: null, purpose: null },
+      { id: 'tie1', startDate: null, finishDate: '2024-02-10', rating: null, purposeFulfilled: null, purpose: null },
+      {
+        id: 'tie2',
+        startDate: '2024-01-02',
+        finishDate: '2024-02-10',
+        rating: null,
+        purposeFulfilled: null,
+        purpose: null,
+      },
     ])
     assert.deepEqual(
       lines.map((line) => line.id),
@@ -138,8 +154,15 @@ describe('readingLines', () => {
   it('carries the rating and the Purpose fulfilled line, null when skipped', () => {
     assert.deepEqual(
       readingLines([
-        { id: 'a', startDate: '2026-10-01', finishDate: '2026-10-28', rating: 4, purposeFulfilled: 'partly' },
-        { id: 'b', startDate: null, finishDate: '2019-08-14', rating: null, purposeFulfilled: null },
+        {
+          id: 'a',
+          startDate: '2026-10-01',
+          finishDate: '2026-10-28',
+          rating: 4,
+          purposeFulfilled: 'partly',
+          purpose: null,
+        },
+        { id: 'b', startDate: null, finishDate: '2019-08-14', rating: null, purposeFulfilled: null, purpose: null },
       ]),
       [
         {

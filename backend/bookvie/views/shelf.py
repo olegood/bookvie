@@ -348,6 +348,7 @@ def book_detail(library: Library, book_id: str) -> BookDetailView | None:
                 finish_date=r.finish_date,
                 rating=r.rating,
                 purpose_fulfilled=r.purpose_fulfilled,
+                purpose=r.purpose,
             )
             for r in book.readings
         ],

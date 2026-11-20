@@ -4,10 +4,10 @@ description: >
   Turn the card notes of any book in the user's bookvie catalog into a printable one-page Word (.docx) summary of what they learned from it.
   The book can be in progress, paused, a side read or finished: the user names it by title (or author), and when they don't, the current Main book is used.
   The book must have a reading purpose and at least one card note.
-  Reads the book and its notes from the local bookvie app (http://127.0.0.1:8765/), read-only, groups the notes by theme into short takeaways without page numbers, builds the .docx, checks how it renders and saves it to ~/Documents.
+  Reads the book and its notes, read-only, through the local bookvie app's agent tools (find_book, get_book, get_card_notes, get_home), groups the notes by theme into short takeaways without page numbers, builds the .docx, checks how it renders and saves it to ~/Documents.
   Use this whenever the user asks to summarize, recap, digest or print their card notes, highlights or "what I learned" from a book in bookvie, or wants a handout or study sheet from their reading notes, even if they don't say "Word" or "bookvie".
 metadata:
-  version: 1.1.0
+  version: 2.0.0
 ---
 
 # Summarize a book's card notes into a printable Word document
@@ -16,7 +16,7 @@ bookvie is the user's local home-library app. While reading, the user captures *
 
 It works for **any book in the catalog**, whatever its state: the Main book, Up next, a paused (waiting) book, a side read or a finished one. When the user doesn't say which book, use the current Main book.
 
-This skill only reads from bookvie. It never changes the catalog.
+This skill only reads from bookvie. It never changes the catalog: it calls only the read tools `find_book`, `get_book`, `get_card_notes` and `get_home`.
 
 **Prerequisites:** the book must have a **reading purpose** and **at least one card note**. The purpose frames the whole summary ("Why I am reading this"), and the notes are its content. Without either there's nothing faithful to write, so stop instead of making one up.
 
@@ -30,30 +30,34 @@ curl -fsS http://127.0.0.1:8765/api/health
 
 If it doesn't answer, start it in the background with the Bash tool's `run_in_background`: run `bookvie --no-browser`, or `backend/.venv/bin/bookvie --no-browser` when `bookvie` isn't on the PATH. Then poll the health URL. Use `--no-browser` and never Playwright: the user doesn't want windows opening.
 
-## 2. Fetch the book and its notes
+The book is read through bookvie's agent tools, which the running app serves at `/mcp`: the `bookvie` entry in Claude Code for port 8765. When the user asks to try the skill on the dev library, use `bookvie --dev --no-browser` instead, check `curl -fsS http://127.0.0.1:8766/api/health`, and call the tools of the `bookvie-dev` entry.
 
-```bash
-python3 -I $SKILL/scripts/fetch_notes.py --title "staff engineer"                     # by (part of) the title, or "Title: Subtitle"
-python3 -I $SKILL/scripts/fetch_notes.py --title "domain" --author "voelter"            # narrow by an author
-python3 -I $SKILL/scripts/fetch_notes.py --author "voelter"                             # by author alone
-python3 -I $SKILL/scripts/fetch_notes.py --id <book-id>                                 # an exact book
-python3 -I $SKILL/scripts/fetch_notes.py                                                # no book named: the Main book
-```
+If the tools aren't available because bookvie started after this Claude Code session did, ask the user to run `/mcp` in Claude Code, pick the entry (`bookvie` or `bookvie-dev`) and choose reconnect. Then go on. Never fall back to calling bookvie's HTTP API for the book.
 
-Pass the words the user used for the book. "My current book", "what I'm reading" or no book at all means the Main book, so call the script with no arguments.
+## 2. Find the book and read its notes
 
-The script prints JSON with the title, subtitle, authors, pages, `status` (`in progress`, `finished` or `not started`), `currentPage`, `finishDate`, the reading `purpose`, and `notes` in book order.
+**Find the book.**
 
-The book view gives the purpose only for an unfinished reading of the Main, Up next or a waiting book. For any other book (a finished book, a side read), the script reads it, read-only, from `library.json` in bookvie's data directory. When a book has been read more than once, it uses the latest reading's purpose.
+- **No book named** ("my current book", "what I'm reading", or nothing at all): call `get_home` and take `mainBook.id`. When `mainBook` is `null`, there's no Main book: ask the user for a title.
+- **A title or an author:** call `find_book` with the words the user used (part of the title or subtitle, an author, an ISBN, or initials such as DDIA). It returns candidates under `books`, each with `id`, `title`, `subtitle`, `authors`, `edition`, `type` and `role`.
+  - **One match:** use its `id`.
+  - **Several matches** (two editions of one title, say): never pick one yourself, even when one looks likelier. List each with its title, subtitle, authors, edition and type, ask which one, and use the `id` of the one the user names.
+  - **No match** (an empty list): ask the user for a fuller title or the author, and search again.
 
-Act on its exit code:
+**Read it.** Call `get_book` with the `bookId`, then `get_card_notes` with the same `bookId`. The notes are in `groups[0].notes`, already in page order; keep that order. An empty `groups` (`[]`) means the book has no card notes, and the prerequisite check below stops.
 
-- **0:** go on.
-- **2:** bookvie is down. Go back to step 1.
-- **3:** no book was chosen: there's no Main book, or the title matched zero books or several. Several matches come back as `candidates`: show them (title, authors, year) and ask which one, then rerun with `--id`. With zero matches, ask the user for a fuller title or the author.
-- **4:** a prerequisite is missing. `missing` lists `purpose`, `cardNotes` or both. Don't build a document. Tell the user which book you found and what it lacks:
-  - **No purpose:** the purpose is set when a reading starts, and the user can edit it on the book's page while the reading is in progress.
-  - **No card notes:** they're added from the book's page as the user reads.
+If a tool answers with an error (an unknown book, say), tell the user what it says. If bookvie stopped answering, go back to step 1. Never fall back to calling bookvie's HTTP API.
+
+**Work out the summary's inputs** from `get_book`'s answer:
+
+- **Title, subtitle, authors, pages:** the book's `title`, `subtitle`, `authors` and `pages`.
+- **Purpose:** `currentReading.purpose` when `currentReading` isn't `null` and has one. Otherwise take it from `readings[]`, which carries each Reading's `purpose` (`null` when it has none): of the Readings with a Purpose, order the finished ones by `startDate` (a finished Reading with no `startDate` counts as the earliest, and Readings with the same start date keep their `readings[]` order) and put an unfinished one (no `finishDate`) after them, then use the last. A finished book has `currentReading` `null`, so its Purpose always comes from `readings[]`.
+- **Status and current page:** follow the Reading the Purpose came from. `in progress` at `currentReading.currentPage` when it came from `currentReading`. `finished` on that Reading's `finishDate` (or the book's `latestFinishDate` when it has none) when it came from a finished Reading in `readings[]`. Otherwise `not started`, with no current page.
+
+**Check the prerequisites.** When the Purpose is missing, or `get_card_notes` gives no notes, don't build a document. Tell the user which book you found (title and edition) and what it lacks:
+
+- **No purpose:** the purpose is set when a reading starts, and the user can edit it on the book's page while the reading is in progress.
+- **No card notes:** they're added from the book's page as the user reads.
 
 ## 3. Write the summary
 

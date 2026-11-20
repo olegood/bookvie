@@ -23,14 +23,10 @@ import re
 from collections.abc import Callable
 from pathlib import Path
 
-import pytest
-
 from tests.agent_client import McpClient
 from tests.builder import LibraryBuilder
 from tests.test_agent_mount import _section
 from tests.test_agent_read import _structured
-
-RED = "Story 12.7 red phase: the skill still reads bookvie over HTTP"
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SKILL_DIR = REPO_ROOT / ".claude" / "skills" / "bookvie-notes-summary"
@@ -73,7 +69,6 @@ def _sha256(text: str) -> str:
 # --- AC-1: the tools, the start step, the same output -----------------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_the_skill_reads_the_book_through_the_tools_keeps_its_start_step_and_its_output(
     connect_mcp: Callable[..., McpClient], tmp_path: Path
 ) -> None:
@@ -137,7 +132,6 @@ def test_the_skill_reads_the_book_through_the_tools_keeps_its_start_step_and_its
 # --- AC-2: two editions -----------------------------------------------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_the_skill_asks_which_edition_when_find_book_returns_several_and_never_picks() -> None:
     # [P1] AC-2. That find_book returns both editions is Story 12.2's leaf
     # (test_agent_read.py, test_find_book_returns_every_candidate_...); what the
@@ -148,3 +142,65 @@ def test_the_skill_asks_which_edition_when_find_book_returns_several_and_never_p
     assert "`find_book`" in skill
     assert re.search(r"\bask which one\b", skill, re.I)
     assert re.search(r"\bedition\b", skill, re.I)
+    # The candidate list shows what tells the editions apart, the type included.
+    assert re.search(r"title, subtitle, authors, edition and type", skill)
+
+
+# --- The agent's rules in step 2 (the I/O matrix): the skill text is their only surface --
+
+
+def _step_2() -> str:
+    section = _section(
+        SKILL_MD.read_text(encoding="utf-8"), "Find the book and read its notes", numbered=True
+    )
+    assert section is not None
+    return " ".join(section.split())
+
+
+def test_with_no_book_named_the_skill_reads_the_main_book_from_get_home() -> None:
+    step = _step_2()
+    assert "`get_home`" in step
+    assert "`mainBook.id`" in step
+    assert re.search(r"`mainBook` is `null`.*ask the user for a title", step)
+
+
+def test_with_one_match_the_skill_uses_its_id() -> None:
+    step = _step_2()
+    assert re.search(r"\*\*One match:\*\* use its `id`", step)
+
+
+def test_with_no_match_the_skill_asks_for_a_fuller_title_or_the_author() -> None:
+    step = _step_2()
+    assert re.search(
+        r"\*\*No match\*\* \(an empty list\): ask the user for a fuller title or the author", step
+    )
+
+
+def test_a_finished_books_purpose_comes_from_get_books_readings() -> None:
+    step = _step_2()
+    assert "`currentReading.purpose`" in step
+    assert "`readings[]`" in step
+    assert re.search(
+        r"finished book has `currentReading` `null`, so its Purpose always comes from `readings\[\]`",
+        step,
+    )
+    assert "`latestFinishDate`" in step
+    assert re.search(r"no `startDate` counts as the earliest", step)
+    assert re.search(r"same start date keep their `readings\[\]` order", step)
+    assert re.search(r"Status and current page:\*\* follow the Reading the Purpose came from", step)
+
+
+def test_with_no_card_notes_or_a_tool_error_the_skill_stops_and_says_why() -> None:
+    step = _step_2()
+    assert re.search(r"empty `groups` \(`\[\]`\) means the book has no card notes", step)
+    assert re.search(r"If a tool answers with an error.*tell the user what it says", step)
+    assert re.search(r"stopped answering, go back to step 1", step)
+
+
+def test_a_missing_prerequisite_stops_with_no_document() -> None:
+    step = _step_2()
+    assert re.search(
+        r"Purpose is missing, or `get_card_notes` gives no notes, don't build a document", step
+    )
+    assert "**No purpose:**" in step
+    assert "**No card notes:**" in step
