@@ -25,13 +25,30 @@ from bookvie.intents.cover_fetch import (
     CONNECT_MESSAGE,
     COVER_URL_FIELD,
     DOWNLOAD_MESSAGE,
+    EMPTY_MESSAGE,
+    ENCODING_MESSAGE,
+    NOT_IMAGE_MESSAGE,
     NOT_PUBLIC_MESSAGE,
+    REDIRECT_WITHOUT_LOCATION_MESSAGE,
+    TLS_MESSAGE,
+    TOO_MANY_REDIRECTS_MESSAGE,
     UNKNOWN_HOST_MESSAGE,
     CoverFetcher,
+    deadline_message,
     is_public,
+    status_message,
 )
 from tests.agent_client import McpClient, error_of
-from tests.cover_server import PUBLIC4, PUBLIC6, CoverServer, Net, Reply, TestTls, make_test_tls
+from tests.cover_server import (
+    PUBLIC4,
+    PUBLIC6,
+    CoverServer,
+    Net,
+    Reply,
+    TestTls,
+    make_test_tls,
+    redirect,
+)
 from tests.helpers import image_bytes, library_bytes
 from tests.test_agent_book_write import ADD, UNREAD_FORM
 from tests.test_agent_write import GONE, _seed
@@ -52,6 +69,9 @@ HOSTS: dict[str, list[str]] = {
     "benchmark.example": ["198.18.0.1"],
     "documentation.example": ["192.0.2.1"],
     "empty.example": [],
+    # Resolves to a public address, but the test certificate doesn't name it.
+    "wrong.example": [PUBLIC4],
+    **{f"hop{n}.example": [PUBLIC4] for n in range(1, 5)},
 }
 
 ROUTES: dict[str, Reply] = {
@@ -68,6 +88,13 @@ ROUTES: dict[str, Reply] = {
     "/short.jpg": Reply(content_type="image/jpeg", body=JPEG, declared=len(JPEG) + 100),
     "/a%20cov%C3%A9r.jpg": Reply(content_type="image/jpeg", body=JPEG),
     "/q.jpg?size=l%20g&n=%C3%A9": Reply(content_type="image/jpeg", body=JPEG),
+    "/missing.jpg": Reply(status=404),
+    "/empty.jpg": Reply(content_type="image/jpeg"),
+    "/page.jpg": Reply(content_type="image/jpeg", body=b"<!doctype html><title>Dune</title>"),
+    "/slow.jpg": Reply(content_type="image/jpeg", body=JPEG, trickle=0.05),
+    # /chain/4 redirects four times before /chain/0 would answer.
+    "/chain/0": Reply(content_type="image/jpeg", body=JPEG),
+    **{f"/chain/{n}": redirect(f"https://hop{n}.example/chain/{n - 1}") for n in range(1, 5)},
 }
 
 
@@ -199,6 +226,46 @@ def test_a_redirect_without_a_location_is_refused(fetcher: CoverFetcher) -> None
     assert _refusal(err) == ("invalid_fields", [COVER_URL_FIELD])
 
 
+@pytest.mark.parametrize(
+    ("url", "message"),
+    [
+        ("https://wrong.example/dune.jpg", TLS_MESSAGE),
+        ("https://covers.example/chain/4", TOO_MANY_REDIRECTS_MESSAGE),
+        ("https://covers.example/no-location", REDIRECT_WITHOUT_LOCATION_MESSAGE),
+        ("https://covers.example/missing.jpg", status_message(404)),
+        ("https://covers.example/gzip.jpg", ENCODING_MESSAGE),
+        ("https://covers.example/empty.jpg", EMPTY_MESSAGE),
+        ("https://covers.example/page.jpg", NOT_IMAGE_MESSAGE),
+    ],
+)
+def test_each_download_refusal_says_why(fetcher: CoverFetcher, url: str, message: str) -> None:
+    with pytest.raises(IntentError) as err:
+        fetcher.fetch(url)
+    assert _refusal(err) == ("invalid_fields", [COVER_URL_FIELD])
+    assert [field.message for field in err.value.body.fields or []] == [message]
+
+
+def test_an_untrusted_certificate_says_the_connection_couldnt_be_verified(net: Net) -> None:
+    # A verifying context that trusts no CA at all, so the test CA's certificate fails.
+    untrusting = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    fetcher = CoverFetcher(resolve=net.resolve, connect=net.connect, ssl_context=untrusting)
+    with pytest.raises(IntentError) as err:
+        fetcher.fetch("https://covers.example/dune.jpg")
+    assert [field.message for field in err.value.body.fields or []] == [TLS_MESSAGE]
+
+
+def test_a_body_still_trickling_in_at_the_deadline_says_the_download_took_too_long(
+    net: Net, tls: TestTls
+) -> None:
+    fetcher = CoverFetcher(
+        resolve=net.resolve, connect=net.connect, ssl_context=tls.client_context(), deadline=0.3
+    )
+    with pytest.raises(IntentError) as err:
+        fetcher.fetch("https://covers.example/slow.jpg")
+    assert _refusal(err) == ("invalid_fields", [COVER_URL_FIELD])
+    assert [field.message for field in err.value.body.fields or []] == [deadline_message(0.3)]
+
+
 def test_a_compressed_answer_is_refused(fetcher: CoverFetcher, server: CoverServer) -> None:
     with pytest.raises(IntentError) as err:
         fetcher.fetch("https://covers.example/gzip.jpg")
@@ -242,6 +309,11 @@ def test_a_host_that_isnt_a_global_unicast_address_is_refused_before_any_connect
         ("::5db8:d822", False),
         ("64:ff9b::a9fe:a9fe", False),
         ("fe80::1%1", False),
+        ("::ffff:0:5db8:d822", True),  # IPv4-translated of a public address
+        ("::ffff:0:7f00:1", False),  # IPv4-translated loopback
+        ("::ffff:0:a00:1", False),  # IPv4-translated 10.0.0.1
+        ("fec0::1", False),  # site-local, deprecated
+        ("fec0::5db8:d822", False),
     ],
 )
 def test_is_public_unwraps_ipv4_inside_ipv6_and_refuses_the_rest(

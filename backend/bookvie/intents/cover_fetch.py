@@ -10,7 +10,8 @@ against reaching the machine or its network (SSRF):
   hand, at most :data:`MAX_REDIRECTS`.
 - Every address a host resolves to, on every hop, must be global. IPv6 forms
   that carry an IPv4 address (IPv4-mapped, 6to4, NAT64, Teredo) are judged by
-  that address; multicast and IPv4-compatible ``::/96`` are refused. A literal
+  that address, as is IPv4-translated ``::ffff:0:0:0/96``; multicast,
+  site-local ``fec0::/10`` and IPv4-compatible ``::/96`` are refused. A literal
   IP host is checked the same way.
 - The connection goes to a checked address through the ``connect`` seam, with
   TLS verified against the URL's hostname (SNI), so a second lookup (DNS
@@ -127,6 +128,8 @@ def on_cover_url(err: IntentError) -> IntentError:
 
 _IPV4_COMPATIBLE = ipaddress.IPv6Network("::/96")
 _NAT64 = ipaddress.IPv6Network("64:ff9b::/96")
+# IPv4-translated (SIIT, RFC 2765): ipaddress calls it global whatever IPv4 address it carries.
+_IPV4_TRANSLATED = ipaddress.IPv6Network("::ffff:0:0:0/96")
 
 type Address = ipaddress.IPv4Address | ipaddress.IPv6Address
 
@@ -137,7 +140,7 @@ def _embedded(ip: ipaddress.IPv6Address) -> list[ipaddress.IPv4Address] | None:
         return [ip.ipv4_mapped]
     if ip.sixtofour is not None:
         return [ip.sixtofour]
-    if ip in _NAT64:
+    if ip in _NAT64 or ip in _IPV4_TRANSLATED:
         return [ipaddress.IPv4Address(int(ip) & 0xFFFFFFFF)]
     if ip.teredo is not None:
         return list(ip.teredo)
@@ -152,7 +155,8 @@ def is_public(ip: Address) -> bool:
         inner = _embedded(ip)
         if inner is not None:
             return all(is_public(address) for address in inner)
-        if ip in _IPV4_COMPATIBLE:
+        # Site-local fec0::/10 is deprecated, but ipaddress still calls it global.
+        if ip in _IPV4_COMPATIBLE or ip.is_site_local:
             return False
     return ip.is_global and not ip.is_multicast
 

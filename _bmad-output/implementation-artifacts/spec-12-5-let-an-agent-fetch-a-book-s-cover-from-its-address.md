@@ -2,7 +2,7 @@
 title: "Story 12.5: Let an agent fetch a Book's cover from its address"
 type: 'feature'
 created: '2026-11-20'
-status: 'in-review'
+status: 'done'
 baseline_revision: 'fcec07cb39459dc404914a9a46c1f5fd43ed705a'
 review_loop_iteration: 0
 followup_review_recommended: true
@@ -106,6 +106,38 @@ deferred:
 - Given the five ATDD leaves without their skips, when the backend suite runs, then all of them pass (95 tests) and every other leaf passes.
 - Given `npm run check`, when it runs, then it passes.
 - Given any test, when it runs, then no connection or lookup leaves the machine (the AC-5 guard is autouse).
+
+### Review Findings
+
+Code review, 2026-11-20 (`bmad-code-review`, new session; diff `fcec07c..HEAD`; layers: Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor, Spine Check). 32 findings: 2 patch entries (3 findings), 2 defer, 5 spine drift already deferred by the build, 22 rejected.
+
+- [x] [Review][Patch] `is_public` trusts `ipaddress.is_global` for two ranges it gets wrong: IPv4-translated `::ffff:0:0:0/96` (`::ffff:0:7f00:1` carries 127.0.0.1) and deprecated site-local `fec0::/10` are both reported global, so a host resolving to either passes the SSRF check. Probed on Python 3.14.7: `is_public` returns True for `::ffff:0:7f00:1`, `::ffff:0:a00:1`, `fec0::1`. Unwrap the IPv4-translated form like NAT64 and refuse site-local (Edge Case Hunter, low). Fixed: `_IPV4_TRANSLATED` unwrapped in `_embedded`, `is_site_local` refused in `is_public`; five `is_public` cases added [backend/bookvie/intents/cover_fetch.py:134]
+- [x] [Review][Patch] The "says why" messages of most `coverUrl` download refusals are never asserted: `TLS_MESSAGE`, `TOO_MANY_REDIRECTS_MESSAGE`, `REDIRECT_WITHOUT_LOCATION_MESSAGE`, `status_message`, `ENCODING_MESSAGE`, `EMPTY_MESSAGE`, `NOT_IMAGE_MESSAGE` and the deadline message during the body read. Dropping `_open`'s `SSLCertVerificationError` clause turns a bad certificate into "Couldn't connect" with every test passing. Add a leaf pinning each message (Verification Gap, medium). Fixed: `test_each_download_refusal_says_why` (7 cases), plus leaves for an untrusted CA and a deadline during the body read; mutation-checked (dropping the certificate clause, the `clock.expired` check or the address fix fails them) [backend/tests/test_cover_fetch.py:196]
+- [x] [Review][Defer] `cryptography` is called "Deferred, not added" in Design Notes, with no `deferred-work.md` entry [backend/tests/cover_server.py] — deferred: a transitive (through `mcp`) test-only dependency; adding it needs a lock change.
+- [x] [Review][Defer] The first real download (real DNS, connect, OS trust store, percent-encoding of real cover URLs) is left to Story 12.8, with no entry 12.8 will pick up [backend/bookvie/intents/cover_fetch.py] — deferred: AC-5 forbids a real download in tests; 12.8's session against `--dev` is the first one.
+
+**Rejected:**
+- Blind Hunter: the Auto Run Result's counts don't match the triage log — the fix edits the spec under review.
+- Blind Hunter: the Code Map's line ranges are stale — the fix edits the spec under review.
+- Blind Hunter: `coverUrl`'s schema has no https `pattern` or `description` — low; AC-1 fixes the advertised schema, and the description carries the https rule.
+- Blind Hunter: `Accept: image/*` may make a CDN negotiate AVIF — maybe-false (would be low): needs a real CDN that answers a wildcard `Accept` with AVIF; 12.8's real downloads will show it.
+- Blind Hunter: `create_app`'s `cover_fetcher` should be a `Protocol` — low; no Python type checker runs on tests, no named harm.
+- Blind Hunter: `_open`'s next-address fallback and the stop on a certificate failure are untested — low; needs new seams in `Net`.
+- Blind Hunter: a non-certificate TLS handshake failure reads "Couldn't connect" — low; rare, and the fix adds a branch.
+- Blind Hunter + Edge Case Hunter: timed-out lookup threads aren't bounded — low; one user, local app, each thread ends when the OS resolver gives up; the fix adds a semaphore.
+- Blind Hunter + Edge Case Hunter + Acceptance Auditor: the AC-5 guard doesn't cover UDP `sendto`/`sendmsg`, `getnameinfo` or the `_socket` C module — low; no code or test uses them, and the fix adds guards.
+- Edge Case Hunter: `gethostbyaddr` with a numeric public IP makes a PTR query — low; no test calls it, and the module docstring says numeric addresses pass.
+- Edge Case Hunter: the commit says the guard keeps "every" lookup on the machine — low; the conftest docstring lists exactly what is guarded.
+- Blind Hunter: the DNS-deadline leaf still asserts `< 1.0` s of wall clock — low; a 5× margin over the 0.2 s deadline, and the event already proves the lookup was cut.
+- Blind Hunter + Edge Case Hunter: the regenerated `epic-12-context.md` dropped "every other download failure is `invalid_fields`" — low; the spec and AD-21 keep the contract, and the context file is regenerated per story.
+- Blind Hunter: the spec's and `deferred-work.md`'s evidence for the second drift entry differ by `fetch` — low; cosmetic, same item.
+- Edge Case Hunter: a redirect `Location` with raw UTF-8 bytes is decoded as latin-1 and percent-encoded twice — low; servers send ASCII `Location`s for covers, and the fix adds a decode fallback.
+- Edge Case Hunter: a blackholed first address takes the whole 30 s connect deadline — low; macOS orders and filters addresses by reachability, and the fix adds a per-address timeout.
+- Acceptance Auditor: an `ImportError` building the default TLS context escapes as `couldnt_save` — false in practice: `httpx2` is a pinned runtime dependency, loaded by the server's start.
+- Acceptance Auditor: `Accept`, `User-Agent`, a stripped URL and dropped userinfo aren't in the spec — low; none contradicts an AC, and the Spine Check finds them below AD level.
+- Spine Check (5): every drift item (Stack table `httpx2`, extra download rules, Seed `intents/` line, the step order's non-string refusal, the `cover_fetcher` seam and the guard) is already in `deferred-work.md` as "spine drift" from the build's review — no new entry.
+
+**Full check after the patches** (2026-11-20, this review session, after the last patch): `npm run check` exit 0 — pytest 2091 passed, unit 388 passed, e2e 799 passed, smoke ok.
 
 ## Spec Change Log
 

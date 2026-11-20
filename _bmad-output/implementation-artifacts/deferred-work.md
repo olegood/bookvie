@@ -1302,3 +1302,12 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-12-5-let-an-agent-fetch-a-book-s-cover-from-its-address.md`
   summary: Spine drift (AD-21, Structural Seed `http/` line, Consistency Conventions Testing row), reconciled before the next epic: the spine names none of three things. `create_app`'s `cover_fetcher` seam (`app.state.cover_fetcher`). The tool's first step, which refuses a non-string `coverUrl` as the malformed intent on `intent`. The autouse pytest guard `_on_the_machine`, which keeps in-process lookups and connections on the machine. Low.
   evidence: `backend/bookvie/http/app.py` `create_app`; `backend/bookvie/agent/tools.py` `_book_tool`; `backend/tests/conftest.py` `_on_the_machine` (Spine Check, build-auto review of Story 12.5).
+
+## Deferred from: code review of spec-12-5-let-an-agent-fetch-a-book-s-cover-from-its-address (2026-11-20)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-12-5-let-an-agent-fetch-a-book-s-cover-from-its-address.md`
+  summary: `cryptography` is a transitive dependency (through `mcp`) that only the test helper `tests/cover_server.py` imports, to make its local TLS certificates. The spec's Design Notes call it "Deferred, not added": declaring it as a dev dependency needs a lock change, and the pin test covers declared dependencies only. If `mcp` drops it, the cover tests break at import. Low.
+  evidence: `backend/tests/cover_server.py` imports; spec Design Notes (Blind Hunter, code review of Story 12.5).
+- source_spec: `_bmad-output/implementation-artifacts/spec-12-5-let-an-agent-fetch-a-book-s-cover-from-its-address.md`
+  summary: No test runs a successful cover download through the real DNS, `socket.create_connection` and the OS trust store, or percent-encodes a real-world cover URL; AC-5 forbids one. Story 12.8's session against `--dev` makes the first real download: check there that a real cover (Amazon, Manning, Leanpub, O'Reilly) downloads and is stored, and note any CDN that refuses `User-Agent: bookvie` or answers `Accept: image/*` with a format the sniffer refuses. Low.
+  evidence: `backend/bookvie/intents/cover_fetch.py` `_default_resolve`, `_default_connect`, `_default_ssl_context`, `_exchange` (Blind Hunter, code review of Story 12.5).
