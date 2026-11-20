@@ -11,6 +11,7 @@ and a cover-path refusal merged with a field's. No test reaches the network.
 
 import socket
 import ssl
+import threading
 import time
 from collections.abc import Callable, Iterator
 from pathlib import Path
@@ -151,17 +152,23 @@ def test_spaces_and_non_ascii_in_the_path_and_query_are_sent_percent_encoded(
 def test_a_lookup_past_the_deadline_is_refused_when_the_deadline_passes(
     net: Net, tls: TestTls
 ) -> None:
-    def slow(host: str) -> list[str]:
-        time.sleep(1.5)
+    # The lookup blocks until the test releases it, after the fetch has given up on it.
+    release = threading.Event()
+
+    def stuck(host: str) -> list[str]:
+        release.wait(timeout=10)
         return [PUBLIC4]
 
     fetcher = CoverFetcher(
-        resolve=slow, connect=net.connect, ssl_context=tls.client_context(), deadline=0.2
+        resolve=stuck, connect=net.connect, ssl_context=tls.client_context(), deadline=0.2
     )
     started = time.monotonic()
-    with pytest.raises(IntentError) as err:
-        fetcher.fetch("https://covers.example/dune.jpg")
-    assert time.monotonic() - started < 1.0
+    try:
+        with pytest.raises(IntentError) as err:
+            fetcher.fetch("https://covers.example/dune.jpg")
+        assert time.monotonic() - started < 1.0
+    finally:
+        release.set()
     assert _refusal(err) == ("invalid_fields", [COVER_URL_FIELD])
     assert [field.message for field in err.value.body.fields or []] == [
         "The cover download took longer than 0.2 seconds."
