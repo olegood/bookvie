@@ -6,6 +6,10 @@ All notable changes to bookvie are recorded here. The format follows
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [2.0.0] - 2026-11-20
+
 ### Added
 
 - AI agents can use bookvie through its agent tools, an MCP server at `/mcp` on the running app: read the library, record reading, and add and edit Books (Epic 12).
@@ -121,7 +125,8 @@ The first complete version: all seven v1 epics (41 stories) are done.
 - The Change color refusal is still announced after its popover closes.
 - The pace calculator agrees with Home's days-left figure.
 
-[Unreleased]: https://github.com/olegood/bookvie/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/olegood/bookvie/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/olegood/bookvie/compare/v1.2.0...v2.0.0
 [1.2.0]: https://github.com/olegood/bookvie/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/olegood/bookvie/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/olegood/bookvie/releases/tag/v1.0.0
