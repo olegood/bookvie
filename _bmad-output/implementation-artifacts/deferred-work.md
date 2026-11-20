@@ -835,6 +835,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-epic-6-retro-item-52-reconcile-the-spine-with-epic-6.md`
   summary: The cataloging skill's duplicate pre-check (`check_catalog.py`) re-implements `domain/duplicates`' rule (ISBN normalisation, title and author-set match) with no shared check, so a change to the server's rule leaves the skill's pre-check silently different. It only decides what the skill asks the user: the server still refuses a duplicate with 409 `duplicate_book` unless `confirmDuplicate` is sent. A shared case table read by both, as `pageField.cases.json` does for AD-3, would close it. Low.
   evidence: `.claude/skills/bookvie-new-book/scripts/check_catalog.py` docstring and `normalize_isbn`; `backend/bookvie/domain/duplicates.py`. AD-8 records it as a known gap.
+  resolved: Story 12.8 (2026-11-20). `check_catalog.py` is deleted, with `add_book.py`. The skill checks the catalog with the `find_book` agent tool, which lists likely matches and doesn't claim to be the duplicate rule, and the only duplicate rule it relies on is the server's own: `add_book` refuses with `duplicate_book` and its `duplicates` unless `confirmDuplicate: true` is sent. `backend/tests/test_new_book_skill.py` pins that the scripts are gone and nothing in the skill's folder names them.
 
 ## Deferred from: Epic 6 retro item 53, the untracked add-card-note flake (2026-11-11)
 
@@ -1348,3 +1349,18 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-12-7-summarize-a-book-s-notes-through-the-agent-tools.md`
   summary: Spine drift (AD-19, AD-6), reconciled before the next epic: the skill's step 2 has the agent derive the summary status (in progress, finished, not started) and choose which Reading's Purpose to use from `get_book`, a client-side derivation the spine reserves to the server. The deleted `fetch_notes.py` did the same. The spine should name it as an accepted agent-side rule, or `get_book` should carry it. Low.
   evidence: `.claude/skills/bookvie-notes-summary/SKILL.md` step 2 "Work out the summary's inputs" (Spine Check, build-auto review of Story 12.7).
+
+## Deferred from: build-auto review of spec-12-8-add-a-book-through-the-agent-tools (2026-11-20)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-12-8-add-a-book-through-the-agent-tools.md`
+  summary: Spine drift (AD-8), reconciled before the next epic: AD-8 still says the cataloging skill's scripts build the `add-book` body, read the `catalog` and `book` views and the AD-9 envelope by key, and calls its duplicate pre-check (`check_catalog.py`) an open known gap. Story 12.8 deletes both scripts, moves the skill onto `find_book`, `add_book` and `get_book`, and resolves that gap. Low.
+  evidence: deleted `.claude/skills/bookvie-new-book/scripts/add_book.py` and `check_catalog.py`; the copied-rule entry above now has its `resolved:` line (Spine Check, build-auto review of Story 12.8).
+- source_spec: `_bmad-output/implementation-artifacts/spec-12-8-add-a-book-through-the-agent-tools.md`
+  summary: Spine drift (Design Paradigm, Structural Seed), reconciled before the next epic: the Paradigm says the skill calls the HTTP API directly (skill 2.0.0) and calls `http/` like the browser, and the Seed's `AG` node reads "cataloging skill (HTTP client of the intent API)". Skill 3.0.0 is an MCP client of `agent/` (AD-21) and never calls the HTTP API for a book. Low.
+  evidence: `.claude/skills/bookvie-new-book/SKILL.md` Rules and step 1 (Spine Check, build-auto review of Story 12.8).
+- source_spec: `_bmad-output/implementation-artifacts/spec-12-8-add-a-book-through-the-agent-tools.md`
+  summary: Spine drift (Deferred "Skills on the agent tools"), reconciled before the next epic: the bullet still leaves the reconnect step and the `bookvie`/`bookvie-dev` tool names open; both skills now carry them (Stories 12.7 and 12.8). Folds into the 12.6 and 12.7 entries above. Low.
+  evidence: `.claude/skills/bookvie-new-book/SKILL.md` step 1 (Spine Check, build-auto review of Story 12.8).
+- source_spec: `_bmad-output/implementation-artifacts/spec-12-8-add-a-book-through-the-agent-tools.md`
+  summary: The new-book evals allow only the production entry's tools (`mcp__bookvie__*`), so an eval run adds books to the real library on port 8765, as the 2.0.0 HTTP evals did. Pointing them at `bookvie-dev` needs the dev entry's tool names and prompts that ask for the dev library. Low.
+  evidence: `.claude/skills/bookvie-new-book/evals/*/prompt.md` `allowed_tools` (Blind Hunter, Edge Case Hunter, Intent Alignment, build-auto review of Story 12.8).

@@ -20,19 +20,21 @@ not say. AC-4, real runs against ``--dev``, is Oleg's, recorded in the story spe
 """
 
 import re
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
-import pytest
-
+from tests.agent_client import McpClient, error_of
+from tests.builder import LibraryBuilder
+from tests.helpers import image_bytes
 from tests.test_agent_mount import _section
+from tests.test_agent_read import _structured
 from tests.test_notes_summary_skill import HTTP_CLIENT, _skill_files
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SKILL_DIR = REPO_ROOT / ".claude" / "skills" / "bookvie-new-book"
 SKILL_MD = SKILL_DIR / "SKILL.md"
 DEFERRED_WORK = REPO_ROOT / "_bmad-output" / "implementation-artifacts" / "deferred-work.md"
-
-RED = "Story 12.8 red phase: the skill still adds books over HTTP"
 
 OLD_SCRIPTS = ("add_book.py", "check_catalog.py")
 
@@ -75,7 +77,6 @@ def _deferred_entry(marker: str) -> str | None:
 # --- AC-1: find_book, add_book with coverUrl, get_book; the old scripts gone -------
 
 
-@pytest.mark.skip(reason=RED)
 def test_the_skill_adds_through_the_tools_and_keeps_its_start_step_rules_and_report() -> None:
     # [P1] AC-1.
     files = _skill_files(SKILL_DIR)
@@ -139,7 +140,6 @@ def test_the_skill_adds_through_the_tools_and_keeps_its_start_step_rules_and_rep
 # --- AC-2: a duplicate_book refusal -----------------------------------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_on_duplicate_book_the_skill_shows_the_matches_and_confirms_only_on_the_users_say_so() -> (
     None
 ):
@@ -162,7 +162,6 @@ def test_on_duplicate_book_the_skill_shows_the_matches_and_confirms_only_on_the_
 # --- AC-3: a cover download refused on coverUrl -----------------------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_on_a_cover_refused_on_cover_url_the_skill_says_why_and_offers_to_add_without_a_cover() -> (
     None
 ):
@@ -179,3 +178,212 @@ def test_on_a_cover_refused_on_cover_url_the_skill_says_why_and_offers_to_add_wi
 # AC-4 (a real Claude Code session against --dev, one amazon.com book and one
 # leanpub.com book, both added with their covers) is manual: Oleg runs it and the
 # story spec records the runs, as Story 12.1's AC-8 and Story 12.7's AC-3.
+
+
+# --- Green-phase follow-ups: the skill's names against the tools, the README, the evals --
+
+README = REPO_ROOT / "README.md"
+TOOLS = {"find_book", "add_book", "get_book"}
+EVALS = SKILL_DIR / "evals"
+
+
+class _FakeFetcher:
+    """A cover downloader that answers every address with one small PNG, and records them."""
+
+    def __init__(self) -> None:
+        self.urls: list[str] = []
+
+    def fetch(self, url: str) -> bytes:
+        self.urls.append(url)
+        return image_bytes()
+
+
+def _book_arguments(**overrides: Any) -> dict[str, Any]:
+    """``add_book``'s arguments as step 4 sends them: strings, ``type`` lower case."""
+    return {
+        "title": "The Dispossessed",
+        "pages": "387",
+        "authors": "Ursula K. Le Guin",
+        "edition": "1",
+        "language": "English",
+        "publisher": "Harper",
+        "type": "paperback",
+        "isbn": "9780061054884",
+        "year": "1994",
+        "tags": "added-by-skill",
+        **overrides,
+    }
+
+
+def test_every_name_the_skill_reads_is_in_the_tools_answers_and_it_names_only_its_three_tools(
+    connect_mcp: Callable[..., McpClient], tmp_path: Path
+) -> None:
+    # [P2] AC-1. The skill tells the agent which fields to read; a renamed field
+    # would leave it reading nothing, with every wording leaf still green.
+    skill = _skill()
+    builder = LibraryBuilder()
+    builder.book(title="Dune", authors=["Frank Herbert"], pages=412, isbn="9780441013593")
+    folder = tmp_path / "library"
+    builder.write(folder)
+    fetcher = _FakeFetcher()
+    client = connect_mcp(data_dir=folder, cover_fetcher=fetcher)
+
+    # Of the registered tools, the skill names only find_book, add_book and get_book.
+    registered = {tool["name"] for tool in client.list_tools()}
+    named = set(re.findall(r"`([a-z]+(?:_[a-z]+)+)`", skill))
+    assert named & registered == TOOLS
+
+    # find_book's candidates carry exactly the fields the skill lists.
+    listed = re.search(r"each with ((?:`\w+`(?:, | and )?)+), or an empty list", skill)
+    assert listed is not None
+    candidate = _structured(client.call_tool("find_book", {"query": "Dune"}))["books"][0]
+    assert set(re.findall(r"`(\w+)`", listed.group(1))) == set(candidate)
+    assert _structured(client.call_tool("find_book", {"query": "The Dispossessed"})) == {
+        "books": []
+    }
+
+    # add_book with a coverUrl: ids.bookId, then get_book's title, tags and hasCover.
+    cover_url = "https://covers.example/dispossessed.jpg"
+    added = _structured(client.call_tool("add_book", {**_book_arguments(), "coverUrl": cover_url}))
+    assert fetcher.urls == [cover_url]
+    book = _structured(client.call_tool("get_book", {"bookId": added["ids"]["bookId"]}))
+    assert book["title"] == "The Dispossessed"
+    assert "added-by-skill" in book["tags"]
+    assert book["hasCover"] is True
+    for name in ("Subtitle", "Edition", "Language", "Publisher", "Type", "ISBN", "Year", "Pages"):
+        assert name.lower() in {key.lower() for key in book}, name
+
+    # A duplicate: duplicate_book with its duplicates (title, authors, ISBN).
+    dune = _book_arguments(title="Dune", authors="Frank Herbert", isbn="9780441013593")
+    refusal = error_of(client.call_tool("add_book", dune))
+    assert refusal["code"] == "duplicate_book"
+    assert [(d["title"], d["authors"], d["isbn"]) for d in refusal["duplicates"]] == [
+        ("Dune", ["Frank Herbert"], "9780441013593")
+    ]
+    # Another invalid field: invalid_fields with fields[].field.
+    refusal = error_of(client.call_tool("add_book", _book_arguments(title="Other", pages="0")))
+    assert refusal["code"] == "invalid_fields"
+    assert [field["field"] for field in refusal["fields"]] == ["pages"]
+
+    for path in (
+        "`ids.bookId`",
+        "`hasCover`",
+        "`tags`",
+        "`duplicates`",
+        "`fields`",
+        "`duplicate_book`",
+        "`invalid_fields`",
+        "`couldnt_save`",
+    ):
+        assert path in skill, path
+
+
+def test_a_cover_refused_on_cover_url_is_named_by_its_field_and_nothing_is_saved(
+    connect_mcp: Callable[..., McpClient],
+) -> None:
+    # [P2] AC-3. The skill spots a cover refusal by a `fields` entry on `coverUrl`;
+    # the real downloader refuses an http:// address before any connection.
+    client = connect_mcp()
+    refusal = error_of(
+        client.call_tool("add_book", {**_book_arguments(), "coverUrl": "http://x.example/c.jpg"})
+    )
+    assert refusal["code"] == "invalid_fields"
+    assert [field["field"] for field in refusal["fields"]] == ["coverUrl"]
+    assert _structured(client.call_tool("find_book", {"query": "The Dispossessed"})) == {
+        "books": []
+    }
+    assert re.search(r"a field in `fields` is `coverUrl`", " ".join(_skill().split()))
+
+
+def test_the_skills_setup_and_reconnect_steps_match_the_readme() -> None:
+    # [P2] AC-1. The skill repeats the README's one-time setup lines and its reconnect step.
+    readme_text = README.read_text(encoding="utf-8")
+    readme = _section(readme_text, "Agent tools")
+    assert readme is not None
+    start = _section(_skill(), "Start bookvie", numbered=True)
+    assert start is not None
+    start = " ".join(start.split())
+
+    setup = re.findall(r"claude mcp add [^\n`]*/mcp", readme)
+    assert len(setup) == 2, setup
+    assert setup[0] in start
+    dev = re.search(r"--scope user (\S+) (\S+/mcp)", setup[1])
+    assert dev is not None
+    assert f"`{dev.group(1)}` with `{dev.group(2)}`" in start
+    assert "bookvie --dev --no-browser" in start
+    assert "curl -fsS http://127.0.0.1:8766/api/health" in start
+
+    assert "run `/mcp` in Claude Code, pick the entry and choose reconnect" in readme
+    assert re.search(
+        r"run `/mcp` in Claude Code, pick the entry \([^)]*\) and choose reconnect", start
+    )
+    assert re.search(r"If reconnecting doesn't bring the tools.*and stop\.", start)
+
+    # README's AI skills line names the tool, not the old API.
+    skills = _section(readme_text, "AI skills")
+    assert skills is not None
+    line = next(line for line in skills.splitlines() if "bookvie-new-book" in line)
+    assert "add-book API" not in line
+    assert "`add_book`" in line
+
+
+def test_the_evals_grade_the_tools_and_may_call_them() -> None:
+    # [P2] AC-1. An eval run needs the bookvie tools allowed, and its graders
+    # check the tools, not the deleted scripts.
+    prompts = sorted(EVALS.glob("*/prompt.md"))
+    assert prompts
+    for prompt in prompts:
+        allowed = re.search(r"^allowed_tools: \[([^\]]*)\]", prompt.read_text("utf-8"), re.M)
+        assert allowed is not None, prompt
+        tools = {name.strip() for name in allowed.group(1).split(",")}
+        assert {f"mcp__bookvie__{name}" for name in TOOLS} <= tools, prompt
+        graders = " ".join(
+            path.read_text("utf-8") for path in sorted(prompt.parent.glob("graders/*.md"))
+        )
+        assert "find_book" in graders and "add_book" in graders, prompt
+    graders = " ".join(path.read_text("utf-8") for path in EVALS.glob("*/graders/*.md"))
+    assert "get_book" in graders
+    assert "coverUrl" in graders
+
+
+# --- The I/O matrix's other rows: the skill's text is their only surface ----------
+
+
+def _flat(title: str) -> str:
+    section = _section(_skill(), title, numbered=True)
+    assert section is not None, title
+    return " ".join(section.split())
+
+
+def test_a_same_book_candidate_stops_the_skill_before_the_lookup_and_asks() -> None:
+    step = _flat("Check the catalog first")
+    assert "`find_book`" in step
+    assert re.search(r"\*\*The same book:\*\*.*Stop before the lookup", step)
+    assert re.search(r"Ask whether to add another copy", step)
+    assert "`confirmDuplicate: true`" in step
+    # find_book matches a whole query against one field: one thing at a time.
+    assert re.search(r"send one thing at a time", step)
+    assert re.search(r"exact Title, and once more with the ISBN", step)
+
+
+def test_another_invalid_field_is_fixed_and_couldnt_save_is_reported_without_a_retry_loop() -> None:
+    step = _flat("Add the book")
+    assert re.search(r"\*\*`invalid_fields` on another field:\*\* fix the values", step)
+    assert re.search(r"If the fix needs information you don't have, ask the user", step)
+    assert re.search(r"\*\*`couldnt_save`:\*\*.*Report it\. Don't retry in a loop\.", step)
+
+
+def test_with_no_cover_found_the_skill_adds_without_cover_url_and_says_so() -> None:
+    skill = " ".join(_skill().split())
+    assert re.search(
+        r"no cover can be found on any source, leave `coverUrl` out, add the book without one, "
+        r"and say so in the report",
+        skill,
+    )
+    assert re.search(r"Don't download it: bookvie does", skill)
+
+
+def test_the_skill_never_falls_back_to_bookvies_http_api() -> None:
+    skill = " ".join(_skill().split())
+    assert len(re.findall(r"Never fall back to calling bookvie's HTTP API", skill)) >= 2
+    assert re.search(r"Never call bookvie's HTTP API for a book", skill)
