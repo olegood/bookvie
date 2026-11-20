@@ -216,4 +216,13 @@ Status: in-review
 
 **Residual risks / open.** AC-4 is manual and open: Oleg runs the skill against `--dev` on an amazon.com and a leanpub.com book and records the runs here; that run also settles `deferred-work.md`'s Story 12.5 real-download entry (whether those CDNs accept bookvie's request). AVIF/GIF covers, which 2.0.0 converted, are now refused on `coverUrl` and go to the no-cover offer.
 
+**AC-4 manual runs (2026-11-20, Epic 12 retro item 83).** Run by Claude in a real Claude Code session on Oleg's say-so, against `bookvie --dev` 2.0.0 (`get_app_info`: `mode: dev`, `~/bookvie-data-dev`) through the `bookvie-dev` entry, with an empty dev library. Step 1's `/mcp` probe printed `200` both times.
+
+- **amazon.com.** *Designing Data-Intensive Applications* (Martin Kleppmann; Chris Riccomini, 2nd ed., O'Reilly Media, paperback, ISBN 978-1098119065, 2026, 670 pages). Tools: `find_book` (title) → `[]`; `lookup.mjs --amazon-search` then `--page` on `/dp/1098119061`; `find_book` (ISBN) → `[]`; `add_book` with `coverUrl` `https://m.media-amazon.com/images/I/81yW67wBLHL._SL1500_.jpg` → `ok`; `get_book` → title and `added-by-skill` as sent, `hasCover: true`, spine color `#EACDC7` derived from the cover. **The Amazon CDN accepted bookvie's download.**
+- **leanpub.com.** *Ansible for DevOps* (Jeff Geerling, Leanpub, ebook, 470 pages, "100% complete", so no `not-finished`; no ISBN). Tools: `find_book` (title) → `[]`; `lookup.mjs --page https://leanpub.com/ansible-for-devops`; `add_book` with the `og:image` `https://d2sofvawe08yqg.cloudfront.net/ansible-for-devops/s_hero2x?1748153942&1748153942` (a query string, no file extension) → `ok`; `get_book` → `hasCover: true`, stored as `.jpg`. **Leanpub's CloudFront CDN accepted bookvie's download.** Judgement calls: edition 2 from the book's "Second Edition" preface section; Year left empty (the page gives only "Last updated on 2025-05-25").
+- **Duplicate.** Re-sending the DDIA `add_book` → `duplicate_book` listing the stored Book; nothing saved, no `confirmDuplicate` sent.
+- **Refused cover address.** `add_book` with an `http://` cover → `invalid_fields` on `coverUrl`: "The cover address must be an https:// address."; nothing saved.
+
+**Result: pass.** This closes `deferred-work.md`'s Story 12.5 real-download entry.
+
 Next: run `bmad-code-review` in a new session (AGENTS.md "Story pipeline").

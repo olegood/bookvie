@@ -2920,6 +2920,8 @@ So that it uses the same interface as everything else and needs no HTTP calls.
 **When** Oleg runs the skill in a real Claude Code session
 **Then** the summary is produced, and the spec records that run (manual verification).
 
+**Note:** `get_book`'s `readings[]` carries each Reading's `purpose` (`null` when it has none), so a finished Book's Purpose comes from the tools (added in this story; Epic 12 retro item 83).
+
 ### Story 12.8: Add a book through the agent tools
 
 As Oleg,

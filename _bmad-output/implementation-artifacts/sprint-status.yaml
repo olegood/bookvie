@@ -987,7 +987,7 @@ action_items:
       `_bmad-output/implementation-artifacts/spec-12-1-mount-the-mcp-server.md`, `_bmad-output/implementation-artifacts/deferred-work.md`,
       `_bmad-output/planning-artifacts/epics.md`. Due: before Epic 13."
     owner: "Oleg"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-12-retro-2026-11-20.md"
   - id: "epic-12-retro-item-84-ship-mcp-and-skills-detect-older-bookvie"
     epic: 12

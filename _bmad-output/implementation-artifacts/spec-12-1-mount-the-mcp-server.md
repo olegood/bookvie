@@ -197,7 +197,7 @@ Status: in-review
 **Verification.** `uv run pytest -q tests/test_agent_mount.py`: 23 passed. `npm run check`: exit 0 after the patches (backend 1668 passed; ruff, API check, lint, tsc, unit, Playwright e2e, install smoke all passed).
 
 **Residual risks.**
-- **AC-8 is open.** Oleg still has to add `bookvie-dev` while no server runs, start `bookvie --dev` after a Claude Code session started, and record here what Claude Code does and the start step the skills will use. The README's reconnect step (`/mcp`, pick the entry, reconnect) is unconfirmed until then.
+- ~~**AC-8 is open.**~~ Closed 2026-11-19: Oleg ran AC-8, and `/mcp` → `bookvie-dev` → reconnect connected the tools (see the Review Findings' AC-8 entry). The README's reconnect step matches. (Corrected by Epic 12 retro item 83.)
 - An app whose lifespan never ran answers `/mcp` with 500; one app's lifespan can run only once.
 - No test sends a chunked `/mcp` body past 1 MiB (an automate follow-up in the ATDD checklist).
 

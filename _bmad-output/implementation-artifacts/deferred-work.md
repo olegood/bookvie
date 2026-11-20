@@ -1332,6 +1332,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-12-5-let-an-agent-fetch-a-book-s-cover-from-its-address.md`
   summary: No test runs a successful cover download through the real DNS, `socket.create_connection` and the OS trust store, or percent-encodes a real-world cover URL; AC-5 forbids one. Story 12.8's session against `--dev` makes the first real download: check there that a real cover (Amazon, Manning, Leanpub, O'Reilly) downloads and is stored, and note any CDN that refuses `User-Agent: bookvie` or answers `Accept: image/*` with a format the sniffer refuses. Low.
   evidence: `backend/bookvie/intents/cover_fetch.py` `_default_resolve`, `_default_connect`, `_default_ssl_context`, `_exchange` (Blind Hunter, code review of Story 12.5).
+  resolved: Epic 12 retro item 83 (2026-11-20). Story 12.8's AC-4 runs against `--dev` downloaded and stored real covers from Amazon (`m.media-amazon.com`, JPEG) and Leanpub (CloudFront `og:image` with a query string and no extension); neither CDN refused bookvie's request. Recorded in `spec-12-8`'s Auto Run Result.
 
 ## Deferred from: build-auto review of spec-12-6-let-an-agent-back-up-my-library-to-disk (2026-11-20)
 
@@ -1412,3 +1413,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-epic-12-retro-item-82-reconcile-the-spine-with-epic-12.md`
   summary: The spine's IDs convention keeps `add-card-note`'s `cardNoteId` "because the agent skills that write to bookvie are expected to" read it, and says to drop it "if none does once those skills exist". Both skills now exist and neither adds a Card note, though the `add_card_note` tool returns the id. Oleg should decide whether to keep it (an agent may add a note and then edit it) or drop it. Low.
   evidence: ARCHITECTURE-SPINE.md Consistency Conventions, IDs row; `backend/bookvie/intents/answers.py` `card_note_answer`; `.claude/skills/*/SKILL.md` (Blind Hunter, build review of retro item 82).
+
+## Deferred from: Epic 12 retro item 83 manual runs (2026-11-20)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-12-7-summarize-a-book-s-notes-through-the-agent-tools.md`
+  summary: `update_page` can't save a page from Claude Code. The tool advertises `page` as an untyped `JsonValue` (no `type` in its input schema), so Claude Code sends `"120"`, a string; `valid_page` accepts only a JSON integer, so every call is refused with "Page must be between 0 and 670.", which also misstates the cause. A raw `tools/call` with `"page": 120` succeeds. `start_reading`'s `page` and `finish_reading`'s `finishedOn`, `purposeFulfilled` and `rating` are `JsonValue` too and likely fail the same way (not run). Fix in the agent layer (advertise `integer`/`boolean` in the input schema, or coerce a whole-number string for the agent only), keeping the HTTP intents' wrong-type refusals. High: the agent's most common write doesn't work.
+  evidence: `backend/bookvie/intents/update_page.py` `UpdatePageIntent.page`, `valid_page`; `backend/bookvie/agent/tools.py` `input_schema`; seeding for 12.7 AC-3 (Epic 12 retro item 83).
