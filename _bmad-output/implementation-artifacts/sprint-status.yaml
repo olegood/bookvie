@@ -1027,7 +1027,7 @@ action_items:
       12.4, 12.6 and 12.8, as banned. Changes: `_bmad/custom/bmad-build-auto.toml`,
       `_bmad/custom/bmad-build.toml`. Due: before Epic 13."
     owner: "Amelia (dev)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-12-retro-2026-11-20.md"
   - id: "epic-12-retro-item-87-one-home-for-agent-test-helpers"
     epic: 12
