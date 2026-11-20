@@ -6,7 +6,10 @@ than 443, a relative ``Location``, the other redirect codes, multicast and
 other addresses that aren't global, a compressed answer, the defaults under
 the AC-5 guard. Then the tool flow around it: a ``coverUrl`` that isn't a
 string, an empty one, the order against ``removeCover`` and a missing Book,
-and a cover-path refusal merged with a field's. No test reaches the network.
+and a cover-path refusal merged with a field's. Then the automation pass's
+follow-ups: the download outside the AD-4 lock, a stall in the TLS handshake
+or the headers, the next checked address, and a download refusal kept apart
+from a bad field. No test reaches the network.
 """
 
 import socket
@@ -38,6 +41,7 @@ from bookvie.intents.cover_fetch import (
     is_public,
     status_message,
 )
+from bookvie.store import Store
 from tests.agent_client import McpClient, error_of
 from tests.cover_server import (
     PUBLIC4,
@@ -49,7 +53,7 @@ from tests.cover_server import (
     make_test_tls,
     redirect,
 )
-from tests.helpers import image_bytes, library_bytes
+from tests.helpers import RecordingLock, image_bytes, library_bytes
 from tests.test_agent_book_write import ADD, UNREAD_FORM
 from tests.test_agent_write import GONE, _seed
 
@@ -71,6 +75,9 @@ HOSTS: dict[str, list[str]] = {
     "empty.example": [],
     # Resolves to a public address, but the test certificate doesn't name it.
     "wrong.example": [PUBLIC4],
+    "wrong-twice.example": [PUBLIC4, PUBLIC6],
+    # Named by the certificate, with two checked addresses: the fallback leaves' host.
+    "hop5.example": [PUBLIC6, PUBLIC4],
     **{f"hop{n}.example": [PUBLIC4] for n in range(1, 5)},
 }
 
@@ -508,3 +515,176 @@ def test_without_a_cover_url_nothing_is_fetched(
     assert client.call_tool("edit_book", UNREAD_FORM).get("isError") is not True
     assert client.call_tool("add_book", ADD).get("isError") is not True
     assert fetcher.urls == []
+
+
+# --- Automation follow-ups (ATDD checklist 12.5) -------------------------------------
+
+
+@pytest.mark.parametrize("tool", ["add_book", "edit_book"])
+def test_the_download_runs_outside_the_lock_and_only_the_save_takes_it(
+    connect_mcp: Callable[..., McpClient],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    tool: str,
+) -> None:
+    # AD-21: a slow download must not hold the AD-4 lock that every other intent waits on.
+    log: list[str] = []
+    stores: list[Store] = []
+    real_open = Store.open
+
+    def open_recording(cls: type[Store], *args: Any, **kwargs: Any) -> Store:
+        store = real_open(*args, **kwargs)
+        store.lock = RecordingLock(log)
+        stores.append(store)
+        return store
+
+    monkeypatch.setattr(Store, "open", classmethod(open_recording))
+
+    class LockWatchingFetcher:
+        def fetch(self, url: str) -> bytes:
+            log.append(f"fetched, lock held: {stores[-1].lock.locked()}")
+            return JPEG
+
+    client, folder = _client(connect_mcp, tmp_path, LockWatchingFetcher())
+    form = ADD if tool == "add_book" else UNREAD_FORM
+    log.clear()
+
+    answer = client.call_tool(tool, {**form, "coverUrl": "https://covers.example/dune.jpg"})
+    assert answer.get("isError") is not True, answer
+    assert log == ["fetched, lock held: False", "lock acquired", "lock released"]
+
+
+class Staller:
+    """A loopback listener that accepts and then stalls until the test ends.
+
+    ``stage`` ``"handshake"`` never answers the TLS handshake; ``"headers"``
+    completes it, reads the request, and never answers that. ``reached`` is
+    set once the stall begins at that stage.
+    """
+
+    def __init__(self, tls: TestTls, stage: str) -> None:
+        self._listener = socket.create_server(("127.0.0.1", 0))
+        self.port: int = self._listener.getsockname()[1]
+        self._tls = tls
+        self._stage = stage
+        self.reached = threading.Event()
+        self._stop = threading.Event()
+        self._thread = threading.Thread(target=self._serve, daemon=True)
+
+    def __enter__(self) -> Staller:
+        self._thread.start()
+        return self
+
+    def __exit__(self, *exc: object) -> None:
+        self._stop.set()
+        self._listener.close()
+        self._thread.join(timeout=5)
+
+    def connect(self, address: str, port: int, timeout: float | None) -> socket.socket:
+        return socket.create_connection(("127.0.0.1", self.port), timeout=timeout)
+
+    def _serve(self) -> None:
+        try:
+            conn, _ = self._listener.accept()
+        except OSError:
+            return
+        with conn:
+            if self._stage == "headers":
+                conn.settimeout(5)
+                with self._tls.server_context().wrap_socket(conn, server_side=True) as tls:
+                    tls.recv(4096)
+                    self.reached.set()
+                    self._stop.wait(10)
+                return
+            self.reached.set()
+            self._stop.wait(10)
+
+
+@pytest.mark.parametrize("stage", ["handshake", "headers"])
+def test_a_server_that_stalls_is_refused_when_the_deadline_passes(
+    net: Net, tls: TestTls, stage: str
+) -> None:
+    with Staller(tls, stage) as staller:
+        fetcher = CoverFetcher(
+            resolve=net.resolve,
+            connect=staller.connect,
+            ssl_context=tls.client_context(),
+            deadline=0.5,
+        )
+        started = time.monotonic()
+        with pytest.raises(IntentError) as err:
+            fetcher.fetch("https://covers.example/dune.jpg")
+        elapsed = time.monotonic() - started
+        assert staller.reached.is_set()
+    assert _refusal(err) == ("invalid_fields", [COVER_URL_FIELD])
+    assert [field.message for field in err.value.body.fields or []] == [deadline_message(0.5)]
+    # Cut at the deadline, not left to an OS timeout: a wide margin over 0.5 s.
+    assert elapsed < 3
+
+
+def _refusing(net: Net, refused: set[str]) -> Callable[[str, int, float | None], socket.socket]:
+    """``net.connect``, except that each address in ``refused`` refuses the connection."""
+
+    def connect(address: str, port: int, timeout: float | None) -> socket.socket:
+        if address in refused:
+            net.connections.append((address, port))
+            raise ConnectionRefusedError(address)
+        return net.connect(address, port, timeout)
+
+    return connect
+
+
+def test_an_address_that_refuses_the_connection_falls_through_to_the_next_checked_one(
+    net: Net, tls: TestTls
+) -> None:
+    fetcher = CoverFetcher(
+        resolve=net.resolve, connect=_refusing(net, {PUBLIC6}), ssl_context=tls.client_context()
+    )
+    assert fetcher.fetch("https://hop5.example/dune.jpg") == JPEG
+    assert net.connections == [(PUBLIC6, 443), (PUBLIC4, 443)]
+
+
+def test_when_no_checked_address_answers_the_refusal_says_it_couldnt_connect(
+    net: Net, tls: TestTls
+) -> None:
+    fetcher = CoverFetcher(
+        resolve=net.resolve,
+        connect=_refusing(net, {PUBLIC4, PUBLIC6}),
+        ssl_context=tls.client_context(),
+    )
+    with pytest.raises(IntentError) as err:
+        fetcher.fetch("https://hop5.example/dune.jpg")
+    assert [field.message for field in err.value.body.fields or []] == [CONNECT_MESSAGE]
+    assert net.connections == [(PUBLIC6, 443), (PUBLIC4, 443)]
+
+
+def test_a_certificate_failure_is_not_retried_on_the_next_address(
+    fetcher: CoverFetcher, net: Net
+) -> None:
+    with pytest.raises(IntentError) as err:
+        fetcher.fetch("https://wrong-twice.example/dune.jpg")
+    assert [field.message for field in err.value.body.fields or []] == [TLS_MESSAGE]
+    assert net.connections == [(PUBLIC4, 443)]
+
+
+def test_a_download_refusal_comes_alone_not_merged_with_a_bad_field(
+    connect_mcp: Callable[..., McpClient], tmp_path: Path, tls: TestTls, net: Net
+) -> None:
+    # Design Notes: the download comes before the handler's field checks, so its refusal
+    # is raised alone; only a cover-path refusal is merged in form order.
+    fetcher = CoverFetcher(
+        resolve=net.resolve, connect=net.connect, ssl_context=tls.client_context()
+    )
+    client, folder = _client(connect_mcp, tmp_path, fetcher)
+    before = library_bytes(folder)
+
+    refused = error_of(
+        client.call_tool(
+            "edit_book",
+            {**UNREAD_FORM, "pages": "many", "coverUrl": "https://covers.example/missing.jpg"},
+        )
+    )
+    assert refused["code"] == "invalid_fields"
+    assert refused["fields"] == [{"field": COVER_URL_FIELD, "message": status_message(404)}]
+    assert refused["message"] == "Not saved. 1 field needs attention: Cover URL."
+    assert library_bytes(folder) == before
