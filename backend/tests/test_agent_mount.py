@@ -148,10 +148,14 @@ def _post_unread(app: Any, content_length: int) -> tuple[int, int]:
     return starts[0]["status"], reads
 
 
-def _section(text: str, title: str) -> str | None:
+def _section(text: str, title: str, *, numbered: bool = False) -> str | None:
     """The Markdown section headed ``## title`` or ``### title``, up to the next
-    heading of the same or a higher level; ``None`` when there is none."""
-    heading = re.search(rf"^(#{{2,3}}) {re.escape(title)}[ \t]*$", text, re.M)
+    heading of the same or a higher level; ``None`` when there is none.
+
+    ``numbered`` also matches a step number before the title (``## 3. title``),
+    whatever the number, so a skill's steps can be renumbered."""
+    number = r"(?:\d+\. )?" if numbered else ""
+    heading = re.search(rf"^(#{{2,3}}) {number}{re.escape(title)}[ \t]*$", text, re.M)
     if heading is None:
         return None
     rest = text[heading.end() :]
