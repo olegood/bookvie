@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-29-2026 17:21
-last_updated: 2026-11-20
+last_updated: 11-20-2026 19:36
 project: bookvie
 project_key: NOKEY
 tracking_system: file-system
@@ -128,7 +128,7 @@ development_status:
   12-6-let-an-agent-back-up-my-library-to-disk: done
   12-7-summarize-a-book-s-notes-through-the-agent-tools: done
   12-8-add-a-book-through-the-agent-tools: done
-  epic-12-retrospective: optional
+  epic-12-retrospective: done
 action_items:
   - id: "epic-1-retro-item-1-run-an-epic-1-trace-and-gate-against-tr7"
     epic: 1
@@ -935,3 +935,118 @@ action_items:
     owner: "Amelia (dev)"
     status: done
     ref: "_bmad-output/implementation-artifacts/epic-11-retro-2026-11-17.md"
+  - id: "epic-12-retro-item-81-trace-and-gate-epic-12"
+    epic: 12
+    action: "Run the Epic 12 trace and gate. Run `bmad-testarch-trace` against TR7
+      and the Epic 12 gate's P0 risks: `/mcp` guard. Mounted in both modes, dev on
+      the dev folder. Same handler per write tool, errors included. No destructive
+      tools. `find_book` candidates. The downloader's refusals against local fakes.
+      `export_backup` into a temp HOME. Descriptions equal to the ACs. Real folders
+      untouched. Changes: `_bmad-output/test-artifacts/traceability/epic-12-traceability-matrix.md`,
+      `_bmad-output/test-artifacts/traceability/epic-12-gate-decision.json`. Due:
+      before Epic 13."
+    owner: "Murat (TEA)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-12-retro-2026-11-20.md"
+  - id: "epic-12-retro-item-82-reconcile-the-spine-with-epic-12"
+    epic: 12
+    action: "Reconcile the spine with Epic 12. Mark AD-21 as built, and replace `MCPServer`
+      with the low-level `Server` and `_McpRoute`. Record these in AD-21: `find_book`'s
+      `{\"books\": [...]}` shape, ranking and blank-query refusal. `parse_view_arguments`
+      for the read tools. `intents/answers.py`. `edit_book`'s missing-key refusal
+      and `editForm`. The downloader's extra rules, its `http.client` with an `httpx2`
+      TLS context, and the `cover_fetcher` seam. The backup's folder creation, its
+      fsync, and the `backups_dir` keyword. Fix the AD-1 \"one file outside the data
+      folder\", the AD-8 skill notes, the AD-9 stats copy location, and the AD-19/AD-6
+      agent-side summary status. Add the `views → intents.contract` edge, and update
+      the Structural Seed (`agent/`, `views/find_book`, `intents/cover_fetch`, `intents/backup_file`,
+      `intents/answers`) and the Seed's `AG` node (an MCP client of `agent/`). Update
+      the Stack table, the Capability map's FR-28 row, the \"Title ordering\" exception,
+      and the Deferred \"Skills on the agent tools\" bullet. Correct `epic-12-context.md`'s
+      Mount paragraph. Add a `resolved:` line to each of the 27 entries at `deferred-work.md:1184`,
+      `:1187`, `:1193`, `:1219`, `:1222`, `:1225`, `:1228`, `:1231`, `:1234`, `:1237`,
+      `:1240`, `:1252`, `:1276`, `:1282`, `:1294`, `:1297`, `:1300`, `:1303`, `:1318`,
+      `:1321`, `:1324`, `:1327`, `:1330`, `:1346`, `:1349`, `:1358`, `:1361`. Item
+      87 closes `:1246`. Changes: `_bmad-output/planning-artifacts/architecture/architecture-bookvie-2026-10-29/ARCHITECTURE-SPINE.md`,
+      `_bmad-output/implementation-artifacts/deferred-work.md`, `_bmad-output/implementation-artifacts/epic-12-context.md`.
+      Due: before Epic 13."
+    owner: "Winston (architect)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-12-retro-2026-11-20.md"
+  - id: "epic-12-retro-item-83-record-the-epic-12-manual-runs"
+    epic: 12
+    action: "Record the manual runs Epic 12 left open (E12-S1, E12-S4). Oleg runs
+      `bookvie-notes-summary` (12.7 AC-3) and `bookvie-new-book` on one amazon.com
+      and one leanpub.com book (12.8 AC-4) against `bookvie --dev` in a real Claude
+      Code session. Record each run (tools called, result, `hasCover`, and whether
+      the CDN accepted bookvie's download) in the story specs. Resolve the 12.5 real-download
+      entry in `deferred-work.md`, and correct `spec-12-1`'s stale \"AC-8 is open\"\
+      \ at `:200`. Note in `epics.md` Story 12.7 that `get_book`'s Readings carry
+      `purpose`. A failed run becomes a fix before item 84 ships. Changes: `_bmad-output/implementation-artifacts/spec-12-7-summarize-a-book-s-notes-through-the-agent-tools.md`,
+      `_bmad-output/implementation-artifacts/spec-12-8-add-a-book-through-the-agent-tools.md`,
+      `_bmad-output/implementation-artifacts/spec-12-1-mount-the-mcp-server.md`, `_bmad-output/implementation-artifacts/deferred-work.md`,
+      `_bmad-output/planning-artifacts/epics.md`. Due: before Epic 13."
+    owner: "Oleg"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-12-retro-2026-11-20.md"
+  - id: "epic-12-retro-item-84-ship-mcp-and-skills-detect-older-bookvie"
+    epic: 12
+    action: "Ship the MCP server, and make the skills recognize an older bookvie (E12-S2,
+      E12-B2). Bump bookvie's version (a release after 1.2.0, with a changelog entry),
+      so `get_app_info` tells an MCP build from the installed one. Reinstall it as
+      Oleg's real app. In both skills' step 1, after `/api/health`, check `/mcp` (or
+      call `get_app_info`). On a 404 or 405 there, or a failed call, say \"an older
+      bookvie is running: stop it and start the new one\" instead of the reconnect
+      and `claude mcp add` advice. Correct `bookvie-new-book/SKILL.md:143`: the cover
+      download comes after the field parse and before the domain and duplicate checks.
+      The skill tests pin the new step. Changes: `.claude/skills/bookvie-new-book/SKILL.md`,
+      `.claude/skills/bookvie-notes-summary/SKILL.md`, `backend/tests/test_new_book_skill.py`,
+      `backend/tests/test_notes_summary_skill.py`, `backend/pyproject.toml`, `frontend/package.json`,
+      `CHANGELOG.md`. Due: before Epic 13."
+    owner: "Amelia (dev)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-12-retro-2026-11-20.md"
+  - id: "epic-12-retro-item-85-code-review-keeps-unrecorded-manual-acs-in-review"
+    epic: 12
+    action: "`bmad-code-review` doesn't mark a story `done` with a manual AC unrecorded
+      (E12-S1, E12-P3). When an AC requires a run by Oleg (a real session, a real
+      site), the review checks the spec for a recorded result. If there is none, it
+      asks Oleg for the result, or leaves the story in `review` with the AC named.
+      It never dismisses the gap by citing an earlier story's open AC. Changes: `_bmad/custom/bmad-code-review.toml`.
+      Due: before Epic 13."
+    owner: "Murat (TEA)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-12-retro-2026-11-20.md"
+  - id: "epic-12-retro-item-86-build-diff-recipe-without-banned-git"
+    epic: 12
+    action: "Give the builds a diff recipe with no banned git command (E12-P1). Add
+      to the item 64 fact in both build overrides: capture \"all changes since the
+      baseline, untracked included\" as `git diff <baseline>` plus `git ls-files --others
+      --exclude-standard -z | xargs -0 -I{} git diff --no-index /dev/null {}`, written
+      to the temp file. Name `git add -N` followed by `git reset`, seen in Stories
+      12.4, 12.6 and 12.8, as banned. Changes: `_bmad/custom/bmad-build-auto.toml`,
+      `_bmad/custom/bmad-build.toml`. Due: before Epic 13."
+    owner: "Amelia (dev)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-12-retro-2026-11-20.md"
+  - id: "epic-12-retro-item-87-one-home-for-agent-test-helpers"
+    epic: 12
+    action: "One home for the agent-test helpers (E12-D1, E12-D2, E12-B4, the stale
+      test name). In `backend/tests/agent_client.py`, keep: One cumulative tool list.
+      The 20 descriptions, read from `epics.md` Epic 12 (each \"Description:\" line,
+      plus the 12.5 addition) instead of copied literals. One answer unwrapper and
+      one error reader. Use them in every `test_agent_*.py` and both skill tests,
+      with no assertion changes. Rename `test_the_only_tool_is_get_app_info_…` and
+      resolve `deferred-work.md:1246`. Add an `editForm`/`toPanelFields` parity check
+      (one case table read by pytest and vitest, as `pace.cases.json` is). Add the
+      `cli.main` shutdown-config pin that `deferred-work.md` asked for \"at the Epic
+      12 retro\". Extend item 78's helper-reuse fact to `backend/tests/*.py`. Changes:
+      `backend/tests/agent_client.py`, `backend/tests/test_agent_mount.py`, `backend/tests/test_agent_read.py`,
+      `backend/tests/test_agent_write.py`, `backend/tests/test_agent_book_write.py`,
+      `backend/tests/test_agent_cover_url.py`, `backend/tests/test_agent_backup.py`,
+      `backend/tests/test_new_book_skill.py`, `backend/tests/test_notes_summary_skill.py`,
+      `backend/tests/test_cli.py`, `frontend/src/lib/bookDetail.test.ts`, `_bmad-output/implementation-artifacts/deferred-work.md`,
+      `_bmad/custom/bmad-testarch-atdd.toml`. Due: before Epic 13."
+    owner: "Murat (TEA)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-12-retro-2026-11-20.md"
