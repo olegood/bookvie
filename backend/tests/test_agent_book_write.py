@@ -22,7 +22,14 @@ import pytest
 
 from bookvie.intents import AddBookIntent, EditBookIntent
 from tests import test_agent_write
-from tests.agent_client import McpClient, error_of, text_of
+from tests.agent_client import (
+    AGENT_TOOL_NAMES,
+    BOOK_TOOL_NAMES,
+    DESCRIPTIONS,
+    McpClient,
+    error_of,
+    text_of,
+)
 from tests.helpers import (
     DUNE_ISBN13,
     assert_invariants,
@@ -31,10 +38,8 @@ from tests.helpers import (
     temp_files,
 )
 from tests.test_agent_write import (
-    BOOK_TOOL_NAMES,
     DUNE_SPINE_COLOR,
     DUNE_SUBTITLE,
-    EARLIER_TOOL_NAMES,
     FINISHED,
     GONE,
     MAIN,
@@ -44,7 +49,6 @@ from tests.test_agent_write import (
     SIDE1,
     SIDE2,
     UNREAD,
-    WRITE_TOOL_NAMES,
     Case,
     _assert_a_broken_handler_breaks_tool_and_route_alike,
     _route_answer,
@@ -73,28 +77,6 @@ FORM_KEYS = [
     "tags",
     "spineColor",
 ]
-
-BOOK_DESCRIPTIONS = {
-    "add_book": (
-        "Add a Book to the catalog. Every field is a string. Required: title, pages, authors "
-        "(separated by semicolons), language, publisher, type (paperback, hardcover or ebook); "
-        "edition defaults to 1. Optional: subtitle, isbn, year, tags (separated by commas), and "
-        "finishedOn (YYYY-MM-DD) for a Book the user has already read. A likely duplicate is "
-        "refused with duplicate_book and the matching Books: show them to the user, and send "
-        "confirmDuplicate true only if the user says to add it anyway. Returns the new Book's "
-        "id. coverUrl is the https address of the front cover image; bookvie downloads it. If "
-        "the download fails, nothing is saved: tell the user why."
-    ),
-    "edit_book": (
-        "Replace a Book's fields. This is a whole edit: a field you leave empty is cleared. Call "
-        "get_book first and send its editForm with bookId, changing only what the user asked "
-        "for. A finished Book's finishedOn can be changed but not emptied. removeCover true "
-        "deletes the Book's cover: send it only when the user asks. A changed title, author or "
-        "ISBN that makes it a likely duplicate is refused like add_book. coverUrl is the https "
-        "address of the front cover image; bookvie downloads it. If the download fails, nothing "
-        "is saved: tell the user why."
-    ),
-}
 
 # A new Book, as an agent sends it: the required fields, Tags and an ISBN.
 ADD = {
@@ -249,10 +231,10 @@ def test_add_book_advertises_the_add_book_intent_models_schema_and_the_storys_de
     for key in FORM_KEYS:
         assert schema["properties"][key]["type"] == "string", (key, schema["properties"][key])
     assert schema["properties"]["confirmDuplicate"]["type"] == "boolean"
-    assert listed["add_book"]["description"] == BOOK_DESCRIPTIONS["add_book"]
+    assert listed["add_book"]["description"] == DESCRIPTIONS["add_book"]
     # The cumulative list: 12.1's to 12.3's tools, add_book and edit_book, then 12.6's export_backup.
     names = [tool["name"] for tool in tools]
-    assert names == EARLIER_TOOL_NAMES + WRITE_TOOL_NAMES + BOOK_TOOL_NAMES + ["export_backup"]
+    assert names == AGENT_TOOL_NAMES
 
 
 def test_edit_book_requires_every_form_key_and_advertises_the_storys_description(
@@ -286,7 +268,7 @@ def test_edit_book_requires_every_form_key_and_advertises_the_storys_description
     assert schema["properties"]["coverUrl"]["type"] == "string"
     for key in [*FORM_KEYS, "bookId"]:
         assert schema["properties"][key]["type"] == "string", (key, schema["properties"][key])
-    assert listed["edit_book"]["description"] == BOOK_DESCRIPTIONS["edit_book"]
+    assert listed["edit_book"]["description"] == DESCRIPTIONS["edit_book"]
 
 
 @pytest.mark.parametrize("case", BOOK_CASES, ids=lambda case: case.id)
@@ -343,7 +325,7 @@ def test_a_partial_edit_book_is_refused_naming_the_missing_keys_and_changes_noth
     before = library_bytes(folder)
 
     answer = client.call_tool("edit_book", {"bookId": FINISHED, "title": "Dune Messiah"})
-    refused = json.loads(text_of(answer))
+    refused = error_of(answer)
     missing = sorted(key for key in FORM_KEYS if key != "title")
     named = sorted(field["field"] for field in refused.get("fields", []))
     assert (answer.get("isError"), named) == (True, missing), refused
@@ -505,9 +487,7 @@ def test_a_real_bookvie_process_advertises_both_book_tools_and_commits_an_add(
     _seed(folder, side_reads=2)
     with running_bookvie(folder) as client:
         listed = {tool["name"]: tool for tool in client.list_tools()}
-        assert list(listed) == EARLIER_TOOL_NAMES + WRITE_TOOL_NAMES + BOOK_TOOL_NAMES + [
-            "export_backup"
-        ]
+        assert list(listed) == AGENT_TOOL_NAMES
         for tool in TOOLS:
             if tool.name in BOOK_TOOL_NAMES:
                 assert listed[tool.name]["inputSchema"] == advertised_schema(tool), tool.name

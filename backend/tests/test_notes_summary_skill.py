@@ -23,10 +23,9 @@ import re
 from collections.abc import Callable
 from pathlib import Path
 
-from tests.agent_client import McpClient
+from tests.agent_client import McpClient, structured_of
 from tests.builder import LibraryBuilder
 from tests.test_agent_mount import _section
-from tests.test_agent_read import _structured
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SKILL_DIR = REPO_ROOT / ".claude" / "skills" / "bookvie-notes-summary"
@@ -124,7 +123,7 @@ def test_the_skill_reads_the_book_through_the_tools_keeps_its_start_step_and_its
     builder.write(folder)
     client = connect_mcp(data_dir=folder)
 
-    book = _structured(client.call_tool("get_book", {"bookId": dune}))
+    book = structured_of(client.call_tool("get_book", {"bookId": dune}))
     assert [reading.get("purpose") for reading in book["readings"]] == ["Why Arrakis"]
     assert book["currentReading"] is None
 
@@ -272,13 +271,13 @@ def test_every_name_the_skill_reads_is_in_the_tools_answers_and_it_names_only_th
     # find_book's candidates carry exactly the fields the skill lists.
     listed = re.search(r"each with ((?:`\w+`(?:, | and )?)+)\.", skill)
     assert listed is not None
-    candidate = _structured(client.call_tool("find_book", {"query": "Dune"}))["books"][0]
+    candidate = structured_of(client.call_tool("find_book", {"query": "Dune"}))["books"][0]
     assert set(re.findall(r"`(\w+)`", listed.group(1))) == set(candidate)
 
     # Every path step 2 reads resolves in the tools' answers.
-    home = _structured(client.call_tool("get_home"))
-    book = _structured(client.call_tool("get_book", {"bookId": dune}))
-    notes = _structured(client.call_tool("get_card_notes", {"bookId": dune}))
+    home = structured_of(client.call_tool("get_home"))
+    book = structured_of(client.call_tool("get_book", {"bookId": dune}))
+    notes = structured_of(client.call_tool("get_card_notes", {"bookId": dune}))
     assert home["mainBook"]["id"] == dune
     assert [n["text"] for n in notes["groups"][0]["notes"]] == ["Fear is the mind-killer."]
     assert book["currentReading"]["purpose"] == "Reread the ecology"
@@ -318,7 +317,7 @@ def test_an_unfinished_reading_off_the_main_book_is_still_current_reading_with_i
     client = connect_mcp(data_dir=folder)
 
     current = {
-        role: _structured(client.call_tool("get_book", {"bookId": book}))["currentReading"]
+        role: structured_of(client.call_tool("get_book", {"bookId": book}))["currentReading"]
         for role, book in books.items()
     }
     assert {role: (r["purpose"], r["currentPage"]) for role, r in current.items()} == {

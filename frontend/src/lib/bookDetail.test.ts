@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { afterEach, describe, it } from 'node:test'
 import { BOOK_FIELD_KEYS } from '../api/index.ts'
 import {
@@ -87,6 +88,16 @@ describe('toPanelFields', () => {
     assert.equal(fields.year, '1965')
     assert.equal(fields.spineColor, '#112233')
     assert.equal(fields.finishedOn, '2024-02-10')
+  })
+  it("[P2] builds the same form as the server's editForm for the shared cases", () => {
+    // One table with backend/tests/test_edit_form_parity.py (Epic 12 retro item 87, E12-B4).
+    const { cases } = JSON.parse(readFileSync(new URL('./editForm.cases.json', import.meta.url), 'utf8')) as {
+      cases: { name: string; book: EditableBook; fields: Record<string, string> }[]
+    }
+    assert.ok(cases.length > 0, 'the shared table has no cases')
+    for (const { name, book, fields } of cases) {
+      assert.deepEqual(Object.entries(toPanelFields(book)), Object.entries(fields), name)
+    }
   })
 })
 

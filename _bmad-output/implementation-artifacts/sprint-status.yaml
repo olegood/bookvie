@@ -1048,5 +1048,5 @@ action_items:
       `backend/tests/test_cli.py`, `frontend/src/lib/bookDetail.test.ts`, `_bmad-output/implementation-artifacts/deferred-work.md`,
       `_bmad/custom/bmad-testarch-atdd.toml`. Due: before Epic 13."
     owner: "Murat (TEA)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-12-retro-2026-11-20.md"

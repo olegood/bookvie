@@ -1246,6 +1246,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-12-2-let-an-agent-read-my-library.md`
   summary: `test_the_only_tool_is_get_app_info_and_it_returns_the_app_info_view` now asserts the cumulative tool list (seven tools after Story 12.2), so its name is stale and will mislead every later Epic 12 story. Renaming it means editing the Story 12.1 spec and documents that cite it; do it at the Epic 12 retro or with the AD-21 spine reconciliation. Low.
   evidence: `backend/tests/test_agent_mount.py` (Blind Hunter, code review of Story 12.2). The review's 9 spine drift findings are already recorded under "Deferred from: build-auto review of spec-12-2" and Story 12.1's entries, so they are not repeated here.
+  resolved: Epic 12 retro item 87 (2026-11-20). Renamed to `test_the_tool_list_is_epic_12s_and_get_app_info_returns_the_app_info_view`; it asserts `agent_client.AGENT_TOOL_NAMES`, the one cumulative list. The Story 12.1 and 12.2 ATDD checklists, the Story 12.2 and 12.3 specs and the Epic 12 retro keep the old name as history.
 
 ## Deferred from: build-auto review of spec-12-3-let-an-agent-record-my-reading (2026-11-19)
 
@@ -1262,6 +1263,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-12-3-let-an-agent-record-my-reading.md`
   summary: `test_agent_shutdown.py` builds its own `uvicorn.Config` and copies `cli.main`'s `release()`, so nothing pins the production shutdown. If `cli.main` set `timeout_graceful_shutdown`, or `release` stopped taking `app.state.write_lock`, every test would still pass. Add a `test_cli.py` test that pulls `cli.main`'s `Config` and `release` and asserts both. Do it at the Epic 12 retro. Low.
   evidence: `backend/bookvie/cli.py:315-321`; `backend/tests/test_agent_shutdown.py` `release`, `config` (Verification Gap, Blind Hunter, Acceptance Auditor, code review of Story 12.3).
+  resolved: Epic 12 retro item 87 (2026-11-20). `backend/tests/test_cli.py::test_main_waits_for_in_flight_calls_and_releases_the_lock_under_the_write_lock` runs `cli.main` with the fake server and pins its own `Config` (`timeout_graceful_shutdown` is `None`) and `release` (it waits while the test holds `app.state.write_lock`, then removes `bookvie.lock`). Setting a timeout, or dropping the write lock from `release`, each fails it.
 - source_spec: `_bmad-output/implementation-artifacts/spec-12-3-let-an-agent-record-my-reading.md`
   summary: The `set_up_next` tool's description (epics.md Story 12.3) says the Book "can be unread or paused, but not the Main book". But `set_up_next` accepts any Book except the Main book, and AD-6 names a finished Book queued for a re-read, so an agent may refuse a re-read it could make. AC-3 pins the text, so change `epics.md` first, together with the `pause` text above, then `DESCRIPTIONS` and `SET_UP_NEXT`. Low.
   evidence: `backend/bookvie/intents/set_up_next.py` `set_up_next`; spine AD-6 (Spine Check, code review of Story 12.3).

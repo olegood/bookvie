@@ -45,7 +45,14 @@ from bookvie.intents import (
     UnmarkSideReadIntent,
     UpdatePageIntent,
 )
-from tests.agent_client import McpClient, error_of, text_of
+from tests.agent_client import (
+    AGENT_TOOL_NAMES,
+    DESCRIPTIONS,
+    WRITE_TOOL_NAMES,
+    McpClient,
+    error_of,
+    structured_of,
+)
 from tests.builder import LibraryBuilder
 from tests.helpers import (
     DUNE_ISBN13,
@@ -54,18 +61,6 @@ from tests.helpers import (
     library_bytes,
     temp_files,
 )
-
-# 12.1's and 12.2's tools, in the order they are listed (the first seven of
-# test_agent_mount.py's AGENT_TOOL_NAMES, which Story 12.3 extends).
-EARLIER_TOOL_NAMES = [
-    "get_app_info",
-    "find_book",
-    "get_book",
-    "list_catalog",
-    "get_card_notes",
-    "get_home",
-    "get_stats",
-]
 
 # Each write tool: its intent model, its properties by alias, and the required ones.
 WRITE_TOOLS: dict[str, tuple[type, set[str], set[str]]] = {
@@ -88,57 +83,7 @@ WRITE_TOOLS: dict[str, tuple[type, set[str], set[str]]] = {
     "mark_side_read": (MarkSideReadIntent, {"bookId"}, {"bookId"}),
     "unmark_side_read": (UnmarkSideReadIntent, {"bookId"}, {"bookId"}),
 }
-WRITE_TOOL_NAMES = list(WRITE_TOOLS)
 DESTRUCTIVE_TOOL_NAMES = ["delete_book", "delete_card_note", "restore", "set_spine_color"]
-# Story 12.4's two tools (tests/test_agent_book_write.py), listed after the ten.
-BOOK_TOOL_NAMES = ["add_book", "edit_book"]
-
-DESCRIPTIONS = {
-    "start_reading": (
-        "Make a Book the Main book and start or resume its Reading, with an optional "
-        "one-sentence Purpose. This pauses the current Main book, and it may change Up next. "
-        "Tell the user what will change and get a yes before you call it. When the Book is a "
-        "Side read, also send page: the page the user is on."
-    ),
-    "update_page": (
-        "Save the page the user has reached in the Main book: the page number they are on, "
-        "from 0 to its page count, not the number of pages read. If the user says how many "
-        "pages they read, add them to the current page from get_home. Use the Book's id from "
-        "find_book; never guess a Book from its title. reachedLastPage means the user is at "
-        "the last page: ask whether to finish the Book."
-    ),
-    "finish_reading": (
-        "Finish a Book's current Reading, or record a past finish for a Book never read, on "
-        "finishedOn (YYYY-MM-DD, not in the future). purposeFulfilled is yes, partly or "
-        "notYet, and rating is 1 to 5; send null for either when the user doesn't say."
-    ),
-    "pause": (
-        "Pause the Main book at its current page. It becomes Up next, in place of any Book that "
-        "was Up next."
-    ),
-    "set_up_next": (
-        "Choose the Book to read next: any Book except the Main book, including a finished one "
-        "to re-read. It replaces the current Up next, which keeps its state."
-    ),
-    "edit_purpose": (
-        "Change the Purpose of a Book's current Reading (active or paused): one sentence on "
-        "what the user needs to be able to do with this Book. null clears it."
-    ),
-    "add_card_note": (
-        "Add a Card note to a Book: text (a quote or a note, in the user's words; don't "
-        "rewrite it) and the page or page range where the user found it, such as 212 or "
-        "212-214."
-    ),
-    "edit_card_note": (
-        "Change a Card note's text and page. Takes the Book's id and the Card note's id from "
-        "get_book or get_card_notes."
-    ),
-    "mark_side_read": (
-        "Mark a Book as read on the side, next to the Main book. At most 3 Side reads; it "
-        "doesn't start a Reading."
-    ),
-    "unmark_side_read": "Stop reading a Book on the side. Its Readings and page don't change.",
-}
 
 # The seeded Books, by role. Fixed ids, so a case names its Book.
 MAIN = "a0000000-0000-4000-8000-000000000001"  # the Main book, at page 120 of 616, a Purpose
@@ -429,9 +374,7 @@ def _tool_answer(client: McpClient, tool: str, arguments: dict[str, Any]) -> tup
     result = client.call_tool(tool, arguments)
     if result.get("isError") is True:
         return "error", error_of(result)
-    structured = result["structuredContent"]
-    assert json.loads(text_of(result)) == structured, (text_of(result)[:300], structured)
-    return "ok", structured
+    return "ok", structured_of(result)
 
 
 # --- AC-1: the input schemas and the tool list --------------------------------
@@ -444,9 +387,7 @@ def test_the_ten_write_tools_advertise_their_intent_models_schemas_and_join_the_
     from bookvie.agent import input_schema
 
     tools = mcp_client.list_tools()
-    assert [
-        tool["name"] for tool in tools
-    ] == EARLIER_TOOL_NAMES + WRITE_TOOL_NAMES + BOOK_TOOL_NAMES + ["export_backup"]
+    assert [tool["name"] for tool in tools] == AGENT_TOOL_NAMES
 
     listed = {tool["name"]: tool for tool in tools}
     for name, (model, keys, required) in WRITE_TOOLS.items():
@@ -512,9 +453,9 @@ def test_each_write_tools_description_is_the_storys_text(mcp_client: McpClient) 
     described = {
         tool["name"]: tool.get("description")
         for tool in mcp_client.list_tools()
-        if tool["name"] in DESCRIPTIONS
+        if tool["name"] in WRITE_TOOL_NAMES
     }
-    assert described == DESCRIPTIONS
+    assert described == {name: DESCRIPTIONS[name] for name in WRITE_TOOL_NAMES}
 
 
 # --- AC-4: no destructive tools -----------------------------------------------------
@@ -701,9 +642,7 @@ def test_a_real_bookvie_process_advertises_and_commits_a_write_tool(tmp_path: Pa
     _seed(folder, side_reads=2)
     with running_bookvie(folder) as client:
         listed = {tool["name"]: tool for tool in client.list_tools()}
-        assert list(listed) == EARLIER_TOOL_NAMES + WRITE_TOOL_NAMES + BOOK_TOOL_NAMES + [
-            "export_backup"
-        ]
+        assert list(listed) == AGENT_TOOL_NAMES
         for name, (model, _, _) in WRITE_TOOLS.items():
             assert listed[name]["inputSchema"] == input_schema(model), name
         answer = client.call_tool("update_page", UPDATE)

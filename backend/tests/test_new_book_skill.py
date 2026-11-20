@@ -25,11 +25,10 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from tests.agent_client import McpClient, error_of
+from tests.agent_client import McpClient, error_of, structured_of
 from tests.builder import LibraryBuilder
 from tests.helpers import image_bytes, library_bytes
 from tests.test_agent_mount import _section
-from tests.test_agent_read import _structured
 from tests.test_notes_summary_skill import HTTP_CLIENT, _skill_files
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -237,17 +236,19 @@ def test_every_name_the_skill_reads_is_in_the_tools_answers_and_it_names_only_it
     # find_book's candidates carry exactly the fields the skill lists.
     listed = re.search(r"each with ((?:`\w+`(?:, | and )?)+), or an empty list", skill)
     assert listed is not None
-    candidate = _structured(client.call_tool("find_book", {"query": "Dune"}))["books"][0]
+    candidate = structured_of(client.call_tool("find_book", {"query": "Dune"}))["books"][0]
     assert set(re.findall(r"`(\w+)`", listed.group(1))) == set(candidate)
-    assert _structured(client.call_tool("find_book", {"query": "The Dispossessed"})) == {
+    assert structured_of(client.call_tool("find_book", {"query": "The Dispossessed"})) == {
         "books": []
     }
 
     # add_book with a coverUrl: ids.bookId, then get_book's title, tags and hasCover.
     cover_url = "https://covers.example/dispossessed.jpg"
-    added = _structured(client.call_tool("add_book", {**_book_arguments(), "coverUrl": cover_url}))
+    added = structured_of(
+        client.call_tool("add_book", {**_book_arguments(), "coverUrl": cover_url})
+    )
     assert fetcher.urls == [cover_url]
-    book = _structured(client.call_tool("get_book", {"bookId": added["ids"]["bookId"]}))
+    book = structured_of(client.call_tool("get_book", {"bookId": added["ids"]["bookId"]}))
     assert book["title"] == "The Dispossessed"
     assert "added-by-skill" in book["tags"]
     assert book["hasCover"] is True
@@ -301,7 +302,7 @@ def test_a_cover_refused_on_cover_url_is_named_by_its_field_and_nothing_is_saved
     )
     assert refusal["code"] == "invalid_fields"
     assert [field["field"] for field in refusal["fields"]] == ["coverUrl"]
-    assert _structured(client.call_tool("find_book", {"query": "The Dispossessed"})) == {
+    assert structured_of(client.call_tool("find_book", {"query": "The Dispossessed"})) == {
         "books": []
     }
     assert re.search(r"a field in `fields` is `coverUrl`", " ".join(_skill().split()))
@@ -460,9 +461,9 @@ def test_step_4s_example_and_field_keys_are_what_add_book_takes(
     assert {"finishedOn", "spineColor", "confirmDuplicate"} <= properties
 
     # The example as written: saved, its cover downloaded from coverUrl.
-    added = _structured(client.call_tool("add_book", example))
+    added = structured_of(client.call_tool("add_book", example))
     assert fetcher.urls == [example["coverUrl"]]
-    book = _structured(client.call_tool("get_book", {"bookId": added["ids"]["bookId"]}))
+    book = structured_of(client.call_tool("get_book", {"bookId": added["ids"]["bookId"]}))
     assert book["title"] == example["title"]
     assert book["hasCover"] is True
 
@@ -478,8 +479,8 @@ def test_step_4s_example_and_field_keys_are_what_add_book_takes(
             ).items()
             if key != "isbn"
         }
-        added = _structured(client.call_tool("add_book", arguments))
-        book = _structured(client.call_tool("get_book", {"bookId": added["ids"]["bookId"]}))
+        added = structured_of(client.call_tool("add_book", arguments))
+        book = structured_of(client.call_tool("get_book", {"bookId": added["ids"]["bookId"]}))
         assert (book["type"], book["pages"]) == (kind, 1), book
         assert {"added-by-skill", "0-pages"} <= {tag.lower() for tag in book["tags"]}
 
@@ -501,7 +502,7 @@ def test_a_cover_refusal_comes_with_other_fields_or_ahead_of_them_as_step_4_says
     )
     assert refusal["code"] == "invalid_fields"
     assert sorted(field["field"] for field in refusal["fields"]) == ["coverUrl", "pages"]
-    assert _structured(broken.call_tool("find_book", {"query": "The Dispossessed"})) == {
+    assert structured_of(broken.call_tool("find_book", {"query": "The Dispossessed"})) == {
         "books": []
     }
 
@@ -533,6 +534,6 @@ def test_a_cover_refusal_comes_with_other_fields_or_ahead_of_them_as_step_4_says
     assert library_bytes(folder) == before
 
     # Only the user's say-so (confirmDuplicate: true) saves the copy.
-    added = _structured(client.call_tool("add_book", {**dune, "confirmDuplicate": True}))
+    added = structured_of(client.call_tool("add_book", {**dune, "confirmDuplicate": True}))
     assert added["ok"] is True
-    assert len(_structured(client.call_tool("find_book", {"query": "Dune"}))["books"]) == 2
+    assert len(structured_of(client.call_tool("find_book", {"query": "Dune"}))["books"]) == 2

@@ -29,7 +29,12 @@ import pytest
 from bookvie.intents import AddBookIntent, EditBookIntent
 from bookvie.intents.contract import COVER_LIMIT
 from tests import test_agent_write
-from tests.agent_client import McpClient
+from tests.agent_client import (
+    AGENT_TOOL_NAMES,
+    BOOK_TOOL_NAMES,
+    DESCRIPTIONS,
+    McpClient,
+)
 from tests.cover_server import (
     CERT_HOSTS,
     PROXY_VARIABLES,
@@ -58,10 +63,7 @@ from tests.test_agent_book_write import (
     UNREAD_FORM,
 )
 from tests.test_agent_write import (
-    BOOK_TOOL_NAMES,
-    EARLIER_TOOL_NAMES,
     GONE,
-    WRITE_TOOL_NAMES,
     Case,
     _route_answer,
     _tool_answer,
@@ -70,35 +72,6 @@ from tests.test_agent_write import (
 
 # Story 12.3's fixture: intents mint ids (and cover file names) from a counter.
 same_ids = test_agent_write.same_ids
-
-# Story 12.4's descriptions with Story 12.5's sentence appended, character for character
-# (epics.md). Spelled out here, not built from test_agent_book_write's constants, which the
-# build updates.
-COVER_URL_SENTENCE = (
-    "coverUrl is the https address of the front cover image; bookvie downloads it. If the "
-    "download fails, nothing is saved: tell the user why."
-)
-COVER_URL_DESCRIPTIONS = {
-    "add_book": (
-        "Add a Book to the catalog. Every field is a string. Required: title, pages, authors "
-        "(separated by semicolons), language, publisher, type (paperback, hardcover or ebook); "
-        "edition defaults to 1. Optional: subtitle, isbn, year, tags (separated by commas), and "
-        "finishedOn (YYYY-MM-DD) for a Book the user has already read. A likely duplicate is "
-        "refused with duplicate_book and the matching Books: show them to the user, and send "
-        "confirmDuplicate true only if the user says to add it anyway. Returns the new Book's "
-        "id. coverUrl is the https address of the front cover image; bookvie downloads it. If "
-        "the download fails, nothing is saved: tell the user why."
-    ),
-    "edit_book": (
-        "Replace a Book's fields. This is a whole edit: a field you leave empty is cleared. Call "
-        "get_book first and send its editForm with bookId, changing only what the user asked "
-        "for. A finished Book's finishedOn can be changed but not emptied. removeCover true "
-        "deletes the Book's cover: send it only when the user asks. A changed title, author or "
-        "ISBN that makes it a likely duplicate is refused like add_book. coverUrl is the https "
-        "address of the front cover image; bookvie downloads it. If the download fails, nothing "
-        "is saved: tell the user why."
-    ),
-}
 
 # --- What the local server serves ----------------------------------------------
 
@@ -355,12 +328,9 @@ def test_add_book_and_edit_book_take_an_optional_string_cover_url_and_say_so_in_
             assert listed[tool.name]["inputSchema"] == advertised_schema(tool), tool.name
 
     for name in BOOK_TOOL_NAMES:
-        assert listed[name]["description"] == COVER_URL_DESCRIPTIONS[name]
-        assert listed[name]["description"].endswith(f" {COVER_URL_SENTENCE}")
+        assert listed[name]["description"] == DESCRIPTIONS[name]
     # The cumulative list: Story 12.4's, then Story 12.6's export_backup (12.5 adds no tool).
-    assert [
-        tool["name"] for tool in tools
-    ] == EARLIER_TOOL_NAMES + WRITE_TOOL_NAMES + BOOK_TOOL_NAMES + ["export_backup"]
+    assert [tool["name"] for tool in tools] == AGENT_TOOL_NAMES
 
 
 # --- AC-2 and AC-3: refusals that come before any download ---------------------------

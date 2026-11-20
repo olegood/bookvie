@@ -29,42 +29,22 @@ from pydantic import BaseModel
 from bookvie import instance
 from bookvie.intents import OkResponse, book_not_found
 from bookvie.intents.intent_model import IntentModel, malformed, parse_form_intent
-from tests.agent_client import PROTOCOL_VERSION, SESSION_HEADER, McpClient, error_of, text_of
+from tests.agent_client import (
+    AGENT_TOOL_NAMES,
+    DESCRIPTIONS,
+    PROTOCOL_VERSION,
+    SESSION_HEADER,
+    McpClient,
+    error_of,
+    text_of,
+)
 from tests.helpers import BASE_URL, COULDNT_SAVE_BODY
 from tests.servers import wait_for_health
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 README = BACKEND_ROOT.parent / "README.md"
 
-APP_INFO_DESCRIPTION = (
-    "Which bookvie this is: its version, whether it is the real app (production) or a "
-    "development server (dev), and the library folder it uses. Call it first to check you "
-    "are talking to the bookvie you mean."
-)
 APP_INFO_KEYS = {"version", "mode", "dataDir", "commit"}
-# The tool list, cumulative across Epic 12's stories (each story extends it).
-AGENT_TOOL_NAMES = [
-    "get_app_info",
-    "find_book",
-    "get_book",
-    "list_catalog",
-    "get_card_notes",
-    "get_home",
-    "get_stats",
-    "start_reading",
-    "update_page",
-    "finish_reading",
-    "pause",
-    "set_up_next",
-    "edit_purpose",
-    "add_card_note",
-    "edit_card_note",
-    "mark_side_read",
-    "unmark_side_read",
-    "add_book",
-    "edit_book",
-    "export_backup",
-]
 # The intents' cap on a body part (Starlette's multipart limit), 1 MiB.
 BODY_CAP = 1024 * 1024
 OWN = "http://127.0.0.1:8765"
@@ -441,14 +421,14 @@ def test_the_tool_helper_advertises_the_models_schema_and_answers_like_the_route
 # --- AC-6: the tool list ------------------------------------------------------
 
 
-def test_the_only_tool_is_get_app_info_and_it_returns_the_app_info_view(
+def test_the_tool_list_is_epic_12s_and_get_app_info_returns_the_app_info_view(
     mcp_client: McpClient,
 ) -> None:
     # [P0] AC-6.
     tools = mcp_client.list_tools()
     assert [tool["name"] for tool in tools] == AGENT_TOOL_NAMES
     tool = mcp_client.tool("get_app_info")
-    assert tool["description"] == APP_INFO_DESCRIPTION
+    assert tool["description"] == DESCRIPTIONS["get_app_info"]
     assert tool["inputSchema"]["type"] == "object"
     assert tool["inputSchema"].get("properties", {}) == {}
     assert tool["inputSchema"]["additionalProperties"] is False

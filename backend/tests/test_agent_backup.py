@@ -39,7 +39,14 @@ from bookvie.intents.contract import COULDNT_EXPORT_MESSAGE, COULDNT_SAVE_MESSAG
 from bookvie.intents.intent_model import malformed
 from bookvie.store import Store
 from bookvie.store.fs import OsFileSystem
-from tests.agent_client import McpClient, text_of
+from tests.agent_client import (
+    AGENT_TOOL_NAMES,
+    DESCRIPTIONS,
+    EXPORT_BACKUP,
+    McpClient,
+    error_of,
+    text_of,
+)
 from tests.helpers import (
     BASE_URL,
     TODAY,
@@ -53,23 +60,12 @@ from tests.helpers import (
     temp_files,
 )
 from tests.test_agent_write import (
-    BOOK_TOOL_NAMES,
-    EARLIER_TOOL_NAMES,
     MAIN,
     UNREAD_COVER,
     UPDATE,
-    WRITE_TOOL_NAMES,
     _seed,
     running_bookvie,
 )
-
-EXPORT_BACKUP = "export_backup"
-EXPORT_BACKUP_DESCRIPTION = (
-    "Write a dated backup of the whole library (library.json and covers, the same file as the "
-    "Backup page's Export) to the backups folder, and return its path, size and time. A second "
-    "backup on the same day replaces that day's file. It counts as the library's last export."
-)
-"""Story 12.6's description, character for character (epics.md)."""
 
 AC1_DAY = date(2026, 11, 19)
 """The fake day of AC-1's servers (``--fake-today``)."""
@@ -118,34 +114,6 @@ def _members(data: bytes) -> dict[str, bytes]:
 def _when(value: Any) -> datetime | None:
     """An ISO-8601 time from a view or a tool answer, or ``None``."""
     return datetime.fromisoformat(value) if isinstance(value, str) else None
-
-
-def _backup(client: McpClient) -> dict[str, Any]:
-    """The ``tools/call`` result of ``export_backup``, never raising on the tool's answer.
-
-    A JSON-RPC error (an unknown tool, before the story is built) comes back
-    as an ``isError`` result holding that error as its text, so a leaf's
-    first assertion is the one that fails, not this setup call.
-    """
-    client.ensure_initialized()
-    body = client.rpc("tools/call", {"name": EXPORT_BACKUP, "arguments": {}})
-    if "result" in body:
-        return body["result"]
-    return {"isError": True, "content": [{"type": "text", "text": json.dumps(body.get("error"))}]}
-
-
-def _error_code(answer: dict[str, Any]) -> str | None:
-    """The AD-9 ``error.code`` an error result carries, or ``None`` for any other answer.
-
-    Never raises, so a missing tool fails the criterion assertion, not a parse.
-    """
-    if answer.get("isError") is not True:
-        return None
-    try:
-        error = json.loads(text_of(answer))
-    except AssertionError, ValueError:
-        return None
-    return error.get("code") if isinstance(error, dict) else None
 
 
 def _seed_with_cover(folder: Path) -> None:
@@ -202,7 +170,7 @@ def test_export_backup_writes_the_dated_file_into_the_backups_folder_that_follow
         flags=(*flags, "--fake-today", AC1_DAY.isoformat()),
         default_folder=default,
     ) as client:
-        answer = _backup(client)
+        answer = client.call_tool(EXPORT_BACKUP)
 
         assert _names(backups) == [name], answer
 
@@ -221,9 +189,9 @@ def test_export_backup_writes_the_dated_file_into_the_backups_folder_that_follow
     for place in elsewhere:
         assert not place.exists(), place
     # The tool is listed after 12.4's two, takes no arguments, and says what it does.
-    assert list(listed) == EARLIER_TOOL_NAMES + WRITE_TOOL_NAMES + BOOK_TOOL_NAMES + [EXPORT_BACKUP]
+    assert list(listed) == AGENT_TOOL_NAMES
     assert listed[EXPORT_BACKUP]["inputSchema"] == input_schema(NoArguments)
-    assert listed[EXPORT_BACKUP]["description"] == EXPORT_BACKUP_DESCRIPTION
+    assert listed[EXPORT_BACKUP]["description"] == DESCRIPTIONS[EXPORT_BACKUP]
 
 
 # --- AC-2: the backup restores through the existing restore check ------------
@@ -234,7 +202,7 @@ def test_the_backup_file_restores_through_the_restore_check_and_reproduces_the_l
 ) -> None:
     # [P0] AC-2. AD-14's round trip: the backup is restored onto an empty library.
     client, folder, backups = _connect(connect_mcp, tmp_path)
-    _backup(client)
+    client.call_tool(EXPORT_BACKUP)
     written = backups / TODAY_BACKUP
     backup = written.read_bytes() if written.is_file() else b""
     restored = tmp_path / "restored"
@@ -264,10 +232,10 @@ def test_a_second_backup_on_the_same_day_replaces_that_days_file_and_nothing_els
     (backups / OLDER_BACKUP).write_bytes(OLDER_BYTES)
     (backups / NOT_A_BACKUP).write_bytes(NOT_A_BACKUP_BYTES)
     client, folder, _ = _connect(connect_mcp, tmp_path)
-    _backup(client)
+    client.call_tool(EXPORT_BACKUP)
     client.call_tool("update_page", UPDATE)
 
-    second = _backup(client)
+    second = client.call_tool(EXPORT_BACKUP)
 
     assert _member(backups / TODAY_BACKUP, "library.json") == library_bytes(folder), second
     stored = json.loads(library_bytes(folder))
@@ -293,7 +261,7 @@ def test_a_backup_is_the_last_export_in_the_backup_and_home_views_and_a_failed_o
     (folder / LOCAL_STATE).write_bytes(EARLIER_EXPORT)
     now = FakeClock(TODAY).now()
 
-    answer = _backup(client)
+    answer = client.call_tool(EXPORT_BACKUP)
 
     backup_view = client.http.get("/api/views/backup").json()
     assert _when(backup_view.get("lastExportAt")) == now, (backup_view, answer)
@@ -306,8 +274,8 @@ def test_a_backup_is_the_last_export_in_the_backup_and_home_views_and_a_failed_o
     state = client.http.app.state
     state.clock = FakeClock(TODAY + timedelta(days=1))
     state.store.fs = FaultyFs("replace")
-    failed = _backup(client)
-    assert _error_code(failed) == "couldnt_save", failed
+    failed = client.call_tool(EXPORT_BACKUP)
+    assert error_of(failed)["code"] == "couldnt_save", failed
     assert _when(client.http.get("/api/views/backup").json()["lastExportAt"]) == now
     assert _when(client.http.get("/api/views/home").json()["lastExportAt"]) == now
 
@@ -348,12 +316,12 @@ def test_a_read_or_write_failure_is_refused_and_leaves_no_partial_file_and_no_ne
     else:
         client.http.app.state.store.fs = FaultyFs(fault)
     try:
-        answer = _backup(client)
+        answer = client.call_tool(EXPORT_BACKUP)
     finally:
         cover.chmod(0o644)
 
-    assert _error_code(answer) == code, answer
-    error = json.loads(text_of(answer))
+    assert error_of(answer)["code"] == code, answer
+    error = error_of(answer)
     assert error["kind"] == code
     assert error["message"] == message
     # No partial file and no temp file in the backups folder: only what was there before.
@@ -410,7 +378,7 @@ def test_any_spelling_of_the_default_data_folder_gets_the_default_backups_folder
         named = home / "elsewhere" / ".." / "bookvie-data"
 
     with running_bookvie(named, flags=("--fake-today", AC1_DAY.isoformat())) as client:
-        answer = _backup(client)
+        answer = client.call_tool(EXPORT_BACKUP)
 
     assert _names(home / "bookvie-backups") == [backup_name(AC1_DAY)], answer
     assert answer["structuredContent"]["path"] == str(
@@ -431,7 +399,7 @@ def test_a_scratch_folder_gets_its_sibling_backups_folder_in_either_mode(
     flags = ("--dev",) if dev else ()
 
     with running_bookvie(folder, flags=(*flags, "--fake-today", AC1_DAY.isoformat())) as client:
-        answer = _backup(client)
+        answer = client.call_tool(EXPORT_BACKUP)
 
     backups = folder.parent / f"{folder.name}-backups"
     assert _names(backups) == [backup_name(AC1_DAY)], answer
@@ -447,7 +415,7 @@ def test_the_backups_folder_is_created_with_its_parents(
     backups = tmp_path / "a" / "b" / "backups"
     client = connect_mcp(data_dir=folder, backups_dir=backups)
 
-    answer = _backup(client)
+    answer = client.call_tool(EXPORT_BACKUP)
 
     assert _names(backups) == [TODAY_BACKUP], answer
     assert answer["structuredContent"]["size"] == (backups / TODAY_BACKUP).stat().st_size
@@ -460,7 +428,7 @@ def test_without_a_backups_dir_the_app_derives_it_from_the_data_folder(
     _seed_with_cover(folder)
     client = connect_mcp(data_dir=folder)
 
-    answer = _backup(client)
+    answer = client.call_tool(EXPORT_BACKUP)
 
     assert _names(tmp_path / "library-backups") == [TODAY_BACKUP], answer
 
@@ -483,7 +451,7 @@ def test_a_failed_folder_flush_after_the_rename_is_logged_and_the_backup_succeed
     (folder / LOCAL_STATE).write_bytes(EARLIER_EXPORT)
     client.http.app.state.store.fs = FaultyFs("fsync_dir")
 
-    answer = _backup(client)
+    answer = client.call_tool(EXPORT_BACKUP)
 
     assert answer.get("isError") is not True, answer
     assert _names(backups) == [TODAY_BACKUP]
@@ -519,7 +487,7 @@ def test_a_backup_across_midnight_reads_the_clock_once_for_its_name_answer_and_l
     clock = _MidnightClock()
     client.http.app.state.clock = clock
 
-    answer = _backup(client)
+    answer = client.call_tool(EXPORT_BACKUP)
 
     created_at = _when(answer["structuredContent"]["createdAt"])
     assert created_at == clock.before, answer
@@ -541,7 +509,7 @@ def test_a_failure_recording_the_last_export_is_logged_and_the_backup_succeeds(
 
     monkeypatch.setattr(client.http.app.state.store, "record_export", refuse)
 
-    answer = _backup(client)
+    answer = client.call_tool(EXPORT_BACKUP)
 
     assert answer.get("isError") is not True, answer
     assert _names(backups) == [TODAY_BACKUP]
@@ -561,9 +529,9 @@ def test_a_backups_folder_that_cant_be_created_is_couldnt_save(
     backups = in_the_way if blocker == "folder" else in_the_way / "backups"
     client = connect_mcp(data_dir=folder, backups_dir=backups)
 
-    answer = _backup(client)
+    answer = client.call_tool(EXPORT_BACKUP)
 
-    assert _error_code(answer) == "couldnt_save", answer
+    assert error_of(answer)["code"] == "couldnt_save", answer
     assert in_the_way.read_bytes() == NOT_A_BACKUP_BYTES
     assert _last_export(client) == EARLIER_EXPORT_AT
 
@@ -580,7 +548,7 @@ def test_the_zip_is_built_under_the_lock_and_written_after_it_is_released(
     state.write_lock = lock
     state.store.fs = _LoggingFs(log)
 
-    answer = _backup(client)
+    answer = client.call_tool(EXPORT_BACKUP)
 
     assert answer.get("isError") is not True, answer
     # The backup file's write, then local-state.json's.
@@ -606,7 +574,7 @@ def test_an_argument_is_refused_and_no_file_is_written(
 
     result = body["result"]
     assert result.get("isError") is True, body
-    assert json.loads(text_of(result)) == malformed().response_body()["error"]
+    assert error_of(result) == malformed().response_body()["error"]
     assert _names(backups) == []
     assert _last_export(client) == EARLIER_EXPORT_AT
 
@@ -619,7 +587,7 @@ def test_a_library_with_no_covers_round_trips(
     _seed(folder, side_reads=2)
     backups = tmp_path / "library-backups"
     client = connect_mcp(data_dir=folder, backups_dir=backups)
-    _backup(client)
+    client.call_tool(EXPORT_BACKUP)
     backup = (backups / TODAY_BACKUP).read_bytes()
     restored = tmp_path / "restored"
     restored.mkdir()
@@ -645,7 +613,7 @@ def test_a_backup_larger_than_one_chunk_is_written_whole_and_restores(
     backups = tmp_path / "library-backups"
     client = connect_mcp(data_dir=folder, backups_dir=backups)
 
-    answer = _backup(client)
+    answer = client.call_tool(EXPORT_BACKUP)
 
     written = backups / TODAY_BACKUP
     backup = written.read_bytes() if written.is_file() else b""
@@ -674,9 +642,9 @@ def test_an_app_with_no_backups_folder_refuses_the_backup_and_records_nothing(
     with TestClient(app, base_url=BASE_URL) as http:
         client = McpClient(http, data_dir=folder)
 
-        answer = _backup(client)
+        answer = client.call_tool(EXPORT_BACKUP)
 
-        assert _error_code(answer) == "couldnt_save", answer
+        assert error_of(answer)["code"] == "couldnt_save", answer
         assert _last_export(client) == EARLIER_EXPORT_AT
     assert (folder / LOCAL_STATE).read_bytes() == EARLIER_EXPORT
     assert sorted(p.name for p in tmp_path.iterdir()) == ["library"]
@@ -695,9 +663,9 @@ def test_an_app_with_no_backups_folder_refuses_before_it_takes_the_lock(
     app.state.store.lock = lock
     app.state.write_lock = lock
     with TestClient(app, base_url=BASE_URL) as http:
-        answer = _backup(McpClient(http, data_dir=folder))
+        answer = McpClient(http, data_dir=folder).call_tool(EXPORT_BACKUP)
 
-    assert _error_code(answer) == "couldnt_save", answer
+    assert error_of(answer)["code"] == "couldnt_save", answer
     assert log == []
 
 
@@ -723,10 +691,10 @@ def test_a_write_failure_whose_cleanup_fails_too_reports_the_first_fault(
     (folder / LOCAL_STATE).write_bytes(EARLIER_EXPORT)
     client.http.app.state.store.fs = _CleanupFailsFs(fault)
 
-    answer = _backup(client)
+    answer = client.call_tool(EXPORT_BACKUP)
 
-    assert _error_code(answer) == "couldnt_save", answer
-    assert json.loads(text_of(answer))["message"] == COULDNT_SAVE_MESSAGE
+    assert error_of(answer)["code"] == "couldnt_save", answer
+    assert error_of(answer)["message"] == COULDNT_SAVE_MESSAGE
     # The temp file stays (its removal failed), but today's backup was never renamed in.
     assert TODAY_BACKUP not in _names(backups)
     assert (folder / LOCAL_STATE).read_bytes() == EARLIER_EXPORT

@@ -21,7 +21,7 @@ from typing import Any
 
 import pytest
 
-from tests.agent_client import McpClient, error_of, text_of
+from tests.agent_client import DESCRIPTIONS, McpClient, error_of, structured_of
 from tests.builder import LibraryBuilder
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[1] / "bookvie"
@@ -32,39 +32,6 @@ DDIA_SUBTITLE = "The Big Ideas Behind Reliable, Scalable, and Maintainable Syste
 DDIA_1_ISBN = "9781449373320"
 DDIA_2_ISBN = "978-1-098-11906-5"
 CANDIDATE_KEYS = {"id", "title", "subtitle", "authors", "edition", "type", "role"}
-
-DESCRIPTIONS = {
-    "find_book": (
-        "Find Books in the library by a free-text query: part of a title or subtitle, an "
-        "author, an ISBN, or a title's initials such as DDIA. Returns every likely match with "
-        "its id, edition and type, or an empty list. Never pick a Book for the user: when more "
-        "than one matches, ask which one, unless only one of them fits the request (update_page "
-        "and pause work only on the Main book, whose role is main). Every other tool takes the "
-        "Book's id from here."
-    ),
-    "get_book": (
-        "One Book in full: its fields, tags, its role (main for the Main book, upNext, waiting "
-        "for a paused Book, or null), whether it is a Side read, its Readings, pages left, the "
-        "user's measured pace, and its Card notes. Takes the Book's id from find_book."
-    ),
-    "list_catalog": (
-        "Every Book in the catalog with its title, authors, type, tags, role, current page and "
-        "percent read. Use it to answer questions across the library, such as which unread "
-        "Books are about a topic."
-    ),
-    "get_card_notes": (
-        "The user's Card notes (quotes and notes with their pages), for every Book or for one "
-        "Book's id."
-    ),
-    "get_home": (
-        "What the user is reading now: the Main book with its page and days left, Up next, the "
-        "paused Books waiting, the Side reads, and when the library was last exported."
-    ),
-    "get_stats": (
-        "Books and pages finished, overall or for a period given as from and to dates "
-        "(YYYY-MM-DD, both or neither)."
-    ),
-}
 
 UNKNOWN_ID = "00000000-0000-4000-8000-000000000000"
 
@@ -136,17 +103,9 @@ def _open(
     return connect_mcp(data_dir=folder), ids
 
 
-def _structured(result: dict[str, Any]) -> Any:
-    """A successful tool result's structured content, after checking its text is the same JSON."""
-    assert result.get("isError") is not True, result
-    structured = result["structuredContent"]
-    assert json.loads(text_of(result)) == structured, (text_of(result)[:300], structured)
-    return structured
-
-
 def _books(result: dict[str, Any]) -> list[dict[str, Any]]:
     """``find_book``'s candidates: the list under ``books`` in its structured content."""
-    structured = _structured(result)
+    structured = structured_of(result)
     assert isinstance(structured, dict) and set(structured) == {"books"}, structured
     books = structured["books"]
     assert isinstance(books, list), books
@@ -254,12 +213,12 @@ def test_get_book_returns_the_book_view_and_refuses_an_unknown_id_as_the_route_d
     # book_not_found, as the route refuses it.
     client, ids = _open(connect_mcp, tmp_path)
 
-    book = _structured(client.call_tool("get_book", {"bookId": ids["ddia1"]}))
+    book = structured_of(client.call_tool("get_book", {"bookId": ids["ddia1"]}))
     assert book == _view(client, "book", {"id": ids["ddia1"]})
 
     assert book["id"] == ids["ddia1"] and book["role"] == "main", book
     assert len(book["cardNotes"]) == 2, book
-    other = _structured(client.call_tool("get_book", {"bookId": ids["ddia2"]}))
+    other = structured_of(client.call_tool("get_book", {"bookId": ids["ddia2"]}))
     assert other == _view(client, "book", {"id": ids["ddia2"]})
 
     error = error_of(client.call_tool("get_book", {"bookId": UNKNOWN_ID}))
@@ -282,7 +241,7 @@ def test_list_catalog_returns_the_catalog_view(
     # [P1] AC-3 list_catalog returns GET /api/views/catalog's view by alias.
     client, ids = _open(connect_mcp, tmp_path)
 
-    catalog = _structured(client.call_tool("list_catalog"))
+    catalog = structured_of(client.call_tool("list_catalog"))
     assert catalog == _view(client, "catalog")
 
     assert {book["id"] for book in catalog["books"]} == set(ids.values()), catalog
@@ -300,15 +259,15 @@ def test_get_card_notes_returns_every_books_notes_or_one_books_and_refuses_an_un
     # Book, by alias; an unknown bookId is book_not_found.
     client, ids = _open(connect_mcp, tmp_path)
 
-    every = _structured(client.call_tool("get_card_notes"))
+    every = structured_of(client.call_tool("get_card_notes"))
     assert every == _view(client, "card-notes")
 
     assert [group["bookId"] for group in every["groups"]] == [ids["ddia1"], ids["dune"]], every
-    one = _structured(client.call_tool("get_card_notes", {"bookId": ids["ddia1"]}))
+    one = structured_of(client.call_tool("get_card_notes", {"bookId": ids["ddia1"]}))
     assert one == _view(client, "card-notes", {"book": ids["ddia1"]})
     assert one["scope"]["bookId"] == ids["ddia1"] and len(one["groups"]) == 1, one
     # A Book with no Card notes: its scope, and no group.
-    none = _structured(client.call_tool("get_card_notes", {"bookId": ids["ddia2"]}))
+    none = structured_of(client.call_tool("get_card_notes", {"bookId": ids["ddia2"]}))
     assert none == _view(client, "card-notes", {"book": ids["ddia2"]})
     assert none["groups"] == [], none
 
@@ -332,7 +291,7 @@ def test_get_home_returns_the_home_view(
     # [P1] AC-5 get_home returns GET /api/views/home's view by alias.
     client, ids = _open(connect_mcp, tmp_path)
 
-    home = _structured(client.call_tool("get_home"))
+    home = structured_of(client.call_tool("get_home"))
     assert home == _view(client, "home")
 
     assert home["mainBook"]["id"] == ids["ddia1"], home
@@ -413,14 +372,14 @@ def test_get_stats_returns_the_stats_view_and_refuses_a_bad_range_with_the_route
     client, _ids = _open(connect_mcp, tmp_path)
 
     year = {"from": "2026-01-01", "to": "2026-12-31"}
-    ranged = _structured(client.call_tool("get_stats", year))
+    ranged = structured_of(client.call_tool("get_stats", year))
     assert ranged == _view(client, "stats", year)
 
     assert (ranged["books"], ranged["pages"]) == (1, 412), ranged
-    every = _structured(client.call_tool("get_stats"))
+    every = structured_of(client.call_tool("get_stats"))
     assert every == _view(client, "stats")
     empty = {"from": "2025-01-01", "to": "2025-12-31"}
-    assert _structured(client.call_tool("get_stats", empty)) == _view(client, "stats", empty)
+    assert structured_of(client.call_tool("get_stats", empty)) == _view(client, "stats", empty)
 
     for arguments, fields in _STATS_REFUSALS:
         expected = _invalid_fields(fields)
@@ -770,11 +729,11 @@ def test_get_home_reports_the_last_export_as_its_route_does(
     # [P1] AC-5 after an export, get_home's lastExportAt is the route's: it reads
     # local-state.json, which the export writes outside library.json (AD-4, AD-15).
     client, _ids = _open(connect_mcp, tmp_path)
-    assert _structured(client.call_tool("get_home"))["lastExportAt"] is None
+    assert structured_of(client.call_tool("get_home"))["lastExportAt"] is None
 
     response = client.http.get("/api/export", headers={"X-Bookvie-Export": "1"})
     assert response.status_code == 200, response.text[:300]
 
-    home = _structured(client.call_tool("get_home"))
+    home = structured_of(client.call_tool("get_home"))
     assert home["lastExportAt"] is not None, home
     assert home == _view(client, "home")

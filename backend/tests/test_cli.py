@@ -235,6 +235,38 @@ def test_lock_holds_pid_and_port_while_serving_and_is_removed_after(
     assert not (data_dir / LOCK_NAME).exists()
 
 
+def test_main_waits_for_in_flight_calls_and_releases_the_lock_under_the_write_lock(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    fake_server: type[FakeServer],
+    opened: list[str],
+) -> None:
+    # Epic 12 retro item 87 (deferred from Story 12.3's review): test_agent_shutdown.py
+    # copies cli.main's Config and release(), so this pins cli.main's own. No
+    # graceful-shutdown timeout, so uvicorn waits for an in-flight tool call; and
+    # release() frees bookvie.lock only while it holds the AD-4 write lock.
+    data_dir = tmp_path / "d"
+    cli.main(["--data-dir", str(data_dir), "--no-browser", "--port", "8799"])
+    (server,) = fake_server.instances
+    assert server.config.timeout_graceful_shutdown is None
+
+    write_lock = server.config.app.state.write_lock
+    held_at_release: list[bool] = []
+    real_release_lock = cli.instance.release_lock
+
+    def release_lock(folder: Path, pid: int) -> bool:
+        held_at_release.append(write_lock.locked())
+        return real_release_lock(folder, pid)
+
+    monkeypatch.setattr(cli.instance, "release_lock", release_lock)
+    lock = data_dir / LOCK_NAME
+    lock.write_text(json.dumps({"pid": os.getpid(), "port": 8799}))
+    server.release()
+    assert held_at_release == [True]
+    assert not write_lock.locked()
+    assert not lock.exists()
+
+
 def test_server_runs_on_pre_bound_loopback_socket(
     tmp_path: Path, fake_server: type[FakeServer], opened: list[str]
 ) -> None:
