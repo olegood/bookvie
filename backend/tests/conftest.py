@@ -89,11 +89,14 @@ def library_builder() -> LibraryBuilder:
 def connect_mcp(tmp_path: Path) -> Iterator[Callable[..., McpClient]]:
     """Build an app and return an :class:`McpClient` on its ``/mcp``, lifespan running.
 
-    ``connect_mcp(data_dir=..., dev=..., tools=...)``: the data folder defaults
-    to ``<tmp_path>/library`` (opened, so a new one is created), today is
-    :data:`tests.helpers.TODAY`, and ``tools``, when given, is passed to
-    ``create_app`` as the tools to register (AD-21). Every app built is shut
-    down when the test ends. The client initializes on its first call.
+    ``connect_mcp(data_dir=..., dev=..., tools=..., cover_fetcher=...)``: the
+    data folder defaults to ``<tmp_path>/library`` (opened, so a new one is
+    created), today is :data:`tests.helpers.TODAY`, and ``tools``, when given,
+    is passed to ``create_app`` as the tools to register (AD-21).
+    ``cover_fetcher``, when given, is passed to ``create_app`` as the
+    downloader ``add_book`` and ``edit_book`` fetch a ``coverUrl`` with
+    (Story 12.5). Every app built is shut down when the test ends. The client
+    initializes on its first call.
     """
     with ExitStack() as apps:
 
@@ -103,11 +106,14 @@ def connect_mcp(tmp_path: Path) -> Iterator[Callable[..., McpClient]]:
             dev: bool = False,
             tools: Sequence[Any] | None = None,
             static_dir: Path | None = None,
+            cover_fetcher: Any = None,
         ) -> McpClient:
             folder = data_dir if data_dir is not None else tmp_path / "library"
             # As the CLI does before it opens the store (`ensure_writable`).
             folder.mkdir(parents=True, exist_ok=True)
-            extra = {} if tools is None else {"tools": tools}
+            extra: dict[str, Any] = {} if tools is None else {"tools": tools}
+            if cover_fetcher is not None:
+                extra["cover_fetcher"] = cover_fetcher
             app = create_app(
                 static_dir if static_dir is not None else folder / "no-static",
                 data_dir=folder,

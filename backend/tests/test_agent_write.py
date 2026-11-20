@@ -354,7 +354,15 @@ CASES: list[Case] = [
 ]  # fmt: skip
 
 # The intent modules that mint ids with uuid.uuid4() (add_book and edit_book: Story 12.4's file).
-MINTING_MODULES = ("start_reading", "finish_reading", "add_card_note", "add_book", "edit_book")
+# `cover` mints a new cover's file name (Story 12.5 compares covers stored by tool and route).
+MINTING_MODULES = (
+    "start_reading",
+    "finish_reading",
+    "add_card_note",
+    "add_book",
+    "edit_book",
+    "cover",
+)
 
 
 @pytest.fixture
@@ -377,13 +385,20 @@ def same_ids(monkeypatch: pytest.MonkeyPatch) -> Callable[[], None]:
 
 
 def _twins(
-    connect_mcp: Callable[..., McpClient], tmp_path: Path, case: Case
+    connect_mcp: Callable[..., McpClient],
+    tmp_path: Path,
+    case: Case,
+    *,
+    cover_fetcher: Any = None,
 ) -> tuple[McpClient, McpClient]:
-    """Two apps on two identical copies of the seed: one for the tool, one for the route."""
+    """Two apps on two identical copies of the seed: one for the tool, one for the route.
+
+    ``cover_fetcher`` goes to the tool's app only (Story 12.5): the route takes a cover part.
+    """
     tool_dir, route_dir = tmp_path / "tool", tmp_path / "route"
     _seed(tool_dir, side_reads=case.side_reads, cover=case.cover)
     shutil.copytree(tool_dir, route_dir)
-    tool_side = connect_mcp(data_dir=tool_dir)
+    tool_side = connect_mcp(data_dir=tool_dir, cover_fetcher=cover_fetcher)
     route_side = connect_mcp(data_dir=route_dir)
     if case.fault is not None:
         for client in (tool_side, route_side):
@@ -391,13 +406,18 @@ def _twins(
     return tool_side, route_side
 
 
-def _route_answer(client: McpClient, tool: str, arguments: dict[str, Any]) -> tuple[str, Any]:
-    """``POST /api/intents/<verb>`` as the UI sends it: ``("ok", body)`` or ``("error", error)``."""
+def _route_answer(
+    client: McpClient, tool: str, arguments: dict[str, Any], cover: bytes | None = None
+) -> tuple[str, Any]:
+    """``POST /api/intents/<verb>`` as the UI sends it: ``("ok", body)`` or ``("error", error)``.
+
+    ``cover`` is sent as the ``cover`` file part, as the Add and Edit book forms send a file.
+    """
     verb = tool.replace("_", "-")
-    response = client.http.post(
-        f"/api/intents/{verb}",
-        files={"intent": (None, json.dumps(arguments), "application/json")},
-    )
+    files: dict[str, Any] = {"intent": (None, json.dumps(arguments), "application/json")}
+    if cover is not None:
+        files["cover"] = ("cover", cover, "application/octet-stream")
+    response = client.http.post(f"/api/intents/{verb}", files=files)
     body = response.json()
     if response.status_code == 200:
         return "ok", body
