@@ -88,8 +88,8 @@ async function health(port: number): Promise<{ app?: string; dataDir?: string } 
  * Resolves once `/api/health` answers for this folder; rejects with the
  * server's stderr when it exits first. `fakeToday` (`YYYY-MM-DD`) starts it
  * with `--fake-today`; the test sets the browser clock to the same date (AD-20).
- * `home` is the server's `HOME`; without one, a temporary `HOME` is made under
- * `root` and removed by `stop()`.
+ * `home` is the server's `HOME`; without one, a temporary `HOME` is made beside
+ * the data folder and removed by `stop()`.
  */
 export async function startServer(
   dataDir: string,
@@ -105,8 +105,9 @@ export async function startServer(
   mkdirSync(dir, { recursive: true })
   let ownHome: string | undefined
   if (home === undefined) {
-    mkdirSync(root, { recursive: true })
-    ownHome = mkdtempSync(path.join(root, 'home-'))
+    // Beside the data folder, so a worker that dies before `stop()` leaves it in
+    // the run folder, which global-teardown removes.
+    ownHome = mkdtempSync(path.join(path.dirname(dir), 'home-'))
   } else {
     mkdirSync(home, { recursive: true })
   }

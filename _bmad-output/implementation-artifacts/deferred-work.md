@@ -1329,3 +1329,12 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-12-6-let-an-agent-back-up-my-library-to-disk.md`
   summary: Spine drift (Deferred "Skills on the agent tools", AD-8), reconciled before the next epic: the spine says Story 12.6 settles the reconnect step and the `bookvie`/`bookvie-dev` tool names, and AD-8 says the cataloging-skill notes hold until Story 12.7. The plan moves the skills in 12.7 (`bookvie-notes-summary`) and 12.8 (`bookvie-new-book`); 12.6 is the backup tool. Low.
   evidence: `_bmad-output/planning-artifacts/mcp-server-plan-2026-11-19.md` §5, D15 (Spine Check, build-auto review of Story 12.6).
+
+## Deferred from: code review of spec-12-6-let-an-agent-back-up-my-library-to-disk (2026-11-20)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-12-6-let-an-agent-back-up-my-library-to-disk.md`
+  summary: No e2e test observes the HOME a server started without `home` actually ran with. `agent-backup.spec.ts` checks the `Server.home` that `startServer` returns, so a regression such as `HOME: home ?? process.env.HOME` would put the ordinary e2e servers back on the real home with every assertion passing. Closing it needs an observation point (no endpoint reports HOME). Low.
+  evidence: `frontend/e2e/fixtures.ts` `startServer`; `frontend/e2e/agent-backup.spec.ts` (Verification Gap, code review of Story 12.6).
+- source_spec: `_bmad-output/implementation-artifacts/spec-12-6-let-an-agent-back-up-my-library-to-disk.md`
+  summary: No test fails the backup's temp-file cleanup on top of a failed write step; `FaultyFs` fails exactly one step. Dropping the `try/except` around `fs.remove(temp)` in `_write_atomic` would turn a double fault into an internal error instead of `couldnt_save`. `Store._write_atomic`'s cleanup has the same coverage. Low.
+  evidence: `backend/bookvie/intents/backup_file.py` `_write_atomic`; `backend/tests/helpers.py` `FaultyFs` (Verification Gap, code review of Story 12.6).

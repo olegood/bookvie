@@ -23,7 +23,7 @@ import os
 import random
 import zipfile
 from collections.abc import Callable
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -489,6 +489,42 @@ def test_a_failed_folder_flush_after_the_rename_is_logged_and_the_backup_succeed
     assert _names(backups) == [TODAY_BACKUP]
     assert _last_export(client) == FakeClock(TODAY).now()
     assert f"couldn't flush {backups.name}/ after writing {TODAY_BACKUP}" in capsys.readouterr().err
+
+
+class _MidnightClock:
+    """Reads local 23:59:59.9 on :data:`TODAY` once; every later read is 00:00:00.1 the next day."""
+
+    def __init__(self) -> None:
+        self.before = datetime.combine(TODAY, time(23, 59, 59, 900_000)).astimezone()
+        self.after = datetime.combine(
+            TODAY + timedelta(days=1), time(0, 0, 0, 100_000)
+        ).astimezone()
+        self.reads = 0
+
+    def now(self) -> datetime:
+        self.reads += 1
+        return self.before if self.reads == 1 else self.after
+
+    def today(self) -> date:
+        return self.now().date()
+
+
+def test_a_backup_across_midnight_reads_the_clock_once_for_its_name_answer_and_last_export(
+    connect_mcp: Callable[..., McpClient], tmp_path: Path
+) -> None:
+    # The file's name, `createdAt` and "Last export" come from one `clock.now()`:
+    # a second read (`clock.today()` for the name, or `export.record_export`)
+    # would land on the next day here.
+    client, _, backups = _connect(connect_mcp, tmp_path)
+    clock = _MidnightClock()
+    client.http.app.state.clock = clock
+
+    answer = _backup(client)
+
+    created_at = _when(answer["structuredContent"]["createdAt"])
+    assert created_at == clock.before, answer
+    assert _names(backups) == [backup_name(TODAY)]
+    assert _last_export(client) == created_at
 
 
 def test_a_failure_recording_the_last_export_is_logged_and_the_backup_succeeds(

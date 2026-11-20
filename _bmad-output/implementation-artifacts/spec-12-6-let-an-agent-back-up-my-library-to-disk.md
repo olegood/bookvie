@@ -2,7 +2,7 @@
 title: 'Story 12.6: Let an agent back up my library to disk'
 type: 'feature'
 created: '2026-11-20'
-status: 'in-review'
+status: 'done'
 baseline_revision: '06996644d897fe65a94760726fae75589b84c12b'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -116,6 +116,40 @@ deferred:
 - Given the ATDD leaves without their skips, when pytest runs, then all of them pass, and so does every other backend leaf.
 - Given the AC-6 leaf without its skip, when Playwright runs, then it passes, and so does every other e2e spec, each on a server with a temporary HOME.
 - Given `npm run check`, when it runs, then it exits 0, and no real `~/bookvie-backups*` folder is created or changed.
+
+### Review Findings
+
+Code review, 2026-11-20 (`bmad-code-review`, new session; diff `a48d8a2..HEAD`, ATDD and build commits; layers: Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor, Spine Check). 32 findings: 3 patch entries (6 findings), 2 defer, 5 spine drift already deferred by the build, 19 rejected.
+
+- [x] [Review][Patch] The single clock read in `write_backup` (the midnight-race fix) has no test: every leaf runs on `FakeClock`, whose `now()` and `today()` never move, so going back to `backup_name(clock.today())` or recording through `export.record_export(store, clock)` (a second `clock.now()`) passes every leaf. Add a leaf with a clock that steps across local midnight and assert the file is named for `createdAt`'s date and "Last export" equals `createdAt` (Verification Gap, low). Fixed: `test_a_backup_across_midnight_reads_the_clock_once_for_its_name_answer_and_last_export`; mutation-checked (naming from `clock.today()` or recording with a second `clock.now()` fails it) [backend/tests/test_agent_backup.py]
+- [x] [Review][Patch] `write_backup` builds the whole zip under the AD-4 lock before it checks `backups_dir is None`, so an app with no backups folder holds the lock for nothing, and with an unreadable cover answers `couldnt_export` instead of `couldnt_save`. Check `None` first (Blind Hunter + Edge Case Hunter + Acceptance Auditor, low). Fixed: the check comes before `clock.now()` and `build_export` [backend/bookvie/intents/backup_file.py:85]
+- [x] [Review][Patch] `startServer` makes its temporary HOME in `e2eRoot()` (`$TMPDIR/bookvie-e2e/home-*`), outside the run folder; only `stop()` removes it, and `global-teardown.ts` removes only `<run-id>`, so a killed worker or a throw between `mkdtempSync` and `spawn` leaks `home-*` folders across runs. Make it beside the data folder, which is under the run folder for every fixture (Blind Hunter + Edge Case Hunter, low). Fixed: `mkdtempSync` beside the data folder; the `startServer` comment and `frontend/e2e/README.md` say so [frontend/e2e/fixtures.ts:108]
+- [x] [Review][Defer] No e2e test observes the HOME a server started without `home` actually ran with: the spec checks the returned `Server.home`, so `HOME: home ?? process.env.HOME` would pass every assertion [frontend/e2e/fixtures.ts:119] — deferred: needs a new observation point (no endpoint reports HOME); pytest's autouse `_isolated_home` and the explicit-`home` leaf pin the rest.
+- [x] [Review][Defer] No test fails the temp-file cleanup on top of a failed write step (`FaultyFs` fails one step only), so dropping the `try/except` around `fs.remove(temp)` would turn a double fault into an internal error, not `couldnt_save` [backend/bookvie/intents/backup_file.py:135] — deferred: two simultaneous faults on a rare path; `Store._write_atomic`'s cleanup has the same coverage.
+
+**Rejected:**
+- Blind Hunter: two overlapping backups can move "Last export" back by the moments between them — low; `record_export` is lock-free by design (AD-15) as for downloads, the drift is milliseconds on the same day, and the fix adds locking.
+- Blind Hunter: the backup is created 0600 by `mkstemp` — low; it's Oleg's own file in his home, readable by him; already listed as a residual risk; the fix adds an `fchmod`.
+- Blind Hunter: the residual risks are in the spec, not `deferred-work.md` — low; the build rejected them (rare), not deferred them, so there's nothing to carry.
+- Blind Hunter: the returned `path` is resolved for the sibling rule but not for the default folders — low; every spelling is an absolute path to the file, and an agent opens it either way.
+- Blind Hunter: the folder rule runs in `cli.py` and again in `create_app`'s default — false as a defect: one function, so they can't diverge; the `create_app` default is already deferred as spine drift.
+- Blind Hunter: the backups folder isn't shown in app info or the Backup view — low; a feature beyond AC-1, and the tool's answer carries the path.
+- Blind Hunter: the AC-6 snapshot of the real home fails if Oleg's own bookvie writes a backup during an e2e run — low; it needs an agent backup at the same minute as a run, and the fix redesigns the check.
+- Blind Hunter: no fault on a later chunk — low; any `fs.write` failure takes the same `except` branch the first-chunk fault pins.
+- Blind Hunter: the test module imports `_seed` and `running_bookvie` from `test_agent_write.py` — low; the earlier 12.x modules share helpers the same way; moving them is a refactor.
+- Blind Hunter: `"export_backup"` is a literal in the tool-list assertions — low; cosmetic, and 12.7 and 12.8 add no tools.
+- Blind Hunter: the AD-8 item is `[false]` in the triage log but deferred as spine drift — the fix edits the spec under review; the `deferred-work.md` entry itself is right.
+- Edge Case Hunter: a kill mid-backup leaves a `.tmp` zip in the backups folder — low; rare, and a sweep adds a branch outside the data folder's sweep (as the build's review found).
+- Edge Case Hunter: a data folder of `/` gives `/-backups` — low; no library lives at `/`, and the write there fails as `couldnt_save`.
+- Edge Case Hunter: `startServer` takes a `home` outside the e2e root — low; the one caller passes a folder under `runDir`, and the fix adds a guard.
+- Edge Case Hunter: `backupFolders` throws on a plain file named `bookvie-backups*` — low; no such file in Oleg's home, and the fix adds a branch.
+- Edge Case Hunter: `backupFolders` throws when the real home is missing — low; Oleg's machine has a home, and the suite runs nowhere else.
+- Edge Case Hunter: a failing `uv cache dir` leaves the server on a cold cache — low; the server itself starts with `uv run`, so a broken uv fails loudly anyway.
+- Acceptance Auditor: the spec's Approach says `clock.today()` while the code uses `now.date()` — the fix edits the spec under review; the code is the deliberate midnight-race fix.
+- Acceptance Auditor: the folder is created with `Path.mkdir`, not through `store.fs` — false as a violation: the spec requires the seam for the file steps only, and a leaf covers a folder that can't be created.
+- Spine Check (5): every drift item (Seed and AD-21 "planned", `create_app`'s `backups_dir`, AD-21 Backup's extra steps, AD-1's folder and temp file, the AD-8/Deferred skills note) is already in `deferred-work.md` as "spine drift" from the build's review — no new entry.
+
+**Full check after the patches** (2026-11-20, this review session, after the last patch): `npm run check` exit 0 — pytest 2130 passed, unit 388 passed, e2e 800 passed, smoke ok. No `~/bookvie-backups*` folder exists in the real home afterwards.
 
 ## Spec Change Log
 

@@ -80,13 +80,13 @@ class BackupFile(BaseModel):
 
 def write_backup(store: Store, clock: Clock, backups_dir: Path | None) -> BackupFile:
     """Write today's backup file into ``backups_dir`` and record it as "Last export"."""
+    if backups_dir is None:
+        log("couldn't save the backup: this app has no backups folder")
+        raise couldnt_save(503)
     now = clock.now()
     name = backup_name(now.date())
     source = build_export(store)
     try:
-        if backups_dir is None:
-            log("couldn't save the backup: this app has no backups folder")
-            raise couldnt_save(503)
         folder = Path(backups_dir).absolute()
         target = folder / name
         try:
