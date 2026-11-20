@@ -1,0 +1,24 @@
+{
+  "schema_version": "0.1.0",
+  "evaluated_at": "2026-11-20T21:30:45.000000Z",
+  "repo": "bookvie",
+  "target": {
+    "type": "epic",
+    "id": "12",
+    "label": "Epic 12: Talk to bookvie from Claude Code"
+  },
+  "collection_status": "COLLECTED",
+  "gate_basis": "priority_thresholds",
+  "gate_status": "CONCERNS",
+  "rationale": "P0 coverage is 100% (26/26) and overall coverage is 95.3% (41/43; minimum: 80%), but P1 coverage is 87.5% (14/16; TR7 target: 95%; workflow PASS line 90%), so the workflow's rule 5 gives CONCERNS. The two P1 gaps are manual runs nobody has made (retro E12-S1, action 83, owner Oleg): 12.7 AC-3 (bookvie-notes-summary in a real Claude Code session against --dev) and 12.8 AC-4 (bookvie-new-book on an amazon.com and a leanpub.com book, with covers); five manual ATDD lines stay open with them. Every other Epic 12 gate clause holds: the plan's seven P0 risks are green (/mcp guard; mounted in both modes, dev on the dev folder; same handler per write tool, errors included; no destructive tools; find_book candidates; the downloader's refusals against local fakes; export_backup into a temp HOME); all 20 registered descriptions equal their AC text (read from epics.md); Epic 12 added no error code; no existing test's assertions changed; ~/bookvie-data and the real backup folders were untouched by npm run check (exit 0: 2170 pytest, 389 node, 800 e2e, smoke). check:api is clean and the coverage gates hold (domain 100.00%, intents+store 97.38%). This trace added no test.",
+  "p0_status": "MET",
+  "p1_status": "PARTIAL",
+  "overall_status": "MET",
+  "critical_open": 0,
+  "links": {
+    "trace_report_path": "_bmad-output/test-artifacts/traceability/epic-12-traceability-matrix.md",
+    "trace_report_url": "",
+    "artifact_url": "",
+    "journey_evidence_url": ""
+  }
+}

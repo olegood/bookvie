@@ -1,0 +1,176 @@
+{
+  "schema_version": "0.3.0",
+  "snapshot_at": "2026-11-20T21:30:45.000000Z",
+  "repo": "bookvie",
+  "collection_mode": "contract_static",
+  "collection_status": "COLLECTED",
+  "inventory_basis": "acceptance_criteria",
+  "gate_basis": "priority_thresholds",
+  "source_sha": "0d000cdd8580be4cef8ebbf9f1a1cdf8404fd43d",
+  "target": {
+    "type": "epic",
+    "id": "12",
+    "label": "Epic 12: Talk to bookvie from Claude Code"
+  },
+  "decision_mode": "deterministic",
+  "evaluator": "Oleg",
+  "confidence": "high",
+  "oracle": {
+    "resolution_mode": "formal_requirements",
+    "confidence": "high",
+    "sources": [
+      "_bmad-output/planning-artifacts/epics.md (TR7 :198, Epic 12 gate :2649, Stories 12.1-12.8 :2653-2960)",
+      "_bmad-output/planning-artifacts/mcp-server-plan-2026-11-19.md (Murat's P0 risks :123-131)",
+      "_bmad-output/implementation-artifacts/epic-12-context.md (Epic gate :29)",
+      "_bmad-output/implementation-artifacts/epic-12-retro-2026-11-20.md (action 81)",
+      "_bmad-output/test-artifacts/atdd-checklist-12-{1..8}-*.md (story ACs and priority markers)"
+    ],
+    "external_pointer_status": "not_used",
+    "synthetic": false
+  },
+  "coverage": {
+    "inventory": {
+      "covered": 41,
+      "total": 43,
+      "pct": 95.3
+    },
+    "priority_breakdown": {
+      "P0": {
+        "total": 26,
+        "covered": 26,
+        "pct": 100
+      },
+      "P1": {
+        "total": 16,
+        "covered": 14,
+        "pct": 87.5
+      },
+      "P2": {
+        "total": 1,
+        "covered": 1,
+        "pct": 100
+      },
+      "P3": {
+        "total": 0,
+        "covered": 0,
+        "pct": 100
+      }
+    },
+    "by_level": {
+      "e2e": {
+        "tests": 1,
+        "criteria_covered": 1
+      },
+      "api": {
+        "tests": 489,
+        "criteria_covered": 35
+      },
+      "component": {
+        "tests": 0,
+        "criteria_covered": 0
+      },
+      "unit": {
+        "tests": 1,
+        "criteria_covered": 1
+      },
+      "live": {
+        "tests": 0,
+        "criteria_covered": 0
+      },
+      "other": {
+        "tests": 29,
+        "criteria_covered": 5
+      }
+    }
+  },
+  "tests": {
+    "files": 14,
+    "cases": 520,
+    "skipped_cases": 0,
+    "fixme_cases": 0,
+    "pending_cases": 0,
+    "note": "Counts the Epic 12 cases only. api 489 (pytest, collected cases): test_agent_mount 48, test_agent_read 18, test_agent_write 154, test_agent_shutdown 1, test_agent_book_write 42, test_agent_edit_form 18, test_edit_form_parity 4, test_agent_cover_url 95, test_cover_fetch 74, test_agent_backup 35. other 29 (pytest, static checks of the skill files): test_notes_summary_skill 14, test_new_book_skill 15. unit 1: lib/bookDetail.test.ts:92 over editForm.cases.json (3 rows). e2e 1: agent-backup.spec.ts. test_agent_backup.py:301[read-unreadable-cover] skips only when run as root; it ran. 12.1 AC-8 is FULL on a manual run recorded in spec-12-1:177 and is counted in no level. The Epic 12 edits to test_layers, test_stack_pins, test_book_view, test_cli, conftest, fixtures.ts, library.ts, views.test.ts and bookDetail.test.ts are mapped but not counted. Priority is the higher of the test marker and the plan risk, which raises 12.6 AC-3 and AC-4 to P0. P3 has no item, so its 0/0 is reported as 100% (n/a)."
+  },
+  "risk_summary": {
+    "critical_open": 0,
+    "high_open": 2,
+    "medium_open": 0,
+    "low_open": 4
+  },
+  "heuristics": {
+    "endpoint_gaps": 0,
+    "auth_negative_path_status": "present",
+    "error_path_status": "present",
+    "ui_journey_status": "not_applicable",
+    "ui_state_status": "not_applicable"
+  },
+  "live_evidence": {
+    "present": false,
+    "results_file": "_bmad-output/test-artifacts/live-verification-results.json",
+    "freshness": "not_present",
+    "recorded_source_sha": "",
+    "current_source_sha": "0d000cdd8580be4cef8ebbf9f1a1cdf8404fd43d",
+    "producer": "",
+    "counted": 0,
+    "stale": 0,
+    "unverifiable": 0,
+    "failed": 0,
+    "contradicted": 0,
+    "blocked": 0,
+    "skipped": 0,
+    "unmatched": 0,
+    "invalid": 0,
+    "requirements_live_only": 0
+  },
+  "blockers": [
+    {
+      "requirement_id": "12.7 · AC-3",
+      "priority": "P1",
+      "reason": "Manual run of bookvie-notes-summary against bookvie --dev in a real Claude Code session not recorded (spec-12-7:189); ATDD lines atdd-checklist-12-7:86, :87 open",
+      "owner": "Oleg",
+      "action": "retro action 83"
+    },
+    {
+      "requirement_id": "12.8 · AC-4",
+      "priority": "P1",
+      "reason": "Manual runs of bookvie-new-book on an amazon.com and a leanpub.com book against bookvie --dev not recorded (spec-12-8:217); ATDD lines atdd-checklist-12-8:92, :93, :94 open; deferred-work.md:1333 (first real cover download) open",
+      "owner": "Oleg",
+      "action": "retro action 83"
+    }
+  ],
+  "rejected_evidence": [],
+  "recommendations": [
+    {
+      "priority": "HIGH",
+      "action": "Retro action 83: Oleg runs both skills against bookvie --dev in a real Claude Code session, records the runs in the 12.7 and 12.8 specs and the five ATDD lines, then re-runs this gate",
+      "requirements": [
+        "12.7 · AC-3",
+        "12.8 · AC-4"
+      ]
+    },
+    {
+      "priority": "LOW",
+      "action": "Run /bmad-testarch-test-review on the Epic 12 suites (test_agent_write.py, test_agent_mount.py, test_cover_fetch.py are the largest)",
+      "requirements": []
+    }
+  ],
+  "links": {
+    "trace_report_path": "_bmad-output/test-artifacts/traceability/epic-12-traceability-matrix.md",
+    "trace_report_url": "",
+    "artifact_url": "",
+    "journey_evidence_url": ""
+  },
+  "gate_status": "CONCERNS",
+  "gate_criteria": {
+    "p0_coverage_required": "100%",
+    "p0_coverage_actual": "100%",
+    "p0_status": "MET",
+    "p1_coverage_target": "95%",
+    "p1_coverage_minimum": "80%",
+    "p1_coverage_actual": "87.5%",
+    "p1_status": "PARTIAL",
+    "overall_coverage_minimum": "80%",
+    "overall_coverage_actual": "95.3%",
+    "overall_status": "MET"
+  }
+}
