@@ -446,7 +446,7 @@ def test_the_ten_write_tools_advertise_their_intent_models_schemas_and_join_the_
     tools = mcp_client.list_tools()
     assert [
         tool["name"] for tool in tools
-    ] == EARLIER_TOOL_NAMES + WRITE_TOOL_NAMES + BOOK_TOOL_NAMES
+    ] == EARLIER_TOOL_NAMES + WRITE_TOOL_NAMES + BOOK_TOOL_NAMES + ["export_backup"]
 
     listed = {tool["name"]: tool for tool in tools}
     for name, (model, keys, required) in WRITE_TOOLS.items():
@@ -701,7 +701,9 @@ def test_a_real_bookvie_process_advertises_and_commits_a_write_tool(tmp_path: Pa
     _seed(folder, side_reads=2)
     with running_bookvie(folder) as client:
         listed = {tool["name"]: tool for tool in client.list_tools()}
-        assert list(listed) == EARLIER_TOOL_NAMES + WRITE_TOOL_NAMES + BOOK_TOOL_NAMES
+        assert list(listed) == EARLIER_TOOL_NAMES + WRITE_TOOL_NAMES + BOOK_TOOL_NAMES + [
+            "export_backup"
+        ]
         for name, (model, _, _) in WRITE_TOOLS.items():
             assert listed[name]["inputSchema"] == input_schema(model), name
         answer = client.call_tool("update_page", UPDATE)

@@ -21,6 +21,7 @@ from bookvie import __version__, instance
 from bookvie.domain.clock import FakeClock, SystemClock
 from bookvie.http.app import STATIC_DIR, create_app
 from bookvie.instance import HOST
+from bookvie.intents import backups_folder
 from bookvie.store import StartupError, Store, ensure_writable
 from bookvie.views.app_info import display_path
 
@@ -310,6 +311,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             version=__version__,
             commit=_checkout_commit() if args.dev else None,
             checkout=str(_checkout_folder()) if args.dev else None,
+            backups_dir=backups_folder(data_dir, Path.home()),
         )
 
         def release() -> None:

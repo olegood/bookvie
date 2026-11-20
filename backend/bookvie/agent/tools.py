@@ -39,6 +39,11 @@ check and the route's parser run on the rest, as if a ``cover`` part came;
 download, outside the AD-4 lock; then ``prepare_cover`` and the handler with
 that cover, exactly as the route calls them. Every cover failure is reported
 on ``coverUrl``, and nothing is saved.
+
+``export_backup`` (Story 12.6) takes no arguments. It writes a dated backup
+of the library, the same zip as ``GET /api/export``, into the app's
+``backups_dir`` through :func:`~bookvie.intents.write_backup`, records it as
+"Last export", and answers the file's ``{path, size, createdAt}``.
 """
 
 import copy
@@ -54,6 +59,7 @@ from bookvie import views
 from bookvie.intents import (
     AddBookIntent,
     AddCardNoteIntent,
+    BackupFile,
     EditBookIntent,
     EditCardNoteIntent,
     EditPurposeIntent,
@@ -100,6 +106,7 @@ from bookvie.intents import (
     start_reading,
     unmark_side_read,
     update_page,
+    write_backup,
 )
 from bookvie.intents.cover_fetch import COVER_URL_FIELD, on_cover_url
 from bookvie.intents.intent_model import IntentModel, parse_form_intent
@@ -644,6 +651,23 @@ EDIT_BOOK = _book_tool(
     book_id=lambda intent: intent.book_id,
 )
 
+
+def _export_backup(state: Any, arguments: dict[str, Any]) -> BackupFile:
+    parse_arguments(NoArguments, arguments)
+    return write_backup(state.store, state.clock, state.backups_dir)
+
+
+EXPORT_BACKUP = AgentTool(
+    name="export_backup",
+    description=(
+        "Write a dated backup of the whole library (library.json and covers, the same file as the "
+        "Backup page's Export) to the backups folder, and return its path, size and time. A second "
+        "backup on the same day replaces that day's file. It counts as the library's last export."
+    ),
+    model=NoArguments,
+    run=_export_backup,
+)
+
 TOOLS: tuple[AgentTool, ...] = (
     GET_APP_INFO,
     FIND_BOOK,
@@ -664,5 +688,6 @@ TOOLS: tuple[AgentTool, ...] = (
     UNMARK_SIDE_READ,
     ADD_BOOK,
     EDIT_BOOK,
+    EXPORT_BACKUP,
 )
 """The tools every ``create_app`` registers unless a test passes its own."""

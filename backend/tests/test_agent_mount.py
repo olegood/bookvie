@@ -63,6 +63,7 @@ AGENT_TOOL_NAMES = [
     "unmark_side_read",
     "add_book",
     "edit_book",
+    "export_backup",
 ]
 # The intents' cap on a body part (Starlette's multipart limit), 1 MiB.
 BODY_CAP = 1024 * 1024

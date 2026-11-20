@@ -357,10 +357,10 @@ def test_add_book_and_edit_book_take_an_optional_string_cover_url_and_say_so_in_
     for name in BOOK_TOOL_NAMES:
         assert listed[name]["description"] == COVER_URL_DESCRIPTIONS[name]
         assert listed[name]["description"].endswith(f" {COVER_URL_SENTENCE}")
-    # No new tool: the cumulative list stays Story 12.4's.
+    # The cumulative list: Story 12.4's, then Story 12.6's export_backup (12.5 adds no tool).
     assert [
         tool["name"] for tool in tools
-    ] == EARLIER_TOOL_NAMES + WRITE_TOOL_NAMES + BOOK_TOOL_NAMES
+    ] == EARLIER_TOOL_NAMES + WRITE_TOOL_NAMES + BOOK_TOOL_NAMES + ["export_backup"]
 
 
 # --- AC-2 and AC-3: refusals that come before any download ---------------------------

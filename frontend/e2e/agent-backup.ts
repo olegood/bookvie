@@ -4,14 +4,6 @@
 import { readdirSync, realpathSync, statSync } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { type Server, startServer } from './fixtures.ts'
-
-// RED PHASE: `startServer` has no `home` option and `Server` no `home` yet
-// (AC-6). This cast names what the build adds; the build removes it and calls
-// `startServer` directly.
-export type HomeServer = Server & { home: string }
-export type StartOptions = Parameters<typeof startServer>[1] & { home?: string }
-export const startWithHome = startServer as unknown as (dataDir: string, options: StartOptions) => Promise<HomeServer>
 
 /** The account's own home, whatever `$HOME` says. */
 export function realHome(): string {

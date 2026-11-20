@@ -250,9 +250,9 @@ def test_add_book_advertises_the_add_book_intent_models_schema_and_the_storys_de
         assert schema["properties"][key]["type"] == "string", (key, schema["properties"][key])
     assert schema["properties"]["confirmDuplicate"]["type"] == "boolean"
     assert listed["add_book"]["description"] == BOOK_DESCRIPTIONS["add_book"]
-    # The cumulative list: 12.1's to 12.3's tools, then add_book and edit_book.
+    # The cumulative list: 12.1's to 12.3's tools, add_book and edit_book, then 12.6's export_backup.
     names = [tool["name"] for tool in tools]
-    assert names == EARLIER_TOOL_NAMES + WRITE_TOOL_NAMES + BOOK_TOOL_NAMES
+    assert names == EARLIER_TOOL_NAMES + WRITE_TOOL_NAMES + BOOK_TOOL_NAMES + ["export_backup"]
 
 
 def test_edit_book_requires_every_form_key_and_advertises_the_storys_description(
@@ -505,7 +505,9 @@ def test_a_real_bookvie_process_advertises_both_book_tools_and_commits_an_add(
     _seed(folder, side_reads=2)
     with running_bookvie(folder) as client:
         listed = {tool["name"]: tool for tool in client.list_tools()}
-        assert list(listed) == EARLIER_TOOL_NAMES + WRITE_TOOL_NAMES + BOOK_TOOL_NAMES
+        assert list(listed) == EARLIER_TOOL_NAMES + WRITE_TOOL_NAMES + BOOK_TOOL_NAMES + [
+            "export_backup"
+        ]
         for tool in TOOLS:
             if tool.name in BOOK_TOOL_NAMES:
                 assert listed[tool.name]["inputSchema"] == advertised_schema(tool), tool.name

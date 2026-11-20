@@ -5,6 +5,7 @@ from bookvie.domain import Clock, FakeClock, SystemClock
 from .add_book import AddBookIntent, add_book, parse_add_book_intent
 from .add_card_note import AddCardNoteIntent, add_card_note, parse_add_card_note_intent
 from .answers import book_answer, card_note_answer, ok, page_answer
+from .backup_file import BackupFile, backups_folder, write_backup
 from .commit import commit
 from .contract import (
     COULDNT_EXPORT_MESSAGE,
@@ -83,6 +84,7 @@ __all__ = [
     "RESTORE_NEWER_VERSION_MESSAGE",
     "AddBookIntent",
     "AddCardNoteIntent",
+    "BackupFile",
     "Clock",
     "DeleteBookIntent",
     "DeleteCardNoteIntent",
@@ -114,6 +116,7 @@ __all__ = [
     "add_book",
     "add_card_note",
     "already_main",
+    "backups_folder",
     "book_answer",
     "book_not_found",
     "build_export",
@@ -171,4 +174,5 @@ __all__ = [
     "start_reading",
     "unmark_side_read",
     "update_page",
+    "write_backup",
 ]

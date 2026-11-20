@@ -1311,3 +1311,21 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-12-5-let-an-agent-fetch-a-book-s-cover-from-its-address.md`
   summary: No test runs a successful cover download through the real DNS, `socket.create_connection` and the OS trust store, or percent-encodes a real-world cover URL; AC-5 forbids one. Story 12.8's session against `--dev` makes the first real download: check there that a real cover (Amazon, Manning, Leanpub, O'Reilly) downloads and is stored, and note any CDN that refuses `User-Agent: bookvie` or answers `Accept: image/*` with a format the sniffer refuses. Low.
   evidence: `backend/bookvie/intents/cover_fetch.py` `_default_resolve`, `_default_connect`, `_default_ssl_context`, `_exchange` (Blind Hunter, code review of Story 12.5).
+
+## Deferred from: build-auto review of spec-12-6-let-an-agent-back-up-my-library-to-disk (2026-11-20)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-12-6-let-an-agent-back-up-my-library-to-disk.md`
+  summary: Spine drift (AD-21, Structural Seed, Capability map), reconciled before the next epic: the Seed's `intents/` line still lists `backup_file` as planned, the `agent/` line calls `export_backup` planned, AD-21 is headed "planned for Epic 12", and the Capability map says FR-28 is planned. With this story every AD-21 tool group is built. Low.
+  evidence: `backend/bookvie/intents/backup_file.py`; `EXPORT_BACKUP` in `backend/bookvie/agent/tools.py` (Spine Check, build-auto review of Story 12.6).
+- source_spec: `_bmad-output/implementation-artifacts/spec-12-6-let-an-agent-back-up-my-library-to-disk.md`
+  summary: Spine drift (AD-21 Backup, Structural Seed `http/` line), reconciled before the next epic: the spine says only that `cli.py` resolves the backups folder. `create_app` also takes a `backups_dir` keyword, stores `app.state.backups_dir`, and derives the folder from `data_dir` with the same rule when none is passed. Low.
+  evidence: `backend/bookvie/http/app.py` `create_app` (Spine Check, build-auto review of Story 12.6).
+- source_spec: `_bmad-output/implementation-artifacts/spec-12-6-let-an-agent-back-up-my-library-to-disk.md`
+  summary: Spine drift (AD-21 Backup, AD-9), reconciled before the next epic: the backup also creates the folder with its parents (a failure is `couldnt_save`), fsyncs the folder after the rename (a failure is only logged), only logs a failed `lastExportAt` record after the rename, and answers `couldnt_save` when the app has no backups folder. AD-21 says none of this. Low.
+  evidence: `backend/bookvie/intents/backup_file.py` `write_backup`, `_write_atomic` (Spine Check, build-auto review of Story 12.6).
+- source_spec: `_bmad-output/implementation-artifacts/spec-12-6-let-an-agent-back-up-my-library-to-disk.md`
+  summary: Spine drift (AD-1), reconciled before the next epic: AD-1 says the one file written outside the data folder is the backup zip, but `export_backup` also creates the backups folder (and its parents) and a `.bookvie-backup-<date>.zip.tmp*` temp file beside the zip. Low.
+  evidence: `backend/bookvie/intents/backup_file.py` `write_backup`, `_write_atomic` (Spine Check, build-auto review of Story 12.6).
+- source_spec: `_bmad-output/implementation-artifacts/spec-12-6-let-an-agent-back-up-my-library-to-disk.md`
+  summary: Spine drift (Deferred "Skills on the agent tools", AD-8), reconciled before the next epic: the spine says Story 12.6 settles the reconnect step and the `bookvie`/`bookvie-dev` tool names, and AD-8 says the cataloging-skill notes hold until Story 12.7. The plan moves the skills in 12.7 (`bookvie-notes-summary`) and 12.8 (`bookvie-new-book`); 12.6 is the backup tool. Low.
+  evidence: `_bmad-output/planning-artifacts/mcp-server-plan-2026-11-19.md` §5, D15 (Spine Check, build-auto review of Story 12.6).

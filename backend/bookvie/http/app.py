@@ -42,7 +42,7 @@ from starlette.routing import BaseRoute, Match, NoMatchFound
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from bookvie import agent, views
-from bookvie.intents import Clock, SystemClock
+from bookvie.intents import Clock, SystemClock, backups_folder
 from bookvie.intents.cover_fetch import CoverFetcher
 
 from .api import BodySizeCap, install_api
@@ -204,6 +204,7 @@ def create_app(
     checkout: str | None = None,
     tools: Sequence[agent.AgentTool] | None = None,
     cover_fetcher: CoverFetcher | None = None,
+    backups_dir: Path | None = None,
 ) -> FastAPI:
     """Build the app. ``store`` is the opened ``bookvie.store.Store``, if any.
 
@@ -218,7 +219,11 @@ def create_app(
     :data:`bookvie.agent.TOOLS`. ``cover_fetcher`` is what ``add_book`` and
     ``edit_book`` download a ``coverUrl`` with (Story 12.5); only tests pass
     one, on their local seams, so every real server downloads with a default
-    :class:`~bookvie.intents.cover_fetch.CoverFetcher`.
+    :class:`~bookvie.intents.cover_fetch.CoverFetcher`. ``backups_dir`` is the
+    folder ``export_backup`` writes into (Story 12.6); ``cli.py`` resolves it
+    from the data folder. Without it, the folder is derived from ``data_dir``
+    by the same rule (:func:`bookvie.intents.backups_folder`), or is ``None``
+    when there is no ``data_dir``.
     """
     static_dir = Path(static_dir).resolve()
     resolved_data_dir = str(Path(data_dir).resolve()) if data_dir is not None else None
@@ -241,6 +246,9 @@ def create_app(
     app.state.clock = clock if clock is not None else SystemClock()
     app.state.write_lock = store.lock if store is not None else threading.Lock()
     app.state.cover_fetcher = cover_fetcher if cover_fetcher is not None else CoverFetcher()
+    if backups_dir is None and data_dir is not None:
+        backups_dir = backups_folder(Path(data_dir), Path.home())
+    app.state.backups_dir = backups_dir
     app.state.app_info = views.app_info(
         version=version,
         dev=dev,

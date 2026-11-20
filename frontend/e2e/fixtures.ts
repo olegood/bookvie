@@ -4,11 +4,13 @@
 // `$TMPDIR/bookvie-e2e/<run-id>/worker-<n>/`, checked by the path guard before
 // anything is spawned. Tests that import `test` from here get `baseURL` set to
 // their worker's server. `seedLibrary` pre-seeds a data dir before a server
-// starts on it.
+// starts on it. Every server runs with a temporary `HOME` (Story 12.6), so
+// nothing it writes under `~`, such as an agent's backup, reaches the
+// account's real home.
 
 import { test as base, type TestInfo } from '@playwright/test'
 import { type ChildProcess, spawn, spawnSync } from 'node:child_process'
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import net from 'node:net'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -22,6 +24,8 @@ export type Server = {
   url: string
   port: number
   dataDir: string
+  /** The server's `HOME`: the one passed to `startServer`, or a temporary one it made. */
+  home: string
   /** Sends SIGTERM, waits for exit and returns everything written to stdout. */
   stop: () => Promise<string>
 }
@@ -36,6 +40,31 @@ export function freePort(): Promise<number> {
       probe.close(() => resolve(port))
     })
   })
+}
+
+let uvDirs: Record<string, string> | undefined
+
+/**
+ * The runner's own `UV_CACHE_DIR` and `UV_PYTHON_INSTALL_DIR`, so a server with
+ * a temporary `HOME` keeps uv's warm cache and installed Pythons (as pytest's
+ * `conftest._real_uv_dirs` does).
+ */
+function realUvDirs(): Record<string, string> {
+  if (uvDirs !== undefined) return uvDirs
+  const dirs: Record<string, string> = {}
+  for (const [name, args] of [
+    ['UV_CACHE_DIR', ['cache', 'dir']],
+    ['UV_PYTHON_INSTALL_DIR', ['python', 'dir']],
+  ] as const) {
+    let value = process.env[name]
+    if (!value) {
+      const result = spawnSync('uv', args, { encoding: 'utf8', timeout: START_TIMEOUT_MS })
+      if (result.status === 0) value = result.stdout.trim()
+    }
+    if (value) dirs[name] = value
+  }
+  uvDirs = dirs
+  return dirs
 }
 
 function exited(child: ChildProcess): Promise<void> {
@@ -59,6 +88,8 @@ async function health(port: number): Promise<{ app?: string; dataDir?: string } 
  * Resolves once `/api/health` answers for this folder; rejects with the
  * server's stderr when it exits first. `fakeToday` (`YYYY-MM-DD`) starts it
  * with `--fake-today`; the test sets the browser clock to the same date (AD-20).
+ * `home` is the server's `HOME`; without one, a temporary `HOME` is made under
+ * `root` and removed by `stop()`.
  */
 export async function startServer(
   dataDir: string,
@@ -67,15 +98,25 @@ export async function startServer(
     dev = false,
     root = e2eRoot(),
     fakeToday,
-  }: { port: number; dev?: boolean; root?: string; fakeToday?: string },
+    home,
+  }: { port: number; dev?: boolean; root?: string; fakeToday?: string; home?: string },
 ): Promise<Server> {
   const dir = safeDataDir(dataDir, root) // before any spawn
   mkdirSync(dir, { recursive: true })
+  let ownHome: string | undefined
+  if (home === undefined) {
+    mkdirSync(root, { recursive: true })
+    ownHome = mkdtempSync(path.join(root, 'home-'))
+  } else {
+    mkdirSync(home, { recursive: true })
+  }
+  const serverHome = home ?? ownHome!
   const args = ['run', '--project', BACKEND, 'bookvie', '--no-browser']
   if (dev) args.push('--dev')
   if (fakeToday !== undefined) args.push('--fake-today', fakeToday)
   args.push('--port', String(port), '--data-dir', dir)
-  const child = spawn('uv', args, { stdio: ['ignore', 'pipe', 'pipe'] })
+  const env = { ...process.env, ...realUvDirs(), HOME: serverHome }
+  const child = spawn('uv', args, { stdio: ['ignore', 'pipe', 'pipe'], env })
   let stdout = ''
   let stderr = ''
   child.stdout!.setEncoding('utf8').on('data', (chunk: string) => (stdout += chunk))
@@ -92,6 +133,7 @@ export async function startServer(
       await exited(child)
       clearTimeout(timer)
     }
+    if (ownHome !== undefined) rmSync(ownHome, { recursive: true, force: true })
     return stdout
   }
 
@@ -113,7 +155,7 @@ export async function startServer(
     }
     await new Promise((resolve) => setTimeout(resolve, 100))
   }
-  return { url: `http://127.0.0.1:${port}`, port, dataDir: dir, stop }
+  return { url: `http://127.0.0.1:${port}`, port, dataDir: dir, home: serverHome, stop }
 }
 
 /**
