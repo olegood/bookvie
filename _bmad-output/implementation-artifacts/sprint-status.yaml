@@ -1015,7 +1015,7 @@ action_items:
       It never dismisses the gap by citing an earlier story's open AC. Changes: `_bmad/custom/bmad-code-review.toml`.
       Due: before Epic 13."
     owner: "Murat (TEA)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-12-retro-2026-11-20.md"
   - id: "epic-12-retro-item-86-build-diff-recipe-without-banned-git"
     epic: 12
