@@ -971,7 +971,7 @@ action_items:
       `_bmad-output/implementation-artifacts/deferred-work.md`, `_bmad-output/implementation-artifacts/epic-12-context.md`.
       Due: before Epic 13."
     owner: "Winston (architect)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-12-retro-2026-11-20.md"
   - id: "epic-12-retro-item-83-record-the-epic-12-manual-runs"
     epic: 12

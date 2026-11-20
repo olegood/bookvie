@@ -1184,15 +1184,18 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-12-1-mount-the-mcp-server.md`
   summary: Spine drift (AD-21), reconciled before the next epic: AD-21 Mount and the Stack row for `mcp` name the SDK's `MCPServer` and a mount of its streamable-HTTP app, but the build uses the low-level `mcp.server.lowlevel.Server` and a custom `_McpRoute`. `MCPServer`'s tool registration validates and coerces arguments and wraps errors as "Error executing tool", which AD-21 One validator forbids, and a `Mount` at `/mcp` redirects `/mcp` to `/mcp/`. Low.
   evidence: `backend/bookvie/agent/server.py` `build_mcp_server`; `backend/bookvie/http/app.py` `_McpRoute` (Spine Check, build-auto review of Story 12.1).
+  resolved: Epic 12 retro item 82 (2026-11-20). In the spine, AD-21 Mount names the low-level `Server`, why not `MCPServer`, and `_McpRoute`; the Stack's `mcp` row too.
 - source_spec: `_bmad-output/implementation-artifacts/spec-12-1-mount-the-mcp-server.md`
   summary: Spine drift (AD-21), reconciled before the next epic: the spine still marks AD-21's rule, the `mcp` and `httpx2` Stack rows, the Structural Seed's `agent/` and the capability map's FR-28 row as planned, though Story 12.1 pins both packages, creates `agent/` and mounts `/mcp` with `get_app_info`. Low.
   evidence: `backend/pyproject.toml` (`mcp>=2.3.0,<2.4`, `httpx2>=2.16.2,<2.17`); `backend/bookvie/agent/`; `backend/tests/test_layers.py` `LAYERS` (Spine Check, build-auto review of Story 12.1).
+  resolved: Epic 12 retro item 82 (2026-11-20). In the spine, AD-21 is headed built in Epic 12; the `mcp` and `httpx2` Stack rows, the Seed's `agent/` and the Capability map's FR-28 row no longer say planned.
 
 ## Deferred from: code review of spec-12-1-mount-the-mcp-server (2026-11-19)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-12-1-mount-the-mcp-server.md`
   summary: Spine drift (AD-21), reconciled before the next epic: the Design Paradigm paragraph still says "agent tools at `/mcp` (AD-21, planned for Epic 12)", a further "planned" mention the build-auto review's second AD-21 entry doesn't list. Low.
   evidence: `ARCHITECTURE-SPINE.md:28` (Spine Check, code review of Story 12.1).
+  resolved: Epic 12 retro item 82 (2026-11-20). In the spine, the Design Paradigm paragraph no longer says planned, and names the skills as agent clients.
 - source_spec: `_bmad-output/implementation-artifacts/spec-12-1-mount-the-mcp-server.md`
   summary: `epic-12-context.md` (Technical Decisions, Mount) still says the app "builds a fresh SDK `MCPServer` and mounts its streamable-HTTP app at exactly `/mcp`". Stories 12.2–12.4 read it as build context, and the code deliberately uses the low-level `Server` and `_McpRoute` (Story 12.1's Never list forbids `MCPServer.tool`). Correct it alongside the AD-21 spine reconciliation, or note the deviation in the file before Story 12.2. Low.
   evidence: `_bmad-output/implementation-artifacts/epic-12-context.md`; `backend/bookvie/agent/server.py` (Blind Hunter, code review of Story 12.1).
@@ -1219,27 +1222,35 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-12-2-let-an-agent-read-my-library.md`
   summary: Spine drift (AD-21), reconciled before the next epic: AD-21 "Find, never guess" says `find_book` returns a bare `[{id, title, subtitle, authors, edition, type, role}]`, but MCP 2025-11-25 structured content is a JSON object, so the tool answers `{"books": [...]}` with those candidates inside (Oleg's decision, ATDD checklist for Story 12.2). Low.
   evidence: `backend/bookvie/views/models.py` `FindBookView`; `backend/bookvie/views/find_book.py`; spine AD-21 "Find, never guess" (Spine Check, build-auto review of Story 12.2).
+  resolved: Epic 12 retro item 82 (2026-11-20). In the spine, AD-21 Find, never guess gives the `{"books": [...]}` shape and why.
 - source_spec: `_bmad-output/implementation-artifacts/spec-12-2-let-an-agent-read-my-library.md`
   summary: Spine drift (AD-21), reconciled before the next epic: the Design Paradigm's dependency-direction line has no `views → intents` edge, but AD-21 and AD-9 put the views' refusals (book not found, the stats range rules, `find_book`'s blank query) in `views/`, which raise `bookvie.intents.contract`'s errors. `intents` never imports `views`; `backend/tests/test_layers.py` lets `views` import `bookvie.intents.contract` only (`ALLOWED_MODULES`), every other `intents` module stays forbidden. Low.
   evidence: `backend/bookvie/views/shelf.py` `require_book_detail`, `views/card_notes.py` `require_card_notes`, `views/stats.py` `check_stats_range`, `views/find_book.py`; `backend/tests/test_layers.py` `ALLOWED_MODULES`; spine Design Paradigm, dependency direction (Spine Check, build-auto review of Story 12.2).
+  resolved: Epic 12 retro item 82 (2026-11-20). In the spine, the Design Paradigm's dependency line adds `views → intents.contract` only, citing `test_layers.py` `ALLOWED_MODULES`; the Seed's `intents/` line marks `contract` as the one module views may import.
 - source_spec: `_bmad-output/implementation-artifacts/spec-12-2-let-an-agent-read-my-library.md`
   summary: Spine drift (AD-21), reconciled before the next epic: AD-21 doesn't record the `find_book` ranking and matching Story 12.2 settled (exact title, ISBN, title prefix, title part or initials, author, subtitle; ties by `title_key`, edition, id; no cap; typographic folding as the duplicates rule; initials from 2 characters; ISBN only for an ISBN-10/13-shaped query), and the spine's Deferred list still says Story 12.2 decides it. Low.
   evidence: `backend/bookvie/views/find_book.py` module docstring; spine AD-21, Deferred ("`find_book`'s ranking and match details") (Spine Check, build-auto review of Story 12.2).
+  resolved: Epic 12 retro item 82 (2026-11-20). In the spine, AD-21 Find, never guess records the matching and ranking; the Deferred `find_book` bullet is removed.
 - source_spec: `_bmad-output/implementation-artifacts/spec-12-2-let-an-agent-read-my-library.md`
   summary: Spine drift (AD-21), reconciled before the next epic: the Structural Seed still lists `find_book` under `views/` as planned, though Story 12.2 adds `views/find_book.py`. Low.
   evidence: `backend/bookvie/views/find_book.py`; spine Structural Seed, `views/` line (Spine Check, build-auto review of Story 12.2).
+  resolved: Epic 12 retro item 82 (2026-11-20). In the spine, the Seed's `views/` line lists `find_book` as built.
 - source_spec: `_bmad-output/implementation-artifacts/spec-12-2-let-an-agent-read-my-library.md`
   summary: Spine drift (AD-9), reconciled before the next epic: AD-9 says the stats refusal copy is in `http/api.py` `stats_view`; it now lives in `views/stats.py` (`IsoDate`, `check_stats_range`), shared by the route and `get_stats`. Low.
   evidence: `backend/bookvie/views/stats.py`; `backend/bookvie/http/api.py` `stats_view`; spine AD-9, the stats `invalid_fields` sentence (Spine Check, build-auto review of Story 12.2).
+  resolved: Epic 12 retro item 82 (2026-11-20). In the spine, AD-9 names `views/stats.py` (`IsoDate`, `check_stats_range`), shared by the route and `get_stats`.
 - source_spec: `_bmad-output/implementation-artifacts/spec-12-2-let-an-agent-read-my-library.md`
   summary: Spine drift (AD-9, AD-21), reconciled before the next epic: neither AD-9's list of refusing views nor AD-21 names `find_book`'s refusal of a blank query (422 `invalid_fields` on `query`, "Give part of a title, an author or an ISBN."). Low.
   evidence: `backend/bookvie/views/find_book.py` `find_book`; spine AD-9 Binds, AD-21 "Find, never guess" (Spine Check, build-auto review of Story 12.2).
+  resolved: Epic 12 retro item 82 (2026-11-20). In the spine, AD-9 Binds lists `find_book`, and AD-9 and AD-21 give its blank-query refusal and copy.
 - source_spec: `_bmad-output/implementation-artifacts/spec-12-2-let-an-agent-read-my-library.md`
   summary: Spine drift (AD-21), reconciled before the next epic: AD-21's "One validator" covers only the write tools; the read tools parse their arguments with `parse_view_arguments`, which names each failing argument by alias with Pydantic's message (as a view route names a bad query parameter), refuses an explicit `null` and coerces nothing but `get_stats`' date strings. Low.
   evidence: `backend/bookvie/agent/tools.py` `parse_view_arguments`, `StatsArguments`; spine AD-21 "Same handler, same answers" (Spine Check, build-auto review of Story 12.2).
+  resolved: Epic 12 retro item 82 (2026-11-20). In the spine, AD-21 One validator describes `parse_view_arguments` for the read tools.
 - source_spec: `_bmad-output/implementation-artifacts/spec-12-2-let-an-agent-read-my-library.md`
   summary: Spine drift (Consistency Conventions), reconciled before the next epic: the "Title ordering (server)" convention breaks title ties by Book id; `find_book`'s ranked candidates break them by edition, then id. A ranked list isn't a title-ordered one; the convention can name the exception. Low.
   evidence: `backend/bookvie/views/find_book.py` `find_book` sort; spine Consistency Conventions, Title ordering (server) (Spine Check, build-auto review of Story 12.2).
+  resolved: Epic 12 retro item 82 (2026-11-20). In the spine, the Title ordering (server) convention names `find_book`'s ranked ties (title key, edition, id).
 
 ## Deferred from: code review of spec-12-2-let-an-agent-read-my-library (2026-11-19)
 
@@ -1253,6 +1264,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-12-3-let-an-agent-record-my-reading.md`
   summary: Spine drift (AD-21, Structural Seed), reconciled before the next epic: the success mapping that the ten intent routes and their agent write tools share lives in the new `intents/answers.py` (`ok`, `page_answer`, `card_note_answer`). AD-21 says the tool returns "the route's `OkResponse`", and the Seed's `intents/` line names no `answers` module. Low.
   evidence: `backend/bookvie/intents/answers.py`; `backend/bookvie/http/api.py` (the ten routes); `backend/bookvie/agent/tools.py` `_write_tool` (Spine Check, build-auto review of Story 12.3).
+  resolved: Epic 12 retro item 82 (2026-11-20). In the spine, AD-21 Same handler names `intents/answers.py` and its four functions for the twelve routes with a tool; the Seed's `intents/` line lists `answers`.
 - source_spec: `_bmad-output/implementation-artifacts/spec-12-3-let-an-agent-record-my-reading.md`
   summary: The `pause` tool's description (epics.md Story 12.3) says the paused Book "stays in Waiting for you until the user picks it up again", but `pause` makes it Up next (role `upNext`, not `waiting`), so an agent tells the user the wrong place. AC-3 pins the text character for character, so change `epics.md` first, then `DESCRIPTIONS` in `test_agent_write.py` and `PAUSE` in `agent/tools.py`. Medium.
   evidence: `backend/bookvie/intents/pause.py` `pause` (sets `up_next_book_id`); `backend/bookvie/views/models.py` `Role` (Blind Hunter, build-auto review of Story 12.3).
@@ -1278,12 +1290,14 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-12-4-let-an-agent-add-and-edit-a-book.md`
   summary: Spine drift (AD-21, AD-3), reconciled before the next epic: `edit_book`'s tool-side missing-key refusal (`invalid_fields`, one "Field required" per missing key in schema order, before `parse_edit_book_intent` runs) is the one exception to AD-21's "the route's own `parse_*_intent` is the only validator" and AD-3's "exactly as the route does". AD-21 "Edits are whole" names only the required schema. Record the refusal and say the contract test doesn't cover partial edits. Also, Story 12.3's `intents/answers.py` drift entry says "ten intent routes"; it is twelve now. Low.
   evidence: `backend/bookvie/agent/tools.py` `_write_tool`, `EDIT_BOOK`; `backend/bookvie/intents/answers.py` (Spine Check, build-auto review of Story 12.4).
+  resolved: Epic 12 retro item 82 (2026-11-20). In the spine, AD-21 Edits are whole and One validator, and AD-3's agent-tools bullet, record the missing-key refusal as the one check a tool adds, and that the contract tests cover whole edits only; the answers count is twelve.
 
 ## Deferred from: build-auto review pass 2 of spec-12-4-let-an-agent-add-and-edit-a-book (2026-11-19)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-12-4-let-an-agent-add-and-edit-a-book.md`
   summary: Spine drift (AD-21, AD-6), reconciled before the next epic: AD-21 "Edits are whole" still says `edit_book`'s description tells the agent to "send every field"; it now says to send `get_book`'s `editForm` with `bookId`, and names the `finishedOn` and `removeCover` rules. Neither AD-21 nor AD-6 names the book view's `editForm`, a server copy of the client's `toPanelFields` with no shared check between them (no case table like `pace.cases.json`); record it, and decide whether the panel should read `editForm` instead. Low.
   evidence: `ARCHITECTURE-SPINE.md:307`; `backend/bookvie/views/shelf.py` `_edit_form`; `frontend/src/lib/bookDetail.ts` `toPanelFields` (Spine Check, Blind Hunter, Intent Alignment, build-auto review pass 2 of Story 12.4).
+  resolved: Epic 12 retro item 82 (2026-11-20). In the spine, AD-21 Edits are whole gives the `editForm` description; AD-6 names the book view's `editForm`. The panel keeps `toPanelFields`, held equal by `editForm.cases.json` (Epic 12 retro item 87).
 - source_spec: `_bmad-output/implementation-artifacts/spec-12-4-let-an-agent-add-and-edit-a-book.md`
   summary: A Book whose latest finish date is after today (the clock went back, or a restored backup) can't be saved unchanged: `parse_finished_on` refuses a future date before `edit_book`'s unchanged-date rules run, so the panel and the `editForm` round trip are both refused on `finishedOn`. Pre-existing. Low.
   evidence: `backend/bookvie/domain/finished_on.py:64` `parse_finished_on`; `backend/bookvie/intents/edit_book.py` `_finished_on_failure` (Edge Case Hunter, build-auto review pass 2 of Story 12.4).
@@ -1296,15 +1310,19 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-12-5-let-an-agent-fetch-a-book-s-cover-from-its-address.md`
   summary: Spine drift (AD-21, Stack table), reconciled before the next epic: the spine lists `httpx2` as "the cover download", but `cover_fetch` downloads with `http.client` over its own socket; `httpx2` only supplies the TLS context (`create_ssl_context(trust_env=False)`). Low.
   evidence: `backend/bookvie/intents/cover_fetch.py` `_default_ssl_context`, `_Connection` (Spine Check, build-auto review of Story 12.5).
+  resolved: Epic 12 retro item 82 (2026-11-20). In the spine, AD-21 Cover by URL says the download uses `http.client` over bookvie's socket and `httpx2` supplies only the TLS context; the Stack's `httpx2` row too.
 - source_spec: `_bmad-output/implementation-artifacts/spec-12-5-let-an-agent-fetch-a-book-s-cover-from-its-address.md`
   summary: Spine drift (AD-21 Cover by URL), reconciled before the next epic: the downloader enforces rules AD-21 doesn't list. Multicast, IPv4-compatible `::/96` and scoped IPv6 addresses are refused. A `Content-Encoding` other than identity is refused, as are an empty body, a `Content-Length` past the cap (before reading) and a body shorter than its `Content-Length`. The OS trust store is used, with `SSL_CERT_FILE` and the like ignored. The DNS lookup is bounded by the deadline. Low.
   evidence: `backend/bookvie/intents/cover_fetch.py` `is_public`, `_exchange`, `_read_capped`, `_resolved`, `_default_ssl_context` (Spine Check, build-auto review of Story 12.5).
+  resolved: Epic 12 retro item 82 (2026-11-20). In the spine, AD-21 Cover by URL lists the extra address, encoding, length, empty-body, trust-store and DNS-deadline rules.
 - source_spec: `_bmad-output/implementation-artifacts/spec-12-5-let-an-agent-fetch-a-book-s-cover-from-its-address.md`
   summary: Spine drift (AD-21, Structural Seed), reconciled before the next epic: the Seed's `intents/` line still lists `cover_fetch` as planned; it now exists. Low.
   evidence: `backend/bookvie/intents/cover_fetch.py` (Spine Check, build-auto review of Story 12.5).
+  resolved: Epic 12 retro item 82 (2026-11-20). In the spine, the Seed's `intents/` line lists `cover_fetch` as built.
 - source_spec: `_bmad-output/implementation-artifacts/spec-12-5-let-an-agent-fetch-a-book-s-cover-from-its-address.md`
   summary: Spine drift (AD-21, Structural Seed `http/` line, Consistency Conventions Testing row), reconciled before the next epic: the spine names none of three things. `create_app`'s `cover_fetcher` seam (`app.state.cover_fetcher`). The tool's first step, which refuses a non-string `coverUrl` as the malformed intent on `intent`. The autouse pytest guard `_on_the_machine`, which keeps in-process lookups and connections on the machine. Low.
   evidence: `backend/bookvie/http/app.py` `create_app`; `backend/bookvie/agent/tools.py` `_book_tool`; `backend/tests/conftest.py` `_on_the_machine` (Spine Check, build-auto review of Story 12.5).
+  resolved: Epic 12 retro item 82 (2026-11-20). In the spine, AD-21 Cover by URL names the `cover_fetcher` seam, the non-string `coverUrl` refusal and `_on_the_machine`; the Seed's `http/` line and the Testing row name them too.
 
 ## Deferred from: code review of spec-12-5-let-an-agent-fetch-a-book-s-cover-from-its-address (2026-11-20)
 
@@ -1320,18 +1338,23 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-12-6-let-an-agent-back-up-my-library-to-disk.md`
   summary: Spine drift (AD-21, Structural Seed, Capability map), reconciled before the next epic: the Seed's `intents/` line still lists `backup_file` as planned, the `agent/` line calls `export_backup` planned, AD-21 is headed "planned for Epic 12", and the Capability map says FR-28 is planned. With this story every AD-21 tool group is built. Low.
   evidence: `backend/bookvie/intents/backup_file.py`; `EXPORT_BACKUP` in `backend/bookvie/agent/tools.py` (Spine Check, build-auto review of Story 12.6).
+  resolved: Epic 12 retro item 82 (2026-11-20). In the spine, the Seed's `intents/` and `agent/` lines, AD-21's heading and the Capability map no longer say planned.
 - source_spec: `_bmad-output/implementation-artifacts/spec-12-6-let-an-agent-back-up-my-library-to-disk.md`
   summary: Spine drift (AD-21 Backup, Structural Seed `http/` line), reconciled before the next epic: the spine says only that `cli.py` resolves the backups folder. `create_app` also takes a `backups_dir` keyword, stores `app.state.backups_dir`, and derives the folder from `data_dir` with the same rule when none is passed. Low.
   evidence: `backend/bookvie/http/app.py` `create_app` (Spine Check, build-auto review of Story 12.6).
+  resolved: Epic 12 retro item 82 (2026-11-20). In the spine, AD-21 Backup and the Seed's `http/` line name `create_app`'s `backups_dir` keyword and its derived default.
 - source_spec: `_bmad-output/implementation-artifacts/spec-12-6-let-an-agent-back-up-my-library-to-disk.md`
   summary: Spine drift (AD-21 Backup, AD-9), reconciled before the next epic: the backup also creates the folder with its parents (a failure is `couldnt_save`), fsyncs the folder after the rename (a failure is only logged), only logs a failed `lastExportAt` record after the rename, and answers `couldnt_save` when the app has no backups folder. AD-21 says none of this. Low.
   evidence: `backend/bookvie/intents/backup_file.py` `write_backup`, `_write_atomic` (Spine Check, build-auto review of Story 12.6).
+  resolved: Epic 12 retro item 82 (2026-11-20). In the spine, AD-21 Backup records the folder creation, the folder fsync, the logged-only failures after the rename, and the missing backups folder as `couldnt_save`.
 - source_spec: `_bmad-output/implementation-artifacts/spec-12-6-let-an-agent-back-up-my-library-to-disk.md`
   summary: Spine drift (AD-1), reconciled before the next epic: AD-1 says the one file written outside the data folder is the backup zip, but `export_backup` also creates the backups folder (and its parents) and a `.bookvie-backup-<date>.zip.tmp*` temp file beside the zip. Low.
   evidence: `backend/bookvie/intents/backup_file.py` `write_backup`, `_write_atomic` (Spine Check, build-auto review of Story 12.6).
+  resolved: Epic 12 retro item 82 (2026-11-20). In the spine, AD-1 names the backups folder creation and the `.bookvie-backup-<date>.zip.tmp*` temp file.
 - source_spec: `_bmad-output/implementation-artifacts/spec-12-6-let-an-agent-back-up-my-library-to-disk.md`
   summary: Spine drift (Deferred "Skills on the agent tools", AD-8), reconciled before the next epic: the spine says Story 12.6 settles the reconnect step and the `bookvie`/`bookvie-dev` tool names, and AD-8 says the cataloging-skill notes hold until Story 12.7. The plan moves the skills in 12.7 (`bookvie-notes-summary`) and 12.8 (`bookvie-new-book`); 12.6 is the backup tool. Low.
   evidence: `_bmad-output/planning-artifacts/mcp-server-plan-2026-11-19.md` §5, D15 (Spine Check, build-auto review of Story 12.6).
+  resolved: Epic 12 retro item 82 (2026-11-20). In the spine, AD-8 now describes both skills as agent clients (12.7 and 12.8) with their reconnect step and entry names; the Deferred "Skills on the agent tools" bullet is removed.
 
 ## Deferred from: code review of spec-12-6-let-an-agent-back-up-my-library-to-disk (2026-11-20)
 
@@ -1348,9 +1371,11 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-12-7-summarize-a-book-s-notes-through-the-agent-tools.md`
   summary: Spine drift (AD-8, Deferred "Skills on the agent tools"), reconciled before the next epic: AD-8 says the skill notes hold until Story 12.7, but 12.7 moved only `bookvie-notes-summary` (`bookvie-new-book` moves in 12.8), and the Deferred bullet says 12.6 settles the reconnect step and the per-entry tool names, which 12.7 wrote into the notes skill. Overlaps the 12.6 entry above. Low.
   evidence: `.claude/skills/bookvie-notes-summary/SKILL.md` steps 1–2 (Spine Check, build-auto review of Story 12.7).
+  resolved: Epic 12 retro item 82 (2026-11-20). In the spine, as the 12.6 entry above: AD-8 and the removed Deferred bullet.
 - source_spec: `_bmad-output/implementation-artifacts/spec-12-7-summarize-a-book-s-notes-through-the-agent-tools.md`
   summary: Spine drift (AD-19, AD-6), reconciled before the next epic: the skill's step 2 has the agent derive the summary status (in progress, finished, not started) and choose which Reading's Purpose to use from `get_book`, a client-side derivation the spine reserves to the server. The deleted `fetch_notes.py` did the same. The spine should name it as an accepted agent-side rule, or `get_book` should carry it. Low.
   evidence: `.claude/skills/bookvie-notes-summary/SKILL.md` step 2 "Work out the summary's inputs" (Spine Check, build-auto review of Story 12.7).
+  resolved: Epic 12 retro item 82 (2026-11-20). In the spine, AD-6 records the notes-summary skill's status and Purpose choice as an accepted agent-side derivation, and AD-19 Status says it isn't the Reading status; `get_book` would compute it if a second client needed it.
 
 ## Deferred from: build-auto review of spec-12-8-add-a-book-through-the-agent-tools (2026-11-20)
 
@@ -1360,9 +1385,11 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-12-8-add-a-book-through-the-agent-tools.md`
   summary: Spine drift (Design Paradigm, Structural Seed), reconciled before the next epic: the Paradigm says the skill calls the HTTP API directly (skill 2.0.0) and calls `http/` like the browser, and the Seed's `AG` node reads "cataloging skill (HTTP client of the intent API)". Skill 3.0.0 is an MCP client of `agent/` (AD-21) and never calls the HTTP API for a book. Low.
   evidence: `.claude/skills/bookvie-new-book/SKILL.md` Rules and step 1 (Spine Check, build-auto review of Story 12.8).
+  resolved: Epic 12 retro item 82 (2026-11-20). In the spine, the Design Paradigm names the skills as MCP clients, and the Seed's `AG` node is replaced by "Claude Code and the bookvie skills (MCP clients of agent/ at /mcp)".
 - source_spec: `_bmad-output/implementation-artifacts/spec-12-8-add-a-book-through-the-agent-tools.md`
   summary: Spine drift (Deferred "Skills on the agent tools"), reconciled before the next epic: the bullet still leaves the reconnect step and the `bookvie`/`bookvie-dev` tool names open; both skills now carry them (Stories 12.7 and 12.8). Folds into the 12.6 and 12.7 entries above. Low.
   evidence: `.claude/skills/bookvie-new-book/SKILL.md` step 1 (Spine Check, build-auto review of Story 12.8).
+  resolved: Epic 12 retro item 82 (2026-11-20). In the spine, as the 12.6 entry above.
 - source_spec: `_bmad-output/implementation-artifacts/spec-12-8-add-a-book-through-the-agent-tools.md`
   summary: The new-book evals allow only the production entry's tools (`mcp__bookvie__*`), so an eval run adds books to the real library on port 8765, as the 2.0.0 HTTP evals did. Pointing them at `bookvie-dev` needs the dev entry's tool names and prompts that ask for the dev library. Low.
   evidence: `.claude/skills/bookvie-new-book/evals/*/prompt.md` `allowed_tools` (Blind Hunter, Edge Case Hunter, Intent Alignment, build-auto review of Story 12.8).
@@ -1378,3 +1405,10 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-epic-12-retro-item-84-ship-mcp-and-skills-detect-older-bookvie.md`
   summary: Spine drift (AD-21, and the Deferred bullet "Skills on the agent tools"), reconciled before the next epic: both skills' step 1 now probes `/mcp` with a hand-written `curl` POST of a sessionless `tools/call get_app_info` (no `initialize`), which relies on the mount being stateless with JSON responses. AD-21 says Claude Code is the only supported client and gives stateless mode only as the reason a restart strands no session; neither AD-21, AD-8's skill notes nor the Deferred bullet records that the skills depend on it to tell an older bookvie apart. Folds into item 82's reconciliation. Low.
   evidence: `.claude/skills/bookvie-new-book/SKILL.md` and `.claude/skills/bookvie-notes-summary/SKILL.md` step 1, pinned by `check_the_older_bookvie_probe` (Spine Check, build review of retro item 84).
+  resolved: Epic 12 retro item 82 (2026-11-20). In the spine, AD-21 Mount says a client can call `tools/call` without `initialize` and that the skills' probe relies on it; AD-8 describes the probe and its pin.
+
+## Deferred from: build of spec-epic-12-retro-item-82-reconcile-the-spine-with-epic-12 (2026-11-20)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-epic-12-retro-item-82-reconcile-the-spine-with-epic-12.md`
+  summary: The spine's IDs convention keeps `add-card-note`'s `cardNoteId` "because the agent skills that write to bookvie are expected to" read it, and says to drop it "if none does once those skills exist". Both skills now exist and neither adds a Card note, though the `add_card_note` tool returns the id. Oleg should decide whether to keep it (an agent may add a note and then edit it) or drop it. Low.
+  evidence: ARCHITECTURE-SPINE.md Consistency Conventions, IDs row; `backend/bookvie/intents/answers.py` `card_note_answer`; `.claude/skills/*/SKILL.md` (Blind Hunter, build review of retro item 82).
