@@ -109,6 +109,7 @@ from bookvie.intents import (
     write_backup,
 )
 from bookvie.intents.cover_fetch import COVER_URL_FIELD, on_cover_url
+from bookvie.intents.finish_reading import _ANSWERS as PURPOSE_FULFILLED_ANSWERS
 from bookvie.intents.intent_model import IntentModel, parse_form_intent
 
 
@@ -126,11 +127,46 @@ class AgentTool:
     """Tool-only optional properties (by key) the model doesn't have, such as ``coverUrl``."""
 
 
+_INTEGER: Mapping[str, Any] = {"type": "integer"}
+_STRING: Mapping[str, Any] = {"type": "string"}
+
+
+def _or_null(prop: Mapping[str, Any]) -> dict[str, Any]:
+    return {"anyOf": [dict(prop), {"type": "null"}]}
+
+
+JSON_VALUE_TYPES: Mapping[type[BaseModel], Mapping[str, Mapping[str, Any]]] = {
+    UpdatePageIntent: {"page": _INTEGER},
+    StartReadingIntent: {"page": _or_null(_INTEGER)},
+    FinishReadingIntent: {
+        "finishedOn": _STRING,
+        "purposeFulfilled": _or_null({"type": "string", "enum": list(PURPOSE_FULFILLED_ANSWERS)}),
+        "rating": _or_null(_INTEGER),
+    },
+}
+"""The JSON type each ``JsonValue`` property (by alias) is advertised with, by model.
+
+The model takes any JSON value there, so a wrong type is a field error from
+its parser, not a malformed intent; the bare ``JsonValue`` schema names no
+type, though, and a client then guesses one (Epic 12 retro item 83: Claude
+Code sent ``update_page``'s page as ``"120"``). ``null`` is listed only
+where the parser accepts it: never for ``update_page``'s ``page`` (its
+``nullable`` only makes ``null`` a field error) or ``finishedOn`` (a finish
+always needs a date). Nothing is coerced: the parser still refuses
+``"120"``.
+"""
+
+_JSON_VALUE_REF = "#/$defs/JsonValue"
+
+
 def input_schema(model: type[BaseModel]) -> dict[str, Any]:
     """The tool's advertised input schema: ``model``'s by alias, closed.
 
     ``null`` is left out of every property whose field isn't in the model's
     ``nullable``, because the parser refuses an explicit ``null`` there.
+    Then each property in :data:`JSON_VALUE_TYPES` for ``model`` gets its
+    declared type in place of the untyped ``JsonValue`` reference, keeping
+    its other keys (such as ``default``).
     """
     schema = copy.deepcopy(model.model_json_schema(by_alias=True))
     schema["additionalProperties"] = False
@@ -141,7 +177,23 @@ def input_schema(model: type[BaseModel]) -> dict[str, Any]:
         if name in nullable or key not in properties:
             continue
         properties[key] = _without_null(properties[key])
+    for key, declared in JSON_VALUE_TYPES.get(model, {}).items():
+        rest = {k: v for k, v in properties[key].items() if k != "$ref"}
+        properties[key] = {**copy.deepcopy(dict(declared)), **rest}
+    _drop_unused_json_value(schema)
     return schema
+
+
+def _drop_unused_json_value(schema: dict[str, Any]) -> None:
+    """Remove ``$defs.JsonValue`` (and an emptied ``$defs``) once no property refers to it."""
+    defs = schema.get("$defs")
+    if not isinstance(defs, dict) or "JsonValue" not in defs:
+        return
+    if _JSON_VALUE_REF in json.dumps(schema):
+        return
+    del defs["JsonValue"]
+    if not defs:
+        del schema["$defs"]
 
 
 def advertised_schema(tool: AgentTool) -> dict[str, Any]:

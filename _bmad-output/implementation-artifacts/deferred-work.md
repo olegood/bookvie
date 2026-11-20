@@ -1419,3 +1419,16 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-12-7-summarize-a-book-s-notes-through-the-agent-tools.md`
   summary: `update_page` can't save a page from Claude Code. The tool advertises `page` as an untyped `JsonValue` (no `type` in its input schema), so Claude Code sends `"120"`, a string; `valid_page` accepts only a JSON integer, so every call is refused with "Page must be between 0 and 670.", which also misstates the cause. A raw `tools/call` with `"page": 120` succeeds. `start_reading`'s `page` and `finish_reading`'s `finishedOn`, `purposeFulfilled` and `rating` are `JsonValue` too and likely fail the same way (not run). Fix in the agent layer (advertise `integer`/`boolean` in the input schema, or coerce a whole-number string for the agent only), keeping the HTTP intents' wrong-type refusals. High: the agent's most common write doesn't work.
   evidence: `backend/bookvie/intents/update_page.py` `UpdatePageIntent.page`, `valid_page`; `backend/bookvie/agent/tools.py` `input_schema`; seeding for 12.7 AC-3 (Epic 12 retro item 83).
+  resolved: 2026-11-20 by `spec-agent-tools-advertise-value-types.md`: `input_schema` now lists `update_page.page` as integer, `start_reading.page` and `rating` as integer or null, `purposeFulfilled` as an enum or null and `finishedOn` as string (`JSON_VALUE_TYPES` in `backend/bookvie/agent/tools.py`); the parsers still refuse `"120"`. Pinned over `/mcp` by `backend/tests/test_agent_value_types.py`. A real Claude Code session's first-call save (that spec's AC-2) is still to be recorded.
+
+## Deferred from: build-auto review of spec-agent-tools-advertise-value-types (2026-11-21)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-agent-tools-advertise-value-types.md`
+  summary: Spine drift (AD-21), reconciled before the next epic: the "One validator" bullet says each tool's schema is generated from its model by alias (plus `coverUrl`, null dropped, closed), but `JSON_VALUE_TYPES` in `agent/tools.py` now declares the type of every `JsonValue` property (the `purposeFulfilled` enum, integer-only `update_page.page`, string-only `finishedOn`), and `test_agent_value_types.py` pins that every listed property has a JSON type.
+  evidence: `backend/bookvie/agent/tools.py` `JSON_VALUE_TYPES`, `input_schema`; spine-check review layer.
+- source_spec: `_bmad-output/implementation-artifacts/spec-agent-tools-advertise-value-types.md`
+  summary: Spine drift (AD-8), reconciled before the next epic: "The tools' advertised schemas are generated from the same Pydantic models" no longer covers the agent-layer type declarations for `JsonValue` fields.
+  evidence: `backend/bookvie/agent/tools.py` `JSON_VALUE_TYPES`; spine-check review layer.
+- source_spec: `_bmad-output/implementation-artifacts/spec-agent-tools-advertise-value-types.md`
+  summary: A page sent with the wrong type (`"120"`) is refused with "Page must be between 0 and 670.", which misstates the cause; the spec's contract forbids changing refusal copy, so a clearer message needs its own change (agent and HTTP alike).
+  evidence: `backend/bookvie/intents/update_page.py` `valid_page` / `page_message`, also used by `start_reading`; pinned by `backend/tests/test_agent_value_types.py`.

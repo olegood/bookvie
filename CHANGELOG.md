@@ -6,7 +6,9 @@ All notable changes to bookvie are recorded here. The format follows
 
 ## [Unreleased]
 
-Nothing yet.
+### Fixed
+
+- The agent tools now tell an agent the type of each value they take: `update_page` lists `page` as a whole number; `start_reading` lists `page` as a whole number or nothing; and `finish_reading` lists `rating` as a whole number or nothing, `purposeFulfilled` as yes, partly or not yet, or nothing, and `finishedOn` as a date written as text. Claude Code had sent the page as text, so `update_page` refused every page it was asked to save.
 
 ## [2.0.0] - 2026-11-20
 

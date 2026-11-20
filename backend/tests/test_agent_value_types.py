@@ -1,4 +1,4 @@
-"""ATDD red phase: the agent tools advertise the type of every value they take.
+"""The agent tools advertise the type of every value they take.
 
 Spec: ``_bmad-output/implementation-artifacts/spec-agent-tools-advertise-value-types.md``.
 Epic 12 retro item 83's real session found ``update_page`` unusable from Claude
@@ -11,13 +11,18 @@ AC-2 (a real Claude Code session saves a page on the first call) is manual and
 has no leaf.
 """
 
+import json
+from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
-import pytest
+from bookvie.domain.finished_on import FINISHED_ON_FORMAT_MESSAGE
+from bookvie.intents.update_page import page_message
+from tests.agent_client import McpClient, error_of, structured_of
+from tests.builder import LibraryBuilder
 
-from tests.agent_client import McpClient
-
-RED = "ATDD red phase: spec-agent-tools-advertise-value-types (the tools don't advertise value types yet)"
+# The Main book of the item 83 session: 670 pages, at page 100, with a Purpose.
+MAIN_PAGES = 670
 
 # The JSON type of an enum or const value, as JSON Schema names it.
 _TYPE_OF_VALUE = (
@@ -80,7 +85,6 @@ def enum_values(schema: dict[str, Any], prop: dict[str, Any]) -> set[Any] | None
     return set().union(*limited) if limited else None
 
 
-@pytest.mark.skip(reason=RED)
 def test_every_tool_property_advertises_its_json_type(mcp_client: McpClient) -> None:
     # [P0] AC-1. The listed schemas Claude Code reads, over /mcp.
     from bookvie.intents.finish_reading import _ANSWERS
@@ -95,7 +99,8 @@ def test_every_tool_property_advertises_its_json_type(mcp_client: McpClient) -> 
 
     assert types("start_reading", "page") == {"integer", "null"}
     assert types("finish_reading", "rating") == {"integer", "null"}
-    assert types("finish_reading", "finishedOn") == {"string", "null"}
+    # A finish always needs a date: _finished_on refuses null, so it isn't listed.
+    assert types("finish_reading", "finishedOn") == {"string"}
     assert types("finish_reading", "purposeFulfilled") == {"string", "null"}
     fulfilled = listed["finish_reading"]["properties"]["purposeFulfilled"]
     assert enum_values(listed["finish_reading"], fulfilled) == set(_ANSWERS)
@@ -108,3 +113,103 @@ def test_every_tool_property_advertises_its_json_type(mcp_client: McpClient) -> 
         if not json_types(schema, prop)
     ]
     assert untyped == []
+
+
+def _seed_main(connect_mcp: Callable[..., McpClient], tmp_path: Path) -> tuple[McpClient, str, str]:
+    """A client on a library whose Main book has 670 pages, and that Book's id and an unread one's."""
+    folder = tmp_path / "library"
+    builder = LibraryBuilder()
+    main = builder.book(title="Designing Data-Intensive Applications", pages=MAIN_PAGES)
+    unread = builder.book(title="Neuromancer", pages=271)
+    builder.reading(main, start_date="2026-10-01", current_page=100, purpose="Learn replication")
+    builder.main(main)
+    builder.write(folder)
+    return connect_mcp(data_dir=folder), main, unread
+
+
+def _current_page(client: McpClient, book_id: str) -> int:
+    assert client.data_dir is not None
+    stored = json.loads((Path(client.data_dir) / "library.json").read_text(encoding="utf-8"))
+    (book,) = [book for book in stored["books"] if book["id"] == book_id]
+    return book["readings"][-1]["currentPage"]
+
+
+def test_update_page_refuses_a_string_page_unchanged_and_saves_an_integer_one(
+    connect_mcp: Callable[..., McpClient], tmp_path: Path
+) -> None:
+    # [P0] I/O matrix "String page", then "Integer page": the item 83 call, both ways.
+    client, main, _ = _seed_main(connect_mcp, tmp_path)
+
+    refused = error_of(client.call_tool("update_page", {"bookId": main, "page": "120"}))
+    assert refused["code"] == "invalid_fields", refused
+    assert refused["fields"] == [
+        {"field": "page", "message": f"Page must be between 0 and {MAIN_PAGES}."}
+    ]
+    assert _current_page(client, main) == 100
+
+    saved = client.call_tool("update_page", {"bookId": main, "page": 120})
+    assert structured_of(saved) == {"ok": True}
+    assert _current_page(client, main) == 120
+
+
+def test_finish_reading_refuses_a_rating_sent_as_a_string(
+    connect_mcp: Callable[..., McpClient], tmp_path: Path
+) -> None:
+    # [P1] I/O matrix "Rating as string": refused on rating as today, never coerced.
+    client, main, _ = _seed_main(connect_mcp, tmp_path)
+
+    answer = client.call_tool(
+        "finish_reading",
+        {"bookId": main, "finishedOn": "2026-10-29", "purposeFulfilled": "yes", "rating": "4"},
+    )
+    refused = error_of(answer)
+    assert refused["code"] == "invalid_fields", refused
+    assert [field["field"] for field in refused["fields"]] == ["rating"]
+    assert refused["fields"][0]["message"] == "Rating must be 1 to 5 stars, or no rating."
+
+
+def test_value_typed_properties_list_null_only_where_it_is_taken(
+    connect_mcp: Callable[..., McpClient], tmp_path: Path
+) -> None:
+    # [P1] No listed schema invites a null the server refuses (the attempt-1 finishedOn gap).
+    client, main, unread = _seed_main(connect_mcp, tmp_path)
+    listed = {tool["name"]: tool["inputSchema"] for tool in client.list_tools()}
+    nullable = {
+        (tool, key)
+        for tool, schema in listed.items()
+        for key, prop in schema.get("properties", {}).items()
+        if "null" in json_types(schema, prop)
+    }
+    # Of the five value-typed properties, the three that take null are listed nullable;
+    # the other two (update_page's page and finishedOn) are not.
+    assert {
+        ("start_reading", "page"),
+        ("finish_reading", "rating"),
+        ("finish_reading", "purposeFulfilled"),
+    } <= nullable
+    assert ("update_page", "page") not in nullable
+    assert ("finish_reading", "finishedOn") not in nullable
+
+    # The two listed without null still refuse it, on that field, with the existing message.
+    page_null = error_of(client.call_tool("update_page", {"bookId": main, "page": None}))
+    assert page_null["code"] == "invalid_fields", page_null
+    assert page_null["fields"] == [{"field": "page", "message": page_message(MAIN_PAGES)}]
+    finished_on_null = error_of(
+        client.call_tool(
+            "finish_reading",
+            {"bookId": main, "finishedOn": None, "purposeFulfilled": "yes", "rating": 4},
+        )
+    )
+    assert finished_on_null["code"] == "invalid_fields", finished_on_null
+    assert finished_on_null["fields"] == [
+        {"field": "finishedOn", "message": FINISHED_ON_FORMAT_MESSAGE}
+    ]
+
+    # Each of the three listed nullable, sent as null, isn't refused on its field.
+    finished = client.call_tool(
+        "finish_reading",
+        {"bookId": main, "finishedOn": "2026-10-29", "purposeFulfilled": None, "rating": None},
+    )
+    assert structured_of(finished) == {"ok": True}
+    started = client.call_tool("start_reading", {"bookId": unread, "purpose": None, "page": None})
+    assert structured_of(started) == {"ok": True}

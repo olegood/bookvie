@@ -2,14 +2,36 @@
 title: 'Agent tools advertise the type of every value they take'
 type: 'bugfix'
 created: '2026-11-20'
-status: 'ready-for-dev'
+status: 'in-review'
+baseline_revision: 'df3cd5f668b73f0f8e56b69979290701385eb253'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-12-retro-2026-11-20.md'
   - '{project-root}/AGENTS.md'
 warnings: []
-deferred: []
+deferred:
+  - summary: >-
+      Spine drift (AD-21), reconciled before the next epic: the spine says each tool's schema is generated from its model by alias, but `JSON_VALUE_TYPES` in `agent/tools.py` now declares the type of every `JsonValue` property (with the `purposeFulfilled` enum and integer-only `update_page.page`), and a test pins that every listed property has a JSON type.
+    evidence: |-
+      backend/bookvie/agent/tools.py JSON_VALUE_TYPES and input_schema; spine-check layer, review pass 2.
+    location: >-
+      backend/bookvie/agent/tools.py
+    severity: low
+  - summary: >-
+      Spine drift (AD-8), reconciled before the next epic: "the tools' advertised schemas are generated from the same Pydantic models" no longer covers the agent-layer type declarations for `JsonValue` fields.
+    evidence: |-
+      backend/bookvie/agent/tools.py JSON_VALUE_TYPES; spine-check layer, review pass 2.
+    location: >-
+      backend/bookvie/agent/tools.py
+    severity: low
+  - summary: >-
+      A wrong-type page ("120") is refused with "Page must be between 0 and 670.", which misstates the cause (the value is text, not out of range); this spec's contract forbids changing refusal copy, so it needs its own change.
+    evidence: |-
+      Pre-existing: valid_page returns None for any non-int, and update_page/start_reading answer page_message(pages); noted in the item 83 deferred entry and pinned by test_agent_value_types.py.
+    location: >-
+      backend/bookvie/intents/update_page.py
+    severity: low
 ---
 
 <intent-contract>
@@ -102,6 +124,38 @@ deferred: []
   - `[high]` `[intent_gap]` (verification-gap) `finishedOn` advertised nullable but `null` always refused, and the listing test pins the wrong contract (`types(...) == {"string", "null"}`) — pre-verified; same root cause as the `finishedOn` intent_gap.
   - `[false]` `[reject]` (verification-gap, other) "The spec is where the error starts" — not a separate defect: it is the root-cause statement of the `finishedOn` intent_gap, recorded there.
 
+### 2026-11-21 — Review pass (attempt 2, after the finishedOn amendment)
+- verdicts: 28 findings — high 0, medium 0, low 15, false 13, maybe-false 0
+- findings:
+  - `[low]` `[defer]` (spine-check) Spine drift (AD-21), reconciled before the next epic: the "One validator" bullet says schemas are generated from the model by alias; `JSON_VALUE_TYPES` now declares the `JsonValue` types — deferred to `deferred-work.md`.
+  - `[low]` `[defer]` (spine-check) Spine drift (AD-8), reconciled before the next epic: "generated from the same Pydantic models" no longer covers the agent-layer declarations — deferred to `deferred-work.md`.
+  - `[false]` `[reject]` (intent-alignment) No test shows Claude Code sending an integer — carried: by design, manual AC-2, held open by `bmad-code-review`.
+  - `[low]` `[reject]` (intent-alignment) CHANGELOG and the `resolved:` line state the Claude Code outcome as fact — the `resolved:` line says AC-2 is still to be recorded, and the CHANGELOG describes the fix and its cause, not a verified session; not worth more wording.
+  - `[low]` `[patch]` (intent-alignment) CHANGELOG wording looser than the listed schema (no null, `purposeFulfilled` as "text") — patched: the line now names whole number or nothing, yes/partly/not yet or nothing, and `finishedOn` as a date written as text.
+  - `[low]` `[patch]` (intent-alignment) The null test is narrower than its name — patched: renamed `test_value_typed_properties_list_null_only_where_it_is_taken`.
+  - `[false]` `[reject]` (intent-alignment) The invariant is kept by a test, not derivation — the contract says "A test pins this"; that is what was built.
+  - `[low]` `[defer]` (intent-alignment) The test pins the misleading "Page must be between 0 and 670." copy for a string page — pre-existing copy the contract forbids changing; deferred as its own change.
+  - `[low]` `[defer]` (blind) No spine drift entry for the type override — same root cause as the spine-check drift rows; recorded in `deferred-work.md` at Finalize.
+  - `[false]` `[reject]` (blind) The spec's run record is stale (`Auto Run Result` says blocked, no pass-2 triage entry) — Finalize rewrites both; not a defect in the change.
+  - `[false]` `[reject]` (blind) The Code Map line range for `input_schema` is wrong — the fix edits this build's spec.
+  - `[false]` `[reject]` (blind) The Verification commands leave out `test_agent_value_types.py` — carried: the fix edits this build's spec; `npm run check` runs the file.
+  - `[low]` `[patch]` (blind) The null test doesn't cover every nullable property despite its name — same root cause as the intent-alignment "narrower than its name" row; patched by the rename.
+  - `[low]` `[patch]` (blind) The test comment "The five value-typed properties: null only where the parser takes it" contradicts the assertions — patched: reworded to three nullable, two not.
+  - `[low]` `[patch]` (blind) No `/mcp` null round trip for `update_page.page` and `finishedOn` — patched: the null test now sends `null` to each and asserts `invalid_fields` with `page_message(670)` / `FINISHED_ON_FORMAT_MESSAGE`.
+  - `[low]` `[defer]` (blind) The misleading refusal copy is neither fixed nor deferred — same root cause as the intent-alignment copy row; deferred.
+  - `[low]` `[patch]` (blind) The CHANGELOG line understates the schema — same root cause as the intent-alignment CHANGELOG row; patched.
+  - `[low]` `[reject]` (blind) The `resolved:` line closes the entry before AC-2 — same as the intent-alignment records row; the line names AC-2 as pending.
+  - `[false]` `[reject]` (blind) Cross-module import of private `_ANSWERS` — carried: a rename fails loudly at import.
+  - `[low]` `[reject]` (blind) `_drop_unused_json_value` uses a full-schema string search, and `$defs` removal is unpinned — carried: at worst a dead `$defs` entry, harmless to clients; the listing test fails if a still-used def is removed (verification-gap layer).
+  - `[low]` `[reject]` (blind) `_current_page` reads `library.json` instead of reading back over `/mcp` — the store file is the saved state the matrix row asks about; a style preference with no named harm.
+  - `[low]` `[reject]` (edge-case) JSON Schema `integer` admits `120.0`, which the parsers refuse — carried: clients send integers in everyday use; the fix needs a coercion the contract bans or new schema keywords.
+  - `[low]` `[reject]` (edge-case) A stale `JSON_VALUE_TYPES` key raises a bare `KeyError` — carried: every listing test fails at once with a traceback.
+  - `[low]` `[reject]` (edge-case) A property already carrying `anyOf`/`type` lets `rest` override the declared type — carried (merge-order row): hypothetical, no such field; the listing test would catch an untyped `$ref`.
+  - `[false]` `[reject]` (edge-case) `start_reading` on a Side read with `page: null` is refused though listed nullable — `null` is valid for every other Book, and the description says "When the Book is a Side read, also send page" (`backend/bookvie/agent/tools.py:512`); the schema can't express that condition.
+  - `[false]` `[reject]` (edge-case) The null round trip never covers the Side read path — the Side read refusal is pre-existing parser behaviour this change doesn't touch; the claim the test makes is about the listed types.
+  - `[false]` `[reject]` (edge-case) `finishedOn` has no format — carried: the description states YYYY-MM-DD.
+  - `[false]` `[reject]` (edge-case, claim) "the JSON type the server accepts" is false because of `120.0` — same as the `120.0` row; the server accepts every JSON integer a client sends as one.
+
 ## Design Notes
 
 - **Pipeline:** ATDD → `bmad-build-auto` → `bmad-code-review` → `bmad-testarch-automate` (AGENTS.md "Story pipeline").
@@ -116,19 +170,40 @@ deferred: []
 - `npm run check` -- expected: exit 0
 
 **Manual checks (if no CLI):**
-- With a dev server built from this checkout, `tools/list` on 8766 shows `"type": "integer"` for `update_page.page`. A real Claude Code session's `update_page` call is recorded under `## Auto Run Result`.
+- With a dev server built from this checkout, `tools/list` on 8766 shows `"type": "integer"` for `update_page.page`. A real Claude Code session's `update_page` call is recorded under `## Auto Run Result
 
-## Auto Run Result
+Status: in-review
 
-Status: blocked
-Blocking condition: intent gap
+**Summary.** The agent tools now list a JSON type for every value they take. `input_schema` applies a per-model declaration, `JSON_VALUE_TYPES`, after the null handling, keeps other keys such as `default`, and drops the unused `$defs.JsonValue`:
+- `update_page.page`: integer, no null.
+- `start_reading.page`, `finish_reading.rating`: integer or null.
+- `purposeFulfilled`: enum `yes`/`partly`/`notYet` (from `_ANSWERS`) or null.
+- `finishedOn`: string only (spec amendment, attempt 2).
 
-**What happened.** The implementation advertised the five `JsonValue` properties with JSON types in `backend/bookvie/agent/tools.py` (`JSON_VALUE_TYPES`, applied in `input_schema`). It also un-skipped and extended `backend/tests/test_agent_value_types.py`, and edited `CHANGELOG.md` and `deferred-work.md`. `npm run check` passed (exit 0), the spec's pytest commands passed (205), and the I/O matrix rows were all covered by passing tests.
+No parser, refusal copy, tool description or HTTP intent changed, and nothing is coerced. Attempt 1 stopped on an intent gap (`finishedOn` was to list null, which the parser refuses). Oleg chose string-only, and this run re-derived the code from the amended spec.
 
-The review found the contract itself is wrong on one field. `finishedOn` is required to be advertised "string or null", but `_finished_on` (`backend/bookvie/intents/finish_reading.py:88-89`) refuses `null` as a format error, so the schema would invite a value the server always refuses. That is the same class of bug this spec fixes. A fix contradicts the intent-contract (Approach, Always bullet 2, I/O row "Listed finish fields"), so the code was reverted per step-04's intent_gap branch.
+**Files changed:**
+- `backend/bookvie/agent/tools.py`: `JSON_VALUE_TYPES`, applied in `input_schema`, plus `_drop_unused_json_value`.
+- `backend/tests/test_agent_value_types.py`: un-skipped ATDD listing test (`finishedOn` string only), the `update_page` string/integer round trip, the `"rating": "4"` refusal, and the null test. The null test checks that the three nullable properties take null and that `update_page.page` and `finishedOn` still refuse it.
+- `CHANGELOG.md`: Fixed line under `[Unreleased]`.
+- `_bmad-output/implementation-artifacts/deferred-work.md`: `resolved:` on the item 83 entry, plus this review's deferrals.
 
-**Saved patch:** kept outside the repo (session scratchpad); its approach is the Spec Change Log KEEP line. It holds every code, test, CHANGELOG and deferred-work change from this run. Reverted with `git apply -R`; `git status` shows only this spec and the patch.
+**Review findings (pass 2): 28.**
+- **Patched (5 entries, all `low`):** CHANGELOG wording, test comment, test name, and null round trips for the two non-nullable properties.
+- **Deferred (3):** spine drift on AD-21, spine drift on AD-8, and the misleading wrong-type page copy.
+- **Rejected:** every other finding, each with its reason in the Review Triage Log above.
 
-**Unresolved question for Oleg.** Should `finishedOn` be advertised as `{"type": "string"}` only, since `finish_reading` always needs a date? The tool description already treats it as required and offers null only for `purposeFulfilled` and `rating`. Or should the parser start accepting `null` (for example, meaning today), which would change `_finished_on`, a "Never" in this spec? If string-only: amend the Approach, Always bullet 2 and the I/O row, then re-run `bmad-build-auto` on this spec. The saved patch needs only `finishedOn`'s entry and its test assertion changed. Consider also a round-trip test that sends `null` to each field advertised as nullable, so this can't recur.
+**Follow-up review recommended:** false. 0 high and 0 medium patched; 5 low patched.
 
-**Deferred (recorded in the triage log):** spine drift on AD-21 and AD-8, moot until the code is re-derived.
+**Verification:**
+- `uv run pytest -q tests/test_agent_write.py tests/test_agent_mount.py tests/test_agent_value_types.py`: 206 passed after the patches.
+- `npm run check`: exit 0, smoke ok.
+- `schema.d.ts`: unchanged.
+- I/O matrix rows: each covered by a passing test in `test_agent_value_types.py`.
+
+**Residual risks:**
+- AC-2 is still manual and open. A real Claude Code session must save a page through the `bookvie-dev` tools on the first call, and that run must be recorded here. The `bookvie-dev` MCP server was unreachable in this session.
+- The fix reaches the installed app only with a release after 2.0.0.
+- A JSON `120.0` passes the schema but is refused (accepted limit).
+
+Next: run `bmad-code-review` in a new session (AGENTS.md "Story pipeline").
