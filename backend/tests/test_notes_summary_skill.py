@@ -53,11 +53,11 @@ HTTP_CLIENT = re.compile(
 )
 
 
-def _skill_files() -> dict[str, str]:
-    """Every file in the skill's folder, by path relative to it, with its text."""
+def _skill_files(folder: Path = SKILL_DIR) -> dict[str, str]:
+    """Every file in a skill's folder (this skill's by default), by path relative to it, with its text."""
     return {
-        path.relative_to(SKILL_DIR).as_posix(): path.read_text(encoding="utf-8")
-        for path in sorted(SKILL_DIR.rglob("*"))
+        path.relative_to(folder).as_posix(): path.read_text(encoding="utf-8")
+        for path in sorted(folder.rglob("*"))
         if path.is_file() and "__pycache__" not in path.parts
     }
 
