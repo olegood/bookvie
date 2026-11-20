@@ -2,16 +2,16 @@
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03-generate-tests', 'step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
 lastSaved: '2026-11-20'
-storyId: '12.5'
-storyKey: '12-5-let-an-agent-fetch-a-book-s-cover-from-its-address'
+storyId: '12.6'
+storyKey: '12-6-let-an-agent-back-up-my-library-to-disk'
 inputDocuments:
-  - _bmad-output/implementation-artifacts/spec-12-5-let-an-agent-fetch-a-book-s-cover-from-its-address.md (Boundaries, Review Findings, Review Triage Log, Design Notes)
-  - _bmad-output/test-artifacts/atdd-checklist-12-5-let-an-agent-fetch-a-book-s-cover-from-its-address.md
-  - _bmad-output/implementation-artifacts/sprint-status.yaml (12-5 done)
-  - _bmad-output/implementation-artifacts/deferred-work.md (Story 12.5 entries)
+  - _bmad-output/implementation-artifacts/spec-12-6-let-an-agent-back-up-my-library-to-disk.md (Boundaries, I/O matrix, Review Findings, Review Triage Log)
+  - _bmad-output/test-artifacts/atdd-checklist-12-6-let-an-agent-back-up-my-library-to-disk.md
+  - _bmad-output/implementation-artifacts/sprint-status.yaml (12-6 done)
+  - _bmad-output/implementation-artifacts/deferred-work.md (Story 12.6 entries)
   - _bmad/tea/config.yaml
-  - backend/bookvie/intents/cover_fetch.py (`CoverFetcher`, `_Clock`, `_open`, `_get`, `_exchange`); backend/bookvie/agent/tools.py (`_book_tool`)
-  - backend/tests/test_cover_fetch.py; backend/tests/test_agent_cover_url.py; backend/tests/cover_server.py; backend/tests/helpers.py (`RecordingLock`); backend/tests/conftest.py (`connect_mcp`)
+  - backend/bookvie/intents/backup_file.py (`write_backup`, `_write_atomic`); backend/bookvie/agent/server.py (`_answer`)
+  - backend/tests/test_agent_backup.py; backend/tests/helpers.py (`FaultyFs`, `RecordingLock`); frontend/e2e/agent-backup.spec.ts; frontend/e2e/fixtures.ts
   - knowledge/test-levels-framework.md
   - knowledge/test-priorities-matrix.md
   - knowledge/data-factories.md
@@ -20,61 +20,70 @@ inputDocuments:
   - knowledge/test-quality.md
 ---
 
-# Automation Summary: Story 12.5 Let an agent fetch a Book's cover from its address
+# Automation Summary: Story 12.6 Let an agent back up my library to disk
 
 ## Preflight
 
-- **Stack:** `fullstack` (auto). The story has no UI, so every new test is pytest in `backend/tests/`. No Playwright test was added, so no browser session was opened and the Playwright fragments weren't loaded.
-- **Mode:** BMad-integrated. The inputs were the spec with its review records, and the ATDD checklist's seven green-phase follow-ups.
-- **Order:** this run started after the code review's commit `b4fdceb` landed, with a clean tree, and the story `done`.
-- **Generation:** sequential, in this session, as for Stories 12.3 and 12.4. It is one Python module and one test level.
+- **Stack:** `fullstack` (auto). The story's only browser-side change is the e2e fixture's temporary HOME, which `agent-backup.spec.ts` already covers. Every new test is pytest in `backend/tests/`. No browser session was opened, and the Playwright fragments weren't loaded.
+- **Mode:** BMad-integrated. The inputs were the spec with its review records, the ATDD checklist's ten green-phase follow-ups, and the review's two deferred verification gaps.
+- **Order:** this run started after the code review's commit `b7a34c1` landed, with a clean tree and the story `done`.
+- **Generation:** sequential, in this session, as for Stories 12.3 to 12.5. It is one Python module at one test level.
 - **Knowledge:** the six core fragments only. `tea_use_playwright_utils` and `tea_use_pactjs_utils` don't apply: the run wrote no Playwright test, and the repo has no Pact artifacts.
 
 ## Coverage plan
 
-The build and the review already covered five of the seven follow-ups (`test_cover_fetch.py`). This run added leaves for what was still open, plus two seams the review rejected as "needs new seams in `Net`". Those turned out to need only a wrapper around `net.connect`.
+The build and the review already cover all ten ATDD follow-ups, plus the midnight read (the review's patch). This run added leaves for what was still open.
 
 | Target | Level | Priority | Why |
 |---|---|---|---|
-| The download runs outside the AD-4 lock; only the save takes it (both tools) | API (MCP tool, `connect_mcp`) | P1 | AD-21's order. A download under the lock would stall every other intent for up to 30 s. |
-| A server that stalls the TLS handshake, or stalls after the request, is refused at the deadline | Unit (fetcher, local listener) | P1 | AD-21's one deadline. The lookup and body stages were already tested; these are the other two branches (`_open`, `_get`). |
-| An address that refuses the connection falls through to the next checked one | Unit | P2 | `_open`'s loop, rejected in review as untestable without seams. |
-| No checked address answers: "couldn't connect" | Unit | P2 | The loop's end. |
-| A certificate failure is not retried on the next address | Unit | P2 | Retrying would show "couldn't connect" instead of the TLS reason. |
-| A download refusal comes alone, not merged with a bad field | API (MCP tool) | P2 | The spec's Design Notes choice. It was untested, while the merged cover-path case was tested. |
+| An app with no backups folder refuses before it takes the AD-4 lock (no zip built) | API (MCP tool, `create_app` + `TestClient`) | P2 | It pins the review's reorder. Moving the check back below `build_export` holds the lock for nothing, and turns an unreadable cover into `couldnt_export`. |
+| A write step fails and removing the temp file fails too: still `couldnt_save`, nothing committed, and the log names the first fault | API (MCP tool, `connect_mcp`), 4 cases | P2 | The review deferred this gap. `FaultyFs` fails one step only, so no leaf reached the cleanup guard. |
 
-Scope: selective. AC-1 to AC-5 are P0 and already covered by the 95 ATDD leaves and the review's additions. No duplicate of an existing level was added.
+Not automated:
+- The HOME a Playwright server started without `home` actually ran with. That needs an observation point no endpoint offers, and it stays deferred in `deferred-work.md`.
 
 ## Files
 
-- **Updated:** `backend/tests/test_cover_fetch.py` gained 8 leaves in a new "Automation follow-ups" section (6 tests, 2 of them parametrized over 2 values) and 2 test hosts (`wrong-twice.example`, `hop5.example`). It also gained the `Staller` listener and the `_refusing` connect wrapper. The file is now 690 lines.
-- **Updated:** `_bmad-output/test-artifacts/atdd-checklist-12-5-let-an-agent-fetch-a-book-s-cover-from-its-address.md`. All 7 follow-ups and the implementation checklist are resolved: 13 ticked, 2 retired. `grep -cF '[ ]'` gives **0**.
-- No source file changed. No shared helper changed: `RecordingLock` is reused as it is, and `Store.open` is patched per test with `monkeypatch`.
+- `backend/tests/test_agent_backup.py`: two leaves and one fs double.
+  - `test_an_app_with_no_backups_folder_refuses_before_it_takes_the_lock` (1 test).
+  - `test_a_write_failure_whose_cleanup_fails_too_reports_the_first_fault` (4 cases: `write`, `fsync`, `close`, `replace`).
+  - `_CleanupFailsFs`: a `FaultyFs` whose `remove` always fails.
+- `_bmad-output/test-artifacts/atdd-checklist-12-6-let-an-agent-back-up-my-library-to-disk.md`: all ten follow-ups ticked, each with its test.
+- `_bmad-output/implementation-artifacts/deferred-work.md`: a `resolved:` line on the double-fault entry.
+
+## Finding while automating
+
+The review's deferred entry said that dropping the guard around `fs.remove(temp)` would turn a double fault into an internal error. It wouldn't. `agent/server.py`'s `_answer` maps any escaping exception to `couldnt_save(500)`, so the agent's answer is the same either way.
+
+The first draft of the leaf asserted only the answer, and the mutation (dropping the guard) survived it. What the guard really keeps is the intent's log line naming the first fault: "couldn't save the backup: can't write … injected <step> fault". The leaf now asserts that line, and the mutation fails all four cases. The `resolved:` line in `deferred-work.md` records the correction.
 
 ## Validation
 
-- **New leaves:** `uv run pytest tests/test_cover_fetch.py` gave 74 passed. The selected new and neighboring leaves ran 10 times in a row, 23 passed each time. The new leaves each take about 0.5 s or less: the two stall cases take 0.5 s, the deadline they test.
-- **Mutation checks** (each an edit, a run, and a revert of that same edit; `shasum` confirmed both source files restored):
-  - Fetching under the store lock in `_book_tool`: both lock leaves fail.
-  - `_open` giving up after the first refused address: the fall-through leaf fails.
-  - Dropping `_open`'s `SSLCertVerificationError` clause: the not-retried leaf fails.
-  - Dropping the `clock.expired` check in `_open`: the handshake stall fails. Dropping it in `_get`: the headers stall fails. Each stage pins its own branch.
-  - Not mutated: the comes-alone leaf. It pins the current order by its exact field list and summary, so any merge changes both.
+- **New leaves:** `uv run pytest tests/test_agent_backup.py` gave 35 passed. The new leaves, together with the review's midnight leaf (6 tests), ran 10 times in a row with 6 passed each time, at about 0.3 s per run.
+- **Mutation checks** (each an edit, a run, and a revert of that same edit; `cmp` against a saved copy confirmed `backup_file.py` was restored):
+  - The `backups_dir is None` check moved back below `build_export`: the lock leaf fails.
+  - The `try/except` around `fs.remove(temp)` dropped: all four double-fault cases fail.
 - **Lint and format:** `ruff check` and `ruff format` are clean on the file.
-- **Full check:** `npm run check` exited 0 in this run: pytest 2099 passed (the review's 2091 plus these 8), unit 388 passed, e2e 799 passed, and the smoke run reported ok. The 3 pytest warnings come from existing leaves in `test_cover.py` and `test_restore_refusals.py`, not from this run.
+- **Full check:** `npm run check` exited 0 in this run.
+  - pytest: 2135 passed (the review's 2130 plus these 5).
+  - Coverage: intents+store 97.62%.
+  - Unit tests: 388 passed.
+  - e2e: 800 passed.
+  - Smoke test: ok.
+
+  No `~/bookvie-backups*` folder exists in the real home afterwards.
 - **Checklist:** no CLI or browser session was opened. Temporary scripts stayed in the session scratchpad, not the repo.
 
 ## ATDD checklist
 
-Remaining `[ ]` lines: **0**.
-- **Retired:** "AC-4 through a real server". The CLI has no fetcher seam, so the call would reach the real network, which AC-5 forbids. The default fetcher is already run in-process through a tool, and the first real download is Story 12.8's (deferred-work entry from the code review).
-- **Retired:** the `cryptography` decision. It is kept transitive, and its deferred-work entry carries it.
+All ten green-phase follow-ups are `[x]`, each pointing at its test. Remaining `[ ]` lines: 0 (`grep -cF '[ ]'`).
 
-## Assumptions and risks
+## Risks and assumptions
 
-- The stall leaves assert `elapsed < 3` s against a 0.5 s deadline. The wide margin is deliberate: the message proves which branch refused, and the time bound only shows the OS timeout wasn't what fired.
-- Still untested, as the review recorded: a successful download through the real DNS, connect and OS trust store. Story 12.8 is the first.
+- The double-fault leaf leaves a temp file in the test's backups folder, because its removal is the injected failure. pytest's `tmp_path` cleans it up.
+- The test suite still never runs a real backup of a large library. The spec's residual risk stands: the first one will be Oleg's.
 
 ## Next
 
-Story 12.5 has its four pipeline steps. Epic 12 continues with Story 12.6 (`backlog`), so the epic-boundary steps don't apply yet. Optional: `bmad-testarch-test-review` on `test_cover_fetch.py`, which has grown across three steps.
+- Story 12.6 is complete. Story 12.7 (`summarize-a-book-s-notes-through-the-agent-tools`) is next in Epic 12.
+- `bmad-testarch-trace` for Epic 12 comes after its last story (12.8), before the retrospective.

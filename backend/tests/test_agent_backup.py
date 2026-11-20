@@ -680,3 +680,56 @@ def test_an_app_with_no_backups_folder_refuses_the_backup_and_records_nothing(
         assert _last_export(client) == EARLIER_EXPORT_AT
     assert (folder / LOCAL_STATE).read_bytes() == EARLIER_EXPORT
     assert sorted(p.name for p in tmp_path.iterdir()) == ["library"]
+
+
+def test_an_app_with_no_backups_folder_refuses_before_it_takes_the_lock(
+    tmp_path: Path,
+) -> None:
+    # [P2] The review's reorder: with nowhere to write, the zip is never built, so the
+    # AD-4 lock isn't held for nothing and no cover is read.
+    folder = tmp_path / "library"
+    _seed_with_cover(folder)
+    app = create_app(tmp_path / "no-static", store=Store.open(folder), clock=FakeClock(TODAY))
+    log: list[str] = []
+    lock = RecordingLock(log)
+    app.state.store.lock = lock
+    app.state.write_lock = lock
+    with TestClient(app, base_url=BASE_URL) as http:
+        answer = _backup(McpClient(http, data_dir=folder))
+
+    assert _error_code(answer) == "couldnt_save", answer
+    assert log == []
+
+
+class _CleanupFailsFs(FaultyFs):
+    """Fails at ``fail_at``, and then fails removing the temp file too."""
+
+    def remove(self, path: Path) -> None:
+        raise OSError(5, "injected remove fault")
+
+
+@pytest.mark.parametrize("fault", [step for step in WRITE_FAULTS if step != "create_temp"])
+def test_a_write_failure_whose_cleanup_fails_too_reports_the_first_fault(
+    fault: str,
+    connect_mcp: Callable[..., McpClient],
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    # [P2] A second fault while removing the temp file doesn't replace the first: the
+    # log names the write step that failed, the answer is `couldnt_save`, and nothing
+    # is committed. (Any escaping error would also read `couldnt_save`, through
+    # `agent/server.py`'s catch-all, so the log line is what tells them apart.)
+    client, folder, backups = _connect(connect_mcp, tmp_path)
+    (folder / LOCAL_STATE).write_bytes(EARLIER_EXPORT)
+    client.http.app.state.store.fs = _CleanupFailsFs(fault)
+
+    answer = _backup(client)
+
+    assert _error_code(answer) == "couldnt_save", answer
+    assert json.loads(text_of(answer))["message"] == COULDNT_SAVE_MESSAGE
+    # The temp file stays (its removal failed), but today's backup was never renamed in.
+    assert TODAY_BACKUP not in _names(backups)
+    assert (folder / LOCAL_STATE).read_bytes() == EARLIER_EXPORT
+    assert _last_export(client) == EARLIER_EXPORT_AT
+    first_fault = f"can't write {TODAY_BACKUP}: [Errno 5] injected {fault} fault"
+    assert f"couldn't save the backup: {first_fault}" in capsys.readouterr().err

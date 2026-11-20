@@ -97,16 +97,16 @@ This run changed these shared helpers. The existing agent leaves still pass on t
 
 ## Green-phase follow-ups (secondary branches, not red leaves)
 
-- [ ] **Pytest, AC-1:** `--data-dir ~/bookvie-data` given explicitly (no `--dev`) and a symlink or `..` spelling of it get `~/bookvie-backups`; a folder merely named `bookvie-data` elsewhere gets its sibling `-backups`.
-- [ ] **Pytest, AC-1:** the folder is created with its parents when missing (the `other` case already creates `scratch-backups`; add a nested data folder).
-- [ ] **Pytest, AC-1:** `--dev --data-dir <scratch>` gets `<scratch>-backups`, not `~/bookvie-backups-dev`: the folder follows the data folder, not the mode.
-- [ ] **Pytest, AC-3/AC-5:** a fault at `fsync_dir` after the rename is logged, and the backup still succeeds and records `lastExportAt` (as `Store._write_atomic` treats a commit).
-- [ ] **Pytest, AC-5:** a backups folder that can't be created (a file in its place, or a read-only parent) is `couldnt_save`, and `lastExportAt` doesn't move.
-- [ ] **Pytest, AC-5:** a failure recording `lastExportAt` after the rename is logged, and the backup still answers success (as `record_export` does for a download).
-- [ ] **Pytest, AD-4:** the zip is built under the lock and the file is written after it is released (`RecordingLock`).
-- [ ] **Pytest, AD-21:** `export_backup` with an argument is refused as `NoArguments` refuses one.
-- [ ] **Pytest, AC-2:** a library with no covers round-trips (`covers/` present and empty).
-- [ ] **Playwright, AC-6:** a `--dev` server in the suite (`serverDev`) gets a temporary HOME too, and `startServer` leaves no HOME folder behind after `stop`.
+- [x] **Pytest, AC-1:** `--data-dir ~/bookvie-data` given explicitly (no `--dev`) and a symlink or `..` spelling of it get `~/bookvie-backups`; a folder merely named `bookvie-data` elsewhere gets its sibling `-backups`. (done: backend/tests/test_agent_backup.py:396 `test_any_spelling_of_the_default_data_folder_gets_the_default_backups_folder` (explicit, symlink, dotdot) and backend/tests/test_agent_backup.py:468 `test_the_folder_rule_names_the_default_and_dev_folders_under_the_home_given` (another `bookvie-data` gets its sibling))
+- [x] **Pytest, AC-1:** the folder is created with its parents when missing (the `other` case already creates `scratch-backups`; add a nested data folder). (done: backend/tests/test_agent_backup.py:442 `test_the_backups_folder_is_created_with_its_parents`)
+- [x] **Pytest, AC-1:** `--dev --data-dir <scratch>` gets `<scratch>-backups`, not `~/bookvie-backups-dev`: the folder follows the data folder, not the mode. (done: backend/tests/test_agent_backup.py:424 `test_a_scratch_folder_gets_its_sibling_backups_folder_in_either_mode`)
+- [x] **Pytest, AC-3/AC-5:** a fault at `fsync_dir` after the rename is logged, and the backup still succeeds and records `lastExportAt` (as `Store._write_atomic` treats a commit). (done: backend/tests/test_agent_backup.py:479 `test_a_failed_folder_flush_after_the_rename_is_logged_and_the_backup_succeeds`)
+- [x] **Pytest, AC-5:** a backups folder that can't be created (a file in its place, or a read-only parent) is `couldnt_save`, and `lastExportAt` doesn't move. (done: backend/tests/test_agent_backup.py:553 `test_a_backups_folder_that_cant_be_created_is_couldnt_save` (a file in the folder's place, and in its parent's))
+- [x] **Pytest, AC-5:** a failure recording `lastExportAt` after the rename is logged, and the backup still answers success (as `record_export` does for a download). (done: backend/tests/test_agent_backup.py:530 `test_a_failure_recording_the_last_export_is_logged_and_the_backup_succeeds`)
+- [x] **Pytest, AD-4:** the zip is built under the lock and the file is written after it is released (`RecordingLock`). (done: backend/tests/test_agent_backup.py:571 `test_the_zip_is_built_under_the_lock_and_written_after_it_is_released`)
+- [x] **Pytest, AD-21:** `export_backup` with an argument is refused as `NoArguments` refuses one. (done: backend/tests/test_agent_backup.py:598 `test_an_argument_is_refused_and_no_file_is_written`)
+- [x] **Pytest, AC-2:** a library with no covers round-trips (`covers/` present and empty). (done: backend/tests/test_agent_backup.py:614 `test_a_library_with_no_covers_round_trips`)
+- [x] **Playwright, AC-6:** a `--dev` server in the suite (`serverDev`) gets a temporary HOME too, and `startServer` leaves no HOME folder behind after `stop`. (done: frontend/e2e/agent-backup.spec.ts:15 (the `dev` server's HOME is inside the e2e root and differs from `plain`'s; every HOME `startServer` made is gone after `stop()`))
 
 ## Helper probes
 
