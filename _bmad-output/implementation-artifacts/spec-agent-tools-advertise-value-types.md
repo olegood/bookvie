@@ -18,13 +18,13 @@ deferred: []
 
 **Problem:** `update_page` can't save a page from Claude Code. Epic 12 retro item 83's real session (2026-11-20, `bookvie --dev` 2.0.0) called it with page 120 on a 670-page Main book and was refused twice with "Page must be between 0 and 670.". A raw `tools/call` with `"page": 120` succeeds, and one with `"page": "120"` is refused the same way. `tools/list` advertises `page` as a bare `{"$ref": "#/$defs/JsonValue"}` with no `type`, so Claude Code sends the value as a string, and `valid_page` deliberately accepts only a JSON integer. Four more properties are advertised the same way: `start_reading.page`, and `finish_reading`'s `rating`, `purposeFulfilled` and `finishedOn`. Recording a page is the most common thing an agent does in bookvie. Source: `deferred-work.md`, "Deferred from: Epic 12 retro item 83 manual runs".
 
-**Approach:** advertise each of these five properties with the JSON type the server accepts: `page` and `rating` as integers, and `purposeFulfilled` and `finishedOn` as strings, plus `null` wherever the model's `nullable` allows it. The change belongs in the agent layer's advertised input schema. The intents' parsing and refusals stay as they are, so a wrong type is still a field error, never a coercion.
+**Approach:** advertise each of these five properties with the JSON type the server accepts: `page` and `rating` as integers, and `purposeFulfilled` and `finishedOn` as strings, plus `null` where `null` is a valid value: `start_reading.page` (not asked) and the three `finish_reading` fields (the user didn't say), never `update_page.page`. The change belongs in the agent layer's advertised input schema. The intents' parsing and refusals stay as they are, so a wrong type is still a field error, never a coercion.
 
 ## Boundaries & Constraints
 
 **Always:**
 - Every property of every tool in `tools/list` has a `type`, or an `anyOf`/`enum` whose members each have one. A test pins this for all tools, so a future `JsonValue` field can't ship untyped.
-- `null` is advertised exactly where the model's `nullable` allows it. That matches what `input_schema` already does.
+- `null` is advertised only where it is a valid value: `start_reading.page`, `finish_reading`'s `rating`, `purposeFulfilled` and `finishedOn`. `update_page.page` is integer only, although `UpdatePageIntent.nullable` holds `page`. There, `nullable` only makes an explicit `null` a field error rather than a malformed intent, and that refusal stays.
 - `purposeFulfilled` is advertised as an `enum` of `yes`, `partly` and `notYet` (plus `null`), taken from `_ANSWERS` (`get_args(PurposeFulfilled)`), the constant `_purpose_fulfilled_failure` checks.
 - The listed schema stays equal to `advertised_schema(tool)` / `input_schema(model)` (`test_agent_write.py:647`, `test_agent_cover_url.py:328`).
 
