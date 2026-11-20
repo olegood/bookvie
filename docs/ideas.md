@@ -158,6 +158,22 @@ Notes:
 - Possible extra: also allow un-finishing a Reading (finished by mistake), or deleting a Reading. Decide whether that belongs here or is its own idea.
 - If the "bookvie MCP server" is in place, an edit-reading tool there would let me say "change my rating of X to 4 stars".
 
+### Card notes on introductory (Roman-numbered) pages
+
+**Status:** new (bug or enhancement, to decide in party mode)
+
+A card note can't point at the introductory pages that many books number with Roman numerals, such as "VI" or the range "IX-X" (preface, foreword, introduction). The Page field accepts only Arabic page numbers, so a note taken there can't record its real page.
+
+Notes:
+
+- What exists today: `parse_note_pages` (`backend/bookvie/domain/note_pages.py`) accepts one page or one range of whole numbers between 1 and the Book's Pages, and refuses anything else with the "one page or one range" message. A note is stored as integer `pageStart` and `pageEnd`.
+- Not an immediate need: today the workaround is to put the Roman page in the note's text, or pick a nearby Arabic page.
+- Bug or enhancement: decide whether this is a gap in FR-17 (a page that exists in the book can't be referenced) or new scope.
+- Storage: integers can't hold "VI" as typed. Options include a separate front-matter flag plus a number (VI = front page 6), or keeping the page label as text next to the numbers used for sorting. Whatever is picked has to survive export and restore, and older backups must still load.
+- Order: front-matter notes come before page 1 in the pile and in the Card notes list. Decide where a range that crosses into the main pages (for example "XII-3") goes, or refuse it.
+- Validation: Book's Pages counts only the Arabic pages today, so Roman pages have no upper bound to check against. Decide whether any well-formed Roman numeral is accepted, and whether "vi" (lower case, the usual print style) and "VI" are the same page.
+- Other things that use note pages: the check that Pages can't drop below a note's page (`pages_below_card_note` in `edit_book.py`), the page ref chip, `bookvie-notes-summary`, and the MCP server's card-note tools if Epic 12 is in place. Roman pages must not count towards reading progress.
+
 ## Implemented
 
 Ideas already built and delivered.
