@@ -4,7 +4,7 @@
 
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import type { Locator, Page, Route } from '@playwright/test'
+import type { APIRequestContext, Locator, Page, Route } from '@playwright/test'
 import type { components } from '../src/api/generated/schema.d.ts'
 import type { Server } from './fixtures.ts'
 
@@ -198,4 +198,64 @@ export async function answerAppInfo(page: Page, answer: () => AppInfoAnswer): Pr
     if (body === 'fail') return route.fulfill({ status: 500, body: '' })
     return route.fulfill({ json: body })
   })
+}
+
+/** One agent tool's answer over `/mcp` (AD-21): its content, structured content and error flag. */
+export type ToolResult = {
+  content: { type: string; text?: string }[]
+  structuredContent?: Record<string, unknown>
+  isError?: boolean
+}
+
+/** The MCP handshake revision Claude Code speaks (as `backend/tests/agent_client.py`). */
+const MCP_PROTOCOL_VERSION = '2025-11-25'
+
+/**
+ * Calls the agent tool `name` on `server`'s `/mcp` with `args`, as Claude Code
+ * does: `initialize`, `notifications/initialized`, then `tools/call`. Never
+ * throws on the tool's own answer: a JSON-RPC error comes back as an
+ * `isError` result holding that error as its text, so a leaf's first
+ * assertion is the one that fails. It throws only when the HTTP exchange
+ * itself fails (a status other than the handshake's).
+ */
+export async function callTool(
+  api: APIRequestContext,
+  server: Server,
+  name: string,
+  args: Record<string, unknown> = {},
+): Promise<ToolResult> {
+  const post = (message: Record<string, unknown>, initialized: boolean) =>
+    api.post(`${server.url}/mcp`, {
+      headers: {
+        Accept: 'application/json, text/event-stream',
+        'Content-Type': 'application/json',
+        ...(initialized ? { 'MCP-Protocol-Version': MCP_PROTOCOL_VERSION } : {}),
+      },
+      data: message,
+      maxRedirects: 0,
+    })
+  const expectStatus = async (step: string, response: Awaited<ReturnType<typeof post>>, status: number) => {
+    if (response.status() !== status) {
+      throw new Error(`${step}: HTTP ${response.status()} ${(await response.text()).slice(0, 300)}`)
+    }
+  }
+  const handshake = await post(
+    {
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'initialize',
+      params: {
+        protocolVersion: MCP_PROTOCOL_VERSION,
+        capabilities: {},
+        clientInfo: { name: 'bookvie-e2e', version: '0' },
+      },
+    },
+    false,
+  )
+  await expectStatus('initialize', handshake, 200)
+  await expectStatus('initialized', await post({ jsonrpc: '2.0', method: 'notifications/initialized' }, true), 202)
+  const called = await post({ jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name, arguments: args } }, true)
+  await expectStatus(`tools/call ${name}`, called, 200)
+  const body = (await called.json()) as { result?: ToolResult; error?: unknown }
+  return body.result ?? { isError: true, content: [{ type: 'text', text: JSON.stringify(body.error) }] }
 }

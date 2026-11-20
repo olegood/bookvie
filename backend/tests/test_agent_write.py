@@ -24,7 +24,7 @@ import itertools
 import json
 import shutil
 import uuid
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
@@ -712,8 +712,15 @@ def test_a_real_bookvie_process_advertises_and_commits_a_write_tool(tmp_path: Pa
 
 
 @contextmanager
-def running_bookvie(folder: Path) -> Iterator[McpClient]:
-    """A ``bookvie`` process on ``folder`` and a free port, and an MCP client to it; stopped after."""
+def running_bookvie(
+    folder: Path, *, flags: Sequence[str] = (), default_folder: bool = False
+) -> Iterator[McpClient]:
+    """A ``bookvie`` process on ``folder`` and a free port, and an MCP client to it; stopped after.
+
+    ``flags`` (such as ``--dev`` or ``--fake-today``) are added to the command
+    line. With ``default_folder``, ``--data-dir`` is left out, so the process
+    uses its default folder, which must be ``folder`` (Story 12.6).
+    """
     import subprocess
     import sys
 
@@ -732,8 +739,8 @@ def running_bookvie(folder: Path) -> Iterator[McpClient]:
         "--no-browser",
         "--port",
         str(port),
-        "--data-dir",
-        str(folder),
+        *flags,
+        *(() if default_folder else ("--data-dir", str(folder))),
     ]
     server = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     try:
