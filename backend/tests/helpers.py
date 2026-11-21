@@ -16,8 +16,12 @@
 - The skills' step 1 (Epic 12 retro item 84): :data:`PROBE_PORTS`,
   :data:`OLDER_BOOKVIE`, :func:`curl_lines`, :func:`is_health_or_probe` and
   :func:`check_the_older_bookvie_probe`.
+- Backups (Epic 13): :class:`SetClock`, :func:`files_under`,
+  :func:`dropbox_content_hash`, :func:`backup_zip`, :func:`short_when` and
+  :func:`confirmation_text`.
 """
 
+import hashlib
 import io
 import json
 import os
@@ -25,7 +29,8 @@ import re
 import shlex
 import threading
 import zipfile
-from datetime import date
+from collections.abc import Sequence
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -37,7 +42,7 @@ from bookvie.domain import Library, check_invariants
 from bookvie.domain.clock import FakeClock
 from bookvie.http.app import create_app
 from bookvie.intents import COULDNT_SAVE_MESSAGE
-from bookvie.store import OsFileSystem, Store
+from bookvie.store import COVERS_DIR, LIBRARY_NAME, OsFileSystem, Store, referenced_covers
 from tests.agent_client import McpClient
 from tests.builder import LibraryBuilder
 
@@ -477,3 +482,101 @@ def check_the_older_bookvie_probe(skill: str, start_step_title: str, client: Mcp
         result = answer.json()["result"]
         assert result["isError"] is False
         assert set(result["structuredContent"]) >= {"version", "mode"}, result
+
+
+# --- Backups (Epic 13) ---------------------------------------------------------
+
+
+class SetClock:
+    """A clock that reads one instant until it is moved (AD-20); ``today`` follows ``now``."""
+
+    def __init__(self, at: datetime) -> None:
+        if at.tzinfo is None:
+            raise ValueError("SetClock needs an aware datetime")
+        self.at = at
+
+    def now(self) -> datetime:
+        return self.at
+
+    def today(self) -> date:
+        return self.at.date()
+
+    def advance(self, by: timedelta) -> None:
+        self.at = self.at + by
+
+
+def files_under(folder: Path) -> dict[str, bytes]:
+    """Every file under ``folder``, by relative POSIX path, with its bytes; ``{}`` if it's missing."""
+    if not folder.exists():
+        return {}
+    return {
+        path.relative_to(folder).as_posix(): path.read_bytes()
+        for path in sorted(folder.rglob("*"))
+        if path.is_file()
+    }
+
+
+DROPBOX_BLOCK = 4 * 1024 * 1024
+"""Dropbox hashes a file in 4 MiB blocks."""
+
+
+def dropbox_content_hash(data: bytes) -> str:
+    """Dropbox's content hash, in hex: SHA-256 over the SHA-256 of each 4 MiB block (AD-22)."""
+    blocks = b"".join(
+        hashlib.sha256(data[start : start + DROPBOX_BLOCK]).digest()
+        for start in range(0, len(data), DROPBOX_BLOCK)
+    )
+    return hashlib.sha256(blocks).hexdigest()
+
+
+def backup_zip(data_dir: Path, at: datetime) -> bytes:
+    """An export of ``data_dir`` as an older bookvie wrote it: ``library.json`` (its entry
+    stamped ``at`` in local time, with no time zone), ``covers/`` and each referenced cover."""
+    library = (data_dir / LIBRARY_NAME).read_bytes()
+    stamp = at.astimezone().timetuple()[:6]
+    names = sorted(referenced_covers(Library.model_validate_json(library)))
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        archive.writestr(
+            zipfile.ZipInfo(LIBRARY_NAME, date_time=stamp), library, zipfile.ZIP_DEFLATED
+        )
+        archive.mkdir(COVERS_DIR)
+        for name in names:
+            archive.writestr(
+                zipfile.ZipInfo(f"{COVERS_DIR}/{name}", date_time=stamp),
+                (data_dir / COVERS_DIR / name).read_bytes(),
+            )
+    return buffer.getvalue()
+
+
+def short_when(at: datetime, today: date) -> str:
+    """A backup's time as EXPERIENCE.md names it: "19 Nov, 09:02", "19 Nov 2025, 09:02"
+    when it isn't this year (Foundation, Dates; Agent conversations)."""
+    local = at.astimezone()
+    day = f"{local.day} {local:%b}" + ("" if local.year == today.year else f" {local.year}")
+    return f"{day}, {local:%H:%M}"
+
+
+def confirmation_text(at: datetime, titles: Sequence[str], card_notes: int, today: date) -> str:
+    """UX-DR80's confirmation, as bookvie's question must word it for this preview.
+
+    Up to 5 titles, then "and N more"; "1 book", "1 card note". With nothing
+    added, the "every change goes back" variant. UX-DR80 words neither "books
+    added but no card notes" nor the reverse, so those raise.
+    """
+    when = short_when(at, today)
+    tail = "A safety copy of your current library is saved first."
+    if not titles and card_notes == 0:
+        return (
+            f"Replace all data with the backup from {when}? "
+            f"Every change since then goes back, such as pages reached. {tail}"
+        )
+    if not titles or card_notes == 0:
+        raise ValueError("UX-DR80 doesn't word a preview with only books or only card notes added")
+    shown = ", ".join(titles[:5]) + (f", and {len(titles) - 5} more" if len(titles) > 5 else "")
+    books = "1 book" if len(titles) == 1 else f"{len(titles):,} books"
+    notes = "1 card note" if card_notes == 1 else f"{card_notes:,} card notes"
+    return (
+        f"Replace all data with the backup from {when}? You'd lose {books} added since "
+        f"({shown}), {notes}, and every other change since then. {tail}"
+    )

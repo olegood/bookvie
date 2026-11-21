@@ -15,6 +15,12 @@ It is also the one home of what every agent test shares (Epic 12 retro item
 87): the cumulative tool list and its story groups, each tool's description
 read from ``epics.md`` on first use (the text the tool must register), and the readers of
 a tool's answer, :func:`structured_of` and :func:`error_of`.
+
+A client built with ``protocol_version=MODERN_PROTOCOL_VERSION`` speaks MCP
+2026-07-28 instead (Story 13.1): no ``initialize``, and every request carries
+its envelope in ``params._meta`` (the protocol version and ``capabilities``)
+with the ``Mcp-Method`` and ``Mcp-Name`` headers. That is the revision whose
+``InputRequiredResult`` carries ``restore_backup``'s question (AD-22).
 """
 
 import functools
@@ -31,6 +37,14 @@ MCP_PATH = "/mcp"
 PROTOCOL_VERSION = "2025-11-25"
 ACCEPT = "application/json, text/event-stream"
 SESSION_HEADER = "mcp-session-id"
+MODERN_PROTOCOL_VERSION = "2026-07-28"
+"""The stateless revision: no handshake, the envelope on every request (Story 13.1)."""
+PROTOCOL_VERSION_KEY = "io.modelcontextprotocol/protocolVersion"
+CLIENT_CAPABILITIES_KEY = "io.modelcontextprotocol/clientCapabilities"
+CLIENT_INFO_KEY = "io.modelcontextprotocol/clientInfo"
+CLIENT_INFO = {"name": "bookvie-tests", "version": "0"}
+FORM_ELICITATION: dict[str, Any] = {"elicitation": {}}
+"""Client capabilities that can show a form: an empty ``elicitation`` object counts as form."""
 
 # The tool list, in the order the server lists it, by the story that added each group.
 EARLIER_TOOL_NAMES = [
@@ -60,20 +74,29 @@ BOOK_TOOL_NAMES = ["add_book", "edit_book"]
 """Story 12.4's two tools (Story 12.5 adds ``coverUrl`` to both)."""
 EXPORT_BACKUP = "export_backup"
 """Story 12.6's tool."""
-AGENT_TOOL_NAMES = [*EARLIER_TOOL_NAMES, *WRITE_TOOL_NAMES, *BOOK_TOOL_NAMES, EXPORT_BACKUP]
-"""Every tool, cumulative across Epic 12: what ``tools/list`` must list, in order."""
+LIST_LOCAL_BACKUPS = "list_local_backups"
+PREVIEW_RESTORE = "preview_restore"
+RESTORE_BACKUP = "restore_backup"
+RESTORE_TOOL_NAMES = [LIST_LOCAL_BACKUPS, PREVIEW_RESTORE, RESTORE_BACKUP]
+"""Story 13.1's three restore tools (AD-22)."""
+EPIC_12_TOOL_NAMES = [*EARLIER_TOOL_NAMES, *WRITE_TOOL_NAMES, *BOOK_TOOL_NAMES, EXPORT_BACKUP]
+"""Every tool Epic 12 added."""
+AGENT_TOOL_NAMES = [*EPIC_12_TOOL_NAMES, *RESTORE_TOOL_NAMES]
+"""Every tool, cumulative across Epics 12 and 13: what ``tools/list`` must list, in order."""
 
 EPICS_MD = Path(__file__).resolve().parents[2] / "_bmad-output" / "planning-artifacts" / "epics.md"
-_DESCRIPTION = re.compile(r'^(?:- `(\w+)` )?\*\*Description:\*\* "(.+)"$', re.M)
+# A note in parentheses may follow the quote ("(Superseded by Story 13.3's description once
+# 13.3 lands.)" on Story 12.6's line); it isn't part of the description.
+_DESCRIPTION = re.compile(r'^(?:- `(\w+)` )?\*\*Description:\*\* "(.+)"(?: \([^"]*\))?$', re.M)
 _ADDITION = re.compile(
     r'^\*\*Description addition:\*\* both tools\' descriptions end with: "(.+)"$', re.M
 )
 
 
-def _epic_12() -> str:
-    """Epic 12's section of ``epics.md``: from its heading to the next epic's."""
+def _epic(number: int) -> str:
+    """Epic ``number``'s section of ``epics.md``: from its heading to the next epic's."""
     text = EPICS_MD.read_text(encoding="utf-8")
-    start = text.index("\n## Epic 12:")
+    start = text.index(f"\n## Epic {number}:")
     end = text.find("\n## Epic ", start + 1)
     return text[start : end if end != -1 else len(text)]
 
@@ -85,12 +108,13 @@ _STORY_OF = {
     **dict.fromkeys(WRITE_TOOL_NAMES, "12.3"),
     **dict.fromkeys(BOOK_TOOL_NAMES, "12.4"),
     EXPORT_BACKUP: "12.6",
+    **dict.fromkeys(RESTORE_TOOL_NAMES, "13.1"),
 }
-_STORY_HEADING = re.compile(r"^### Story (12\.\d+):", re.M)
+_STORY_HEADING = re.compile(r"^### Story (\d+\.\d+):", re.M)
 
 
 def _story_at(epic: str, offset: int) -> str | None:
-    """The number of the ``### Story 12.x`` section that holds ``offset``."""
+    """The number of the ``### Story N.x`` section that holds ``offset``."""
     headings = [m for m in _STORY_HEADING.finditer(epic) if m.start() < offset]
     return headings[-1].group(1) if headings else None
 
@@ -100,19 +124,36 @@ def _parse_descriptions() -> dict[str, str]:
 
     The "Description:" lines come in tool-list order, each in its tool's story;
     a bulleted one also names its tool. Story 12.5's "Description addition"
-    ends both book tools' descriptions.
+    ends both book tools' descriptions. Every Epic 12 line is a bookvie tool's.
+    Epic 13 also quotes the ``bookvie-dropbox`` server's tools, and stories not
+    built yet, so only the lines in the stories that added a listed tool count.
     """
-    epic = _epic_12()
+    epic = _epic(12)
     found = list(_DESCRIPTION.finditer(epic))
-    assert len(found) == len(AGENT_TOOL_NAMES), (
-        f"{EPICS_MD} Epic 12 has {len(found)} Description lines, expected {len(AGENT_TOOL_NAMES)}: "
+    assert len(found) == len(EPIC_12_TOOL_NAMES), (
+        f"{EPICS_MD} Epic 12 has {len(found)} Description lines, expected {len(EPIC_12_TOOL_NAMES)}: "
         f"{[m.group(1) or m.group(2)[:40] for m in found]}"
     )
+    epic_13 = _epic(13)
+    stories_13 = {_STORY_OF[tool] for tool in RESTORE_TOOL_NAMES}
+    found_13 = [
+        match
+        for match in _DESCRIPTION.finditer(epic_13)
+        if _story_at(epic_13, match.start()) in stories_13
+    ]
+    assert len(found_13) == len(RESTORE_TOOL_NAMES), (
+        f"{EPICS_MD} Epic 13 Stories {sorted(stories_13)} have {len(found_13)} Description lines, "
+        f"expected {len(RESTORE_TOOL_NAMES)}: {[m.group(1) or m.group(2)[:40] for m in found_13]}"
+    )
     descriptions: dict[str, str] = {}
-    for tool, match in zip(AGENT_TOOL_NAMES, found, strict=True):
+    pairs = [
+        *((tool, match, epic) for tool, match in zip(EPIC_12_TOOL_NAMES, found, strict=True)),
+        *((tool, match, epic_13) for tool, match in zip(RESTORE_TOOL_NAMES, found_13, strict=True)),
+    ]
+    for tool, match, section in pairs:
         named, text = match.group(1), match.group(2)
         assert named in (None, tool), f"{tool}'s Description line names {named}"
-        story = _story_at(epic, match.start())
+        story = _story_at(section, match.start())
         assert story == _STORY_OF[tool], (
             f"{tool}'s Description line is in Story {story}, expected {_STORY_OF[tool]}"
         )
@@ -145,41 +186,98 @@ class _Descriptions(Mapping[str, str]):
 
 
 DESCRIPTIONS: Mapping[str, str] = _Descriptions()
-"""Every tool's description, character for character (``epics.md``, "Tool descriptions"),
-with Story 12.5's sentence ending ``add_book``'s and ``edit_book``'s."""
+"""Every tool's description, character for character (``epics.md``, "Tool descriptions"
+in Epics 12 and 13), with Story 12.5's sentence ending ``add_book``'s and ``edit_book``'s."""
 
 
 class McpClient:
-    """JSON-RPC calls to ``path`` through ``http``; see the module docstring."""
+    """JSON-RPC calls to ``path`` through ``http``; see the module docstring.
 
-    def __init__(self, http: httpx.Client, *, path: str = MCP_PATH, data_dir=None) -> None:
+    ``protocol_version`` is the revision it speaks: a handshake revision
+    (:data:`PROTOCOL_VERSION` by default, as before) or
+    :data:`MODERN_PROTOCOL_VERSION`. ``capabilities`` are the client
+    capabilities it declares, in ``initialize`` or in each modern request's
+    envelope; none by default.
+    """
+
+    def __init__(
+        self,
+        http: httpx.Client,
+        *,
+        path: str = MCP_PATH,
+        data_dir=None,
+        protocol_version: str = PROTOCOL_VERSION,
+        capabilities: dict[str, Any] | None = None,
+    ) -> None:
         self.http = http
         self.path = path
         self.data_dir = data_dir
         """The app's data folder, when a fixture built the app."""
+        self.protocol_version = protocol_version
+        self.capabilities: dict[str, Any] = dict(capabilities or {})
+        self.modern = protocol_version == MODERN_PROTOCOL_VERSION
+        """No handshake: the envelope goes on every request."""
         self.initialized = False
         self._next_id = 0
 
+    def speaking(
+        self, protocol_version: str, capabilities: dict[str, Any] | None = None
+    ) -> McpClient:
+        """Another client on the same app, speaking ``protocol_version`` with ``capabilities``."""
+        return McpClient(
+            self.http,
+            path=self.path,
+            data_dir=self.data_dir,
+            protocol_version=protocol_version,
+            capabilities=capabilities,
+        )
+
     def post(self, message: Any, *, headers: dict[str, str] | None = None) -> httpx.Response:
         """POST one JSON-RPC message as is, with the protocol's headers plus ``headers``."""
+        versioned = self.initialized or self.modern
         sent = {
             "Accept": ACCEPT,
             "Content-Type": "application/json",
-            **({"MCP-Protocol-Version": PROTOCOL_VERSION} if self.initialized else {}),
+            **({"MCP-Protocol-Version": self.protocol_version} if versioned else {}),
             **(headers or {}),
         }
         return self.http.post(
             self.path, content=json.dumps(message), headers=sent, follow_redirects=False
         )
 
-    def rpc(self, method: str, params: dict[str, Any] | None = None, **post: Any) -> dict[str, Any]:
-        """The JSON-RPC response to one request, after checking the HTTP answer."""
+    def rpc(
+        self,
+        method: str,
+        params: dict[str, Any] | None = None,
+        *,
+        error_status: bool = False,
+        **post: Any,
+    ) -> dict[str, Any]:
+        """The JSON-RPC response to one request, after checking the HTTP answer.
+
+        A 2026-07-28 server maps a JSON-RPC error to an HTTP status (an unknown
+        tool is 400); ``error_status`` accepts a 4xx whose body is such an error.
+        """
         self._next_id += 1
         message: dict[str, Any] = {"jsonrpc": "2.0", "id": self._next_id, "method": method}
+        if self.modern:
+            params = {
+                **(params or {}),
+                "_meta": {
+                    PROTOCOL_VERSION_KEY: self.protocol_version,
+                    CLIENT_CAPABILITIES_KEY: self.capabilities,
+                    CLIENT_INFO_KEY: CLIENT_INFO,
+                },
+            }
+            headers = {"Mcp-Method": method, **(post.pop("headers", None) or {})}
+            if method == "tools/call":
+                headers["Mcp-Name"] = params["name"]
+            post["headers"] = headers
         if params is not None:
             message["params"] = params
         response = self.post(message, **post)
-        assert response.status_code == 200, (
+        refused = error_status and 400 <= response.status_code < 500
+        assert response.status_code == 200 or refused, (
             f"{method}: HTTP {response.status_code} {response.headers.get('content-type')!r} "
             f"{response.text[:300]!r}"
         )
@@ -187,11 +285,12 @@ class McpClient:
         assert media_type == "application/json", f"{method}: {media_type!r} {response.text[:300]!r}"
         body = response.json()
         assert body.get("jsonrpc") == "2.0" and body.get("id") == self._next_id, body
+        assert response.status_code == 200 or "error" in body, (response.status_code, body)
         return body
 
     def result(self, method: str, params: dict[str, Any] | None = None, **post: Any) -> Any:
         """The ``result`` of one request; fails on a JSON-RPC ``error``."""
-        if method != "initialize":
+        if method != "initialize" and not self.modern:
             self.ensure_initialized()
         body = self.rpc(method, params, **post)
         assert "error" not in body, f"{method}: {body['error']}"
@@ -202,9 +301,9 @@ class McpClient:
         result = self.result(
             "initialize",
             {
-                "protocolVersion": PROTOCOL_VERSION,
-                "capabilities": {},
-                "clientInfo": {"name": "bookvie-tests", "version": "0"},
+                "protocolVersion": self.protocol_version,
+                "capabilities": self.capabilities,
+                "clientInfo": CLIENT_INFO,
             },
         )
         notified = self.post({"jsonrpc": "2.0", "method": "notifications/initialized"})
@@ -234,9 +333,60 @@ class McpClient:
         assert len(found) == 1, [tool["name"] for tool in self.list_tools()]
         return found[0]
 
-    def call_tool(self, name: str, arguments: dict[str, Any] | None = None) -> dict[str, Any]:
-        """The ``tools/call`` result (``content``, ``structuredContent``, ``isError``)."""
-        return self.result("tools/call", {"name": name, "arguments": arguments or {}})
+    def call_tool(
+        self,
+        name: str,
+        arguments: dict[str, Any] | None = None,
+        *,
+        input_responses: dict[str, Any] | None = None,
+        request_state: str | None = None,
+    ) -> dict[str, Any]:
+        """The ``tools/call`` result (``content``, ``structuredContent``, ``isError``).
+
+        ``input_responses`` and ``request_state`` answer a 2026-07-28
+        ``InputRequiredResult`` (sent only when given): its ``inputRequests``
+        answered by key, and its ``requestState`` echoed byte for byte.
+        """
+        return self.result(
+            "tools/call", self.call_params(name, arguments, input_responses, request_state)
+        )
+
+    @staticmethod
+    def call_params(
+        name: str,
+        arguments: dict[str, Any] | None = None,
+        input_responses: dict[str, Any] | None = None,
+        request_state: str | None = None,
+    ) -> dict[str, Any]:
+        """The ``tools/call`` params, with the retry's fields only when given."""
+        params: dict[str, Any] = {"name": name, "arguments": arguments or {}}
+        if input_responses is not None:
+            params["inputResponses"] = input_responses
+        if request_state is not None:
+            params["requestState"] = request_state
+        return params
+
+    def answer(
+        self,
+        name: str,
+        arguments: dict[str, Any] | None = None,
+        *,
+        input_responses: dict[str, Any] | None = None,
+        request_state: str | None = None,
+    ) -> dict[str, Any]:
+        """A ``tools/call``'s ``result``, or ``{"rpcError": ...}`` for a JSON-RPC error.
+
+        Unlike :meth:`call_tool` it doesn't fail on an unknown tool, so a
+        red-phase leaf reaches its criterion assertion first.
+        """
+        if not self.modern:
+            self.ensure_initialized()
+        body = self.rpc(
+            "tools/call",
+            self.call_params(name, arguments, input_responses, request_state),
+            error_status=True,
+        )
+        return {"rpcError": body["error"]} if "error" in body else body["result"]
 
 
 def text_of(result: dict[str, Any]) -> str:

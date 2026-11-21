@@ -185,8 +185,9 @@ def connect_mcp(tmp_path: Path) -> Iterator[Callable[..., McpClient]]:
     """Build an app and return an :class:`McpClient` on its ``/mcp``, lifespan running.
 
     ``connect_mcp(data_dir=..., dev=..., tools=..., cover_fetcher=...,
-    backups_dir=...)``: the data folder defaults to ``<tmp_path>/library``
-    (opened, so a new one is created), today is :data:`tests.helpers.TODAY`,
+    backups_dir=..., clock=...)``: the data folder defaults to ``<tmp_path>/library``
+    (opened, so a new one is created), the clock to ``FakeClock(TODAY)``
+    (:data:`tests.helpers.TODAY`; Story 13.1 passes a :class:`tests.helpers.SetClock`),
     and ``tools``, when given, is passed to ``create_app`` as the tools to
     register (AD-21). ``cover_fetcher``, when given, is passed to
     ``create_app`` as the downloader ``add_book`` and ``edit_book`` fetch a
@@ -205,6 +206,7 @@ def connect_mcp(tmp_path: Path) -> Iterator[Callable[..., McpClient]]:
             static_dir: Path | None = None,
             cover_fetcher: Any = None,
             backups_dir: Path | None = None,
+            clock: Any = None,
         ) -> McpClient:
             folder = data_dir if data_dir is not None else tmp_path / "library"
             # As the CLI does before it opens the store (`ensure_writable`).
@@ -219,7 +221,7 @@ def connect_mcp(tmp_path: Path) -> Iterator[Callable[..., McpClient]]:
                 data_dir=folder,
                 dev=dev,
                 store=Store.open(folder),
-                clock=FakeClock(TODAY),
+                clock=clock if clock is not None else FakeClock(TODAY),
                 **extra,
             )
             http = apps.enter_context(TestClient(app, base_url=BASE_URL))
