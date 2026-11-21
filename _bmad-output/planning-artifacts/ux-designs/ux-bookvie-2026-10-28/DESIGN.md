@@ -2,7 +2,7 @@
 name: bookvie
 description: Personal, local-first desktop web app for one reader's home library and reading. Birch Morning direction — bright, flat, Nordic; a pale birch bookcase where read books are colored and unread books are outlined.
 status: final
-updated: 2026-11-17
+updated: 2026-11-21
 colors:
   # Light theme (default tokens). Dark twins carry the -dark suffix.
   page: '#F6F4EF'
@@ -458,6 +458,11 @@ components:
     heading-color: '{colors.ink-tertiary}'
     text: '{typography.body-sm}'
     text-color: '{colors.ink-secondary}'
+  auto-backup-line:
+    text: '{typography.meta}'
+    text-color: '{colors.ink-tertiary}'
+    text-color-strong: '{colors.ink}'
+    margin-top: '{spacing.1}'
 ---
 
 # bookvie — Design Spine
@@ -746,8 +751,9 @@ Visual specs. Behavior lives in EXPERIENCE.md → Component Patterns, under the 
 | **Pace calculator** | Collapsed: `link` "How long until…?". Expanded: inline row on `surface-inset` — "pages/day" field (Text field, 80px; `type="text"` with `inputmode="decimal"`, so any text can be typed), result in `body` ("About 9 months · July 2027"). No error styling. With nothing left to read, "Nothing left to read." in `body-sm` / `ink-secondary` replaces the row. |
 | **Stats range picker** | Segmented presets (This month · This year · Last year · All time · Custom); Custom reveals two date fields ("From", "To"). |
 | **Monthly bars** | `{components.monthly-bar}`. One vertical bar per month (one per year for ranges over 24 months), height proportional to pages finished; value label above the bar in `meta`; period label below. Two big numbers above the chart: books finished, pages finished, in `gauge-figure` with `meta` captions. |
-| **Backup page** | Three blocks on `surface` cards, stacked: Export (one `button-primary` "Export all data", "Last export: N days ago" below in `meta`/`ink-tertiary`), Restore (`button-secondary` "Restore from file…", one-line explanation), and About this copy. |
+| **Backup page** | Three blocks on `surface` cards, stacked: Export (one `button-primary` "Export all data", "Last export: N days ago" below in `meta`/`ink-tertiary`, and the auto-backup line under it), Restore (`button-secondary` "Restore from file…", one-line explanation), and About this copy. |
 | **About this copy** | `{components.about-card}`. The third Backup card, same frame as the other two. Heading "ABOUT THIS COPY" in `section-label`/`ink-tertiary`. Line 1 in `body-sm`/`ink-secondary`: "bookvie 1.1.0"; on a dev server "bookvie 1.1.0 (a1b2c3d) · Development server", the parts joined by " · " (space, middle dot, space, as in the tab title), not a drawn dot. Line 2, same style: "Data folder: ~/bookvie-data"; a long path wraps at any character (`overflow-wrap: anywhere`) inside the card. All sans, no monospace. This third card supersedes plan D9's "under Last export" placement (Oleg's pick B1). Mock: [epic11-options](mockups/epic11-options.html) B1, which shows the dev text on two lines and predates the " · " rule. |
+| **Auto-backup line** | `{components.auto-backup-line}`. A second `meta` line in the Export card, directly under "Last export", in the same left alignment; it wraps inside the card (a Failing reason can take two lines). Off, Waiting and On in `ink-tertiary`, like "Last export"; Failing and Stalled in `ink` (`text-color-strong`), like "Couldn't save". Text only: no dot, glyph, icon, badge shape, tint or color, so it needs no forced-colors rule. The state word is plain text in the same weight; the pattern "Auto-backup: *State* · *detail*" carries it. Commands in a Failing reason stay in the body font, not monospace. Supersedes the colored dots in plan D11 (Oleg). |
 | **Busy button** | Busy state of Export and Restore: the label reads "Exporting…" or "Restoring…", the button stays `accent` at 60% opacity, and there is no spinner animation. |
 | **Failure message** | One line in `body-sm`/`ink` below the action that failed, for example, "Couldn't save. Your data wasn't changed." No icon, no red, no colored box. |
 | **Confirm dialog** | `{components.dialog}` for Restore, Delete book, Delete card note, and Pause (when Pause displaces an Up next). Heading states the consequence; confirm button labelled with the action ("Replace all data", "Delete book", "Delete card note", "Pause") in `button-primary`; **Cancel** beside it. No red. |
@@ -837,7 +843,7 @@ Accepted layout; mock [key-book-detail](mockups/key-book-detail.html). Mirrors t
 
 | Do | Don't |
 |---|---|
-| Keep color for the books; chrome stays neutral | Color chrome, headings, or status badges (except the DEV pill: Colors → Dev amber) |
+| Keep color for the books; chrome stays neutral | Color chrome, headings, or status badges (except the DEV pill: Colors → Dev amber); the auto-backup line is words only |
 | Use sage only for actions, progress, focus, selection | Use sage decoratively or as a warning |
 | Serif for book titles only | Serif for UI text or numbers |
 | Same 28px width for every spine; height in 8px steps within 120–200px | Variable widths, page-count-based widths, heights outside the range |
