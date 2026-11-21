@@ -1383,6 +1383,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-12-8-add-a-book-through-the-agent-tools.md`
   summary: Spine drift (AD-8), reconciled before the next epic: AD-8 still says the cataloging skill's scripts build the `add-book` body, read the `catalog` and `book` views and the AD-9 envelope by key, and calls its duplicate pre-check (`check_catalog.py`) an open known gap. Story 12.8 deletes both scripts, moves the skill onto `find_book`, `add_book` and `get_book`, and resolves that gap. Low.
   evidence: deleted `.claude/skills/bookvie-new-book/scripts/add_book.py` and `check_catalog.py`; the copied-rule entry above now has its `resolved:` line (Spine Check, build-auto review of Story 12.8).
+  resolved: Epic 12 reconciliation follow-up (2026-11-21). Item 82 had already rewritten AD-8: the skills are agent clients, `add_book.py`, `check_catalog.py` and `fetch_notes.py` are deleted, and the duplicate pre-check gap is gone. This line was missing.
 - source_spec: `_bmad-output/implementation-artifacts/spec-12-8-add-a-book-through-the-agent-tools.md`
   summary: Spine drift (Design Paradigm, Structural Seed), reconciled before the next epic: the Paradigm says the skill calls the HTTP API directly (skill 2.0.0) and calls `http/` like the browser, and the Seed's `AG` node reads "cataloging skill (HTTP client of the intent API)". Skill 3.0.0 is an MCP client of `agent/` (AD-21) and never calls the HTTP API for a book. Low.
   evidence: `.claude/skills/bookvie-new-book/SKILL.md` Rules and step 1 (Spine Check, build-auto review of Story 12.8).
@@ -1400,6 +1401,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-12-8-add-a-book-through-the-agent-tools.md`
   summary: Spine drift (AD-3, AD-8 known gap), reconciled before the next epic: the copied-rule entry's `resolved:` line says the skill relies only on the server's duplicate rule, but `bookvie-new-book` step 2 keeps an agent-side same-book judgement (an ISBN hit, or the same title, a shared author, the same edition and type) that differs from `domain/duplicates.is_duplicate`. It only decides what the skill asks the user; `add_book`'s `duplicate_book` stays the guard. When AD-8 is reconciled, restate its known-gap note for that judgement rather than removing it. Low.
   evidence: `.claude/skills/bookvie-new-book/SKILL.md` step 2 "The same book" (Spine Check, code review of Story 12.8).
+  resolved: Epic 12 reconciliation follow-up (2026-11-21). AD-8 now carries a known-gap note for `bookvie-new-book` step 2's same-book judgement (it differs from `domain/duplicates.is_duplicate`; `add_book`'s `duplicate_book` stays the guard), and AD-3 says that question isn't a pre-check.
 
 ## Deferred from: build review of spec-epic-12-retro-item-84-ship-mcp-and-skills-detect-older-bookvie (2026-11-20)
 
@@ -1426,9 +1428,11 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-agent-tools-advertise-value-types.md`
   summary: Spine drift (AD-21), reconciled before the next epic: the "One validator" bullet says each tool's schema is generated from its model by alias (plus `coverUrl`, null dropped, closed), but `JSON_VALUE_TYPES` in `agent/tools.py` now declares the type of every `JsonValue` property (the `purposeFulfilled` enum, integer-only `update_page.page`, string-only `finishedOn`), and `test_agent_value_types.py` pins that every listed property has a JSON type.
   evidence: `backend/bookvie/agent/tools.py` `JSON_VALUE_TYPES`, `input_schema`; spine-check review layer.
+  resolved: Epic 12 reconciliation follow-up (2026-11-21). AD-21 One validator now records `JSON_VALUE_TYPES`: the declared type of each `JsonValue` property, `null` only where the parser takes it, nothing coerced, pinned by `test_agent_value_types.py`.
 - source_spec: `_bmad-output/implementation-artifacts/spec-agent-tools-advertise-value-types.md`
   summary: Spine drift (AD-8), reconciled before the next epic: "The tools' advertised schemas are generated from the same Pydantic models" no longer covers the agent-layer type declarations for `JsonValue` fields.
   evidence: `backend/bookvie/agent/tools.py` `JSON_VALUE_TYPES`; spine-check review layer.
+  resolved: Epic 12 reconciliation follow-up (2026-11-21). AD-8 now names the `JsonValue` types in `JSON_VALUE_TYPES` as the one hand-written part of the advertised schemas.
 - source_spec: `_bmad-output/implementation-artifacts/spec-agent-tools-advertise-value-types.md`
   summary: A page sent with the wrong type (`"120"`) is refused with "Page must be between 0 and 670.", which misstates the cause; the spec's contract forbids changing refusal copy, so a clearer message needs its own change (agent and HTTP alike).
   evidence: `backend/bookvie/intents/update_page.py` `valid_page` / `page_message`, also used by `start_reading`; pinned by `backend/tests/test_agent_value_types.py`.
