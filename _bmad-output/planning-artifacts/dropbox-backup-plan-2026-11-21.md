@@ -2,7 +2,7 @@
 title: Daily backup to Dropbox, and restore through an agent — plan
 status: agreed
 created: 2026-11-21
-updated: 2026-11-21 (restore added: D13–D20, Stories 13.6–13.8; mechanics superseded by spine AD-22, see §6)
+updated: 2026-11-21 (restore added: D13–D20, Stories 13.1, 13.7, 13.8; mechanics superseded by spine AD-22, see §6; stories renumbered restore-first, see §6)
 source: party-mode session (Mary, John, Sally, Winston, Amelia, Murat) with Oleg
 idea: GitHub issue #7 → "Daily backup to Dropbox"
 ---
@@ -22,7 +22,7 @@ A second skill, `bookvie-restore`, restores the library from a Dropbox or local 
 - **The Backup page** shows "Last export" from `views/backup`.
 - **Restore** is the intent `POST /api/intents/restore` (`intents/restore.py`, AD-4, AD-14): under one lock it stages and validates the whole archive (zip safety, schema version and migration, every referenced cover decodable) before `Store.replace_all`. It writes no pre-restore backup ("the archive is the backup") and never touches `local-state.json`.
 - **Restore is banned from MCP today** (Epic 12 plan D6, spine AD-21), with delete-book and delete-card-note. This plan lifts the ban for restore only (D13).
-- **MCP elicitation**: Claude Code's terminal CLI shows a server's elicitation request as a dialog. There are reports of it auto-declining in VS Code and in print mode; Story 13.6 checks the current behavior and the SDK's API, not from memory.
+- **MCP elicitation**: Claude Code's terminal CLI shows a server's elicitation request as a dialog. There are reports of it auto-declining in VS Code and in print mode; Story 13.1 checks the current behavior and the SDK's API, not from memory.
 
 ## 2. Decisions
 
@@ -97,43 +97,43 @@ Each step is its own skill run, in a fresh context. Docs and planning commits go
 
 ## 4. Story cut (Epic 13)
 
-Eight stories. The backup is five (Amelia's cut over John's four: launchd install and probe is its own macOS-specific risk); restore adds three (13.6–13.8).
+Eight stories. The backup is five (Amelia's cut over John's four: launchd install and probe is its own macOS-specific risk); restore adds three (13.1, 13.7, 13.8). Restore's tools come first, 13.1, so gate 2 is proved before the rest (epics step, 2026-11-21); the backup stories shifted to 13.2–13.6.
 
-**13.1 Local Dropbox MCP server** (D1–D5, D8). Needs nothing.
-
-- `bookvie-dropbox auth` (PKCE, Keychain), token refresh, the stdio server with `upload_backup` only: chunked upload, temp name, size and `content_hash` check, rename, prune to 3. A fake Dropbox in tests; no test touches the network or the real Keychain.
-- Docs (D12): start `docs/dropbox-backup.md` with registering the Dropbox app, `auth`, the `claude mcp add` line and `claude mcp list` check; troubleshooting for the token and for a failed MCP server. README → Agent tools links to it.
-
-**13.2 Record the upload in bookvie** (D9). Needs nothing.
-
-- `record_backup_upload` agent tool, the upload state in `local-state.json`, and the fields in `views/backup`.
-
-**13.3 The `bookvie-backup` skill** (D7, D8). Needs 13.1, 13.2.
-
-- Start step, export, unchanged check, upload, record. Every outcome reported. Oleg verifies a real run by following the guide's setup from scratch.
-- Docs (D12): the first manual run, "How it works", and troubleshooting for failed and mismatched uploads. README → AI skills lists `bookvie-backup`.
-
-**13.4 Schedule it with launchd** (D6, D10). Needs 13.3.
-
-- `bookvie autobackup install` / `uninstall` (plist with the absolute `claude` path, `--allowedTools`, and `--disallowedTools` naming both `restore_backup` tools from the start, before they exist), and the backend's launchctl probe in `views/backup`.
-- Docs (D12): install, uninstall, the log location, `launchctl kickstart`, and the launchd troubleshooting entries (`PATH`, `--allowedTools`, sleep, signed out). Oleg follows them on a real install.
-
-**13.5 Auto-backup badge on the Backup page** (D11). Needs 13.2, 13.4.
-
-- The five states from the two signals, with the 26 h rule computed on the backend against the injected clock.
-- Docs (D12): one troubleshooting entry per badge state, matching the badge's wording, and the guide's closing check that every state has one.
-
-**13.6 Restore tools in bookvie** (D13–D17, D20). Needs nothing in this epic (Epic 12's tool helper).
+**13.1 Restore tools in bookvie** (D13–D17, D20). Needs nothing in this epic (Epic 12's tool helper).
 
 - `preview_restore(path)` and `restore_backup(path)`: the allowed folders, D14's summary, the elicitation gate (look up the pinned `mcp` SDK's elicitation API and Claude Code's current behavior in the CLI, VS Code and `-p`, and record what the story found), `restore_not_confirmed`, the safety copy, then the restore intent's handler. Tool descriptions say the user must confirm and that the agent must never call it on its own initiative.
 - Spine AD-21 amended: restore leaves the banned list.
 - Docs (D12): the `ask` rule for `~/.claude/settings.json`, and the restore troubleshooting entries.
 
-**13.7 Dropbox downloads** (D3, D18). Needs 13.1.
+**13.2 Local Dropbox MCP server** (D1–D5, D8). Needs nothing.
+
+- `bookvie-dropbox auth` (PKCE, Keychain), token refresh, the stdio server with `upload_backup` only: chunked upload, temp name, size and `content_hash` check, rename, prune to 3. A fake Dropbox in tests; no test touches the network or the real Keychain.
+- Docs (D12): start `docs/dropbox-backup.md` with registering the Dropbox app, `auth`, the `claude mcp add` line and `claude mcp list` check; troubleshooting for the token and for a failed MCP server. README → Agent tools links to it.
+
+**13.3 Record the upload in bookvie** (D9). Needs nothing.
+
+- `record_backup_upload` agent tool, the upload state in `local-state.json`, and the fields in `views/backup`.
+
+**13.4 The `bookvie-backup` skill** (D7, D8). Needs 13.2, 13.3.
+
+- Start step, export, unchanged check, upload, record. Every outcome reported. Oleg verifies a real run by following the guide's setup from scratch.
+- Docs (D12): the first manual run, "How it works", and troubleshooting for failed and mismatched uploads. README → AI skills lists `bookvie-backup`.
+
+**13.5 Schedule it with launchd** (D6, D10). Needs 13.4.
+
+- `bookvie autobackup install` / `uninstall` (plist with the absolute `claude` path, `--allowedTools`, and `--disallowedTools` naming both `restore_backup` tools from the start, before they exist), and the backend's launchctl probe in `views/backup`.
+- Docs (D12): install, uninstall, the log location, `launchctl kickstart`, and the launchd troubleshooting entries (`PATH`, `--allowedTools`, sleep, signed out). Oleg follows them on a real install.
+
+**13.6 Auto-backup badge on the Backup page** (D11). Needs 13.3, 13.5.
+
+- The five states from the two signals, with the 26 h rule computed on the backend against the injected clock.
+- Docs (D12): one troubleshooting entry per badge state, matching the badge's wording, and the guide's closing check that every state has one.
+
+**13.7 Dropbox downloads** (D3, D18). Needs 13.2.
 
 - `list_backups` and `download_backup(name)` into `from-dropbox/`, with the hash check. A fake Dropbox in tests.
 
-**13.8 The `bookvie-restore` skill** (D19). Needs 13.6, 13.7.
+**13.8 The `bookvie-restore` skill** (D19). Needs 13.1, 13.7.
 
 - Both sources, the user's pick, download, preview, the chat question, then `restore_backup` with both gates. Oleg verifies a real run against `--dev`: one from a local backup, one from Dropbox, one declined at each gate, and an undo from the safety copy.
 - Docs (D12): the guide's Restoring section, followed from scratch. README → AI skills lists `bookvie-restore`.
@@ -173,6 +173,6 @@ Step 2 settled the open mechanics and changed some of the decisions above. Where
 - **D15 gate 2:** MCP 2026-07-28 elicitation (`InputRequiredResult`) on the stateless `/mcp` mount, with a single-use `requestState` sealed over the file's and the library's hashes. A connection below 2026-07-28 is `restore_not_confirmed`, reason `unsupported`. It works in the Claude Code terminal CLI only.
 - **D16 safety copy:** written inside the restore's own lock hold, after the archive validates and before it is applied, so it is exactly the library being replaced, and a refused archive leaves none.
 - **D18 download:** `download_backup(name, target)`, where `target` is `bookvie` or `bookvie-dev` (D20).
-- **New tool:** `list_local_backups` in bookvie, for the restore skill's pick list (Story 13.6).
+- **New tool:** `list_local_backups` in bookvie, for the restore skill's pick list (Story 13.1).
 - **Dropbox package:** `backend/bookvie_dropbox/`, in the same wheel as `bookvie`. It uses the official `dropbox` SDK and `keyring`.
-
+- **Story order (epics step, 2026-11-21):** restore's tools moved first, as Story 13.1, to prove gate 2 early; the backup stories are 13.2–13.6, Dropbox downloads 13.7, the restore skill 13.8. One epic; `epics.md` is authoritative for the ACs.

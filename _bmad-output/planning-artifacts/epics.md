@@ -14,13 +14,14 @@ inputDocuments:
   - _bmad-output/planning-artifacts/catalog-sort-direction-plan-2026-11-15.md
   - _bmad-output/planning-artifacts/dev-prod-favicon-plan-2026-11-17.md
   - _bmad-output/planning-artifacts/mcp-server-plan-2026-11-19.md
+  - _bmad-output/planning-artifacts/dropbox-backup-plan-2026-11-21.md
 ---
 
 # bookvie - Epic Breakdown
 
 ## Overview
 
-This document breaks bookvie's PRD, UX design (DESIGN.md, EXPERIENCE.md) and architecture spine into twelve epics of implementable stories. Each story names the requirement IDs it satisfies and lists Given/When/Then acceptance criteria.
+This document breaks bookvie's PRD, UX design (DESIGN.md, EXPERIENCE.md) and architecture spine into thirteen epics of implementable stories. Each story names the requirement IDs it satisfies and lists Given/When/Then acceptance criteria.
 
 **How to read it.** The Epic List gives the build order and what each epic delivers. Each epic section starts with its gate. Every story follows the conventions in "Conventions for every story", just before Epic 1. The Requirements Inventory is a lookup table; the source documents stay authoritative.
 
@@ -50,6 +51,7 @@ Gates are in each epic's section.
 | 10. Reverse the catalog order | A Sort direction toggle joined to the Sort select reverses the current key's natural order and says which order is in effect; remembered on this computer, reset on a key change, and followed by Home's slice. | FR-20 (Sort direction) |
 | 11. Know which bookvie you're looking at | Its own sage favicon. A development server keeps to its own library and port, refuses the real library, and is marked by an amber favicon, a `DEV · ` title and a DEV pill; Backup shows the version and data folder; a tab older than the app offers Reload. | FR-26, FR-27 |
 | 12. Talk to bookvie from Claude Code | Claude Code connects to the running bookvie at `/mcp` (its own entry for the real app and for a development server). An agent finds a Book without guessing; reads the catalog, a Book, Home, Card notes and Stats; logs pages, starts, pauses and finishes Readings, chooses Up next, edits Purposes, and adds and edits Card notes and Side reads; adds and edits Books, with a cover fetched from its web address; and writes a dated backup to disk. It can't delete or restore anything. The two bookvie skills move onto the tools. | FR-28 |
+| 13. Back up to Dropbox every day, and restore through an agent | An agent restores a local or Dropbox backup only after showing what will be lost and passing two confirmations it can't skip, with a safety copy first (built first, to prove the riskiest part). Every morning, with nothing open, the library goes to bookvie's own Dropbox folder: 3 copies, the oldest deleted only after a checked upload, an unchanged library skipped, a development library never uploaded. The Backup page says in words whether auto-backup is Off, Waiting, On, Failing or Stalled. Setup and a fix for each state ship in `docs/dropbox-backup.md`. | FR-29, FR-30, FR-28 (restore lifted from the ban, the daily export not counted as Last export) |
 
 ## Requirements Inventory
 
@@ -107,11 +109,15 @@ FR-26 [Must]: Development and production stay apart. A Development server (bookv
 
 FR-27 [Must]: The version is visible. The Backup page shows the version and the library's folder in About this copy; on a Development server it also says so and shows the exact build (the source commit); the real app shows no build. When the running app's version differs from the version an open tab was loaded with (a rollback counts too), the tab shows a quiet notice that bookvie was updated, with a Reload button; if the app can't be reached, for example while it restarts, there's no notice. The notice is announced once, never on every check; it's never a dialog and blocks nothing: the old tab keeps working until the user reloads it.
 
-FR-28 [Should]: Agents read and update the library through MCP. An AI agent in Claude Code can read the library and record reading through bookvie's agent tools, under the same rules as the UI and with no way to delete anything (uses: "I'm on page X of Y", the bookvie skills, reading lists, time-boxed plans, reading order). The tools are on whenever bookvie runs, with nothing extra to start; a Development server offers its own against its own library, so an agent trying something out never writes to the real library. Claude Code is the only supported client; the README gives the setup. A request from another site or host is refused. A write follows the same rules as the same action in the UI and is refused with the same reason and fields; adding a likely duplicate is refused until the agent confirms it. A free-text search (abbreviation, author, part of a title) returns every likely match with edition and type, or an empty list; every other tool names the Book by id, so a page is never logged on the wrong edition. Agents can read the catalog, a Book, Home, Card notes and Stats; start, update, pause and finish a Reading, choose Up next, edit a Purpose; add and edit Card notes; mark and unmark Side reads; add and edit Books; export a backup. They can't delete a Book or a Card note, or restore an export. Adding or editing a Book can take a cover's web address, which bookvie downloads; only an image from a public address is accepted, and a failed download saves nothing. An agent's export writes a dated backup file to a fixed folder (separate for a Development server), says where, replaces a same-day file, and counts as the last export. Each tool's description says what it does and how to use it; a refusal gives the same reason and fields as the UI. There are no planning tools: the agent answers from titles, tags, Purposes, Card notes, pages left and measured pace.
+FR-28 [Should]: Agents read and update the library through MCP. An AI agent in Claude Code can read the library and record reading through bookvie's agent tools, under the same rules as the UI and with no way to delete a Book or a Card note (uses: "I'm on page X of Y", the bookvie skills, reading lists, time-boxed plans, reading order). The tools are on whenever bookvie runs, with nothing extra to start; a Development server offers its own against its own library, so an agent trying something out never writes to the real library. Claude Code is the only supported client; the README gives the setup. A request from another site or host is refused. A write follows the same rules as the same action in the UI and is refused with the same reason and fields; adding a likely duplicate is refused until the agent confirms it. A free-text search (abbreviation, author, part of a title) returns every likely match with edition and type, or an empty list; every other tool names the Book by id, so a page is never logged on the wrong edition. Agents can read the catalog, a Book, Home, Card notes and Stats; start, update, pause and finish a Reading, choose Up next, edit a Purpose; add and edit Card notes; mark and unmark Side reads; add and edit Books; export a backup; upload it to Dropbox (FR-29); restore a backup, with two confirmations (FR-30). They can't delete a Book or a Card note. Adding or editing a Book can take a cover's web address, which bookvie downloads; only an image from a public address is accepted, and a failed download saves nothing. An agent's export writes a dated backup file to a fixed folder (separate for a Development server), says where, replaces a same-day file, and counts as the last export, except the daily backup run's export, which never moves it (FR-29). Each tool's description says what it does and how to use it; a refusal gives the same reason and fields as the UI. There are no planning tools: the agent answers from titles, tags, Purposes, Card notes, pages left and measured pace. (Amended 2026-11-21: restore is no longer banned.)
+
+FR-29 [Should]: Daily off-machine backup. Once a day, an agent backs up the library and uploads it to the user's Dropbox, so a copy exists off this computer without exporting by hand. Daily and unattended: once set up, a backup runs every morning with no app or agent session open; a run missed while the computer slept runs when it wakes; macOS only. Three copies, deleted only after a checked upload: Dropbox keeps the last 3; the oldest is deleted only after the new one has uploaded and been checked against the local file; a failed or mismatched upload deletes nothing; a second upload on the same day replaces that day's copy only once the new one checks out. Unchanged library, no upload: the run uploads nothing and reports a skip, so the 3 copies cover the last 3 changes, not the last 3 days. bookvie's folder only: the backup reaches nothing in Dropbox outside bookvie's own folder and deletes nothing there except bookvie's older backups; the sign-in lives in the computer's keychain, never in the library, an export or the repository, and renews itself; an expired sign-in fails with the command that fixes it. Never from development (FR-26). Status on the Backup page: next to "Last export", in words, Off (not set up), Waiting (set up, not yet run), On (an upload or a skip in the last 26 hours), Failing (the last run reported an error: the reason and the fix) or Stalled (no upload, skip or error in 26 hours). Uploads aren't exports: a manual export doesn't count as an upload, an upload doesn't change "Last export" (FR-22); the upload status belongs to this computer, isn't exported, and a restore leaves it as it was. Documented: setup, how it works, and a fix for each status and known failure ship with the feature. Dropbox is the only provider; the folder and the number of copies can't be changed in the UI.
+
+FR-30 [Should]: Restore through an agent, with confirmation. An agent can restore the library from a backup on this computer or in Dropbox, only after the user has seen what the restore will lose and confirmed it twice, in ways the agent can't skip. The user picks: the agent lists backups on this computer (safety copies included) and in Dropbox, may suggest the newest, but the user picks. What will be lost: the backup's date, its Books, Card notes and covers, the current library's, and what the current library has that the backup lacks (titles of the Books added since, the number of Card notes); a backup bookvie can't restore is refused with the same reason as in the UI (FR-23). Two confirmations the agent can't skip: Claude Code asks permission for every restore, and bookvie itself then asks the user directly with the same summary; anything other than an explicit yes to both refuses and changes nothing, including a client that can't show bookvie's question; the agent's own chat question comes first but is neither; the agent never retries a refused or unconfirmed restore on its own. Safety copy first: bookvie saves the current library as a safety copy in the backups folder and names it in the result; if it fails, nothing is restored; safety copies stay on this computer and never replace or remove a daily backup; restoring one undoes the restore. Backups folder only, including the Dropbox backups downloaded there. Same restore as the UI (FR-23). Never unattended: the daily run (FR-29) can never restore. In development too: a Development server restores its own library only, and a Dropbox backup can be downloaded into it. Restoring from Dropbox in the Backup page's UI is out of scope.
 
 ### NonFunctional Requirements
 
-NFR1 (Local-first): bookvie runs in a browser on one laptop or desktop. No account and no network connection for any feature (the only outbound request is a cover download an agent asks for by address, FR-28); no database server; all data lives locally. A Book saved from any browser on this machine appears in every other browser.
+NFR1 (Local-first): bookvie runs in a browser on one laptop or desktop. No account and no network connection for any feature (bookvie's only outbound request is a cover download an agent asks for by address, FR-28; the daily Dropbox backup, FR-29, is optional, needs a Dropbox account, runs outside bookvie, and no other feature depends on it); no database server; all data lives locally. A Book saved from any browser on this machine appears in every other browser.
 
 NFR2 (Display): UI in English only. Minimum viewport 1024px; below that the page scrolls horizontally; no phone layout. Light, dark or system theme selectable.
 
@@ -119,7 +125,7 @@ NFR3 (Accessibility): WCAG 2.2 AA in both themes, with one accepted deviation: t
 
 NFR4 (Speed): Catch-up (one page update) takes under 30 seconds and at most 2 interactions after opening the app.
 
-NFR5 (Data safety): No action silently deletes data. Every destructive action needs confirmation. A Development server never opens the real library (FR-26). No agent tool deletes data (FR-28). A failed save is never silent: the UI says "Couldn't save. Your data wasn't changed." and keeps the user's input.
+NFR5 (Data safety): No action silently deletes data. Every destructive action needs confirmation. A Development server never opens the real library (FR-26). No agent tool deletes a Book or a Card note (FR-28). A restore through an agent needs two confirmations the agent can't skip and saves a safety copy first (FR-30). The daily backup deletes only bookvie's older Dropbox backups, and only after a checked upload (FR-29). A failed save is never silent: the UI says "Couldn't save. Your data wasn't changed." and keeps the user's input.
 
 NFR6 (Tone): No guilt mechanics: no streaks, no "you missed a day", no red failure states. No greetings, exclamation marks or praise. Finish copy is "Finished *X*."; the finish moment is a single ~600ms spine fill that never replays.
 
@@ -141,7 +147,7 @@ From ARCHITECTURE-SPINE.md and the TEA handoff. Each line names the source decis
 - AR5 (AD-11): Spine colors and finish values are stored, never recomputed.
 - AR6 (AD-12): Cover decoding, immutable cover names, and the files-then-document-then-cleanup order.
 - AR7 (AD-13): `schemaVersion` and one migration chain, run in memory, with a pre-migration backup.
-- AR8 (AD-15): Last export in `local-state.json`; UI preferences in browser `localStorage`.
+- AR8 (AD-15): Last export in `local-state.json`; UI preferences in browser `localStorage`. Epic 13 adds the upload state group `autoBackup` (AR49), and one writer in `store/local_state`, under its own `threading.Lock`, read-modify-writes only the group it changes and keeps every other key; `Store.record_export` becomes a call to it and `local_state_bytes` goes; a malformed file is replaced with that group alone and the loss logged.
 
 **API contract.**
 - AR9 (AD-3): Each user action is one `POST /api/intents/<verb>` that applies every consequence and commits once, or changes nothing.
@@ -160,7 +166,7 @@ From ARCHITECTURE-SPINE.md and the TEA handoff. Each line names the source decis
 **CLI, process and security.**
 - AR19 (AD-5): One server per data folder through a health-checked lock.
 - AR20 (AD-16): Loopback bind, port handling, the Host/Origin guard and the SPA fallback.
-- AR21 (Consistency Conventions): CLI flags, stderr logging, no outbound network calls except an agent's cover download (AR41).
+- AR21 (Consistency Conventions): CLI flags, stderr logging, no outbound network calls except an agent's cover download (AR41). Epic 13 adds the subcommands `bookvie autobackup install`, `uninstall` and `run` (AR52) and the second command `bookvie-dropbox auth` and `serve` (AR44); `bookvie-dropbox` calls only Dropbox and never logs a token; the launchd run logs under `~/Library/Logs/bookvie/`.
 - AR22 (Stack, Structural Seed): Build into `backend/bookvie/http/static/`, shipped in the hatchling wheel, install with `uv tool install`, Vite dev proxy; React Router 8.5 and CSS Modules over one `tokens.css`.
 - AR23 (AD-17): Accessible names are stable, and e2e finds the controls EXPERIENCE.md's table lists by role and that name, with no `data-testid`. Renaming one changes EXPERIENCE.md, the component and the e2e together; no agent depends on them (narrowed 2026-11-19 with FR-2's retirement).
 - AR24 (AD-6): The Tiles view is client presentation over the same sorted, filtered array as the bookcase and List. The ribbon reads the view's `finished`; the reading bar shows only when `percent` is not null and fills to `percent`, never recomputed; the tile's accessible name comes from the spine's name builder.
@@ -179,14 +185,34 @@ From ARCHITECTURE-SPINE.md and the TEA handoff. Each line names the source decis
 
 **Agent tools (Epic 12).** All from AD-21.
 - AR35 (AD-21, AD-16): `create_app` builds a fresh `MCPServer` each time and mounts its streamable-HTTP app at `/mcp` exactly (no `/mcp/mcp`, no redirect), before the SPA catch-all, with `mcp` among the server prefixes; its session manager runs in the app's lifespan; stateless with JSON responses; on in production and `--dev`; the intents' 1 MB body cap. `/mcp` is behind the AD-16 guard and `Sec-Fetch-Site` check; the SDK's own Host/Origin check is off (`enable_dns_rebinding_protection=False`), so refusals are AD-16's 403.
-- AR36 (AD-21): The tools, exactly: read `get_app_info`, `find_book`, `get_book`, `list_catalog`, `get_card_notes`, `get_home`, `get_stats`; write `start_reading`, `update_page`, `finish_reading`, `pause`, `set_up_next`, `edit_purpose`, `add_card_note`, `edit_card_note`, `mark_side_read`, `unmark_side_read`, `add_book`, `edit_book`; backup `export_backup`. `delete-book`, `delete-card-note`, `restore` and `set-spine-color` are never registered; a test asserts the list.
+- AR36 (AD-21): The tools, exactly: read `get_app_info`, `find_book`, `get_book`, `list_catalog`, `get_card_notes`, `get_home`, `get_stats`; write `start_reading`, `update_page`, `finish_reading`, `pause`, `set_up_next`, `edit_purpose`, `add_card_note`, `edit_card_note`, `mark_side_read`, `unmark_side_read`, `add_book`, `edit_book`; backup `export_backup`; Epic 13 adds `record_backup_upload`, `list_local_backups`, `preview_restore`, `restore_backup` (AR50, AR55–AR57). `delete-book`, `delete-card-note` and `set-spine-color` are never registered; restore is reachable only as `restore_backup`, behind its two gates (amended 2026-11-21: Epic 12's ban on restore is lifted for that tool alone). A test asserts the list (`AGENT_TOOL_NAMES`), and each registered description equals its text in this file (Epic 12, or Epic 13 for AD-22's tools).
 - AR37 (AD-21, AD-8): One validator. A write tool's arguments are its intent's JSON body with the same camelCase keys (`add_book` and `edit_book` add optional `coverUrl`). Each tool advertises an input schema generated from its intent model by alias (plus `coverUrl`, `null` left out where the parser refuses it, no extra properties); the SDK neither validates nor coerces; `parse_*_intent` is the only validator; a test compares each advertised schema with its model.
 - AR38 (AD-21, AD-9): Same handler, same answers. The tool body runs in one worker-thread call, passes the arguments to the route's `parse_*_intent` and calls the same handler. Success: the route's `OkResponse` by alias (`ids`, `reachedLastPage`) as structured content, same JSON as text. Failure: `isError` with one text content, the AD-9 `error` object as JSON (`kind`, `code`, `message`, `fields`, `duplicates`); any other exception becomes `couldnt_save`. Read tools return their view model by alias and refuse as their routes do; parsing or refusing they need that lives in `http/api.py` (stats range, not-found) moves into `views/` first; `agent/` never imports `http/api`. A contract test per write tool compares tool and route: stored result and error.
 - AR39 (AD-21, AD-3): `edit_book` is a whole edit: its input schema requires every form key (only `removeCover`, `confirmDuplicate`, `coverUrl` optional) and the tool never merges with the stored Book. The stale-tab deviation is accepted for agent edits too.
 - AR40 (AD-21): `find_book` (`views/find_book`, a tool only) matches title, subtitle, authors, normalized ISBN and title-word initials ("DDIA") and returns `[{id, title, subtitle, authors, edition, type, role}]`, empty when nothing matches. Every other tool takes `bookId`. Tool descriptions are part of the interface and are fixed by the stories' ACs.
 - AR41 (AD-21, AD-12): Cover by URL (`intents/cover_fetch`), in order: take `coverUrl` out; `parse_*_intent` with `has_cover` when it was sent; `edit_book` checks the Book exists; download (before the AD-4 lock); the handler with an `UploadedCover`. Rules: `https` on every hop, redirects by hand (at most 3), every resolved address on every hop global (mapped, 6to4, NAT64, Teredo unwrapped), connect to the checked address with TLS verified against the hostname, proxy variables ignored, `Accept-Encoding: identity`, 30-second deadline, 20 MB cap while streaming, bytes sniffed for JPEG, PNG or WebP. Over 20 MB is `cover_too_large`, any other download failure `invalid_fields`, a handler `cover` refusal is reported on `coverUrl`; nothing is saved. No host allow-list.
-- AR42 (AD-21, AD-14, AD-15): `export_backup` (`intents/backup_file`) builds the export zip under the AD-4 lock, releases it, writes `bookvie-backup-YYYY-MM-DD.zip` (date from the `Clock`) atomically (unique temp, fsync, rename replacing the day's file), then records `lastExportAt` and returns `{path, size, createdAt}`; read failure `couldnt_export`, write failure `couldnt_save`. The backup folder follows the data folder: `~/bookvie-backups` for the default `~/bookvie-data`, `~/bookvie-backups-dev` for the default `~/bookvie-data-dev`, a sibling `<data folder>-backups` otherwise; `cli.py` resolves it and passes it to `create_app`; no flag, no retention.
+- AR42 (AD-21, AD-14, AD-15): `export_backup` (`intents/backup_file`) builds the export zip under the AD-4 lock, releases it, writes `bookvie-backup-YYYY-MM-DD.zip` (date from the `Clock`) atomically (unique temp, fsync, rename replacing the day's file), then records `lastExportAt` and returns `{path, size, createdAt}`; read failure `couldnt_export`, write failure `couldnt_save`. The backup folder follows the data folder: `~/bookvie-backups` for the default `~/bookvie-data`, `~/bookvie-backups-dev` for the default `~/bookvie-data-dev`, a sibling `<data folder>-backups` otherwise; `cli.py` resolves it and passes it to `create_app`; no flag, no retention. Epic 13 (AD-22): an optional `forUpload` argument (true: `lastExportAt` isn't recorded), and the result adds `libraryHash` and `unchangedSinceUpload` (AR49); a non-default data folder whose sibling would be `~/bookvie-backups` or `~/bookvie-backups-dev` gets no backups folder (`backups_dir` is `None`), so only `~/bookvie-data` writes into `~/bookvie-backups` (AR48).
 - AR43 (Stack, AD-21): `mcp` 2.3.x and `httpx2` 2.16.x become runtime dependencies, pinned in Story 12.1 after a fresh version check; `httpx` stays dev-only. pytest sets `HOME` to a temporary folder for every test and Playwright's servers get a temporary `HOME`, so no test writes a real backup folder.
+
+**Daily Dropbox backup and agent restore (Epic 13).** All from AD-22 unless named; where `dropbox-backup-plan-2026-11-21.md` differs, AD-22 wins (plan §6).
+- AR44 (AD-22, Structural Seed): Two processes. `bookvie_dropbox` (`backend/bookvie_dropbox/`, console script `bookvie-dropbox` with `auth` and `serve`) ships in the same wheel (`packages = ["bookvie", "bookvie_dropbox"]`; the smoke test checks the `bookvie-dropbox` command). It is a stdio MCP server Claude Code starts, added as `bookvie-dropbox` with `--scope user` and the command's absolute path. It calls only Dropbox, touches only backup files (writes only `from-dropbox/` inside a backups folder), never a data folder, never calls bookvie, logs to stderr and never logs a token. `bookvie` never imports `bookvie_dropbox`, `dropbox` or `keyring`; `bookvie_dropbox` never imports `bookvie`; `backend/tests/test_layers.py` enforces both. They meet only in the skills, through files in a backups folder.
+- AR45 (AD-22): Copied contracts, once on each side, a test comparing the two copies: the daily-name regex `^bookvie-backup-(\d{4}-\d{2}-\d{2})\.zip$` with a valid calendar date (every unit that selects, counts, prunes, lists, downloads or accepts a daily backup matches it; a non-matching name is never counted or deleted); the folders `~/bookvie-backups`, `~/bookvie-backups-dev` and their `from-dropbox`; the cause enum (AR47); the Dropbox content hash (SHA-256 over the SHA-256 of each 4 MiB block, stdlib only).
+- AR46 (AD-22): Dropbox scope and sign-in. An App-folder Dropbox app; backups in `/Apps/bookvie/.backups/`. `bookvie-dropbox auth` runs OAuth with PKCE (app key a constant in `bookvie_dropbox`, no secret) through a loopback redirect on a fixed registered port, and stores the refresh token only in the macOS Keychain through `keyring` (service `bookvie-dropbox`, account `refresh-token`). The SDK refreshes access tokens; a refused refresh, or a Keychain read that fails or is denied, is cause `dropbox_signin`. No token in any tool result or log. The `dropbox` SDK sits behind a `DropboxApi` seam; tests use a fake and never touch the network or the real Keychain.
+- AR47 (AD-22): Dropbox tools, and no others (no delete tool, nothing outside `.backups`). `upload_backup(localPath)` accepts only a regular file with a daily name directly in the resolved `~/bookvie-backups/` (no `..`, no symlink out; anything else refused before any network call, so a dev or scratch backup never uploads); a chunked upload session finished directly to the final name with `WriteMode.overwrite`, the whole file's `content_hash` and `client_modified` = the backup time in UTC; then it checks the returned `size` and `content_hash`; only then deletes the oldest daily backups beyond 3 by the date in the name, never the name it just wrote; any failure deletes nothing and returns its cause; keep fixed at 3, no argument; returns `{name, copies, deleted, contentHash}`. `list_backups()` returns the daily backups in `.backups` with time, size and `content_hash`. `download_backup(name, target)` takes only a daily name, `target` `bookvie` or `bookvie-dev` picks that folder's `from-dropbox/`, writes atomically (temp, fsync, rename) only once `content_hash` matches (a mismatch leaves no file), returns the local path; failures `dropbox_signin`, `download_incomplete`, `other`. Causes, one closed enum shared by `upload_backup` and `record_backup_upload`: `dropbox_signin`, `upload_incomplete` (mismatch, failed chunk, timeout), `dropbox_full`, `backup_write`, `other`.
+- AR48 (AD-22, AD-20, amends AD-21 Backup): Backup time is one instant from the injected `Clock`: `build_export` stamps the zip's `library.json` entry with `clock.now()`, and the daily name, `createdAt` and a safety copy's name use that same `now`; every tool reports a backup's time as ISO-8601 with an offset, and `bookvie_dropbox` reads it from that zip entry. Backups folder: a data folder that isn't one of the two defaults but whose sibling rule would give `~/bookvie-backups` or `~/bookvie-backups-dev` gets `backups_dir = None`.
+- AR49 (AD-22, AD-15): Upload state in `local-state.json`: `autoBackup: {lastReport: {outcome: "uploaded" | "skipped" | "failed", at, cause?}, lastOk: {at, outcome}, lastUpload: {at, backupAt, name, copies, libraryHash}}`; `at` from the `Clock`, never from the agent; a failure replaces only `lastReport`, a skip also `lastOk`, an upload all three. Unchanged: the fingerprint is the SHA-256 of the backup's `library.json` bytes; `export_backup` returns `libraryHash` and `unchangedSinceUpload` (equal to `lastUpload.libraryHash`); bookvie compares, the skill only branches. `export_backup({forUpload: true})` doesn't record `lastExportAt`: the daily run never moves "Last export", an export never moves `autoBackup`, a restore touches neither.
+- AR50 (AD-22, AD-9): `record_backup_upload({outcome, path?, copies?, contentHash?, cause?})`, a tool-only bookvie writer. `uploaded` needs `path` (a daily backup in this server's backups folder), `copies` and `contentHash`; bookvie checks the zip at `path` still has that Dropbox hash and stores its `library.json` hash itself. `failed` needs `cause`; `skipped` needs neither. A broken argument is `invalid_fields`; a write failure `couldnt_save`.
+- AR51 (AD-22): The `bookvie-backup` project skill: `get_app_info` to check bookvie is reachable; `export_backup({forUpload: true})`; unless `unchangedSinceUpload`, `upload_backup`; then `record_backup_upload` always (skip and failure too). Uses only `mcp__bookvie__` and `mcp__bookvie-dropbox__` tools. Run by hand interactively it may start bookvie as the other skills do; the unattended run never needs to.
+- AR52 (AD-22, AD-5): The schedule, `cli.py` subcommands, production only (each refused with `--dev`). `bookvie autobackup install` writes `~/Library/LaunchAgents/<label>.plist` and loads it with `launchctl bootstrap`; `uninstall` unloads with `bootout` and removes it; the label is one constant shared with the probe; installing over an existing job replaces it, resolves every path again and reloads. Install refuses a linked git worktree, and its `WorkingDirectory` is the checkout holding `.claude/skills/bookvie-backup/SKILL.md` (the current folder; refused otherwise). The plist runs `bookvie autobackup run` by absolute path at 09:00 (`StartCalendarInterval`), sets `PATH` to include the folders of the resolved `bookvie`, `bookvie-dropbox` and `claude`, and logs to `~/Library/Logs/bookvie/autobackup.log` and `autobackup.err.log`. `autobackup run`: if `/api/health` doesn't answer, start `bookvie --no-browser` and wait for health; run the resolved `claude -p "/bookvie-backup"` with `--allowedTools` and `--disallowedTools`; SIGTERM the server only if it started it; exit with `claude`'s status.
+- AR53 (AD-22): The tool lists. `--allowedTools` is one constant in `cli.py` of MCP tool names only, never `Bash` in any form, and a test checks it equals the skill's tools; `--disallowedTools` names `mcp__bookvie__restore_backup` and `mcp__bookvie-dev__restore_backup` (from Story 13.4 on, before those tools exist). A test reads the generated plist and the arguments.
+- AR54 (AD-22, AD-6, AD-20): Auto-backup state in `views/backup`: the server computes `autoBackup.state` (`off`, `waiting`, `on`, `failing`, `stalled`) with EXPERIENCE.md's first-match order and the 26-hour rule on `lastReport.at` against the `Clock` (exactly 26 h is still `on`/`failing`; a future report time counts as now); `off` with reason `dev` on a `--dev` server, and with reason `other_library` unless this server's backups folder is `~/bookvie-backups` (only that server runs the probe). The view also carries `reportAt`, `lastOkAt`, `lastUploadAt` (the upload's `backupAt`), `copies` and `cause`; the client only formats. Installed comes from `create_app`'s `launchd_probe` seam: only the exit status of `launchctl print gui/<uid>/<label>`, short timeout; any error, or not macOS, reads as not installed. Missing or unreadable upload state reads as no report.
+- AR55 (AD-22, AD-14): Restore files. `preview_restore` and `restore_backup` take a `path` that must resolve to a regular file directly in this server's backups folder or its `from-dropbox/`, with a daily name or a safety-copy name (`bookvie-pre-restore-<YYYY-MM-DDTHHMM>.zip`, then `-2`, `-3`…); any other path, `..` or a symlink out is 422 `restore_outside_backups` (no `fields`) before anything is read. `list_local_backups()` (read tool) returns the daily backups, safety copies and `from-dropbox/` files, newest first, each with `path`, `kind` (`daily`, `safety`, `from_dropbox`), backup time, size and Dropbox content hash. `preview_restore(path)` takes the lock, stages and validates, applies nothing, and returns the backup's time and counts (Books, Card notes, covers), the current library's counts, the titles of Books whose ids are in the current library and not the backup, and the number of such Card notes on any Book; its refusals are AD-14's codes.
+- AR56 (AD-22, AD-21): Gates. Gate 1 is Claude Code's `ask` permission rule on both `restore_backup` names in user settings (the guide's setting; bookvie can't see it). Gate 2 is MCP 2026-07-28 elicitation over the stateless JSON mount: a connection below 2026-07-28 (`ctx.protocol_version`) or a client without form elicitation (an empty `elicitation` object counts as form) is `unsupported`, checked first. A call without input responses computes the preview and returns an `InputRequiredResult` with one form elicitation whose message is EXPERIENCE.md's confirmation text and a `requestState` bookvie seals by hand (no SDK `RequestStateBoundary`): a process nonce and a single-use nonce plus `{resolved path, archive SHA-256, current library.json SHA-256, expiry 5 minutes}` under HMAC-SHA256 with a per-process key. Only an explicit accept on a valid token goes on; anything else is 409 `restore_not_confirmed` with `reason`: `declined`, `cancelled`, `unsupported`, `expired` (expiry passed, or unknown process nonce after a restart), `changed` (bad MAC, nonce reused, a retry whose `path` resolves elsewhere, or a moved library or archive hash), and nothing changes.
+- AR57 (AD-22, AD-4, AD-12, AD-14): Apply, in one hold of the store lock: read the file once into the staging spool, whose SHA-256 must equal the sealed hash (`changed` otherwise), then stage and validate (a refusal writes nothing); write the safety copy with `write_export_zip` and the atomic file write (never `build_export`, `write_backup` or `record_export`; failure is 503 `safety_copy_failed`, kind `couldnt_save`, and nothing is restored); run `apply_staged` in the AD-12 order. Lock-free cores: `intents/export` gets `write_export_zip(store, out)` (wrapped by `build_export`), `intents/restore` splits into `stage_and_validate` and `apply_staged` (wrapped by `restore()`); each expects its caller to hold `store.lock`; a test with a timeout proves `restore_backup` finishes. Success returns `{restoredFrom, backupTime, safetyCopy}`; refusals equal the route's (a contract test compares tool and route); `local-state.json` stays byte-identical. `POST /api/intents/restore` doesn't change. Safety copies and `from-dropbox/` files are never pruned or uploaded.
+- AR58 (AD-22): The `bookvie-restore` project skill: lists both sources (`list_local_backups`, `list_backups`, one row per content hash), suggests the newest and never picks; downloads a Dropbox pick; shows `preview_restore`; asks in the chat (not a gate); calls `restore_backup`; reports the outcome and the safety copy; gives the terminal-CLI advice only for `reason: unsupported`; never retries a refused or unconfirmed restore by itself; uses `bookvie-dev`'s tools and `download_backup` target `bookvie-dev` when asked to work on development.
+- AR59 (AD-9): New error codes: 422 `restore_outside_backups`; 409 `restore_not_confirmed`, whose error object also carries `reason` (the one code with that key); 503 `safety_copy_failed` (kind `couldnt_save`). Each has an API or tool test (TR7).
+- AR60 (Stack): `dropbox` 12.2.x and `keyring` 25.7.x, `bookvie_dropbox` only, pinned after a fresh version check; `mcp` 2.3.x supplies `InputRequiredResult` and the stdio server. Every test's `HOME` is temporary and `_on_the_machine` refuses any lookup or connection off the machine.
+- AR61 (plan D12, Consistency Conventions → Testing): Docs ship with the code. `docs/dropbox-backup.md` (setup, how it works, troubleshooting, restoring) grows story by story, each story adding the docs for what it introduces as ACs; README → Agent tools gets a short "Daily backup to Dropbox" paragraph linking to it, and README → AI skills lists both skills. A pytest parses the guide's code blocks and checks each `bookvie`/`bookvie-dropbox` subcommand and flag against the CLI, and that every auto-backup state has a troubleshooting entry with its exact wording. The setup is checked by Oleg following it from scratch.
 
 **Test harness and quality gates (TEA handoff).**
 - TR1 (TC-1): `LibraryBuilder` fixture and pre-start seeding of a data folder.
@@ -298,6 +324,18 @@ Each line names the UX section that holds the full requirement. D = DESIGN.md, E
 - UX-DR71: About this copy: the third `surface` card on Backup, under Export and Restore, a `section` labelled by its `h2` "About this copy" (shown in `section-label`/`ink-tertiary`); line 1 "bookvie 1.1.0", or on a dev server "bookvie 1.1.0 (a1b2c3d) · Development server" (no brackets when `commit` is null); line 2 "Data folder: ~/bookvie-data" as the server sends it; both in `body-sm`/`ink-secondary`, sans, wrapping anywhere, read-only with no copy button; the commit never shows in production; left out silently until `app-info` loads (D → Backup page, About this copy, `components.about-card`; E → About this copy; Flow 11)
 - UX-DR72: `app-info` states: not loaded yet, or never loaded, means the header and title look like production, no notice and no About this copy card, and nothing says it failed; a refetch that fails after a success keeps the last data for the pill, the title, the card and any notice (E → State Patterns)
 
+**Daily Dropbox backup and agent restore (FR-29, FR-30)**
+- UX-DR73: Auto-backup line, visual: `components.auto-backup-line`, a second `meta` line in the Export card directly under "Last export", same left alignment, wrapping inside the card; Off, Waiting and On in `ink-tertiary`, Failing and Stalled in `ink` (`text-color-strong`); text only (no dot, glyph, icon, badge shape, tint or color, so no forced-colors rule); the state word plain, same weight; commands in a reason stay in the body font, not monospace (D → Components → Auto-backup line, Do's and Don'ts)
+- UX-DR74: Auto-backup line, behavior: pattern "Auto-backup: *State* · *detail*" from `views/backup`; plain text, not a control, link, Tab stop or live region; updates with the page's refetch on focus, unannounced, like "Last export"; only on Backup, never on Home's re-entry line; **Export all data** changes "Last export", never this line, an upload never changes "Last export", a restore changes neither; if `views/backup` can't load, the page shows "Couldn't load" (E → Pages: Backup page, Component Patterns → Auto-backup line)
+- UX-DR75: Auto-backup states, first match wins: Off (dev) "Auto-backup: Off · never on a development server"; Off (not installed, unknown, not macOS) "Auto-backup: Off · not set up on this computer"; Waiting "Auto-backup: Waiting · first backup at 09:00"; Failing "Auto-backup: Failing · *reason and fix*" then " Last upload *when*." if there was one; On after an upload "Auto-backup: On · last upload today at 09:02 · 3 copies in Dropbox", after a skip "Auto-backup: On · checked today at 09:02, nothing new · last upload on 19 Nov · 3 copies in Dropbox"; Stalled "Auto-backup: Stalled · no backup since yesterday at 09:02" (the latest upload or skip; "no backup since it was set up" if none) (E → Auto-backup line)
+- UX-DR76: Auto-backup timing and formats: 26 hours from the latest report to now, exactly 26 h still On or Failing, past it Stalled, a future report counts as now; Waiting never times out; missing or unreadable state is no report; "today at 09:02", "yesterday at 09:02", otherwise "on 19 Nov" (Stalled "since 19 Nov"), local calendar days, recomputed on focus; "1 copy" / "2 copies" / "3 copies", a skip keeping the last upload's count; short absolute dates day first ("19 Nov", "19 Nov 2025" outside the current year) and local 24-hour times (E → Auto-backup line, Foundation → Dates)
+- UX-DR77: Failing reasons by cause: `dropbox_signin` "Dropbox sign-in expired. Nothing in Dropbox was deleted. Run bookvie-dropbox auth in Terminal."; `upload_incomplete` "the last upload didn't finish. Nothing in Dropbox was deleted; the next 09:00 run tries again."; `dropbox_full` "Dropbox is full. Nothing in Dropbox was deleted; free some space there."; `backup_write` "bookvie couldn't write the backup file. See docs/dropbox-backup.md → Troubleshooting."; `other` "the last run stopped with an error. See docs/dropbox-backup.md → Troubleshooting." The guide has one troubleshooting entry per state with the same wording (E → Auto-backup line)
+- UX-DR78: Restore pick list (chat): "Backups you can restore:", numbered rows newest first by backup time, "*date, time* · daily backup | safety copy (before a restore) · this computer | Dropbox | this computer and Dropbox · *size*", one row per content hash (restored from this computer without a download), the 10 newest then "and N older. Say show all to see them.", "The newest is 1. Which one?"; never picks; Dropbox unreachable: local rows then "Couldn't reach Dropbox: *reason*." (sign-in: "Dropbox sign-in expired. Run bookvie-dropbox auth in Terminal."); none anywhere: "No backups found on this computer or in Dropbox. Nothing was changed." (E → Agent conversations → Restore, step 1)
+- UX-DR79: Restore preview (chat): "Restore *file* (*source*, *date, time*)?", "This backup:" and "Now:" counts of books, card notes and covers, "You'd lose what was added since *date, time*:" with "N books: A; B; C" (up to 5 titles, then "and N more"; "1 book", "1 card note") and "N card notes", or "No books or card notes were added since *date, time*."; always "Everything else changed since *date, time*, such as pages reached, goes back to how it was then." and "A safety copy of your current library is saved first."; then the skill asks in its own words (not a gate) (E → Agent conversations → Restore, step 2)
+- UX-DR80: bookvie's confirmation (gate 2's message), plain text, one paragraph, no markdown, always its own counts: "Replace all data with the backup from *date, time*? You'd lose N books added since (*titles*), N card notes, and every other change since then. A safety copy of your current library is saved first."; with nothing added: "Replace all data with the backup from *date, time*? Every change since then goes back, such as pages reached. A safety copy of your current library is saved first." Same title rule as the preview (E → Agent conversations → Restore, step 3)
+- UX-DR81: Restore outcomes (chat): Restored "Restored from the backup of *date, time*. Safety copy: *~ path*"; `restore_not_confirmed` "Not restored. Nothing was changed." plus, for `unsupported` only, "Run it in the Claude Code terminal, not VS Code or claude -p."; `restore_invalid`/`restore_unsafe` "This file isn't a bookvie export, or it's damaged. Nothing was changed."; `restore_newer_version` "This export is from a newer version of bookvie. Nothing was changed."; `couldnt_save` "Couldn't save. Your data wasn't changed."; download failed "Couldn't download the backup from Dropbox: *reason*. Nothing was changed."; `safety_copy_failed` "Couldn't save a safety copy, so nothing was restored."; `restore_outside_backups` "bookvie restores only from its backups folder. Nothing was changed."; `download_incomplete` "The download didn't match the copy in Dropbox, so nothing was restored. Try again."; paths with `~`; never retried on its own (E → Agent conversations → Restore, step 4; Voice and Tone)
+- UX-DR82: Auto-backup report, one line in the line's words: "Uploaded *name* · N copies in Dropbox, deleted *name*", "Nothing new since the last upload; skipped.", "Failed: *reason and fix*"; to the launchd log headless, in the chat when run by hand (E → Agent conversations → Auto-backup report)
+
 ### FR Coverage Map
 
 FR-1: Epic 1 - Book fields, create/edit/delete, Finished on back-fill, tags field, spine color
@@ -325,7 +363,9 @@ FR-24: Epic 1 - Catalog bookcase (spines, colors, meter, popover, keyboard); Epi
 FR-25: Epic 8 - Tiles view: grid, covers, ribbon, reading bar, typeset covers
 FR-26: Epic 11 - Dev defaults and the real-library refusal, `app-info` mode, the amber favicon, the DEV pill and the `DEV · ` title
 FR-27: Epic 11 - About this copy on Backup, the update notice and the one version
-FR-28: Epic 12 - The agent tools at `/mcp`: read tools and `find_book`, daily-loop write tools, add and edit a Book with a cover URL, `export_backup`, and the two bookvie skills moved onto them
+FR-28: Epic 12 - The agent tools at `/mcp`: read tools and `find_book`, daily-loop write tools, add and edit a Book with a cover URL, `export_backup`, and the two bookvie skills moved onto them; Epic 13 - restore through `restore_backup`, and `export_backup`'s `forUpload`
+FR-29: Epic 13 - The `bookvie-dropbox` server and `upload_backup`, `record_backup_upload` and the upload state, the `bookvie-backup` skill, `bookvie autobackup` with launchd, the auto-backup line, and the guide
+FR-30: Epic 13 - `list_local_backups`, `preview_restore`, `restore_backup` with its two gates and the safety copy, `list_backups` and `download_backup`, and the `bookvie-restore` skill
 
 ## Conventions for every story
 
@@ -2874,7 +2914,7 @@ So that a backup exists without me clicking Export, ready for a later upload.
 **When** `export_backup` is called on 2026-11-19 (fake clock)
 **Then** it writes `bookvie-backup-2026-11-19.zip` into `~/bookvie-backups/`, `~/bookvie-backups-dev/`, or `<data folder>-backups/` respectively, creating the folder
 **And** returns `{path, size, createdAt}` with the absolute path.
-**Description:** "Write a dated backup of the whole library (library.json and covers, the same file as the Backup page's Export) to the backups folder, and return its path, size and time. A second backup on the same day replaces that day's file. It counts as the library's last export."
+**Description:** "Write a dated backup of the whole library (library.json and covers, the same file as the Backup page's Export) to the backups folder, and return its path, size and time. A second backup on the same day replaces that day's file. It counts as the library's last export." (Superseded by Story 13.3's description once 13.3 lands.)
 
 **Given** the backup file
 **When** it is restored through the existing restore check
@@ -2950,3 +2990,410 @@ So that it checks duplicates with the server's own rule and bookvie fetches the 
 **Given** a `--dev` server
 **When** Oleg runs the skill in a real Claude Code session on a book from amazon.com and one from leanpub.com
 **Then** both are added with their covers, and the spec records the runs (manual verification).
+
+## Epic 13: Back up to Dropbox every day, and restore through an agent
+
+An agent restores the library from a backup on this computer or in Dropbox, only after showing what the restore will lose and passing two confirmations it can't skip, and it saves a safety copy first. Every morning, with nothing open, the library goes to bookvie's own Dropbox folder: 3 copies, the oldest deleted only after a checked upload, an unchanged library skipped, a development library never uploaded. The Backup page says in words whether auto-backup is Off, Waiting, On, Failing or Stalled. Setup and a fix for each state ship in `docs/dropbox-backup.md`. Restore comes first (Story 13.1), because its second gate is the one part nobody has seen work.
+
+**Gate:** per-epic quality gates (TR7), plus coverage ≥ 90% on `bookvie_dropbox/` and on `agent/`'s restore path; the plan's P0 risks green against fakes (verify then prune, prune scope, same-day rerun, dev refusal, token, skip reports, the auto-backup states at 26 hours either side, gates fail closed, the confirmation shows the truth, safety copy, allowed folders, same handler, `download_backup`, headless can't restore, still banned); every new tool's registered description, in both servers, equals its story's AC text; the guide's commands match the CLI; no test touches the network, the real Keychain, `~/bookvie-data` or a real backups folder; Oleg's manual runs (13.1 gate 2, 13.4 first run, 13.5 install and the headless run awake and after wake, 13.8 restores) recorded in their specs, and a story whose manual AC isn't recorded stays in review (Epic 12 retro item 85). Plan: `dropbox-backup-plan-2026-11-21.md` (where it differs, spine AD-22 wins); spine AD-22.
+
+**Before Story 13.1:** plan step 0, the spine reconciliation of any unresolved "spine drift" entry in `deferred-work.md` (AGENTS.md → Architecture spine).
+
+**If gate 2 fails in Story 13.1:** when Claude Code's terminal CLI can't show bookvie's question, Stories 13.7 and 13.8 stop for Oleg's decision; 13.2–13.6 go on.
+
+**Tool descriptions (all stories).** As in Epic 12: each new tool's registered description, in `bookvie` and in `bookvie-dropbox`, is the exact text its story quotes under "Description:", and a test under `backend/tests/` fails unless they are equal (the `bookvie-dropbox` test reads the tool list through its stdio server; nothing in `bookvie_dropbox` reads this file). Changing a description is a change to `epics.md` first.
+
+### Story 13.1: Restore my library through an agent, with two confirmations
+
+As Oleg,
+I want an agent to restore a backup only after I've seen what I'd lose and said yes twice,
+So that a bad afternoon can be undone from Claude Code, and no agent can wipe my library by itself.
+
+**Requirements:** FR-30, FR-28, FR-23, NFR5, AR36, AR38, AR45, AR48, AR55, AR56, AR57, AR59, AR61, UX-DR80, TR8
+
+**Acceptance Criteria:**
+
+**Given** a server's backups folder (AD-21) holding daily backups, safety copies and files in `from-dropbox/`, and other files
+**When** the agent calls `list_local_backups`
+**Then** it returns the daily backups (names matching `^bookvie-backup-(\d{4}-\d{2}-\d{2})\.zip$` with a valid calendar date), the safety copies (`bookvie-pre-restore-<YYYY-MM-DDTHHMM>.zip`, with or without a `-2`, `-3`… suffix) and the `from-dropbox/` daily backups, newest first by backup time, each as `{path, kind, backupTime, size, contentHash}` with `kind` `daily`, `safety` or `from_dropbox`, `backupTime` ISO-8601 with an offset, and `contentHash` the Dropbox content hash (SHA-256 over the SHA-256 of each 4 MiB block, stdlib only)
+**And** a file whose name matches neither pattern, a `.tmp*` file, a folder or a symlink is never listed
+**And** with no backups folder, or an empty one, it returns an empty list.
+**Description:** "The backups on this computer that a restore can use, newest first: the daily backups, the safety copies saved before a restore, and the backups downloaded from Dropbox. Each has its path, its kind (daily, safety or from_dropbox), the time the backup was made, its size and its Dropbox content hash. Show them to the user and let the user pick; never pick one yourself."
+
+**Given** the export zip
+**When** `build_export` writes it (fake clock)
+**Then** its `library.json` entry is stamped with the same `clock.now()` that names the daily backup and gives `createdAt`, and `list_local_backups` reads `backupTime` from that entry (an older zip's entry time is read as local time).
+
+**Given** a backup from yesterday and a current library with 3 Books and 18 Card notes added since, and other edits
+**When** the agent calls `preview_restore` with its path
+**Then** it returns the backup's time and counts (Books, Card notes, covers), the current library's counts, the titles of the Books whose ids are in the current library and not in the backup, and the number of Card notes (on any Book) whose ids are in the current library and not in the backup
+**And** `library.json`, `covers/` and the backups folder are unchanged
+**And** a damaged, unsafe or newer archive is refused with the restore intent's code (`restore_invalid`, `restore_unsafe`, `restore_newer_version`) and fields.
+**Description:** "Check a backup from list_local_backups without changing anything, and say what restoring it would lose: the backup's time and counts, the current library's counts, the titles of the Books added since and the number of Card notes added since. Show this to the user before you ask about restoring. A file bookvie can't restore is refused with the same reason as the Backup page."
+
+**Given** a `path` outside the backups folder and its `from-dropbox/`, one with `..`, a symlink pointing out of the folder, a folder, or a file whose name is neither a daily name nor a safety-copy name
+**When** `preview_restore` or `restore_backup` is called with it
+**Then** it is refused with 422 `restore_outside_backups` (no `fields`) before the file is opened, and nothing changes.
+
+**Given** a client connected with MCP 2026-07-28 and form elicitation
+**When** the agent calls `restore_backup` with a path and no input responses
+**Then** bookvie computes the preview and returns an `InputRequiredResult` with one form elicitation, whose message is UX-DR80's confirmation text for that exact file and library (the counts and up to 5 titles from the preview, then "and N more"; the "nothing added" variant when nothing was added), plain text with no markdown
+**And** its `requestState` is sealed by hand (HMAC-SHA256 with a per-process key, a process nonce, a single-use nonce, the resolved path, the archive's SHA-256, the current `library.json`'s SHA-256, and an expiry 5 minutes ahead); the SDK's `RequestStateBoundary` isn't installed
+**And** nothing has changed yet.
+**Description:** "Replace the whole library with a backup from list_local_backups. Call it only when the user has asked for this restore and said yes to its preview_restore summary; never on your own initiative, and never again after a refusal unless the user asks. bookvie then asks the user directly to confirm; anything but an explicit yes is restore_not_confirmed and nothing changes. Before replacing anything it saves a safety copy of the current library and returns its path."
+
+**Given** the MCP test client answering bookvie's question
+**When** it declines, cancels, sends a tampered `requestState`, reuses one already used, sends it after 5 minutes (fake clock) or after a server restart, sends it with a `path` that resolves elsewhere, or answers after the library or the archive changed
+**Then** each is 409 `restore_not_confirmed` with `reason` `declined`, `cancelled`, `changed`, `changed`, `expired`, `expired`, `changed`, `changed` respectively, and `library.json`, `covers/`, `local-state.json` and the backups folder are byte-identical to before
+**And** a client below MCP 2026-07-28, or one whose capabilities lack form elicitation, is `restore_not_confirmed` with `reason` `unsupported` before any preview is built (an empty `elicitation` object counts as form)
+**And** only an explicit accept on a valid token goes on.
+
+**Given** an accepted confirmation
+**When** `restore_backup` applies
+**Then** in one hold of the store lock it reads the file once into the staging spool and checks its SHA-256 against the sealed hash (`changed` otherwise), stages and validates it (a refusal writes nothing), writes the safety copy `bookvie-pre-restore-<YYYY-MM-DDTHHMM>.zip` (fake clock; `-2`, `-3`… when taken) into the backups folder with `write_export_zip` and the atomic file write, then runs `apply_staged` in the AD-12 order
+**And** it returns `{restoredFrom, backupTime, safetyCopy}`, and restoring that safety copy the same way gives back the library as it was before
+**And** the safety copy never replaces a `bookvie-backup-*.zip` (today's included), `lastExportAt` doesn't move, and `local-state.json` is byte-identical
+**And** a test with a timeout proves `restore_backup` finishes (the store lock isn't reentrant: `write_export_zip`, `stage_and_validate` and `apply_staged` are lock-free cores that `build_export` and `restore()` now wrap).
+
+**Given** a failure writing the safety copy (filesystem seam)
+**When** `restore_backup` applies
+**Then** it is 503 `safety_copy_failed` (kind `couldnt_save`), no partial safety copy is left, and the library isn't restored.
+
+**Given** one contract test
+**When** the same archive goes through `restore_backup` (accepted) and through `POST /api/intents/restore` on two identical seeded libraries
+**Then** both give the same restored `library.json` and `covers/`, and every refusal the route gives has the same `kind`, `code`, `message` and `fields` through the tool
+**And** `POST /api/intents/restore` and the Backup page's restore are unchanged (no safety copy, no new gate)
+**And** a filesystem fault at write gives `couldnt_save` and an unchanged `library.json` through the tool too (TR8).
+
+**Given** the tool list
+**When** a client lists tools after this story
+**Then** it holds exactly Epic 12's tools plus `list_local_backups`, `preview_restore` and `restore_backup` (`AGENT_TOOL_NAMES`)
+**And** `delete_book`, `delete_card_note`, `set_spine_color` and `restore` are still unknown tools
+**And** each new error code (`restore_outside_backups`, `restore_not_confirmed` with each `reason`, `safety_copy_failed`) has a test.
+
+**Given** a `--dev` server with a seeded library and a backup in `~/bookvie-backups-dev/`
+**When** Oleg, in a real Claude Code terminal session with the `ask` rule in place, asks for a restore and calls `restore_backup` once accepting, once declining bookvie's question, and once declining Claude Code's permission prompt
+**Then** the accept restores and names the safety copy, both declines change nothing, and the spec records the runs, the message as shown, and what VS Code and `claude -p` do with the same call (manual verification). If bookvie's question can't be shown in the terminal CLI, the story stops for Oleg's decision (see the epic's gate).
+
+**Given** `docs/dropbox-backup.md` (new) and the README
+**When** Oleg reads them
+**Then** the guide's Restoring section gives the `ask` rule for `~/.claude/settings.json` (`permissions.ask` for `mcp__bookvie__restore_backup` and `mcp__bookvie-dev__restore_backup`) and how to check it's active, what the two prompts look like, where the safety copy goes and how to restore it to undo a restore, and one troubleshooting entry each for `restore_not_confirmed` (declined, or a client that can't ask: use the Claude Code terminal, not VS Code or `claude -p`), a refused archive (each refusal code in plain words), a failed safety copy and a path outside the backups folder
+**And** the README's Agent tools section gets a short "Daily backup to Dropbox, and restore" paragraph linking to the guide.
+
+### Story 13.2: Upload a backup to my Dropbox
+
+As Oleg,
+I want a small Dropbox server of my own that uploads a backup and keeps the last 3,
+So that a copy of my library lives off this computer, and a bad upload never costs me one.
+
+**Requirements:** FR-29, NFR1, NFR5, AR44, AR45, AR46, AR47, AR60, AR61
+
+**Acceptance Criteria:**
+
+**Given** `backend/pyproject.toml`
+**When** this story lands
+**Then** `dropbox` and `keyring` are runtime dependencies pinned to the versions current on the day (checked on PyPI and recorded in the spec), the wheel's packages are `["bookvie", "bookvie_dropbox"]`, the console script `bookvie-dropbox` exists, `uv.lock` is updated, and the install smoke test checks that `bookvie-dropbox --help` runs from the installed tool.
+
+**Given** `backend/tests/test_layers.py`
+**When** the import graph is checked
+**Then** nothing under `bookvie/` imports `bookvie_dropbox`, `dropbox` or `keyring`, and nothing under `bookvie_dropbox/` imports `bookvie`.
+
+**Given** the copied contracts
+**When** a test compares the two sides
+**Then** `bookvie_dropbox`'s daily-name regex, its folders (`~/bookvie-backups`, `~/bookvie-backups-dev`, `from-dropbox`) and its content hash equal bookvie's (Story 13.1), and the content hash matches Dropbox's published test vector.
+
+**Given** `bookvie-dropbox auth`
+**When** it runs (against a fake OAuth server)
+**Then** it runs OAuth with PKCE (the app key a constant, no secret) through a loopback redirect on the fixed registered port, opens the browser, and stores the refresh token only in the Keychain through `keyring` (service `bookvie-dropbox`, account `refresh-token`), replacing an old one
+**And** no token is printed, logged, or written to any file.
+
+**Given** the stdio server (`bookvie-dropbox serve`) with a fake `DropboxApi`
+**When** a client lists tools
+**Then** it holds exactly `upload_backup`.
+**Description:** "Upload a daily backup from ~/bookvie-backups (the path export_backup returned) to bookvie's Dropbox folder, check that Dropbox's copy matches the file, and only then delete the oldest daily backups beyond 3. A failed or mismatched upload deletes nothing and returns its cause. Returns the uploaded name, the number of copies, the names deleted and the content hash; pass them to record_backup_upload."
+
+**Given** a regular file with a daily name directly in the resolved `~/bookvie-backups/`, and 3 older daily backups in `/Apps/bookvie/.backups/`
+**When** `upload_backup` is called with its path
+**Then** it uploads through a chunked upload session finished directly to the final name with `WriteMode.overwrite`, the whole file's `content_hash` and `client_modified` set to the backup time in UTC (read from the zip's `library.json` entry)
+**And** it checks the returned `size` and `content_hash`, then deletes exactly the oldest daily backup by the date parsed from the name (not string order, not upload time), never the name it just wrote
+**And** it returns `{name, copies, deleted, contentHash}` with `copies` 3.
+
+**Given** fewer than 3 daily backups in Dropbox, or files in `.backups` that don't match the daily name
+**When** an upload succeeds
+**Then** nothing is deleted while there are at most 3, and a non-matching file is never deleted or counted.
+
+**Given** a fake Dropbox that refuses the hash, fails a chunk, times out, or returns a size or hash that doesn't match
+**When** `upload_backup` runs
+**Then** it deletes nothing and returns cause `upload_incomplete`; an insufficient-space error is `dropbox_full`; a refused refresh or a Keychain read that fails or is denied is `dropbox_signin` with a message naming `bookvie-dropbox auth`; anything else is `other`.
+
+**Given** today's backup already in Dropbox
+**When** a second upload of today's file runs the same day
+**Then** that day's copy is replaced only once the new one verifies; a failed second upload leaves the first in place.
+
+**Given** a path in `~/bookvie-backups-dev/`, a `from-dropbox/` file, a safety copy, a path outside `~/bookvie-backups/`, `..`, a symlink out, or a missing file
+**When** `upload_backup` is called with it
+**Then** it is refused before any network call, and nothing in Dropbox changes.
+
+**Given** a file over 150 MB (sparse, in a temporary `HOME`)
+**When** it is uploaded to the fake
+**Then** it goes through more than one chunk and verifies.
+
+**Given** an expired access token
+**When** a tool call needs Dropbox
+**Then** the SDK refreshes it from the Keychain's refresh token, and the call succeeds.
+
+**Given** the guide and the README
+**When** Oleg follows them from scratch
+**Then** `docs/dropbox-backup.md` gives the setup in order: registering the Dropbox app (App folder access, the name that makes the folder `/Apps/bookvie/`, the scopes it needs, the redirect URI), `bookvie-dropbox auth`, adding both MCP servers with `--scope user` (the exact `claude mcp add` line for `bookvie-dropbox` with the command's absolute path) and checking them with `claude mcp list`
+**And** troubleshooting for an expired sign-in and for an MCP server shown as failed (bookvie not running or started after the session, a moved command path, `uv` not found)
+**And** a pytest parses the guide's code blocks and checks every `bookvie` and `bookvie-dropbox` subcommand and flag shown against the CLI.
+
+### Story 13.3: Record each upload in bookvie
+
+As Oleg,
+I want bookvie to know when the last upload happened and how it went,
+So that the Backup page can tell me, and an unchanged library isn't uploaded again.
+
+**Requirements:** FR-29, FR-28, FR-22, AR8, AR42, AR45, AR47, AR48, AR49, AR50, TR8
+
+**Acceptance Criteria:**
+
+**Given** `export_backup` with `forUpload: true`
+**When** it writes the day's backup
+**Then** `lastExportAt` doesn't move, and "Last export" on Backup and Home is unchanged
+**And** without `forUpload`, or with `false`, it records `lastExportAt` as before
+**And** both return `libraryHash` (the SHA-256 of the zip's `library.json` bytes) and `unchangedSinceUpload` (true exactly when it equals `autoBackup.lastUpload.libraryHash`).
+**Description:** (replaces Story 12.6's, and the description test reads this one) "Write a dated backup of the whole library (library.json and covers, the same file as the Backup page's Export) to the backups folder, and return its path, size, time, libraryHash and unchangedSinceUpload. A second backup on the same day replaces that day's file. It counts as the library's last export, except when forUpload is true, which only the daily backup run sends."
+
+**Given** the tool list
+**When** a client lists tools after this story
+**Then** it holds Story 13.1's tools plus `record_backup_upload`.
+**Description:** "Record how a daily backup run ended, so the Backup page can show it: uploaded (with the path from export_backup, and copies and contentHash from upload_backup), skipped (when export_backup said unchangedSinceUpload), or failed (with its cause). Call it once at the end of every run, for a skip or a failure too."
+
+**Given** `record_backup_upload({outcome: "uploaded", path, copies, contentHash})`
+**When** `path` is a daily backup in this server's backups folder whose Dropbox content hash equals `contentHash`
+**Then** bookvie stores `lastReport`, `lastOk` and `lastUpload` (`at` from the `Clock`, `backupAt` from the zip, `name`, `copies`, and the `libraryHash` bookvie computes from that zip) in `local-state.json` under `autoBackup`
+**And** a hash that doesn't match, a path outside the backups folder or not a daily name, or a missing `copies` is `invalid_fields` on that argument, and nothing is stored.
+
+**Given** `outcome: "skipped"` (no other argument), or `outcome: "failed"` with a `cause`
+**When** it is recorded
+**Then** a skip replaces `lastReport` and `lastOk`, a failure only `lastReport` (with its `cause`), and `lastUpload` stays as it was
+**And** a `cause` outside `dropbox_signin`, `upload_incomplete`, `dropbox_full`, `backup_write`, `other`, a failure without one, or an unknown `outcome` is `invalid_fields`.
+
+**Given** the cause enum
+**When** a test compares the two sides
+**Then** bookvie's equals `bookvie_dropbox`'s (Story 13.2).
+
+**Given** `store/local_state`
+**When** an upload, an export, then an upload are recorded
+**Then** `lastExportAt` and `autoBackup` both survive each write: one writer under its own `threading.Lock` (not the AD-4 lock) read-modify-writes only the group it changes, `Store.record_export` calls it, and `local_state_bytes` is gone
+**And** a malformed `local-state.json` is replaced with the written group alone and the loss is logged
+**And** a write failure (filesystem seam) is `couldnt_save` for `record_backup_upload` and leaves the file as it was
+**And** an export file and a restore (Story 13.1 and the route) never touch `autoBackup`.
+
+**Given** a data folder that isn't one of the two defaults but whose sibling rule would give `~/bookvie-backups` or `~/bookvie-backups-dev` (for example `~/bookvie`)
+**When** the server starts
+**Then** it has no backups folder (`backups_dir` is `None`), `export_backup` is `couldnt_save` with no file written, and `list_local_backups` is empty; only `~/bookvie-data` writes into `~/bookvie-backups`.
+
+### Story 13.4: Back up to Dropbox with one skill
+
+As Oleg,
+I want one skill that exports, uploads only when something changed, and records what happened,
+So that a backup run is the same every time, whether I start it or the morning job does.
+
+**Requirements:** FR-29, AR49, AR51, AR61, UX-DR82
+
+**Acceptance Criteria:**
+
+**Given** `.claude/skills/bookvie-backup/SKILL.md` (new)
+**When** it runs
+**Then** it checks bookvie with `get_app_info`, then calls `export_backup({forUpload: true})`; unless `unchangedSinceUpload`, it calls `upload_backup` with the returned path; and it always ends with one `record_backup_upload`: `uploaded` with the upload's `copies` and `contentHash`, `skipped`, or `failed` with the cause (`backup_write` when `export_backup` failed, the upload's cause otherwise)
+**And** it uses only `mcp__bookvie__` and `mcp__bookvie-dropbox__` tools: no Bash, no `curl`, no other tool, and its frontmatter lists exactly those tools.
+
+**Given** a `--dev` server (`get_app_info` says `mode: "dev"`)
+**When** the skill runs against it
+**Then** it uploads nothing, records nothing, and says that a development library is never uploaded.
+
+**Given** each outcome
+**When** the run ends
+**Then** the skill reports it in one line in UX-DR82's words ("Uploaded *name* · N copies in Dropbox, deleted *name*", "Nothing new since the last upload; skipped.", "Failed: *reason and fix*").
+
+**Given** an interactive session with bookvie not running
+**When** Oleg runs `/bookvie-backup`
+**Then** the skill starts bookvie as the other skills do (step 1) and goes on.
+
+**Given** the real library, the real Dropbox app and the guide's setup followed from scratch
+**When** Oleg runs `/bookvie-backup` by hand twice, the second time with no change in between
+**Then** the first uploads and the second skips, and the spec records both runs and the guide's corrections (manual verification).
+
+**Given** the guide and the README
+**When** this story lands
+**Then** `docs/dropbox-backup.md` has the first manual run, "How it works" (09:00 launchd, headless `claude -p`, export, verify then prune, keep 3, skip when unchanged, `--dev` never uploads), troubleshooting for a failed or mismatched upload (nothing deleted; rerun; what to check in Dropbox), and a line that a Dropbox backup can always be restored by hand: download it from `~/Dropbox/Apps/bookvie/.backups/` and use the Backup page's Restore
+**And** README → AI skills lists `bookvie-backup`.
+
+### Story 13.5: Run the backup every morning
+
+As Oleg,
+I want a launchd job that runs the backup at 09:00, even after the Mac slept,
+So that I never have to remember it.
+
+**Requirements:** FR-29, FR-30 (never unattended), AR21, AR52, AR53, AR54, AR61
+
+**Acceptance Criteria:**
+
+**Given** `bookvie autobackup install`, run in the main checkout (the folder holding `.claude/skills/bookvie-backup/SKILL.md`)
+**When** it runs (with `launchctl` behind a seam in tests)
+**Then** it writes `~/Library/LaunchAgents/<label>.plist` (the label one constant, shared with the probe) and loads it with `launchctl bootstrap`
+**And** the plist runs `bookvie autobackup run` by absolute path at 09:00 (`StartCalendarInterval`), sets `WorkingDirectory` to the checkout, sets `PATH` to include the folders of the resolved `bookvie`, `bookvie-dropbox` and `claude`, and sends output to `~/Library/Logs/bookvie/autobackup.log` and `autobackup.err.log`
+**And** installing over an existing job replaces it, resolves every path again and reloads it.
+
+**Given** a linked git worktree, a folder without the skill, `--dev`, or a `claude`, `bookvie` or `bookvie-dropbox` that can't be found
+**When** `install` runs
+**Then** it refuses with a message naming the cause and writes nothing.
+
+**Given** `bookvie autobackup uninstall`
+**When** it runs
+**Then** it unloads the job with `launchctl bootout` and removes the plist; with no job installed it says so and succeeds.
+
+**Given** `bookvie autobackup run`
+**When** `/api/health` doesn't answer
+**Then** it starts `bookvie --no-browser`, waits for health, runs the resolved `claude -p "/bookvie-backup"` with `--allowedTools` and `--disallowedTools`, stops the server with SIGTERM only because it started it, and exits with `claude`'s status
+**And** when bookvie is already running, it leaves it running.
+
+**Given** the generated plist and the `claude` arguments
+**When** a test reads them
+**Then** `--allowedTools` is the one constant in `cli.py`, holds MCP tool names only (never `Bash` in any form) and equals the tools in `bookvie-backup`'s frontmatter
+**And** `--disallowedTools` names `mcp__bookvie__restore_backup` and `mcp__bookvie-dev__restore_backup`.
+
+**Given** `views/backup` on the server whose backups folder is `~/bookvie-backups`
+**When** it is read
+**Then** it carries whether the job is installed, from `create_app`'s `launchd_probe` seam: only the exit status of `launchctl print gui/<uid>/<label>` with a short timeout; any error, a timeout, or a system that isn't macOS reads as not installed
+**And** a `--dev` server, or a server on another library, never runs the probe.
+
+**Given** the real Mac
+**When** Oleg installs the job by following the guide, then lets it run at 09:00 once with the Mac awake and once after waking it from sleep
+**Then** both runs back up with no permission prompt, and the spec records them and the log lines (manual verification).
+
+**Given** the guide
+**When** this story lands
+**Then** `docs/dropbox-backup.md` has install, uninstall (with `claude mcp remove`, deleting the Keychain item and revoking the app in Dropbox), the log location, running the job now with `launchctl kickstart`, and the launchd troubleshooting entries: `claude` not found on launchd's `PATH` after a reinstall or move, a tool missing from `--allowedTools`, Claude Code signed out, a moved checkout (install again), and a Mac asleep at 09:00 (runs on wake)
+**And** the docs pytest covers the new commands.
+
+### Story 13.6: See on the Backup page whether auto-backup works
+
+As Oleg,
+I want the Backup page to tell me in words whether the daily backup is working,
+So that I notice a broken backup in a day, not when I need it.
+
+**Requirements:** FR-29, AR6, AR54, AR61, UX-DR73, UX-DR74, UX-DR75, UX-DR76, UX-DR77
+
+**Acceptance Criteria:**
+
+**Given** `views/backup`
+**When** it is read
+**Then** it carries `autoBackup: {state, offReason, reportAt, lastOkAt, lastUploadAt, copies, cause}` (Pydantic, then `api:gen`), with `state` one of `off`, `waiting`, `on`, `failing`, `stalled`, computed on the server from the probe and `local-state.json` with EXPERIENCE.md's first-match order and `lastUploadAt` the upload's `backupAt`
+**And** `off` with `offReason` `dev` on a `--dev` server, `other_library` unless this server's backups folder is `~/bookvie-backups`, and `not_installed` when the probe says so
+**And** missing or unreadable upload state reads as no report.
+
+**Given** an installed job and a report (fake clock)
+**When** the report is 25 h 59 min old, exactly 26 h old, 26 h 1 min old, or in the future
+**Then** an upload or skip is `on`, `on`, `stalled`, `on`, and a failure is `failing`, `failing`, `stalled`, `failing`; no report is `waiting` however long it has been.
+
+**Given** each state, seeded through `local-state.json` and a stubbed probe (test-only, never on in production)
+**When** the Backup page renders
+**Then** the Export card shows one line directly under "Last export", in UX-DR75's words: "Auto-backup: Off · never on a development server", "Auto-backup: Off · not set up on this computer" (not installed or another library), "Auto-backup: Waiting · first backup at 09:00", "Auto-backup: On · last upload today at 09:02 · 3 copies in Dropbox", "Auto-backup: On · checked today at 09:02, nothing new · last upload on 19 Nov · 3 copies in Dropbox", "Auto-backup: Failing · *reason* Last upload on 19 Nov.", "Auto-backup: Stalled · no backup since yesterday at 09:02", and "Auto-backup: Stalled · no backup since it was set up"
+**And** each `cause` shows its UX-DR77 sentence
+**And** "when" follows UX-DR76 ("today at 09:02", "yesterday at 09:02", "on 19 Nov", "19 Nov 2025" outside the current year) and recomputes on focus; copies read "1 copy", "2 copies", "3 copies".
+
+**Given** the line
+**When** it is inspected
+**Then** it is `meta` text, `ink-tertiary` for Off, Waiting and On and `ink` for Failing and Stalled, with no dot, icon, badge shape, tint or color, and a command in a reason in the body font (UX-DR73)
+**And** it is plain text: not a control, link, Tab stop or live region, and a change found by the refetch on focus isn't announced (UX-DR74)
+**And** it never appears on Home
+**And** axe passes in both themes.
+
+**Given** a manual **Export all data**
+**When** it finishes
+**Then** "Last export" moves and the line doesn't; a recorded upload moves the line and not "Last export"; a restore moves neither.
+
+**Given** the guide
+**When** this story lands
+**Then** `docs/dropbox-backup.md` has one troubleshooting entry per state and per Failing reason, each quoting the line's exact words, and the docs pytest fails unless every state and cause has its entry.
+
+### Story 13.7: Fetch a backup from my Dropbox
+
+As Oleg,
+I want an agent to list my Dropbox backups and download one,
+So that I can restore from a copy that isn't on this computer anymore.
+
+**Requirements:** FR-30, AR45, AR47, AR55
+
+**Acceptance Criteria:**
+
+**Given** the stdio server
+**When** a client lists tools after this story
+**Then** it holds exactly `upload_backup`, `list_backups` and `download_backup`, and still no tool that deletes, moves or reads outside `/Apps/bookvie/.backups/`.
+
+**Given** daily backups and other files in `.backups` (fake Dropbox)
+**When** the agent calls `list_backups`
+**Then** it returns only the daily backups, newest first, each as `{name, backupTime, size, contentHash}`, with `backupTime` from the file's `client_modified` as ISO-8601 with an offset.
+**Description:** "The daily backups in bookvie's Dropbox folder, newest first, each with its name, the time the backup was made, its size and its Dropbox content hash. A backup with the same content hash as one from list_local_backups is the same backup."
+
+**Given** a daily name from `list_backups` and `target` `bookvie` or `bookvie-dev`
+**When** the agent calls `download_backup`
+**Then** it downloads into `~/bookvie-backups/from-dropbox/` or `~/bookvie-backups-dev/from-dropbox/` (creating it), through a temporary file, fsync and rename, only once the file's content hash matches Dropbox's, and returns the local path
+**And** a same-day name never lands in the backups folder itself, and an existing `from-dropbox/` file of that name is replaced only by a verified download.
+**Description:** "Download a daily backup from bookvie's Dropbox folder into this computer's backups, by its name from list_backups. target is bookvie for the real library or bookvie-dev for a development server: use the one you will restore into. The file appears only once it matches Dropbox's copy. Returns the local path; pass it to preview_restore."
+
+**Given** a name that isn't a daily name (a safety-copy name, `..`, a path), or a `target` other than the two
+**When** `download_backup` is called
+**Then** it is refused before any network call, and no file is written.
+
+**Given** a fake Dropbox that returns other bytes, or breaks the transfer
+**When** `download_backup` runs
+**Then** it is cause `download_incomplete`, no file and no temporary file are left; a sign-in failure is `dropbox_signin`; anything else is `other`.
+
+**Given** a downloaded file
+**When** Story 13.1's `list_local_backups` and `preview_restore` read it
+**Then** it is listed as `from_dropbox` with the same `contentHash` as in `list_backups`, and previews like any daily backup.
+
+### Story 13.8: Restore with one skill, from this computer or Dropbox
+
+As Oleg,
+I want one skill that shows me every backup, lets me pick, and walks me through the restore,
+So that restoring is a conversation I can follow, and it never decides for me.
+
+**Requirements:** FR-30, AR58, AR61, UX-DR78, UX-DR79, UX-DR80, UX-DR81
+
+**Acceptance Criteria:**
+
+**Given** `.claude/skills/bookvie-restore/SKILL.md` (new)
+**When** it runs
+**Then** it starts bookvie if needed (as the other skills do), calls `list_local_backups` and `list_backups`, and shows UX-DR78's pick list: newest first, one row per content hash (a backup both here and in Dropbox is one row, restored from this computer without a download), the 10 newest then "and N older. Say show all to see them.", and "The newest is 1. Which one?"
+**And** it suggests the newest and waits; it never picks
+**And** when Dropbox can't be reached it lists this computer's backups and "Couldn't reach Dropbox: *reason*."; with no backups anywhere it says "No backups found on this computer or in Dropbox. Nothing was changed."
+
+**Given** a Dropbox pick
+**When** the user picks it
+**Then** the skill calls `download_backup` with the target of the bookvie it restores into, then `preview_restore` with the local path.
+
+**Given** the preview
+**When** the skill shows it
+**Then** it uses UX-DR79's layout and words (the counts, up to 5 titles then "and N more", the "Everything else changed since…" line, the safety-copy line), asks in the chat in its own words, and calls `restore_backup` only after a yes.
+
+**Given** each outcome of `restore_backup` or of the download
+**When** the skill reports it
+**Then** it uses UX-DR81's words, with paths written with `~`, adds the terminal-CLI advice only for `reason: unsupported`, and never retries a refused or unconfirmed restore by itself.
+
+**Given** a request to work on development
+**When** the skill runs
+**Then** it uses the `bookvie-dev` tools and `download_backup` with target `bookvie-dev`, and never touches the real library.
+
+**Given** a `--dev` server with real data downloaded into it
+**When** Oleg runs the skill in a real Claude Code terminal session: one restore from a local backup, one from Dropbox, one declined in the chat, one declined at Claude Code's permission prompt, one declined at bookvie's question, and an undo from the safety copy
+**Then** each behaves as above, and the spec records the runs (manual verification).
+
+**Given** the guide and the README
+**When** Oleg follows the Restoring section from scratch
+**Then** `docs/dropbox-backup.md` describes the skill step by step, with Dropbox downloads and the manual fallback, and the Dropbox download troubleshooting (sign-in, a download that didn't match)
+**And** README → AI skills lists `bookvie-restore`.
