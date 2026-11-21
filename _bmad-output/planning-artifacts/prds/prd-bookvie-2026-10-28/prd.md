@@ -2,11 +2,12 @@
 title: bookvie PRD
 status: final
 created: 2026-10-28
-updated: 2026-11-19
+updated: 2026-11-21
 inputs:
   - _bmad-output/brainstorming/brainstorm-personal-library-tracker-2026-10-27/brainstorm-intent.md
   - _bmad-output/planning-artifacts/ux-designs/ux-bookvie-2026-10-28/prd-deltas.md
   - _bmad-output/planning-artifacts/mcp-server-plan-2026-11-19.md
+  - _bmad-output/planning-artifacts/dropbox-backup-plan-2026-11-21.md
 assumptions: all confirmed by the user on 2026-10-28
 ---
 
@@ -36,7 +37,7 @@ The Must features (§6.1) deliver Visible progress, Simplicity, and the Purpose.
 ### 2.1 Jobs To Be Done
 - Show me how far I am through the book I'm reading, and through my whole unread library.
 - When something urgent interrupts, let me park the current book without losing my place, and keep reminding me of it.
-- Don't lose my Readings and Card notes to a dead disk.
+- Don't lose my Readings and Card notes to a dead disk, even when I forget to export.
 - Let me tell an agent where I am in a book, and ask it about my library, without opening the app.
 
 ### 2.2 Non-Users (v1)
@@ -252,7 +253,7 @@ The user can see the catalog as tiles: one tile per Book with its cover, title, 
 #### FR-21: Cover on the main screen
 The main screen shows the Main book's uploaded cover, or the placeholder.
 
-### 4.9 Backup and restore *(Must, from day one)*
+### 4.9 Backup and restore *(Must, from day one; Should where marked)*
 
 #### FR-22: One-click export
 With one action, the user can export all data to a single file: Books (including spine color), Readings (including finish dates, back-filled Readings, and each Reading's last progress update and paused-at date), Card notes, and cover images, plus any data from later features.
@@ -265,6 +266,32 @@ The user can restore bookvie from an export file.
   - The restore replaces the current data, after an explicit confirmation.
   - Exporting and then restoring reproduces identical data.
   - This is the only way to import data into bookvie.
+
+#### FR-29: Daily off-machine backup *(Should)*
+Once a day, an agent backs up the library and uploads the backup to the user's Dropbox, so a copy exists off this computer without exporting by hand.
+- **Consequences:**
+  - **Daily and unattended:** once the user has set it up, a backup runs every morning with no app or agent session open. A run missed while the computer slept runs when it wakes. The schedule is for macOS only.
+  - **Three copies, deleted only after a checked upload:** Dropbox keeps the last 3 backups. The oldest is deleted only after the new one has uploaded and been checked against the file on this computer. A failed or mismatched upload deletes nothing. A second upload on the same day replaces that day's copy only once the new one checks out.
+  - **Unchanged library, no upload:** when the library hasn't changed since the last upload, the run uploads nothing and reports a skip. The 3 copies therefore cover the last 3 changes, not the last 3 days.
+  - **bookvie's folder only:** the backup can reach nothing in the user's Dropbox outside bookvie's own folder, and it deletes nothing there except bookvie's older backups. The Dropbox sign-in is kept in the computer's keychain, never in the library, an export or the repository, and it renews itself. An expired sign-in fails with the command that fixes it.
+  - **Never from development:** a Development server's library is never uploaded (FR-26).
+  - **Status on the Backup page:** next to "Last export", the Backup page says, in words, whether auto-backup is Off (not set up), Waiting (set up, not yet run), On (an upload or a skip in the last 26 hours), Failing (the last run reported an error: the reason and the fix) or Stalled (no upload, skip or error in 26 hours).
+  - **Uploads aren't exports:** a manual export doesn't count as an upload, and an upload doesn't change "Last export" (FR-22). The upload status belongs to this computer: it isn't part of an export, and a restore leaves it as it was.
+  - **Documented:** setup, how it works, and a fix for each status and each known failure ship with the feature.
+  - Dropbox is the only provider. The folder and the number of copies can't be changed in the UI.
+
+#### FR-30: Restore through an agent, with confirmation *(Should)*
+An agent can restore the library from a backup on this computer or in Dropbox, but only after the user has seen what the restore will lose and confirmed it twice, in ways the agent can't skip.
+- **Consequences:**
+  - **The user picks:** the agent lists the backups on this computer (safety copies included) and in Dropbox. It may suggest the newest, but the user picks.
+  - **What will be lost:** before restoring, the user sees the backup's date, its Books, Card notes and covers, the current library's, and what the current library has that the backup lacks: the titles of the Books added since and the number of Card notes. A backup bookvie can't restore is refused with the same reason as in the UI (FR-23).
+  - **Two confirmations the agent can't skip:** Claude Code asks permission for every restore, and bookvie itself then asks the user directly, with the same summary. Anything other than an explicit yes to both refuses the restore and changes nothing; that includes a client that can't show bookvie's question. The agent's own question in the chat comes first, but it is neither of the two. The agent never retries a refused or unconfirmed restore on its own.
+  - **Safety copy first:** before replacing anything, bookvie saves the current library as a safety copy in the backups folder and names it in the result. If the safety copy fails, nothing is restored. Safety copies stay on this computer and never replace or remove a daily backup. Restoring one undoes the restore.
+  - **Backups folder only:** the agent restores only from the backups folder, including the Dropbox backups it downloaded there, and from no other file.
+  - **Same restore as the UI:** the restore checks and replaces the library exactly as FR-23 does.
+  - **Never unattended:** the daily backup run (FR-29) can never restore.
+  - **In development too:** a Development server restores its own library only. A Dropbox backup can be downloaded into it, so a restore can be tried on real data without touching the real library.
+  - Restoring from Dropbox in the Backup page's UI is out of scope: the page restores a downloaded file (FR-23).
 
 ### 4.10 Running bookvie *(Must)*
 These requirements serve the builder, and the AI agents who run commands for the builder, as much as the reader: a Development server must never be mistaken for the real app, or pointed at the real library.
@@ -288,26 +315,26 @@ The user can see which version of bookvie is running and which library it uses, 
 Realizes UJ-1 and UJ-6.
 
 #### FR-28: Agents read and update the library through MCP
-An AI agent in Claude Code can read the library and record the user's reading through bookvie's agent tools, under the same rules as the UI and with no way to delete anything. Typical uses: "I'm on page X of Y"; the bookvie skills that add a Book or summarize its Card notes; "which Books do I need to read to learn X?"; "which Books on X can I finish in two months?"; "in what order should I read X, Y and Z?".
+An AI agent in Claude Code can read the library and record the user's reading through bookvie's agent tools, under the same rules as the UI and with no way to delete a Book or a Card note. Typical uses: "I'm on page X of Y"; the bookvie skills that add a Book or summarize its Card notes; "which Books do I need to read to learn X?"; "which Books on X can I finish in two months?"; "in what order should I read X, Y and Z?".
 - **Consequences:**
   - **On with the app:** the agent tools are available whenever bookvie runs, with nothing extra to start. When bookvie isn't running, the tools aren't available. A Development server offers its own tools against its own library (FR-26), so an agent trying something out never writes to the real library.
   - **One client:** Claude Code is the only supported client. The README gives the setup for the real app and for a Development server.
   - **Local only:** a request from another site or host is refused, like any other request to bookvie.
   - **Same rules as the UI:** a write through the agent tools follows the same rules as the same action in the UI, and is refused with the same reason and the same fields. Adding a likely duplicate (FR-3) is refused until the agent confirms it explicitly.
   - **Find, never guess:** an agent finds a Book with a free-text search (an abbreviation, an author, part of a title). The search returns every likely match with its edition and type, and an empty list when nothing matches. Every other tool names the Book by its id, so a page is never logged on the wrong edition.
-  - **What agents can do:** read the catalog, a Book, Home, Card notes and Stats for any period; start, update, pause and finish a Reading, choose Up next and edit a Purpose; add and edit Card notes; mark and unmark Side reads; add and edit Books; export a backup.
-  - **What agents can't do:** delete a Book or a Card note, or restore an export. These stay in the UI, behind their confirmation.
+  - **What agents can do:** read the catalog, a Book, Home, Card notes and Stats for any period; start, update, pause and finish a Reading, choose Up next and edit a Purpose; add and edit Card notes; mark and unmark Side reads; add and edit Books; export a backup; upload it to Dropbox (FR-29); restore a backup, with two confirmations (FR-30).
+  - **What agents can't do:** delete a Book or a Card note. That stays in the UI, behind its confirmation.
   - **Covers by address:** adding or editing a Book can take the web address of its cover, and bookvie downloads it. Only an image from a public address is accepted. A failed download leaves the new Book unsaved, or the edited Book unchanged, with a clear error.
   - **Backup to a folder:** an agent's export writes a dated backup file to a fixed backups folder (a separate one for a Development server) and says where it is. A second export on the same day replaces that day's file. It counts as the last export (FR-22).
   - **Descriptions are the interface:** each tool's description says what it does and how to use it, for example that the Book's id comes from the search. A refusal gives the same reason and fields the UI would.
   - **No planning tools:** reading lists, time-boxed plans and reading orders are questions the agent answers from what the read tools return: titles, tags, Purposes, Card notes, pages left and measured pace. Books have no topics; the agent matches titles and tags and fills in from its own knowledge of the books.
 
 ## 5. Cross-Cutting NFRs
-- **Local-first:** bookvie runs in a browser on one laptop or desktop. No account and no network connection are needed for any feature. The only outbound request is a cover download that an agent asks for with the cover's web address (FR-28). There's no database server, and all data lives locally. A Book saved from any browser on this machine appears in every other browser.
+- **Local-first:** bookvie runs in a browser on one laptop or desktop. No account and no network connection are needed for any feature. bookvie's only outbound request is a cover download that an agent asks for with the cover's web address (FR-28). The daily Dropbox backup (FR-29) is optional, needs a Dropbox account, and runs outside bookvie; no other feature depends on it. There's no database server, and all data lives locally. A Book saved from any browser on this machine appears in every other browser.
 - **Display:** The UI is in English only. The minimum viewport is 1024px; below that the page scrolls horizontally, and there's no phone layout. The user can choose a light, dark, or system theme.
 - **Accessibility deviation (accepted):** The 1024px minimum width doesn't meet WCAG 2.2 SC 1.4.10 Reflow; at 200–400% zoom the page scrolls horizontally. Accepted because bookvie has a single user, runs on desktop only, and phone layouts are Won't (§6.3).
 - **Speed:** Catch-up (one page update) takes under 30 seconds and at most 2 interactions after opening the app.
-- **Data safety:** No action silently deletes data. Every destructive action needs confirmation. A Development server never opens the real library (FR-26). No agent tool deletes data (FR-28). A save that fails is never silent: the UI says "Couldn't save. Your data wasn't changed." and keeps the user's input.
+- **Data safety:** No action silently deletes data. Every destructive action needs confirmation. A Development server never opens the real library (FR-26). No agent tool deletes a Book or a Card note (FR-28). A restore through an agent needs two confirmations the agent can't skip and saves a safety copy first (FR-30). The daily backup deletes only bookvie's older Dropbox backups, and only after a checked upload (FR-29). A save that fails is never silent: the UI says "Couldn't save. Your data wasn't changed." and keeps the user's input.
 - **Look and feel:** bookvie has its own tab icon, drawn for bookvie: a small shelf of three book spines on a plank, readable at 16×16, in the accent sage, with a lighter fill on a dark tab strip. A Development server shows the same drawing in amber (FR-26).
 - **Tone:** No guilt mechanics. bookvie has no streaks, no "you missed a day" message, and no red failure states. There are no greetings, exclamation marks, or praise. The finish copy is "Finished *X*." ("Finished *X* again." for a re-read), and the finish moment is a single ~600ms spine fill that never replays.
 
