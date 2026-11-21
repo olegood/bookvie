@@ -1415,6 +1415,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-epic-12-retro-item-82-reconcile-the-spine-with-epic-12.md`
   summary: The spine's IDs convention keeps `add-card-note`'s `cardNoteId` "because the agent skills that write to bookvie are expected to" read it, and says to drop it "if none does once those skills exist". Both skills now exist and neither adds a Card note, though the `add_card_note` tool returns the id. Oleg should decide whether to keep it (an agent may add a note and then edit it) or drop it. Low.
   evidence: ARCHITECTURE-SPINE.md Consistency Conventions, IDs row; `backend/bookvie/intents/answers.py` `card_note_answer`; `.claude/skills/*/SKILL.md` (Blind Hunter, build review of retro item 82).
+  resolved: Kept (Oleg, 2026-11-21). The agent is the reader: `add_card_note` returns `cardNoteId` so a follow-up `edit_card_note` can target the note just added. The spine's IDs row now gives that reason instead of the skills.
 
 ## Deferred from: Epic 12 retro item 83 manual runs (2026-11-20)
 
