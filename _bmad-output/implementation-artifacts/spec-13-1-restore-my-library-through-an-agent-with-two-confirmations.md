@@ -2,10 +2,10 @@
 title: 'Story 13.1: Restore my library through an agent, with two confirmations'
 type: 'feature'
 created: '2026-11-21'
-status: 'in-progress'
+status: 'in-review'
 baseline_revision: '1815bff46b3520689c62178b8b2a3e957467849f'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-13-context.md'
   - '{project-root}/_bmad-output/test-artifacts/atdd-checklist-13-1-restore-my-library-through-an-agent-with-two-confirmations.md'
@@ -125,6 +125,39 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-11-21 — Review pass
+- verdicts: 29 findings — high 0, medium 7, low 15, false 3, maybe-false 4 (the intent-alignment audit reported divergences, not findings: it reads the diff as this story's build step, with AC-11 pending)
+- findings:
+  - `medium` `patch` Edge case: a non-ASCII `requestState` makes `compare_digest` or `_mac` raise, so the tool answers `couldnt_save`, not `changed` — `RestoreGate.open` refuses a non-str or non-ASCII token as `changed` first; `test_restore_backup_edges.py` (d).
+  - `low` `reject` Edge case: `extended_timestamp` packs an int32, so a clock after 2038 raises `struct.error` — not met in everyday use, and the fix adds a branch.
+  - `medium` `patch` Edge case: a symlinked backups folder lists nothing while `resolve_backup_path` accepts its files — `_candidates` and `write_safety_copy` use the resolved folder, and the symlink skip applies only to `from-dropbox/`; test (c).
+  - `low` `reject` Edge case: on a retry the path is checked before the token, so a deleted backup gives `restore_outside_backups`, not `changed`, and the nonce waits for expiry — the spec fixes that order (arguments, unsupported, path), the restore is still refused and nothing changes, and the nonce expires harmlessly.
+  - `low` `patch` Edge case: a file swapped for a FIFO after the `lstat` check blocks `os.open` while holding the store lock — `_read_once` adds `O_NONBLOCK`; the `fstat` regular-file check stays.
+  - `maybe-false` `reject` Edge case: a version string that isn't a date but sorts after `2026-07-28` passes `elicitation_supported` — whether the SDK lets an unknown revision reach the handler is unchecked; if true it's low, and the fix adds a guard.
+  - `medium` `patch` Verification gap: nothing pins `backup_time` reading the 0x5455 field (whole-minute times pass with the fallback) — test (a) writes at 09:02:37 and asserts the seconds.
+  - `medium` `patch` Verification gap: no case with `from-dropbox/` as a symlink to an outside folder — test (b): preview and restore are `restore_outside_backups`, the listing is empty.
+  - `maybe-false` `defer` Verification gap: `dropbox_content_hash` is tested only under one 4 MiB block, against a helper written the same way — deferred to 13.2/13.7 (medium, unverified): settled by Dropbox's published vector or an over-4-MiB file.
+  - `low` `defer` Spine: AD-21, AD-9 and AD-3 still call the three tools and codes planned — spine drift, already in deferred-work.md.
+  - `low` `defer` Spine: AD-22 gives `write_export_zip(store, out)` with no `now` and no 0x5455 field — spine drift, already logged.
+  - `low` `defer` Spine: AD-22 doesn't name the preview keys, the per-app gate or the token format — spine drift, already logged.
+  - `low` `defer` Spine: AD-22 Allowed files allows safety-copy names in `from-dropbox/`; the build doesn't — spine drift or a decision for Oleg, already logged.
+  - `low` `defer` Spine: the Structural Seed and FR-30 map row don't name `intents/restore_file.py` or `agent/restore_gate.py` — spine drift, logged.
+  - `low` `defer` Spine: AD-21 One validator says a write tool's arguments are its intent's body; `restore_backup` takes `{path}` through `parse_view_arguments` — spine drift, logged.
+  - `medium` `defer` Spine: `~/bookvie` still gets `~/bookvie-backups`, so 13.1's tools would read and write the real library's backups there — that rule is Story 13.3's AC (AR48); logged as an interim gap for 13.3.
+  - `low` `patch` Blind: an expired token reads `changed` once a later `seal()` purged its nonce — `open` checks the MAC-verified `expiresAt` before the issued-set lookup, still spending the nonce; test (d).
+  - `medium` `patch` Blind: a non-ASCII `requestState` gives `couldnt_save` — the same defect as the edge-case finding; same fix.
+  - `low` `reject` Blind: the 2038 limit in the extended timestamp — the same as the edge-case finding; rejected there.
+  - `low` `reject` Blind: no size limit before spooling the file — `stage_archive` still refuses above `MAX_UPLOAD_BYTES`; a 1 GiB file in the backups folder is unlikely, and the fix adds a guard.
+  - `low` `reject` Blind: a read failure during preview is `couldnt_save` — AD-9's generic fault, with "Your data wasn't changed" true; renaming it would add a code.
+  - `medium` `patch` Blind: listed paths (`absolute()`) differ from the resolved `restoredFrom` — the same root cause as the symlinked backups folder; same fix, and test (c) asserts they're equal.
+  - `maybe-false` `defer` Blind: no known-answer or multi-block test for the content hash — grouped with the verification-gap finding; deferred.
+  - `false` `reject` Blind: the README heading promises Dropbox backup — AC-12 prescribes the heading "Daily backup to Dropbox, and restore"; the guide says later sections add the upload.
+  - `low` `patch` Blind: the docs don't say why a backup is missing from the list — added the troubleshooting entry "A backup is missing from the list".
+  - `false` `reject` Blind: no recorded manual gate-2 run — AC-11 is pending by design, and the story stays in review until it is recorded (Epic 12 retro item 85).
+  - `false` `reject` Blind: titles joined with ", " are ambiguous — UX-DR80 prescribes the ", " join and the count wording.
+  - `maybe-false` `reject` Blind: string comparison of protocol versions — the same as the edge-case finding; rejected there.
+  - `low` `reject` Blind: the path is checked before the token on a retry — the same as the edge-case finding; rejected there.
+
 ## Design Notes
 
 - **Pipeline:** ATDD → `bmad-build-auto` → `bmad-code-review` → `bmad-testarch-automate` (AGENTS.md "Story pipeline").
@@ -153,3 +186,70 @@ deferred: []
 
 **Manual checks (if no CLI):**
 - AC-11: Oleg, in a real Claude Code terminal session on `bookvie --dev` with the `ask` rule set, makes three calls: one accept, one decline of bookvie's question and one decline of Claude Code's permission prompt. Record the runs, and what VS Code and `claude -p` do, under `## Auto Run Result` or a Manual runs section.
+
+## Auto Run Result
+
+Status: in-review
+
+**Summary.** Three agent tools, `list_local_backups`, `preview_restore` and `restore_backup` (AD-22):
+
+- `restore_backup` asks the user itself through MCP 2026-07-28 form elicitation, with a hand-sealed `requestState`: a per-app HMAC key, a single-use nonce and a 5-minute expiry.
+- An accepted restore runs in one hold of the store lock: the library and archive hashes, stage and validate, the `bookvie-pre-restore-*` safety copy, then apply.
+- `POST /api/intents/restore` wraps the same lock-free cores and is unchanged.
+- Export zips carry the backup time: `clock.now()`, with a 0x5455 extended timestamp.
+- New codes: `restore_outside_backups`, `restore_not_confirmed` (with `reason`) and `safety_copy_failed`.
+
+**Files changed:**
+- `backend/bookvie/intents/contract.py`: the three codes, `RestoreNotConfirmedReason` and `ErrorBody.reason`.
+- `backend/bookvie/intents/export.py`: `write_export_zip(store, out, now)`, `build_export(store, now)`, and `backup_time` reading the 0x5455 field.
+- `backend/bookvie/intents/restore.py`: the lock-free `stage_and_validate` and `apply_staged`, which `restore()` wraps.
+- `backend/bookvie/intents/backup_file.py`: the name rules, `resolve_backup_path`, `dropbox_content_hash`, `list_local_backups` and `write_safety_copy`.
+- `backend/bookvie/intents/restore_file.py` (new): preview, and the confirmed apply.
+- `backend/bookvie/agent/restore_gate.py` (new): `RestoreGate`, `elicitation_supported` and `confirmation_text`.
+- `backend/bookvie/agent/tools.py`, `server.py`: `ToolCall`, the interactive flag and the three tools.
+- `backend/bookvie/http/app.py`: one gate per app. `backend/bookvie/http/api.py`: the export route passes `clock.now()`.
+- `frontend/src/api/generated/schema.d.ts`: regenerated.
+- `docs/dropbox-backup.md` (new): the Restoring section. `README.md`: the Agent tools paragraph.
+- Tests:
+  - `test_agent_restore.py`: unskipped, plus green-phase leaves.
+  - `test_restore_backup_edges.py` (new): the review's edge cases.
+  - `test_dropbox_backup_guide.py`: unskipped.
+  - `test_contract.py`: the error-code list.
+- `deferred-work.md`: the deferrals.
+
+**Review:** 29 findings: high 0, medium 7, low 15, false 3, maybe-false 4.
+- **Patched (6 entries):**
+  - a non-ASCII token gave `couldnt_save` (medium);
+  - a symlinked backups folder listed nothing, and listed paths differed from `restoredFrom` (medium);
+  - no test pinned reading 0x5455 (medium);
+  - no test with `from-dropbox/` as a symlink out (medium);
+  - an expired token read `changed` after a purge (low);
+  - FIFO `O_NONBLOCK` (low);
+  - the docs entry "A backup is missing from the list" (low).
+- **Deferred:**
+  - the spine drift entries (AD-21/9/3, AD-22 cores, gate, allowed files, Structural Seed, One validator);
+  - the `~/bookvie` backups-folder rule for Story 13.3 (medium);
+  - the multi-block content-hash test for 13.2/13.7 (medium, unverified).
+- **Rejected:**
+  - the 2038 int32 limit (unlikely; the fix adds a branch);
+  - path checked before the token on a retry (the spec fixes that order, and it's still refused);
+  - version-string comparison (unverified; low if true);
+  - no size cap before spooling (`stage_archive` still refuses; unlikely);
+  - a read failure being `couldnt_save` (AD-9's generic fault);
+  - the README heading (AC-12 prescribes it);
+  - no recorded manual run (AC-11 is pending by design);
+  - ambiguous comma-joined titles (UX-DR80 prescribes them).
+
+**Follow-up review recommended: true.** Patched entries by verdict: medium 4, low 3. The unverified risk: the review patches changed how the backups folder is resolved for the listing and the safety copy, and the token's check order. Only the new edge tests and the existing suite cover them; no reviewer has read the patched code.
+
+**Verification.**
+- `uv run pytest -q tests/test_agent_restore.py tests/test_dropbox_backup_guide.py`: 45 passed, before the patch.
+- The implementer's run of the restore, edge, guide and backup tests: 90 passed.
+- `npm run check` on the final tree: exit 0. That covers ruff, 2236 pytest passed with the coverage gate ok, `api:gen` compare, Prettier, tsc, oxlint, 800 e2e passed and the smoke test ok.
+
+**Residual risks.**
+- AC-11 (manual) isn't run: Oleg's real Claude Code terminal session on `bookvie --dev` with the `ask` rule. It needs one accept, one decline of bookvie's question and one decline of the permission prompt, plus what VS Code and `claude -p` do. The story stays in review until that is recorded here.
+- If the terminal can't show bookvie's question, Stories 13.7 and 13.8 stop for Oleg's decision.
+- The UX wording when only Books or only Card notes were added is pending Oleg's confirmation (deferred-work.md).
+
+Next: run `bmad-code-review` in a new session (AGENTS.md "Story pipeline").

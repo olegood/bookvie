@@ -74,6 +74,10 @@ The same refusals as the Backup page's **Restore from file…**:
 
 bookvie couldn't write the safety copy into the backups folder, so it didn't restore. Check that the disk isn't full and that the backups folder can be written, then try again. No partial safety copy is left behind.
 
+#### A backup is missing from the list
+
+`list_local_backups` lists only files that keep their original name. Daily backups (`bookvie-backup-<YYYY-MM-DD>.zip`) are listed from the backups folder and from its `from-dropbox/`. Safety copies (`bookvie-pre-restore-<YYYY-MM-DDTHHMM>.zip`, or with `-2`, `-3` and so on) are listed only directly in the backups folder. A file that is damaged, or isn't a bookvie export, isn't listed; bookvie logs why. Rename a renamed backup back, or move it into the right folder.
+
 #### `restore_outside_backups`: "bookvie restores only from its backups folder. Nothing was changed."
 
 The path isn't a backup in the backups folder or its `from-dropbox/`. A path elsewhere, one with `..`, a symlink, a folder, or a file whose name isn't a daily backup (`bookvie-backup-<YYYY-MM-DD>.zip`) or a safety copy (`bookvie-pre-restore-<YYYY-MM-DDTHHMM>.zip`) is refused before bookvie opens it. Move or copy the backup into the backups folder under its original name, or pick one from `list_local_backups`.

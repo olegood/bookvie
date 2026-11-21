@@ -291,13 +291,19 @@ class LocalBackups(BaseModel):
 
 def _candidates(backups_dir: Path) -> list[tuple[Path, BackupKind]]:
     found: list[tuple[Path, BackupKind]] = []
-    folder = Path(backups_dir).absolute()
+    # Resolved, as resolve_backup_path resolves it: a symlinked backups folder is listed,
+    # and each listed path is the one a restore reports.
+    try:
+        folder = Path(backups_dir).resolve()
+    except OSError, RuntimeError, ValueError:
+        return found
     for directory, kind_of in (
         (folder, _kind_in_folder),
         (folder / FROM_DROPBOX, _kind_in_from_dropbox),
     ):
         try:
-            if directory.is_symlink() or not directory.is_dir():
+            # A symlinked from-dropbox/ points outside the folder, so it is never listed.
+            if (directory != folder and directory.is_symlink()) or not directory.is_dir():
                 continue
             entries = sorted(os.scandir(directory), key=lambda entry: entry.name)
         except OSError as exc:
@@ -362,7 +368,8 @@ def write_safety_copy(store: Store, now: datetime, backups_dir: Path | None) -> 
     if backups_dir is None:
         log("couldn't save the safety copy: this app has no backups folder")
         raise safety_copy_failed()
-    folder = Path(backups_dir).absolute()
+    # Resolved, so the path it answers is the one list_local_backups lists.
+    folder = Path(backups_dir).resolve()
     try:
         folder.mkdir(parents=True, exist_ok=True)
     except OSError as exc:

@@ -102,12 +102,14 @@ def library_sha256(store: Store) -> str:
 def _read_once(path: Path) -> tuple[SpooledTemporaryFile, str]:
     """The file at ``path`` copied into a spool (rewound), and its SHA-256 in hex.
 
-    Opened without following a symlink, and refused unless it is a regular file.
+    Opened without following a symlink and without blocking, and refused unless it is a
+    regular file.
     """
     spool = SpooledTemporaryFile(max_size=SPOOL_MEMORY_LIMIT)  # noqa: SIM115 - returned
     digest = hashlib.sha256()
     try:
-        fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+        # O_NONBLOCK: a FIFO swapped in after the path check can't block under the lock.
+        fd = os.open(path, os.O_RDONLY | os.O_NONBLOCK | getattr(os, "O_NOFOLLOW", 0))
         with os.fdopen(fd, "rb") as source:
             if not stat.S_ISREG(os.fstat(source.fileno()).st_mode):
                 raise OSError(f"{path.name} isn't a regular file")

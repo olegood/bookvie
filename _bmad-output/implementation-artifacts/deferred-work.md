@@ -1462,3 +1462,18 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-1-restore-my-library-through-an-agent-with-two-confirmations.md`
   summary: UX-DR80 doesn't word bookvie's question when only Books, or only Card notes, were added since the backup. The build says "You'd lose N books added since (…), and every other change since then." and "You'd lose N card notes added since, and every other change since then." (spec Design Notes). Oleg or the UX should confirm or reword it in EXPERIENCE.md, then `tests/helpers.confirmation_text` follows. Low.
   evidence: `backend/bookvie/agent/restore_gate.py` `confirmation_text`; `backend/tests/test_agent_restore.py::test_only_books_or_only_card_notes_added_names_just_those`.
+
+## Deferred from: build-auto review of spec-13-1-restore-my-library-through-an-agent-with-two-confirmations (2026-11-21)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-1-restore-my-library-through-an-agent-with-two-confirmations.md`
+  summary: Spine drift (Structural Seed, Capability → Architecture Map), reconciled before the next epic: two new modules, `intents/restore_file.py` (`prepare_restore`, `apply_confirmed_restore`, `RestorePreview`, `Sealed`) and `agent/restore_gate.py` (`RestoreGate`, `confirmation_text`). The seed's `intents/` line names only `backup_file` for the restore pieces and its `agent/` line only `server.py` and `tools.py`; the FR-30 map row names `intents/restore` and `intents/backup_file` and still says "(planned)". Low.
+  evidence: build-auto review spine-check layer, finding 5.
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-1-restore-my-library-through-an-agent-with-two-confirmations.md`
+  summary: Spine drift (AD-21 One validator), reconciled before the next epic: `restore_backup` is a write tool whose arguments are `{path}` (`PathArguments`), not an intent's JSON body, and it and `preview_restore` parse them with `parse_view_arguments`. AD-21 says a write tool's arguments are its intent's body parsed by the route's `parse_*_intent`; AD-22 doesn't state the exception. Low.
+  evidence: build-auto review spine-check layer, finding 6; `backend/bookvie/agent/tools.py` `_restore_backup`.
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-1-restore-my-library-through-an-agent-with-two-confirmations.md`
+  summary: In Story 13.3 (AR48, its AC on `backups_dir` being `None`): a non-default data folder whose sibling rule gives `~/bookvie-backups` or `~/bookvie-backups-dev` (for example `~/bookvie`) still gets that folder from `backups_folder`. Until 13.3 lands, a server on such a folder lists and restores the real library's backups and writes its safety copies there, since 13.1's tools read `backups_dir`. Medium.
+  evidence: build-auto review spine-check layer, finding 7; `backend/bookvie/intents/backup_file.py` `backups_folder`; epics.md Story 13.3.
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-1-restore-my-library-through-an-agent-with-two-confirmations.md`
+  summary: In Story 13.2 or 13.7: `dropbox_content_hash` (`intents/backup_file.py`) is only tested on files under one 4 MiB block, against a test helper written the same way. Add Dropbox's published example vector, or an over-4-MiB and exactly-8-MiB file, when the `bookvie_dropbox` copy and the compare test land. Medium (unverified against Dropbox).
+  evidence: build-auto review verification-gap layer finding 3 and blind-hunter finding 7.

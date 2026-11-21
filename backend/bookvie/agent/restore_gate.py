@@ -14,9 +14,10 @@ A token is ``<process nonce hex>.<base64url JSON payload>.<base64url HMAC>``,
 the MAC (HMAC-SHA256) taken over the first two parts. The payload holds the
 single-use nonce, the resolved path, the archive's and ``library.json``'s
 SHA-256 and the expiry, :data:`TOKEN_LIFETIME` ahead. :meth:`RestoreGate.open`
-checks, in order: an unknown process nonce is ``expired`` (a restart); a bad
-MAC or payload is ``changed``; a nonce not issued, or already spent, is
-``changed`` (any answer spends it); past the expiry is ``expired``.
+checks, in order: a token that isn't an ASCII string is ``changed``; an
+unknown process nonce is ``expired`` (a restart); a bad MAC or payload is
+``changed``; past the expiry is ``expired`` (the nonce is spent either way);
+a nonce not issued, or already spent, is ``changed`` (any answer spends it).
 """
 
 import base64
@@ -83,7 +84,9 @@ class RestoreGate:
 
     def open(self, token: str | None, now: datetime) -> Sealed:
         """What ``token`` sealed, spending its nonce; ``restore_not_confirmed`` otherwise."""
-        parts = token.split(".") if isinstance(token, str) else []
+        if not isinstance(token, str) or not token.isascii():
+            raise restore_not_confirmed(RestoreNotConfirmedReason.CHANGED)
+        parts = token.split(".")
         if len(parts) == 3 and not hmac.compare_digest(parts[0], self._process):
             raise restore_not_confirmed(RestoreNotConfirmedReason.EXPIRED)
         if len(parts) != 3 or not hmac.compare_digest(
@@ -100,14 +103,16 @@ class RestoreGate:
             )
             if not all(isinstance(v, str) for v in (nonce, *vars(sealed).values())):
                 raise TypeError("a sealed value isn't a string")
+            expiry = datetime.fromisoformat(payload["expiresAt"])
         except binascii.Error, ValueError, KeyError, TypeError:
             raise restore_not_confirmed(RestoreNotConfirmedReason.CHANGED) from None
         with self._lock:
-            expiry = self._issued.pop(nonce, None)
-        if expiry is None:
-            raise restore_not_confirmed(RestoreNotConfirmedReason.CHANGED)
+            issued = self._issued.pop(nonce, None)
+        # The expiry first: seal() forgets an expired nonce, which must still read as expired.
         if now > expiry:
             raise restore_not_confirmed(RestoreNotConfirmedReason.EXPIRED)
+        if issued is None:
+            raise restore_not_confirmed(RestoreNotConfirmedReason.CHANGED)
         return sealed
 
 
