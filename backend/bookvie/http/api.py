@@ -328,7 +328,7 @@ def export(request: Request) -> ExportResponse:
     """
     store = request.app.state.store
     clock = request.app.state.clock
-    archive = build_export(store)
+    archive = build_export(store, clock.now())
     return ExportResponse(
         archive,
         filename=export_filename(clock.today()),

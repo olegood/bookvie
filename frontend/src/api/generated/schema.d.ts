@@ -903,12 +903,13 @@ export interface components {
             fields?: components["schemas"]["FieldError"][] | null;
             /** Duplicates */
             duplicates?: components["schemas"]["DuplicateMatch"][] | null;
+            reason?: components["schemas"]["RestoreNotConfirmedReason"] | null;
         };
         /**
          * ErrorCode
          * @enum {string}
          */
-        ErrorCode: "invalid_fields" | "couldnt_save" | "duplicate_book" | "book_not_found" | "pages_below_current_page" | "pages_below_card_note" | "cover_too_large" | "couldnt_export" | "restore_invalid" | "restore_newer_version" | "restore_unsafe" | "already_main" | "reading_already_finished" | "not_main_book" | "main_cannot_be_up_next" | "main_cannot_be_side_read" | "side_reads_full" | "card_note_not_found";
+        ErrorCode: "invalid_fields" | "couldnt_save" | "duplicate_book" | "book_not_found" | "pages_below_current_page" | "pages_below_card_note" | "cover_too_large" | "couldnt_export" | "restore_invalid" | "restore_newer_version" | "restore_unsafe" | "already_main" | "reading_already_finished" | "not_main_book" | "main_cannot_be_up_next" | "main_cannot_be_side_read" | "side_reads_full" | "card_note_not_found" | "restore_outside_backups" | "restore_not_confirmed" | "safety_copy_failed";
         /**
          * ErrorKind
          * @enum {string}
@@ -1046,6 +1047,12 @@ export interface components {
             /** Reachedlastpage */
             reachedLastPage?: boolean | null;
         };
+        /**
+         * RestoreNotConfirmedReason
+         * @description Why ``restore_backup`` didn't go on (AD-22): only an explicit accept on a valid token does.
+         * @enum {string}
+         */
+        RestoreNotConfirmedReason: "declined" | "cancelled" | "unsupported" | "expired" | "changed";
         /** ShelfBook */
         ShelfBook: {
             /** Id */

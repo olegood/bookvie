@@ -18,10 +18,14 @@ the commit is 503 ``couldnt_save``. No pre-migration backup is
 written: the archive is the backup. ``local-state.json`` is never touched.
 """
 
+from collections.abc import Iterator, Mapping
+from contextlib import contextmanager
+from dataclasses import dataclass
+from pathlib import Path
 from typing import BinaryIO
 
 import bookvie.store.restore as unpack
-from bookvie.domain import InvariantViolation
+from bookvie.domain import InvariantViolation, Library
 from bookvie.store import (
     LIBRARY_NAME,
     ArchiveRefused,
@@ -66,17 +70,29 @@ class _Refused(Exception):
         self.reason = reason
 
 
+@dataclass(frozen=True)
+class StagedRestore:
+    """An archive staged and validated by :func:`stage_and_validate`, ready to apply."""
+
+    library: Library
+    """The archive's library, migrated in memory when older, and validated."""
+    covers: Mapping[str, Path]
+    """Each cover ``library`` references, by its staged file in ``.staging/covers/``."""
+
+
 def restore(store: Store, archive: BinaryIO) -> None:
     """Replace all data with the export in ``archive``, or change nothing."""
     with store.lock:
         try:
-            _restore_locked(store, archive)
+            apply_staged(store, stage_and_validate(store, archive))
         finally:
             store.empty_staging(quiet=True)
 
 
-def _restore_locked(store: Store, archive: BinaryIO) -> None:
-    try:
+def stage_and_validate(store: Store, archive: BinaryIO) -> StagedRestore:
+    """Unpack ``archive`` into ``.staging/`` and validate it; nothing outside ``.staging/``
+    changes. Lock-free: the caller holds ``store.lock`` and empties ``.staging/`` after."""
+    with _restore_errors():
         staged = stage_archive(store, archive)
         try:
             library = load_library(staged.library)
@@ -90,7 +106,23 @@ def _restore_locked(store: Store, archive: BinaryIO) -> None:
                 raise _Refused(f"covers/{name} is missing")
             if not check_decodable(staged.cover_bytes(name)):
                 raise _Refused(f"covers/{name} isn't a usable image")
-        store.replace_all(library, {name: staged.covers[name] for name in names})
+        return StagedRestore(library, {name: staged.covers[name] for name in names})
+
+
+def apply_staged(store: Store, staged: StagedRestore) -> None:
+    """Apply a staged restore in AD-12 order (:meth:`Store.replace_all`).
+
+    Lock-free: the caller holds ``store.lock``.
+    """
+    with _restore_errors():
+        store.replace_all(staged.library, staged.covers)
+
+
+@contextmanager
+def _restore_errors() -> Iterator[None]:
+    """The one mapping from a staging, validation or apply failure to its AD-9 error."""
+    try:
+        yield
     except ArchiveUnsafe as exc:
         log(f"couldn't restore: the file {exc.reason}")
         raise restore_unsafe() from exc

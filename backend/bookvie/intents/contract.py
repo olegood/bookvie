@@ -54,6 +54,19 @@ class ErrorCode(StrEnum):
     MAIN_CANNOT_BE_SIDE_READ = "main_cannot_be_side_read"
     SIDE_READS_FULL = "side_reads_full"
     CARD_NOTE_NOT_FOUND = "card_note_not_found"
+    RESTORE_OUTSIDE_BACKUPS = "restore_outside_backups"
+    RESTORE_NOT_CONFIRMED = "restore_not_confirmed"
+    SAFETY_COPY_FAILED = "safety_copy_failed"
+
+
+class RestoreNotConfirmedReason(StrEnum):
+    """Why ``restore_backup`` didn't go on (AD-22): only an explicit accept on a valid token does."""
+
+    DECLINED = "declined"
+    CANCELLED = "cancelled"
+    UNSUPPORTED = "unsupported"
+    EXPIRED = "expired"
+    CHANGED = "changed"
 
 
 class FieldError(_Wire):
@@ -78,6 +91,8 @@ class ErrorBody(_Wire):
     fields: list[FieldError] | None = None
     duplicates: list[DuplicateMatch] | None = None
     """``duplicate_book`` only: every matching Book, in catalog order."""
+    reason: RestoreNotConfirmedReason | None = None
+    """``restore_not_confirmed`` only: why the restore didn't go on."""
 
 
 class ErrorResponse(_Wire):
@@ -397,5 +412,52 @@ def restore_unsafe() -> IntentError:
             kind=ErrorKind.REFUSAL,
             code=ErrorCode.RESTORE_UNSAFE,
             message=RESTORE_INVALID_MESSAGE,
+        ),
+    )
+
+
+RESTORE_OUTSIDE_BACKUPS_MESSAGE = (
+    "bookvie restores only from its backups folder. Nothing was changed."
+)
+RESTORE_NOT_CONFIRMED_MESSAGE = "Not restored. Nothing was changed."
+SAFETY_COPY_FAILED_MESSAGE = "Couldn't save a safety copy, so nothing was restored."
+
+
+def restore_outside_backups() -> IntentError:
+    """422 ``restore_outside_backups``: the path isn't a backup file in the backups folder or
+    its ``from-dropbox/`` (AD-22); refused before the file is opened, nothing was changed."""
+    return IntentError(
+        422,
+        ErrorBody(
+            kind=ErrorKind.REFUSAL,
+            code=ErrorCode.RESTORE_OUTSIDE_BACKUPS,
+            message=RESTORE_OUTSIDE_BACKUPS_MESSAGE,
+        ),
+    )
+
+
+def restore_not_confirmed(reason: RestoreNotConfirmedReason) -> IntentError:
+    """409 ``restore_not_confirmed`` with its ``reason``: the user didn't explicitly accept on a
+    valid token (AD-22); nothing was changed."""
+    return IntentError(
+        409,
+        ErrorBody(
+            kind=ErrorKind.REFUSAL,
+            code=ErrorCode.RESTORE_NOT_CONFIRMED,
+            message=RESTORE_NOT_CONFIRMED_MESSAGE,
+            reason=reason,
+        ),
+    )
+
+
+def safety_copy_failed() -> IntentError:
+    """503 ``safety_copy_failed`` (kind ``couldnt_save``): the safety copy couldn't be written,
+    so the restore didn't run (AD-22)."""
+    return IntentError(
+        503,
+        ErrorBody(
+            kind=ErrorKind.COULDNT_SAVE,
+            code=ErrorCode.SAFETY_COPY_FAILED,
+            message=SAFETY_COPY_FAILED_MESSAGE,
         ),
     )

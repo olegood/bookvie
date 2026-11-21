@@ -11,13 +11,10 @@ import json
 import re
 from pathlib import Path
 
-import pytest
-
 ROOT = Path(__file__).resolve().parents[2]
 GUIDE = ROOT / "docs" / "dropbox-backup.md"
 README = ROOT / "README.md"
 
-RED = "Story 13.1 red phase (ATDD): docs/dropbox-backup.md isn't written yet"
 
 ASK_RULE = {"mcp__bookvie__restore_backup", "mcp__bookvie-dev__restore_backup"}
 TROUBLESHOOTING_CODES = (
@@ -42,7 +39,6 @@ def section(text: str, title: str) -> str:
     return rest[: end.start()] if end else rest
 
 
-@pytest.mark.skip(reason=RED)
 def test_the_guide_says_how_to_restore_and_the_readme_links_to_it() -> None:
     # [P2] AC-12
     assert GUIDE.is_file(), GUIDE

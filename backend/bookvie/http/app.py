@@ -249,6 +249,8 @@ def create_app(
     if backups_dir is None and data_dir is not None:
         backups_dir = backups_folder(Path(data_dir), Path.home())
     app.state.backups_dir = backups_dir
+    # AD-22: this app's own sealing key and nonces, so a restart refuses an older token.
+    app.state.restore_gate = agent.RestoreGate()
     app.state.app_info = views.app_info(
         version=version,
         dev=dev,

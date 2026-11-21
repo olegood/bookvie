@@ -111,6 +111,8 @@ claude mcp add --transport http --scope user bookvie-dev http://127.0.0.1:8766/m
 
 bookvie must be running for its tools to appear. If you start `bookvie` (or `bookvie --dev`) after the Claude Code session started, run `/mcp` in Claude Code, pick the entry and choose reconnect. The URL is exactly `/mcp`, with no trailing slash. A request from a web page is refused by the same guard as the app's API: a foreign `Origin` or `Host`, or a cross-site or same-site `Sec-Fetch-Site`.
 
+**Daily backup to Dropbox, and restore.** An agent can restore your library from a backup in bookvie's backups folder, but only after two confirmations it can't skip: Claude Code's permission prompt and bookvie's own question, which shows what the restore would lose. bookvie saves a safety copy of your current library first, so a restore can be undone. [Backing up to Dropbox, and restoring](docs/dropbox-backup.md) sets up the permission rule and explains both prompts, the safety copy and each refusal.
+
 ## AI skills
 
 The repo ships two Claude Code skills in [`.claude/skills/`](.claude/skills/). Both talk to a local `bookvie` on `127.0.0.1:8765`.

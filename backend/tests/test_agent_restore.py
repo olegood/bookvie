@@ -16,6 +16,7 @@ Every test runs with ``HOME`` set to a temporary folder (``conftest.py``) and
 passes its own ``backups_dir``, so no leaf reaches a real backups folder.
 """
 
+import io
 import json
 import shutil
 import threading
@@ -29,6 +30,10 @@ import pytest
 
 import bookvie.agent
 from bookvie.agent import NoArguments, input_schema
+from bookvie.agent.restore_gate import confirmation_text as question_for
+from bookvie.domain.clock import FakeClock
+from bookvie.intents import LibraryCounts, RestorePreview
+from bookvie.intents.export import stamped_mtime
 from bookvie.store import OsFileSystem
 from tests.agent_client import (
     AGENT_TOOL_NAMES,
@@ -45,6 +50,7 @@ from tests.agent_client import (
 )
 from tests.builder import LibraryBuilder
 from tests.helpers import (
+    TODAY,
     SetClock,
     api_client,
     backup_zip,
@@ -58,8 +64,6 @@ from tests.helpers import (
     staging_in,
     zip_archive,
 )
-
-RED = "Story 13.1 red phase (ATDD): the restore tools aren't built yet"
 
 # --- The scene: yesterday's backup, and a library that grew since --------------
 
@@ -297,7 +301,6 @@ NEVER_LISTED = [
 ]
 
 
-@pytest.mark.skip(reason=RED)
 def test_list_local_backups_returns_the_daily_backups_safety_copies_and_downloads_newest_first(
     scene: _Scene, connect_mcp: Callable[..., McpClient], tmp_path: Path
 ) -> None:
@@ -344,7 +347,6 @@ def test_list_local_backups_returns_the_daily_backups_safety_copies_and_download
 # --- AC-2: the backup's time is stamped in the zip --------------------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_a_backup_zip_carries_its_time_and_list_local_backups_reads_it_from_there(
     connect_mcp: Callable[..., McpClient], tmp_path: Path
 ) -> None:
@@ -389,7 +391,6 @@ REFUSED_CODES = {
 }
 
 
-@pytest.mark.skip(reason=RED)
 def test_preview_restore_names_what_would_be_lost_and_changes_nothing(
     scene: _Scene, tmp_path: Path
 ) -> None:
@@ -450,7 +451,6 @@ def _outside_path(scene: _Scene, case: str) -> str:
     return str(paths[case])
 
 
-@pytest.mark.skip(reason=RED)
 @pytest.mark.parametrize("tool", [PREVIEW_RESTORE, RESTORE_BACKUP])
 @pytest.mark.parametrize("case", OUTSIDE_CASES)
 def test_a_path_outside_the_backups_folder_is_refused_before_it_is_read(
@@ -472,10 +472,29 @@ def test_a_path_outside_the_backups_folder_is_refused_before_it_is_read(
     assert library_bytes(scene.data_dir) == before["data"]["library.json"]
 
 
+@pytest.mark.parametrize("tool", [PREVIEW_RESTORE, RESTORE_BACKUP])
+def test_a_relative_path_is_refused_even_where_it_would_land_on_a_backup(
+    scene: _Scene, tool: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # [P1] AC-4: a relative path depends on the server's working folder.
+    monkeypatch.chdir(scene.backups)
+    before = scene.kept()
+    refused = _error(scene.modern.answer(tool, {"path": DAILY}))
+    assert refused.get("code") == "restore_outside_backups", refused
+    assert scene.kept() == before
+
+
+def test_a_backup_name_that_isnt_a_readable_backup_is_left_out_of_the_list(scene: _Scene) -> None:
+    # [P1] AC-1: a daily-named non-zip, or a zip without library.json, can't be restored.
+    (scene.backups / "bookvie-backup-2026-11-10.zip").write_bytes(b"not a zip at all")
+    (scene.backups / "bookvie-backup-2026-11-11.zip").write_bytes(zip_archive({"a.txt": b"x"}))
+    listed = _structured(scene.client.answer(LIST_LOCAL_BACKUPS)).get("backups", [])
+    assert [Path(entry["path"]).name for entry in listed] == [DAILY], listed
+
+
 # --- AC-5: restore_backup asks the user -----------------------------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_restore_backup_asks_with_one_form_elicitation_and_changes_nothing_yet(
     scene: _Scene,
 ) -> None:
@@ -664,7 +683,6 @@ NOT_CONFIRMED = [
 ]
 
 
-@pytest.mark.skip(reason=RED)
 @pytest.mark.parametrize(
     ("run", "reason"),
     [(run, reason) for _id, run, reason in NOT_CONFIRMED],
@@ -692,7 +710,6 @@ def test_anything_but_an_accept_on_a_valid_token_is_restore_not_confirmed_and_ch
 # --- AC-7: an accepted restore writes a safety copy, then applies ------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_an_accepted_restore_saves_a_safety_copy_then_restores_and_the_copy_undoes_it(
     scene: _Scene,
 ) -> None:
@@ -736,7 +753,6 @@ def test_an_accepted_restore_saves_a_safety_copy_then_restores_and_the_copy_undo
 # --- AC-8: no safety copy, no restore --------------------------------------------
 
 
-@pytest.mark.skip(reason=RED)
 @pytest.mark.parametrize("step", ["create_temp", "write", "fsync", "replace"])
 def test_a_safety_copy_that_cant_be_written_is_safety_copy_failed_and_nothing_is_restored(
     scene: _Scene, step: str
@@ -761,7 +777,6 @@ def test_a_safety_copy_that_cant_be_written_is_safety_copy_failed_and_nothing_is
 # --- AC-9: the same restore as the route ------------------------------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_the_tool_and_the_restore_route_restore_alike_and_refuse_alike(
     scene: _Scene, tmp_path: Path
 ) -> None:
@@ -805,7 +820,6 @@ def test_the_tool_and_the_restore_route_restore_alike_and_refuse_alike(
 # --- AC-10: the tool list ---------------------------------------------------------
 
 
-@pytest.mark.skip(reason=RED)
 def test_the_tool_list_adds_the_three_restore_tools_and_still_bans_the_destructive_ones(
     mcp_client: McpClient,
 ) -> None:
@@ -828,3 +842,152 @@ def test_the_tool_list_adds_the_three_restore_tools_and_still_bans_the_destructi
         body = mcp_client.rpc("tools/call", {"name": name, "arguments": {}})
         assert "result" not in body and body["error"]["code"] == -32602, (name, body)
         assert name in body["error"]["message"], body
+
+
+# --- Green phase: the secondary branches the build pinned ---------------------------
+
+
+def _asked_message(client: McpClient, path: str) -> str:
+    asked = client.answer(RESTORE_BACKUP, {"path": path})
+    assert asked.get("resultType") == "input_required", asked
+    (request,) = asked["inputRequests"].values()
+    return request["params"]["message"]
+
+
+def test_the_question_says_every_change_goes_back_when_nothing_was_added(scene: _Scene) -> None:
+    # [P1] AC-5: a backup of the library as it is now.
+    same = "bookvie-backup-2026-11-18.zip"
+    (scene.backups / same).write_bytes(backup_zip(scene.data_dir, BACKUP_AT))
+    before = scene.kept()
+
+    message = _asked_message(scene.modern, scene.path(same))
+
+    assert message == confirmation_text(BACKUP_AT, [], 0, NOW.date())
+    assert message == (
+        "Replace all data with the backup from 19 Nov, 09:02? Every change since then goes back, "
+        "such as pages reached. A safety copy of your current library is saved first."
+    )
+    assert scene.kept() == before
+
+
+def test_the_question_names_five_titles_then_how_many_more(
+    connect_mcp: Callable[..., McpClient], tmp_path: Path
+) -> None:
+    # [P1] AC-5: 7 Books added since a backup from another year.
+    then, data_dir, backups = tmp_path / "then", tmp_path / "library", tmp_path / "backups"
+    _write_library(then, grown=False)
+    titles = [f"Book {n}" for n in range(1, 8)]
+    builder = LibraryBuilder()
+    dune = builder.book(
+        id=DUNE_ID, title="Dune", pages=412, cover_file=COVER_FILE, spine_color_from_cover="#A85A4A"
+    )
+    builder.reading(dune, current_page=50)
+    builder.main(dune)
+    builder.book(id=PIRANESI_ID, title="Piranesi", pages=272)
+    builder.card_note(dune, id=NOTE_IDS[0], text="Fear is the mind-killer.", page_start=10)
+    builder.card_note(dune, id=NOTE_IDS[1], text="The spice must flow.", page_start=20)
+    for title in titles:
+        builder.card_note(builder.book(title=title), text=f"{title}, a note", page_start=1)
+    builder.write(data_dir)
+    (data_dir / "covers").mkdir(exist_ok=True)
+    (data_dir / COVER_FILE).write_bytes(image_bytes(fmt="JPEG"))
+    last_year = datetime(2025, 11, 19, 9, 2).astimezone()
+    backups.mkdir()
+    (backups / "bookvie-backup-2025-11-19.zip").write_bytes(backup_zip(then, last_year))
+    client = connect_mcp(data_dir=data_dir, backups_dir=backups, clock=SetClock(NOW))
+    modern = client.speaking(MODERN_PROTOCOL_VERSION, FORM_ELICITATION)
+
+    message = _asked_message(modern, str(backups / "bookvie-backup-2025-11-19.zip"))
+
+    assert message == confirmation_text(last_year, titles, 7, NOW.date())
+    assert message.startswith("Replace all data with the backup from 19 Nov 2025, 09:02? ")
+    assert "(Book 1, Book 2, Book 3, Book 4, Book 5, and 2 more), 7 card notes," in message
+
+
+def test_only_books_or_only_card_notes_added_names_just_those() -> None:
+    # [P2] AC-5: the mixes UX-DR80 doesn't word (spec Design Notes; deferred for Oleg).
+    counts = LibraryCounts(books=1, card_notes=1, covers=0)
+
+    def preview(titles: list[str], notes: int) -> RestorePreview:
+        return RestorePreview(
+            backup_time=BACKUP_AT,
+            backup=counts,
+            current=counts,
+            books_added_since=titles,
+            card_notes_added_since=notes,
+        )
+
+    tail = "A safety copy of your current library is saved first."
+    assert question_for(preview(["Dune"], 0), NOW.date()) == (
+        "Replace all data with the backup from 19 Nov, 09:02? You'd lose 1 book added since "
+        f"(Dune), and every other change since then. {tail}"
+    )
+    assert question_for(preview([], 1_200), NOW.date()) == (
+        "Replace all data with the backup from 19 Nov, 09:02? You'd lose 1,200 card notes added "
+        f"since, and every other change since then. {tail}"
+    )
+
+
+@pytest.mark.parametrize(
+    "capabilities",
+    [{"elicitation": {"form": {}}}, {"elicitation": {"form": {}, "url": {}}}],
+    ids=["form", "form_and_url"],
+)
+def test_a_client_declaring_form_elicitation_is_asked(
+    scene: _Scene, capabilities: dict[str, Any]
+) -> None:
+    # [P1] AC-6: `form` counts, as an empty `elicitation` object does.
+    client = scene.client.speaking(MODERN_PROTOCOL_VERSION, capabilities)
+
+    asked = client.answer(RESTORE_BACKUP, {"path": scene.path(DAILY)})
+
+    assert asked.get("resultType") == "input_required", asked
+
+
+def _answered_under(scene: _Scene, responses: Callable[[str], dict | None]) -> tuple[dict, dict]:
+    asked = scene.modern.answer(RESTORE_BACKUP, {"path": scene.path(DAILY)})
+    key, sealed = _retry_with(asked)
+    before = scene.kept()
+    answer = scene.modern.answer(
+        RESTORE_BACKUP,
+        {"path": scene.path(DAILY)},
+        input_responses=responses(key),
+        request_state=sealed,
+    )
+    return before, answer
+
+
+@pytest.mark.parametrize(
+    "responses",
+    [lambda key: {f"not-{key}": ACCEPT}, lambda key: None, lambda key: {}],
+    ids=["wrong_key", "no_responses", "empty_responses"],
+)
+def test_a_token_without_an_accept_under_its_key_is_cancelled(
+    scene: _Scene, responses: Callable[[str], dict | None]
+) -> None:
+    # [P1] AC-6: only an explicit accept under the asked key goes on.
+    before, answer = _answered_under(scene, responses)
+
+    assert _error(answer) == {
+        "kind": "refusal",
+        "code": "restore_not_confirmed",
+        "message": NOT_CONFIRMED_MESSAGE,
+        "reason": "cancelled",
+    }
+    assert scene.kept() == before
+    assert staging_in(scene.data_dir) == []
+
+
+def test_the_export_route_stamps_library_json_with_the_exact_time(tmp_path: Path) -> None:
+    # [P1] AC-2: GET /api/export's zip carries the clock's instant in a 0x5455 extra field.
+    data_dir = tmp_path / "library"
+    _write_library(data_dir, grown=False)
+    # The header the app's own export fetch sends; the guard refuses an export without it.
+    response = api_client(data_dir).get("/api/export", headers={"X-Bookvie-Export": "1"})
+    assert response.status_code == 200, response.text
+
+    with zipfile.ZipFile(io.BytesIO(response.content)) as archive:
+        info = archive.getinfo("library.json")
+    now = FakeClock(TODAY).now()
+    assert stamped_mtime(info.extra) == int(now.timestamp())
+    assert info.date_time == now.timetuple()[:6]

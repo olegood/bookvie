@@ -10,11 +10,15 @@ Answers follow the intent and view routes: an ``OkResponse`` without its
 same JSON as the one text content; an answer that isn't a JSON object is
 refused as unexpected. An ``IntentError`` is ``isError`` with
 the AD-9 ``error`` object as JSON; anything else is ``couldnt_save``.
+
+An interactive tool (``restore_backup``) also gets the call's
+:class:`~bookvie.agent.tools.ToolCall`, and its ``InputRequiredResult`` is
+passed through unchanged.
 """
 
 import json
 import logging
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import Any
 
 import anyio.to_thread
@@ -25,7 +29,7 @@ from pydantic import BaseModel
 
 from bookvie.intents import IntentError, OkResponse, couldnt_save
 
-from .tools import AgentTool, advertised_schema
+from .tools import AgentTool, ToolCall, advertised_schema
 
 logger = logging.getLogger(__name__)
 
@@ -49,20 +53,50 @@ def build_mcp_server(state: Any, tools: Sequence[AgentTool], *, version: str = "
 
     async def call_tool(
         ctx: Any, params: mcp_types.CallToolRequestParams
-    ) -> mcp_types.CallToolResult:
+    ) -> mcp_types.CallToolResult | mcp_types.InputRequiredResult:
         tool = by_name.get(params.name)
         if tool is None:
             raise MCPError(mcp_types.INVALID_PARAMS, f"Unknown tool: {params.name}")
         arguments = params.arguments if params.arguments is not None else {}
+        call = _tool_call(ctx, params) if tool.interactive else None
         # One worker-thread call: handlers block on the AD-4 write lock.
-        return await anyio.to_thread.run_sync(_answer, tool, state, arguments)
+        return await anyio.to_thread.run_sync(_answer, tool, state, arguments, call)
 
     return Server(SERVER_NAME, version=version, on_list_tools=list_tools, on_call_tool=call_tool)
 
 
-def _answer(tool: AgentTool, state: Any, arguments: dict[str, Any]) -> mcp_types.CallToolResult:
+def _tool_call(ctx: Any, params: mcp_types.CallToolRequestParams) -> ToolCall:
+    """The call as an interactive tool sees it: the envelope's protocol version and client
+    capabilities, and a retry's answers (each as its JSON object) and request state."""
+    meta = getattr(ctx, "meta", None)
+    capabilities = (
+        meta.get(mcp_types.CLIENT_CAPABILITIES_META_KEY) if isinstance(meta, Mapping) else None
+    )
+    responses = None
+    if params.input_responses is not None:
+        responses = {
+            key: response.model_dump(mode="json", by_alias=True, exclude_none=True)
+            for key, response in params.input_responses.items()
+        }
+    return ToolCall(
+        protocol_version=getattr(ctx, "protocol_version", None),
+        capabilities=capabilities if isinstance(capabilities, Mapping) else None,
+        input_responses=responses,
+        request_state=params.request_state,
+    )
+
+
+def _answer(
+    tool: AgentTool, state: Any, arguments: dict[str, Any], call: ToolCall | None = None
+) -> mcp_types.CallToolResult | mcp_types.InputRequiredResult:
     try:
-        return _success(tool.run(state, arguments))
+        result = (
+            tool.run(state, arguments, call) if tool.interactive else tool.run(state, arguments)
+        )
+        if isinstance(result, mcp_types.InputRequiredResult):
+            # The question goes out unchanged: the client answers it and retries.
+            return result
+        return _success(result)
     except IntentError as err:
         return _error(err)
     except Exception:

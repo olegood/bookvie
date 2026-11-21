@@ -5,7 +5,18 @@ from bookvie.domain import Clock, FakeClock, SystemClock
 from .add_book import AddBookIntent, add_book, parse_add_book_intent
 from .add_card_note import AddCardNoteIntent, add_card_note, parse_add_card_note_intent
 from .answers import book_answer, card_note_answer, ok, page_answer
-from .backup_file import BackupFile, backups_folder, write_backup
+from .backup_file import (
+    FROM_DROPBOX,
+    BackupFile,
+    LocalBackup,
+    LocalBackups,
+    backups_folder,
+    dropbox_content_hash,
+    list_local_backups,
+    resolve_backup_path,
+    write_backup,
+    write_safety_copy,
+)
 from .commit import commit
 from .contract import (
     COULDNT_EXPORT_MESSAGE,
@@ -13,6 +24,9 @@ from .contract import (
     COVER_LIMIT,
     RESTORE_INVALID_MESSAGE,
     RESTORE_NEWER_VERSION_MESSAGE,
+    RESTORE_NOT_CONFIRMED_MESSAGE,
+    RESTORE_OUTSIDE_BACKUPS_MESSAGE,
+    SAFETY_COPY_FAILED_MESSAGE,
     DuplicateMatch,
     ErrorBody,
     ErrorCode,
@@ -21,6 +35,7 @@ from .contract import (
     FieldError,
     IntentError,
     OkResponse,
+    RestoreNotConfirmedReason,
     already_main,
     book_not_found,
     card_note_not_found,
@@ -36,7 +51,10 @@ from .contract import (
     reading_already_finished,
     restore_invalid,
     restore_newer_version,
+    restore_not_confirmed,
+    restore_outside_backups,
     restore_unsafe,
+    safety_copy_failed,
     side_reads_full,
 )
 from .cover import PreparedCover, RefusedCover, UploadedCover, prepare_cover
@@ -49,7 +67,14 @@ from .delete_card_note import (
 from .edit_book import EditBookIntent, edit_book, parse_edit_book_intent
 from .edit_card_note import EditCardNoteIntent, edit_card_note, parse_edit_card_note_intent
 from .edit_purpose import EditPurposeIntent, edit_purpose, parse_edit_purpose_intent
-from .export import EXPORT_CHUNK, build_export, export_filename, record_export
+from .export import (
+    EXPORT_CHUNK,
+    backup_time,
+    build_export,
+    export_filename,
+    record_export,
+    write_export_zip,
+)
 from .finish_reading import (
     FinishReadingIntent,
     finish_reading,
@@ -57,7 +82,26 @@ from .finish_reading import (
 )
 from .intent_model import malformed as malformed_intent
 from .pause import PauseIntent, parse_pause_intent, pause
-from .restore import RestoreIntent, max_upload_bytes, parse_restore_intent, restore
+from .restore import (
+    RestoreIntent,
+    StagedRestore,
+    apply_staged,
+    max_upload_bytes,
+    parse_restore_intent,
+    restore,
+    stage_and_validate,
+)
+from .restore_file import (
+    LibraryCounts,
+    PreparedRestore,
+    RestoredBackup,
+    RestorePreview,
+    Sealed,
+    apply_confirmed_restore,
+    library_sha256,
+    prepare_restore,
+    preview_restore,
+)
 from .set_spine_color import (
     SetSpineColorIntent,
     parse_set_spine_color_intent,
@@ -80,8 +124,12 @@ __all__ = [
     "COULDNT_SAVE_MESSAGE",
     "COVER_LIMIT",
     "EXPORT_CHUNK",
+    "FROM_DROPBOX",
     "RESTORE_INVALID_MESSAGE",
     "RESTORE_NEWER_VERSION_MESSAGE",
+    "RESTORE_NOT_CONFIRMED_MESSAGE",
+    "RESTORE_OUTSIDE_BACKUPS_MESSAGE",
+    "SAFETY_COPY_FAILED_MESSAGE",
     "AddBookIntent",
     "AddCardNoteIntent",
     "BackupFile",
@@ -100,14 +148,23 @@ __all__ = [
     "FieldError",
     "FinishReadingIntent",
     "IntentError",
+    "LibraryCounts",
+    "LocalBackup",
+    "LocalBackups",
     "MarkSideReadIntent",
     "OkResponse",
     "PauseIntent",
     "PreparedCover",
+    "PreparedRestore",
     "RefusedCover",
     "RestoreIntent",
+    "RestoreNotConfirmedReason",
+    "RestorePreview",
+    "RestoredBackup",
+    "Sealed",
     "SetSpineColorIntent",
     "SetUpNextIntent",
+    "StagedRestore",
     "StartReadingIntent",
     "SystemClock",
     "UnmarkSideReadIntent",
@@ -116,6 +173,9 @@ __all__ = [
     "add_book",
     "add_card_note",
     "already_main",
+    "apply_confirmed_restore",
+    "apply_staged",
+    "backup_time",
     "backups_folder",
     "book_answer",
     "book_not_found",
@@ -128,6 +188,7 @@ __all__ = [
     "cover_too_large",
     "delete_book",
     "delete_card_note",
+    "dropbox_content_hash",
     "duplicate_book",
     "edit_book",
     "edit_card_note",
@@ -135,6 +196,8 @@ __all__ = [
     "export_filename",
     "finish_reading",
     "invalid_fields",
+    "library_sha256",
+    "list_local_backups",
     "main_cannot_be_side_read",
     "main_cannot_be_up_next",
     "malformed_intent",
@@ -162,17 +225,26 @@ __all__ = [
     "parse_update_page_intent",
     "pause",
     "prepare_cover",
+    "prepare_restore",
+    "preview_restore",
     "reading_already_finished",
     "record_export",
+    "resolve_backup_path",
     "restore",
     "restore_invalid",
     "restore_newer_version",
+    "restore_not_confirmed",
+    "restore_outside_backups",
     "restore_unsafe",
+    "safety_copy_failed",
     "set_spine_color",
     "set_up_next",
     "side_reads_full",
+    "stage_and_validate",
     "start_reading",
     "unmark_side_read",
     "update_page",
     "write_backup",
+    "write_export_zip",
+    "write_safety_copy",
 ]
