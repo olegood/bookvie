@@ -6,6 +6,10 @@ All notable changes to bookvie are recorded here. The format follows
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [2.0.1] - 2026-11-21
+
 ### Fixed
 
 - The agent tools now tell an agent the type of each value they take: `update_page` lists `page` as a whole number; `start_reading` lists `page` as a whole number or nothing; and `finish_reading` lists `rating` as a whole number or nothing, `purposeFulfilled` as yes, partly or not yet, or nothing, and `finishedOn` as a date written as text. Claude Code had sent the page as text, so `update_page` refused every page it was asked to save.
@@ -127,7 +131,8 @@ The first complete version: all seven v1 epics (41 stories) are done.
 - The Change color refusal is still announced after its popover closes.
 - The pace calculator agrees with Home's days-left figure.
 
-[Unreleased]: https://github.com/olegood/bookvie/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/olegood/bookvie/compare/v2.0.1...HEAD
+[2.0.1]: https://github.com/olegood/bookvie/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/olegood/bookvie/compare/v1.2.0...v2.0.0
 [1.2.0]: https://github.com/olegood/bookvie/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/olegood/bookvie/compare/v1.0.0...v1.1.0
