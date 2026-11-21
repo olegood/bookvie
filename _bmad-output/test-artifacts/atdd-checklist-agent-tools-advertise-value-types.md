@@ -27,7 +27,7 @@ acceptanceCriteria:
 ## Preflight
 
 - **Stack:** `fullstack`, auto-detected. pytest (`backend/tests/conftest.py`) and Playwright are in place. This spec needs only pytest. No page is involved.
-- **Story:** a standalone pipeline spec (`- **Pipeline:**` line in its Design Notes), status `ready-for-dev`, with no `story_key`. Its two criteria have no ids, so they are numbered AC-1 and AC-2 in source order (registry above). AC-1 ("`npm run check` passes") carries the behavior its Tasks and I/O matrix describe. The leaf pins that behavior, so the check passing means the fix is in. AC-2 is manual.
+- **Story:** a standalone pipeline spec (`- **Pipeline:**` line in its Design Notes), status `ready-for-dev` when this checklist was written, with no `story_key`. Its two criteria have no ids, so they are numbered AC-1 and AC-2 in source order (registry above). AC-1 ("`npm run check` passes") carries the behavior its Tasks and I/O matrix describe. The leaf pins that behavior, so the check passing means the fix is in. AC-2 is manual.
 - **Epic gate:** not an epic story, so the spine-drift gate doesn't apply.
 - **Config:** `tea_use_playwright_utils: false`, no Pact. Execution: AI generation, **sequential** in this session, as in Stories 12.3 to 12.8. It is one small pytest file with no E2E surface, so a worker subagent per level would only re-read what this session already read.
 - **What exists today:**
@@ -43,13 +43,14 @@ acceptanceCriteria:
 
 | AC | Level | Priority | Leaf (first assertion in bold) | Why this level |
 |---|---|---|---|---|
-| AC-1 | API (MCP `tools/list` over the real app, the `mcp_client` fixture) | P0 | `test_every_tool_property_advertises_its_json_type` (`backend/tests/test_agent_value_types.py`). **`update_page.page` admits exactly `{"integer"}`.** Then `start_reading.page` and `finish_reading.rating` are `{integer, null}`; `finishedOn` and `purposeFulfilled` are `{string, null}`; `purposeFulfilled`'s non-null enum is `set(_ANSWERS)` (`yes`, `partly`, `notYet`); and no property of any tool admits no type. | The defect is what the client reads, so the leaf reads `tools/list` the way Claude Code does. |
+| AC-1 | API (MCP `tools/list` over the real app, the `mcp_client` fixture) | P0 | `test_every_tool_property_advertises_its_json_type` (`backend/tests/test_agent_value_types.py`). **`update_page.page` admits exactly `{"integer"}`.** Then `start_reading.page` and `finish_reading.rating` are `{integer, null}`; `finishedOn` is `{string}` and `purposeFulfilled` is `{string, null}` (amended 2026-11-20, see below); `purposeFulfilled`'s non-null enum is `set(_ANSWERS)` (`yes`, `partly`, `notYet`); and no property of any tool admits no type. | The defect is what the client reads, so the leaf reads `tools/list` the way Claude Code does. |
 | AC-2 | Manual (a real Claude Code session against `--dev`) | P0 | No automated leaf. The spec records the `update_page` call and its answer. Under Epic 12 retro item 85, `bmad-code-review` keeps the spec in review until the run is recorded. | Only a real client shows the client now sends a number. |
 
 **What the leaf pins (the contract for the build):**
 - Types are read semantically by `json_types`, which handles `type` (a string or a list), `enum`/`const` (by their values' types), `anyOf`/`oneOf` (the union, empty if any member is untyped), and a local `$ref` resolved against `$defs`. Any of these shapes passes. For example, `{"type": "integer"}`, `{"anyOf": [{"type": "integer"}, {"type": "null"}]}` and `{"type": ["integer", "null"]}` are all fine.
 - `update_page.page` admits no `null`, even though `UpdatePageIntent.nullable` holds `page`, so `input_schema` keeps `null` for it today. The spec's Always rule was corrected during this ATDD run (2026-11-20): `null` is advertised only where it is a valid value, and `nullable` there only turns an explicit `null` into a field error. The build must not loosen the leaf to `{integer, null}`.
 - `purposeFulfilled`'s values come from `_ANSWERS`, not a literal.
+- **Amended 2026-11-20 (spec Change Log, after build attempt 1):** `finishedOn` is listed as string only, with no `null`, because `_finished_on` refuses `null`. The leaf asserts `types("finish_reading", "finishedOn") == {"string"}`; this replaces the earlier `{string, null}`.
 
 **Open for the build (not pinned):**
 - Where the type is declared: a per-model mapping read by `input_schema`, `json_schema_extra` on the field, or a typed alias in place of `JsonValue`. Either way, the HTTP intents' parsing and `schema.d.ts` must not change (AC-1, `check:api`).

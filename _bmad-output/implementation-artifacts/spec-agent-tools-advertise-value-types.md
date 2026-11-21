@@ -2,7 +2,7 @@
 title: 'Agent tools advertise the type of every value they take'
 type: 'bugfix'
 created: '2026-11-20'
-status: 'in-review'
+status: 'done'
 baseline_revision: 'df3cd5f668b73f0f8e56b69979290701385eb253'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -88,6 +88,44 @@ deferred:
 **Acceptance Criteria:**
 - Given `npm run check`, when it runs, then it passes, and `schema.d.ts` is unchanged.
 - Given `bookvie --dev` built from this change and a Main book, when Oleg (or Claude, on Oleg's say-so) asks Claude Code in a real session to set the page through the `bookvie-dev` tools, then `update_page` saves it on the first call. The spec records the call and its answer (manual: `bmad-code-review` keeps this spec in review until the run is recorded, Epic 12 retro item 85).
+  - **Run 1, 2026-11-21 (inconclusive).** The server was `uv run bookvie --dev --no-browser` from `backend/` at `d5ed742`, on port 8766 with `~/bookvie-data-dev`. The review probed its live `tools/list`, which listed `update_page.page` as `{"type": "integer"}`. Claude Code's session had loaded its tool list before a `/mcp` reconnect and still showed `page` as an untyped `JsonValue`. Its first save didn't go through; the error wasn't captured. After the reconnect it saved page 150 of 670 (`get_home` confirmed). This doesn't show a first-call save, so it isn't counted.
+  - **Run 2, 2026-11-21 (pass).** A brand-new Claude Code session against the same dev server. Oleg asked "update my progress on bookvie-dev to page 213". Claude Code made one `bookvie-dev` call, and `update_page` saved it on the first call: page 213 of 670 (32%), up from 150. Asked to show the schema it had loaded, the session printed `mcp__bookvie-dev__update_page` with `"page": { "type": "integer" }` and said it sent `213`, not `"213"`. The review then read `~/bookvie-data-dev/library.json`: Designing Data-Intensive Applications has `currentPage` 213, with `lastProgressUpdate` `2026-11-21T01:10:19+01:00`.
+
+### Review Findings
+
+Code review, 2026-11-21 (new session; layers: blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor, spine-check; diff `7f81804..d5ed742`).
+
+- [x] [Review][Patch] Pin the `default: null` that `start_reading.page` keeps after the type merge [backend/tests/test_agent_value_types.py:88] — verification-gap+blind-hunter: a mutation dropping `rest` in `input_schema` (`tools.py:180-182`) passed all 418 agent tests; add an assertion on the listed `default`.
+- [x] [Review][Patch] ATDD checklist still says `finishedOn` is `{string, null}` and the spec is `ready-for-dev` [_bmad-output/test-artifacts/atdd-checklist-agent-tools-advertise-value-types.md:46] — blind-hunter+edge-case-hunter: contradicts the amended spec and `test_agent_value_types.py`, which pins `{"string"}`; add an amendment note and correct the row.
+- [x] [Review][Patch] The item 83 `resolved:` line is dated 2026-11-20, but the resolving build ran on 2026-11-21 [_bmad-output/implementation-artifacts/deferred-work.md:1422] — blind-hunter: commit `d5ed742` is 2026-11-21 00:16; correct the date.
+- [x] [Review][Defer] Spine drift (AD-21), reconciled before the next epic: `JSON_VALUE_TYPES` declares the `JsonValue` types [backend/bookvie/agent/tools.py:138] — deferred: already recorded by the build in `deferred-work.md` ("Deferred from: build-auto review of spec-agent-tools-advertise-value-types (2026-11-21)"), not duplicated.
+- [x] [Review][Defer] Spine drift (AD-8), reconciled before the next epic: the advertised schemas are no longer generated only from the Pydantic models [backend/bookvie/agent/tools.py:138] — deferred: already recorded by the build in `deferred-work.md`, not duplicated.
+
+All three patches applied 2026-11-21. Mutation probe: dropping `rest` in `input_schema` (`tools.py:181`) now fails `test_every_tool_property_advertises_its_json_type`; that edit was reverted, and `tools.py` is unchanged.
+
+Full check after the patches, 2026-11-21: `npm run check` exit 0. Results: pytest 2174 passed; unit (node --test) 389 passed, 0 failed; e2e 800 passed; smoke ok.
+
+**Manual AC.** AC-2 (a real Claude Code session saves a page through the `bookvie-dev` tools on the first call) has no recorded result. Oleg said "not now" on 2026-11-21, and `bookvie-dev` was unreachable (ECONNREFUSED) in this session too. The spec stays `in-review` until the run is recorded under AC-2.
+
+Update, 2026-11-21: Oleg ran AC-2. Run 1 was inconclusive because of a stale client tool list; run 2 passed, with the save on the first call. Both are recorded under AC-2. Recording them changed no code, so the full check above still stands. Status set to `done`.
+
+**Rejected:**
+- (blind+edge+acceptance) This spec's Verification bullet lost its closing backtick and swallowed the `## Auto Run Result` heading. Real, but the fix edits the spec under review.
+- (blind) The pass-2 verdict header says "low 15, false 13" against 18 low and 10 false rows. Real, but the fix edits the spec under review.
+- (blind) "Patched (5 entries)" against 6 `[patch]` rows. The fix edits the spec under review.
+- (blind) `review_loop_iteration: 0` is stale. The fix edits the spec under review.
+- (blind) The spec's AD-21 `deferred:` entry is worded more narrowly than the `deferred-work.md` one. The fix edits the spec under review, and the reconciliation reads `deferred-work.md`.
+- (blind) No string-page round trip for `start_reading`. Low: its parser (`valid_page`) is unchanged and shared with `update_page`, which is pinned. The fix adds a test the I/O matrix doesn't ask for.
+- (blind) No out-of-enum `purposeFulfilled` refusal test. Low: `_purpose_fulfilled_failure` is unchanged, and the enum is pinned equal to `set(_ANSWERS)`.
+- (blind) The null round trips don't read back the stored values. Low: no parser changed, so nothing can substitute a value through this change.
+- (blind) Refusal copy is hard-coded in one test and goes through `page_message` in another. Low: style only, and a copy change fails loudly in both places.
+- (blind) `_ANSWERS` is imported inside a test function, and it is imported cross-module as a private name. Low, and carried from the build review: a rename fails at import time.
+- (blind) `"JsonValue"` is written twice in `tools.py`. Low, and carried: at worst a dead `$defs` entry, which is harmless to clients.
+- (edge) A stale `JSON_VALUE_TYPES` key raises a bare `KeyError`. Low, and carried: every listing test fails at once with a traceback.
+- (edge) A new `JsonValue` field could ship untyped, since the app doesn't check at import. False: `test_every_tool_property_advertises_its_json_type` fails on any untyped property of any tool, and `npm run check` runs it.
+- (edge) JSON Schema `integer` admits `120.0`, which the parsers refuse. Low, and carried as an accepted limit: the fix needs a coercion the contract bans.
+- (edge) The CHANGELOG's "a date written as text" implies a schema date format. False: the line describes the value, the listed type is the string the line names, and the tool description states YYYY-MM-DD.
+- (acceptance) The CHANGELOG wording differs from the Execution task. Informational: the auditor found it accurate and no broader than what was verified.
 
 ## Spec Change Log
 

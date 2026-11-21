@@ -98,6 +98,8 @@ def test_every_tool_property_advertises_its_json_type(mcp_client: McpClient) -> 
     assert types("update_page", "page") == {"integer"}
 
     assert types("start_reading", "page") == {"integer", "null"}
+    # The declared type replaces only the JsonValue reference: the property's other keys stay.
+    assert listed["start_reading"]["properties"]["page"].get("default", "missing") is None
     assert types("finish_reading", "rating") == {"integer", "null"}
     # A finish always needs a date: _finished_on refuses null, so it isn't listed.
     assert types("finish_reading", "finishedOn") == {"string"}
