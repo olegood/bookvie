@@ -225,6 +225,7 @@ CASES: list[Case] = [
     Case("start_reading", "success-side-read-with-page", {"bookId": SIDE1, "purpose": None, "page": 40}, "ok"),
     Case("start_reading", "side-read-without-page", {"bookId": SIDE1, "purpose": None}, "invalid_fields", ("page",)),
     Case("start_reading", "page-past-the-end", {"bookId": UNREAD, "purpose": None, "page": 272}, "invalid_fields", ("page",)),
+    Case("start_reading", "page-as-a-string", {"bookId": UNREAD, "purpose": None, "page": "40"}, "invalid_fields", ("page",)),
     Case("start_reading", "already-main", {"bookId": MAIN, "purpose": None}, "already_main"),
     Case("start_reading", "book-not-found", {"bookId": GONE, "purpose": None}, "book_not_found"),
     *_malformed("start_reading", START, "purpose"),
@@ -239,6 +240,7 @@ CASES: list[Case] = [
     # finish_reading
     Case("finish_reading", "success", FINISH, "ok"),
     Case("finish_reading", "success-back-fill", {"bookId": UNREAD, "finishedOn": "2026-05-01", "purposeFulfilled": None, "rating": None}, "ok"),
+    Case("finish_reading", "rating-as-a-string", {**FINISH, "rating": "4"}, "invalid_fields", ("rating",)),
     Case("finish_reading", "every-field-wrong", {"bookId": MAIN, "finishedOn": "2027-01-01", "purposeFulfilled": "maybe", "rating": 6}, "invalid_fields", ("finishedOn", "purposeFulfilled", "rating")),
     Case("finish_reading", "fulfilled-without-purpose", {"bookId": PAUSED, "finishedOn": "2026-10-29", "purposeFulfilled": "yes", "rating": None}, "invalid_fields", ("purposeFulfilled",)),
     Case("finish_reading", "already-finished", {"bookId": FINISHED, "finishedOn": "2026-10-29", "purposeFulfilled": None, "rating": None}, "reading_already_finished"),

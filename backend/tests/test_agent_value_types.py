@@ -16,6 +16,8 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+from jsonschema import Draft202012Validator
+
 from bookvie.domain.finished_on import FINISHED_ON_FORMAT_MESSAGE
 from bookvie.intents.update_page import page_message
 from tests.agent_client import McpClient, error_of, structured_of
@@ -215,3 +217,67 @@ def test_value_typed_properties_list_null_only_where_it_is_taken(
     assert structured_of(finished) == {"ok": True}
     started = client.call_tool("start_reading", {"bookId": unread, "purpose": None, "page": None})
     assert structured_of(started) == {"ok": True}
+
+
+# A Book id the listed schemas take (they check the type, not that the Book exists).
+_BOOK = "a0000000-0000-4000-8000-000000000001"
+_FINISH = {"bookId": _BOOK, "finishedOn": "2026-10-29", "purposeFulfilled": "partly", "rating": 4}
+
+# What a client that follows the listed schema may send, per value-typed property.
+_FOLLOWS_THE_SCHEMA = [
+    ("update_page", {"bookId": _BOOK, "page": 120}),
+    ("update_page", {"bookId": _BOOK, "page": 0}),
+    ("start_reading", {"bookId": _BOOK, "purpose": None}),
+    ("start_reading", {"bookId": _BOOK, "purpose": None, "page": 40}),
+    ("start_reading", {"bookId": _BOOK, "purpose": None, "page": None}),
+    ("finish_reading", _FINISH),
+    ("finish_reading", {**_FINISH, "purposeFulfilled": None, "rating": None}),
+    *(
+        ("finish_reading", {**_FINISH, "purposeFulfilled": answer})
+        for answer in ("yes", "partly", "notYet")
+    ),
+]
+
+# Each value the listed schema now tells a client not to send, and the property it is on.
+_BREAKS_THE_SCHEMA = [
+    ("update_page", {"bookId": _BOOK, "page": "120"}, "page"),
+    ("update_page", {"bookId": _BOOK, "page": None}, "page"),
+    ("start_reading", {"bookId": _BOOK, "purpose": None, "page": "40"}, "page"),
+    ("finish_reading", {**_FINISH, "rating": "4"}, "rating"),
+    ("finish_reading", {**_FINISH, "finishedOn": None}, "finishedOn"),
+    ("finish_reading", {**_FINISH, "purposeFulfilled": "maybe"}, "purposeFulfilled"),
+    ("finish_reading", {**_FINISH, "purposeFulfilled": "null"}, "purposeFulfilled"),
+]
+
+
+def _validators(client: McpClient) -> dict[str, Draft202012Validator]:
+    """A JSON Schema validator per tool, built from the schema ``tools/list`` gives a client."""
+    return {tool["name"]: Draft202012Validator(tool["inputSchema"]) for tool in client.list_tools()}
+
+
+def test_every_listed_schema_is_valid_json_schema(mcp_client: McpClient) -> None:
+    # [P1] A client builds its validator from tools/list; a malformed schema (a broken
+    # merge in input_schema, a dangling $ref after the JsonValue def is dropped) fails here.
+    for tool in mcp_client.list_tools():
+        Draft202012Validator.check_schema(tool["inputSchema"])
+
+
+def test_the_listed_schema_takes_each_value_the_server_takes(mcp_client: McpClient) -> None:
+    # [P1] Validated the way a schema-following client would: what the server saves, the schema allows.
+    validators = _validators(mcp_client)
+    rejected = {
+        (tool, json.dumps(arguments)): [
+            error.message for error in validators[tool].iter_errors(arguments)
+        ]
+        for tool, arguments in _FOLLOWS_THE_SCHEMA
+    }
+    assert {call: errors for call, errors in rejected.items() if errors} == {}
+
+
+def test_the_listed_schema_rules_out_each_value_the_server_refuses(mcp_client: McpClient) -> None:
+    # [P1] The item 83 call ("120") and its kin fail the listed schema on their own property,
+    # so a schema-following client corrects them before it calls.
+    validators = _validators(mcp_client)
+    for tool, arguments, key in _BREAKS_THE_SCHEMA:
+        paths = [list(error.absolute_path) for error in validators[tool].iter_errors(arguments)]
+        assert paths and all(path[:1] == [key] for path in paths), (tool, arguments, paths)
