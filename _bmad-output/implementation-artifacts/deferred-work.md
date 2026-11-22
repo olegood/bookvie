@@ -1524,6 +1524,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-2-upload-a-backup-to-my-dropbox.md`
   summary: Before Story 13.4's manual run: `APP_KEY` in `backend/bookvie_dropbox/dropbox_api.py` is the placeholder `REPLACE-WITH-YOUR-DROPBOX-APP-KEY` (the app wasn't registered when the build ran). Oleg registers the Dropbox app as the guide's Setup says and commits the real key. `bookvie-dropbox auth` refuses to start until then. Medium.
   evidence: spec Design Notes "App key"; blind-hunter finding 2, edge-case finding 3, intent-alignment divergence 1.
+  resolved: Story 13.2, 2026-11-22: Oleg registered the app and gave its key; `APP_KEY` in `backend/bookvie_dropbox/dropbox_api.py` holds it, and the guide's Setup step 6 says so.
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-2-upload-a-backup-to-my-dropbox.md`
   summary: A refresh refused with something other than 400 `invalid_grant` (for example an unknown app key) becomes the SDK's `BadInputError`, which `upload_backup` answers as `other`, not `dropbox_signin`. Medium if Dropbox answers a wrong app key that way, unverified; settled by Story 13.4's first real run or a check of Dropbox's token-endpoint errors. Medium (unverified).
   evidence: verification-gap other finding 2; `.venv/.../dropbox/dropbox_client.py` `raise_dropbox_error_for_resp`.

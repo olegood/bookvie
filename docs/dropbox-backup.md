@@ -19,7 +19,7 @@ bookvie uses its own Dropbox app, which you register yourself, so only bookvie's
 3. Name the app `bookvie`. Dropbox names the app's folder after it, so the backups go into `/Apps/bookvie/` in your Dropbox, in its `.backups` folder.
 4. On the app's **Permissions** tab, tick these three scopes and choose **Submit**: `files.metadata.read`, `files.content.read` and `files.content.write`.
 5. On the **Settings** tab, under **OAuth 2**, add this redirect URI, exactly: `http://127.0.0.1:8790/dropbox-auth`. Leave **Allow public clients (Implicit Grant & PKCE)** on. bookvie-dropbox signs in with PKCE, so it needs no app secret, and you never copy one anywhere.
-6. Copy the **App key** from the **Settings** tab. In `backend/bookvie_dropbox/dropbox_api.py`, set `APP_KEY` to it, in place of the placeholder, and commit that change so a later checkout keeps it. An app key isn't a secret. Until it's set, `bookvie-dropbox auth` stops and points here. Then reinstall bookvie, which puts `bookvie-dropbox` on your PATH beside `bookvie`:
+6. Check the **App key** on the **Settings** tab. `APP_KEY` in `backend/bookvie_dropbox/dropbox_api.py` already holds bookvie's registered app's key. If you registered a new app, set `APP_KEY` to its key and commit that change so a later checkout keeps it. An app key isn't a secret. Then reinstall bookvie, which puts `bookvie-dropbox` on your PATH beside `bookvie`:
 
 ```sh
 npm run install:local

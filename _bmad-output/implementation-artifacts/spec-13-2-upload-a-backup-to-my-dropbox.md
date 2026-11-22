@@ -290,4 +290,6 @@ Status: in-review
 - **Copy left on a failed check:** a same-day re-upload whose answer doesn't verify leaves the new bytes in Dropbox under today's name (answered `upload_incomplete`, nothing deleted).
 - **SDK warning:** the SDK's `datetime.utcnow()` raises a `DeprecationWarning` on Python 3.14.
 
+**After the run (2026-11-22):** Oleg registered the Dropbox app and gave its key, so `APP_KEY` now holds `ohbyik601prm6w6` (a PKCE app key, not a secret), the guide's step 6 says the key is set, and the deferred-work entry for the placeholder is resolved.
+
 Next: run `bmad-code-review` in a new session (AGENTS.md "Story pipeline").

@@ -13,10 +13,10 @@ import keyring
 import keyring.errors
 
 APP_KEY_PLACEHOLDER = "REPLACE-WITH-YOUR-DROPBOX-APP-KEY"
-APP_KEY = APP_KEY_PLACEHOLDER
-"""The app key of bookvie's Dropbox app (its Settings page, "App key"). A PKCE app key
-isn't a secret. Until the app is registered this is a placeholder: paste the key here
-and reinstall (docs/dropbox-backup.md, Setup)."""
+APP_KEY = "ohbyik601prm6w6"
+"""The app key of bookvie's registered Dropbox app (its Settings page, "App key"). A PKCE
+app key isn't a secret. A different app's key goes here, then reinstall
+(docs/dropbox-backup.md, Setup)."""
 
 KEYRING_SERVICE = "bookvie-dropbox"
 KEYRING_ACCOUNT = "refresh-token"
