@@ -262,3 +262,72 @@ def test_the_guide_says_how_the_backup_works_runs_it_once_by_hand_and_fixes_a_fa
 
     ai_skills = section(README.read_text(encoding="utf-8"), "AI skills")
     assert BACKUP_SKILL_LINK in ai_skills
+
+
+# --- Story 13.5: install, uninstall and launchd troubleshooting ---------------------
+
+RED_13_5 = "Story 13.5 red phase: the guide doesn't install the launchd job yet"
+LAUNCHD_LOGS = "~/Library/Logs/bookvie/"
+
+
+def _entries(text: str, pattern: str) -> list[str]:
+    """:func:`headed`'s sections, each on one line."""
+    return [" ".join(entry.split()) for entry in headed(text, pattern)]
+
+
+# Un-skip when docs/dropbox-backup.md installs, uninstalls and troubleshoots the launchd job.
+@pytest.mark.skip(reason=RED_13_5)
+def test_the_guide_installs_and_uninstalls_the_job_and_troubleshoots_launchd(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    # [P1] Story 13.5 AC-8
+    text = GUIDE.read_text(encoding="utf-8")
+    commands = guide_commands(text)
+
+    assert ("bookvie", ["autobackup", "install"]) in commands, commands
+
+    assert ("bookvie", ["autobackup", "uninstall"]) in commands, commands
+    refused = {
+        command: why
+        for command in ("install", "uninstall", "run")
+        if (why := _parses(bookvie_cli.parse_args, ["autobackup", command]))
+    }
+    capsys.readouterr()
+    assert refused == {}
+
+    # Install is a setup step, once both MCP servers are checked.
+    setup = section(text, "Setup")
+    assert -1 < setup.find("claude mcp list") < setup.find("bookvie autobackup install"), setup
+
+    # The log location, and running the job now.
+    assert LAUNCHD_LOGS in text
+    assert any(line.startswith("launchctl kickstart") for line in shell_lines(text))
+
+    # Uninstalling: the job, both MCP entries' removal, the Keychain item, the Dropbox app.
+    uninstall = _entries(text, r"\buninstall")
+    assert any(
+        "bookvie autobackup uninstall" in entry
+        and "claude mcp remove" in entry
+        and "Keychain" in entry
+        and re.search(r"\brevok", entry, re.I)
+        and "Dropbox" in entry
+        for entry in uninstall
+    ), uninstall
+
+    # The launchd troubleshooting entries, each under its own heading.
+    on_path = _entries(text, r"\bPATH\b")
+    assert any("claude" in entry and "bookvie autobackup install" in entry for entry in on_path), (
+        on_path
+    )
+    allowed = _entries(text, r"--allowedTools|permission prompt")
+    assert any("`--allowedTools`" in entry for entry in allowed), allowed
+    signed_out = [entry for entry in _entries(text, r"signed out") if "Claude Code" in entry]
+    assert any(re.search(r"\blog ?in\b|/login|\bsign in\b", e, re.I) for e in signed_out), (
+        signed_out
+    )
+    moved = _entries(text, r"\bmoved?\b")
+    assert any("checkout" in entry and "bookvie autobackup install" in entry for entry in moved), (
+        moved
+    )
+    asleep = _entries(text, r"\basleep\b|\bsleep")
+    assert any(re.search(r"\bwak(e|es|ing)\b|\bwoken?\b", entry, re.I) for entry in asleep), asleep
