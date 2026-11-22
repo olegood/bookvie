@@ -173,10 +173,11 @@ def _write_atomic(
 
 # --- The backups a restore can use (AD-22, Story 13.1) ---------------------------
 
-DAILY_NAME = re.compile(r"^bookvie-backup-(\d{4}-\d{2}-\d{2})\.zip$")
-"""A daily backup's name; the date must be a real calendar day."""
+DAILY_NAME = re.compile(r"bookvie-backup-(\d{4}-\d{2}-\d{2})\.zip", re.ASCII)
+"""A daily backup's name, matched whole (``fullmatch``); the date must be a real calendar day."""
 SAFETY_NAME = re.compile(
-    r"^bookvie-pre-restore-(\d{4}-\d{2}-\d{2})T(\d{2})(\d{2})(?:-([2-9]|[1-9]\d+))?\.zip$"
+    r"bookvie-pre-restore-(\d{4}-\d{2}-\d{2})T(\d{2})(\d{2})(?:-([2-9]|[1-9]\d+))?\.zip",
+    re.ASCII,
 )
 """A safety copy's name, ``bookvie-pre-restore-<YYYY-MM-DDTHHMM>[-N].zip`` with N from 2."""
 FROM_DROPBOX = "from-dropbox"
@@ -188,7 +189,7 @@ BackupKind = Literal["daily", "safety", "from_dropbox"]
 
 
 def _is_daily_name(name: str) -> bool:
-    match = DAILY_NAME.match(name)
+    match = DAILY_NAME.fullmatch(name)
     if match is None:
         return False
     try:
@@ -199,7 +200,7 @@ def _is_daily_name(name: str) -> bool:
 
 
 def _is_safety_name(name: str) -> bool:
-    match = SAFETY_NAME.match(name)
+    match = SAFETY_NAME.fullmatch(name)
     if match is None:
         return False
     try:

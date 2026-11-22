@@ -74,6 +74,10 @@ The same refusals as the Backup page's **Restore from file…**:
 
 bookvie couldn't write the safety copy into the backups folder, so it didn't restore. Check that the disk isn't full and that the backups folder can be written, then try again. No partial safety copy is left behind.
 
+#### `couldnt_save`: bookvie couldn't read or save
+
+bookvie couldn't read the backup file or your library, or couldn't save the restored library, so your library is as it was. Check that the disk isn't full and that the data folder and the backups folder can be read and written, then try again. If it failed while saving the restored library, the safety copy may already be in the backups folder. It's a copy of your library as it still is, and you can delete it or keep it.
+
 #### A backup is missing from the list
 
 `list_local_backups` lists only files that keep their original name. Daily backups (`bookvie-backup-<YYYY-MM-DD>.zip`) are listed from the backups folder and from its `from-dropbox/`. Safety copies (`bookvie-pre-restore-<YYYY-MM-DDTHHMM>.zip`, or with `-2`, `-3` and so on) are listed only directly in the backups folder. A file that is damaged, or isn't a bookvie export, isn't listed; bookvie logs why. Rename a renamed backup back, or move it into the right folder.

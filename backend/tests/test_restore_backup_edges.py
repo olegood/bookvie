@@ -6,7 +6,9 @@ lists the paths a restore resolves, and two tokens the gate must refuse with
 the right reason. Every test passes its own ``backups_dir``, under ``tmp_path``.
 """
 
+import io
 import json
+import zipfile
 from collections.abc import Callable
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -24,7 +26,7 @@ from tests.agent_client import (
     McpClient,
 )
 from tests.builder import LibraryBuilder
-from tests.helpers import SetClock, backup_zip, library_bytes
+from tests.helpers import SetClock, backup_zip, image_bytes, library_bytes
 
 NOW = datetime(2026, 11, 20, 10, 4).astimezone()
 BACKUP_AT = datetime(2026, 11, 19, 9, 2).astimezone()
@@ -189,3 +191,111 @@ def test_an_expired_token_stays_expired_after_another_question_is_sealed(
     refused = _error(answer)
     assert (refused.get("code"), refused.get("reason")) == ("restore_not_confirmed", "expired")
     assert library_bytes(data_dir) == before
+
+
+def _impossible_date_zip(data_dir: Path) -> bytes:
+    """A backup of ``data_dir`` whose ``library.json`` entry has a DOS date with month 0
+    and no 0x5455 field."""
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        archive.writestr(
+            zipfile.ZipInfo("library.json", date_time=(1980, 0, 0, 0, 0, 0)),
+            library_bytes(data_dir),
+        )
+        archive.mkdir("covers")
+    return buffer.getvalue()
+
+
+@pytest.mark.parametrize("tool", [PREVIEW_RESTORE, RESTORE_BACKUP])
+def test_a_backup_with_an_impossible_time_is_restore_invalid(
+    connect_mcp: Callable[..., McpClient], tmp_path: Path, tool: str
+) -> None:
+    # [P1] AC-3: the same file list_local_backups leaves out is refused, not couldnt_save.
+    data_dir, backups = tmp_path / "library", tmp_path / "backups"
+    _library(data_dir, "Thinking in Systems")
+    backups.mkdir()
+    (backups / DAILY).write_bytes(_impossible_date_zip(data_dir))
+    client = _modern(connect_mcp(data_dir=data_dir, backups_dir=backups, clock=SetClock(NOW)))
+    kept = library_bytes(data_dir)
+
+    assert _structured(client.call_tool(LIST_LOCAL_BACKUPS))["backups"] == []
+    assert _error(client.answer(tool, {"path": str(backups / DAILY)}))["code"] == "restore_invalid"
+    assert library_bytes(data_dir) == kept
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "bookvie-backup-2026-11-19.zip\n",
+        "bookvie-pre-restore-2026-11-19T0902.zip\n",
+        "bookvie-backup-2026-11-\u0661\u0669.zip",
+    ],
+    ids=["daily_newline", "safety_newline", "arabic_indic_digits"],
+)
+def test_a_name_that_only_starts_like_a_backup_isnt_one(
+    connect_mcp: Callable[..., McpClient], tmp_path: Path, name: str
+) -> None:
+    # [P1] AC-1, AC-4: the whole name must match, in ASCII digits.
+    data_dir, backups = tmp_path / "library", tmp_path / "backups"
+    _library(data_dir)
+    backups.mkdir()
+    (backups / name).write_bytes(backup_zip(data_dir, BACKUP_AT))
+    client = _modern(connect_mcp(data_dir=data_dir, backups_dir=backups, clock=SetClock(NOW)))
+
+    assert _structured(client.call_tool(LIST_LOCAL_BACKUPS))["backups"] == []
+    refused = _error(client.answer(PREVIEW_RESTORE, {"path": str(backups / name)}))
+    assert refused["code"] == "restore_outside_backups"
+
+
+def test_an_unsupported_client_is_unsupported_even_for_a_path_outside_the_backups(
+    connect_mcp: Callable[..., McpClient], tmp_path: Path
+) -> None:
+    # [P1] AC-6: unsupported is checked before the path, so the skill's CLI advice still shows.
+    data_dir, backups, elsewhere = (
+        tmp_path / "library",
+        tmp_path / "backups",
+        tmp_path / "elsewhere",
+    )
+    _library(data_dir)
+    backups.mkdir()
+    elsewhere.mkdir()
+    (elsewhere / DAILY).write_bytes(backup_zip(data_dir, BACKUP_AT))
+    client = connect_mcp(data_dir=data_dir, backups_dir=backups, clock=SetClock(NOW))
+    kept = library_bytes(data_dir)
+
+    refused = _error(
+        client.speaking(MODERN_PROTOCOL_VERSION, {}).answer(
+            RESTORE_BACKUP, {"path": str(elsewhere / DAILY)}
+        )
+    )
+
+    assert (refused.get("code"), refused.get("reason")) == ("restore_not_confirmed", "unsupported")
+    assert library_bytes(data_dir) == kept
+
+
+def test_a_safety_copy_that_cant_read_the_library_is_safety_copy_failed(
+    connect_mcp: Callable[..., McpClient], tmp_path: Path
+) -> None:
+    # [P1] AC-8: a referenced cover is gone from the data folder, so no safety copy, no restore.
+    data_dir, backups = tmp_path / "library", tmp_path / "backups"
+    cover = f"covers/{DUNE_ID}-0f0e0d0c-0b0a-4908-8706-050403020100.jpg"
+    builder = LibraryBuilder()
+    builder.book(id=DUNE_ID, title="Dune", cover_file=cover, spine_color_from_cover="#A85A4A")
+    builder.write(data_dir)
+    (data_dir / "covers").mkdir(exist_ok=True)
+    (data_dir / cover).write_bytes(image_bytes(fmt="JPEG"))
+    backups.mkdir()
+    (backups / DAILY).write_bytes(backup_zip(data_dir, BACKUP_AT))
+    client = _modern(connect_mcp(data_dir=data_dir, backups_dir=backups, clock=SetClock(NOW)))
+    (data_dir / cover).unlink()
+    kept = library_bytes(data_dir)
+
+    refused = _error(_accept(client, str(backups / DAILY)))
+
+    assert refused == {
+        "kind": "couldnt_save",
+        "code": "safety_copy_failed",
+        "message": "Couldn't save a safety copy, so nothing was restored.",
+    }
+    assert library_bytes(data_dir) == kept
+    assert sorted(p.name for p in backups.iterdir()) == [DAILY]

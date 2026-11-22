@@ -253,3 +253,40 @@ Status: in-review
 - The UX wording when only Books or only Card notes were added is pending Oleg's confirmation (deferred-work.md).
 
 Next: run `bmad-code-review` in a new session (AGENTS.md "Story pipeline").
+
+### Review Findings
+
+Code review (bmad-code-review, new session), 2026-11-21. Diff `1815bff..9dc90dc`. Layers: Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor, Spine Check; none failed.
+
+- [x] [Review][Patch] A zip whose `library.json` has an impossible DOS date (month 0) passes staging, then `backup_time` raises `ValueError`, so `preview_restore` and `restore_backup` answer the generic `couldnt_save`, not `restore_invalid`; `_stage`'s "this can't be refused" comment is wrong, and `list_local_backups` already treats it as unreadable. Probed in this session: `prepare_restore` raised `ValueError: month must be in 1..12, not 0`. Low. [backend/bookvie/intents/restore_file.py:_stage]
+- [x] [Review][Patch] `DAILY_NAME`/`SAFETY_NAME` use `re.match` with `$`, which accepts a trailing newline (`bookvie-backup-2026-11-19.zip\n` matched in this session's probe), and `\d` accepts non-ASCII digits; use `fullmatch` and `re.ASCII`. Low. [backend/bookvie/intents/backup_file.py:176]
+- [x] [Review][Patch] No test pins the order `unsupported` before the path check: every unsupported case uses an allowed path and every outside-path case a supported client, so swapping the two checks passes the suite. Add an unsupported client with an outside path → `restore_not_confirmed`/`unsupported`, library unchanged. Medium. Added as `test_an_unsupported_client_is_unsupported_even_for_a_path_outside_the_backups`. [backend/tests/test_restore_backup_edges.py]
+- [x] [Review][Patch] No test reaches `write_safety_copy`'s `_ZIP_ERRORS` branch (the library can't be read, e.g. a referenced cover missing from `covers/`); removing the `try/except` turns it into `couldnt_save` with no test failing. Add a leaf next to AC-8's: assert `safety_copy_failed`, no `bookvie-pre-restore-*` or temp file left, library unchanged. Medium. Added as `test_a_safety_copy_that_cant_read_the_library_is_safety_copy_failed`, in the edges file since `test_agent_restore.py` is at the 1000-line limit (TEA H5). [backend/tests/test_restore_backup_edges.py]
+- [x] [Review][Patch] The guide's Troubleshooting has no `couldnt_save` entry, though an agent restore can answer it (the backup or library can't be read, or the commit fails, possibly after the safety copy is written). Low. [docs/dropbox-backup.md:52]
+- [x] [Review][Patch] The build's `deferred-work.md` spine-drift entry (AD-22 Restore through an agent) gives the token checks as "process nonce, MAC, nonce spent, expiry", but `RestoreGate.open` checks the expiry before the issued nonce since the build-auto review patch; the reconciliation would copy the wrong order. Low. [_bmad-output/implementation-artifacts/deferred-work.md:1450]
+- Mutation check, 2026-11-22: each new leaf fails when its fix is undone (the `_stage` mapping, `DAILY_NAME.fullmatch`, the `unsupported`-before-path order, `write_safety_copy`'s `_ZIP_ERRORS` catch); each mutation reverted.
+- Full check, 2026-11-22: `npm run check` exit 0 after the last patch — pytest 2243 passed, unit 389 passed, e2e 800 passed, smoke ok.
+- [x] [Review][Defer] Spine drift (AD-21 Same handler, same answers) — deferred: spine drift, reconciled before the next epic. [backend/bookvie/agent/server.py:_answer]
+- [x] [Review][Defer] Spine drift (AD-1, Stack `mcp` row, Structural Seed, Consistency Conventions Testing row still say "planned") — deferred: spine drift, reconciled before the next epic. [backend/bookvie/agent/tools.py]
+- [x] [Review][Defer] Spine drift (AD-1, AD-22 Apply: the safety copy creates the backups folder) — deferred: spine drift, reconciled before the next epic. [backend/bookvie/intents/backup_file.py:write_safety_copy]
+- [x] [Review][Defer] The guide states client behavior AC-11 hasn't observed (the permission prompt names the tool and path; the terminal CLI can show bookvie's question, VS Code, the desktop app and `claude -p` can't) — deferred: maybe-false, medium if wrong; settled by AC-11's recorded run. [docs/dropbox-backup.md:31]
+
+Rejected:
+
+- `low` Orphan safety copy after a failed commit (Blind, Edge): the copy is a valid backup that `list_local_backups` lists as `safety`; reporting it on the error adds error surface for a rare commit failure.
+- `low` Safety-copy name race with another process (Blind): one bookvie per data folder and backups folder, and daily names can't collide with safety names.
+- `low` FIFO swapped in between `scandir` and the listing's open (Edge): needs a local actor racing the listing; it isn't under the store lock, so only that one call would block.
+- `low` `list_local_backups` reads each file twice (Blind): backups are small library zips; no named harm.
+- `low` The question doesn't name which file (Blind): UX-DR80's wording; same-minute candidates hold the same library.
+- `low` Empty `inputResponses: {}` with no `requestState` gets `changed` (Acceptance): a safe refusal, and no client sends that on a first call.
+- `low` Non-default data folders missing from the guide (Blind): only the two documented folders are in real use; the interim Story 13.3 gap is already deferred.
+- `false` Two time sources disagree (Blind): `Clock.now()` is local, aware time by contract (`SystemClock` returns `datetime.now().astimezone()`), so the names and `short_when` share one source.
+- `false` A bad first token segment reads `expired` (Blind): the spec's own rule, "an unknown process nonce is `expired` (a restart)".
+- `false` No test of a mismatched path on the answer (Blind): `test_agent_restore.py:609` `_another_path`, case `another_path` → `changed` at `:673`.
+- `false` A path through a symlinked folder into the backups folder is accepted (Acceptance): the resolved file really is in the backups folder; AC-4 bans what resolves elsewhere.
+- `reject` The spec's Design Notes give the old check order, and its Auto Run Result miscounts its patches (Blind, Edge): the fix edits the spec under review.
+- `reject` Partial-only question wording, safety names in `from-dropbox/`, spine items 1–7 (Acceptance, Spine): already recorded in `deferred-work.md` by the build.
+- `reject` Code Map names differ (Acceptance): informational, covered by the existing spine-drift entries.
+- `reject` AC-11 not run (Acceptance): handled by the manual-AC gate below.
+
+Manual-AC gate, 2026-11-22: AC-11 (Oleg's real Claude Code terminal session on `bookvie --dev` with the `ask` rule: one accept, one decline of bookvie's question, one decline of the permission prompt, plus what VS Code and `claude -p` do) has no recorded result. The review asked for it and none was given, so the story stays `in-review` (sprint-status `review`) until it is recorded and this review runs again.

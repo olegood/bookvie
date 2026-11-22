@@ -36,7 +36,12 @@ from bookvie.store import Store, referenced_covers
 
 from .backup_file import write_safety_copy
 from .commit import log
-from .contract import RestoreNotConfirmedReason, couldnt_save, restore_not_confirmed
+from .contract import (
+    RestoreNotConfirmedReason,
+    couldnt_save,
+    restore_invalid,
+    restore_not_confirmed,
+)
 from .export import EXPORT_CHUNK, SPOOL_MEMORY_LIMIT, backup_time
 from .restore import StagedRestore, apply_staged, stage_and_validate
 
@@ -154,9 +159,14 @@ def _stage(store: Store, spool: SpooledTemporaryFile) -> tuple[StagedRestore, da
     """Stage and validate the spooled archive, and read its backup time."""
     staged = stage_and_validate(store, spool)
     spool.seek(0)
-    # A staged archive is a zip holding library.json, so this can't be refused.
+    # A staged archive is a zip holding library.json, but its entry's time can still be
+    # impossible (a DOS date with month 0), which list_local_backups leaves out too.
     with zipfile.ZipFile(spool) as archive:
-        at = backup_time(archive)
+        try:
+            at = backup_time(archive)
+        except (ValueError, OverflowError) as exc:
+            log(f"couldn't restore: the file's backup time can't be read: {exc}")
+            raise restore_invalid() from exc
     return staged, at
 
 
