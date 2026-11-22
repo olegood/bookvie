@@ -5,6 +5,7 @@ from .backup import backup
 from .card_notes import card_notes, require_card_notes
 from .find_book import find_book
 from .models import (
+    AutoBackupView,
     BackupView,
     BookCandidate,
     BookCardNote,
@@ -29,6 +30,7 @@ from .stats import IsoDate, check_stats_range, stats
 
 __all__ = [
     "AppInfoView",
+    "AutoBackupView",
     "BackupView",
     "BookCandidate",
     "BookCardNote",

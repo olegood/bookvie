@@ -543,7 +543,7 @@ def test_an_unreadable_local_state_reads_as_no_export_and_an_export_leaves_it_as
         view = client.get("/api/views/backup")
 
         assert view.status_code == 200
-        assert view.json() == {"lastExportAt": None}
+        assert view.json() == {"lastExportAt": None, "autoBackup": {"installed": False}}
         assert "bookvie: couldn't read local-state.json" in capsys.readouterr().err
 
         # The download still succeeds, but the group writer (Story 13.3) can't read the

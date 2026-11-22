@@ -29,7 +29,6 @@ two real 09:00 runs, awake and after sleep (AC-7), are Oleg's, recorded in the
 spec.
 """
 
-import inspect
 import os
 import platform
 import plistlib
@@ -53,8 +52,6 @@ from bookvie.store import Store
 from tests.agent_client import RESTORE_BACKUP
 from tests.helpers import BASE_URL, TODAY
 from tests.test_backup_skill import SKILL_MD, allowed_tools
-
-RED = "Story 13.5 red phase: bookvie autobackup and the launchd probe aren't built yet"
 
 REAL_RUN = subprocess.run
 REAL_POPEN = subprocess.Popen
@@ -318,8 +315,6 @@ def _resolved(path: str | Path) -> Path:
 # --- AC-1: install writes the plist and loads it --------------------------------------
 
 
-# Un-skip when `bookvie autobackup install` writes and bootstraps the plist.
-@pytest.mark.skip(reason=RED)
 def test_install_writes_the_plist_and_bootstraps_it_and_installing_again_replaces_it(
     launchctl: Launchctl,
     tools: Tools,
@@ -396,8 +391,6 @@ def _files_under(folder: Path) -> list[str]:
     return sorted(str(path.relative_to(folder)) for path in folder.rglob("*"))
 
 
-# Un-skip when install checks where it runs, --dev and the three commands before it writes.
-@pytest.mark.skip(reason=RED)
 @pytest.mark.parametrize("case", list(REFUSALS))
 def test_install_refuses_and_writes_nothing(
     case: str,
@@ -441,8 +434,6 @@ def test_install_refuses_and_writes_nothing(
 # --- AC-3: uninstall ------------------------------------------------------------------
 
 
-# Un-skip when `bookvie autobackup uninstall` boots the job out and removes the plist.
-@pytest.mark.skip(reason=RED)
 def test_uninstall_boots_the_job_out_and_removes_the_plist_and_with_none_says_so(
     launchctl: Launchctl,
     tools: Tools,
@@ -477,8 +468,6 @@ def test_uninstall_boots_the_job_out_and_removes_the_plist_and_with_none_says_so
 # --- AC-4: run ------------------------------------------------------------------------
 
 
-# Un-skip when `bookvie autobackup run` starts bookvie, runs claude and stops what it started.
-@pytest.mark.skip(reason=RED)
 def test_run_starts_bookvie_when_health_does_not_answer_runs_claude_and_stops_only_what_it_started(
     tools: Tools,
     tmp_path: Path,
@@ -516,8 +505,6 @@ def test_run_starts_bookvie_when_health_does_not_answer_runs_claude_and_stops_on
 # --- AC-5: the headless tool lists -----------------------------------------------------
 
 
-# Un-skip when cli.py has AUTOBACKUP_ALLOWED_TOOLS and AUTOBACKUP_DISALLOWED_TOOLS.
-@pytest.mark.skip(reason=RED)
 def test_the_headless_tool_lists_are_the_skills_tools_and_never_bash_or_a_restore(
     tools: Tools,
     checkout: Path,
@@ -564,9 +551,9 @@ class ProbeSpy:
 
 
 def _backup_client(
-    data_dir: Path, *, probe: ProbeSpy, backups_dir: Path | None, dev: bool = False
+    data_dir: Path, *, probe: Callable[[], bool], backups_dir: Path | None, dev: bool = False
 ) -> TestClient:
-    """The app on a fresh library, with ``probe`` as its ``launchd_probe`` once the seam exists."""
+    """The app on a fresh library, with ``probe`` as its ``launchd_probe``."""
     data_dir.mkdir(parents=True, exist_ok=True)
     app_kwargs: dict[str, Any] = {
         "data_dir": data_dir,
@@ -574,9 +561,8 @@ def _backup_client(
         "clock": FakeClock(TODAY),
         "dev": dev,
         "backups_dir": backups_dir,
+        "launchd_probe": probe,
     }
-    if "launchd_probe" in inspect.signature(create_app).parameters:
-        app_kwargs["launchd_probe"] = probe
     app = create_app(data_dir / "no-static", **app_kwargs)
     return TestClient(app, base_url=BASE_URL, raise_server_exceptions=True)
 
@@ -589,8 +575,6 @@ class _Stop(Exception):
     """Ends ``cli.main`` at ``create_app``, once its keywords are seen."""
 
 
-# Un-skip when create_app takes launchd_probe and views/backup carries autoBackup.installed.
-@pytest.mark.skip(reason=RED)
 def test_the_backup_view_carries_whether_the_job_is_installed_and_only_the_real_library_probes(
     launchctl: Launchctl,
     tmp_path: Path,
@@ -662,3 +646,227 @@ def test_the_backup_view_carries_whether_the_job_is_installed_and_only_the_real_
         for sock in sockets:
             sock.close()
     assert seen.get("launchd_probe") is cli.launchd_job_installed
+
+
+# --- Follow-ups: the secondary branches ------------------------------------------------
+
+
+@pytest.mark.parametrize("failure", ["exit", "oserror"])
+def test_install_fails_with_a_message_when_launchctl_bootstrap_fails(
+    failure: str,
+    launchctl: Launchctl,
+    tools: Tools,
+    checkout: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    # [P1] AC-1
+    monkeypatch.chdir(checkout)
+    if failure == "exit":
+        launchctl.returncode = 5
+    else:
+        launchctl.raises = OSError("launchctl not found")
+
+    code = _main(["autobackup", "install"])
+
+    err = _messages(capsys.readouterr().err)
+    assert code == 1
+    assert "launchctl" in err, err
+    assert not re.search(r"\binstalled\b", err), err
+    assert "bootstrap" in launchctl.verbs()
+
+
+def test_install_creates_the_logs_folder(
+    tools: Tools, checkout: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # [P2] AC-1
+    monkeypatch.chdir(checkout)
+
+    assert _main(["autobackup", "install"]) == 0
+
+    assert (Path.home() / "Library" / "Logs" / "bookvie").is_dir()
+
+
+def test_install_refuses_a_subfolder_of_the_main_checkout(
+    launchctl: Launchctl,
+    tools: Tools,
+    checkout: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    # [P2] AC-2
+    monkeypatch.chdir(checkout / ".claude")
+
+    code = _main(["autobackup", "install"])
+
+    assert re.search(REFUSALS["no_skill"], _messages(capsys.readouterr().err))
+    assert code != 0
+    assert not (Path.home() / "Library").exists()
+    assert launchctl.writes() == []
+
+
+@pytest.mark.parametrize("action", ["uninstall", "run"])
+def test_uninstall_and_run_refuse_dev(
+    action: str,
+    launchctl: Launchctl,
+    tools: Tools,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    # [P1] AC-3
+    asked = _health(monkeypatch, lambda: False)
+
+    code = _main(["--dev", "autobackup", action])
+
+    assert re.search(REFUSALS["dev"], _messages(capsys.readouterr().err))
+    assert code != 0
+    assert launchctl.calls == []
+    assert asked == []
+    assert _lines(tools.log / "bookvie.args") is None
+    assert _lines(tools.log / "claude.args") is None
+
+
+def test_run_gives_up_on_a_bookvie_that_never_answers_and_stops_it(
+    tools: Tools,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    # [P1] AC-4
+    monkeypatch.setattr(cli, "_AUTOBACKUP_HEALTH_WAIT_SECONDS", 0.5)
+    _health(monkeypatch, lambda: False)
+
+    code = _main(["autobackup", "run"])
+
+    assert code == 1
+    assert _lines(tools.log / "bookvie.args") == ["--no-browser"]
+    assert (tools.log / "bookvie.term").exists(), "the server it started got no SIGTERM"
+    assert _lines(tools.log / "claude.args") is None
+    assert re.search(r"didn't answer", capsys.readouterr().err)
+
+
+def test_run_gives_up_when_the_server_it_started_exits(
+    tools: Tools,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    # [P2] AC-4
+    _command(
+        tools.bookvie, "bookvie", '#!/bin/sh\n: > "$AUTOBACKUP_TEST_LOG/bookvie.started"\nexit 3\n'
+    )
+    _health(monkeypatch, lambda: False)
+
+    code = _main(["autobackup", "run"])
+
+    assert code == 1
+    assert (tools.log / "bookvie.started").exists()
+    assert _lines(tools.log / "claude.args") is None
+
+
+def test_run_without_claude_starts_nothing(
+    tools: Tools,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    # [P1] AC-4
+    _use_path(monkeypatch, [tools.bookvie, tools.dropbox])
+    asked = _health(monkeypatch, lambda: False)
+
+    code = _main(["autobackup", "run"])
+
+    assert code == 1
+    assert re.search(REFUSALS["no_claude"], _messages(capsys.readouterr().err))
+    assert _lines(tools.log / "bookvie.args") is None
+    assert asked == []
+
+
+def test_run_stops_a_claude_that_hangs_and_the_server_it_started(
+    tools: Tools,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    # [P2] AC-4
+    _command(tools.claude, "claude", "#!/bin/sh\nexec sleep 30\n")
+    monkeypatch.setattr(cli, "_AUTOBACKUP_CLAUDE_TIMEOUT_SECONDS", 0.5)
+    _health(monkeypatch, lambda: (tools.log / "bookvie.started").exists())
+
+    code = _main(["autobackup", "run"])
+
+    assert code == 1
+    assert (tools.log / "bookvie.term").exists(), "the server it started got no SIGTERM"
+    assert re.search(r"claude didn't finish", capsys.readouterr().err)
+
+
+def test_a_probe_that_raises_reads_as_not_installed(tmp_path: Path) -> None:
+    # [P1] AC-6
+    def broken() -> bool:
+        raise RuntimeError("launchd is confused")
+
+    client = _backup_client(
+        tmp_path / "library", probe=broken, backups_dir=Path.home() / "bookvie-backups"
+    )
+
+    response = client.get("/api/views/backup")
+
+    assert response.status_code == 200
+    assert response.json() == {"lastExportAt": None, "autoBackup": {"installed": False}}
+
+
+def test_an_existing_real_backups_folder_follows_the_probe_and_another_never_probes(
+    tmp_path: Path,
+) -> None:
+    # [P1] AC-6
+    real_backups = Path.home() / "bookvie-backups"
+    real_backups.mkdir()
+    probe = ProbeSpy(True)
+    client = _backup_client(tmp_path / "library", probe=probe, backups_dir=real_backups)
+
+    assert _installed(client) is True
+    probe.answer = False
+    assert _installed(client) is False
+    assert probe.calls == 2
+
+    other = tmp_path / "other-backups"
+    other.mkdir()
+    spy = ProbeSpy(True)
+    assert _installed(_backup_client(tmp_path / "other", probe=spy, backups_dir=other)) is False
+    assert spy.calls == 0
+
+
+def test_run_exits_1_when_claude_is_killed_by_a_signal(
+    tools: Tools, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # [P2] AC-4
+    _command(tools.claude, "claude", "#!/bin/sh\nkill -TERM $$\n")
+    _health(monkeypatch, lambda: True)
+
+    assert _main(["autobackup", "run"]) == 1
+
+
+def test_uninstall_with_a_loaded_job_and_no_plist_says_it_uninstalled(
+    launchctl: Launchctl, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # [P2] AC-3
+    assert _plists() == []
+
+    assert _main(["autobackup", "uninstall"]) == 0
+
+    said = capsys.readouterr()
+    assert "bootout" in launchctl.verbs()
+    assert re.search(r"\buninstalled\b", said.err), said
+    assert "isn't installed" not in said.out + said.err
+
+
+def test_run_without_bookvie_while_health_is_silent_runs_no_claude(
+    tools: Tools,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    # [P2] AC-4
+    _use_path(monkeypatch, [tools.dropbox, tools.claude])
+    _health(monkeypatch, lambda: False)
+
+    code = _main(["autobackup", "run"])
+
+    assert code == 1
+    assert re.search(REFUSALS["no_bookvie"], _messages(capsys.readouterr().err))
+    assert _lines(tools.log / "claude.args") is None

@@ -344,7 +344,20 @@ def app_info_view(request: Request) -> views.AppInfoView:
 
 @router.get("/views/backup", response_model=views.BackupView)
 def backup_view(request: Request) -> views.BackupView:
-    return views.backup(request.app.state.store)
+    return views.backup(
+        request.app.state.store, auto_backup_installed=_auto_backup_installed(request)
+    )
+
+
+def _auto_backup_installed(request: Request) -> bool:
+    """The app's ``launchd_probe``, asked on each read; ``False`` without one or when it raises."""
+    probe = request.app.state.launchd_probe
+    if probe is None:
+        return False
+    try:
+        return probe() is True
+    except Exception:
+        return False
 
 
 @router.get("/views/home", response_model=views.HomeView)

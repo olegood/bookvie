@@ -347,14 +347,17 @@ def test_cover_path_finds_only_referenced_existing_files(
 def test_backup_view_before_any_export(tmp_path: Path) -> None:
     response = api_client(tmp_path, raise_server_exceptions=True).get("/api/views/backup")
     assert response.status_code == 200
-    assert response.json() == {"lastExportAt": None}
+    assert response.json() == {"lastExportAt": None, "autoBackup": {"installed": False}}
 
 
 def test_backup_view_reads_local_state(tmp_path: Path) -> None:
     client = api_client(tmp_path, raise_server_exceptions=True)
     (tmp_path / "local-state.json").write_text('{"lastExportAt": "2026-10-01T09:30:00+02:00"}')
     response = client.get("/api/views/backup")
-    assert response.json() == {"lastExportAt": "2026-10-01T09:30:00+02:00"}
+    assert response.json() == {
+        "lastExportAt": "2026-10-01T09:30:00+02:00",
+        "autoBackup": {"installed": False},
+    }
 
 
 @pytest.mark.parametrize("raw", ["{oops", '{"lastExportAt": ["2026-10-01"]}'])
@@ -365,7 +368,7 @@ def test_backup_view_reads_malformed_local_state_as_no_export(
     (tmp_path / "local-state.json").write_text(raw)
     response = client.get("/api/views/backup")
     assert response.status_code == 200
-    assert response.json() == {"lastExportAt": None}
+    assert response.json() == {"lastExportAt": None, "autoBackup": {"installed": False}}
     assert "bookvie: local-state.json" in capsys.readouterr().err
 
 

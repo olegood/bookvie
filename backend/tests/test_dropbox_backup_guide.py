@@ -266,7 +266,6 @@ def test_the_guide_says_how_the_backup_works_runs_it_once_by_hand_and_fixes_a_fa
 
 # --- Story 13.5: install, uninstall and launchd troubleshooting ---------------------
 
-RED_13_5 = "Story 13.5 red phase: the guide doesn't install the launchd job yet"
 LAUNCHD_LOGS = "~/Library/Logs/bookvie/"
 
 
@@ -275,8 +274,6 @@ def _entries(text: str, pattern: str) -> list[str]:
     return [" ".join(entry.split()) for entry in headed(text, pattern)]
 
 
-# Un-skip when docs/dropbox-backup.md installs, uninstalls and troubleshoots the launchd job.
-@pytest.mark.skip(reason=RED_13_5)
 def test_the_guide_installs_and_uninstalls_the_job_and_troubleshoots_launchd(
     capsys: pytest.CaptureFixture[str],
 ) -> None:

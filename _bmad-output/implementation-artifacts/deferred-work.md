@@ -1593,3 +1593,18 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-4-back-up-to-dropbox-with-one-skill.md`
   summary: Spine drift (AD-22 Causes), reconciled before the next epic: the skill records `other` for an `upload_backup` error whose text isn't JSON, has no `cause`, or names an unknown one (an MCP timeout on the client side, say); AD-22 puts "a timeout" in `upload_incomplete`, which is bookvie-dropbox's own timeout, and says nothing of a call the skill gets no answer from. Low.
   evidence: code review spine-check finding 4; `.claude/skills/bookvie-backup/SKILL.md` step 4.
+
+## Deferred from: build-auto review of spec-13-5-run-the-backup-every-morning (2026-11-22)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-5-run-the-backup-every-morning.md`
+  summary: Spine drift (AD-22 Auto-backup state), reconciled before the next epic: `views/backup` carries `autoBackup: {installed: bool}` (Oleg's ATDD decision, 2026-11-22); AD-22 lists only `state`, `offReason`, `reportAt`, `lastOkAt`, `lastUploadAt`, `copies` and `cause`. Low.
+  evidence: build-auto review spine-check finding 1; `backend/bookvie/views/models.py` `AutoBackupView`.
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-5-run-the-backup-every-morning.md`
+  summary: Spine drift (AD-22, Source tree, Structural Seed), reconciled before the next epic: `cli.py`'s `autobackup install|uninstall|run`, `create_app`'s `launchd_probe` and the seed diagram's launchd 09:00 are built, but the spine still marks them "(planned)". Low.
+  evidence: build-auto review spine-check finding 2.
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-5-run-the-backup-every-morning.md`
+  summary: Spine drift (Consistency Conventions Config row, AD-22 The schedule), reconciled before the next epic: the Config row lists only `bookvie autobackup install` and `uninstall` as planned; `run` exists too. Low.
+  evidence: build-auto review spine-check finding 3; `backend/bookvie/cli.py` `parse_args`.
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-5-run-the-backup-every-morning.md`
+  summary: Spine drift (AD-1), reconciled before the next epic: AD-1 says the one thing written outside the data folder is an agent's backup; `bookvie autobackup install` also writes `~/Library/LaunchAgents/com.bookvie.autobackup.plist` and creates `~/Library/Logs/bookvie/`. Low.
+  evidence: build-auto review spine-check finding 4; `backend/bookvie/cli.py` `_autobackup_install`.
