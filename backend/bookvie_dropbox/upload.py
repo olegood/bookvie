@@ -267,8 +267,9 @@ def _upload(dbx: Any, source: BinaryIO, name: str, backup_time: datetime, size: 
     if sent != size or answered_size != size or answered_hash != expected:
         raise UploadRefused(
             "upload_incomplete",
-            f"Dropbox's copy of {name} doesn't match the file (size or content hash), "
-            "so nothing was deleted. Try again.",
+            f"Dropbox's copy of {name} doesn't match the file (size or content hash). "
+            f"It has already replaced any earlier copy of {name} in Dropbox, but no other "
+            "backup was deleted. Try again.",
         )
     return expected
 
@@ -302,6 +303,7 @@ def _prune(dbx: Any, written: str) -> tuple[int, list[str]]:
     """Delete the oldest daily backups beyond :data:`KEEP`, never ``written``; the copies left
     and the names deleted. A failure here is ``other``: the upload stands, verified."""
     deleted: list[str] = []
+    due: list[str] = []
     try:
         others: dict[str, tuple[Any, str]] = {}
         for entry in _list_backups(dbx):
@@ -313,16 +315,19 @@ def _prune(dbx: Any, written: str) -> tuple[int, list[str]]:
             others[entry.name.lower()] = (day, entry.name)
         newest_first = sorted(others.values(), reverse=True)
         kept, extra = newest_first[: KEEP - 1], newest_first[KEEP - 1 :]
-        for _, name in sorted(extra):
+        due = [name for _, name in sorted(extra)]
+        for name in due:
             dbx.files_delete_v2(f"{DROPBOX_FOLDER}/{name}")
             deleted.append(name)
     except Exception as exc:  # noqa: BLE001 - the upload is verified; the prune is reported
         done = f" It deleted {', '.join(deleted)}." if deleted else ""
+        left = due[len(deleted) :]
+        kept_on = f" It didn't delete {', '.join(left)}." if left else ""
         raise UploadRefused(
             "other",
             f"{written} was uploaded and verified, but deleting the older daily backups "
-            f"didn't finish ({type(exc).__name__}).{done} Dropbox may hold more than {KEEP} "
-            "daily backups until the next upload.",
+            f"didn't finish ({type(exc).__name__}).{done}{kept_on} Dropbox may hold more "
+            f"than {KEEP} daily backups until the next upload.",
         ) from None
     return 1 + len(kept), deleted
 

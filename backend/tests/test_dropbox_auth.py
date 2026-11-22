@@ -365,3 +365,40 @@ def test_a_taken_redirect_port_is_a_clear_error_before_the_browser_opens(
     assert browser.opened == 0
     assert str(auth.REDIRECT_PORT) in str(error)
     _assert_untouched(keychain, fakes, error, capsys)
+
+
+def test_an_idle_connection_before_the_redirect_is_dropped_and_the_sign_in_finishes(
+    fakes: Any, keychain: Any, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # A browser's preconnect: a socket that connects and sends nothing. Without the
+    # handler's idle timeout, handle_request would wait on it until it closes.
+    import socket
+    import time
+
+    auth = import_or_fail("bookvie_dropbox.auth")
+    api = import_or_fail("bookvie_dropbox.dropbox_api")
+    assert 0 < auth._Handler.__dict__.get("timeout", 0) <= 10  # the handler's own, not None
+    monkeypatch.setattr(auth._Handler, "timeout", 0.3)
+    http = fakes.FakeDropboxHttp(app_key=api.APP_KEY, issue_refresh_token=NEW_TOKEN)
+    browser = Browser(http)
+    idle: list[socket.socket] = []
+
+    def preconnect_then_visit(url: str) -> bool:
+        idle.append(socket.create_connection(("127.0.0.1", auth.REDIRECT_PORT)))
+        threading.Timer(3.0, idle[0].close).start()
+        return browser(url)
+
+    started = time.monotonic()
+    try:
+        auth.run_auth(open_browser=preconnect_then_visit, session=fakes.http_session(http))
+    finally:
+        for sock in idle:
+            sock.close()
+    elapsed = time.monotonic() - started
+    browser.join()
+
+    assert browser.visited == [200]
+    assert elapsed < 2.0, elapsed
+    assert keychain.items == {(fakes.KEYRING_SERVICE, fakes.KEYRING_ACCOUNT): NEW_TOKEN}
+    out = capsys.readouterr()
+    assert NEW_TOKEN not in out.out + out.err

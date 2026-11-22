@@ -4,17 +4,10 @@ import argparse
 import sys
 from collections.abc import Sequence
 
-# Imported here, not on demand, so `--help` loads dropbox, keyring and mcp: the install
-# smoke test runs `bookvie-dropbox --help` to prove they ship.
-from . import dropbox_api
+# Imported here, not on demand, so `--help` loads dropbox, keyring (through auth's
+# dropbox_api) and mcp: the install smoke test runs `bookvie-dropbox --help` to prove they ship.
 from .auth import AuthFailed, run_auth
 from .server import serve
-
-_NO_APP_KEY = (
-    "bookvie-dropbox: the Dropbox app key isn't set yet. Register bookvie's Dropbox app and "
-    "put its App key in APP_KEY in backend/bookvie_dropbox/dropbox_api.py, then reinstall: "
-    "see Setup in docs/dropbox-backup.md."
-)
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -39,9 +32,6 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
 def main(argv: Sequence[str] | None = None) -> None:
     args = parse_args(argv)
     if args.command == "auth":
-        if dropbox_api.APP_KEY == dropbox_api.APP_KEY_PLACEHOLDER:
-            print(_NO_APP_KEY, file=sys.stderr)
-            sys.exit(1)
         try:
             run_auth()
         except AuthFailed as exc:

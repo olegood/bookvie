@@ -2,7 +2,7 @@
 title: 'Story 13.2: Upload a backup to my Dropbox'
 type: 'feature'
 created: '2026-11-22'
-status: 'in-review'
+status: 'done'
 baseline_revision: '72ee0d6ebd5ff61ac0e7f11055c41aec046d7ecc'
 review_loop_iteration: 0
 followup_review_recommended: true
@@ -163,6 +163,46 @@ deferred:
 **Acceptance Criteria:**
 - Given the 13 Story 13.2 leaves un-skipped, when `cd backend && TZ=Europe/Madrid uv run pytest -q tests/test_dropbox_upload.py tests/test_dropbox_auth.py tests/test_dropbox_contracts.py tests/test_dropbox_package.py tests/test_layers.py tests/test_dropbox_backup_guide.py tests/test_stack_pins.py tests/test_wheel_build.py` runs, then every case passes (36 Story 13.2 cases, plus the 4 stack-pin cases).
 - Given the installed tool, when `npm run check` runs from the repo root, then it passes, including the smoke step running `bookvie-dropbox --help`.
+
+### Review Findings
+
+Code review (bmad-code-review, new session), 2026-11-22. Diff `72ee0d6..031f0ec`. Layers: Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor, Spine Check; none failed.
+
+- [x] [Review][Decision] A same-day rerun whose finish commits but answers a wrong size or hash has already replaced the earlier copy — resolved by Oleg (option 1): patch the mismatch message to say the earlier same-day copy was replaced, and defer the AC-9 / AD-22 wording as spine drift. `_upload` finishes straight to `/.backups/<name>` with `WriteMode.overwrite` and only then compares `size`/`content_hash`, so the `upload_incomplete` answer comes after the overwrite. epics.md AC-9 ("that day's copy is replaced only once the new one verifies; a failed second upload leaves the first in place") and the matrix row "Same-day rerun" are met only for faults before the finish (the AC-9 test uses `fail_chunk`). The answer's "nothing was deleted" and the tool description's "A failed or mismatched upload deletes nothing" overstate it. Only "Residual risks" mentions it; no deferral. In practice every request carries Dropbox's per-request hash, so a committed mismatch needs a Dropbox-side fault. Medium. Sources: blind-hunter 1, edge-case 1/8/9, acceptance-auditor 1. [backend/bookvie_dropbox/upload.py:215]
+- [x] [Review][Patch] The size/hash mismatch answer says "nothing was deleted" though the finish has already replaced any earlier same-day copy; say so in the message (from the decision above). Fixed: "It has already replaced any earlier copy of <name> in Dropbox, but no other backup was deleted."; test `test_a_mismatched_same_day_finish_says_it_replaced_the_earlier_copy`. [backend/bookvie_dropbox/upload.py:268]
+- [x] [Review][Patch] No test uploads an older daily over three newer ones; the rule the build review rejected blind 1 on (16 Nov over 17–19 deletes 17 Nov, keeps 16) can change unseen; the ATDD follow-up is unchecked. Added `test_an_older_daily_over_three_newer_deletes_the_oldest_other_never_the_one_written`; fails when `written` is ranked with the others. [backend/tests/test_dropbox_upload_edges.py]
+- [x] [Review][Patch] No test feeds a daily-named file that isn't a zip, or a zip without `library.json`: moving `_connect` above `read_backup_time`, or falling back to mtime, passes the suite. Assert `other`, `connect` not called, no Dropbox call. Added `test_a_daily_name_that_isnt_a_bookvie_zip_is_refused_before_connecting` (2 cases); fails when `_connect` runs first. [backend/tests/test_dropbox_upload_edges.py]
+- [x] [Review][Patch] The rate-limit cap (`max_retries_on_rate_limit=3`) is untested: the edge test raises `RateLimitError` from the fake directly, so removing the cap (an endless 429 retry) passes the suite. Added `test_a_persistent_rate_limit_stops_after_three_sdk_retries` (real SDK over a 429-only `FakeDropboxHttp`, sleep stubbed: 4 requests, 3 sleeps); fails with `None`. [backend/bookvie_dropbox/dropbox_api.py:57]
+- [x] [Review][Patch] The redirect handler's idle-socket timeout (`_Handler.timeout = 10`) is untested: no test holds an idle connection open, so removing it passes the suite. Added `test_an_idle_connection_before_the_redirect_is_dropped_and_the_sign_in_finishes` (idle socket first, sign-in under 2 s); fails with `timeout = None`. [backend/bookvie_dropbox/auth.py:76]
+- [x] [Review][Patch] The partial-prune message names what was deleted, not what wasn't, while Design Notes say it names "which names weren't deleted". Low. Fixed: the message adds "It didn't delete <names>."; the partial-prune test asserts both lists. [backend/bookvie_dropbox/upload.py:320]
+- [x] [Review][Patch] The placeholder-key guard is dead since `031f0ec` set the real `APP_KEY`: `APP_KEY_PLACEHOLDER`, `_NO_APP_KEY` and the `cli.main` check can't fire and no test covers them; remove them. Low. Removed; `cli.py`'s eager imports still load `dropbox`, `keyring` and `mcp` through `.auth` and `.server`. [backend/bookvie_dropbox/cli.py:13]
+- [x] [Review][Patch] README says `upload_backup` "keeps the 3 newest", but uploading an older daily keeps it and deletes a newer one; say it keeps 3 daily copies. Low. Fixed. [README.md:114]
+- [x] [Review][Defer] Spine drift (AD-8, AD-21 One validator), reconciled before the next epic: `upload_backup`'s input schema is a hand-written dict, not generated from a Pydantic model, and a bad argument answers `other`, not `invalid_fields`; the spine says neither whether `bookvie_dropbox` is exempt nor how its arguments are validated. [backend/bookvie_dropbox/server.py] — deferred: spine drift.
+- [x] [Review][Defer] Spine drift (AD-22 Dropbox tools), reconciled before the next epic: a finish that commits but answers a wrong size or hash has already replaced an earlier same-day copy (`WriteMode.overwrite` commits before the check), so AC-9's "a failed second upload leaves the first in place" and the tool description's "A failed or mismatched upload deletes nothing" hold only for faults before the finish; narrow AD-22 and the epics.md wording (and the description, epics.md first). [backend/bookvie_dropbox/upload.py:215] — deferred: spine drift; Oleg chose an honest message over a temp-name-and-move, which needs `files_move_v2` and leaves a moment with no copy.
+- [x] [Review][Defer] AC-10's leaf asserts only `cause in CAUSES`; a per-branch change to a refused path's cause passes. The red leaf can't change; add a parametrised `== "other"` check. [backend/tests/test_dropbox_upload.py:477] — deferred: `bmad-testarch-automate`.
+- [x] [Review][Defer] `cli.main`'s `auth` branch (`AuthFailed` → exit 1, `KeyboardInterrupt` → 130) has no test. [backend/bookvie_dropbox/cli.py:39] — deferred: `bmad-testarch-automate`.
+
+Full check after the patches, 2026-11-22: `npm run check` exit 0 (pytest 2320 passed, unit 389 passed, e2e 800 passed, smoke passed). An earlier run, before the last patch (a test helper renamed for the TEA hook), also exited 0.
+
+Rejected:
+- `false` Blind 2: a same-size in-place rewrite of the zip during the upload — bookvie writes a daily backup to a temp file and renames it over (`backup_file.py:153`), so the open descriptor keeps the old inode and the hash is the file's.
+- `false` Blind 11: no test of a size that is an exact multiple of `CHUNK` — the empty finish happens only for a file ≤ `CHUNK`, which every small-zip test takes; a 16 MiB file finishes with its last full chunk, the same path as the 150 MiB test.
+- `false` Edge 5: `~/bookvie-backups-dev` symlinked to `~/bookvie-backups` refuses every backup — the deliberate `folder == dev` guard, tested by the build review.
+- `false` Acceptance 5: the README edit goes beyond the Agent tools paragraph — the changed paragraph is under `## Agent tools`.
+- `low` Blind 3 / spec matrix: a failed prune after verify drops `name`/`contentHash` from the answer — the spec's matrix and Design Notes chose `other` so 13.4 records a failure; changing it is a spec edit.
+- `low` Blind 5 / edge 3: `InternalServerError`/`HttpError` map to `other` — the spec matrix pins `InternalServerError` → `other`; a spec edit.
+- `low` Acceptance 4: non-space `ApiError`s map to `upload_incomplete` — with the fixed folder and names, the reachable ones are session faults, which are upload faults.
+- `low` Blind 6: `auth` doesn't revoke the old refresh token — App-folder scope only; adds a call and its failure handling.
+- `low` Blind 7: the guide lacks a port-8790 entry — the `AuthFailed` message names the port and the fix.
+- `low` Blind 12: the smoke doesn't start `serve` — `test_dropbox_upload.py:120` lists tools through the real stdio server.
+- `low` Blind 13: `assert cause in CAUSES` is stripped by `-O` — nothing runs bookvie with `-O`.
+- `low` Blind 14: `_version()` is `""` without package metadata — the installed wheel always has it.
+- `low` Edge 2 / 4: concurrent calls, or a daily already gone at delete, answer `other` — one skill call at a time; the next upload prunes again.
+- `low` Edge 6: the auth wait can overrun by up to 10 s — negligible.
+- `low` Edge 7: `open_browser` raising prints a traceback — `webbrowser.open` returns `False` rather than raising; the URL is printed first.
+- `low` Verification-gap other 2: nothing asserts `cli.py`'s eager imports — the comment states the reason; today's code is covered.
+- Spec edits (Auto Run Result's stale "placeholder" lines, "9 leaves" vs 13, `upload_backup(dbx, path)`, Boundaries' "keep the 3 newest") — fixes edit the spec under review.
+- Spine 1–4, 6–8 and spine 5 (`CAUSES`) — already deferred by the build review in `deferred-work.md`.
 
 ## Spec Change Log
 

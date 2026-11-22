@@ -12,7 +12,6 @@ import dropbox
 import keyring
 import keyring.errors
 
-APP_KEY_PLACEHOLDER = "REPLACE-WITH-YOUR-DROPBOX-APP-KEY"
 APP_KEY = "ohbyik601prm6w6"
 """The app key of bookvie's registered Dropbox app (its Settings page, "App key"). A PKCE
 app key isn't a secret. A different app's key goes here, then reinstall

@@ -1528,3 +1528,18 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-2-upload-a-backup-to-my-dropbox.md`
   summary: A refresh refused with something other than 400 `invalid_grant` (for example an unknown app key) becomes the SDK's `BadInputError`, which `upload_backup` answers as `other`, not `dropbox_signin`. Medium if Dropbox answers a wrong app key that way, unverified; settled by Story 13.4's first real run or a check of Dropbox's token-endpoint errors. Medium (unverified).
   evidence: verification-gap other finding 2; `.venv/.../dropbox/dropbox_client.py` `raise_dropbox_error_for_resp`.
+
+## Deferred from: code review of spec-13-2-upload-a-backup-to-my-dropbox (2026-11-22)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-2-upload-a-backup-to-my-dropbox.md`
+  summary: Spine drift (AD-8, AD-21 One validator), reconciled before the next epic: `upload_backup`'s input schema is a hand-written dict, not generated from a Pydantic model, and a bad argument answers cause `other`, not `invalid_fields`; AD-8 and AD-21 describe the rule for bookvie's `agent/` tools only, and AD-22 says neither that `bookvie_dropbox` is exempt nor how its arguments are validated. Low.
+  evidence: `backend/bookvie_dropbox/server.py` `UPLOAD_BACKUP_SCHEMA`, `_answer`; code review spine-check finding 5.
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-2-upload-a-backup-to-my-dropbox.md`
+  summary: AC-10's red leaf asserts only `cause in CAUSES` for a refused path, so a per-branch change of one refusal's cause passes; add a parametrised `== "other"` check over every AC-10 case in `test_dropbox_upload_edges.py` (the leaf itself can't change). For `bmad-testarch-automate`. Low.
+  evidence: `backend/tests/test_dropbox_upload.py:477`; code review verification-gap finding 5.
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-2-upload-a-backup-to-my-dropbox.md`
+  summary: `cli.main`'s `auth` branch has no test: `AuthFailed` → stderr and exit 1, `KeyboardInterrupt` → exit 130. For `bmad-testarch-automate`. Low.
+  evidence: `backend/bookvie_dropbox/cli.py` `main`; code review verification-gap other finding 1.
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-2-upload-a-backup-to-my-dropbox.md`
+  summary: Spine drift (AD-22 Dropbox tools), reconciled before the next epic: `upload_backup` finishes straight to `/.backups/<name>` with `WriteMode.overwrite` and checks `size`/`content_hash` after the commit, so a finish answering a mismatch has already replaced an earlier same-day copy. epics.md AC-9 ("a failed second upload leaves the first in place") and the tool description ("A failed or mismatched upload deletes nothing") hold only for faults before the finish; narrow AD-22 and epics.md (the description changes in epics.md first). Oleg's call in review: an honest mismatch message, not a temp name plus `files_move_v2` (which can't overwrite, so it leaves a moment with no copy). Medium.
+  evidence: `backend/bookvie_dropbox/upload.py` `_upload`; code review blind-hunter 1, edge-case 1, acceptance-auditor 1.
