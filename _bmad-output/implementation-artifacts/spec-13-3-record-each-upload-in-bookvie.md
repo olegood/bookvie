@@ -2,7 +2,7 @@
 title: 'Story 13.3: Record each upload in bookvie'
 type: 'feature'
 created: '2026-11-22'
-status: 'in-review'
+status: 'done'
 baseline_revision: '609cd19acffbff977f5252cff55a5b0714daaf43'
 review_loop_iteration: 0
 followup_review_recommended: true
@@ -125,6 +125,38 @@ deferred:
 **Acceptance Criteria:**
 - Given the 7 ATDD leaves un-skipped, when the backend suite runs, then they pass, and the 13 tool-list cases pass unchanged.
 - Given `npm run check`, when it runs, then it passes.
+
+### Review Findings
+
+Code review, 2026-11-22 (new session; layers: blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor, spine-check; none failed). Diff `609cd19..a738c70` without `_bmad-output/`.
+
+- [x] [Review][Decision] A bad `forUpload` is refused on `intent`, not on `forUpload` — `_export_backup` parses with `parse_arguments` (spec Task 4, AD-21's `get_app_info` rule), so `{"forUpload": "true"}` answers `invalid_fields` on `intent` with "The intent must be a JSON object of the form's fields." An agent can't tell which argument was wrong, while `record_backup_upload` in the same story names each argument by key; `test_for_upload_that_isnt_a_boolean_is_refused_and_writes_no_file` checks only the code. Low (blind-hunter). Resolved by Oleg (2026-11-22): patch, below.
+- [x] [Review][Patch] Parse `export_backup`'s arguments with `parse_view_arguments`, so a bad `forUpload` is refused on `forUpload`; the test asserts the field [backend/bookvie/agent/tools.py:764]
+- [x] [Review][Patch] The 50-thread race test passes even if a writer hangs: `join(30)` with no `is_alive` check, and no check that no temp file is left [backend/tests/test_agent_backup_upload.py:673]
+- [x] [Review][Patch] `write_backup`'s "can't read the built zip" branch has no test; narrowing its except tuple or deleting it fails nothing [backend/bookvie/intents/backup_file.py:175]
+- [x] [Review][Patch] `record_backup_upload`'s unreadable daily file (`PermissionError` from `open`) has no test, though the symlink/unreadable leaf's name says it does [backend/tests/test_agent_backup_upload.py]
+- [x] [Review][Patch] The docs say a data folder like `~/bookvie` gets no backups folder but give no way out (rename or move the data folder) [docs/dropbox-backup.md:88]
+- [x] [Review][Defer] `read_last_export` reads a JSON object without `lastExportAt` (`{}` or only `autoBackup`) as no export without a log, where AD-15 says a malformed file is logged; the `{}` case left `test_store.py`'s malformed list [backend/bookvie/store/local_state.py] — deferred: spine drift (AD-15), reconciled before the next epic; the code is right for the two-group file.
+- [x] [Review][Defer] After patch 1, AD-21 still says `export_backup` refuses as the malformed intent on `intent` [backend/bookvie/agent/tools.py:764] — deferred: spine drift (AD-21 One validator), reconciled before the next epic.
+
+- Full check after the patches, 2026-11-22: `npm run check` exit 0 (pytest 2379 passed, unit 389 passed, e2e 800 passed; api and smoke passed).
+
+**Rejected:**
+- `low` (edge-case-hunter) Case folding refuses `~/BookVie-backups` on a case-sensitive disk — the spec's Design Notes choice, already rejected in the build review; it fails closed and the fix adds a filesystem probe.
+- `low` (edge-case-hunter) A data folder inside `~/bookvie-backups` (e.g. `~/bookvie-backups/x`) writes into a subfolder of it — no one keeps their library inside the backups folder; a parents check adds a branch for it.
+- `low` (edge-case-hunter) A symlink swapped in between the lstat and the `open` — needs write access to the user's own backups folder; already rejected in the build review.
+- `low` (acceptance-auditor) The checks run in stages, so a bad `copies` hides a bad `path` until a retry — the matrix's "all failing ones" is on the Upload args row, which is met; merging the stages restructures the intent.
+- `low` (acceptance-auditor, blind-hunter) `record_backup_upload` validates in the intents layer, re-implements `parse_view_arguments`' error loop and validates twice — the answers are the same `invalid_fields` by alias with Pydantic's messages; already rejected as cosmetic in the build review.
+- `low` (acceptance-auditor) An unreadable `local-state.json` is left as it is — the spec's matrix choice, already deferred as spine drift (AD-15).
+- `low` (acceptance-auditor) No new test that a restore keeps `autoBackup` — route and tool restores share the handler, which never calls the writer, and `test_agent_restore.py` pins `local-state.json` byte-identical.
+- `low` (blind-hunter) The input schema has no per-field descriptions — the description is fixed by epics.md, the 13.4 skill carries the rules, and descriptions would add advertised surface the schema tests compare.
+- `low` (blind-hunter) Refusal messages mix three styles — cosmetic; no AC fixes the messages.
+- `low` (blind-hunter) A malformed `autoBackup` group is replaced without a log — needs a hand-edited file; a log adds branches.
+- `false` (blind-hunter) `create_app` can't tell "no backups folder" from "not passed" — it re-runs the same rule on the same data folder and gets the same `None`; no caller needs to force "none".
+- `false` (blind-hunter) No test that unreplaced `autoBackup` keys are kept — `test_agent_backup_upload.py:316,330` assert a skip and a failure keep `lastUpload` as it was.
+- `low` (blind-hunter) An older upload record replaces a newer one — the last call wins, and only the daily run calls it once per run; a date comparison adds a rule AD-22 doesn't have.
+- `low` (blind-hunter) The two argument models live in different layers — cosmetic; no caller is harmed.
+- `false` (acceptance-auditor) The `{}` case left the tests, so nothing checks `{}` reads as no export — `test_a_state_file_with_only_the_upload_group_reads_as_no_export_without_a_log` runs the same missing-key branch. The spine side is the defer above.
 
 ## Spec Change Log
 

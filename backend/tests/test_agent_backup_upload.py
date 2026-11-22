@@ -18,7 +18,9 @@ reach the real ``~/bookvie-data`` or a real backups folder.
 """
 
 import hashlib
+import io
 import json
+import os
 import threading
 import zipfile
 from collections.abc import Callable
@@ -29,7 +31,7 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
-from bookvie.intents import record_backup_upload
+from bookvie.intents import backup_file, record_backup_upload
 from bookvie.store import local_state
 from bookvie.store.fs import OsFileSystem
 from tests.agent_client import (
@@ -564,6 +566,28 @@ def test_a_symlink_or_an_unreadable_daily_file_is_refused_on_path(
         assert (folder / LOCAL_STATE).read_bytes() == stored, path.name
 
 
+@pytest.mark.skipif(os.geteuid() == 0, reason="root can read a chmod 000 file")
+def test_a_daily_file_that_cant_be_opened_is_refused_on_path(
+    connect_mcp: Callable[..., McpClient], tmp_path: Path
+) -> None:
+    # Review follow-up: an OSError from opening the file is a refusal, not a 500.
+    client, folder, backups, clock = _connect(connect_mcp, tmp_path)
+    client.call_tool(EXPORT_BACKUP)
+    written = backups / TODAY_BACKUP
+    arguments = _uploaded(written)
+    stored = (folder / LOCAL_STATE).read_bytes()
+    clock.advance(STEP)
+    written.chmod(0o000)
+    try:
+        refused = client.answer(RECORD_BACKUP_UPLOAD, arguments)
+    finally:
+        written.chmod(0o644)
+
+    assert error_of(refused).get("code") == "invalid_fields", refused
+    assert _field_names(refused) == ["path"], refused
+    assert (folder / LOCAL_STATE).read_bytes() == stored
+
+
 def test_with_no_backups_folder_an_upload_is_refused_on_path_and_a_skip_is_stored(
     connect_mcp: Callable[..., McpClient],
 ) -> None:
@@ -632,8 +656,30 @@ def test_for_upload_that_isnt_a_boolean_is_refused_and_writes_no_file(
     refused = client.answer(EXPORT_BACKUP, {"forUpload": value})
 
     assert error_of(refused).get("code") == "invalid_fields", refused
+    assert _field_names(refused) == ["forUpload"], refused
     assert _names(backups) == []
     assert (folder / LOCAL_STATE).read_bytes() == EARLIER_EXPORT
+
+
+def test_a_built_zip_that_cant_be_read_is_couldnt_save_and_moves_nothing(
+    connect_mcp: Callable[..., McpClient],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    # Review follow-up: write_backup hashes the built zip's library.json before it writes.
+    client, folder, backups, _ = _connect(connect_mcp, tmp_path)
+    (folder / LOCAL_STATE).write_bytes(EARLIER_EXPORT)
+    monkeypatch.setattr(backup_file, "build_export", lambda store, now: io.BytesIO(b"not a zip"))
+
+    for arguments in ({}, {"forUpload": True}):
+        capsys.readouterr()
+        refused = client.answer(EXPORT_BACKUP, arguments)
+        assert error_of(refused).get("code") == "couldnt_save", (arguments, refused)
+        # The guard's own refusal, not the tool wrapper's catch-all.
+        assert "can't read the built zip" in capsys.readouterr().err, arguments
+        assert list(backups.iterdir()) == [], arguments
+        assert (folder / LOCAL_STATE).read_bytes() == EARLIER_EXPORT
 
 
 def test_a_failed_for_upload_write_is_couldnt_save_and_moves_nothing(
@@ -673,10 +719,14 @@ def test_exports_and_skips_racing_on_fifty_threads_keep_both_groups(
     for thread in threads:
         thread.join(30)
 
+    assert [thread for thread in threads if thread.is_alive()] == []
     assert errors == []
     doc = _state(folder)
     assert sorted(doc) == ["autoBackup", "lastExportAt"]
     assert sorted(doc["autoBackup"]) == ["lastOk", "lastReport"]
+    assert sorted(path.name for path in folder.iterdir() if path.name.startswith(LOCAL_STATE)) == [
+        LOCAL_STATE
+    ]
 
 
 def test_a_state_file_with_only_the_upload_group_reads_as_no_export_without_a_log(

@@ -37,7 +37,6 @@ from bookvie.domain.clock import FakeClock
 from bookvie.http.app import create_app
 from bookvie.intents import EXPORT_CHUNK, backups_folder
 from bookvie.intents.contract import COULDNT_EXPORT_MESSAGE, COULDNT_SAVE_MESSAGE
-from bookvie.intents.intent_model import malformed
 from bookvie.store import Store
 from bookvie.store.fs import OsFileSystem
 from tests.agent_client import (
@@ -592,7 +591,9 @@ def test_an_argument_is_refused_and_no_file_is_written(
 
     result = body["result"]
     assert result.get("isError") is True, body
-    assert error_of(result) == malformed().response_body()["error"]
+    # Story 13.3 review: refused as a view names a bad argument, by its key.
+    assert error_of(result).get("code") == "invalid_fields", body
+    assert [entry.get("field") for entry in error_of(result).get("fields") or []] == ["folder"]
     assert _names(backups) == []
     assert _last_export(client) == EARLIER_EXPORT_AT
 

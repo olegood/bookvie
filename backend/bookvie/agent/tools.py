@@ -761,7 +761,7 @@ class ExportBackupArguments(IntentModel):
 
 
 def _export_backup(state: Any, arguments: dict[str, Any]) -> BackupFile:
-    args = parse_arguments(ExportBackupArguments, arguments)
+    args = parse_view_arguments(ExportBackupArguments, arguments)
     return write_backup(state.store, state.clock, state.backups_dir, for_upload=args.for_upload)
 
 
