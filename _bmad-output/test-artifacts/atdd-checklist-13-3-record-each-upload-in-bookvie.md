@@ -123,30 +123,30 @@ The build must also edit these leaves, which assert 12.6's shape:
 
 ## Green-phase follow-ups (secondary branches, not red leaves)
 
-- [ ] **AC-1:**
-  - `forUpload` as `"true"`, `1` or `null` is refused (`invalid_fields` or the malformed intent, the spec's choice), with no file.
-  - A forUpload backup over a malformed `local-state.json` answers `unchangedSinceUpload: false` and leaves the file alone.
-  - A failed forUpload write (`FaultyFs`) is `couldnt_save` and moves nothing.
-  - The hash of a library with covers changes only with `library.json`. AD-22 accepts that covers have immutable names.
-- [ ] **AC-3:**
-  - Refusals of `copies` as 0, -1 or `"3"`, of a non-hex `contentHash`, and of a missing `path` or `contentHash`.
-  - A symlink in the folder pointing at a daily file elsewhere.
-  - A daily-named file that isn't a zip, or has no `library.json`. Is it refused, and on which argument?
-  - Two refusals in one call name both arguments, in order.
-- [ ] **AC-4:**
-  - `skipped` with `path`, or with `cause`, and `failed` with `copies`, each once the spec decides refuse or ignore.
-  - A failure with no earlier state writes `lastReport` alone.
-- [ ] **AC-6:**
-  - A race: 50 threads alternating `record_export` and a skip report, with both groups present at the end and the file valid JSON.
-  - A `fsync_dir` fault after the rename is logged and the report succeeds.
-  - `restore_backup`, the tool, leaves `autoBackup` byte-identical (13.1's leaf checks only `lastExportAt`).
-  - A malformed file followed by an export gives `{lastExportAt}` alone (already `test_export.py:533`; re-check it with the new writer).
-  - Unknown top-level keys in `local-state.json` survive both writers ("keeps every other key as it read it", AD-15).
-- [ ] **AC-7:**
-  - The spellings: `~/elsewhere/../bookvie`, a symlink to `~/bookvie`, a case variant on a case-insensitive disk, and a `HOME` that is itself a symlink (`/var` → `/private/var`). Each gets no backups folder.
-  - `~/bookvie-data` still gets `~/bookvie-backups`, and `~/bookvie-data-dev` `~/bookvie-backups-dev`. These are the existing `test_agent_backup.py` leaves.
-  - `test_the_folder_rule_names_…` gains the `None` case.
-- [ ] **Epic gate:** the plan's "skip reports" P0 risk is AC-4's leaf, and "token" isn't this story's. The coverage gate doesn't change.
+- [x] **AC-1:**
+  - [x] `forUpload` as `"true"`, `1` or `null` is refused (`invalid_fields` or the malformed intent, the spec's choice), with no file. (done: backend/tests/test_agent_backup_upload.py:650 `test_for_upload_that_isnt_a_boolean_is_refused_and_writes_no_file`, on `forUpload` after the review's patch)
+  - [x] A forUpload backup over a malformed `local-state.json` answers `unchangedSinceUpload: false` and leaves the file alone. (done: backend/tests/test_agent_backup_upload.py:632 for `[1, 2]`; backend/tests/test_agent_backup_upload_follow_ups.py:115 for invalid JSON and an unreadable file, and :85 for six malformed `autoBackup` shapes)
+  - [x] A failed forUpload write (`FaultyFs`) is `couldnt_save` and moves nothing. (done: backend/tests/test_agent_backup_upload.py:685 `test_a_failed_for_upload_write_is_couldnt_save_and_moves_nothing`)
+  - [x] The hash of a library with covers changes only with `library.json`. AD-22 accepts that covers have immutable names. (done: backend/tests/test_agent_backup_upload_follow_ups.py:52 `test_the_next_days_backup_of_an_unchanged_library_is_unchanged_since_the_upload`, which also pins the next day's file as unchanged)
+- [x] **AC-3:**
+  - [x] Refusals of `copies` as 0, -1 or `"3"`, of a non-hex `contentHash`, and of a missing `path` or `contentHash`. (done: backend/tests/test_agent_backup_upload.py:482 `test_extra_bad_and_null_arguments_are_each_refused_by_key_and_store_nothing`)
+  - [x] A symlink in the folder pointing at a daily file elsewhere. (done: backend/tests/test_agent_backup_upload.py:533 `test_a_symlink_or_an_unreadable_daily_file_is_refused_on_path`)
+  - [x] A daily-named file that isn't a zip, or has no `library.json`. Is it refused, and on which argument? (done: backend/tests/test_agent_backup_upload.py:533, refused on `path`, a corrupt deflated one too; :570 for one that can't be opened)
+  - [x] Two refusals in one call name both arguments, in order. (done: backend/tests/test_agent_backup_upload.py:482, cases `two_failing_in_order` and `upload_missing_two`)
+- [x] **AC-4:**
+  - [x] `skipped` with `path`, or with `cause`, and `failed` with `copies`, each once the spec decides refuse or ignore. (done: backend/tests/test_agent_backup_upload.py:482, refused per the spec's Design Notes; a skip over a malformed group: backend/tests/test_agent_backup_upload_follow_ups.py:182)
+  - [x] A failure with no earlier state writes `lastReport` alone. (done: backend/tests/test_agent_backup_upload.py:611 `test_a_failure_with_no_earlier_state_writes_the_report_alone_and_keeps_unknown_keys`)
+- [x] **AC-6:**
+  - [x] A race: 50 threads alternating `record_export` and a skip report, with both groups present at the end and the file valid JSON. (done: backend/tests/test_agent_backup_upload.py:699 `test_exports_and_skips_racing_on_fifty_threads_keep_both_groups`)
+  - [x] A `fsync_dir` fault after the rename is logged and the report succeeds. (done: backend/tests/test_agent_backup_upload_follow_ups.py:214 `test_a_failed_folder_flush_after_the_state_rename_is_logged_and_the_report_is_stored`)
+  - ~~`restore_backup`, the tool, leaves `autoBackup` byte-identical (13.1's leaf checks only `lastExportAt`).~~ **Retired:** `test_agent_restore.py:577,584` pin `local-state.json` byte for byte after the tool's restore, so any write fails them, and the handler never calls the writer. The code review rejected a new leaf as duplicate coverage (spec-13-3 Review Findings, "Rejected").
+  - [x] A malformed file followed by an export gives `{lastExportAt}` alone (already `test_export.py:533`; re-check it with the new writer). (done: backend/tests/test_agent_backup_upload_follow_ups.py:156 `test_each_writer_replaces_a_file_that_isnt_a_json_object_with_its_group_alone`, both writers over invalid JSON and four non-object files)
+  - [x] Unknown top-level keys in `local-state.json` survive both writers ("keeps every other key as it read it", AD-15). (done: backend/tests/test_agent_backup_upload.py:611; unknown keys inside `autoBackup`: backend/tests/test_agent_backup_upload_follow_ups.py:182)
+- [x] **AC-7:**
+  - [x] The spellings: `~/elsewhere/../bookvie`, a symlink to `~/bookvie`, a case variant on a case-insensitive disk, and a `HOME` that is itself a symlink (`/var` → `/private/var`). Each gets no backups folder. (done: backend/tests/test_agent_backup_upload_follow_ups.py:237 `test_other_spellings_of_the_bookvie_folder_get_no_backups_folder`; the case variant: backend/tests/test_agent_backup.py:457)
+  - [x] `~/bookvie-data` still gets `~/bookvie-backups`, and `~/bookvie-data-dev` `~/bookvie-backups-dev`. These are the existing `test_agent_backup.py` leaves. (done: backend/tests/test_agent_backup.py:447-448; through a symlinked `HOME`: backend/tests/test_agent_backup_upload_follow_ups.py:237)
+  - [x] `test_the_folder_rule_names_…` gains the `None` case. (done: backend/tests/test_agent_backup.py:453-461)
+- [x] **Epic gate:** the plan's "skip reports" P0 risk is AC-4's leaf, and "token" isn't this story's. The coverage gate doesn't change. (done: backend/tests/test_agent_backup_upload.py:297 `test_a_skip_replaces_the_report_and_the_last_ok_and_a_failure_only_the_report`; `scripts/coverage_gate.py` unchanged by this story)
 
 ## Helper probes
 
