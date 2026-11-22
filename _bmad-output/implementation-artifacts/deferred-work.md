@@ -1530,6 +1530,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-2-upload-a-backup-to-my-dropbox.md`
   summary: A refresh refused with something other than 400 `invalid_grant` (for example an unknown app key) becomes the SDK's `BadInputError`, which `upload_backup` answers as `other`, not `dropbox_signin`. Medium if Dropbox answers a wrong app key that way, unverified; settled by Story 13.4's first real run or a check of Dropbox's token-endpoint errors. Medium (unverified).
   evidence: verification-gap other finding 2; `.venv/.../dropbox/dropbox_client.py` `raise_dropbox_error_for_resp`.
+  note: Story 13.4's first real run (2026-11-22) refreshed and uploaded with the real app key, so the placeholder-key case is gone; a refused refresh wasn't exercised, so the mapping itself stays unverified and open.
 
 ## Deferred from: code review of spec-13-2-upload-a-backup-to-my-dropbox (2026-11-22)
 
@@ -1586,3 +1587,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-4-back-up-to-dropbox-with-one-skill.md`
   summary: Spine drift (AD-22 bookvie-backup skill), reconciled before the next epic: AD-22 says `record_backup_upload` is called always; the skill records nothing on a dev stop, an unreadable `get_app_info`, or a headless run without bookvie's tools, records `failed`/`other` when the `upload_backup` tool is missing, and never sends a refused report twice. Low.
   evidence: spine-check finding 3, intent-alignment divergence (extra no-record exceptions); SKILL.md steps 1, 2, 4, 5; spec I/O matrix.
+
+## Deferred from: code review of spec-13-4-back-up-to-dropbox-with-one-skill (2026-11-22)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-4-back-up-to-dropbox-with-one-skill.md`
+  summary: Spine drift (AD-22 Causes), reconciled before the next epic: the skill records `other` for an `upload_backup` error whose text isn't JSON, has no `cause`, or names an unknown one (an MCP timeout on the client side, say); AD-22 puts "a timeout" in `upload_incomplete`, which is bookvie-dropbox's own timeout, and says nothing of a call the skill gets no answer from. Low.
+  evidence: code review spine-check finding 4; `.claude/skills/bookvie-backup/SKILL.md` step 4.

@@ -2,7 +2,7 @@
 title: 'Story 13.4: Back up to Dropbox with one skill'
 type: 'feature'
 created: '2026-11-22'
-status: 'in-review'
+status: 'done'
 baseline_revision: 'fb0177591b4ccb9330c87af7fad427d0aa1ce640'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -101,6 +101,38 @@ deferred:
 - Given the 5 ATDD leaves un-skipped and the follow-ups added, when `cd backend && uv run pytest -q tests/test_backup_skill.py tests/test_dropbox_backup_guide.py tests/test_notes_summary_skill.py tests/test_new_book_skill.py` runs, then all pass.
 - Given `npm run check`, when it runs, then it passes.
 - Given AC-5 (manual: Oleg runs `/bookvie-backup` twice on the real library and Dropbox, the first uploads, the second skips), when the build ends, then the spec's Auto Run Result lists it as pending and the story stays in review until Oleg's runs and the guide's corrections are recorded here.
+  - **AC-5 result, 2026-11-22 (Oleg, in the review session):** both runs by hand on the real library (`~/bookvie-data`, bookvie 2.0.1 production, after `npm run install:local`) and the real Dropbox app, with no change in between. Run 1, 19:37: `export_backup({forUpload: true})` answered `unchangedSinceUpload: false`; `upload_backup` answered `bookvie-backup-2026-11-22.zip`, `copies: 1`, `deleted: []`; `record_backup_upload(uploaded, …)` answered `ok`; the skill said "Uploaded bookvie-backup-2026-11-22.zip · 1 copy in Dropbox". Run 2, 20:36: `unchangedSinceUpload: true`, no upload, `record_backup_upload(skipped)` answered `ok`; the skill said "Nothing new since the last upload; skipped." Passed. Two earlier attempts in the same session didn't count: the old installed bookvie (no `record_backup_upload`) hit the review's new older-bookvie stop, and a run before `bookvie-dropbox` was added to Claude Code recorded `failed`/`other` with the not-connected line, as step 4 says. No guide correction needed: Setup step 3 already covers adding `bookvie-dropbox`.
+
+### Review Findings
+
+Code review, 2026-11-22 (new session; layers: blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor, spine-check; none failed). Diff `fb01775..ba13012`.
+
+- [x] [Review][Patch] An older bookvie without `record_backup_upload` gets the wrong failure and no report [.claude/skills/bookvie-backup/SKILL.md:54] — medium. The bookvie installed on 8765 today (Oleg's real library) lists no `record_backup_upload` in `tools/list`: it predates 13.3, so its `export_backup` takes no arguments and refuses `forUpload` with `invalid_fields`. The skill would then record `backup_write` with a tool that isn't there, and tell Oleg "bookvie couldn't write the backup file" when the fix is to update bookvie. AC-5's manual run would hit this. Fix: after the mode check, when bookvie has no `record_backup_upload`, stop before the export with one line saying to update bookvie with `npm run install:local`; nothing is recorded. (edge-case-hunter 1, 2)
+- [x] [Review][Patch] Step 4 says nothing in Dropbox was deleted after every upload error [.claude/skills/bookvie-backup/SKILL.md:68] — low. `_prune` (`bookvie_dropbox/upload.py:322-332`) answers `other` after a checked upload, and may already have deleted older dailies; a client-side error with no `cause` (an MCP timeout) doesn't prove nothing was deleted either. Fix: limit the sentence to the causes that come before the check, and say the `other` message names what was deleted. (blind-hunter 1, acceptance-auditor 1, edge-case-hunter 3, spine-check 4)
+- [x] [Review][Patch] Step 6 reads as writing "Failed: " twice [.claude/skills/bookvie-backup/SKILL.md:88] — low. `"Failed: " and the reason for the run's cause` is followed by reasons that already start with "Failed:". Fix: "the line for the run's cause, word for word". (blind-hunter 7)
+- [x] [Review][Defer] Spine drift (AD-22 Causes): a client-side tool error or timeout with no `cause` is `other` [.claude/skills/bookvie-backup/SKILL.md:68] — deferred: the code is right; AD-22 puts timeouts in `upload_incomplete` (bookvie-dropbox's own), and says nothing of a call the skill gets no answer from. Reconciled before the next epic. (spine-check 4)
+
+- Full check after the patches, 2026-11-22: `npm run check` exit 0 (check:api; check:py, pytest 2412 passed; check:e2e 800 passed; check:smoke ok). The run has no separate unit layer.
+
+- AC-5 recorded 2026-11-22 (two runs by hand: uploaded, then skipped); no file changed after the full check, so `done` rests on that exit-0 run.
+
+**Rejected:**
+- `false` (spine-check 1–3) AD-8/FR-28 two skills, AD-22 dev stop, AD-22 "always" record — already logged as spine drift in `deferred-work.md` by the build; nothing new.
+- `false` (acceptance-auditor 2) Step 1's and step 2's `Failed:` lines aren't EXPERIENCE.md reasons — the constraint is "each `Failed:` line is the Failing reason *for its cause*"; these two stops have no cause and record nothing.
+- `low` (acceptance-auditor 3) Unreadable `get_app_info` records nothing although AC-1 says "always" — already deferred as spine drift (AD-22 "always"); a `get_app_info` that errors while its tool exists is rare.
+- `false` (acceptance-auditor 4) Shell commands despite AC-1's "no Bash, no curl" — Oleg's ATDD decision (2026-11-22, Design Notes "Bash fallback"); `allowed-tools` stays MCP-only.
+- `low` (acceptance-auditor 5, blind-hunter 6, edge-case-hunter 6) The I/O matrix still ends the nothing-deleted line with a period and has no unreadable-app-info row — the fix edits the spec under review.
+- `false` (acceptance-auditor 6) The guide's `upload_incomplete` says today's file may be replaced — accurate, and a replacement isn't a deletion.
+- `low` (blind-hunter 2) A checked upload whose prune fails is recorded as `failed`/`other` — `upload_backup`'s contract from 13.2 (an `isError` with `other`, logged at `deferred-work.md:1508`); the skill can't record an upload it got no `copies`/`contentHash` for, and the next run uploads again harmlessly. A change would be product code.
+- `low` (blind-hunter 3) "→ Troubleshooting" lands on Restoring's "### Troubleshooting" — EXPERIENCE.md's fixed wording, rejected in the build review too; 13.6 settles the per-state entries (plan D12).
+- `low` (blind-hunter 4, 5) Step 2's unreadable-app-info line, step 4's no-`cause` → `other`, and the code-less report suffix have no leaf — new tests, not a direct correction; handed to `bmad-testarch-automate` for this story.
+- `false` (blind-hunter 8, edge-case-hunter 5) A refused Bash permission or a `get_app_info` error has no branch — "you can't run shell commands" covers a refused permission and gives the right line (start bookvie or reconnect); step 2 covers an error from `get_app_info`.
+- `false` (blind-hunter 9) Step 5's "whatever happened after the export" is vague — step 3 sends a failed export to step 5 with `backup_write` explicitly.
+- `low` (blind-hunter 10) The guide doesn't say the 09:00 job needs the repo as its working directory — installing the job is 13.5's, and the guide says so.
+- `low` (blind-hunter 11) The restore-by-hand line doesn't repeat Command-Shift-. or online-only files — "Your first run" says the folder is hidden; rare, and more than a direct correction.
+- `low` (blind-hunter 12) `backup_write`'s `~/bookvie-backups` doesn't fit a `--data-dir` library — such a folder gets `<data folder>-backups` or none, which What bookvie records explains; rare.
+- `false` (edge-case-hunter 4) `upload_backup` succeeds without `name`, `copies` or `contentHash` — `Uploaded` always carries all four (`upload.py:181`).
+- `false` (edge-case-hunter 7) The guide's "A failed or mismatched upload deletes nothing" — true of the upload; the prune-after-check case is the guide's `other` entry.
 
 ## Spec Change Log
 
@@ -154,11 +186,11 @@ deferred:
 - `npm run check` -- expected: exit 0
 
 **Manual checks:**
-- AC-5: Oleg's two runs by hand (pending; recorded here by Oleg or the review).
+- AC-5: Oleg's two runs by hand — passed 2026-11-22 (upload, then skip); recorded under Acceptance Criteria.
 
 ## Auto Run Result
 
-Status: in-review
+Status: done
 
 **Summary.** New project skill `bookvie-backup`: `get_app_info` (stop on a `--dev` server or any answer other than production), `export_backup({forUpload: true})`, `upload_backup({localPath: path})` unless `unchangedSinceUpload`, then exactly one `record_backup_upload` (uploaded, skipped, or failed with `backup_write` / the upload's cause / `other`), and a one-line report in UX-DR82's words with EXPERIENCE.md's five Failing reasons. `allowed-tools` is exactly the four MCP tools; run by hand, step 1 falls back to the other skills' start for the `bookvie` entry only. The guide gains Your first run, How it works, troubleshooting for `upload_incomplete`, `dropbox_full`, `backup_write` and `other`, and a restore-by-hand line; README → AI skills lists three skills. No product code changed.
 
@@ -177,7 +209,7 @@ Status: in-review
 
 **Verification.** `cd backend && uv run pytest -q tests/test_backup_skill.py tests/test_dropbox_backup_guide.py` — 17 passed, none skipped (before and after the patches). `npm run check` — exit 0 before the patches (pytest, unit, 800 e2e, api, smoke); re-run after the patches: exit 0 (check:py, check:api, pytest 2411 passed, check:e2e 800 passed, check:smoke). Matrix Test Audit: all 10 rows covered by passing leaves.
 
-**Pending manual AC (AC-5).** Oleg runs `/bookvie-backup` twice by hand on the real library and the real Dropbox app, the second time with no change in between: the first should upload, the second skip. Record both runs and any guide corrections here. The story stays in review until then. `deferred-work.md:1531` (a refused refresh answering `other`, not `dropbox_signin`) is left open for that run to settle.
+**Manual AC (AC-5): passed 2026-11-22 in the code review session; see Acceptance Criteria.** Before that: Oleg runs `/bookvie-backup` twice by hand on the real library and the real Dropbox app, the second time with no change in between: the first should upload, the second skip. Record both runs and any guide corrections here. The story stays in review until then. `deferred-work.md:1531` (a refused refresh answering `other`, not `dropbox_signin`) is left open for that run to settle.
 
 **Residual risks.** The skill is verified as text plus the tools it chains; no automated test runs an agent on it. `allowed-tools` only pre-grants; headless restriction is 13.5's `--allowedTools`. The port-8790 flake from 13.2 may still fail `npm run check` intermittently.
 

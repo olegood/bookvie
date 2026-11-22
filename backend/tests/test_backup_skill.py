@@ -443,3 +443,25 @@ def test_a_refused_report_still_gives_the_outcome_and_is_never_sent_twice() -> N
     )
     assert "bookvie couldn't save this report" in report
     assert "Don't call any tool to fix it." in report
+
+
+def test_an_older_bookvie_without_record_backup_upload_stops_the_run_before_the_export(
+    connect_mcp: Callable[..., McpClient],
+) -> None:
+    # [P1] AC-1 (code review, 2026-11-22): a bookvie from before 13.3 has `get_app_info`
+    # but no `record_backup_upload`, and its `export_backup` refuses `forUpload`.
+    body = _body(_skill())
+    step = _section(body, "Never from development", numbered=True) or ""
+    (stop,) = [p for p in _paragraphs(step) if "older than this skill" in p]
+    assert "`record_backup_upload`" in stop and re.search(r"\bstop here\b", stop), stop
+    assert re.search(r"\b(?:don't|do not|never) call\b", stop), stop
+    for tool in ("`export_backup`", "`upload_backup`", "`record_backup_upload`"):
+        assert tool in stop, tool
+    assert '"Failed: this bookvie is older than the backup skill' in stop
+    assert "npm run install:local" in stop and "Nothing is recorded" in stop
+    flat = _flat(body)
+    assert flat.index(stop) < flat.index(EXPORT_CALL)
+
+    # The tool the skill checks for is the one this bookvie serves.
+    names = {tool["name"] for tool in connect_mcp().list_tools()}
+    assert RECORD_BACKUP_UPLOAD in names, sorted(names)

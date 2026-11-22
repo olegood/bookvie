@@ -53,6 +53,8 @@ Read `mode` in `get_app_info`'s answer. When it is `"dev"`, this is a `--dev` se
 
 When `mode` is `"production"`, go on. Any other answer (an error, or no `mode`, or another value) stops the run the same way, with no export, upload or report: tell the user in one line, "Failed: bookvie's app info couldn't be read, so nothing was backed up."
 
+Then check that bookvie's tools include `record_backup_upload`. When it isn't there, the running bookvie is older than this skill, and its `export_backup` doesn't take `forUpload`: stop here, and don't call `export_backup`, `upload_backup` or `record_backup_upload`. Tell the user in one line: "Failed: this bookvie is older than the backup skill, so nothing was backed up. Update it with npm run install:local, restart it, then run /bookvie-backup again." Nothing is recorded, because this bookvie can't record a run.
+
 ## 3. Export
 
 Call `export_backup({forUpload: true})`. It writes today's daily backup, `bookvie-backup-<YYYY-MM-DD>.zip`, into the backups folder, replacing an earlier one from today, and answers its `path`, `size`, `createdAt`, `libraryHash` and `unchangedSinceUpload`. A backup for upload doesn't move "Last export" on the Backup page.
@@ -65,7 +67,7 @@ When `unchangedSinceUpload` is `true`, the library hasn't changed since the last
 
 Otherwise call `upload_backup({localPath: path})`, with the `path` that `export_backup` answered. It uploads the file to `/Apps/bookvie/.backups` in Dropbox, checks Dropbox's copy, deletes the oldest daily backups beyond 3, and answers the uploaded file's `name`, the `copies` now in Dropbox, the names it `deleted` (a list, often empty) and Dropbox's `contentHash`.
 
-If `upload_backup` answers an error, its text is JSON with a `cause` (`dropbox_signin`, `upload_incomplete`, `dropbox_full` or `other`) and a `message`: the run failed with that `cause`. When the error's text isn't JSON, has no `cause`, or names a cause outside those four (an MCP timeout, say), the run failed with the cause `other`. Don't retry the upload. Nothing in Dropbox was deleted.
+If `upload_backup` answers an error, its text is JSON with a `cause` (`dropbox_signin`, `upload_incomplete`, `dropbox_full` or `other`) and a `message`: the run failed with that `cause`. When the error's text isn't JSON, has no `cause`, or names a cause outside those four (an MCP timeout, say), the run failed with the cause `other`. Don't retry the upload. After `dropbox_signin`, `upload_incomplete` or `dropbox_full`, nothing in Dropbox was deleted. An `other` can come after a checked upload whose deleting of older backups didn't finish: its `message` says so and names any it already deleted. Without a usable `cause`, don't say whether anything was deleted.
 
 If the `upload_backup` tool isn't available at all (bookvie-dropbox isn't connected in Claude Code), don't upload any other way: the run failed with the cause `other`.
 
@@ -85,7 +87,7 @@ Tell the user the outcome in one line, in the words of the Backup page's auto-ba
 
 - **Uploaded:** "Uploaded *name* · *N* copies in Dropbox, deleted *name*", with the upload's `name`, its `copies` and the names it `deleted`, joined with ", " when there are several. For example "Uploaded bookvie-backup-2026-11-21.zip · 3 copies in Dropbox, deleted bookvie-backup-2026-11-18.zip". When `deleted` is empty, leave out the deleted part: "Uploaded bookvie-backup-2026-11-21.zip · 2 copies in Dropbox". Write "1 copy" when `copies` is 1.
 - **Skipped:** "Nothing new since the last upload; skipped."
-- **Failed:** "Failed: " and the reason for the run's cause, word for word:
+- **Failed:** the line for the run's cause, word for word:
   - `dropbox_signin`: "Failed: Dropbox sign-in expired. Nothing in Dropbox was deleted. Run bookvie-dropbox auth in Terminal."
   - `upload_incomplete`: "Failed: the last upload didn't finish. Nothing in Dropbox was deleted; the next 09:00 run tries again."
   - `dropbox_full`: "Failed: Dropbox is full. Nothing in Dropbox was deleted; free some space there."
@@ -94,4 +96,4 @@ Tell the user the outcome in one line, in the words of the Backup page's auto-ba
 
 When `record_backup_upload` answered an error, still give the outcome line, and add on the same line "bookvie couldn't save this report (*code*)." with the error's code, or without the parentheses when the error has none. Don't call any tool to fix it.
 
-The development stop in step 2 and the headless stop in step 1 have their own lines, given there.
+The stops in step 2 (a development library, unreadable app info, an older bookvie) and the headless stop in step 1 have their own lines, given there.
