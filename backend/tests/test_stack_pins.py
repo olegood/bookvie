@@ -29,7 +29,8 @@ FRONTEND_PACKAGE = REPO_ROOT / "frontend" / "package.json"
 FRONTEND_LOCK = REPO_ROOT / "frontend" / "package-lock.json"
 
 # Spine row name (text before any parenthesis) -> (ecosystem, package).
-# `uv` is the install tool, not a manifest entry.
+# `uv` is the install tool, not a manifest entry. `dropbox` and `keyring` are
+# `bookvie_dropbox`'s (AD-22), runtime dependencies since Story 13.2.
 STACK_ROWS: dict[str, tuple[str, str] | None] = {
     "Python": ("python", "python"),
     "uv": None,

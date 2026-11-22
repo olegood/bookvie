@@ -33,6 +33,13 @@ def source(tmp_path: Path) -> Path:
         src / "bookvie",
         ignore=shutil.ignore_patterns("__pycache__", "static"),
     )
+    # The wheel's second package (Story 13.2): hatchling refuses a listed package that's missing.
+    if (BACKEND_ROOT / "bookvie_dropbox").is_dir():
+        shutil.copytree(
+            BACKEND_ROOT / "bookvie_dropbox",
+            src / "bookvie_dropbox",
+            ignore=shutil.ignore_patterns("__pycache__"),
+        )
     return src
 
 

@@ -84,6 +84,9 @@ def _isolated_home(
         monkeypatch.setenv(var, value)
     home = tmp_path_factory.mktemp("home")
     monkeypatch.setenv("HOME", str(home))
+    # No test reaches the real Keychain (AD-22): a keyring a test or a subprocess picks up
+    # by itself fails every read. Tests that need one set their own (tests/dropbox_fakes.py).
+    monkeypatch.setenv("PYTHON_KEYRING_BACKEND", "keyring.backends.fail.Keyring")
     assert Path("~").expanduser() == home
     return home
 

@@ -21,6 +21,12 @@ A client built with ``protocol_version=MODERN_PROTOCOL_VERSION`` speaks MCP
 its envelope in ``params._meta`` (the protocol version and ``capabilities``)
 with the ``Mcp-Method`` and ``Mcp-Name`` headers. That is the revision whose
 ``InputRequiredResult`` carries ``restore_backup``'s question (AD-22).
+
+``bookvie-dropbox`` (Story 13.2) is a second MCP server, over stdio. Its tool
+group is :data:`DROPBOX_TOOL_NAMES`, its descriptions are in
+:data:`DESCRIPTIONS` too, and :func:`call_in_process` and
+:func:`list_stdio_tools` reach it through the SDK's own ``Client``.
+:func:`import_or_fail` stands in for a package a story hasn't built yet.
 """
 
 import functools
@@ -84,6 +90,11 @@ EPIC_12_TOOL_NAMES = [*EARLIER_TOOL_NAMES, *WRITE_TOOL_NAMES, *BOOK_TOOL_NAMES, 
 AGENT_TOOL_NAMES = [*EPIC_12_TOOL_NAMES, *RESTORE_TOOL_NAMES]
 """Every tool, cumulative across Epics 12 and 13: what ``tools/list`` must list, in order."""
 
+UPLOAD_BACKUP = "upload_backup"
+DROPBOX_TOOL_NAMES = [UPLOAD_BACKUP]
+"""``bookvie-dropbox``'s tools, cumulative (Story 13.2; Story 13.7 adds ``list_backups`` and
+``download_backup``): what its stdio server must list, in order. Not bookvie's tools."""
+
 EPICS_MD = Path(__file__).resolve().parents[2] / "_bmad-output" / "planning-artifacts" / "epics.md"
 # A note in parentheses may follow the quote ("(Superseded by Story 13.3's description once
 # 13.3 lands.)" on Story 12.6's line); it isn't part of the description.
@@ -109,7 +120,10 @@ _STORY_OF = {
     **dict.fromkeys(BOOK_TOOL_NAMES, "12.4"),
     EXPORT_BACKUP: "12.6",
     **dict.fromkeys(RESTORE_TOOL_NAMES, "13.1"),
+    UPLOAD_BACKUP: "13.2",
 }
+# Epic 13's described tools, in the order epics.md quotes them, from both servers.
+_EPIC_13_DESCRIBED = [*RESTORE_TOOL_NAMES, *DROPBOX_TOOL_NAMES]
 _STORY_HEADING = re.compile(r"^### Story (\d+\.\d+):", re.M)
 
 
@@ -135,20 +149,20 @@ def _parse_descriptions() -> dict[str, str]:
         f"{[m.group(1) or m.group(2)[:40] for m in found]}"
     )
     epic_13 = _epic(13)
-    stories_13 = {_STORY_OF[tool] for tool in RESTORE_TOOL_NAMES}
+    stories_13 = {_STORY_OF[tool] for tool in _EPIC_13_DESCRIBED}
     found_13 = [
         match
         for match in _DESCRIPTION.finditer(epic_13)
         if _story_at(epic_13, match.start()) in stories_13
     ]
-    assert len(found_13) == len(RESTORE_TOOL_NAMES), (
+    assert len(found_13) == len(_EPIC_13_DESCRIBED), (
         f"{EPICS_MD} Epic 13 Stories {sorted(stories_13)} have {len(found_13)} Description lines, "
-        f"expected {len(RESTORE_TOOL_NAMES)}: {[m.group(1) or m.group(2)[:40] for m in found_13]}"
+        f"expected {len(_EPIC_13_DESCRIBED)}: {[m.group(1) or m.group(2)[:40] for m in found_13]}"
     )
     descriptions: dict[str, str] = {}
     pairs = [
         *((tool, match, epic) for tool, match in zip(EPIC_12_TOOL_NAMES, found, strict=True)),
-        *((tool, match, epic_13) for tool, match in zip(RESTORE_TOOL_NAMES, found_13, strict=True)),
+        *((tool, match, epic_13) for tool, match in zip(_EPIC_13_DESCRIBED, found_13, strict=True)),
     ]
     for tool, match, section in pairs:
         named, text = match.group(1), match.group(2)
@@ -408,3 +422,86 @@ def error_of(result: dict[str, Any]) -> dict[str, Any]:
     """The AD-9 ``error`` object an error result carries as its one text content."""
     assert result.get("isError") is True, result
     return json.loads(text_of(result))
+
+
+# --- bookvie-dropbox's server (Story 13.2) -----------------------------------------
+
+
+def _result_dict(result: Any) -> dict[str, Any]:
+    """An SDK result model as the JSON the wire carries, by alias, without ``None``s."""
+    return result.model_dump(by_alias=True, mode="json", exclude_none=True)
+
+
+def call_in_process(server: Any, tool: str, arguments: dict[str, Any]) -> dict[str, Any]:
+    """Call ``tool`` on an in-process MCP ``server`` (``mcp.Client(server)``) and return the
+    result as wire JSON, for :func:`structured_of` and :func:`error_of`.
+
+    ``server`` may be an :class:`ImportFailed` (the package isn't there yet); the
+    answer is then an error result naming why, so a red leaf fails at its first
+    assertion rather than here.
+    """
+    if isinstance(server, ImportFailed):
+        return {
+            "isError": True,
+            "content": [{"type": "text", "text": json.dumps({"unavailable": str(server)})}],
+        }
+
+    import anyio
+    from mcp import Client
+
+    async def call() -> dict[str, Any]:
+        async with Client(server, raise_exceptions=True) as client:
+            return _result_dict(await client.call_tool(tool, arguments))
+
+    return anyio.run(call)
+
+
+def list_stdio_tools(command: str, args: list[str], env: dict[str, str]) -> dict[str, Any]:
+    """Start ``command args`` as a stdio MCP server with exactly ``env`` added to the SDK's
+    default environment, list its tools, and stop it.
+
+    Returns ``{"tools": [tool, ...]}`` (each a wire-JSON ``Tool``), or ``{"error": why}``
+    when the server can't be started or listed, so a red leaf fails at its assertion.
+    """
+    import anyio
+    from mcp import Client, StdioServerParameters
+
+    async def listed() -> dict[str, Any]:
+        params = StdioServerParameters(command=command, args=args, env=env)
+        async with Client(params, read_timeout_seconds=30) as client:
+            result = await client.list_tools()
+            return {"tools": [_result_dict(tool) for tool in result.tools]}
+
+    try:
+        return anyio.run(listed)
+    except Exception as exc:  # noqa: BLE001 - reported to the assertion
+        return {"error": f"{type(exc).__name__}: {exc}"}
+
+
+class ImportFailed:
+    """What :func:`import_or_fail` returns for a module that can't be imported: any
+    attribute read fails the test with an ``AssertionError`` that names the module."""
+
+    def __init__(self, name: str, error: BaseException) -> None:
+        self._name = name
+        self._error = error
+
+    def __getattr__(self, attribute: str) -> Any:
+        raise AssertionError(f"{self._name}.{attribute}: {self}")
+
+    def __str__(self) -> str:
+        return f"{self._name} can't be imported: {type(self._error).__name__}: {self._error}"
+
+
+def import_or_fail(name: str) -> Any:
+    """Module ``name``, or an :class:`ImportFailed` standing in for it.
+
+    For a package a story adds (``bookvie_dropbox``): the red leaf's first read of
+    it is then its first failing assertion, not a collection error.
+    """
+    import importlib
+
+    try:
+        return importlib.import_module(name)
+    except ImportError as exc:
+        return ImportFailed(name, exc)

@@ -11,6 +11,10 @@ Outside the layers, the package holds only ``__init__``, ``cli`` (the
 composition root) and ``instance`` (the single-instance lock it uses). No
 layer may import them, so a top-level module can never become a side channel
 between layers.
+
+``bookvie`` and ``bookvie_dropbox`` (Story 13.2, AD-22) never import each other,
+and nothing under ``bookvie/`` imports ``dropbox`` or ``keyring``: the two
+processes meet only through files in a backups folder.
 """
 
 import ast
@@ -19,6 +23,11 @@ from pathlib import Path
 import pytest
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[1] / "bookvie"
+DROPBOX_ROOT = PACKAGE_ROOT.parent / "bookvie_dropbox"
+BOOKVIE_NEVER_IMPORTS = {"bookvie_dropbox", "dropbox", "keyring"}
+DROPBOX_NEVER_IMPORTS = {"bookvie"}
+
+RED = "ATDD red phase (Story 13.2): bookvie_dropbox isn't built yet"
 
 LAYERS = {"http", "agent", "intents", "views", "domain", "store"}
 TOP_LEVEL_MODULES = {"__init__", "cli", "instance"}
@@ -155,3 +164,47 @@ def test_views_may_import_only_intents_contract_of_the_intents_layer(tmp_path: P
         "bookvie.intents.commit",
         "bookvie.intents.contracts_extra",
     ]
+
+
+def _crossings(root: Path, banned: set[str]) -> dict[str, list[str]]:
+    """Each module under ``root`` that imports a top-level package in ``banned``, with them."""
+    found: dict[str, list[str]] = {}
+    for path in sorted(root.rglob("*.py")):
+        tops = {module.split(".")[0] for module in _imported_modules(path, root)}
+        if tops & banned:
+            found[str(path.relative_to(root.parent))] = sorted(tops & banned)
+    return found
+
+
+# Red phase: un-skip when the build adds bookvie_dropbox (Story 13.2).
+@pytest.mark.skip(reason=RED)
+def test_bookvie_and_bookvie_dropbox_never_import_each_other() -> None:
+    # [P0] AC-2
+    assert (DROPBOX_ROOT / "__init__.py").is_file(), DROPBOX_ROOT
+    assert _crossings(PACKAGE_ROOT, BOOKVIE_NEVER_IMPORTS) == {}
+    assert _crossings(DROPBOX_ROOT, DROPBOX_NEVER_IMPORTS) == {}
+
+
+def test_the_cross_package_scanner_catches_each_crossing(tmp_path: Path) -> None:
+    bookvie = tmp_path / "bookvie" / "intents"
+    bookvie.mkdir(parents=True)
+    (bookvie / "bad.py").write_text(
+        "import dropbox\nfrom keyring import get_password\nimport bookvie_dropbox.server\n"
+        "from . import commit\nimport json\n"
+    )
+    (bookvie / "fine.py").write_text("from .backup_file import dropbox_content_hash\n")
+    dropbox_side = tmp_path / "bookvie_dropbox"
+    dropbox_side.mkdir()
+    (dropbox_side / "bad.py").write_text("from bookvie.intents import backup_file\n")
+    (dropbox_side / "worse.py").write_text("import bookvie\n")
+    (dropbox_side / "fine.py").write_text(
+        "import dropbox\nimport keyring\nfrom . import contracts\n"
+    )
+
+    assert _crossings(tmp_path / "bookvie", BOOKVIE_NEVER_IMPORTS) == {
+        "bookvie/intents/bad.py": ["bookvie_dropbox", "dropbox", "keyring"]
+    }
+    assert _crossings(dropbox_side, DROPBOX_NEVER_IMPORTS) == {
+        "bookvie_dropbox/bad.py": ["bookvie"],
+        "bookvie_dropbox/worse.py": ["bookvie"],
+    }
