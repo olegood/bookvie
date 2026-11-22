@@ -17,8 +17,8 @@
   :data:`OLDER_BOOKVIE`, :func:`curl_lines`, :func:`is_health_or_probe` and
   :func:`check_the_older_bookvie_probe`.
 - Backups (Epic 13): :class:`SetClock`, :func:`files_under`,
-  :func:`dropbox_content_hash`, :func:`backup_zip`, :func:`short_when` and
-  :func:`confirmation_text`.
+  :func:`dropbox_content_hash`, :func:`backup_zip`, :func:`short_when`,
+  :func:`confirmation_text` and :func:`failing_reasons`.
 """
 
 import hashlib
@@ -29,7 +29,7 @@ import re
 import shlex
 import threading
 import zipfile
-from collections.abc import Sequence
+from collections.abc import Collection, Sequence
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -427,17 +427,27 @@ def is_health_or_probe(line: str) -> bool:
     return health is not None or _probe_port(line) is not None
 
 
-def check_the_older_bookvie_probe(skill: str, start_step_title: str, client: McpClient) -> None:
+def check_the_older_bookvie_probe(
+    skill: str,
+    start_step_title: str,
+    client: McpClient,
+    *,
+    ports: Collection[int] | None = None,
+) -> None:
     """Step 1 probes each entry's port after the health check, and stops on an
     older bookvie before the reconnect advice; the probe's headers and body,
-    sent to this checkout's ``/mcp``, answer 200 with the app info."""
+    sent to this checkout's ``/mcp``, answer 200 with the app info.
+
+    ``ports`` are the ports the skill probes, one probe each: by default both
+    entries' (:data:`PROBE_PORTS`); ``bookvie-backup`` probes only 8765 (Story 13.4)."""
     # Imported here: test_agent_mount imports this module.
     from tests.test_agent_mount import _section
 
     step = _section(skill, start_step_title, numbered=True)
     assert step is not None, start_step_title
     probes = [(line, port) for line in curl_lines(skill) if (port := _probe_port(line))]
-    assert sorted(port for _, port in probes) == sorted(PROBE_PORTS.values()), probes
+    expected = PROBE_PORTS.values() if ports is None else ports
+    assert sorted(port for _, port in probes) == sorted(expected), probes
     assert all(line in step for line, _ in probes), "every probe is in step 1"
 
     # The order: health check, then the probe, then the older-bookvie stop, then reconnect.
@@ -580,3 +590,31 @@ def confirmation_text(at: datetime, titles: Sequence[str], card_notes: int, toda
         f"Replace all data with the backup from {when}? You'd lose {books} added since "
         f"({shown}), {notes}, and every other change since then. {tail}"
     )
+
+
+EXPERIENCE_MD = (
+    Path(__file__).resolve().parents[2]
+    / "_bmad-output"
+    / "planning-artifacts"
+    / "ux-designs"
+    / "ux-bookvie-2026-10-28"
+    / "EXPERIENCE.md"
+)
+_FAILING_ROW = re.compile(r'^\| [^|]+ \| "([^"]+)" \|\s*$')
+
+
+def failing_reasons() -> list[str]:
+    """EXPERIENCE.md's Failing reasons, in the table's order, each as quoted after
+    "Failing · " (the auto-backup line's words, which the backup skill's "Failed: "
+    line repeats, UX-DR82). The rows follow AD-22's cause order: ``dropbox_signin``,
+    ``upload_incomplete``, ``dropbox_full``, ``backup_write``, ``other``."""
+    text = EXPERIENCE_MD.read_text(encoding="utf-8")
+    header = text.find('| Cause | After "Failing · " |')
+    assert header != -1, "no Failing reasons table in EXPERIENCE.md"
+    reasons: list[str] = []
+    for line in text[header:].splitlines()[2:]:
+        row = _FAILING_ROW.match(line)
+        if row is None:
+            break
+        reasons.append(row.group(1))
+    return reasons

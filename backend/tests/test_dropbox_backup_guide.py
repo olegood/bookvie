@@ -213,3 +213,55 @@ def test_the_guide_sets_up_the_dropbox_backup_in_order_and_its_commands_match_th
     agent_tools = section(README.read_text(encoding="utf-8"), "Agent tools")
     assert "bookvie-dropbox" in agent_tools
     assert "(docs/dropbox-backup.md)" in agent_tools
+
+
+# --- Story 13.4: the backup skill's run, how it works, and a failed upload ----------
+
+RED_13_4 = "Story 13.4 red phase: the guide doesn't describe the backup run yet"
+BACKUP_SKILL_LINK = "[`bookvie-backup`](.claude/skills/bookvie-backup/SKILL.md)"
+DROPBOX_BACKUPS = "~/Dropbox/Apps/bookvie/.backups/"
+
+
+# Un-skip when the build writes the guide's How it works, first run and upload troubleshooting.
+@pytest.mark.skip(reason=RED_13_4)
+def test_the_guide_says_how_the_backup_works_runs_it_once_by_hand_and_fixes_a_failed_upload() -> (
+    None
+):
+    # [P1] Story 13.4 AC-6
+    text = GUIDE.read_text(encoding="utf-8")
+    works = " ".join(section(text, "How it works").split())
+    assert works, "no How it works section"
+
+    for words in ("09:00", "launchd", "claude -p", "`--dev`"):
+        assert words in works, words
+    for pattern in (
+        r"\bexport",
+        r"\bverif",
+        r"\bdelet",
+        r"\b3\b",
+        r"\bskip",
+        r"\bnever uploads?\b",
+    ):
+        assert re.search(pattern, works, re.I), pattern
+
+    # The first manual run: the skill, by hand.
+    first = headed(text, r"\bfirst\b.*\brun\b")
+    assert any("/bookvie-backup" in entry for entry in first), first
+
+    # A failed or mismatched upload: nothing deleted, run it again, what to check in Dropbox.
+    failed = [" ".join(entry.split()) for entry in headed(text, r"`upload_incomplete`")]
+    assert any(
+        re.search(r"\bnothing\b[^.]*\bdeleted\b", entry, re.I)
+        and "/bookvie-backup" in entry
+        and "/Apps/bookvie/.backups" in entry
+        for entry in failed
+    ), failed
+
+    # A Dropbox backup can always be restored by hand, from the Backup page.
+    paragraphs = [" ".join(p.split()) for p in re.split(r"\n[ \t]*\n", text)]
+    assert any(
+        DROPBOX_BACKUPS in p and "Backup page" in p and "Restore" in p for p in paragraphs
+    ), DROPBOX_BACKUPS
+
+    ai_skills = section(README.read_text(encoding="utf-8"), "AI skills")
+    assert BACKUP_SKILL_LINK in ai_skills
