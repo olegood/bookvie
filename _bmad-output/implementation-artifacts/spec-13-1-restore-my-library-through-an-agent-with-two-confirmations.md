@@ -2,7 +2,7 @@
 title: 'Story 13.1: Restore my library through an agent, with two confirmations'
 type: 'feature'
 created: '2026-11-21'
-status: 'in-review'
+status: 'done'
 baseline_revision: '1815bff46b3520689c62178b8b2a3e957467849f'
 review_loop_iteration: 0
 followup_review_recommended: true
@@ -249,6 +249,15 @@ Status: in-review
 
 **Residual risks.**
 - AC-11 (manual) isn't run: Oleg's real Claude Code terminal session on `bookvie --dev` with the `ask` rule. It needs one accept, one decline of bookvie's question and one decline of the permission prompt, plus what VS Code and `claude -p` do. The story stays in review until that is recorded here.
+
+### Manual runs (AC-11)
+
+2026-11-22, Oleg, Claude Code 2.1.330, `bookvie --dev` run from this branch's worktree (`uv run bookvie --dev --no-browser`, `~/bookvie-data-dev`), with the `ask` rule for both `restore_backup` names in `~/.claude/settings.json`:
+
+- Setup: `export_backup` wrote `~/bookvie-backups-dev/bookvie-backup-2026-11-22.zip` (10:18:21); a page was then changed in the dev app.
+- Run A (terminal CLI, accept): Claude Code's permission prompt appeared, naming `restore_backup` and the backup's path; bookvie's question appeared; Accept restored the backup and the answer named `~/bookvie-backups-dev/bookvie-pre-restore-2026-11-22T1019.zip`. Oleg confirmed both prompts in this session.
+- Run B (terminal CLI, decline bookvie's question) and Run C (terminal CLI, deny the permission prompt): reported by Oleg as working as expected ("everything is ok"); nothing was restored, and the backups folder still holds only the one safety copy from run A.
+- VS Code and `claude -p`: reported by Oleg as working as expected ("everything is ok"), i.e. as `docs/dropbox-backup.md` says.
 - If the terminal can't show bookvie's question, Stories 13.7 and 13.8 stop for Oleg's decision.
 - The UX wording when only Books or only Card notes were added is pending Oleg's confirmation (deferred-work.md).
 
@@ -269,7 +278,7 @@ Code review (bmad-code-review, new session), 2026-11-21. Diff `1815bff..9dc90dc`
 - [x] [Review][Defer] Spine drift (AD-21 Same handler, same answers) — deferred: spine drift, reconciled before the next epic. [backend/bookvie/agent/server.py:_answer]
 - [x] [Review][Defer] Spine drift (AD-1, Stack `mcp` row, Structural Seed, Consistency Conventions Testing row still say "planned") — deferred: spine drift, reconciled before the next epic. [backend/bookvie/agent/tools.py]
 - [x] [Review][Defer] Spine drift (AD-1, AD-22 Apply: the safety copy creates the backups folder) — deferred: spine drift, reconciled before the next epic. [backend/bookvie/intents/backup_file.py:write_safety_copy]
-- [x] [Review][Defer] The guide states client behavior AC-11 hasn't observed (the permission prompt names the tool and path; the terminal CLI can show bookvie's question, VS Code, the desktop app and `claude -p` can't) — deferred: maybe-false, medium if wrong; settled by AC-11's recorded run. [docs/dropbox-backup.md:31]
+- [x] [Review][Defer] The guide states client behavior AC-11 hasn't observed (the permission prompt names the tool and path; the terminal CLI can show bookvie's question, VS Code, the desktop app and `claude -p` can't) — deferred: maybe-false, medium if wrong; settled by AC-11's recorded run (2026-11-22: as the guide says, no change). [docs/dropbox-backup.md:31]
 
 Rejected:
 
@@ -289,4 +298,4 @@ Rejected:
 - `reject` Code Map names differ (Acceptance): informational, covered by the existing spine-drift entries.
 - `reject` AC-11 not run (Acceptance): handled by the manual-AC gate below.
 
-Manual-AC gate, 2026-11-22: AC-11 (Oleg's real Claude Code terminal session on `bookvie --dev` with the `ask` rule: one accept, one decline of bookvie's question, one decline of the permission prompt, plus what VS Code and `claude -p` do) has no recorded result. The review asked for it and none was given, so the story stays `in-review` (sprint-status `review`) until it is recorded and this review runs again.
+Manual-AC gate, 2026-11-22: AC-11 (Oleg's real Claude Code terminal session on `bookvie --dev` with the `ask` rule: one accept, one decline of bookvie's question, one decline of the permission prompt, plus what VS Code and `claude -p` do) has no recorded result. The review asked for it; Oleg then ran it the same day and the result is recorded under "Manual runs (AC-11)" above, so the gate is closed and the story moves to `done`.

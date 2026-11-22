@@ -1492,3 +1492,4 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-1-restore-my-library-through-an-agent-with-two-confirmations.md`
   summary: `docs/dropbox-backup.md` states client behavior AC-11 hasn't observed yet: that Claude Code's permission prompt names `restore_backup` and the backup's path, and that the terminal CLI can show bookvie's question while VS Code, the desktop app and `claude -p` can't. Medium if wrong, unverified; settled by AC-11's recorded run, after which the guide is corrected if the run disagrees.
   evidence: `docs/dropbox-backup.md` "The two prompts"; code review blind-hunter finding 6 and acceptance-auditor finding 1.
+  resolved: 2026-11-22, AC-11's manual runs (spec "Manual runs (AC-11)") behaved as the guide says; no guide change.
