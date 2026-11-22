@@ -217,13 +217,10 @@ def test_the_guide_sets_up_the_dropbox_backup_in_order_and_its_commands_match_th
 
 # --- Story 13.4: the backup skill's run, how it works, and a failed upload ----------
 
-RED_13_4 = "Story 13.4 red phase: the guide doesn't describe the backup run yet"
 BACKUP_SKILL_LINK = "[`bookvie-backup`](.claude/skills/bookvie-backup/SKILL.md)"
 DROPBOX_BACKUPS = "~/Dropbox/Apps/bookvie/.backups/"
 
 
-# Un-skip when the build writes the guide's How it works, first run and upload troubleshooting.
-@pytest.mark.skip(reason=RED_13_4)
 def test_the_guide_says_how_the_backup_works_runs_it_once_by_hand_and_fixes_a_failed_upload() -> (
     None
 ):

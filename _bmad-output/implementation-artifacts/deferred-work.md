@@ -1574,3 +1574,15 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-3-record-each-upload-in-bookvie.md`
   summary: Spine drift (AD-21 One validator), reconciled before the next epic: after the code review (Oleg's decision, 2026-11-22), `export_backup` parses its arguments with `parse_view_arguments`, so a bad `forUpload` or an unknown argument is `invalid_fields` naming that argument; AD-21 still says `export_backup` refuses as the malformed intent on `intent` "until Epic 13 gives it the optional `forUpload`", and doesn't say which parser it uses after. Low.
   evidence: `backend/bookvie/agent/tools.py` `_export_backup`; `backend/tests/test_agent_backup.py` `test_an_argument_is_refused_and_no_file_is_written`; `backend/tests/test_agent_backup_upload.py` `test_for_upload_that_isnt_a_boolean_is_refused_and_writes_no_file`.
+
+## Deferred from: build-auto review of spec-13-4-back-up-to-dropbox-with-one-skill (2026-11-22)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-4-back-up-to-dropbox-with-one-skill.md`
+  summary: Spine drift (AD-8, Design Paradigm, Capability Map FR-28), reconciled before the next epic: bookvie-backup is a third skill with the same step 1, cut to the `bookvie` entry (8765) only and never `bookvie-dev`; the spine still says "the two bookvie skills", "both skills carry the same step 1" and that the skills use `bookvie-dev` when asked. Low.
+  evidence: spine-check finding 1; .claude/skills/bookvie-backup/SKILL.md step 1; README AI skills now lists three skills.
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-4-back-up-to-dropbox-with-one-skill.md`
+  summary: Spine drift (AD-22 bookvie-backup skill), reconciled before the next epic: the skill reads `get_app_info`'s `mode` and stops on `"dev"` (and on any answer other than `"production"`) before `export_backup`, uploading and recording nothing; AD-22 lists `get_app_info` only as a reachability check. Low.
+  evidence: spine-check finding 2; SKILL.md step 2; test_on_a_dev_server_the_skill_uploads_nothing_records_nothing_and_says_so.
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-4-back-up-to-dropbox-with-one-skill.md`
+  summary: Spine drift (AD-22 bookvie-backup skill), reconciled before the next epic: AD-22 says `record_backup_upload` is called always; the skill records nothing on a dev stop, an unreadable `get_app_info`, or a headless run without bookvie's tools, records `failed`/`other` when the `upload_backup` tool is missing, and never sends a refused report twice. Low.
+  evidence: spine-check finding 3, intent-alignment divergence (extra no-record exceptions); SKILL.md steps 1, 2, 4, 5; spec I/O matrix.

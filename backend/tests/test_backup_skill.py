@@ -42,6 +42,7 @@ from tests.agent_client import (
 from tests.builder import LibraryBuilder
 from tests.helpers import (
     PROBE_PORTS,
+    FaultyFs,
     SetClock,
     check_the_older_bookvie_probe,
     curl_lines,
@@ -50,9 +51,6 @@ from tests.helpers import (
 )
 from tests.test_agent_mount import _section
 from tests.test_dropbox_upload import Connect, upload
-
-# Story 13.4's leaves, in the red phase: un-skip each one when the build starts its task.
-RED = "Story 13.4 red phase: the bookvie-backup skill doesn't exist yet"
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SKILL_MD = REPO_ROOT / ".claude" / "skills" / "bookvie-backup" / "SKILL.md"
@@ -147,8 +145,6 @@ def _connect_default(connect_mcp: Callable[..., McpClient], home: Path) -> McpCl
 # --- AC-1: the run, and its tools -----------------------------------------------------
 
 
-# Un-skip when the build writes the skill's run steps and frontmatter.
-@pytest.mark.skip(reason=RED)
 def test_the_skill_exports_for_upload_uploads_unless_unchanged_and_always_ends_with_one_report(
     connect_mcp: Callable[..., McpClient], _isolated_home: Path, fakes: Any
 ) -> None:
@@ -222,8 +218,6 @@ def test_the_skill_exports_for_upload_uploads_unless_unchanged_and_always_ends_w
 # --- AC-2: never from development -----------------------------------------------------
 
 
-# Un-skip when the build writes the skill's dev check.
-@pytest.mark.skip(reason=RED)
 def test_on_a_dev_server_the_skill_uploads_nothing_records_nothing_and_says_so(
     connect_mcp: Callable[..., McpClient],
 ) -> None:
@@ -250,8 +244,6 @@ def test_on_a_dev_server_the_skill_uploads_nothing_records_nothing_and_says_so(
 # --- AC-3: one line per outcome -------------------------------------------------------
 
 
-# Un-skip when the build writes the skill's report step.
-@pytest.mark.skip(reason=RED)
 def test_the_skill_reports_each_outcome_in_one_line_in_the_auto_backup_lines_words() -> None:
     # [P1] AC-3
     skill = _skill()
@@ -278,8 +270,6 @@ def test_the_skill_reports_each_outcome_in_one_line_in_the_auto_backup_lines_wor
 # --- AC-4: started by hand, with bookvie not running ------------------------------------
 
 
-# Un-skip when the build writes the skill's step 1.
-@pytest.mark.skip(reason=RED)
 def test_run_by_hand_the_skill_starts_bookvie_as_the_other_skills_do_and_goes_on(
     connect_mcp: Callable[..., McpClient],
 ) -> None:
@@ -298,3 +288,158 @@ def test_run_by_hand_the_skill_starts_bookvie_as_the_other_skills_do_and_goes_on
     assert "mcp__bookvie-dev__" not in skill
     # Then it goes on with the run.
     assert re.search(r"\bgo on\b|\bcontinue\b", _flat(start), re.I)
+
+
+# --- Follow-ups (ATDD green phase, and the spec's I/O matrix) ---------------------------
+
+README_MD = REPO_ROOT / "README.md"
+
+
+def _paragraphs(text: str) -> list[str]:
+    return [_flat(p) for p in re.split(r"\n[ \t]*\n", text)]
+
+
+def test_the_skills_setup_and_reconnect_steps_match_the_readme() -> None:
+    # [P2] AC-1 (ATDD follow-up). Step 1 repeats the README's one-time setup line for the
+    # `bookvie` entry and its reconnect step; one wording, no drift.
+    readme = _section(README_MD.read_text(encoding="utf-8"), "Agent tools")
+    assert readme is not None
+    start = _section(_skill(), START_STEP, numbered=True)
+    assert start is not None
+    start = _flat(start)
+
+    setup = re.findall(r"claude mcp add [^\n`]*/mcp", readme)
+    assert setup and "http://127.0.0.1:8765/mcp" in setup[0], setup
+    assert setup[0] in start
+    assert all(line not in start for line in setup[1:]), "only the bookvie entry"
+
+    assert "run `/mcp` in Claude Code, pick the entry and choose reconnect" in readme
+    assert re.search(
+        r"run `/mcp` in Claude Code, pick the entry \(`bookvie`\) and choose reconnect", start
+    )
+
+
+def test_an_export_that_fails_is_recorded_as_failed_with_backup_write(
+    connect_mcp: Callable[..., McpClient], _isolated_home: Path
+) -> None:
+    # [P1] AC-1 (ATDD follow-up). The skill's cause for a refused export is accepted.
+    # A data folder with no backups folder (`~/bookvie`): the export is couldnt_save.
+    folder = _isolated_home / "bookvie"
+    LibraryBuilder().write(folder)
+    client = connect_mcp(data_dir=folder, clock=SetClock(NOW))
+    refused = client.call_tool(EXPORT_BACKUP, {"forUpload": True})
+    assert error_of(refused).get("code") == "couldnt_save", refused
+    recorded = client.call_tool(
+        RECORD_BACKUP_UPLOAD, {"outcome": "failed", "cause": "backup_write"}
+    )
+    assert recorded.get("isError") is not True, recorded
+
+    # A write that fails while the zip is renamed into place: couldnt_save too.
+    client = _connect_default(connect_mcp, _isolated_home)
+    store = client.http.app.state.store
+    fs = store.fs
+    store.fs = FaultyFs("replace")
+    refused = client.call_tool(EXPORT_BACKUP, {"forUpload": True})
+    store.fs = fs
+    assert error_of(refused).get("code") == "couldnt_save", refused
+    recorded = client.call_tool(
+        RECORD_BACKUP_UPLOAD, {"outcome": "failed", "cause": "backup_write"}
+    )
+    assert recorded.get("isError") is not True, recorded
+
+    # The skill says so, on the export's line.
+    assert any(
+        "`export_backup` answers an error" in line and "`backup_write`" in line
+        for line in _body(_skill()).splitlines()
+    )
+
+
+@pytest.mark.parametrize(
+    ("fault", "cause"),
+    [
+        pytest.param("signin", "dropbox_signin", id="signin"),
+        pytest.param("refuse_hash", "upload_incomplete", id="upload_incomplete"),
+        pytest.param("full", "dropbox_full", id="dropbox_full"),
+        pytest.param("unexpected", "other", id="other"),
+    ],
+)
+def test_each_upload_cause_is_recorded_as_failed_with_that_cause(
+    connect_mcp: Callable[..., McpClient],
+    _isolated_home: Path,
+    fakes: Any,
+    fault: str,
+    cause: str,
+) -> None:
+    # [P1] AC-1 (ATDD follow-up). The `cause` upload_backup answers is one record accepts.
+    client = _connect_default(connect_mcp, _isolated_home)
+    export = structured_of(client.call_tool(EXPORT_BACKUP, {"forUpload": True}))
+    fake = fakes.FakeDropbox(fault=fault)
+
+    refused = error_of(upload(export["path"], Connect(fake)))
+
+    assert refused["cause"] == cause, refused
+    assert fake.deletes() == []
+    recorded = client.call_tool(RECORD_BACKUP_UPLOAD, {"outcome": "failed", "cause": cause})
+    assert recorded.get("isError") is not True, recorded
+
+
+def test_an_upload_that_deleted_nothing_drops_the_deleted_part_of_the_line() -> None:
+    # [P2] AC-3 (the spec's empty-`deleted` row).
+    skill = _skill()
+    assert re.search(r'"Uploaded [^"·]+ · \d+ copies in Dropbox"', skill)
+    assert any(
+        "`deleted` is empty" in line and "leave out the deleted part" in line
+        for line in skill.splitlines()
+    )
+    assert re.search(r'joined with ", "', skill)
+
+
+def test_with_no_dropbox_tools_the_run_fails_with_other_and_says_bookvie_dropbox_isnt_connected() -> (
+    None
+):
+    # [P2] AC-1 (the spec's Dropbox-tools-missing row).
+    body = _body(_skill())
+    upload_step = _section(body, "Upload unless unchanged", numbered=True) or ""
+    assert any(
+        "`upload_backup` tool isn't available" in p and "`other`" in p
+        for p in _paragraphs(upload_step)
+    ), upload_step
+    report = _section(body, "Report in one line", numbered=True) or ""
+    assert any(
+        line.lstrip().startswith("- `other`:")
+        and "bookvie-dropbox isn't connected" in line
+        and "Setup, step 3" in line
+        for line in report.splitlines()
+    ), report
+
+
+def test_headless_with_bookvie_not_running_the_skill_stops_with_one_failed_line_and_records_nothing() -> (
+    None
+):
+    # [P2] AC-4 (the spec's headless row): no shell, so no start; nothing is recorded.
+    start = _section(_skill(), START_STEP, numbered=True) or ""
+    (stop,) = [p for p in _paragraphs(start) if "headless" in p]
+    assert (
+        "\"Failed: bookvie's tools aren't available (bookvie isn't running, "
+        "or its `bookvie` entry isn't connected"
+    ) in stop, stop
+    assert re.search(r"\bstop\b", stop) and "Don't call any other tool" in stop
+    assert "nothing is recorded" in stop
+    # It comes before the start fallback's shell commands.
+    flat = _flat(start)
+    assert flat.index(stop) < flat.index("curl -fsS http://127.0.0.1:8765/api/health")
+
+
+def test_a_refused_report_still_gives_the_outcome_and_is_never_sent_twice() -> None:
+    # [P2] AC-1 (the spec's report-refused row).
+    body = _body(_skill())
+    record = _flat(_section(body, "Record what happened", numbered=True) or "")
+    assert re.search(
+        r"If `record_backup_upload` itself answers an error[^.]*don't call it again", record
+    ), record
+    report = _flat(_section(body, "Report in one line", numbered=True) or "")
+    assert re.search(
+        r"When `record_backup_upload` answered an error, still give the outcome line", report
+    )
+    assert "bookvie couldn't save this report" in report
+    assert "Don't call any tool to fix it." in report

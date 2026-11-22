@@ -4,6 +4,8 @@ bookvie keeps your library on this computer. This guide sets up daily backups to
 
 The Dropbox side is a second command, `bookvie-dropbox`, installed with bookvie. It is an MCP server that Claude Code starts by itself, with one tool, `upload_backup`: it uploads a daily backup from `~/bookvie-backups`, checks that Dropbox's copy matches the file, and only then deletes the oldest daily backups beyond 3. A failed or mismatched upload deletes nothing. It never uploads from `~/bookvie-backups-dev`, the folder of a `--dev` server.
 
+One project skill, [`bookvie-backup`](../.claude/skills/bookvie-backup/SKILL.md), makes a backup run: run `/bookvie-backup` in Claude Code from this repo to back up now. The daily 09:00 job runs the same skill.
+
 An agent can restore your library only through bookvie's own tools, and only after two confirmations it can't skip. bookvie saves a safety copy of your current library first, so a restore can always be undone.
 
 ## Setup
@@ -61,6 +63,16 @@ claude mcp list
 
 Both `bookvie` and `bookvie-dropbox` should read as connected. bookvie must be running for `bookvie` to connect.
 
+### Your first run
+
+Back up once by hand, so you see a run work before the daily job takes over. In Claude Code, in this repo, run:
+
+> /bookvie-backup
+
+If bookvie isn't running, the skill starts it, as the other bookvie skills do; Claude Code asks you to allow its commands. If bookvie started after the Claude Code session did, the skill asks you to run `/mcp` in Claude Code, pick `bookvie` and choose reconnect. It then answers in one line, for example "Uploaded bookvie-backup-2026-11-22.zip · 1 copy in Dropbox". Your Dropbox now holds the file in `/Apps/bookvie/.backups` (in Finder, `~/Dropbox/Apps/bookvie/.backups/`, a hidden folder: press Command-Shift-. to show it).
+
+Run `/bookvie-backup` a second time, without changing anything in bookvie. It answers "Nothing new since the last upload; skipped.", and uploads nothing. A line that starts with "Failed:" says what went wrong and how to fix it; the entries below have more.
+
 ### Troubleshooting the setup
 
 #### `dropbox_signin`: the Dropbox sign-in expired or is missing
@@ -73,6 +85,24 @@ bookvie-dropbox auth
 
 If macOS asks whether a program may use the Keychain item `bookvie-dropbox`, choose **Always Allow**. The program it names is the Python of bookvie's install, not `bookvie-dropbox`, and macOS asks again after each reinstall.
 
+#### `upload_incomplete`: the upload didn't finish, or didn't match the file
+
+`upload_backup` answers `upload_incomplete` when the upload broke off (a network error or a timeout), Dropbox refused it, or Dropbox's copy doesn't match the file in size or content hash. Nothing in Dropbox was deleted: the older daily backups are deleted only after a checked upload. Run `/bookvie-backup` again, or leave it to the next 09:00 run.
+
+To see what Dropbox holds, open `/Apps/bookvie/.backups` in Dropbox. The older daily backups are all still there. A mismatched upload may already have replaced today's file, `bookvie-backup-<YYYY-MM-DD>.zip`; it counts only once a run has checked it, and the next upload replaces it. If the same run keeps failing, check your network and Dropbox's status page, then run `/bookvie-backup` again.
+
+#### `dropbox_full`: Dropbox is full
+
+Dropbox refused the upload because your Dropbox has no space left. Nothing in Dropbox was deleted. Free some space in Dropbox, then run `/bookvie-backup` again.
+
+#### `backup_write`: bookvie couldn't write the backup file
+
+bookvie's `export_backup` couldn't write today's backup into the backups folder, so nothing was uploaded. Check that the disk isn't full and that `~/bookvie-backups` can be written. A data folder such as `~/bookvie` has no backups folder at all (see What bookvie records). Then run `/bookvie-backup` again.
+
+#### `other`: the last run stopped with an error
+
+Anything else: Dropbox's servers answered an error, the bookvie-dropbox tools weren't connected in Claude Code (see step 3 and "An MCP server is shown as failed" below), or deleting the older backups didn't finish after a checked upload. In that last case the upload itself worked: Dropbox may hold more than 3 copies for a while, nothing needs deleting by hand, and the next run deletes the extras. The skill's answer and the `upload_backup` message say which. Fix that, then run `/bookvie-backup` again.
+
 #### An MCP server is shown as failed
 
 When `claude mcp list` shows `bookvie` or `bookvie-dropbox` as failed:
@@ -80,6 +110,18 @@ When `claude mcp list` shows `bookvie` or `bookvie-dropbox` as failed:
 - **bookvie isn't running, or started after the session.** Start `bookvie`. If you started it after the Claude Code session started, run `/mcp` in Claude Code, pick `bookvie` and choose reconnect.
 - **The command path moved.** Claude Code starts bookvie-dropbox from the absolute path you added. If `which bookvie-dropbox` now prints another path (after reinstalling `uv`, for example), remove the entry with `claude mcp remove --scope user bookvie-dropbox` and add it again with the new path.
 - **`uv` not found.** `npm run install:local` installs bookvie with `uv`. Install `uv`, then reinstall bookvie and check the path again.
+
+## How it works
+
+Every morning at 09:00, a launchd job runs the `bookvie-backup` skill headless with `claude -p`, allowed only the skill's four MCP tools. Installing that job is added to this guide in a later update. Each run does the same steps as `/bookvie-backup` by hand:
+
+1. It checks bookvie with `get_app_info`. A `--dev` server never uploads: the run stops there, and nothing is uploaded or recorded.
+2. It asks bookvie to export today's daily backup into `~/bookvie-backups`, with `export_backup`. That backup doesn't move "Last export".
+3. When the library hasn't changed since the last upload, it skips the upload.
+4. Otherwise bookvie-dropbox's `upload_backup` uploads the file to `/Apps/bookvie/.backups` in Dropbox and verifies that Dropbox's copy matches it. Only then does it delete the oldest daily backups, keeping 3. A failed or mismatched upload deletes nothing.
+5. It reports the run to bookvie with `record_backup_upload`: uploaded, skipped or failed with a cause. Then it says the outcome in one line.
+
+The skill never retries a failed run and never restores. The next run, the next morning or by hand, tries again.
 
 ## What bookvie records
 
@@ -95,7 +137,9 @@ bookvie gives agents three tools for this:
 - `preview_restore` says what restoring a backup would lose, and changes nothing: the backup's time and counts, your library's counts now, the titles of the books added since and the number of card notes added since.
 - `restore_backup` replaces the whole library with the backup, after both confirmations.
 
-The backups folder is `~/bookvie-backups` for the real app and `~/bookvie-backups-dev` for a `--dev` server. bookvie restores only from that folder and its `from-dropbox/`, never from a file anywhere else.
+A Dropbox backup can always be restored by hand, without an agent: download it from `~/Dropbox/Apps/bookvie/.backups/` (or from `/Apps/bookvie/.backups` on dropbox.com), then choose **Restore from file…** on the Backup page and pick the downloaded file. The Backup page's Restore checks the whole file before it replaces anything.
+
+The backups folder is `~/bookvie-backups` for the real app and `~/bookvie-backups-dev` for a `--dev` server. bookvie's agent tools restore only from that folder and its `from-dropbox/`, never from a file anywhere else.
 
 ### Set up the first confirmation (once)
 

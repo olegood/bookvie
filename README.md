@@ -115,7 +115,7 @@ bookvie must be running for its tools to appear. If you start `bookvie` (or `boo
 
 ## AI skills
 
-The repo ships two Claude Code skills in [`.claude/skills/`](.claude/skills/). Both talk to a local `bookvie` on `127.0.0.1:8765`.
+The repo ships three Claude Code skills in [`.claude/skills/`](.claude/skills/). All three talk to a local `bookvie` on `127.0.0.1:8765`.
 
 - **[`bookvie-new-book`](.claude/skills/bookvie-new-book/SKILL.md)** adds a book to the catalog. It starts `bookvie` if needed and checks the catalog for a duplicate. It then looks up the metadata and front cover on amazon.com, manning.com, leanpub.com or oreilly.com, saves the book with bookvie's `add_book` agent tool (bookvie downloads the cover from its address) and tags it `added-by-skill`.
   - "Add *Designing Data-Intensive Applications* to bookvie"
@@ -123,6 +123,9 @@ The repo ships two Claude Code skills in [`.claude/skills/`](.claude/skills/). B
 - **[`bookvie-notes-summary`](.claude/skills/bookvie-notes-summary/SKILL.md)** turns a book's card notes into a printable one-page Word summary of what you learned, grouped by theme. It saves the file to `~/Documents`. The book needs a Purpose and at least one card note. With no title given, it uses the Main book.
   - "Summarize my card notes for *Fluent Python*"
   - "Make a study sheet from what I learned in my current book"
+- **[`bookvie-backup`](.claude/skills/bookvie-backup/SKILL.md)** backs up the library to bookvie's own Dropbox App folder once: it exports today's daily backup, uploads it with `bookvie-dropbox` unless nothing changed since the last upload, tells bookvie how the run went and answers in one line. It never uploads from a `--dev` server. The daily 09:00 job runs the same skill. Set it up first with [Backing up to Dropbox, and restoring](docs/dropbox-backup.md).
+  - "/bookvie-backup"
+  - "Back up my library to Dropbox now"
 
 ## Project docs
 

@@ -134,7 +134,7 @@ development_status:
   13-1-restore-my-library-through-an-agent-with-two-confirmations: done
   13-2-upload-a-backup-to-my-dropbox: done
   13-3-record-each-upload-in-bookvie: done
-  13-4-back-up-to-dropbox-with-one-skill: backlog
+  13-4-back-up-to-dropbox-with-one-skill: review
   13-5-run-the-backup-every-morning: backlog
   13-6-see-on-the-backup-page-whether-auto-backup-works: backlog
   13-7-fetch-a-backup-from-my-dropbox: backlog
