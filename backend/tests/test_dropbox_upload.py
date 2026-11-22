@@ -34,8 +34,6 @@ from tests.agent_client import (
 )
 from tests.helpers import dropbox_content_hash
 
-RED = "ATDD red phase (Story 13.2): bookvie_dropbox isn't built yet"
-
 NOW = datetime(2026, 11, 20, 9, 1, 36).astimezone()
 """Today's backup time, 09:01:36 in Madrid: 08:01:36 UTC."""
 NOW_UTC = datetime(2026, 11, 20, 8, 1, 36, tzinfo=UTC)
@@ -119,8 +117,6 @@ def seed_three_older(fake: Any) -> None:
 # --- AC-5: the tool list ---------------------------------------------------------
 
 
-# Red phase: un-skip when the build adds bookvie_dropbox (Story 13.2).
-@pytest.mark.skip(reason=RED)
 def test_the_stdio_server_lists_exactly_upload_backup_with_its_story_description(
     _isolated_home: Path,
 ) -> None:
@@ -147,8 +143,6 @@ def test_the_stdio_server_lists_exactly_upload_backup_with_its_story_description
 # --- AC-6: a good upload, then the oldest goes -------------------------------------
 
 
-# Red phase: un-skip when the build adds bookvie_dropbox (Story 13.2).
-@pytest.mark.skip(reason=RED)
 def test_upload_backup_uploads_through_a_session_checks_the_copy_then_deletes_the_oldest(
     fakes: Any, backups: Path
 ) -> None:
@@ -218,8 +212,6 @@ def _three_older_among_other_files(fake: Any) -> None:
     fake.put_folder(daily("2026-11-04"))
 
 
-# Red phase: un-skip when the build adds bookvie_dropbox (Story 13.2).
-@pytest.mark.skip(reason=RED)
 @pytest.mark.parametrize(
     ("seed", "after", "deleted", "copies"),
     [
@@ -299,8 +291,6 @@ def _empty(fakes: Any) -> Any:
     return fakes.MemoryKeyring()
 
 
-# Red phase: un-skip when the build adds bookvie_dropbox (Story 13.2).
-@pytest.mark.skip(reason=RED)
 @pytest.mark.parametrize(
     ("fault", "keychain_of", "cause"),
     [
@@ -357,8 +347,6 @@ def test_a_failed_upload_deletes_nothing_and_returns_its_cause(
 # --- AC-9: today's copy is replaced only by a verified one ------------------------
 
 
-# Red phase: un-skip when the build adds bookvie_dropbox (Story 13.2).
-@pytest.mark.skip(reason=RED)
 def test_a_second_upload_the_same_day_replaces_that_days_copy_only_once_it_verifies(
     fakes: Any, backups: Path
 ) -> None:
@@ -449,8 +437,6 @@ def _write_backup(target: Path) -> None:
     target.write_bytes(fakes.daily_zip(NOW))
 
 
-# Red phase: un-skip when the build adds bookvie_dropbox (Story 13.2).
-@pytest.mark.skip(reason=RED)
 @pytest.mark.parametrize(
     ("case", "where"),
     [
@@ -496,8 +482,6 @@ def test_any_other_path_is_refused_before_any_dropbox_call(
 # --- AC-11: a file over 150 MB --------------------------------------------------------
 
 
-# Red phase: un-skip when the build adds bookvie_dropbox (Story 13.2).
-@pytest.mark.skip(reason=RED)
 def test_a_backup_over_150_mb_goes_up_in_more_than_one_chunk_and_verifies(
     fakes: Any, backups: Path
 ) -> None:
@@ -519,8 +503,6 @@ def test_a_backup_over_150_mb_goes_up_in_more_than_one_chunk_and_verifies(
 # --- AC-12: the SDK refreshes an expired access token -------------------------------
 
 
-# Red phase: un-skip when the build adds bookvie_dropbox (Story 13.2).
-@pytest.mark.skip(reason=RED)
 def test_an_expired_access_token_is_refreshed_from_the_keychains_refresh_token(
     fakes: Any, keychain: Any
 ) -> None:

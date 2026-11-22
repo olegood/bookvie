@@ -11,22 +11,17 @@ import re
 import tomllib
 from pathlib import Path
 
-import pytest
 from packaging.requirements import Requirement
 from packaging.version import Version
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 SMOKE = BACKEND_ROOT.parent / "scripts" / "smoke.mjs"
 
-RED = "ATDD red phase (Story 13.2): bookvie_dropbox isn't built yet"
-
 # The versions on PyPI on 2026-11-22, when this story's ATDD ran (dropbox 12.2.5 was
 # uploaded 2026-11-13, keyring 25.7.0 2025-11-16). The lock may be newer in their series.
 CHECKED_ON_PYPI = {"dropbox": "12.2.5", "keyring": "25.7.0"}
 
 
-# Red phase: un-skip when the build adds bookvie_dropbox to the project (Story 13.2).
-@pytest.mark.skip(reason=RED)
 def test_the_project_ships_bookvie_dropbox_with_its_command_and_both_dependencies() -> None:
     # [P0] AC-1
     pyproject = tomllib.loads((BACKEND_ROOT / "pyproject.toml").read_text(encoding="utf-8"))

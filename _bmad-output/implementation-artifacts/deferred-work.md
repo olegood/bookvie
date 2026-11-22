@@ -1477,6 +1477,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-1-restore-my-library-through-an-agent-with-two-confirmations.md`
   summary: In Story 13.2 or 13.7: `dropbox_content_hash` (`intents/backup_file.py`) is only tested on files under one 4 MiB block, against a test helper written the same way. Add Dropbox's published example vector, or an over-4-MiB and exactly-8-MiB file, when the `bookvie_dropbox` copy and the compare test land. Medium (unverified against Dropbox).
   evidence: build-auto review verification-gap layer finding 3 and blind-hunter finding 7.
+  resolved: Story 13.2, `backend/tests/test_dropbox_contracts.py` (both copies on 0 … 12 MiB+5 bytes against the helper, and Dropbox's published block digests give its published hash). The 9.7 MB `milky-way-nasa.jpg` itself isn't committed (Oleg's call).
 
 ## Deferred from: code review of spec-13-1-restore-my-library-through-an-agent-with-two-confirmations (2026-11-21)
 
@@ -1493,3 +1494,36 @@
   summary: `docs/dropbox-backup.md` states client behavior AC-11 hasn't observed yet: that Claude Code's permission prompt names `restore_backup` and the backup's path, and that the terminal CLI can show bookvie's question while VS Code, the desktop app and `claude -p` can't. Medium if wrong, unverified; settled by AC-11's recorded run, after which the guide is corrected if the run disagrees.
   evidence: `docs/dropbox-backup.md` "The two prompts"; code review blind-hunter finding 6 and acceptance-auditor finding 1.
   resolved: 2026-11-22, AC-11's manual runs (spec "Manual runs (AC-11)") behaved as the guide says; no guide change.
+
+## Deferred from: build-auto review of spec-13-2-upload-a-backup-to-my-dropbox (2026-11-22)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-2-upload-a-backup-to-my-dropbox.md`
+  summary: Spine drift (AD-22 Dropbox tools), reconciled before the next epic: `upload_backup` can't finish with "the whole file's `content_hash` (Dropbox refuses a mismatch)": the SDK's `content_hash` is per request and `CommitInfo` has none. The code sends Dropbox's per-request hash (`auto_content_hash`) and checks the returned `size` and `content_hash` against the bytes sent, before any prune; AC-6's wording needs the same fix. Low.
+  evidence: spine-check finding 1, intent-alignment divergence 2; ATDD checklist "For the build" 1; `backend/bookvie_dropbox/upload.py` `_upload`.
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-2-upload-a-backup-to-my-dropbox.md`
+  summary: Spine drift (AD-22 Dropbox scope and sign-in), reconciled before the next epic: there is no `DropboxApi` seam. The seam is `build_server(connect=…)`, whose `connect()` returns the SDK's `dropbox.Dropbox`; `upload.py` calls the SDK's own `files_*` methods and tests fake the SDK client (`tests/dropbox_fakes.py` `FakeDropbox`), as the ATDD pinned. Low.
+  evidence: spine-check finding 2; `backend/bookvie_dropbox/server.py` `build_server`, `dropbox_api.py` `connect`.
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-2-upload-a-backup-to-my-dropbox.md`
+  summary: Spine drift (AD-22 Dropbox tools, "Any failure deletes nothing"), reconciled before the next epic: a prune that fails after a verified upload answers `other` (the message says the upload was verified and names any name already deleted), so it may have deleted some older dailies. The spine should narrow "deletes nothing" to failures before the verify. Low.
+  evidence: spine-check finding 3; spec I/O matrix row "Prune fails after verify"; `tests/test_dropbox_upload_edges.py`.
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-2-upload-a-backup-to-my-dropbox.md`
+  summary: Spine drift (AD-22 Causes, AD-9), reconciled before the next epic: `upload_backup`'s failure is `isError` with one JSON text `{cause, message}`, not AD-9's error object (`kind`, `code`, `message`), while AD-9's binding names "the agent tools' errors (AD-21, AD-22)". Low.
+  evidence: spine-check finding 4; `backend/bookvie_dropbox/server.py` `_error`.
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-2-upload-a-backup-to-my-dropbox.md`
+  summary: In Story 13.3: the cause enum `CAUSES` exists only in `bookvie_dropbox/contracts.py`; AD-22's copied-contracts rule wants bookvie's copy (13.3's `record_backup_upload` cause) and a test comparing the two. 13.3's AC already asks for it ("bookvie's equals `bookvie_dropbox`'s (Story 13.2)"). Low.
+  evidence: spine-check finding 5; epics.md Story 13.3.
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-2-upload-a-backup-to-my-dropbox.md`
+  summary: Spine drift (AD-22 Dropbox scope and sign-in, Consistency Conventions Config), reconciled before the next epic: the fixed loopback redirect is `http://127.0.0.1:8790/dropbox-auth` (`REDIRECT_PORT` 8790), a second fixed listener beside bookvie's 8765/8766 (AD-16); the spine names no port. Low.
+  evidence: spine-check finding 6; `backend/bookvie_dropbox/auth.py`.
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-2-upload-a-backup-to-my-dropbox.md`
+  summary: Spine drift (Stack), reconciled before the next epic: `requests` (2.34.x) is now a declared runtime dependency of `bookvie_dropbox` (it imports it directly in `auth.py` and `upload.py`), with no Stack row, like httpx2's note. Low.
+  evidence: spine-check finding 7 (the undeclared import was patched in pyproject.toml); `backend/pyproject.toml`.
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-2-upload-a-backup-to-my-dropbox.md`
+  summary: Spine drift (Design Paradigm, AD-22, Consistency Conventions Config, Stack, Structural Seed), reconciled before the next epic: lines still say "planned" for what 13.2 built: the Design Paradigm's "(Epic 13, planned)", the mermaid "MCP over stdio (planned)", the Config row's `bookvie-dropbox auth` and `serve`, the Stack `dropbox`, `keyring` and `mcp` stdio rows, and the Structural Seed's wheel packages, smoke check, `bookvie_dropbox/` and `docs/dropbox-backup.md`. Low.
+  evidence: spine-check finding 8.
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-2-upload-a-backup-to-my-dropbox.md`
+  summary: Before Story 13.4's manual run: `APP_KEY` in `backend/bookvie_dropbox/dropbox_api.py` is the placeholder `REPLACE-WITH-YOUR-DROPBOX-APP-KEY` (the app wasn't registered when the build ran). Oleg registers the Dropbox app as the guide's Setup says and commits the real key. `bookvie-dropbox auth` refuses to start until then. Medium.
+  evidence: spec Design Notes "App key"; blind-hunter finding 2, edge-case finding 3, intent-alignment divergence 1.
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-2-upload-a-backup-to-my-dropbox.md`
+  summary: A refresh refused with something other than 400 `invalid_grant` (for example an unknown app key) becomes the SDK's `BadInputError`, which `upload_backup` answers as `other`, not `dropbox_signin`. Medium if Dropbox answers a wrong app key that way, unverified; settled by Story 13.4's first real run or a check of Dropbox's token-endpoint errors. Medium (unverified).
+  evidence: verification-gap other finding 2; `.venv/.../dropbox/dropbox_client.py` `raise_dropbox_error_for_resp`.

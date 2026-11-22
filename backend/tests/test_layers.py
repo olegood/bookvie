@@ -27,8 +27,6 @@ DROPBOX_ROOT = PACKAGE_ROOT.parent / "bookvie_dropbox"
 BOOKVIE_NEVER_IMPORTS = {"bookvie_dropbox", "dropbox", "keyring"}
 DROPBOX_NEVER_IMPORTS = {"bookvie"}
 
-RED = "ATDD red phase (Story 13.2): bookvie_dropbox isn't built yet"
-
 LAYERS = {"http", "agent", "intents", "views", "domain", "store"}
 TOP_LEVEL_MODULES = {"__init__", "cli", "instance"}
 # Any `bookvie.<name>` that is not a layer is grouped under this target.
@@ -176,8 +174,6 @@ def _crossings(root: Path, banned: set[str]) -> dict[str, list[str]]:
     return found
 
 
-# Red phase: un-skip when the build adds bookvie_dropbox (Story 13.2).
-@pytest.mark.skip(reason=RED)
 def test_bookvie_and_bookvie_dropbox_never_import_each_other() -> None:
     # [P0] AC-2
     assert (DROPBOX_ROOT / "__init__.py").is_file(), DROPBOX_ROOT

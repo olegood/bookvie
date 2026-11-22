@@ -114,6 +114,14 @@ async function main() {
     }
     say(`installed favicon-dev.svg is the built file`)
 
+    // The second command (AD-22): the installed tool must carry bookvie_dropbox and its script.
+    const bookvieDropbox = path.join(binDir, 'bookvie-dropbox')
+    const dropboxHelp = run(bookvieDropbox, ['--help'], { cwd: temp, env })
+    if (!dropboxHelp.includes('serve') || !dropboxHelp.includes('auth')) {
+      throw new Error(`${bookvieDropbox} --help names no auth and serve:\n${dropboxHelp.slice(0, 500)}`)
+    }
+    say(`${bookvieDropbox} --help -> 0`)
+
     const port = await freePort()
     const bookvie = path.join(binDir, 'bookvie')
     say(`${bookvie} --no-browser --port ${port} --data-dir ${dataDir}`)

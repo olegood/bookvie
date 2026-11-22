@@ -1,8 +1,85 @@
 # Backing up to Dropbox, and restoring
 
-bookvie keeps your library on this computer. This guide covers getting it back from a backup through an agent in Claude Code. Daily backups to Dropbox come in later sections.
+bookvie keeps your library on this computer. This guide sets up daily backups to bookvie's own folder in your Dropbox, and covers getting the library back from a backup through an agent in Claude Code.
+
+The Dropbox side is a second command, `bookvie-dropbox`, installed with bookvie. It is an MCP server that Claude Code starts by itself, with one tool, `upload_backup`: it uploads a daily backup from `~/bookvie-backups`, checks that Dropbox's copy matches the file, and only then deletes the oldest daily backups beyond 3. A failed or mismatched upload deletes nothing. It never uploads from `~/bookvie-backups-dev`, the folder of a `--dev` server.
 
 An agent can restore your library only through bookvie's own tools, and only after two confirmations it can't skip. bookvie saves a safety copy of your current library first, so a restore can always be undone.
+
+## Setup
+
+Do these steps once, in this order.
+
+### 1. Register bookvie's Dropbox app
+
+bookvie uses its own Dropbox app, which you register yourself, so only bookvie's folder in your Dropbox is ever reachable.
+
+1. Open the [Dropbox App Console](https://www.dropbox.com/developers/apps) and choose **Create app**.
+2. Choose **Scoped access**, then **App folder** access, not Full Dropbox.
+3. Name the app `bookvie`. Dropbox names the app's folder after it, so the backups go into `/Apps/bookvie/` in your Dropbox, in its `.backups` folder.
+4. On the app's **Permissions** tab, tick these three scopes and choose **Submit**: `files.metadata.read`, `files.content.read` and `files.content.write`.
+5. On the **Settings** tab, under **OAuth 2**, add this redirect URI, exactly: `http://127.0.0.1:8790/dropbox-auth`. Leave **Allow public clients (Implicit Grant & PKCE)** on. bookvie-dropbox signs in with PKCE, so it needs no app secret, and you never copy one anywhere.
+6. Copy the **App key** from the **Settings** tab. In `backend/bookvie_dropbox/dropbox_api.py`, set `APP_KEY` to it, in place of the placeholder, and commit that change so a later checkout keeps it. An app key isn't a secret. Until it's set, `bookvie-dropbox auth` stops and points here. Then reinstall bookvie, which puts `bookvie-dropbox` on your PATH beside `bookvie`:
+
+```sh
+npm run install:local
+```
+
+### 2. Sign in
+
+```sh
+bookvie-dropbox auth
+```
+
+It opens Dropbox in your browser. Choose **Allow**, and the browser shows a page saying you can close the tab. bookvie-dropbox keeps the sign-in only in your macOS Keychain, under `bookvie-dropbox`. It never prints the sign-in or writes it to a file. Running `auth` again replaces the sign-in.
+
+### 3. Add both MCP servers to Claude Code
+
+Claude Code needs bookvie's tools and bookvie-dropbox's, both added for your user, so they work from any folder. bookvie's server is the running app. If you already added it from the README's Agent tools section, skip this line. The list in step 4 shows `bookvie` when it's there:
+
+```sh
+claude mcp add --transport http --scope user bookvie http://127.0.0.1:8765/mcp
+```
+
+bookvie-dropbox is a command that Claude Code starts, so it needs the command's absolute path. Find it:
+
+```sh
+which bookvie-dropbox
+```
+
+Then add it with that path. For a path of `/Users/<you>/.local/bin/bookvie-dropbox`:
+
+```sh
+claude mcp add --scope user bookvie-dropbox -- /Users/<you>/.local/bin/bookvie-dropbox serve
+```
+
+### 4. Check them
+
+```sh
+claude mcp list
+```
+
+Both `bookvie` and `bookvie-dropbox` should read as connected. bookvie must be running for `bookvie` to connect.
+
+### Troubleshooting the setup
+
+#### `dropbox_signin`: the Dropbox sign-in expired or is missing
+
+`upload_backup` answers `dropbox_signin` when Dropbox refuses bookvie-dropbox's sign-in, or when the Keychain has none or can't be read (it's locked, or access was denied). Nothing was uploaded or deleted. Run this in a terminal, and allow access in the browser:
+
+```sh
+bookvie-dropbox auth
+```
+
+If macOS asks whether a program may use the Keychain item `bookvie-dropbox`, choose **Always Allow**. The program it names is the Python of bookvie's install, not `bookvie-dropbox`, and macOS asks again after each reinstall.
+
+#### An MCP server is shown as failed
+
+When `claude mcp list` shows `bookvie` or `bookvie-dropbox` as failed:
+
+- **bookvie isn't running, or started after the session.** Start `bookvie`. If you started it after the Claude Code session started, run `/mcp` in Claude Code, pick `bookvie` and choose reconnect.
+- **The command path moved.** Claude Code starts bookvie-dropbox from the absolute path you added. If `which bookvie-dropbox` now prints another path (after reinstalling `uv`, for example), remove the entry with `claude mcp remove --scope user bookvie-dropbox` and add it again with the new path.
+- **`uv` not found.** `npm run install:local` installs bookvie with `uv`. Install `uv`, then reinstall bookvie and check the path again.
 
 ## Restoring
 

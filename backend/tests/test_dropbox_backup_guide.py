@@ -39,8 +39,6 @@ _SHELL_BLOCK = re.compile(r"^```(?:sh|bash|shell|console|zsh)\n(.*?)^```", re.M 
 _SHELL_OPERATORS = {"|", "||", "&&", ";", ">", ">>", "<", "&"}
 _HEADING = re.compile(r"^(#+) (.+)$", re.M)
 
-RED = "ATDD red phase (Story 13.2): bookvie_dropbox isn't built yet"
-
 
 def section(text: str, title: str) -> str:
     """The Markdown section headed ``title`` (any level), up to the next heading at its level or above."""
@@ -141,8 +139,6 @@ def _parses(parse: object, args: list[str]) -> str | None:
     return None
 
 
-# Red phase: un-skip when the build adds the guide's Setup and bookvie_dropbox (Story 13.2).
-@pytest.mark.skip(reason=RED)
 def test_the_guide_sets_up_the_dropbox_backup_in_order_and_its_commands_match_the_cli(
     capsys: pytest.CaptureFixture[str],
 ) -> None:

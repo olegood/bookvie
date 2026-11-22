@@ -132,7 +132,7 @@ development_status:
 
   epic-13: in-progress
   13-1-restore-my-library-through-an-agent-with-two-confirmations: done
-  13-2-upload-a-backup-to-my-dropbox: backlog
+  13-2-upload-a-backup-to-my-dropbox: review
   13-3-record-each-upload-in-bookvie: backlog
   13-4-back-up-to-dropbox-with-one-skill: backlog
   13-5-run-the-backup-every-morning: backlog

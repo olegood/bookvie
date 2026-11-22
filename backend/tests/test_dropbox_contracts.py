@@ -12,8 +12,6 @@ import hashlib
 import random
 from pathlib import Path
 
-import pytest
-
 from bookvie.intents import FROM_DROPBOX
 from bookvie.intents import dropbox_content_hash as bookvie_content_hash
 from bookvie.intents.backup_file import (
@@ -24,8 +22,6 @@ from bookvie.intents.backup_file import (
 )
 from tests.agent_client import import_or_fail
 from tests.helpers import DROPBOX_BLOCK, dropbox_content_hash
-
-RED = "ATDD red phase (Story 13.2): bookvie_dropbox isn't built yet"
 
 NAMES = {
     "bookvie-backup-2026-11-20.zip": True,
@@ -64,8 +60,6 @@ PUBLISHED_BLOCKS = [
 PUBLISHED_HASH = "485291fa0ee50c016982abbfa943957bcd231aae0492ccbaa22c58e3997b35e0"
 
 
-# Red phase: un-skip when the build adds bookvie_dropbox.contracts (Story 13.2).
-@pytest.mark.skip(reason=RED)
 def test_bookvie_dropbox_copies_the_daily_name_the_folders_and_the_content_hash_exactly(
     tmp_path: Path,
 ) -> None:
