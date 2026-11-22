@@ -2914,7 +2914,9 @@ So that a backup exists without me clicking Export, ready for a later upload.
 **When** `export_backup` is called on 2026-11-19 (fake clock)
 **Then** it writes `bookvie-backup-2026-11-19.zip` into `~/bookvie-backups/`, `~/bookvie-backups-dev/`, or `<data folder>-backups/` respectively, creating the folder
 **And** returns `{path, size, createdAt}` with the absolute path.
-**Description:** "Write a dated backup of the whole library (library.json and covers, the same file as the Backup page's Export) to the backups folder, and return its path, size and time. A second backup on the same day replaces that day's file. It counts as the library's last export." (Superseded by Story 13.3's description once 13.3 lands.)
+**Description:** "Write a dated backup of the whole library (library.json and covers, the same file as the Backup page's Export) to the backups folder, and return its path, size and time. A second backup on the same day replaces that day's file. It counts as the library's last export."
+
+(Superseded by Story 13.3's description once 13.3 lands.)
 
 **Given** the backup file
 **When** it is restored through the existing restore check

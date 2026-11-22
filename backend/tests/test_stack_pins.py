@@ -2,7 +2,10 @@
 
 The Spine's Stack table is the source of truth: each row maps to a manifest
 entry, and both the declared range and the locked version must sit inside
-the row's series (``0.162.x``, ``5.x``, ``3.14``).
+the row's series (``0.162.x``, ``5.x``, ``3.14``). A row whose parenthesis
+ends in "planned" (``dropbox (...; planned)``) is mapped but not yet checked:
+its package lands with its story, and the checks start when the Spine drops
+the word.
 """
 
 import json
@@ -38,6 +41,8 @@ STACK_ROWS: dict[str, tuple[str, str] | None] = {
     "Pillow": ("pypi", "pillow"),
     "mcp": ("pypi", "mcp"),
     "httpx2": ("pypi", "httpx2"),
+    "dropbox": ("pypi", "dropbox"),
+    "keyring": ("pypi", "keyring"),
     "pytest": ("pypi", "pytest"),
     "pytest-cov": ("pypi", "pytest-cov"),
     "Hypothesis": ("pypi", "hypothesis"),
@@ -57,14 +62,20 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-def _spine_stack() -> dict[str, tuple[int, ...]]:
+def _spine_rows() -> list[tuple[str, tuple[int, ...], bool]]:
+    """Each Stack row: its name, its series, and whether it is still planned."""
     text = SPINE.read_text(encoding="utf-8")
     section = text.split("## Stack", 1)[1].split("\n## ", 1)[0]
-    rows: dict[str, tuple[int, ...]] = {}
-    for name, version in re.findall(r"^\| ([^|]+?) \| ([\d.x]+) \|$", section, re.M):
-        name = name.split(" (", 1)[0].strip()
-        rows[name] = tuple(int(p) for p in version.removesuffix(".x").split("."))
+    rows: list[tuple[str, tuple[int, ...], bool]] = []
+    for cell, version in re.findall(r"^\| ([^|]+?) \| ([\d.x]+) \|$", section, re.M):
+        name = cell.split(" (", 1)[0].strip()
+        planned = bool(re.search(r"\bplanned\)$", cell))
+        rows.append((name, tuple(int(p) for p in version.removesuffix(".x").split(".")), planned))
     return rows
+
+
+def _spine_stack() -> dict[str, tuple[int, ...]]:
+    return {name: series for name, series, _ in _spine_rows()}
 
 
 def _in_series(version: str, series: tuple[int, ...]) -> bool:
@@ -103,8 +114,8 @@ def _stack_params(ecosystems: set[str]) -> list:
         return []
     return [
         pytest.param(STACK_ROWS[row][1], series, id=row)
-        for row, series in _spine_stack().items()
-        if STACK_ROWS.get(row) and STACK_ROWS[row][0] in ecosystems
+        for row, series, planned in _spine_rows()
+        if not planned and STACK_ROWS.get(row) and STACK_ROWS[row][0] in ecosystems
     ]
 
 
@@ -151,3 +162,9 @@ def test_series_helpers_reject_neighbours() -> None:
     assert _previous_series_top((0, 0)) is None
     # A range widened past its series is what the manifest test must catch.
     assert SpecifierSet(">=0.162,<0.164").contains(_next_series((0, 162)))
+
+
+def test_only_the_rows_ending_in_planned_are_planned() -> None:
+    planned = {name for name, _, is_planned in _spine_rows() if is_planned}
+    # mcp's parenthesis says "planned:" mid-sentence; mcp itself is installed.
+    assert "mcp" not in planned
