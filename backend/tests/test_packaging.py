@@ -2,6 +2,8 @@
 
 import json
 import re
+import shutil
+import subprocess
 import tomllib
 from pathlib import Path
 
@@ -44,11 +46,26 @@ def test_wheel_ships_the_served_folder() -> None:
     assert "custom" in wheel["hooks"], "the SPA build hook is not registered"
 
 
-def test_root_check_runs_the_four_steps_in_order_and_stops_at_the_first_failure() -> None:
-    package = BACKEND_ROOT.parent / "package.json"
-    if not package.is_file():
-        pytest.skip("the repo root is not next to the backend")
+def test_root_check_runs_the_four_steps_in_phases_and_stops_at_the_first_failure() -> None:
+    """check:api first, then check:py and check:e2e together, then check:smoke.
+
+    ``scripts/check.mjs --plan`` prints the phases without running them.
+    check:smoke must come after check:e2e: its build empties static/, which the
+    e2e servers serve.
+    """
+    root = BACKEND_ROOT.parent
+    package = root / "package.json"
+    if not package.is_file() or shutil.which("node") is None:
+        pytest.skip("needs the repo root next to the backend, and node")
     scripts = json.loads(package.read_text(encoding="utf-8"))["scripts"]
-    steps = ["check:py", "check:api", "check:e2e", "check:smoke"]
-    assert scripts["check"] == " && ".join(f"npm run {step}" for step in steps)
-    assert all(step in scripts for step in steps)
+    assert scripts["check"] == "node scripts/check.mjs"
+    plan = subprocess.run(
+        ["node", "scripts/check.mjs", "--plan"],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    phases = json.loads(plan.stdout)
+    assert phases == [["check:api"], ["check:py", "check:e2e"], ["check:smoke"]]
+    assert all(step in scripts for phase in phases for step in phase)

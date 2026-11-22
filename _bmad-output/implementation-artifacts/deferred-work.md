@@ -1437,3 +1437,10 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-agent-tools-advertise-value-types.md`
   summary: A page sent with the wrong type (`"120"`) is refused with "Page must be between 0 and 670.", which misstates the cause; the spec's contract forbids changing refusal copy, so a clearer message needs its own change (agent and HTTP alike).
   evidence: `backend/bookvie/intents/update_page.py` `valid_page` / `page_message`, also used by `start_reading`; pinned by `backend/tests/test_agent_value_types.py`.
+
+## Deferred from: faster `npm run check` (2026-11-22)
+
+- source_spec: none (party-mode session 2026-11-22, "make npm run check faster")
+  summary: Spine drift (Stack, AD Testing row): `check:py` now runs pytest on every core with pytest-xdist (`-n auto`), a new dev dependency, and `npm run check` runs `check:api`, then `check:py` and `check:e2e` together, then `check:smoke` (`scripts/check.mjs`).
+  evidence: `backend/pyproject.toml` dev group, `package.json` `check` and `check:py`, `scripts/check.mjs`, `backend/tests/test_packaging.py`.
+  resolved: 2026-11-22 in the same change: the Stack table gains `pytest-xdist (dev) 3.8.x`, mapped in `backend/tests/test_stack_pins.py`. The Testing row's "`npm run check` runs them all" still holds.

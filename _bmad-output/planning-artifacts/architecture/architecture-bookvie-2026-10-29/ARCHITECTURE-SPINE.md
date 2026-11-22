@@ -456,6 +456,7 @@ Dependency direction (an arrow means "may import"): `http → intents, views →
 | Playwright (`@playwright/test`) | 1.64.x |
 | pytest (dev) | 9.x |
 | pytest-cov (dev) | 7.1.x |
+| pytest-xdist (dev, `pytest -n auto` in `check:py`) | 3.8.x |
 | Hypothesis (dev) | 6.170.x |
 | httpx (dev, FastAPI `TestClient`) | 0.28.x |
 

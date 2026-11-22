@@ -45,6 +45,7 @@ STACK_ROWS: dict[str, tuple[str, str] | None] = {
     "keyring": ("pypi", "keyring"),
     "pytest": ("pypi", "pytest"),
     "pytest-cov": ("pypi", "pytest-cov"),
+    "pytest-xdist": ("pypi", "pytest-xdist"),
     "Hypothesis": ("pypi", "hypothesis"),
     "httpx": ("pypi", "httpx"),
     "React": ("npm", "react"),

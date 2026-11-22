@@ -25,6 +25,7 @@ dev = [
     "hypothesis>=6.170,<6.171",
     "httpx>=0.28,<0.29",
     "ruff>=0.16.6,<0.17",
+    "pytest-xdist>=3.8,<3.9",
 ]
 
 [build-system]
