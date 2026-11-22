@@ -90,12 +90,12 @@ A skill is text for an agent, so most leaves pin what the text says, as Stories 
 
 ## Green-phase follow-ups (secondary branches, not red leaves)
 
-- [ ] **AC-1:** the skill's setup and reconnect lines match the README, as `test_notes_summary_skill.py::test_the_skills_setup_and_reconnect_steps_match_the_readme` does for that skill.
+- [x] **AC-1:** the skill's setup and reconnect lines match the README, as `test_notes_summary_skill.py::test_the_skills_setup_and_reconnect_steps_match_the_readme` does for that skill. (done: backend/tests/test_backup_skill.py::test_the_skills_setup_and_reconnect_steps_match_the_readme)
 - [ ] **AC-1:** the frontmatter list equals 13.5's `--allowedTools` constant in `cli.py` (AR53). That's 13.5's leaf, and 13.4's list is its source.
-- [ ] **AC-1:** an export that fails (`couldnt_save`, a missing backups folder) leads to `failed` with `backup_write`, and `record_backup_upload` accepts it (drive it with `FaultyFs`).
-- [ ] **AC-1:** each `upload_backup` cause (`upload_incomplete`, `dropbox_full`, `other`) recorded as `failed` is accepted (`FakeDropbox` faults).
-- [ ] **AC-2:** `upload_backup` refuses a `~/bookvie-backups-dev` file before any network call. 13.2 already pins this; cite it in the spec.
-- [ ] **AC-3:** the empty-`deleted` wording, once the spec decides it.
+- [x] **AC-1:** an export that fails (`couldnt_save`, a missing backups folder) leads to `failed` with `backup_write`, and `record_backup_upload` accepts it (drive it with `FaultyFs`). (done: backend/tests/test_backup_skill.py::test_an_export_that_fails_is_recorded_as_failed_with_backup_write)
+- [x] **AC-1:** each `upload_backup` cause (`upload_incomplete`, `dropbox_full`, `other`) recorded as `failed` is accepted (`FakeDropbox` faults). (done: backend/tests/test_backup_skill.py::test_each_upload_cause_is_recorded_as_failed_with_that_cause; a prune failing after a checked upload: test_a_prune_that_fails_after_a_checked_upload_is_recorded_as_other_and_names_the_deleted)
+- [x] **AC-2:** `upload_backup` refuses a `~/bookvie-backups-dev` file before any network call. 13.2 already pins this; cite it in the spec. (done: backend/tests/test_dropbox_upload.py::test_any_other_path_is_refused_before_any_dropbox_call[dev] (Story 13.2))
+- [x] **AC-3:** the empty-`deleted` wording, once the spec decides it. (done: backend/tests/test_backup_skill.py::test_an_upload_that_deleted_nothing_drops_the_deleted_part_of_the_line)
 - [ ] **AC-6:** each auto-backup state's troubleshooting entry is 13.6's work.
 
 ## Helper probes

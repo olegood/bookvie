@@ -2,15 +2,16 @@
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03-generate-tests', 'step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
 lastSaved: '2026-11-22'
-storyId: '13.3'
-storyKey: '13-3-record-each-upload-in-bookvie'
+storyId: '13.4'
+storyKey: '13-4-back-up-to-dropbox-with-one-skill'
 inputDocuments:
-  - _bmad-output/implementation-artifacts/spec-13-3-record-each-upload-in-bookvie.md (Boundaries, I/O matrix, Review Findings and Triage Log)
-  - _bmad-output/test-artifacts/atdd-checklist-13-3-record-each-upload-in-bookvie.md (Test Strategy, Green-phase follow-ups)
-  - _bmad-output/implementation-artifacts/deferred-work.md (13.3's entries; none is addressed to this step)
+  - _bmad-output/implementation-artifacts/spec-13-4-back-up-to-dropbox-with-one-skill.md (Boundaries, I/O matrix, Review Findings, AC-5 result)
+  - _bmad-output/test-artifacts/atdd-checklist-13-4-back-up-to-dropbox-with-one-skill.md (Green-phase follow-ups)
+  - _bmad-output/implementation-artifacts/deferred-work.md (13.4's entries; none is addressed to this step)
   - _bmad/tea/config.yaml
-  - backend/bookvie/store/local_state.py, store/store.py, intents/backup_file.py, agent/tools.py
-  - backend/tests/test_agent_backup_upload.py, test_agent_backup.py, test_store.py, test_export.py, test_agent_restore.py, helpers.py, restore_scene.py
+  - .claude/skills/bookvie-backup/SKILL.md
+  - backend/bookvie_dropbox/upload.py (`_prune`)
+  - backend/tests/test_backup_skill.py, test_dropbox_upload.py, test_dropbox_upload_edges.py, dropbox_fakes.py
   - knowledge/test-levels-framework.md
   - knowledge/test-priorities-matrix.md
   - knowledge/data-factories.md
@@ -19,97 +20,71 @@ inputDocuments:
   - knowledge/test-quality.md
 ---
 
-# Automation Summary: Story 13.3 Record each upload in bookvie
+# Automation Summary: Story 13.4 Back up to Dropbox with one skill
 
 ## Preflight
 
-- **Stack:** `fullstack` (auto). The story has no UI: the Backup line is Story 13.6. Every target is pytest through the in-process app (`connect_mcp`), the intents and `store/local_state`. So no browser session was opened, and the Playwright fragments weren't loaded.
-- **Where:** story 13.3's commits are on this worktree's branch (`hogback-creosote`, `9baf09a`). Master is still at 13.2's `b64f901`, so this run works here.
-- **Mode:** BMad-integrated. The story is `done` (`9baf09a`). The inputs were the ATDD checklist's 6 open follow-up groups. The review left no deferral for this step.
-- **Generation:** sequential, in this session, as for Stories 12.3 to 13.2.
+- **Stack:** `fullstack` (auto). The story has no UI and no product code: it ships a skill (`SKILL.md`), its guide and README lines. Every target is pytest: text leaves on the skill, plus the tools it chains driven for real (bookvie in process over `/mcp`, `bookvie-dropbox` over `FakeDropbox`). No browser session was opened, and the Playwright fragments weren't loaded.
+- **Where:** this worktree's branch (`hogback-creosote`). The story is `done` at `1e97fe0`, the review commit.
+- **Mode:** BMad-integrated. The inputs were the ATDD checklist's 7 open follow-ups and the review's rejected "no leaf" findings (blind-hunter 4 and 5), which it handed to this step.
+- **Generation:** sequential, in this session.
 - **Knowledge:** the six core fragments only. `tea_use_playwright_utils` and `tea_use_pactjs_utils` are off, and there is no Pact artifact.
-- **Baseline, measured in this run:** the story's tests plus `test_agent_backup.py`, `test_store.py`, `test_export.py` and `test_agent_restore.py` (220 passed) gave `intents/backup_file.py` 93% and `store/local_state.py` 91%. The misses that 13.3 added:
-  - `local_state.py:81-82`: the writer over a JSON file that isn't an object.
-  - `local_state.py:94-98`: `read_group` over an unreadable or invalid file.
-  - `backup_file.py:102-103`: `_same_folder_folded`'s `OSError` guard.
-
-  The other misses are 13.1's.
+- **Coverage tool:** not used. A skill is text, so line coverage says nothing about it. The mutation probes below take its place.
 
 ## Coverage plan
 
-The build and the review had already pinned most follow-ups:
-- every refusal of `record_backup_upload`'s arguments (`test_agent_backup_upload.py:482`);
-- symlinked, non-zip, zip without `library.json`, corrupt and unreadable daily files (`:533`, `:570`);
-- `forUpload` that isn't a boolean (`:650`), a failed or unreadable forUpload write (`:664`, `:685`);
-- the 50-thread race (`:699`), unknown top-level keys (`:611`);
-- the folder rule's `..`, case-folded and dev-symlink spellings (`test_agent_backup.py:443`).
-
-This run adds the rest:
+The build and the review had already covered 5 of the 7 follow-ups (see ATDD checklist). This run adds leaves for the wording the review patched and the build's patches left unpinned:
 
 | AC | Priority | Level | Leaf |
 |---|---|---|---|
-| AC-1 | P0 | API | The daily run's next day: the unchanged library exported with `forUpload` on 21 Nov writes a new file with other bytes, but answers the same `libraryHash` and `unchangedSinceUpload: true`. A changed cover's bytes don't move the hash (AD-22: covers have immutable names). A book edit does. |
-| AC-1 | P1 | API | `unchangedSinceUpload` is false, and the backup is still written, for each malformed `autoBackup` shape: a number, a list, a `lastUpload` that isn't an object, a `libraryHash` that isn't a string, a `lastUpload` without one. |
-| AC-1, AC-6 | P1 | API | A forUpload export over a `local-state.json` that isn't valid JSON, or that can't be read, answers false. stderr names the file, and the file is left as it was. |
-| AC-4, AC-6 | P1 | API | A skip over a malformed `autoBackup` group replaces it with `{lastReport, lastOk}`. An upload over a group holding an extra key keeps that key. |
-| AC-6 | P1 | Store | Both writers over a file holding JSON that isn't an object (`[]`, `"text"`, `null`, `5`) and over invalid JSON: the file becomes the written group alone, and stderr says why. |
-| AC-6 | P2 | API | A failed folder flush after `local-state.json`'s rename is logged, and the report succeeds and is stored. |
-| AC-7 | P2 | Unit | A data folder that is a symlink to `~/bookvie`, `~/elsewhere/../bookvie`, and a `HOME` that is itself a symlink all get no backups folder. Through a symlinked `HOME`, `~/bookvie-data` still gets `~/bookvie-backups`. |
+| AC-1, AC-2 | P1 | Text | `get_app_info` answering an error, no `mode` or another value stops before the export with its own Failed line, and no export, upload or report. |
+| AC-1 | P1 | Text | An upload error that isn't JSON, has no `cause` or names an unknown one is `other`. "Nothing in Dropbox was deleted" is said only after `dropbox_signin`, `upload_incomplete` and `dropbox_full`. Without a usable `cause`, the skill makes no claim. |
+| AC-1 | P1 | Integration | Export from bookvie, then a prune that fails after a checked upload: `other`, whose message names the backup already deleted. bookvie accepts `failed`/`other`, and step 4 says the message names what was deleted. |
+| AC-3 | P2 | Text | No line of step 6 says "Failed:" twice. A refused report without a code drops the parentheses. The closing note names every stop that has its own line. |
 
-Scope: selective. These are the checklist's open secondary branches and 13.3's uncovered lines, not new primary paths.
+The review's older-bookvie stop already has its leaf (`test_an_older_bookvie_without_record_backup_upload_stops_the_run_before_the_export`, added with the patch).
+
+Scope: selective. These are secondary branches of a text artifact, not new primary paths.
 
 Not automated:
-- `restore_backup`, the tool, keeping `autoBackup`. `test_agent_restore.py:577,584` pin `local-state.json` byte for byte after the tool's restore, and the handler never calls the writer. The review rejected a new leaf as duplicate coverage.
-- `_same_folder_folded`'s `OSError` guard (`backup_file.py:102-103`). `_same_folder` before it catches the same errors on the same paths, so the guard needs a path that fails one `resolve()` and not the other.
+- An agent actually running the skill. That is AC-5's manual run, which passed on 2026-11-22 (spec, Acceptance Criteria).
+- The frontmatter list against `--allowedTools` (13.5) and the per-state troubleshooting entries (13.6): later stories' work.
 
 ## Files
 
-- `backend/tests/test_agent_backup_upload_follow_ups.py` (new): 7 leaves, 17 cases. Each carries a `# [Pn] AC-n.` tag, as `test_agent_edit_form.py` does. It reuses `test_agent_backup_upload.py`'s helpers (`_connect`, `_state`, `_instants`, `_library_hash`, `_uploaded`, `_record_skip`) and `test_agent_backup.py`'s (`LOCAL_STATE`, `_names`, `backup_name`), and adds only `_for_upload`.
-- `_bmad-output/test-artifacts/atdd-checklist-13-3-record-each-upload-in-bookvie.md`: the follow-ups are resolved.
+- `backend/tests/test_backup_skill.py`: 4 new leaves under "Automate (2026-11-22)", each with a `# [Pn] AC-n` tag. They reuse the file's `_skill`, `_body`, `_section`, `_paragraphs`, `_flat` and `_connect_default`, and 13.2's `upload`/`Connect`/`FakeDropbox`. The prune fault subclasses `FakeDropbox`, as `test_dropbox_upload_edges.py` does.
+- `_bmad-output/test-artifacts/atdd-checklist-13-4-back-up-to-dropbox-with-one-skill.md`: 5 follow-ups ticked.
 
-No file under `backend/bookvie/` changed. `deferred-work.md` didn't change: 13.3 left no entry for this step.
+No file under `backend/bookvie/`, `backend/bookvie_dropbox/` or `.claude/skills/` changed.
 
 ## Validation
 
-- `uv run pytest -q tests/test_agent_backup_upload_follow_ups.py`: 17 passed. The first run had 2 failures, both in the test's own assertion: the invalid-JSON log puts the parser's message between "is not valid JSON" and "; replacing it". The leaf now matches the one "replacing it" line and checks the reason inside it.
-- **Coverage, measured in this run** (the story's tests, the new file, and `test_agent_backup.py`, `test_store.py`, `test_export.py`, `test_agent_restore.py`; 237 passed):
-  - `store/local_state.py` went from 91% to **100%**.
-  - `intents/backup_file.py` is unchanged at 93%. Its remaining misses are 13.1's lines and `_same_folder_folded`'s guard (see "Not automated").
-- **Mutation probes:** a script in the scratchpad edited each source file, ran the targeted leaf, then wrote the original bytes back and checked their SHA-256. No git command was used. **11 of 11 killed**:
-  - the writer not replacing a non-object file;
-  - `read_group`'s failure not logged;
-  - the `autoBackup` group not checked for a dict;
-  - a bare `lastUpload` string read as the hash;
-  - `libraryHash` including the zip's time;
-  - `libraryHash` including the covers;
-  - the old group dropped by a report;
-  - a malformed group not replaced;
-  - a folder-flush fault failing the write;
-  - the sibling compared unresolved;
-  - the data folder not resolved.
-- `git status` after the probes showed only this run's files.
-- `npm run check`, first run: exit 1. Only the port-8790 flake failed (3 leaves of `test_dropbox_cli_follow_ups.py`), and e2e stopped when `check:py` failed.
-- `npm run check`, re-run on the final tree (before the summary's last edits, which are Markdown only): exit 0. That covers:
-  - ruff;
-  - 2396 pytest passed;
-  - the coverage gate: domain 100%, intents+store 96.52% (up from 96.45%), bookvie_dropbox 96.36%;
-  - api, Prettier, tsc and oxlint;
-  - 800 e2e passed;
-  - the smoke test.
+- `uv run pytest -q tests/test_backup_skill.py`: 19 passed on the first run.
+- **Mutation probes:** a shell function edited `SKILL.md`, ran `test_backup_skill.py`, then copied the original back from the scratchpad. `cmp` confirmed the original bytes. No git command was used. **6 of 6 killed**, each by the leaf it targets:
+  - the old blanket "Nothing in Dropbox was deleted." back in step 4;
+  - `other` added to the nothing-deleted causes;
+  - the old `"Failed: " and the reason` intro in step 6;
+  - the codeless-suffix clause removed;
+  - the unreadable-app-info stop replaced by "go on.";
+  - "names any it already deleted" removed.
+- `git status` after the probes showed only this run's test file.
+- `npm run check:py`, first run: 1 failed, 2415 passed. The failure was the `bookvie-dropbox auth` redirect-port flake ("Port … on 127.0.0.1 is in use"), in a file this run didn't touch. Re-run of the whole pytest suite: **2416 passed**.
+- `npm run check` on the final tree (before this line, which is Markdown only): **exit 0**. ruff, 2416 pytest passed with the coverage gate (total 97%), api, 800 e2e passed, and the smoke test.
 
 ## ATDD checklist
 
-All 6 open groups are resolved: 18 lines ticked, 1 retired. The retired line is `restore_backup`, the tool, keeping `autoBackup`: `test_agent_restore.py:577,584` already pin `local-state.json` byte for byte, and the review rejected a new leaf. Most ticks point at leaves the build and review added. Eight cite this run's leaves. `grep -cF '[ ]'` = 0.
+5 of 7 follow-ups ticked. Each cites the passing leaf that proves it; the AC-2 dev-folder line cites 13.2's `test_any_other_path_is_refused_before_any_dropbox_call[dev]`. `grep -cF '[ ]'` = **2**, both planned for later stories:
+- the frontmatter list equals `--allowedTools` in `cli.py`: Story 13.5;
+- each auto-backup state's troubleshooting entry: Story 13.6.
 
 ## Risks and assumptions
 
-- The next-day leaf pins AD-22's accepted rule that a cover changed in place doesn't make the library "changed". If covers ever stop having immutable names, that line of the leaf must change with AD-22.
-- The port-8790 Dropbox sign-in flake (`deferred-work.md`, 13.3's medium entry) failed the first full check of this run, in 3 leaves of `test_dropbox_cli_follow_ups.py`, with "Port 8790 on 127.0.0.1 is in use". It isn't this run's: no file it touched binds a port.
-- The unreadable-file case uses a folder in place of `local-state.json`, so it runs as root too.
+- The skill is checked as text and through the tools it chains. Nothing automated runs an agent on it; AC-5's manual run is the behavioral check, and 13.5's headless run will be the next.
+- The text leaves pin exact sentences. That is deliberate, since the skill's wording is its behavior, but a rewording of `SKILL.md` must update them.
+- The port flake in `bookvie-dropbox auth`'s tests (`deferred-work.md`, 13.3's medium entry) still fails full runs at random.
 
 ## Next
 
-- Commit this run (`test:`, story 13.3).
-- Story 13.4 (`back-up-to-dropbox-with-one-skill`) next: ATDD, `bmad-build-auto`, then `bmad-code-review` in a new session.
-- `bmad-testarch-trace` for Epic 13 at its gate. It also settles 13.1's open restore-path coverage line.
-- Fixing the port-8790 flake before 13.4 would keep that story's full checks from failing at random.
+- Commit this run (`test:`, story 13.4).
+- Story 13.5 (`run-the-backup-every-morning`): ATDD, `bmad-build-auto`, then `bmad-code-review` in a new session.
+- Fixing the port flake would keep 13.5's full checks from failing at random.

@@ -465,3 +465,95 @@ def test_an_older_bookvie_without_record_backup_upload_stops_the_run_before_the_
     # The tool the skill checks for is the one this bookvie serves.
     names = {tool["name"] for tool in connect_mcp().list_tools()}
     assert RECORD_BACKUP_UPLOAD in names, sorted(names)
+
+
+# --- Automate (2026-11-22): the review's wording, and a prune that fails --------------
+
+
+def test_app_info_that_is_neither_production_nor_dev_stops_before_the_export() -> None:
+    # [P1] AC-1/AC-2 (review patch, build pass): an error, no `mode` or another value.
+    body = _body(_skill())
+    step = _section(body, "Never from development", numbered=True) or ""
+    (stop,) = [p for p in _paragraphs(step) if "Any other answer" in p]
+    assert '`"production"`' in stop and "go on" in stop, stop
+    assert re.search(r"an error, or no `mode`, or another value", stop), stop
+    assert "no export, upload or report" in stop, stop
+    assert "\"Failed: bookvie's app info couldn't be read, so nothing was backed up.\"" in stop
+    flat = _flat(body)
+    assert flat.index(stop) < flat.index(EXPORT_CALL)
+
+
+def test_an_upload_error_without_a_usable_cause_is_other_and_claims_nothing_about_deletes() -> None:
+    # [P1] AC-1 (review patches): the cause mapping, and which causes delete nothing.
+    upload_step = _section(_body(_skill()), "Upload unless unchanged", numbered=True) or ""
+    (errors,) = [p for p in _paragraphs(upload_step) if "If `upload_backup` answers an error" in p]
+    assert re.search(
+        r"isn't JSON, has no `cause`, or names a cause outside those four[^.]*"
+        r"the run failed with the cause `other`",
+        errors,
+    ), errors
+    assert "Don't retry the upload." in errors
+    # Nothing deleted: said only for the causes that come before Dropbox's copy is checked.
+    (before,) = re.findall(r"After ([^.]*), nothing in Dropbox was deleted\.", errors)
+    assert set(re.findall(r"`(\w+)`", before)) == {
+        "dropbox_signin",
+        "upload_incomplete",
+        "dropbox_full",
+    }, before
+    assert "Without a usable `cause`, don't say whether anything was deleted." in errors
+    assert "Nothing in Dropbox was deleted." not in errors
+
+
+def test_a_prune_that_fails_after_a_checked_upload_is_recorded_as_other_and_names_the_deleted(
+    connect_mcp: Callable[..., McpClient], _isolated_home: Path, fakes: Any
+) -> None:
+    # [P1] AC-1 (review patch, driven for real): `other` after a checked upload, whose
+    # message names what it already deleted, as the skill's step 4 says it does.
+    class SecondDeleteFails(fakes.FakeDropbox):  # type: ignore[name-defined,misc]
+        deleted = 0
+
+        def files_delete_v2(self, path: str, parent_rev: Any = None) -> Any:
+            self.deleted += 1
+            if self.deleted == 2:
+                raise RuntimeError("the connection dropped")
+            return super().files_delete_v2(path, parent_rev)
+
+    client = _connect_default(connect_mcp, _isolated_home)
+    export = structured_of(client.call_tool(EXPORT_BACKUP, {"forUpload": True}))
+    fake = SecondDeleteFails()
+    older = [f"bookvie-backup-2026-11-{day}.zip" for day in (16, 17, 18, 19)]
+    for name in older:
+        fake.put(name, name.encode())
+
+    refused = error_of(upload(export["path"], Connect(fake)))
+
+    assert refused["cause"] == "other", refused
+    assert f"It deleted {older[0]}." in refused["message"], refused
+    assert older[0] not in fake.names() and Path(export["path"]).name in fake.names()
+    recorded = client.call_tool(RECORD_BACKUP_UPLOAD, {"outcome": "failed", "cause": "other"})
+    assert recorded.get("isError") is not True, recorded
+
+    upload_step = _flat(_section(_body(_skill()), "Upload unless unchanged", numbered=True) or "")
+    assert re.search(
+        r"An `other` can come after a checked upload[^.]*: its `message` says so and names any "
+        r"it already deleted\.",
+        upload_step,
+    ), upload_step
+
+
+def test_each_failed_line_says_failed_once_and_a_codeless_refused_report_drops_the_parentheses() -> (
+    None
+):
+    # [P2] AC-3 (review patches): step 6's lines as an agent would write them.
+    report = _section(_body(_skill()), "Report in one line", numbered=True) or ""
+    assert all(line.count("Failed:") <= 1 for line in report.splitlines()), report
+    assert "**Failed:** the line for the run's cause, word for word:" in report
+    flat = _flat(report)
+    assert '"bookvie couldn\'t save this report (*code*)."' in flat
+    assert "or without the parentheses when the error has none" in flat
+    # The closing note names every stop that has its own line.
+    assert re.search(
+        r"The stops in step 2 \(a development library, unreadable app info, an older bookvie\) "
+        r"and the headless stop in step 1 have their own lines",
+        flat,
+    ), flat
