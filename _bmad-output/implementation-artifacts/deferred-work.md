@@ -1474,6 +1474,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-1-restore-my-library-through-an-agent-with-two-confirmations.md`
   summary: In Story 13.3 (AR48, its AC on `backups_dir` being `None`): a non-default data folder whose sibling rule gives `~/bookvie-backups` or `~/bookvie-backups-dev` (for example `~/bookvie`) still gets that folder from `backups_folder`. Until 13.3 lands, a server on such a folder lists and restores the real library's backups and writes its safety copies there, since 13.1's tools read `backups_dir`. Medium.
   evidence: build-auto review spine-check layer, finding 7; `backend/bookvie/intents/backup_file.py` `backups_folder`; epics.md Story 13.3.
+  resolved: Story 13.3. `backups_folder` answers `None` when the sibling lands on either default backups folder (samefile, then resolved paths case-folded); `test_agent_backup_upload.py` AC-7 leaf (in-process and a real `bookvie --data-dir ~/bookvie`) and `test_agent_backup.py` folder-rule leaf.
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-1-restore-my-library-through-an-agent-with-two-confirmations.md`
   summary: In Story 13.2 or 13.7: `dropbox_content_hash` (`intents/backup_file.py`) is only tested on files under one 4 MiB block, against a test helper written the same way. Add Dropbox's published example vector, or an over-4-MiB and exactly-8-MiB file, when the `bookvie_dropbox` copy and the compare test land. Medium (unverified against Dropbox).
   evidence: build-auto review verification-gap layer finding 3 and blind-hunter finding 7.
@@ -1512,6 +1513,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-2-upload-a-backup-to-my-dropbox.md`
   summary: In Story 13.3: the cause enum `CAUSES` exists only in `bookvie_dropbox/contracts.py`; AD-22's copied-contracts rule wants bookvie's copy (13.3's `record_backup_upload` cause) and a test comparing the two. 13.3's AC already asks for it ("bookvie's equals `bookvie_dropbox`'s (Story 13.2)"). Low.
   evidence: spine-check finding 5; epics.md Story 13.3.
+  resolved: Story 13.3. `bookvie.intents.backup_file.CAUSES`; `test_dropbox_contracts.py::test_bookvie_keeps_the_same_cause_enum_as_bookvie_dropbox` compares the copies.
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-2-upload-a-backup-to-my-dropbox.md`
   summary: Spine drift (AD-22 Dropbox scope and sign-in, Consistency Conventions Config), reconciled before the next epic: the fixed loopback redirect is `http://127.0.0.1:8790/dropbox-auth` (`REDIRECT_PORT` 8790), a second fixed listener beside bookvie's 8765/8766 (AD-16); the spine names no port. Low.
   evidence: spine-check finding 6; `backend/bookvie_dropbox/auth.py`.
@@ -1545,3 +1547,21 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-2-upload-a-backup-to-my-dropbox.md`
   summary: Spine drift (AD-22 Dropbox tools), reconciled before the next epic: `upload_backup` finishes straight to `/.backups/<name>` with `WriteMode.overwrite` and checks `size`/`content_hash` after the commit, so a finish answering a mismatch has already replaced an earlier same-day copy. epics.md AC-9 ("a failed second upload leaves the first in place") and the tool description ("A failed or mismatched upload deletes nothing") hold only for faults before the finish; narrow AD-22 and epics.md (the description changes in epics.md first). Oleg's call in review: an honest mismatch message, not a temp name plus `files_move_v2` (which can't overwrite, so it leaves a moment with no copy). Medium.
   evidence: `backend/bookvie_dropbox/upload.py` `_upload`; code review blind-hunter 1, edge-case 1, acceptance-auditor 1.
+
+## Deferred from: build-auto review of spec-13-3-record-each-upload-in-bookvie (2026-11-22)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-3-record-each-upload-in-bookvie.md`
+  summary: Spine drift (AD-15 State that is not exported), reconciled before the next epic: an unreadable `local-state.json` (an OSError other than not-found) is now `CouldntSave` and left as it is, so the next export no longer overwrites it; AD-15 still says the next export overwrites an unreadable or malformed file. A malformed one is still replaced. Low.
+  evidence: spine-check finding 1; `backend/bookvie/store/local_state.py` `LocalStateWriter.update`; `backend/tests/test_export.py` `test_an_unreadable_local_state_reads_as_no_export_and_an_export_leaves_it_as_it_was`.
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-3-record-each-upload-in-bookvie.md`
+  summary: Spine drift (AD-15, AD-4 readers of `local-state.json`), reconciled before the next epic: `export_backup` (`intents/backup_file` `_last_upload_hash`, through `read_group`) now reads `local-state.json` outside the AD-4 lock to answer `unchangedSinceUpload`; AD-15 and AD-4 list only `views/backup` and `views/shelf` as readers. Low.
+  evidence: spine-check finding 2; `backend/bookvie/intents/backup_file.py` `_last_upload_hash`.
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-3-record-each-upload-in-bookvie.md`
+  summary: Spine drift (AD-22 `record_backup_upload`), reconciled before the next epic: an argument the outcome doesn't need is refused as `invalid_fields` (`skipped` with any other argument, `failed` with `path`/`copies`/`contentHash`, `uploaded` with `cause`), `copies` must be at least 1 and `contentHash` 64 lowercase hex; AD-22 states only what each outcome needs. Low.
+  evidence: spine-check finding 4; `backend/bookvie/intents/backup_file.py` `_WANTED`, `_argument_errors`; spec Design Notes "Extra arguments are refused".
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-3-record-each-upload-in-bookvie.md`
+  summary: Spine drift (AD-1, AD-3, AD-15, AD-21 Tools/One validator/Backup, AD-22, Structural Seed, Capability Map FR-29), reconciled before the next epic: lines still say "planned" for what 13.3 built (`record_backup_upload`, `forUpload`, `libraryHash` and `unchangedSinceUpload`, the one local-state writer, the `None` backups folder), and AD-21's tool list puts `record_backup_upload` before the restore tools while `TOOLS` registers it last. Low.
+  evidence: spine-check finding 5; `backend/bookvie/agent/tools.py` `TOOLS`.
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-3-record-each-upload-in-bookvie.md`
+  summary: Pre-existing flaky tests (from Story 13.2's automate commit `b64f901`): under `npm run check` (`pytest -n auto` with coverage, beside the e2e run), `test_dropbox_cli_follow_ups.py` and `test_dropbox_auth.py` sign-in leaves that bind the fixed redirect port 8790 intermittently fail with "Port 8790 … is in use" or a fake browser that visited nothing (`[] == [200]`). Both files pass serially (20/20, twice). Grouping them on one xdist worker (`xdist_group` + `--dist loadgroup`) didn't help (10 failures), so the cause isn't only cross-worker; likely a too-tight wait or a listener not yet released under load. The baseline `609cd19` shows it too (16 failures against the 13 expected red ones on one of three runs). It failed 4 of 7 full checks in this build. Medium.
+  evidence: build-auto verification runs 2026-11-22 (check logs in the build's scratchpad); `backend/tests/test_dropbox_cli_follow_ups.py` `Browser`, `backend/tests/test_dropbox_auth.py:355` port-holder leaf; `bookvie_dropbox/auth.py` `_Redirect`.

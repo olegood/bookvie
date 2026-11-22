@@ -277,12 +277,11 @@ def test_failed_record_export_keeps_the_earlier_record(tmp_path: Path, step: str
         b"{not json",
         b"\xff\xfe",
         b"[]",
-        b"{}",
         b'{"lastExportAt": 5}',
         b'{"lastExportAt": "yesterday"}',
         b'{"lastExportAt": "2026-10-01T09:30:00"}',
     ],
-    ids=["bad-json", "not-utf8", "array", "no-key", "number", "not-a-date", "no-offset"],
+    ids=["bad-json", "not-utf8", "array", "number", "not-a-date", "no-offset"],
 )
 def test_malformed_local_state_reads_as_no_export_and_is_logged(
     tmp_path: Path, raw: bytes, capsys: pytest.CaptureFixture[str]

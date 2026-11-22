@@ -10,7 +10,8 @@ partial file and doesn't move ``lastExportAt``.
 
 The backups folder follows the data folder, not the mode:
 ``~/bookvie-backups`` for ``~/bookvie-data``, ``~/bookvie-backups-dev`` for
-``~/bookvie-data-dev``, ``<data folder>-backups`` for any other. ``cli.py``
+``~/bookvie-data-dev``, ``<data folder>-backups`` for any other, and none at
+all when that sibling would be one of the first two (Story 13.3). ``cli.py``
 resolves it and passes it to ``create_app`` as ``backups_dir``.
 
 Every test runs with ``HOME`` set to a temporary folder (``conftest.py``),
@@ -31,7 +32,7 @@ import pytest
 from fastapi.testclient import TestClient
 from PIL import Image
 
-from bookvie.agent import NoArguments, input_schema
+from bookvie.agent import ExportBackupArguments, input_schema
 from bookvie.domain.clock import FakeClock
 from bookvie.http.app import create_app
 from bookvie.intents import EXPORT_CHUNK, backups_folder
@@ -179,7 +180,13 @@ def test_export_backup_writes_the_dated_file_into_the_backups_folder_that_follow
     written = backups / name
     structured = answer.get("structuredContent")
     assert structured is not None and answer.get("isError") is not True, answer
-    assert set(structured) == {"path", "size", "createdAt"}, structured
+    assert set(structured) == {
+        "path",
+        "size",
+        "createdAt",
+        "libraryHash",
+        "unchangedSinceUpload",
+    }, structured
     assert structured["path"] == str(written)
     assert Path(structured["path"]).is_absolute()
     assert structured["size"] == written.stat().st_size
@@ -188,9 +195,10 @@ def test_export_backup_writes_the_dated_file_into_the_backups_folder_that_follow
     # The rule picks one folder: none of the others was created.
     for place in elsewhere:
         assert not place.exists(), place
-    # The tool is listed after 12.4's two, takes no arguments, and says what it does.
+    # The tool is listed after 12.4's two, takes only forUpload (Story 13.3), and says what it
+    # does.
     assert list(listed) == AGENT_TOOL_NAMES
-    assert listed[EXPORT_BACKUP]["inputSchema"] == input_schema(NoArguments)
+    assert listed[EXPORT_BACKUP]["inputSchema"] == input_schema(ExportBackupArguments)
     assert listed[EXPORT_BACKUP]["description"] == DESCRIPTIONS[EXPORT_BACKUP]
 
 
@@ -442,6 +450,16 @@ def test_the_folder_rule_names_the_default_and_dev_folders_under_the_home_given(
     assert backups_folder(tmp_path / "x" / "lib", home) == tmp_path / "x" / "lib-backups"
     # Another home's `bookvie-data` is just another folder.
     assert backups_folder(tmp_path / "bookvie-data", home) == tmp_path / "bookvie-data-backups"
+    # A folder whose sibling would be a default backups folder gets none (Story 13.3).
+    assert backups_folder(home / "bookvie", home) is None
+    assert backups_folder(home / "bookvie-backups" / ".." / "bookvie", home) is None
+    # A case variant, with neither default backups folder existing, compares case-folded.
+    assert not (home / "bookvie-backups").exists() and not (home / "bookvie-backups-dev").exists()
+    assert backups_folder(home / "BookVie", home) is None
+    # A sibling that is a symlink to the dev default is that folder too.
+    (home / "bookvie-backups-dev").mkdir(parents=True)
+    (home / "x-backups").symlink_to(home / "bookvie-backups-dev")
+    assert backups_folder(home / "x", home) is None
 
 
 def test_a_failed_folder_flush_after_the_rename_is_logged_and_the_backup_succeeds(

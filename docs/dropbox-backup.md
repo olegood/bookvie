@@ -81,6 +81,12 @@ When `claude mcp list` shows `bookvie` or `bookvie-dropbox` as failed:
 - **The command path moved.** Claude Code starts bookvie-dropbox from the absolute path you added. If `which bookvie-dropbox` now prints another path (after reinstalling `uv`, for example), remove the entry with `claude mcp remove --scope user bookvie-dropbox` and add it again with the new path.
 - **`uv` not found.** `npm run install:local` installs bookvie with `uv`. Install `uv`, then reinstall bookvie and check the path again.
 
+## What bookvie records
+
+At the end of each daily backup run, the agent tells bookvie how it went with `record_backup_upload`: uploaded, skipped or failed. bookvie keeps that in `local-state.json` in the data folder, under `autoBackup`, beside "Last export". It belongs to this computer and is never part of an export or a restore. For an upload, bookvie checks the file itself: it must be a daily backup in the backups folder whose Dropbox content hash matches, and bookvie fingerprints the `library.json` inside it. The next run's `export_backup` compares the library with that fingerprint, so an unchanged library is skipped instead of uploaded again. The daily run's backup doesn't count as an export, so "Last export" on the Backup page doesn't move.
+
+The backups folder follows the data folder: `~/bookvie-backups` for `~/bookvie-data`, `~/bookvie-backups-dev` for `~/bookvie-data-dev`, and `<data folder>-backups` for any other. Only `~/bookvie-data` writes into `~/bookvie-backups`: a data folder such as `~/bookvie`, whose `-backups` sibling would be one of those two folders, gets no backups folder at all, so it can't write backups or list any.
+
 ## Restoring
 
 bookvie gives agents three tools for this:

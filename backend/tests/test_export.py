@@ -530,7 +530,7 @@ def test_an_unexpected_build_error_releases_the_lock_and_closes_the_spool(
 
 
 @pytest.mark.skipif(os.geteuid() == 0, reason="root can read a chmod 000 file")
-def test_an_unreadable_local_state_reads_as_no_export_and_the_next_export_replaces_it(
+def test_an_unreadable_local_state_reads_as_no_export_and_an_export_leaves_it_as_it_was(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     data_dir = tmp_path / "locked-state"
@@ -546,10 +546,11 @@ def test_an_unreadable_local_state_reads_as_no_export_and_the_next_export_replac
         assert view.json() == {"lastExportAt": None}
         assert "bookvie: couldn't read local-state.json" in capsys.readouterr().err
 
-        # The atomic rename replaces the file whatever its mode.
+        # The download still succeeds, but the group writer (Story 13.3) can't read the
+        # file's other keys, so it writes nothing rather than lose them, and logs why.
         assert _run(client.app).statuses == [200]
+        assert "couldn't record the export in local-state.json" in capsys.readouterr().err
     finally:
         state.chmod(0o644)
 
-    assert _last_export_at(data_dir) == LAST_EXPORT_NOW
-    assert client.get("/api/views/backup").json() == {"lastExportAt": LAST_EXPORT_NOW}
+    assert _local_state(data_dir) == EARLIER_EXPORT

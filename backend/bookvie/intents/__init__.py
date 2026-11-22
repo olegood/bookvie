@@ -6,14 +6,18 @@ from .add_book import AddBookIntent, add_book, parse_add_book_intent
 from .add_card_note import AddCardNoteIntent, add_card_note, parse_add_card_note_intent
 from .answers import book_answer, card_note_answer, ok, page_answer
 from .backup_file import (
+    CAUSES,
     FROM_DROPBOX,
     BackupFile,
     LocalBackup,
     LocalBackups,
+    RecordBackupUploadArguments,
     backups_folder,
     dropbox_content_hash,
     list_local_backups,
+    record_backup_upload,
     resolve_backup_path,
+    resolve_daily_backup,
     write_backup,
     write_safety_copy,
 )
@@ -120,6 +124,7 @@ from .start_reading import StartReadingIntent, parse_start_reading_intent, start
 from .update_page import UpdatePageIntent, parse_update_page_intent, update_page
 
 __all__ = [
+    "CAUSES",
     "COULDNT_EXPORT_MESSAGE",
     "COULDNT_SAVE_MESSAGE",
     "COVER_LIMIT",
@@ -156,6 +161,7 @@ __all__ = [
     "PauseIntent",
     "PreparedCover",
     "PreparedRestore",
+    "RecordBackupUploadArguments",
     "RefusedCover",
     "RestoreIntent",
     "RestoreNotConfirmedReason",
@@ -228,8 +234,10 @@ __all__ = [
     "prepare_restore",
     "preview_restore",
     "reading_already_finished",
+    "record_backup_upload",
     "record_export",
     "resolve_backup_path",
+    "resolve_daily_backup",
     "restore",
     "restore_invalid",
     "restore_newer_version",

@@ -40,10 +40,19 @@ download, outside the AD-4 lock; then ``prepare_cover`` and the handler with
 that cover, exactly as the route calls them. Every cover failure is reported
 on ``coverUrl``, and nothing is saved.
 
-``export_backup`` (Story 12.6) takes no arguments. It writes a dated backup
-of the library, the same zip as ``GET /api/export``, into the app's
-``backups_dir`` through :func:`~bookvie.intents.write_backup`, records it as
-"Last export", and answers the file's ``{path, size, createdAt}``.
+``export_backup`` (Story 12.6) writes a dated backup of the library, the
+same zip as ``GET /api/export``, into the app's ``backups_dir`` through
+:func:`~bookvie.intents.write_backup`, records it as "Last export", and
+answers the file's ``{path, size, createdAt, libraryHash,
+unchangedSinceUpload}``. Its one optional argument, ``forUpload`` (Story
+13.3), is sent only by the daily backup run: the file is written the same
+way, but "Last export" doesn't move.
+
+``record_backup_upload`` (Story 13.3, AD-22), listed last, stores how a
+daily backup run ended (uploaded, skipped or failed) in ``local-state.json``
+under ``autoBackup`` through :func:`~bookvie.intents.record_backup_upload`,
+and answers ``{ok: true}``. A bad argument is ``invalid_fields`` naming it,
+and nothing is stored.
 
 The restore tools (Story 13.1, AD-22) read the app's ``backups_dir``.
 ``list_local_backups`` lists the backups a restore can use;
@@ -80,6 +89,7 @@ from bookvie.intents import (
     MarkSideReadIntent,
     OkResponse,
     PauseIntent,
+    RecordBackupUploadArguments,
     RestoreNotConfirmedReason,
     Sealed,
     SetUpNextIntent,
@@ -118,6 +128,7 @@ from bookvie.intents import (
     pause,
     prepare_cover,
     prepare_restore,
+    record_backup_upload,
     resolve_backup_path,
     restore_not_confirmed,
     set_up_next,
@@ -744,19 +755,26 @@ EDIT_BOOK = _book_tool(
 )
 
 
+class ExportBackupArguments(IntentModel):
+    # A comment, not a docstring: a model's docstring becomes its input schema's description.
+    for_upload: bool = False
+
+
 def _export_backup(state: Any, arguments: dict[str, Any]) -> BackupFile:
-    parse_arguments(NoArguments, arguments)
-    return write_backup(state.store, state.clock, state.backups_dir)
+    args = parse_arguments(ExportBackupArguments, arguments)
+    return write_backup(state.store, state.clock, state.backups_dir, for_upload=args.for_upload)
 
 
 EXPORT_BACKUP = AgentTool(
     name="export_backup",
     description=(
         "Write a dated backup of the whole library (library.json and covers, the same file as the "
-        "Backup page's Export) to the backups folder, and return its path, size and time. A second "
-        "backup on the same day replaces that day's file. It counts as the library's last export."
+        "Backup page's Export) to the backups folder, and return its path, size, time, "
+        "libraryHash and unchangedSinceUpload. A second backup on the same day replaces that "
+        "day's file. It counts as the library's last export, except when forUpload is true, "
+        "which only the daily backup run sends."
     ),
-    model=NoArguments,
+    model=ExportBackupArguments,
     run=_export_backup,
 )
 
@@ -860,6 +878,23 @@ RESTORE_BACKUP = AgentTool(
     interactive=True,
 )
 
+
+def _record_backup_upload(state: Any, arguments: dict[str, Any]) -> OkResponse:
+    return record_backup_upload(state.store, state.clock, state.backups_dir, arguments)
+
+
+RECORD_BACKUP_UPLOAD = AgentTool(
+    name="record_backup_upload",
+    description=(
+        "Record how a daily backup run ended, so the Backup page can show it: uploaded (with the "
+        "path from export_backup, and copies and contentHash from upload_backup), skipped (when "
+        "export_backup said unchangedSinceUpload), or failed (with its cause). Call it once at "
+        "the end of every run, for a skip or a failure too."
+    ),
+    model=RecordBackupUploadArguments,
+    run=_record_backup_upload,
+)
+
 TOOLS: tuple[AgentTool, ...] = (
     GET_APP_INFO,
     FIND_BOOK,
@@ -884,5 +919,6 @@ TOOLS: tuple[AgentTool, ...] = (
     LIST_LOCAL_BACKUPS,
     PREVIEW_RESTORE,
     RESTORE_BACKUP,
+    RECORD_BACKUP_UPLOAD,
 )
 """The tools every ``create_app`` registers unless a test passes its own."""

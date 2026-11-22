@@ -19,6 +19,8 @@ reach the real ``~/bookvie-data`` or a real backups folder.
 
 import hashlib
 import json
+import threading
+import zipfile
 from collections.abc import Callable
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -27,6 +29,7 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
+from bookvie.intents import record_backup_upload
 from bookvie.store import local_state
 from bookvie.store.fs import OsFileSystem
 from tests.agent_client import (
@@ -58,8 +61,6 @@ from tests.test_agent_backup import (
     backup_name,
 )
 from tests.test_agent_write import UPDATE, running_bookvie
-
-RED = "red phase: Story 13.3 isn't built yet (bmad-build-auto removes this skip per task)"
 
 MADRID = ZoneInfo("Europe/Madrid")
 NOW = datetime(2026, 11, 20, 9, 1, 36, tzinfo=MADRID)
@@ -142,8 +143,6 @@ def _field_names(answer: dict[str, Any]) -> list[str]:
 # --- AC-1: forUpload leaves "Last export" alone; both answer libraryHash and the flag -----
 
 
-# Un-skip when export_backup takes forUpload and answers libraryHash and unchangedSinceUpload.
-@pytest.mark.skip(reason=RED)
 def test_export_backup_for_upload_writes_the_day_but_leaves_last_export_and_says_if_unchanged(
     connect_mcp: Callable[..., McpClient], tmp_path: Path
 ) -> None:
@@ -210,8 +209,6 @@ def test_export_backup_for_upload_writes_the_day_but_leaves_last_export_and_says
 # --- AC-2: the tool list ----------------------------------------------------------------
 
 
-# Un-skip when record_backup_upload is registered.
-@pytest.mark.skip(reason=RED)
 def test_the_tool_list_adds_record_backup_upload_after_the_restore_tools(
     mcp_client: McpClient,
 ) -> None:
@@ -236,8 +233,6 @@ def test_the_tool_list_adds_record_backup_upload_after_the_restore_tools(
 # --- AC-3: an upload is stored with bookvie's own hash; a bad argument stores nothing -----
 
 
-# Un-skip when record_backup_upload stores an upload.
-@pytest.mark.skip(reason=RED)
 def test_an_upload_is_recorded_with_the_clocks_time_the_zips_time_and_bookvies_own_hash(
     connect_mcp: Callable[..., McpClient], tmp_path: Path
 ) -> None:
@@ -297,8 +292,6 @@ def test_an_upload_is_recorded_with_the_clocks_time_the_zips_time_and_bookvies_o
 # --- AC-4: a skip and a failure; a bad outcome or cause stores nothing --------------------
 
 
-# Un-skip when record_backup_upload stores a skip and a failure.
-@pytest.mark.skip(reason=RED)
 def test_a_skip_replaces_the_report_and_the_last_ok_and_a_failure_only_the_report(
     connect_mcp: Callable[..., McpClient], tmp_path: Path
 ) -> None:
@@ -367,8 +360,6 @@ def _record_skip(client: McpClient) -> dict[str, Any]:
     return client.answer(RECORD_BACKUP_UPLOAD, {"outcome": "skipped"})
 
 
-# Un-skip when store/local_state has the one group writer and record_backup_upload uses it.
-@pytest.mark.skip(reason=RED)
 def test_last_export_and_the_upload_state_survive_each_others_writes(
     connect_mcp: Callable[..., McpClient],
     tmp_path: Path,
@@ -450,8 +441,6 @@ def test_last_export_and_the_upload_state_survive_each_others_writes(
 # --- AC-7: a folder whose sibling would be a default backups folder gets none -------------
 
 
-# Un-skip when the folder rule gives no backups folder for such a data folder.
-@pytest.mark.skip(reason=RED)
 def test_a_data_folder_whose_sibling_is_the_default_backups_folder_gets_no_backups_folder(
     connect_mcp: Callable[..., McpClient],
 ) -> None:
@@ -483,3 +472,227 @@ def test_a_data_folder_whose_sibling_is_the_default_backups_folder_gets_no_backu
     assert structured_of(listed) == {"backups": []}
     assert _names(backups) == [real_backup]
     assert not (home / "bookvie-backups-dev").exists()
+
+
+# --- Secondary branches (Story 13.3's matrix) --------------------------------------------
+
+
+def test_extra_bad_and_null_arguments_are_each_refused_by_key_and_store_nothing(
+    connect_mcp: Callable[..., McpClient], tmp_path: Path
+) -> None:
+    client, folder, backups, clock = _connect(connect_mcp, tmp_path)
+    client.call_tool(EXPORT_BACKUP)
+    written = backups / TODAY_BACKUP
+    good = _uploaded(written)
+    without = {key: value for key, value in good.items() if key not in ("path", "contentHash")}
+    refusals = {
+        "skip_with_path": ({"outcome": "skipped", "path": str(written)}, ["path"]),
+        "skip_with_cause": ({"outcome": "skipped", "cause": "other"}, ["cause"]),
+        "skip_with_all": (
+            {**good, "outcome": "skipped", "cause": "other"},
+            ["path", "copies", "contentHash", "cause"],
+        ),
+        "failure_with_upload_args": (
+            {**good, "outcome": "failed", "cause": "other"},
+            ["path", "copies", "contentHash"],
+        ),
+        "upload_with_cause": ({**good, "cause": "other"}, ["cause"]),
+        "upload_missing_two": (without, ["path", "contentHash"]),
+        "copies_zero": ({**good, "copies": 0}, ["copies"]),
+        "copies_negative": ({**good, "copies": -1}, ["copies"]),
+        "copies_a_string": ({**good, "copies": "3"}, ["copies"]),
+        "copies_a_float": ({**good, "copies": 3.0}, ["copies"]),
+        "copies_a_bool": ({**good, "copies": True}, ["copies"]),
+        "hash_upper_case": ({**good, "contentHash": good["contentHash"].upper()}, ["contentHash"]),
+        "hash_too_short": ({**good, "contentHash": "ab" * 31}, ["contentHash"]),
+        "hash_not_hex": ({**good, "contentHash": "g" * 64}, ["contentHash"]),
+        "two_failing_in_order": (
+            {**good, "copies": 0, "contentHash": "x"},
+            ["copies", "contentHash"],
+        ),
+        "null_path": ({**good, "path": None}, ["path"]),
+        "null_outcome": ({"outcome": None}, ["outcome"]),
+        "relative_path": ({**good, "path": TODAY_BACKUP}, ["path"]),
+        "dotdot_path": (
+            {**good, "path": str(backups / ".." / backups.name / TODAY_BACKUP)},
+            ["path"],
+        ),
+        "unknown_key": ({"outcome": "skipped", "note": "hi"}, ["note"]),
+    }
+    stored = (folder / LOCAL_STATE).read_bytes()
+    for case, (arguments, fields) in refusals.items():
+        clock.advance(STEP)
+        refused = client.answer(RECORD_BACKUP_UPLOAD, arguments)
+        assert error_of(refused).get("code") == "invalid_fields", (case, refused)
+        assert _field_names(refused) == fields, (case, refused)
+        assert (folder / LOCAL_STATE).read_bytes() == stored, case
+
+
+def test_a_symlink_or_an_unreadable_daily_file_is_refused_on_path(
+    connect_mcp: Callable[..., McpClient], tmp_path: Path
+) -> None:
+    client, folder, backups, clock = _connect(connect_mcp, tmp_path)
+    client.call_tool(EXPORT_BACKUP)
+    written = backups / TODAY_BACKUP
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    target = elsewhere / TODAY_BACKUP
+    target.write_bytes(written.read_bytes())
+    linked = backups / backup_name(date(2026, 11, 17))
+    linked.symlink_to(target)
+    not_a_zip = backups / backup_name(date(2026, 11, 16))
+    not_a_zip.write_bytes(b"not a zip")
+    no_library = backups / backup_name(date(2026, 11, 15))
+    with zipfile.ZipFile(no_library, "w") as archive:
+        archive.writestr("other.json", b"{}")
+    # A daily-named zip whose deflated library.json data is corrupt (zlib.error on read).
+    corrupt = backups / backup_name(date(2026, 11, 14))
+    with zipfile.ZipFile(corrupt, "w") as archive:
+        archive.writestr("library.json", b"{}" * 1000, compress_type=zipfile.ZIP_DEFLATED)
+    with zipfile.ZipFile(corrupt) as archive:
+        info = archive.getinfo("library.json")
+    data = bytearray(corrupt.read_bytes())
+    start = info.header_offset + 30 + len(info.filename)
+    data[start : start + 8] = b"\xff" * 8
+    corrupt.write_bytes(bytes(data))
+    stored = (folder / LOCAL_STATE).read_bytes()
+    for path in (linked, not_a_zip, no_library, corrupt):
+        clock.advance(STEP)
+        refused = client.answer(RECORD_BACKUP_UPLOAD, _uploaded(path))
+        assert error_of(refused).get("code") == "invalid_fields", (path.name, refused)
+        assert _field_names(refused) == ["path"], (path.name, refused)
+        assert (folder / LOCAL_STATE).read_bytes() == stored, path.name
+
+
+def test_with_no_backups_folder_an_upload_is_refused_on_path_and_a_skip_is_stored(
+    connect_mcp: Callable[..., McpClient],
+) -> None:
+    home = Path.home()
+    folder = home / "bookvie"
+    _seed_with_cover(folder)
+    client = connect_mcp(data_dir=folder, clock=SetClock(NOW))
+    assert client.http.app.state.backups_dir is None
+    some = home / "elsewhere" / TODAY_BACKUP
+    some.parent.mkdir()
+    some.write_bytes(backup_zip(folder, NOW))
+
+    refused = client.answer(RECORD_BACKUP_UPLOAD, _uploaded(some))
+
+    assert _field_names(refused) == ["path"], refused
+    assert not (folder / LOCAL_STATE).exists()
+    assert _record_skip(client).get("isError") is not True
+    assert set(_state(folder)) == {"autoBackup"}
+
+
+def test_a_failure_with_no_earlier_state_writes_the_report_alone_and_keeps_unknown_keys(
+    connect_mcp: Callable[..., McpClient], tmp_path: Path
+) -> None:
+    client, folder, _, clock = _connect(connect_mcp, tmp_path)
+    (folder / LOCAL_STATE).write_text(json.dumps({"someday": {"x": 1}}))
+
+    failed = client.answer(RECORD_BACKUP_UPLOAD, {"outcome": "failed", "cause": "other"})
+
+    assert failed.get("isError") is not True, failed
+    doc = _state(folder)
+    assert doc["someday"] == {"x": 1}
+    assert _instants(doc["autoBackup"]) == {
+        "lastReport": {"outcome": "failed", "at": NOW, "cause": "other"}
+    }
+    # An export keeps both other keys too.
+    clock.advance(STEP)
+    client.call_tool(EXPORT_BACKUP)
+    assert sorted(_state(folder)) == ["autoBackup", "lastExportAt", "someday"]
+    assert _state(folder)["someday"] == {"x": 1}
+
+
+def test_an_unreadable_state_file_is_couldnt_save_and_a_malformed_one_reads_as_unchanged_false(
+    connect_mcp: Callable[..., McpClient], tmp_path: Path
+) -> None:
+    client, folder, backups, _ = _connect(connect_mcp, tmp_path)
+    # A folder where the file should be: reading it raises an OSError other than not-found.
+    (folder / LOCAL_STATE).mkdir()
+    failed = _record_skip(client)
+    assert error_of(failed).get("code") == "couldnt_save", failed
+    assert (folder / LOCAL_STATE).is_dir()
+    (folder / LOCAL_STATE).rmdir()
+
+    (folder / LOCAL_STATE).write_bytes(b"[1, 2]")
+    answer = structured_of(client.call_tool(EXPORT_BACKUP, {"forUpload": True}))
+    assert answer["unchangedSinceUpload"] is False
+    assert (folder / LOCAL_STATE).read_bytes() == b"[1, 2]"
+
+
+@pytest.mark.parametrize("value", ["true", 1, None])
+def test_for_upload_that_isnt_a_boolean_is_refused_and_writes_no_file(
+    value: Any, connect_mcp: Callable[..., McpClient], tmp_path: Path
+) -> None:
+    client, folder, backups, _ = _connect(connect_mcp, tmp_path)
+    (folder / LOCAL_STATE).write_bytes(EARLIER_EXPORT)
+
+    refused = client.answer(EXPORT_BACKUP, {"forUpload": value})
+
+    assert error_of(refused).get("code") == "invalid_fields", refused
+    assert _names(backups) == []
+    assert (folder / LOCAL_STATE).read_bytes() == EARLIER_EXPORT
+
+
+def test_a_failed_for_upload_write_is_couldnt_save_and_moves_nothing(
+    connect_mcp: Callable[..., McpClient], tmp_path: Path
+) -> None:
+    client, folder, backups, _ = _connect(connect_mcp, tmp_path)
+    (folder / LOCAL_STATE).write_bytes(EARLIER_EXPORT)
+    client.http.app.state.store.fs = FaultyFs("replace")
+
+    refused = client.answer(EXPORT_BACKUP, {"forUpload": True})
+
+    assert error_of(refused).get("code") == "couldnt_save", refused
+    assert _names(backups) == []
+    assert (folder / LOCAL_STATE).read_bytes() == EARLIER_EXPORT
+
+
+def test_exports_and_skips_racing_on_fifty_threads_keep_both_groups(
+    connect_mcp: Callable[..., McpClient], tmp_path: Path
+) -> None:
+    # The intent itself, not the MCP client: one test client isn't shared across threads.
+    client, folder, backups, clock = _connect(connect_mcp, tmp_path)
+    store = client.http.app.state.store
+    errors: list[BaseException] = []
+
+    def work(index: int) -> None:
+        try:
+            if index % 2:
+                store.record_export(NOW + timedelta(seconds=index))
+            else:
+                record_backup_upload(store, clock, backups, {"outcome": "skipped"})
+        except BaseException as exc:  # noqa: BLE001 - reported in the test's thread
+            errors.append(exc)
+
+    threads = [threading.Thread(target=work, args=(index,)) for index in range(50)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(30)
+
+    assert errors == []
+    doc = _state(folder)
+    assert sorted(doc) == ["autoBackup", "lastExportAt"]
+    assert sorted(doc["autoBackup"]) == ["lastOk", "lastReport"]
+
+
+def test_a_state_file_with_only_the_upload_group_reads_as_no_export_without_a_log(
+    connect_mcp: Callable[..., McpClient],
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    client, folder, _, _ = _connect(connect_mcp, tmp_path)
+    (folder / LOCAL_STATE).write_text(json.dumps({"autoBackup": PRIOR_UPLOAD}))
+    capsys.readouterr()
+
+    assert client.http.get("/api/views/backup").json()["lastExportAt"] is None
+    assert client.http.get("/api/views/home").json()["lastExportAt"] is None
+    assert local_state.read_last_export(folder) is None
+    assert capsys.readouterr().err == ""
+    # An empty object is no export yet too, not a malformed file.
+    (folder / LOCAL_STATE).write_text("{}")
+    assert local_state.read_last_export(folder) is None
+    assert capsys.readouterr().err == ""

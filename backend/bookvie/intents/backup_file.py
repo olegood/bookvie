@@ -13,6 +13,15 @@ A read failure is ``build_export``'s ``couldnt_export``; a failure in any
 step before the rename, creating the folder included, is ``couldnt_save``,
 with the temp file removed and "Last export" unmoved.
 
+With ``for_upload`` (the daily backup run, Story 13.3) the file is written the
+same way but "Last export" isn't recorded. Every backup answers its
+``libraryHash`` (the SHA-256 of the zip's ``library.json``) and
+``unchangedSinceUpload``: whether that hash equals the last recorded upload's.
+
+:func:`record_backup_upload` (Story 13.3, AD-22) stores how a daily run
+ended in ``local-state.json`` under ``autoBackup``, through the store's
+:class:`~bookvie.store.local_state.LocalStateWriter`.
+
 :func:`backups_folder` is the folder rule: it follows the data folder, not
 the mode. The home folder is passed in, so this layer never reads
 ``Path.home()``.
@@ -23,20 +32,31 @@ import os
 import re
 import stat
 import zipfile
+import zlib
 from collections.abc import Callable
 from datetime import date, datetime
 from pathlib import Path
 from tempfile import SpooledTemporaryFile
-from typing import Literal
+from typing import Any, BinaryIO, Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from pydantic.alias_generators import to_camel
 
 from bookvie.domain import Clock
-from bookvie.store import Store
+from bookvie.store import LIBRARY_NAME, CouldntSave, Store
+from bookvie.store.local_state import AUTO_BACKUP_KEY, read_group
 
+from .answers import ok
 from .commit import log
-from .contract import IntentError, couldnt_save, restore_outside_backups, safety_copy_failed
+from .contract import (
+    FieldError,
+    IntentError,
+    OkResponse,
+    couldnt_save,
+    invalid_fields,
+    restore_outside_backups,
+    safety_copy_failed,
+)
 from .export import (
     _ZIP_ERRORS,
     EXPORT_CHUNK,
@@ -45,12 +65,19 @@ from .export import (
     build_export,
     write_export_zip,
 )
+from .intent_model import IntentModel
 
 DEFAULT_DATA_NAME = "bookvie-data"
 DEV_DATA_NAME = "bookvie-data-dev"
 DEFAULT_BACKUPS_NAME = "bookvie-backups"
 DEV_BACKUPS_NAME = "bookvie-backups-dev"
 BACKUPS_SUFFIX = "-backups"
+
+LAST_REPORT = "lastReport"
+LAST_OK = "lastOk"
+LAST_UPLOAD = "lastUpload"
+"""The three parts of ``local-state.json``'s ``autoBackup`` group (AD-22)."""
+_NOT_A_DAILY_BACKUP = "This isn't a daily backup in this bookvie's backups folder."
 
 
 def _same_folder(a: Path, b: Path) -> bool:
@@ -65,15 +92,35 @@ def _same_folder(a: Path, b: Path) -> bool:
         return False
 
 
-def backups_folder(data_dir: Path, home: Path) -> Path:
+def _same_folder_folded(a: Path, b: Path) -> bool:
+    """:func:`_same_folder`, or the resolved paths equal ignoring case (a case-insensitive
+    disk spells one folder many ways, and neither may exist yet)."""
+    if _same_folder(a, b):
+        return True
+    try:
+        return str(Path(a).resolve()).casefold() == str(Path(b).resolve()).casefold()
+    except OSError, ValueError:
+        return False
+
+
+def backups_folder(data_dir: Path, home: Path) -> Path | None:
     """The backups folder for ``data_dir``: ``~/bookvie-backups`` for ``~/bookvie-data``,
-    ``~/bookvie-backups-dev`` for ``~/bookvie-data-dev``, ``<data folder>-backups`` otherwise."""
+    ``~/bookvie-backups-dev`` for ``~/bookvie-data-dev``, ``<data folder>-backups`` otherwise.
+
+    ``None`` (no backups folder) when that sibling would be one of the two default
+    backups folders, as for ``~/bookvie``: only ``~/bookvie-data`` writes into
+    ``~/bookvie-backups`` (AD-22, Story 13.3).
+    """
     if _same_folder(data_dir, home / DEFAULT_DATA_NAME):
         return home / DEFAULT_BACKUPS_NAME
     if _same_folder(data_dir, home / DEV_DATA_NAME):
         return home / DEV_BACKUPS_NAME
     resolved = Path(data_dir).resolve()
-    return resolved.parent / f"{resolved.name}{BACKUPS_SUFFIX}"
+    sibling = resolved.parent / f"{resolved.name}{BACKUPS_SUFFIX}"
+    for default in (home / DEFAULT_BACKUPS_NAME, home / DEV_BACKUPS_NAME):
+        if _same_folder_folded(sibling, default):
+            return None
+    return sibling
 
 
 def backup_name(day: date) -> str:
@@ -82,17 +129,35 @@ def backup_name(day: date) -> str:
 
 
 class BackupFile(BaseModel):
-    """``export_backup``'s answer: the file's absolute path, its size in bytes and its time."""
+    """``export_backup``'s answer: the file's absolute path, its size in bytes, its time, the
+    SHA-256 of its ``library.json`` and whether that equals the last recorded upload's."""
 
     model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
 
     path: str
     size: int
     created_at: datetime
+    library_hash: str
+    unchanged_since_upload: bool
 
 
-def write_backup(store: Store, clock: Clock, backups_dir: Path | None) -> BackupFile:
-    """Write today's backup file into ``backups_dir`` and record it as "Last export"."""
+def _library_hash(archive: zipfile.ZipFile) -> str:
+    return hashlib.sha256(archive.read(LIBRARY_NAME)).hexdigest()
+
+
+def _last_upload_hash(data_dir: Path) -> str | None:
+    """``autoBackup.lastUpload.libraryHash`` from ``local-state.json``, or ``None``."""
+    group = read_group(data_dir, AUTO_BACKUP_KEY)
+    upload = group.get(LAST_UPLOAD) if isinstance(group, dict) else None
+    value = upload.get("libraryHash") if isinstance(upload, dict) else None
+    return value if isinstance(value, str) else None
+
+
+def write_backup(
+    store: Store, clock: Clock, backups_dir: Path | None, for_upload: bool = False
+) -> BackupFile:
+    """Write today's backup file into ``backups_dir`` and, unless ``for_upload``, record it
+    as "Last export"."""
     if backups_dir is None:
         log("couldn't save the backup: this app has no backups folder")
         raise couldnt_save(503)
@@ -107,14 +172,28 @@ def write_backup(store: Store, clock: Clock, backups_dir: Path | None) -> Backup
         except OSError as exc:
             log(f"couldn't save the backup: can't create {folder}: {exc}")
             raise couldnt_save(503) from exc
+        try:
+            with zipfile.ZipFile(source) as archive:
+                library_hash = _library_hash(archive)
+            source.seek(0)
+        except (*_ZIP_ERRORS, KeyError, zlib.error, EOFError) as exc:
+            log(f"couldn't save the backup: can't read the built zip: {exc}")
+            raise couldnt_save(503) from exc
         size = _write_atomic(store, source, target)
     finally:
         source.close()
-    try:
-        store.record_export(now)
-    except Exception as exc:  # noqa: BLE001 - the backup is already written
-        log(f"couldn't record the backup in local-state.json: {exc}")
-    return BackupFile(path=str(target), size=size, created_at=now)
+    if not for_upload:
+        try:
+            store.record_export(now)
+        except Exception as exc:  # noqa: BLE001 - the backup is already written
+            log(f"couldn't record the backup in local-state.json: {exc}")
+    return BackupFile(
+        path=str(target),
+        size=size,
+        created_at=now,
+        library_hash=library_hash,
+        unchanged_since_upload=library_hash == _last_upload_hash(store.data_dir),
+    )
 
 
 def _couldnt_save() -> IntentError:
@@ -231,9 +310,8 @@ def _is_regular_file(path: Path) -> bool:
         return False
 
 
-def resolve_backup_path(backups_dir: Path | None, raw: str) -> tuple[Path, BackupKind]:
-    """``raw`` as a backup file a restore may read, with its kind; else 422
-    ``restore_outside_backups``.
+def _locate_backup(backups_dir: Path | None, raw: str) -> tuple[Path, BackupKind] | None:
+    """``raw`` as a backup file in ``backups_dir`` with its kind, or ``None``.
 
     It must be an absolute path with no ``..`` part, naming a regular file
     (not a symlink, not a folder) directly in ``backups_dir`` or its
@@ -241,15 +319,15 @@ def resolve_backup_path(backups_dir: Path | None, raw: str) -> tuple[Path, Backu
     ``from-dropbox/``). The file is never opened here.
     """
     if backups_dir is None:
-        raise restore_outside_backups()
+        return None
     path = Path(raw)
     if not raw or not path.is_absolute() or ".." in path.parts or "\0" in raw:
-        raise restore_outside_backups()
+        return None
     try:
         folder = Path(backups_dir).resolve()
         parent = path.parent.resolve()
     except OSError, RuntimeError, ValueError:
-        raise restore_outside_backups() from None
+        return None
     if parent == folder:
         kind = _kind_in_folder(path.name)
     elif parent == folder / FROM_DROPBOX:
@@ -258,17 +336,39 @@ def resolve_backup_path(backups_dir: Path | None, raw: str) -> tuple[Path, Backu
         kind = None
     resolved = parent / path.name
     if kind is None or not _is_regular_file(resolved):
-        raise restore_outside_backups()
+        return None
     return resolved, kind
+
+
+def resolve_backup_path(backups_dir: Path | None, raw: str) -> tuple[Path, BackupKind]:
+    """``raw`` as a backup file a restore may read, with its kind; else 422
+    ``restore_outside_backups`` (see :func:`_locate_backup` for the rules)."""
+    located = _locate_backup(backups_dir, raw)
+    if located is None:
+        raise restore_outside_backups()
+    return located
+
+
+def resolve_daily_backup(backups_dir: Path | None, raw: str) -> Path | None:
+    """``raw`` as a daily backup directly in ``backups_dir`` (never in ``from-dropbox/``,
+    never a safety copy), resolved as :func:`resolve_backup_path` resolves it; else ``None``."""
+    located = _locate_backup(backups_dir, raw)
+    if located is None or located[1] != "daily":
+        return None
+    return located[0]
 
 
 def dropbox_content_hash(path: Path) -> str:
     """Dropbox's content hash of the file at ``path``, in lowercase hex: SHA-256 over the
     SHA-256 of each 4 MiB block (stdlib only)."""
-    blocks = hashlib.sha256()
     with open(path, "rb") as source:
-        while block := source.read(CONTENT_HASH_BLOCK):
-            blocks.update(hashlib.sha256(block).digest())
+        return _content_hash_of(source)
+
+
+def _content_hash_of(source: BinaryIO) -> str:
+    blocks = hashlib.sha256()
+    while block := source.read(CONTENT_HASH_BLOCK):
+        blocks.update(hashlib.sha256(block).digest())
     return blocks.hexdigest()
 
 
@@ -389,3 +489,139 @@ def write_safety_copy(store: Store, now: datetime, backups_dir: Path | None) -> 
             raise safety_copy_failed() from exc
         _write_atomic(store, source, target, safety_copy_failed, "the safety copy")
     return target
+
+
+# --- How a daily backup run ended (AD-22, Story 13.3) ---------------------------------------
+
+CAUSES = ("dropbox_signin", "upload_incomplete", "dropbox_full", "backup_write", "other")
+"""AD-22's failure causes, in its order: why a daily run failed.
+
+bookvie-dropbox's copy: ``bookvie_dropbox.contracts.CAUSES``; the packages never import
+each other, and ``tests/test_dropbox_contracts.py`` keeps the copies equal."""
+
+Outcome = Literal["uploaded", "skipped", "failed"]
+Cause = Literal["dropbox_signin", "upload_incomplete", "dropbox_full", "backup_write", "other"]
+
+_UPLOAD_KEYS = ("path", "copies", "contentHash")
+_ARGUMENT_KEYS = ("outcome", *_UPLOAD_KEYS, "cause")
+_WANTED: dict[str, tuple[str, ...]] = {
+    "uploaded": _UPLOAD_KEYS,
+    "skipped": (),
+    "failed": ("cause",),
+}
+"""The arguments each outcome needs besides ``outcome``; any other is refused."""
+
+
+class RecordBackupUploadArguments(IntentModel):
+    # A comment, not a docstring: a model's docstring becomes its input schema's description.
+
+    outcome: Outcome
+    path: str | None = None
+    copies: int | None = Field(default=None, ge=1)
+    content_hash: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    cause: Cause | None = None
+
+
+def _argument_errors(arguments: dict[str, Any]) -> dict[str, FieldError]:
+    """Each failing argument's first error, by key: the model's checks (an explicit
+    ``null`` included), then what the outcome needs and allows."""
+    errors: dict[str, FieldError] = {}
+    try:
+        RecordBackupUploadArguments.model_validate(arguments)
+    except ValidationError as err:
+        for error in err.errors():
+            key = ".".join(map(str, error["loc"]))
+            errors.setdefault(key, FieldError(field=key, message=error["msg"]))
+    outcome = arguments.get("outcome")
+    wanted = _WANTED.get(outcome) if isinstance(outcome, str) else None
+    if wanted is not None:
+        for key in _ARGUMENT_KEYS[1:]:
+            present = arguments.get(key) is not None
+            if key in wanted and not present:
+                errors.setdefault(key, FieldError(field=key, message=f"{outcome} needs {key}"))
+            elif key not in wanted and present:
+                errors.setdefault(key, FieldError(field=key, message=f"{outcome} takes no {key}"))
+    return errors
+
+
+def _refuse(errors: dict[str, FieldError]) -> IntentError:
+    """``invalid_fields`` with the arguments in property order, then any unknown key."""
+    ordered = [errors[key] for key in _ARGUMENT_KEYS if key in errors]
+    ordered += [error for key, error in errors.items() if key not in _ARGUMENT_KEYS]
+    return invalid_fields(ordered)
+
+
+def _read_upload(path: Path) -> tuple[str, str, datetime]:
+    """The file's Dropbox content hash, its ``library.json`` SHA-256 and its backup time,
+    read through one handle. Raises what reading raises."""
+    with open(path, "rb") as source:
+        content_hash = _content_hash_of(source)
+        source.seek(0)
+        with zipfile.ZipFile(source) as archive:
+            return content_hash, _library_hash(archive), backup_time(archive)
+
+
+def record_backup_upload(
+    store: Store, clock: Clock, backups_dir: Path | None, arguments: dict[str, Any]
+) -> OkResponse:
+    """Store how a daily backup run ended under ``autoBackup`` in ``local-state.json``.
+
+    An upload replaces ``lastReport``, ``lastOk`` and ``lastUpload``; a skip
+    ``lastReport`` and ``lastOk``; a failure only ``lastReport``. Each ``at``
+    is ``clock.now()``. For an upload, ``path`` must be a daily backup directly
+    in ``backups_dir`` whose Dropbox content hash is ``contentHash``; bookvie
+    hashes its ``library.json`` itself. A refused call is 422 ``invalid_fields``
+    naming each failing argument, and stores nothing; a write failure is 503
+    ``couldnt_save`` with the file as it was.
+    """
+    errors = _argument_errors(arguments)
+    if errors:
+        raise _refuse(errors)
+    args = RecordBackupUploadArguments.model_validate(arguments)
+    upload: dict[str, Any] | None = None
+    if args.outcome == "uploaded":
+        located = resolve_daily_backup(backups_dir, args.path or "")
+        if located is None:
+            raise _refuse({"path": FieldError(field="path", message=_NOT_A_DAILY_BACKUP)})
+        try:
+            content_hash, library_hash, backup_at = _read_upload(located)
+        except (*_ZIP_ERRORS, KeyError, ValueError, OverflowError, zlib.error, EOFError) as exc:
+            log(f"refused the upload record: {located.name} can't be read as a backup: {exc}")
+            raise _refuse(
+                {"path": FieldError(field="path", message="This file can't be read as a backup.")}
+            ) from None
+        if content_hash != args.content_hash:
+            raise _refuse(
+                {
+                    "contentHash": FieldError(
+                        field="contentHash",
+                        message="This isn't the Dropbox content hash of the file at path.",
+                    )
+                }
+            )
+        upload = {
+            "backupAt": backup_at.isoformat(),
+            "name": located.name,
+            "copies": args.copies,
+            "libraryHash": library_hash,
+        }
+    at = clock.now().isoformat()
+    report: dict[str, Any] = {"outcome": args.outcome, "at": at}
+    if args.cause is not None:
+        report["cause"] = args.cause
+
+    def change(old: Any) -> dict[str, Any]:
+        group = dict(old) if isinstance(old, dict) else {}
+        group[LAST_REPORT] = report
+        if args.outcome != "failed":
+            group[LAST_OK] = {"at": at, "outcome": args.outcome}
+        if upload is not None:
+            group[LAST_UPLOAD] = {"at": at, **upload}
+        return group
+
+    try:
+        store.local_state.update(AUTO_BACKUP_KEY, change)
+    except CouldntSave as exc:
+        log(f"couldn't record the backup run in local-state.json: {exc}")
+        raise couldnt_save(503) from exc
+    return ok()

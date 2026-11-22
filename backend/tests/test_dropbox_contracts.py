@@ -11,9 +11,8 @@ published example (its content-hash page, docs.dropboxapi.com,
 
 import hashlib
 import random
+import typing
 from pathlib import Path
-
-import pytest
 
 from bookvie.intents import FROM_DROPBOX, backup_file
 from bookvie.intents import dropbox_content_hash as bookvie_content_hash
@@ -65,8 +64,6 @@ PUBLISHED_HASH = "485291fa0ee50c016982abbfa943957bcd231aae0492ccbaa22c58e3997b35
 CAUSES = ("dropbox_signin", "upload_incomplete", "dropbox_full", "backup_write", "other")
 """AD-22's cause enum, in its order."""
 
-RED_13_3 = "red phase: Story 13.3 isn't built yet (bmad-build-auto removes this skip per task)"
-
 
 def test_bookvie_dropbox_copies_the_daily_name_the_folders_and_the_content_hash_exactly(
     tmp_path: Path,
@@ -107,12 +104,12 @@ def test_bookvie_dropbox_copies_the_daily_name_the_folders_and_the_content_hash_
     assert hashlib.sha256(digests).hexdigest() == PUBLISHED_HASH
 
 
-# Un-skip when bookvie has its copy of the cause enum (Story 13.3).
-@pytest.mark.skip(reason=RED_13_3)
 def test_bookvie_keeps_the_same_cause_enum_as_bookvie_dropbox() -> None:
     # [P0] AC-5 (Story 13.3)
     contracts = import_or_fail("bookvie_dropbox.contracts")
 
     assert tuple(getattr(backup_file, "CAUSES", ())) == tuple(contracts.CAUSES)
+    # The validator's Literal is the same set, in the same order.
+    assert typing.get_args(backup_file.Cause) == backup_file.CAUSES
 
     assert tuple(contracts.CAUSES) == CAUSES

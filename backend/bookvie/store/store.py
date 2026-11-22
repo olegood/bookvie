@@ -29,7 +29,7 @@ from bookvie.domain.model import Library
 
 from . import migrations
 from .fs import FileSystem, OsFileSystem
-from .local_state import LOCAL_STATE_NAME, LOCAL_STATE_TEMP_PREFIX, local_state_bytes
+from .local_state import LAST_EXPORT_KEY, LOCAL_STATE_TEMP_PREFIX, LocalStateWriter
 
 LIBRARY_NAME = "library.json"
 TEMP_PREFIX = "library.json.tmp"
@@ -249,6 +249,12 @@ class Store:
         # and shutdown take it too.
         self.lock = threading.Lock()
         self._library = library
+        # AD-15: local-state.json's one writer, under its own lock (not AD-4's). It looks up
+        # self.fs at each write, so a swapped seam reaches it.
+        self.local_state = LocalStateWriter(
+            data_dir,
+            lambda target, data: self._write_atomic(target, data, prefix=LOCAL_STATE_TEMP_PREFIX),
+        )
 
     @property
     def library(self) -> Library:
@@ -585,17 +591,14 @@ class Store:
             _log(f"couldn't delete {relative}: {exc}")
 
     def record_export(self, now: datetime) -> None:
-        """Write ``local-state.json`` saying the last complete export was at ``now`` (AD-15).
+        """Record in ``local-state.json`` that the last complete export was at ``now`` (AD-15).
 
-        Atomic through the filesystem seam, like a commit; raises
+        Only ``lastExportAt`` changes, through :attr:`local_state`: atomic
+        through the filesystem seam, like a commit; raises
         :class:`CouldntSave` when it can't be written. It doesn't take the
-        lock: it never touches ``library.json`` or ``covers/``.
+        AD-4 lock: it never touches ``library.json`` or ``covers/``.
         """
-        self._write_atomic(
-            self.data_dir / LOCAL_STATE_NAME,
-            local_state_bytes(now),
-            prefix=LOCAL_STATE_TEMP_PREFIX,
-        )
+        self.local_state.update(LAST_EXPORT_KEY, lambda _old: now.isoformat())
 
     def _commit(self, library: Library) -> None:
         self._write_atomic(self.path, serialize(library))
