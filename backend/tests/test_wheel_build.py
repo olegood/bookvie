@@ -106,3 +106,25 @@ def test_build_refuses_without_the_spa(source: Path, tmp_path: Path) -> None:
     assert result.returncode != 0
     assert "npm run build" in result.stderr
     assert not list((tmp_path / "out").glob("*.whl"))
+
+
+def test_wheel_ships_bookvie_dropbox_and_its_command(source: Path, tmp_path: Path) -> None:
+    # Story 13.2 AC-1: the second package and its console script are in the same wheel.
+    static = source / "bookvie" / "http" / "static"
+    static.mkdir(parents=True)
+    (static / "index.html").write_text("<p>spa</p>")
+
+    result = _build_wheel(source, tmp_path / "out")
+
+    assert result.returncode == 0, result.stderr
+    (wheel,) = (tmp_path / "out").glob("bookvie-*.whl")
+    with zipfile.ZipFile(wheel) as archive:
+        names = set(archive.namelist())
+        (entry_points,) = [n for n in names if n.endswith(".dist-info/entry_points.txt")]
+        scripts = archive.read(entry_points).decode("utf-8")
+    expected = {p.name for p in (BACKEND_ROOT / "bookvie_dropbox").glob("*.py")}
+    assert {
+        n.removeprefix("bookvie_dropbox/") for n in names if n.startswith("bookvie_dropbox/")
+    } == (expected)
+    assert "bookvie-dropbox = bookvie_dropbox.cli:main" in scripts.splitlines()
+    assert "bookvie = bookvie.cli:main" in scripts.splitlines()

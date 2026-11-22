@@ -2,7 +2,7 @@
 
 Reads the JSON report written by ``pytest --cov-report=json:<path>`` and sums
 statements and covered lines per group of packages, matched by path segments
-(``bookvie/domain/...``). Prints each group's percentage and exits 1 when any
+(``bookvie/domain/...``, or the whole ``bookvie_dropbox/...`` package). Prints each group's percentage and exits 1 when any
 group is below its threshold. A group whose files have 0 statements passes;
 a group that matched no file at all fails, since nothing was measured.
 
@@ -22,9 +22,13 @@ class Gate:
     threshold: float  # percent
 
 
+DROPBOX_PACKAGE = "bookvie_dropbox"
+"""bookvie-dropbox's package (Story 13.2), gated whole: Epic 13's gate asks for 90%."""
+
 GATES = (
     Gate("domain", ("domain",), 90.0),
     Gate("intents+store", ("intents", "store"), 80.0),
+    Gate(DROPBOX_PACKAGE, (DROPBOX_PACKAGE,), 90.0),
 )
 
 
@@ -48,13 +52,20 @@ class Result:
 
 
 def _package_of(path: str) -> str | None:
-    """The layer a measured file belongs to: ``bookvie/<layer>/...`` -> ``<layer>``."""
+    """The group key of a measured file: ``bookvie/<layer>/...`` -> ``<layer>``, and
+    ``bookvie_dropbox/...`` -> ``bookvie_dropbox``."""
     parts = PurePosixPath(path.replace("\\", "/")).parts
-    # The innermost ``bookvie`` segment is the package; an outer one may be the repo.
-    for i in reversed(range(len(parts) - 2)):
-        if parts[i] == "bookvie":
+    # The innermost package segment wins; an outer ``bookvie`` may be the repo.
+    for i in reversed(range(len(parts) - 1)):
+        if parts[i] == DROPBOX_PACKAGE:
+            return DROPBOX_PACKAGE
+        if parts[i] == "bookvie" and i < len(parts) - 2:
             return parts[i + 1]
     return None
+
+
+def _where(package: str) -> str:
+    return f"{package}/" if package == DROPBOX_PACKAGE else f"bookvie/{package}/"
 
 
 def evaluate(report: dict, gates: tuple[Gate, ...] = GATES) -> list[Result]:
@@ -81,7 +92,7 @@ def main(argv: list[str] | None = None) -> int:
     failed = False
     for result in evaluate(report):
         if result.files == 0:
-            packages = ", ".join(f"bookvie/{p}/" for p in result.gate.packages)
+            packages = ", ".join(_where(p) for p in result.gate.packages)
             print(f"coverage gate: {result.gate.name} FAIL: nothing under {packages} was measured")
             failed = True
             continue

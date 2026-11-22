@@ -31,6 +31,8 @@ HEALTHY = {
     "bookvie/domain/a.py": (100, 95),
     "bookvie/intents/b.py": (50, 45),
     "bookvie/store/c.py": (50, 40),
+    "bookvie_dropbox/upload.py": (80, 76),
+    "bookvie_dropbox/auth.py": (20, 19),
     "bookvie/cli.py": (100, 0),  # outside every gate
     "bookvie/http/app.py": (100, 0),
 }
@@ -41,6 +43,16 @@ def test_all_groups_above_threshold_pass(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stdout + result.stderr
     assert "domain 95.00%" in result.stdout
     assert "intents+store 85.00%" in result.stdout
+    assert "bookvie_dropbox 95.00% (95/100 lines, needs >= 90%) ok" in result.stdout
+
+
+def test_bookvie_dropbox_just_below_90_fails_and_names_it(tmp_path: Path) -> None:
+    # Epic 13's gate: 90% on bookvie_dropbox/, summed over its files (Story 13.2).
+    files = HEALTHY | {"bookvie_dropbox/upload.py": (80, 70), "bookvie_dropbox/auth.py": (20, 19)}
+    result = _run(_report(tmp_path, files))
+    assert result.returncode == 1
+    fail = [line for line in result.stdout.splitlines() if "FAIL" in line]
+    assert len(fail) == 1 and "bookvie_dropbox 89.00%" in fail[0]
 
 
 def test_domain_at_89_percent_fails_and_names_domain(tmp_path: Path) -> None:
@@ -78,11 +90,16 @@ def test_intents_and_store_are_summed_not_averaged(tmp_path: Path) -> None:
 
 
 def test_groups_whose_files_have_zero_statements_pass(tmp_path: Path) -> None:
-    files = {"bookvie/domain/__init__.py": (0, 0), "bookvie/store/__init__.py": (0, 0)}
+    files = {
+        "bookvie/domain/__init__.py": (0, 0),
+        "bookvie/store/__init__.py": (0, 0),
+        "bookvie_dropbox/__init__.py": (0, 0),
+    }
     result = _run(_report(tmp_path, files))
     assert result.returncode == 0, result.stdout
     assert "domain 100.00% (0/0" in result.stdout
     assert "intents+store 100.00% (0/0" in result.stdout
+    assert "bookvie_dropbox 100.00% (0/0" in result.stdout
 
 
 @pytest.mark.parametrize(
@@ -98,6 +115,7 @@ def test_groups_that_match_no_file_fail(tmp_path: Path, files: dict) -> None:
         "intents+store FAIL: nothing under bookvie/intents/, bookvie/store/ was measured"
         in result.stdout
     )
+    assert "bookvie_dropbox FAIL: nothing under bookvie_dropbox/ was measured" in result.stdout
 
 
 def test_groups_match_by_path_segment_not_prefix(tmp_path: Path) -> None:
@@ -106,11 +124,15 @@ def test_groups_match_by_path_segment_not_prefix(tmp_path: Path) -> None:
         "bookvie/storefront.py": (10, 0),
         "/repo/bookvie/backend/bookvie/domain/a.py": (10, 10),
         "backend\\bookvie\\store\\b.py": (10, 8),
+        "bookvie/bookvie_dropbox_notes.py": (10, 0),
+        "/repo/bookvie/backend/bookvie_dropbox/upload.py": (10, 9),
+        "backend\\bookvie_dropbox\\auth.py": (10, 10),
     }
     result = _run(_report(tmp_path, files))
     assert result.returncode == 0, result.stdout
     assert "domain 100.00% (10/10" in result.stdout
     assert "intents+store 80.00% (8/10" in result.stdout
+    assert "bookvie_dropbox 95.00% (19/20" in result.stdout
 
 
 def test_missing_report_fails(tmp_path: Path) -> None:
