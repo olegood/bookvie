@@ -510,10 +510,16 @@ def _autobackup_run(args: argparse.Namespace) -> int:
                 _say(f"bookvie: couldn't start bookvie, so nothing was backed up: {exc}")
                 return 1
             if not _wait_for_health(server):
-                _say(
-                    f"bookvie: bookvie didn't answer on port {DEFAULT_PORT} within "
-                    f"{_AUTOBACKUP_HEALTH_WAIT_SECONDS:g} s, so nothing was backed up."
-                )
+                if server.poll() is not None:
+                    _say(
+                        f"bookvie: the bookvie this run started exited {server.returncode} "
+                        f"before it answered on port {DEFAULT_PORT}, so nothing was backed up."
+                    )
+                else:
+                    _say(
+                        f"bookvie: bookvie didn't answer on port {DEFAULT_PORT} within "
+                        f"{_AUTOBACKUP_HEALTH_WAIT_SECONDS:g} s, so nothing was backed up."
+                    )
                 return 1
         command = [
             claude,

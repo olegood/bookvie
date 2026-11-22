@@ -109,6 +109,50 @@ deferred:
 - Given `npm run check`, when it runs, then it passes.
 - Given AC-7 (manual: Oleg installs by the guide, then two 09:00 runs, one awake and one after waking from sleep, with no permission prompt), when the build ends, then the Auto Run Result lists it as pending and the story stays in review until it is recorded here with the log lines.
 
+### Review Findings
+
+Code review, 2026-11-22 (`bmad-code-review`, new session; diff `3fbe4bd..c3cc1a8`). 34 findings: 0 decision-needed, 6 patch entries (8 findings), 7 defer, 19 rejected.
+
+- [x] [Review][Patch] A started bookvie that exits early is reported as a 60 s timeout — `_wait_for_health` returns `False` as soon as the server exits, but the run always says "didn't answer on port 8765 within 60 s", and the guide promises the log says why a run stopped early (edge 1 + edge 4) [backend/bookvie/cli.py:551]
+- [x] [Review][Patch] The plist's PATH order and system folders are never asserted — the install test turns PATH into a set, so dropping `/usr/bin:/bin:/usr/sbin:/sbin` or reordering passes (verification 1) [backend/tests/test_autobackup.py:350]
+- [x] [Review][Patch] Uninstall with a plist but no loaded job is unpinned — dropping `had_plist` from the condition passes every test, and the run would say "isn't installed" after deleting a plist (verification 2) [backend/tests/test_autobackup.py:441]
+- [x] [Review][Patch] The early-exit run test can't tell an early give-up from the 60 s wait — it keeps the default wait and asserts no timing or message (verification 3) [backend/tests/test_autobackup.py:741]
+- [x] [Review][Patch] The run's "started at" and "finished at …, claude exited N" lines are never asserted — the guide sends users to them (verification 4) [backend/tests/test_autobackup.py:471]
+- [x] [Review][Patch] "Uninstalling" says "do these four steps" and lists five actions — the `bookvie` removal is optional (blind 7 + intent 3) [docs/dropbox-backup.md:265]
+- [x] [Review][Defer] `_stop`'s SIGKILL fallback for a server that ignores SIGTERM has no test [backend/bookvie/cli.py:478] — deferred: the real server stops on SIGTERM; the test needs a new TERM-trapping fake (verification 5)
+- [x] [Review][Defer] Spine drift (AD-22 Auto-backup state): `autoBackup.installed` [backend/bookvie/views/models.py] — deferred: already recorded in `deferred-work.md` by the build (spine 1)
+- [x] [Review][Defer] Spine drift (AD-22, Source tree, Structural Seed): still "(planned)" [backend/bookvie/cli.py] — deferred: already recorded (spine 2)
+- [x] [Review][Defer] Spine drift (Consistency Conventions Config row) [backend/bookvie/cli.py] — deferred: already recorded (spine 3)
+- [x] [Review][Defer] Spine drift (AD-1): the plist and the logs folder outside the data folder [backend/bookvie/cli.py] — deferred: already recorded (spine 4)
+- [x] [Review][Defer] Spine drift (Consistency Conventions Testing row, Capability Map FR-29) still say the autobackup tests and `launchd_probe` are planned [backend/tests/test_autobackup.py] — deferred: spine drift, reconciled before the next epic (spine 5)
+- [x] [Review][Defer] Spine drift (AD-22 `bookvie autobackup run` steps): the 60 s health wait, the 30 min `claude` cap, the run-time `claude` check and signal → exit 1 aren't in the AD [backend/bookvie/cli.py] — deferred: spine drift, reconciled before the next epic (spine 6)
+
+**Full check after the patches (2026-11-22):**
+- Run 1: `npm run check` exit 1. pytest 2446 passed, `check:api` passed; e2e 799 passed, 1 failed: `e2e/side-reads.spec.ts:639` (Epic 4 retro item 36, the Catalog spine popover's "Which page?") timed out after 15 s clicking the spine button. No patched file is in the frontend.
+- Run 2: `npm run check` exit 1. pytest 2446 passed; e2e 769 passed, 3 failed, 28 didn't run: the three Playwright workers crashed with `Cannot find module …/@axe-core/playwright/dist/index.mjs` and `SyntaxError: Unexpected end of input` in `playwright-core`, because `frontend/node_modules` was rewritten at 23:29:51, during the run.
+- Run 3 (Oleg chose a third run after run 2's `node_modules` rewrite): 2026-11-22, `npm run check` exit 0 — pytest 2446 passed, unit 389 passed, e2e 800 passed, smoke ok.
+
+**Status:** stays `in-review` (sprint-status `review`): AC-7, the manual install and two 09:00 runs, has no recorded result yet (Oleg, 2026-11-22: not run yet).
+
+**Rejected:**
+- (blind 1) `--allowedTools` only pre-approves, so "refuses any other tool" overstates — low: the user and project settings hold no `allow` rules (only `ask` for both `restore_backup`), so only read-only built-ins run unprompted; not worth a rewording.
+- (blind 2) Project hooks run under a PATH without `node` — low: the run calls only MCP tools, so only the `Stop` hook fires; `node` not found exits 127, which Claude Code treats as a non-blocking hook error.
+- (blind 3) `run` ignores the `dataDir` health returns — low: needs a non-dev bookvie on another library on port 8765; `upload_backup` refuses its path; the fix adds a branch.
+- (blind 4 + edge 2) `run` doesn't check its cwd for the skill — low: the plist's `WorkingDirectory` is the checkout install checked, and the skill is on every branch since 13.4; the fix adds a branch.
+- (blind 5) The Review Triage Log's header counts don't match its rows — the fix edits the spec under review.
+- (blind 6) `intent 4` is labelled `[false]` — the fix edits the spec under review.
+- (blind 8) The logs are never rotated — low: a few lines a day; rotation is new machinery.
+- (blind 9) The plist write, unlink, `Popen` and `claude` `OSError` branches are untested — low: disk or exec failures nobody meets day to day.
+- (blind 10) A job-started server is stopped while the browser uses it — low: by design ("stops only what it started"); a run lasts about a minute.
+- (blind 11) The install message leaves out the Keychain step — low: the Keychain prompt follows a reinstall of bookvie, not of the job; step 5 says it.
+- (blind 12) The Verification section is narrower than the AC — the fix edits the spec under review.
+- (blind 13) The `deferred-work.md` drift entries are shorter than the spec's — low: the spec's frontmatter keeps the full text the reconciliation can read.
+- (blind 14) The non-macOS probe test also patches `platform.system` — low: the ATDD's defensive patch, harmless.
+- (edge 3 + intent 2) A SIGTERM to `run` skips its `finally` and orphans the server — low: under launchd, `AbandonProcessGroup` defaults to false, so launchd kills the job's process group (the server and `claude`) when the job dies; the guide no longer uses `kickstart -k`; the fix adds a signal handler.
+- (intent 1) The spec's Task 4 still says `kickstart -k` — the fix edits the spec under review.
+- (intent 4) The real-library gate is decided once in `create_app` — false: the probe is asked on each read, which is what the constraint says; the folder can't change without a restart in practice.
+- (intent 5) The ATDD checklist and the spec differ on a missing `claude` at run time — false: the code follows the spec's matrix ("nothing started, exit 1").
+
 ## Spec Change Log
 
 ## Review Triage Log

@@ -262,7 +262,7 @@ The path isn't a backup in the backups folder or its `from-dropbox/`. A path els
 
 ## Uninstalling
 
-To stop the daily backup and remove everything the setup added, do these four steps.
+To stop the daily backup and remove everything the setup added, do these steps. Removing the `bookvie` server is optional.
 
 Unload the launchd job and remove its plist. The log files in `~/Library/Logs/bookvie/` stay until you delete them:
 

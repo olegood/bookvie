@@ -37,6 +37,7 @@ import shlex
 import signal
 import subprocess
 import sys
+import time
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -754,12 +755,18 @@ def test_run_gives_up_when_the_server_it_started_exits(
         tools.bookvie, "bookvie", '#!/bin/sh\n: > "$AUTOBACKUP_TEST_LOG/bookvie.started"\nexit 3\n'
     )
     _health(monkeypatch, lambda: False)
+    started = time.monotonic()
 
     code = _main(["autobackup", "run"])
 
+    # It gives up when the server exits, not when the 60 s health wait ends, and says why.
+    assert time.monotonic() - started < 10
     assert code == 1
     assert (tools.log / "bookvie.started").exists()
     assert _lines(tools.log / "claude.args") is None
+    err = _messages(capsys.readouterr().err)
+    assert re.search(r"\bexited 3\b", err), err
+    assert "didn't answer" not in err, err
 
 
 def test_run_without_claude_starts_nothing(
@@ -870,3 +877,59 @@ def test_run_without_bookvie_while_health_is_silent_runs_no_claude(
     assert code == 1
     assert re.search(REFUSALS["no_bookvie"], _messages(capsys.readouterr().err))
     assert _lines(tools.log / "claude.args") is None
+
+
+def test_install_writes_the_three_folders_then_the_system_folders_on_the_path(
+    tools: Tools, checkout: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # [P1] AC-1
+    monkeypatch.chdir(checkout)
+
+    assert _main(["autobackup", "install"]) == 0
+
+    job = plistlib.loads(_plists()[0].read_bytes())
+    path = job["EnvironmentVariables"]["PATH"].split(":")
+    assert [_resolved(entry) for entry in path[:3]] == [
+        folder.resolve() for folder in tools.folders()
+    ], path
+    assert path[3:] == SYSTEM_PATH, path
+
+
+def test_uninstall_with_a_plist_and_no_loaded_job_removes_it_and_says_it_uninstalled(
+    launchctl: Launchctl,
+    tools: Tools,
+    checkout: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    # [P2] AC-3: what a failed bootstrap leaves behind
+    monkeypatch.chdir(checkout)
+    assert _main(["autobackup", "install"]) == 0
+    assert len(_plists()) == 1
+    capsys.readouterr()
+    launchctl.returncode = 113
+
+    assert _main(["autobackup", "uninstall"]) == 0
+
+    said = capsys.readouterr()
+    assert _plists() == []
+    assert re.search(r"\buninstalled\b", said.err), said
+    assert "isn't installed" not in said.out + said.err
+
+
+def test_run_says_when_it_started_and_how_claude_exited(
+    tools: Tools,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    # [P2] AC-4: the lines the guide sends you to in autobackup.err.log
+    monkeypatch.setenv(STATUS_ENV, "7")
+    _health(monkeypatch, lambda: True)
+
+    assert _main(["autobackup", "run"]) == 7
+
+    err = _messages(capsys.readouterr().err)
+    assert re.search(r"autobackup run started at \d{4}-\d{2}-\d{2}T", err), err
+    assert re.search(
+        r"autobackup run finished at \d{4}-\d{2}-\d{2}T[^\n]*claude exited 7\b", err
+    ), err
