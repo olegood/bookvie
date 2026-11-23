@@ -41,8 +41,6 @@ from tests.helpers import SetClock, backup_zip, dropbox_content_hash, files_unde
 from tests.restore_scene import BACKUP_AT, NOW, write_library
 from tests.test_dropbox_upload import FAIL_KEYRING, Connect, daily
 
-RED_13_7 = "red phase (Story 13.7): bookvie-dropbox has no list_backups or download_backup"
-
 BACKUPS_NAME = "bookvie-backups"
 DEV_BACKUPS_NAME = "bookvie-backups-dev"
 FROM_DROPBOX = "from-dropbox"
@@ -108,8 +106,6 @@ def same_path(raw: Any, expected: Path) -> bool:
 # --- AC-1: the tool list -------------------------------------------------------------
 
 
-# Un-skip when bookvie-dropbox registers list_backups and download_backup.
-@pytest.mark.skip(reason=RED_13_7)
 def test_the_stdio_server_lists_upload_list_and_download_backup_with_their_descriptions(
     _isolated_home: Path,
 ) -> None:
@@ -147,8 +143,6 @@ def test_the_stdio_server_lists_upload_list_and_download_backup_with_their_descr
 # --- AC-2: list_backups ------------------------------------------------------------
 
 
-# Un-skip when list_backups lists the daily backups in /.backups.
-@pytest.mark.skip(reason=RED_13_7)
 def test_list_backups_returns_only_the_daily_backups_newest_first_with_their_time_size_and_hash(
     fakes: Any,
 ) -> None:
@@ -197,8 +191,6 @@ def test_list_backups_returns_only_the_daily_backups_newest_first_with_their_tim
 # --- AC-3: download_backup ---------------------------------------------------------
 
 
-# Un-skip when download_backup writes a verified download into from-dropbox/.
-@pytest.mark.skip(reason=RED_13_7)
 def test_download_backup_writes_a_verified_copy_into_from_dropbox_and_returns_its_path(
     fakes: Any, _isolated_home: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -247,6 +239,9 @@ def test_download_backup_writes_a_verified_copy_into_from_dropbox_and_returns_it
     assert Path(target).resolve() == (landing / TODAY).resolve(), renames
     assert Path(source).resolve().parent == landing.resolve() and Path(source).name != TODAY
     assert ("fsync", "") in events[: events.index(("rename", renames[0]))], events
+    # The folder is fsynced after the rename, so the new name survives a crash.
+    assert ("fsync", "") in events[events.index(("rename", renames[0])) + 1 :], events
+    assert fake.responses and all(response.closed for response in fake.responses)
 
     # The other target: a development server's backups folder, created when missing.
     assert not (_isolated_home / DEV_BACKUPS_NAME).exists()
@@ -285,11 +280,10 @@ REFUSED_ARGUMENTS: list[dict[str, Any]] = [
     {"name": daily("2026-11-19"), "target": None},
     {"name": daily("2026-11-19")},
     {"target": "bookvie"},
+    {"name": daily("2026-11-19"), "target": "bookvie", "path": "/tmp"},
 ]
 
 
-# Un-skip when download_backup checks its name and target before connecting.
-@pytest.mark.skip(reason=RED_13_7)
 def test_download_backup_refuses_a_name_that_isnt_daily_or_another_target_before_any_call(
     fakes: Any, _isolated_home: Path
 ) -> None:
@@ -315,8 +309,6 @@ def test_download_backup_refuses_a_name_that_isnt_daily_or_another_target_before
 # --- AC-5: a bad transfer leaves nothing ---------------------------------------------
 
 
-# Un-skip when download_backup checks the content hash and maps its failures to causes.
-@pytest.mark.skip(reason=RED_13_7)
 def test_a_download_that_doesnt_match_or_breaks_off_leaves_no_file_and_says_why(
     fakes: Any, _isolated_home: Path
 ) -> None:
@@ -342,6 +334,7 @@ def test_a_download_that_doesnt_match_or_breaks_off_leaves_no_file_and_says_why(
     cut = error_of(dropbox_call(DOWNLOAD_BACKUP, arguments, Connect(broken)))
     assert cut.get("cause") == "download_incomplete", cut
     assert left_behind() == []
+    assert all(r.closed for f in (fake, broken) for r in f.responses)
 
     # A sign-in Dropbox refuses, and a Keychain that can't be read (the real connect).
     refused = fakes.FakeDropbox(fault="signin")
@@ -366,8 +359,6 @@ def test_a_download_that_doesnt_match_or_breaks_off_leaves_no_file_and_says_why(
 # --- AC-6: bookvie reads a download like any daily backup ----------------------------
 
 
-# Un-skip when download_backup and list_backups work (AC-2, AC-3); bookvie needs no change.
-@pytest.mark.skip(reason=RED_13_7)
 def test_a_downloaded_backup_lists_as_from_dropbox_with_its_hash_and_previews_like_a_daily(
     fakes: Any,
     _isolated_home: Path,

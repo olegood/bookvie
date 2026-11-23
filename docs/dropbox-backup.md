@@ -147,6 +147,8 @@ bookvie gives agents three tools for this:
 - `preview_restore` says what restoring a backup would lose, and changes nothing: the backup's time and counts, your library's counts now, the titles of the books added since and the number of card notes added since.
 - `restore_backup` replaces the whole library with the backup, after both confirmations.
 
+To restore a backup that is only in Dropbox, bookvie-dropbox gives agents two more tools. `list_backups` lists the daily backups in bookvie's Dropbox folder, newest first, with each one's time, size and Dropbox content hash. `download_backup` downloads one of them by name. Its `target` says where it goes: `bookvie` puts it in `~/bookvie-backups/from-dropbox/`, and `bookvie-dev` in `~/bookvie-backups-dev/from-dropbox/`. The file appears there only once its size and content hash match Dropbox's copy; a verified download replaces an earlier download of the same name, while a download that doesn't match or breaks off leaves nothing behind and the earlier one stays as it was. `list_local_backups` then lists it with the kind `from_dropbox`. Neither tool deletes, moves or restores anything.
+
 A Dropbox backup can always be restored by hand, without an agent: download it from `~/Dropbox/Apps/bookvie/.backups/` (or from `/Apps/bookvie/.backups` on dropbox.com), then choose **Restore from file…** on the Backup page and pick the downloaded file. The Backup page's Restore checks the whole file before it replaces anything.
 
 The backups folder is `~/bookvie-backups` for the real app and `~/bookvie-backups-dev` for a `--dev` server. bookvie's agent tools restore only from that folder and its `from-dropbox/`, never from a file anywhere else.

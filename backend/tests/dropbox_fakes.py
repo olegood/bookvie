@@ -248,6 +248,8 @@ class FakeDropbox:
         self._ids = itertools.count(1)
         self._upload_requests = 0
         self._listings: dict[str, list[StoredFile]] = {}
+        self.responses: list[FakeDownload] = []
+        """Every download response handed out, so a test can check each was closed."""
 
     # The App folder, for tests.
 
@@ -469,7 +471,9 @@ class FakeDropbox:
             body = bytes(b ^ 0xFF for b in body) if body else b"x"
         break_after = len(body) // 2 if self.fault == "broken_transfer" else None
         metadata = self._metadata(stored, path.rpartition("/")[0])
-        return metadata, FakeDownload(body, break_after=break_after)
+        response = FakeDownload(body, break_after=break_after)
+        self.responses.append(response)
+        return metadata, response
 
     def files_download(self, path: str, rev: Any = None, extra_headers: Any = None) -> Any:
         """``(FileMetadata, response)`` for the file at ``path`` (Story 13.7)."""

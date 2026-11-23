@@ -1656,3 +1656,15 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-6-see-on-the-backup-page-how-the-last-dropbox-backup-went.md`
   summary: Spine drift (AD-6, Structural Seed), reconciled before the next epic: the Seed's `lib/` line and the FR-29 row don't name `lib/dropboxBackupLine` (nor `relativeDay`), and AD-6's App info sentence "`mode` is the only dev signal the client may read" should allow AD-22's server-decided `dropboxBackup.state === "dev"`. Low.
   evidence: spine-check finding 4; `frontend/src/lib/dropboxBackupLine.ts`; `backend/bookvie/http/api.py` `backup_view`.
+
+## Deferred from: build-auto review of spec-13-7-fetch-a-backup-from-my-dropbox (2026-11-23)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-7-fetch-a-backup-from-my-dropbox.md`
+  summary: Spine drift (AD-22 Backup time, Dropbox tools), reconciled before the next epic: `list_backups` reports and orders by the `client_modified` that `upload_backup` stamped, not the zip entry's time; it lists only daily `FileMetadata`, newest first, as `{"backups": [...]}`, and a missing folder as `[]`. `download_backup` also checks the size, refuses a symlinked `from-dropbox`, fsyncs the folder, and maps `ApiError` to `other` and transfer faults to `download_incomplete`. Low.
+  evidence: build-auto review spine-check findings 1-3, intent-alignment divergence 2; `backend/bookvie_dropbox/download.py`.
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-7-fetch-a-backup-from-my-dropbox.md`
+  summary: Spine drift (AD-22 Causes, Copied contracts; AD-9), reconciled before the next epic: `DOWNLOAD_CAUSES` (`dropbox_signin`, `download_incomplete`, `other`) is a `bookvie_dropbox`-only cause set beside the closed five-cause enum, and `list_backups`/`download_backup` answer `{cause, message}` with a bad argument set as `other`, not AD-9's error object (widens the `upload_backup` entries). Low.
+  evidence: build-auto review spine-check findings 4 and 6; `backend/bookvie_dropbox/download.py` `DOWNLOAD_CAUSES`, `server.py` `_error`.
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-7-fetch-a-backup-from-my-dropbox.md`
+  summary: Spine drift (AD-1; Structural Seed, Capability map, Testing row), reconciled before the next epic: `download_backup`'s `mkdir(parents=True)` can create a missing backups folder, not only `from-dropbox/`; and the spine still marks `list_backups`/`download_backup` planned, with `list_backups` under FR-29 rather than FR-30. Low.
+  evidence: build-auto review spine-check findings 5 and 7.
