@@ -15,13 +15,14 @@ inputDocuments:
   - _bmad-output/planning-artifacts/dev-prod-favicon-plan-2026-11-17.md
   - _bmad-output/planning-artifacts/mcp-server-plan-2026-11-19.md
   - _bmad-output/planning-artifacts/dropbox-backup-plan-2026-11-21.md
+  - _bmad-output/planning-artifacts/card-note-boxes-plan-2026-11-23.md
 ---
 
 # bookvie - Epic Breakdown
 
 ## Overview
 
-This document breaks bookvie's PRD, UX design (DESIGN.md, EXPERIENCE.md) and architecture spine into thirteen epics of implementable stories. Each story names the requirement IDs it satisfies and lists Given/When/Then acceptance criteria.
+This document breaks bookvie's PRD, UX design (DESIGN.md, EXPERIENCE.md) and architecture spine into fourteen epics of implementable stories. Each story names the requirement IDs it satisfies and lists Given/When/Then acceptance criteria.
 
 **How to read it.** The Epic List gives the build order and what each epic delivers. Each epic section starts with its gate. Every story follows the conventions in "Conventions for every story", just before Epic 1. The Requirements Inventory is a lookup table; the source documents stay authoritative.
 
@@ -52,6 +53,7 @@ Gates are in each epic's section.
 | 11. Know which bookvie you're looking at | Its own sage favicon. A development server keeps to its own library and port, refuses the real library, and is marked by an amber favicon, a `DEV · ` title and a DEV pill; Backup shows the version and data folder; a tab older than the app offers Reload. | FR-26, FR-27 |
 | 12. Talk to bookvie from Claude Code | Claude Code connects to the running bookvie at `/mcp` (its own entry for the real app and for a development server). An agent finds a Book without guessing; reads the catalog, a Book, Home, Card notes and Stats; logs pages, starts, pauses and finishes Readings, chooses Up next, edits Purposes, and adds and edits Card notes and Side reads; adds and edits Books, with a cover fetched from its web address; and writes a dated backup to disk. It can't delete or restore anything. The two bookvie skills move onto the tools. | FR-28 |
 | 13. Back up to Dropbox, and restore through an agent | An agent restores a local or Dropbox backup only after showing what will be lost and passing two confirmations it can't skip, with a safety copy first (built first, to prove the riskiest part). When Oleg runs the backup skill, the library goes to bookvie's own Dropbox folder: 3 copies, the oldest deleted only after a checked upload, an unchanged library skipped, a development library never uploaded. The Backup page says in words how the last Dropbox backup went. Setup and a fix for each failure ship in `docs/dropbox-backup.md`. (The 09:00 launchd job was dropped on 2026-11-23: the Mac's administration policy doesn't allow it; see `sprint-change-proposal-2026-11-23.md`.) | FR-29, FR-30, FR-28 (restore lifted from the ban, the backup run's export not counted as Last export) |
+| 14. See card notes as boxes | The Card notes page shows one box per Book, in its spine color with a pile of cards that grows with its notes; a remembered Boxes · List toggle keeps today's page as List. Opening a box opens that Book's notes under a strip in its spine color. A search on the shelf fades the boxes without a match and shows "3 of 12" on those with matches, and the search text goes into the box and back out. | FR-19 (Boxes · List, the boxes, the shelf search, the carried search) |
 
 ## Requirements Inventory
 
@@ -91,7 +93,7 @@ FR-17 [Must]: Add Card notes to any Book. The user can add, edit and delete a Ca
 
 FR-18 [Must]: Review a Book's Card notes as a pile, one at a time: page order or shuffled, next/previous, and jump straight to a particular Card note.
 
-FR-19 [Must]: Card notes view and quick search. A separate Card notes view shows all Card notes grouped by Book, with a quick search that finds notes containing the typed text. Search across all Books keeps results grouped by Book; the view scoped to one Book searches only that Book's notes; the pile itself has no search. Results update while typing, case-insensitive; each result shows the page or range and the matching text highlighted (plus the Book title in all-Books search). Opening a result shows that note in its Book's pile.
+FR-19 [Must]: Card notes view and quick search. A separate Card notes view shows all Card notes grouped by Book, either as a list or as one box per Book, with a quick search that finds notes containing the typed text. Boxes or list: across all Books the view shows the Books as boxes (default) or as the list of Card notes grouped by Book; the last choice is remembered on this computer and isn't part of an export; the view scoped to one Book has no choice. Boxes: each Book that has Card notes gets one box in its spine color, read or not, with its title, how many Card notes it holds and a pile of cards that grows with that number, in the same Book order as the list; opening a box opens the view scoped to that Book, which shows the Book's spine color too. Search across all Books keeps the list's results grouped by Book; in boxes, each Book with a match shows how many of its Card notes match ("3 of 12") and the other boxes fall back but can still be opened, and which Books match never depends on color or fading alone. Opening a box during a search keeps the search text, so the Book's view shows only its matches; going back to the boxes keeps the text as it was when the user left; switching between boxes and the list keeps it too; every other way into the view starts with an empty search. The view scoped to one Book searches only that Book's notes; the pile itself has no search. Results update while typing, case-insensitive; each result shows the page or range and the matching text highlighted (plus the Book title in all-Books search). Opening a result shows that note in its Book's pile.
 
 FR-20 [Should]: Filter and sort. Sort: Author (default), Title, Date added, Pages; the bookcase reorders to match. Each sort has a natural direction (Author and Title A–Z, Date added newest first, Pages fewest first) that the user can reverse; the catalog shows which order is in effect, ties keep their order either way, the direction is remembered on this computer with the sort and not exported, choosing another sort goes back to its natural direction, and Home's bookcase slice follows the same order. Filter chips: Read / Unread, Type, Language, Tag; non-matching Books are hidden and the bookcase closes up (not dimmed).
 
@@ -121,7 +123,7 @@ NFR1 (Local-first): bookvie runs in a browser on one laptop or desktop. No accou
 
 NFR2 (Display): UI in English only. Minimum viewport 1024px; below that the page scrolls horizontally; no phone layout. Light, dark or system theme selectable.
 
-NFR3 (Accessibility): WCAG 2.2 AA in both themes, with one accepted deviation: the 1024px minimum width does not meet SC 1.4.10 Reflow (horizontal scroll at 200–400% zoom).
+NFR3 (Accessibility): WCAG 2.2 AA in both themes, with one accepted deviation: the 1024px minimum width does not meet SC 1.4.10 Reflow (horizontal scroll at 200–400% zoom). EXPERIENCE.md → Accessibility Floor records a second (Epic 14): a Card note box without a match fades to 0.38 opacity during a shelf search, below SC 1.4.3's 4.5:1, by Oleg's choice on 2026-11-23 (UX-DR93). The PRD's NFR3 doesn't list it yet.
 
 NFR4 (Speed): Catch-up (one page update) takes under 30 seconds and at most 2 interactions after opening the app.
 
@@ -213,6 +215,12 @@ From ARCHITECTURE-SPINE.md and the TEA handoff. Each line names the source decis
 - AR59 (AD-9): New error codes: 422 `restore_outside_backups`; 409 `restore_not_confirmed`, whose error object also carries `reason` (the one code with that key); 503 `safety_copy_failed` (kind `couldnt_save`). Each has an API or tool test (TR7).
 - AR60 (Stack): `dropbox` 12.2.x and `keyring` 25.7.x, `bookvie_dropbox` only, pinned after a fresh version check; `mcp` 2.3.x supplies `InputRequiredResult` and the stdio server. Every test's `HOME` is temporary and `_on_the_machine` refuses any lookup or connection off the machine.
 - AR61 (plan D12, Consistency Conventions → Testing): Docs ship with the code. `docs/dropbox-backup.md` (setup, how it works, troubleshooting, restoring) grows story by story, each story adding the docs for what it introduces as ACs; README → Agent tools gets a short "Backup to Dropbox" paragraph linking to it, and README → AI skills lists both skills. A pytest parses the guide's code blocks and checks each `bookvie`/`bookvie-dropbox` subcommand and flag against the CLI, and that every failure cause of the Dropbox backup line has a troubleshooting entry with its exact wording. The setup is checked by Oleg following it from scratch.
+
+**Card note boxes (Epic 14).** From AD-6, AD-7 and AD-15 as updated on 2026-11-24; where `card-note-boxes-plan-2026-11-23.md` differs, the spine wins (AD-7 supersedes the plan's "router state" for the text).
+- AR62 (AD-6, AD-11): The `card-notes` view's groups and its scope each carry `spineColor`, the Book's stored resolved color (AD-11) as stored; the scope carries it even when the scoped Book has no notes. `get_card_notes` returns the view as is, so it carries `spineColor` too. No other server change, no data change, no backup format change; `frontend/src/api/generated/schema.d.ts` is regenerated with `npm --prefix frontend run api:gen` and `check:api` compares it byte for byte.
+- AR63 (AD-6): The Card notes page's Boxes and List render the view's groups in the view's order (title key, then Book id) and neither sorts. A Card note box's front and the open box strip use `spineColor` exactly, read or unread, never the `spine-unread-*` colors. One matcher in `lib/cardNotes.ts` decides what matches for the List's filter, the open box, each box's "M of N" and the shelf sentence's totals. The pile's height step, the count line's totals (a sum over the loaded groups), each box's accessible name and the match counts are computed in `lib/cardNotes.ts`, not in the page. One Book's box is `components/CardNoteBox`.
+- AR64 (AD-15): The Card notes view is a UI preference in `localStorage` as `bookvie.cardNotesView`, `"boxes"` or `"list"`, read and written by `lib/cardNotesView.ts` inside try/catch like `lib/catalogView.ts`. A missing or junk value, or a read that throws, means Boxes; a failed write keeps the choice for the visit. It is never exported, and a restore neither brings nor replaces it.
+- AR65 (AD-7): Carried Card notes search. The text lives only in React state of the route component `CardNotesPage`: never in the URL, in storage or in `history.state`. The page's body is keyed by `location.key` (a fresh view query without placeholder data, fresh pile, panels, pending count and focus maps), and each `location.key` change scrolls to the top (`behavior: 'auto'`) before the `h1` takes focus. Router state, built by the page, carries only a carry marker and, on a box link's push, `openedFrom` (the shelf entry's `location.key`, `"default"` included); the "In *X*" chip's push carries the marker; the marker is ignored on mount. The text is kept on a `location.key` change in two cases only: a PUSH carrying the marker, and a POP that lands on the `openedFrom` of the entry just left. Everything else starts empty (nav REPLACE, other links, Forward, other POPs, a reload, an arrival from another route); a bfcache restore keeps the page as left; while the view has no groups the text is dropped; switching Boxes ⇄ List is no navigation and keeps the text. The page decides during render (never in an effect, never by writing a ref in render), keeping the last handled `{ key, state }` in React state updated with the text in the same render (`HomePage`'s hand-off pattern); a unit test runs the decision under `<StrictMode>`. A carried search is announced once, from the new entry's view once it is `ready` and after the `h1` has focus, by an effect that cancels on cleanup.
 
 **Test harness and quality gates (TEA handoff).**
 - TR1 (TC-1): `LibraryBuilder` fixture and pre-start seeding of a data folder.
@@ -336,6 +344,19 @@ Each line names the UX section that holds the full requirement. D = DESIGN.md, E
 - UX-DR81: Restore outcomes (chat): Restored "Restored from the backup of *date, time*. Safety copy: *~ path*"; `restore_not_confirmed` "Not restored. Nothing was changed." plus, for `unsupported` only, "Run it in the Claude Code terminal, not VS Code or claude -p."; `restore_invalid`/`restore_unsafe` "This file isn't a bookvie export, or it's damaged. Nothing was changed."; `restore_newer_version` "This export is from a newer version of bookvie. Nothing was changed."; `couldnt_save` "Couldn't save. Your data wasn't changed."; download failed "Couldn't download the backup from Dropbox: *reason*. Nothing was changed."; `safety_copy_failed` "Couldn't save a safety copy, so nothing was restored."; `restore_outside_backups` "bookvie restores only from its backups folder. Nothing was changed."; `download_incomplete` "The download didn't match the copy in Dropbox, so nothing was restored. Try again."; paths with `~`; never retried on its own (E → Agent conversations → Restore, step 4; Voice and Tone)
 - UX-DR82: Backup run report, one line in the line's words: "Uploaded *name* · N copies in Dropbox, deleted *name*", "Nothing new since the last upload; skipped.", "Failed: *reason and fix*"; after a prune that didn't finish, the Uploaded line adds "Older copies remain: deleting them didn't finish, and a later upload deletes them." (Epic 13 retro item 91, 2026-11-23); in the chat (E → Agent conversations → Backup run report)
 
+**Card note boxes (FR-19, Epic 14)**
+- UX-DR83: Card notes view toggle: `role="group"` named "Card notes view", Boxes (default) · List, two toggle buttons with `aria-pressed`, the Catalog view toggle's visual (`components.card-notes-view-toggle`, text only), right after Search card notes in the toolbar; unscoped page only and only when at least one card note exists, never on the open box; a press switches in place, focus stays on the pressed button, the search text stays, `status` stays silent (D → Components; E → Card notes shelf → Two views)
+- UX-DR84: Remembered view: stored as `bookvie.cardNotesView` as soon as it changes; unreadable, empty or other values open Boxes; a failed write still holds for the visit; never exported, a restore neither brings nor replaces it (Backup page's preference list names it). List view is the page as before Epic 14: groups, search, highlights, Edit, piles, Back to top (E → Card notes shelf → Remembered, List view; E → Backup page)
+- UX-DR85: Shelf grid: one box per Book with at least one card note, in the List's group order; Books without notes get no box; `repeat(auto-fill, 216px)` on the plain `page` background, left-aligned, `spacing.6` column gap and `spacing.8` row gap, giving 4 columns at 1024px and 5 at 1280px and 1440px; every box the same size so a search never moves the grid; toolbar order Search card notes, then (unscoped) toggle and count line `spacing.4` apart; no notes at all keeps "No card notes yet." with no toggle, count line or boxes (D → Layout & Spacing → Card notes; E → Card notes shelf → Boxes view, State Patterns → No Card notes)
+- UX-DR86: Card note box, visual (`components.card-note-box`): 216 × 196 frame; front the lower 116px, `6px 6px 12px 12px` corners, the Book's exact spine color read or unread, the box-front shadow (light and dark values), no edge line; label a `spine-label-strip` plate with 14px around it, `rounded.cover`, `10px 12px` padding, `spacing.1` gap, title in `book-title-sm`/`spine-label` up to 2 lines then an ellipsis, count "12 card notes" ("1 card note") in `meta` `#5F635C`; paper cards 176 × 96, `#FFFFFF` with `1px solid #E4DFD5`, `rounded.cover`, 20px from the left, behind the front; pile steps 1 note → 1 card, 2–5 → 3, 6–20 → 5, 21+ → 7; card *i* of *k* (0 at the back) tops at 70px − (*k* − 1 − *i*) × 8px; angles −1.6°, 1.2°, −0.6°, 1.8°, −1.2°, 0.8°, −1.8° from the back, a smaller pile using the first *k*; the label, cards, count and pill are fixed literals, the same in both themes (never the theme's custom properties); forced colors: front `forced-color-adjust: none` with `CanvasText`, label `Canvas`/`CanvasText`, cards `Canvas` with a 1px `CanvasText` border, pill `Canvas`/`CanvasText` with a 1px border and `CanvasText` dot (D → Card note box, Elevation & Depth, Forced colors)
+- UX-DR87: Card note box, behavior: a link to `/card-notes?book=<id>`, one Tab stop per box in grid order, click or Enter opens it; accessible name "*Atomic Habits*, 12 card notes" with the full title even when the label cuts it; color and cards decorative; focus ring `2px solid accent` at 4px offset around the whole box with `rounded.lg` corners; no hover change apart from the pointer cursor (D → Card note box → Focus; E → Card notes shelf → A box)
+- UX-DR88: Card notes count line: with an empty field, the toolbar ends with "139 card notes in 9 Books" ("1 card note in 1 Book"; "12 card notes in 1 Book") in `meta`/`ink-tertiary`; plain text, not a live region; Boxes view only, and only once the view has loaded; its text swaps in place so nothing below moves (D → Components; E → Card notes shelf → Card notes count line)
+- UX-DR89: Open box: the scoped page as before Epic 14 (chip, Search card notes, Add card note, the notes, "Go through as a pile", Back to top) with no view toggle and the open box strip: an 8px full-width band in the Book's exact spine color directly under the app shell, above the page's top padding, no edge, label or shadow, the same in both themes, `aria-hidden`; it shows for a Book with no notes too, and only once the view has loaded (not before, not under "Couldn't load"); forced colors `CanvasText` with `forced-color-adjust: none` (D → Components → Open box strip, Layout & Spacing → Card notes; E → Card notes shelf → The open box)
+- UX-DR90: Search on the shelf: the same field and matcher as the List (contains, ignoring case; blank or spaces-only is empty). With non-blank text a box with matches lifts by 6px (no shadow, no scale) and the pill "3 of 12" ("12 of 12") replaces its count (`meta` 600, `spine-label` on `#E3EBE2`, 22px tall, `0 spacing.2` padding, `rounded.full`, a 6px `#557059` dot `spacing.2` before the text, left-aligned where the count was); a box without a match fades to 0.38 through one inner wrapper holding cards and front, while the link and its focus ring stay full strength, stays in place, a link and a Tab stop; nothing is hidden. The count line becomes "14 card notes in 4 Books contain “habit”." ("1 card note in 1 Book contains “habit”."), or "No card notes contain “habit”." with every box faded, quoting the trimmed text, updated as the user types and announced by `status` once typing pauses (about 500 ms). Accessible names: "*Atomic Habits*, 3 of 12 card notes match", "*Atomic Habits*, 1 of 12 card notes matches", "*Refactoring*, 1 of 1 card note matches", "*Atomic Habits*, 12 of 12 card notes match", "*Refactoring*, no match". Esc or an emptied field brings every box back and restores the count line. The lift and fade animate over 150ms ease-out only while the field's text changes; a carried search or a List → Boxes switch with text renders the search state at once; under `prefers-reduced-motion: reduce` they change at once (D → Card note box; E → Card notes shelf → Search on the shelf, Interaction Primitives → Motion)
+- UX-DR91: Carried search: opening a box with non-blank text opens the open box with that text applied (only its matches, in `<mark>`); a faded box opens to "No card notes contain “habit”." and keeps "Go through as a pile". Browser Back from the open box, or removing its "In *X*" chip (whichever way the open box was entered; it pushes `/card-notes`, so Back from there returns to the open box with an empty field), returns to the unscoped page in the remembered view with the open box's text at that moment, boxes faded and lifted for it. Focus goes to the `h1`, the page opens at the top, and once focus has settled `status` announces the count once: "3 notes match." / "1 note matches." / "0 notes match." on the open box, the shelf sentence in Boxes, "N notes match." in List. Every other way in starts empty: the nav, a box opened with an empty field, "See card notes", "See all card notes", Back to the shelf from another page, a reload, Forward, a typed URL; the text never appears in the URL (E → Card notes shelf → Into a box, Back out, Starts empty; State Patterns → Carried search)
+- UX-DR92: Staging (temporary, until the Epic 14 retro): Story 14.2 ships both views without the shelf search; until Story 14.4 (EXPERIENCE.md still says 14.3, from the plan's three-story cut), Boxes view with non-blank text shows exactly the List view's results and announcements ("N notes match."), hides the count line, and shows the boxes again once the field is blank (E → Card notes shelf → Temporary)
+- UX-DR93: Faded boxes, documented deviation from SC 1.4.3 (forced colors included): what still holds is a link and a Tab stop, a never-faded focus ring (`accent` vs `page` 4.96 light, 7.68 dark), "no match" in the accessible name, the matching box's pill and lift as well as opacity, and the count line's totals in text; the unfaded pairs meet their targets (title 12.97, count 5.78, pill text 11.30, count line 5.08 / 6.35) (D → Colors → Contrast; E → Accessibility Floor)
+
 ### FR Coverage Map
 
 FR-1: Epic 1 - Book fields, create/edit/delete, Finished on back-fill, tags field, spine color
@@ -354,7 +375,7 @@ FR-15: Epic 6 - Quick pace calculator
 FR-16: Epic 6 - Stats
 FR-17: Epic 5 - Add/edit/delete Card notes; Epic 9 - Keyboard save and Add another
 FR-18: Epic 5 - Card notes pile
-FR-19: Epic 5 - Card notes view and search
+FR-19: Epic 5 - Card notes view and search; Epic 14 - Boxes · List, the Card note boxes and the open box strip, the shelf search, and the search carried into a box and back
 FR-20: Epic 7 - Filter and sort; Epic 10 - Sort direction
 FR-21: Epic 3 - Cover on the main screen
 FR-22: Epic 2 - Export; Epic 3 - Last export on Home
@@ -3387,3 +3408,245 @@ So that restoring is a conversation I can follow, and it never decides for me.
 **When** Oleg follows the Restoring section from scratch
 **Then** `docs/dropbox-backup.md` describes the skill step by step, with Dropbox downloads and the manual fallback, and the Dropbox download troubleshooting (sign-in, a download that didn't match)
 **And** README → AI skills lists `bookvie-restore`.
+
+## Epic 14: See card notes as boxes
+
+The Card notes page shows one box per Book, in its spine color with a pile of cards that grows with its notes. A remembered Boxes · List toggle keeps today's page as List. Opening a box opens that Book's notes under a strip in its spine color. A search on the shelf fades the boxes without a match and shows "3 of 12" on those with matches, and the search text goes into the box and comes back out, so Oleg can sit with one Book's ideas or hunt across all his cards without retyping. The page keeps its name, its `h1` "Card notes" and its route, and "Card note" stays the domain and agent-tool term. Five stories, each depending only on stories before it: 14.1 puts the spine color in the view, so the schema change and `api:gen`'s byte-for-byte check are green before anyone touches the shelf; 14.2 builds the two views and the boxes; 14.3 draws the open box strip; 14.4 adds the search on the shelf; 14.5 carries the search into a box and back out. The plan cut three stories; on 2026-11-24 Oleg split its 14.2 (the open box strip became 14.3) and its 14.3 (the shelf search became 14.4, the carried search 14.5) so that each fits one build session.
+
+**Gate:** per-epic quality gates (TR7), plus the plan's P0 risks green: the existing Card notes e2e specs pass unchanged in List view, which one fixture sets in one place; the default and storage (nothing stored, junk, a read that throws, a reload, the key never in an export); `spineColor` on every group and on the scope, a Book without notes included; the shelf search (each box's "M of N" or fade, the sentences, the accessible names, a faded box's full focus ring, reduced motion); the carried search both ways (Back and the "In *X*" chip) and every other way in starting empty. UX-DR92's staging note is gone from EXPERIENCE.md and from the code by the Epic 14 retro. Plan: `card-note-boxes-plan-2026-11-23.md` (where it differs, the spine wins: AD-7 supersedes its "router state" for the text); spine AD-6, AD-7, AD-15.
+
+**Before Story 14.1:** plan step 0, the spine reconciliation of any unresolved "spine drift" entry in `deferred-work.md` (AGENTS.md → Architecture spine). None was open on 2026-11-24.
+
+**Mac checks:** none. Epic 14 is web UI in desktop Chrome and needs nothing from the Mac itself (no scheduler, system service, Keychain, fixed port, client feature or OS permission), so no story has a Mac check line (Epic 13 retro item 93).
+
+**Out of scope:** boxes the user packs across Books (plan D1), renaming the page (D2), a pile button on the box itself, and behavior only Safari or Firefox shows (AGENTS.md → Supported browser).
+
+### Story 14.1: Carry each Book's spine color in the card-notes view
+
+As Oleg,
+I want the Card notes page's data to say each Book's spine color,
+So that its boxes and the open box can be drawn in that color without a second request.
+
+**Requirements:** FR-19, AR62, AR63
+
+**Acceptance Criteria:**
+
+**Given** a seeded library with Books that have card notes, one with a user-chosen spine color, one whose color comes from its cover, one with the palette color, read and unread, and a Book without notes
+**When** the client reads the unscoped `card-notes` view
+**Then** every group carries `spineColor`, equal to that Book's stored resolved `spine_color` (AD-11) exactly as stored, the same value the `book` and `catalog` views give that Book
+**And** the groups, their order (title key, then Book id), their notes and `scope: null` are otherwise unchanged
+**And** the Book without notes still has no group.
+
+**Given** a Book with card notes
+**When** the client reads `card-notes?book=<id>`
+**Then** `scope` carries `bookId`, `title` and `spineColor`, and the one group carries the same `spineColor`.
+
+**Given** a Book without card notes
+**When** the client reads `card-notes?book=<id>`
+**Then** `scope.spineColor` is that Book's resolved color and `groups` is empty
+**And** an unknown Book is still 404 `book_not_found`.
+
+**Given** a Book's spine color changed (from the spine popover, or by editing the Book)
+**When** the client reads the view again
+**Then** the group and the scope carry the new color.
+
+**Given** the changed view models
+**When** `npm --prefix frontend run api:gen` runs
+**Then** `frontend/src/api/generated/schema.d.ts` has `spineColor: string` on `CardNotesGroup` and `CardNotesScope`, and `check:api` passes with the regenerated file compared byte for byte
+**And** no other file in the repository is reformatted.
+
+**Given** the agent tool `get_card_notes`, for every Book and for one Book
+**When** an agent calls it
+**Then** its result is the view as is, with `spineColor` on each group and on the scope (AR36, AR38)
+**And** its registered description is unchanged.
+
+**Given** this story
+**When** the Card notes page, Book detail and Home render
+**Then** nothing visible changes, no stored data or backup format changes, and every existing Card notes test passes unchanged.
+
+### Story 14.2: See my card notes as boxes
+
+As Oleg,
+I want the Card notes page to show each Book as a box of cards, with today's list one click away,
+So that I can see at a glance which Books I've kept the most from and sit with one Book's ideas.
+
+**Requirements:** FR-19, NFR3, AR63, AR64, UX-DR83, UX-DR84, UX-DR85, UX-DR86, UX-DR87, UX-DR88, UX-DR92
+
+**Acceptance Criteria:**
+
+**Given** the e2e suite after this story
+**When** the existing Card notes specs run
+**Then** one fixture in `frontend/e2e/fixtures.ts` stores `bookvie.cardNotesView = "list"` before each test (an option fixture a spec can turn off), and those specs pass with no edit to their files
+**And** the specs this story adds turn it off, so they open with nothing stored.
+
+**Given** nothing stored, an empty or junk `bookvie.cardNotesView`, or storage whose read throws
+**When** the unscoped Card notes page opens with at least one card note
+**Then** it opens in Boxes view and the Boxes button is pressed (AR64)
+**And** a stored `"list"` opens List view.
+
+**Given** at least one card note
+**When** the unscoped page renders
+**Then** the toolbar holds Search card notes, then the Card notes view toggle and the count line, `spacing.4` apart: a `role="group"` named "Card notes view" with two buttons, Boxes then List, with `aria-pressed`, in the Catalog view toggle's visual (`components.card-notes-view-toggle`, text only)
+**And** pressing List (click, Enter or Space) shows the List view in place, keeps focus on the pressed button, keeps the search text, leaves `status` silent, and stores `"list"` at once; a reload opens List
+**And** a write that throws still switches for this visit, with no message
+**And** `bookvie.cardNotesView` never appears in an export, and a restore neither brings nor replaces it.
+
+**Given** List view
+**When** I use it
+**Then** it is the unscoped page exactly as before this story: the groups, the search with its highlights and "N notes match.", Edit, "Go through as a pile" and Back to top.
+
+**Given** a seeded library whose Books have 1, 2, 5, 6, 20 and 21 card notes, and Books without notes
+**When** Boxes view renders
+**Then** there is one Card note box per Book with notes, in the groups' order (title key, then Book id), and none for a Book without notes
+**And** each box shows 1, 3, 3, 5, 5 and 7 cards respectively (the pile step, computed in `lib/cardNotes.ts`, AR63)
+**And** each box's label shows the full title up to 2 lines, then an ellipsis, and "N card notes" ("1 card note")
+**And** each box is a link to `/card-notes?book=<id>` (click or Enter opens the scoped page as it is before this story), one Tab stop per box in grid order, whose accessible name is "*Title*, N card notes" ("*Title*, 1 card note") with the full title even when the label cuts it.
+
+**Given** Boxes view at 1024px, 1280px and 1440px wide
+**When** it renders
+**Then** the boxes form a left-aligned grid on the `page` background, `repeat(auto-fill, 216px)` with `spacing.6` column and `spacing.8` row gaps, giving 4, 5 and 5 columns, every box 216 × 196
+**And** a box's front is the lower 116px with `6px 6px 12px 12px` corners and the box-front shadow, filled with the group's `spineColor` exactly whether the Book is read or unread (never a `spine-unread-*` color), with no edge line
+**And** the label is a `spine-label-strip` plate with the title in `book-title-sm`/`spine-label` and the count in `meta` `#5F635C`, and the cards are 176 × 96 paper cards behind the front, card *i* of *k* topped at 70px − (*k* − 1 − *i*) × 8px and turned by the first *k* of −1.6°, 1.2°, −0.6°, 1.8°, −1.2°, 0.8°, −1.8°
+**And** the label, cards and count look the same in dark theme, where only the page and the shadow's strength change (DESIGN.md → Card note box).
+
+**Given** a box
+**When** it has keyboard focus, in light or dark theme
+**Then** it shows a `2px solid accent` ring at 4px offset around the whole box with `rounded.lg` corners, and there is no hover change apart from the pointer cursor
+**And** under `forced-colors: active` the front is `CanvasText` (`forced-color-adjust: none`), the label `Canvas` with `CanvasText` text, each card `Canvas` with a 1px `CanvasText` border, and the focus ring takes the system color.
+
+**Given** Boxes view with an empty search field and the view loaded
+**When** it renders
+**Then** the toolbar ends with the count line "139 card notes in 9 Books" ("1 card note in 1 Book", "12 card notes in 1 Book"), the totals summed over the loaded groups in `lib/cardNotes.ts`, in `meta`/`ink-tertiary`, plain text and not a live region
+**And** the toggle and the count line don't show while the view loads or under "Couldn't load", and the count line doesn't show in List view.
+
+**Given** no card notes at all
+**When** the unscoped page opens
+**Then** it shows "No card notes yet." as before, with no view toggle, no count line and no boxes.
+
+**Given** Boxes view and text in Search card notes (UX-DR92's staging, until Story 14.4)
+**When** the field holds non-blank text
+**Then** the page shows exactly the List view's results and announcements ("N notes match."), and the count line is hidden
+**And** once the field is blank the boxes show again
+**And** EXPERIENCE.md → Card notes shelf → Temporary keeps its staging note.
+
+**Given** the page in Boxes view and in List view
+**When** it is scrolled more than one window height
+**Then** Back to top shows and works as before this story, moving focus to Search card notes.
+
+**Given** the new component tokens in DESIGN.md (`card-note-box`, `card-notes-view-toggle`, `card-notes-count-line`)
+**When** the box, the toggle and the count line are styled
+**Then** every value comes from DESIGN.md's components block, and any literal added to `frontend/src/styles/tokens.css`'s components block matches DESIGN.md character for character, so `e2e/app-shell.spec.ts` still passes.
+
+### Story 14.3: See the open box in its Book's color
+
+As Oleg,
+I want a Book's card notes page to carry that Book's spine color across the top,
+So that an open box still looks like the box I opened.
+
+**Requirements:** FR-19, AR62, AR63, UX-DR89
+
+**Acceptance Criteria:**
+
+**Given** Boxes view
+**When** I open a box (click or Enter)
+**Then** the open box shows: the scoped page as before Epic 14 (the "In *X*" chip, Search card notes, Add card note, the notes, "Go through as a pile", Back to top) with no view toggle
+**And** the open box strip, an 8px band the full width of the window directly under the app shell, above the page's top padding, in `scope.spineColor` exactly, with no edge, label or shadow, `aria-hidden`, the same in both themes, `CanvasText` under forced colors
+**And** the strip shows also on the open box of a Book with no notes (reached from Book detail), only once the view has loaded, never before it and never under "Couldn't load"
+**And** reaching the scoped page by "See card notes" or "See all card notes" gives the same open box
+**And** Add card note, Edit, the pile and focus return work there as before Epic 14.
+
+**Given** the open box
+**When** it renders, scrolled more than one window height
+**Then** Back to top shows and works as before Epic 14, moving focus to Search card notes.
+
+**Given** the `open-box-strip` component token in DESIGN.md
+**When** the strip is styled
+**Then** its height comes from DESIGN.md's components block, and any literal added to `frontend/src/styles/tokens.css` matches DESIGN.md character for character, so `e2e/app-shell.spec.ts` still passes.
+
+### Story 14.4: Search the boxes
+
+As Oleg,
+I want a search on the shelf to show which Books hold matches, and how many,
+So that I can hunt across all my cards and see at a glance which boxes to open.
+
+**Requirements:** FR-19, NFR3, AR63, UX-DR83, UX-DR90, UX-DR92, UX-DR93
+
+**Acceptance Criteria:**
+
+**Given** a seeded library where "habit" appears in 3 of *Atomic Habits*'s 12 notes, all of a Book's notes, one of a Book's 12, the only note of a one-note Book, and in no note of *Refactoring*
+**When** I type "habit" in Search card notes in Boxes view
+**Then** each box with matches lifts by 6px (no shadow, no scale) and shows the pill "3 of 12" ("12 of 12" when every note matches) where its count was: `meta` at 600, `spine-label` on `#E3EBE2`, 22px tall, `rounded.full`, with a 6px `#557059` dot `spacing.2` before the text
+**And** each box without a match fades to 0.38 through one inner wrapper holding its cards and front, stays in place, stays a link and a Tab stop, and its focus ring stays at full strength
+**And** nothing is hidden and the grid doesn't reflow
+**And** what matches is decided by the same `lib/cardNotes.ts` matcher as the List (contains, ignoring case), and a spaces-only query counts as empty (AR63).
+
+**Given** that search
+**When** the boxes update
+**Then** the count line reads "14 card notes in 4 Books contain “habit”." ("1 card note in 1 Book contains “habit”."), quoting the trimmed text, updated as I type
+**And** `status` announces the same sentence once typing pauses (about 500 ms)
+**And** the accessible names read "*Atomic Habits*, 3 of 12 card notes match", "*Title*, 1 of 12 card notes matches", "*Title*, 1 of 1 card note matches", "*Title*, 12 of 12 card notes match" and "*Refactoring*, no match".
+
+**Given** a query no note contains, such as "zettel"
+**When** I type it in Boxes view
+**Then** every box fades, the count line reads "No card notes contain “zettel”.", and `status` announces it the same way.
+
+**Given** a search on the shelf
+**When** I press Esc in the field, or empty it
+**Then** every box comes back to full strength and its count, and the count line shows the totals again
+**And** UX-DR92's staging is gone: Boxes view with text never shows the List's flat results, and EXPERIENCE.md → Card notes shelf → Temporary no longer holds the staging note.
+
+**Given** the search changing as I type
+**When** boxes lift or fade
+**Then** they change over 150ms ease-out
+**And** under `prefers-reduced-motion: reduce` they change at once
+**And** when I switch from List to Boxes with text in the field, the boxes render in their search state at once, with no animation.
+
+**Given** text in the field
+**When** I switch Boxes ⇄ List
+**Then** the field keeps the text, the other view applies it in its own way (List: grouped results with highlights; Boxes: lift, fade and pills), focus stays on the pressed button, and `status` stays silent.
+
+**Given** the shelf during a search, in light, dark and `forced-colors: active`
+**When** a faded box has keyboard focus
+**Then** its focus ring is at full strength (`accent` vs `page` 4.96 light, 7.68 dark; the system color under forced colors), the pill under forced colors is `Canvas` with `CanvasText` text, a 1px `CanvasText` border and a `CanvasText` dot, and the fade and lift still apply (UX-DR93's documented deviation).
+
+### Story 14.5: Keep the search when I open a box and come back
+
+As Oleg,
+I want the search I typed on the shelf to come with me into a box and back out,
+So that I can move from box to box without retyping a word.
+
+**Requirements:** FR-19, AR63, AR65, UX-DR90, UX-DR91
+
+**Acceptance Criteria:**
+
+**Given** "habit" typed on the shelf
+**When** I open a matching box
+**Then** the open box's field holds "habit", only its matching notes show with the matches in `<mark>`, focus goes to the `h1`, the page is at the top, and once focus has settled `status` announces "3 notes match." once ("1 note matches.")
+**And** opening a faded box shows "No card notes contain “habit”.", keeps "Go through as a pile", and announces "0 notes match." once
+**And** the URL is `/card-notes?book=<id>` with no search text in it.
+
+**Given** I opened a box from the shelf with "habit", then changed the field to "habits"
+**When** I press browser Back
+**Then** the shelf returns in the remembered view with "habits" in the field and the boxes faded and lifted for "habits", focus on the `h1`, the page at the top, and `status` announces the shelf sentence once (in List view, "N notes match.")
+**And** had I cleared the field on the open box, the shelf returns with an empty field and every box at full strength.
+
+**Given** an open box with text in its field, however it was entered (a box, "See card notes", "See all card notes")
+**When** I remove its "In *X*" chip
+**Then** `/card-notes` is pushed and the shelf shows that text, faded and lifted for it, announced as after Back
+**And** Back from there returns to the open box with an empty field.
+
+**Given** text in the field
+**When** I reach the Card notes page any other way: the nav link (from the shelf too), a box opened with an empty field, "See card notes", "See all card notes", Back to the shelf from another page, a reload of the same history entry, Forward, or a typed URL
+**Then** the field is empty and nothing is announced for a search
+**And** the text was never in the URL, in `localStorage` or in `history.state` (AR65).
+
+**Given** the carried-search decision (AR65)
+**When** its unit test runs it under `<StrictMode>`
+**Then** the text is kept only on a PUSH carrying the page's marker and on a POP landing on the `openedFrom` of the entry just left, and every other `location.key` change starts empty
+**And** the decision runs during render, never in an effect and never by writing a ref in render
+**And** the page's body is keyed by `location.key`, so each history entry gets a fresh view query (no placeholder data) and fresh pile, panels, pending count and focus maps
+**And** while the view has no groups, the text is dropped.
+
+**Given** a carried search arriving on the shelf (by Back or the chip)
+**When** the boxes render
+**Then** they are in their search state at once, with no lift or fade animation (UX-DR90).
