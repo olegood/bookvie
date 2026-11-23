@@ -12,8 +12,8 @@ Waiver requests filed against a `bmad-testarch-trace` gate, one `## {ID}: {title
 **Reason for Failure:**
 
 - The AC asks the spec to record "the runs, the message as shown, and what VS Code and `claude -p` do with the same call".
-- `spec-13-1-restore-my-library-through-an-agent-with-two-confirmations.md:256-257` records run A (accept) in detail.
-- Runs B and C (decline bookvie's question, deny the permission prompt), VS Code and `claude -p` are recorded only as Oleg's "everything is ok" (`:258-259`).
+- `spec-13-1-restore-my-library-through-an-agent-with-two-confirmations.md:258` records run A (accept) in detail.
+- Runs B and C (decline bookvie's question, deny the permission prompt), VS Code and `claude -p` are recorded only as Oleg's "everything is ok" (`:259-260`).
 - The message as shown is not transcribed.
 
 **Waiver Information:**

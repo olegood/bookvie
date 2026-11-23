@@ -1,12 +1,12 @@
 {
   "schema_version": "0.3.0",
-  "snapshot_at": "2026-11-23T16:56:53.000000+01:00",
+  "snapshot_at": "2026-11-23T18:18:58.000000+01:00",
   "repo": "bookvie",
   "collection_mode": "contract_static",
   "collection_status": "COLLECTED",
   "inventory_basis": "acceptance_criteria",
   "gate_basis": "priority_thresholds",
-  "source_sha": "f8627f9d8819109d1aa816a6b1437e1ca7efc5ff",
+  "source_sha": "306b8fc4ccf74d6b89f4099a0c1e9b12949626d9",
   "target": {
     "type": "epic",
     "id": "13",
@@ -19,7 +19,7 @@
     "resolution_mode": "formal_requirements",
     "confidence": "high",
     "sources": [
-      "_bmad-output/planning-artifacts/epics.md (TR7 :224, AR59 :213, Epic 13 gate :3000, Stories 13.1-13.8 :3008-3392)",
+      "_bmad-output/planning-artifacts/epics.md (TR7, AR59, Epic 13 gate, Stories 13.1-13.8; 13.2 AC-3/AC-6/AC-8/AC-9 reworded and AC-10 added by retro items 89 and 91)",
       "_bmad-output/planning-artifacts/dropbox-backup-plan-2026-11-21.md (P0 risks :147-164, amended by sprint-change-proposal-2026-11-23.md)",
       "_bmad-output/implementation-artifacts/epic-13-context.md",
       "_bmad-output/implementation-artifacts/epic-13-retro-2026-11-23.md (action 88)",
@@ -30,15 +30,15 @@
   },
   "coverage": {
     "inventory": {
-      "covered": 56,
-      "total": 61,
-      "pct": 91.8
+      "covered": 60,
+      "total": 62,
+      "pct": 96.8
     },
     "priority_breakdown": {
       "P0": {
-        "total": 49,
-        "covered": 45,
-        "pct": 91.8
+        "total": 50,
+        "covered": 49,
+        "pct": 98.0
       },
       "P1": {
         "total": 11,
@@ -62,15 +62,15 @@
         "criteria_covered": 2
       },
       "api": {
-        "tests": 285,
-        "criteria_covered": 58
+        "tests": 292,
+        "criteria_covered": 59
       },
       "component": {
         "tests": 0,
         "criteria_covered": 0
       },
       "unit": {
-        "tests": 6,
+        "tests": 7,
         "criteria_covered": 1
       },
       "live": {
@@ -85,18 +85,18 @@
     }
   },
   "tests": {
-    "files": 24,
-    "cases": 294,
+    "files": 25,
+    "cases": 302,
     "skipped_cases": 0,
     "fixme_cases": 0,
     "pending_cases": 0,
-    "note": "Epic 13 cases only. pytest 285: test_agent_restore 47, test_agent_restore_follow_ups 19, test_restore_backup_edges 14, test_dropbox_upload 31, test_dropbox_upload_edges 9, test_dropbox_follow_ups 28, test_dropbox_auth 10, test_dropbox_cli_follow_ups 10, test_dropbox_contracts 2, test_dropbox_package 1, test_dropbox_download 6, test_dropbox_download_edges 9, test_dropbox_download_follow_ups 8, test_agent_backup_upload 19, test_agent_backup_upload_follow_ups 17, test_backup_skill 18, test_restore_skill 18, test_dropbox_backup_line 5, test_dropbox_backup_line_follow_ups 3, test_morning_job_removed 5, test_morning_job_removed_follow_ups 2, test_dropbox_backup_guide 4. e2e 3 (dropbox-backup-line.spec.ts). unit 6 (dropboxBackupLine.test.ts)."
+    "note": "Epic 13 cases only. pytest 292: test_agent_restore 47, test_agent_restore_follow_ups 25, test_restore_backup_edges 14, test_dropbox_upload 31, test_dropbox_upload_edges 9, test_dropbox_follow_ups 28, test_dropbox_auth 11, test_dropbox_cli_follow_ups 10, test_dropbox_contracts 2, test_dropbox_package 1, test_dropbox_download 6, test_dropbox_download_edges 9, test_dropbox_download_follow_ups 8, test_agent_backup_upload 19, test_agent_backup_upload_follow_ups 17, test_backup_skill 18, test_restore_skill 18, test_dropbox_backup_line 5, test_dropbox_backup_line_follow_ups 3, test_morning_job_removed 5, test_morning_job_removed_follow_ups 2, test_dropbox_backup_guide 4 (test_coverage_gate.py's restore-path self-tests are counted under the gate clause, not here). e2e 3 (dropbox-backup-line.spec.ts). unit 7 (dropboxBackupLine.test.ts)."
   },
   "risk_summary": {
-    "critical_open": 4,
-    "high_open": 2,
+    "critical_open": 1,
+    "high_open": 0,
     "medium_open": 0,
-    "low_open": 2
+    "low_open": 3
   },
   "heuristics": {
     "endpoint_gaps": 0,
@@ -125,75 +125,28 @@
   },
   "blockers": [
     {
-      "requirement_id": "13.2 · AC-9",
-      "priority": "P0",
-      "reason": "A same-day upload whose finish answers a mismatched size or hash has already replaced that day's copy; the AC holds only for faults before the finish (test_dropbox_upload_edges.py:198, deferred-work.md:1549)",
-      "owner": "Amelia (dev)",
-      "action": "retro action 91"
-    },
-    {
-      "requirement_id": "13.2 · AC-6",
-      "priority": "P0",
-      "reason": "The AC's whole-file content_hash on the commit is impossible in the Dropbox SDK; the code sends per-request hashes and verifies size and hash after the commit (spine drift deferred-work.md:1502)",
-      "owner": "Winston (architect)",
-      "action": "retro action 89: reword the AC"
-    },
-    {
-      "requirement_id": "13.2 · AC-3",
-      "priority": "P0",
-      "reason": "Neither content-hash copy is run on Dropbox's published test vector input; test_dropbox_contracts.py:68 composes the published block digests only (deferred-work.md:1481, Oleg's call)",
-      "owner": "Oleg",
-      "action": "decide: cached-vector test outside npm run check, or reword the AC"
-    },
-    {
       "requirement_id": "13.1 · AC-11",
       "priority": "P0",
-      "reason": "Manual gate-2 record lacks the message as shown; runs B and C, VS Code and claude -p recorded only as 'everything is ok' (spec-13-1:258-259)",
+      "reason": "Manual gate-2 record lacks the message as shown; runs B and C, VS Code and claude -p recorded only as 'everything is ok' (spec-13-1:259-260). Waived by W-13-1 until 2026-12-23.",
       "owner": "Oleg",
-      "action": "transcribe into spec-13-1, or file a waiver"
-    },
-    {
-      "requirement_id": "Epic 13 gate: restore-path coverage",
-      "priority": "gate",
-      "reason": "coverage_gate.py:28-32 has no gate for agent/'s restore path; intents/restore_file.py 88%; atdd-checklist-13-1:132 open",
-      "owner": "Murat (TEA)",
-      "action": "retro action 90"
-    },
-    {
-      "requirement_id": "npm run check green",
-      "priority": "gate",
-      "reason": "Port-8790 sign-in tests fail under pytest -n auto in 2 of 2 runs (deferred-work.md:1567)",
-      "owner": "Murat (TEA)",
-      "action": "retro action 92"
+      "action": "quote the next real restore into spec-13-1, then re-trace"
     }
   ],
   "rejected_evidence": [],
   "recommendations": [
     {
-      "priority": "URGENT",
-      "action": "Land retro action 91 (same-day mismatch: AC and description first, then code or wording) and action 89's rewording of 13.2 AC-6",
+      "priority": "HIGH",
+      "action": "Oleg records what bookvie's question showed at the next real restore in spec-13-1, then re-trace to close W-13-1 (due 2026-12-23)",
       "requirements": [
-        "13.2 · AC-9",
-        "13.2 · AC-6"
-      ]
-    },
-    {
-      "priority": "URGENT",
-      "action": "Oleg decides 13.2 AC-3 (published-vector test or reworded AC) and 13.1 AC-11 (transcript or waiver)",
-      "requirements": [
-        "13.2 · AC-3",
         "13.1 · AC-11"
       ]
     },
     {
-      "priority": "HIGH",
-      "action": "Retro action 90: restore-path coverage gate at 90%, intents/restore_file.py to >= 90%, tick atdd-checklist-13-1:132",
-      "requirements": []
-    },
-    {
-      "priority": "HIGH",
-      "action": "Retro action 92: stop the port-8790 flake so npm run check exits 0",
-      "requirements": []
+      "priority": "MEDIUM",
+      "action": "Oleg confirms that a failed listing after a verified upload stays failed/other (item 91's build choice)",
+      "requirements": [
+        "13.2 · AC-10"
+      ]
     },
     {
       "priority": "MEDIUM",
@@ -204,7 +157,7 @@
     },
     {
       "priority": "LOW",
-      "action": "Run /bmad-testarch-test-review on the Epic 13 test files (dropbox_fakes.py and the repeated upload helpers, E13-D3)",
+      "action": "Retro item 95 (file splits, now carrying RESTORE_PATH) before the first Epic 14 agent-tool or backup_file.py story; optional HTTP-status assertions for the three restore codes; /bmad-testarch-test-review on the Epic 13 test files",
       "requirements": []
     }
   ],
@@ -217,14 +170,37 @@
   "gate_status": "FAIL",
   "gate_criteria": {
     "p0_coverage_required": "100%",
-    "p0_coverage_actual": "91.8%",
+    "p0_coverage_actual": "98.0%",
     "p0_status": "NOT_MET",
     "p1_coverage_target": "95%",
     "p1_coverage_minimum": "80%",
     "p1_coverage_actual": "100%",
     "p1_status": "MET",
     "overall_coverage_minimum": "80%",
-    "overall_coverage_actual": "91.8%",
+    "overall_coverage_actual": "96.8%",
     "overall_status": "MET"
+  },
+  "applied_override": {
+    "status": "WAIVED",
+    "waiver": "W-13-1",
+    "approver": "Oleg",
+    "expires": "2026-12-23"
+  },
+  "waivers": {
+    "register": "_bmad-output/test-artifacts/gate-waivers.md",
+    "read_error": "",
+    "filed": 1,
+    "valid": 1,
+    "invalid": 0,
+    "entries": [
+      {
+        "id": "W-13-1",
+        "title": "Epic 13 gate, 13.1 AC-11's manual record",
+        "covers": "13.1 · AC-11",
+        "priority": "P0",
+        "valid": true,
+        "failed_checks": []
+      }
+    ]
   }
 }
