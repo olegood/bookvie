@@ -1,7 +1,7 @@
 ---
 name: bookvie
 status: final
-updated: 2026-11-21
+updated: 2026-11-23
 design: ./DESIGN.md
 sources:
   - _bmad-output/planning-artifacts/prds/prd-bookvie-2026-10-28/prd.md
@@ -204,13 +204,13 @@ One signal: the latest report of the backup skill, which Oleg runs by hand (`/bo
 - **No time-out.** The line never turns into a warning because time passed; "when" says how old the copy is, like "Last export".
 - **Unreadable state.** Upload state that is missing or can't be read counts as no report yet.
 - **When.** "today at 09:02", "yesterday at 09:02", otherwise "on 19 Nov". Local calendar days, recomputed on focus like every relative time (Foundation → Dates).
-- **Copies.** The number the last upload reported: "1 copy", "2 copies", "3 copies". A skip keeps the last upload's count.
-- **Failed reasons.** One or two sentences, from this list; every reason after the run reached Dropbox says nothing there was deleted (plan D2). The skill reports a cause from this list (`record_backup_upload`'s fixed set of causes).
+- **Copies.** The number the last upload reported: "1 copy", "2 copies", "3 copies". It can be more than 3 when deleting the older copies didn't finish after a checked upload; the run still counts as an upload, and a later upload deletes the extras. The line shows the count with no note (no new state); the run report explains it. A skip keeps the last upload's count.
+- **Failed reasons.** One or two sentences, from this list; every reason after the run reached Dropbox says what it left there. A failed run never deletes an older backup (plan D2), but an upload that didn't finish or didn't match may already have replaced that day's copy, so its reason says that copy may be damaged (AD-22, What a failure leaves). The skill reports a cause from this list (`record_backup_upload`'s fixed set of causes).
 
 | Cause | After "failed *when* · " |
 |---|---|
 | Dropbox sign-in expired or revoked | "Dropbox sign-in expired. Nothing in Dropbox was deleted. Run bookvie-dropbox auth in Terminal." |
-| Upload didn't match the file, or didn't finish | "the last upload didn't finish. Nothing in Dropbox was deleted; run /bookvie-backup again." |
+| Upload didn't match the file, or didn't finish | "the last upload didn't finish or didn't match. No older backup in Dropbox was deleted, but that day's copy there may be damaged; run /bookvie-backup again." |
 | Dropbox is full | "Dropbox is full. Nothing in Dropbox was deleted; free some space there." |
 | bookvie couldn't write the backup | "bookvie couldn't write the backup file. See docs/dropbox-backup.md → Troubleshooting." |
 | Anything else | "the last run stopped with an error. See docs/dropbox-backup.md → Troubleshooting." |
@@ -800,7 +800,7 @@ Paths are written with `~` for the home folder, as in About this copy.
 
 ### Backup run report
 
-`/bookvie-backup` (Flow 13) shows its report in the chat; the line on Backup is what Oleg sees later. The report states the outcome in one line, in the same words as that line's state and reason ("Uploaded bookvie-backup-2026-11-21.zip · 3 copies in Dropbox, deleted bookvie-backup-2026-11-18.zip", "Nothing new since the last upload; skipped.", "Failed: Dropbox sign-in expired. Run bookvie-dropbox auth in Terminal.").
+`/bookvie-backup` (Flow 13) shows its report in the chat; the line on Backup is what Oleg sees later. The report states the outcome in one line, in the same words as that line's state and reason ("Uploaded bookvie-backup-2026-11-21.zip · 3 copies in Dropbox, deleted bookvie-backup-2026-11-18.zip", "Nothing new since the last upload; skipped.", "Failed: Dropbox sign-in expired. Run bookvie-dropbox auth in Terminal."). When deleting the older copies didn't finish after a checked upload, the run is still an upload, with the number of copies Dropbox now holds, and the line adds a note: "Uploaded bookvie-backup-2026-11-21.zip · 4 copies in Dropbox. Older copies remain: deleting them didn't finish, and a later upload deletes them."
 
 ## Inspiration & Anti-patterns
 

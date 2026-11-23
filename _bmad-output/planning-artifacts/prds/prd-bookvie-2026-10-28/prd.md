@@ -2,7 +2,7 @@
 title: bookvie PRD
 status: final
 created: 2026-10-28
-updated: 2026-11-21
+updated: 2026-11-23
 inputs:
   - _bmad-output/brainstorming/brainstorm-personal-library-tracker-2026-10-27/brainstorm-intent.md
   - _bmad-output/planning-artifacts/ux-designs/ux-bookvie-2026-10-28/prd-deltas.md
@@ -271,7 +271,7 @@ The user can restore bookvie from an export file.
 When the user asks, an agent backs up the library and uploads the backup to the user's Dropbox, so a copy exists off this computer without exporting by hand.
 - **Consequences:**
   - **Run by hand:** the user starts a backup run from Claude Code whenever they want. There is no schedule: the user's managed Mac doesn't allow a scheduled background job (2026-11-23).
-  - **Three copies, deleted only after a checked upload:** Dropbox keeps the last 3 backups. The oldest is deleted only after the new one has uploaded and been checked against the file on this computer. A failed or mismatched upload deletes nothing. A second upload on the same day replaces that day's copy only once the new one checks out.
+  - **Three copies, deleted only after a checked upload:** Dropbox keeps the last 3 backups. The oldest is deleted only after the new one has uploaded and been checked against the file on this computer. A failed or mismatched upload deletes no older backup. A mismatch found after the upload has already replaced that day's copy, and the failure says so. If deleting the older copies doesn't finish after a checked upload, the run still counts as the upload, and the older copies stay until a later upload (Epic 13 retro item 91, 2026-11-23).
   - **Unchanged library, no upload:** when the library hasn't changed since the last upload, the run uploads nothing and reports a skip. The 3 copies therefore cover the last 3 changes, not the last 3 days.
   - **bookvie's folder only:** the backup can reach nothing in the user's Dropbox outside bookvie's own folder, and it deletes nothing there except bookvie's older backups. The Dropbox sign-in is kept in the computer's keychain, never in the library, an export or the repository, and it renews itself. An expired sign-in fails with the command that fixes it.
   - **Never from development:** a Development server's library is never uploaded (FR-26).
