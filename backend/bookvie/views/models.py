@@ -323,11 +323,42 @@ class BookDetailView(_View):
     the calculator's prefill to one decimal. ``None`` when there is none."""
 
 
+DropboxCause = Literal[
+    "dropbox_signin", "upload_incomplete", "dropbox_full", "backup_write", "other"
+]
+"""Why the last Dropbox backup run failed: the views copy of ``intents.CAUSES`` (AD-22).
+
+``views`` may not import ``intents``, so it keeps its own copy, and
+``tests/test_dropbox_backup_line.py`` keeps the two equal."""
+
+
+class DropboxBackupView(_View):
+    """How the last Dropbox backup went: the Backup page's Dropbox backup line (AD-22).
+
+    The server decides ``state``, first match wins: ``dev`` on a ``--dev``
+    server; ``none`` when ``local-state.json``'s upload state is missing or
+    unreadable; otherwise the last report's outcome. For ``dev`` and ``none``
+    every other field is ``None``.
+    """
+
+    state: Literal["dev", "none", "uploaded", "skipped", "failed"]
+    report_at: AwareDatetime | None
+    """When the last run reported (``lastReport.at``)."""
+    last_upload_at: AwareDatetime | None
+    """The last uploaded backup's own time (``lastUpload.backupAt``); ``None`` when none was uploaded."""
+    copies: int | None
+    """How many copies Dropbox kept after the last upload; ``None`` when none was uploaded."""
+    cause: DropboxCause | None
+    """Why the run failed; set only when ``state`` is ``failed``."""
+
+
 class BackupView(_View):
     """What the Backup page shows."""
 
     last_export_at: AwareDatetime | None
     """When the last complete export download finished; ``None`` before the first."""
+    dropbox_backup: DropboxBackupView
+    """How the last Dropbox backup went."""
 
 
 class StatsBucket(_View):

@@ -97,7 +97,7 @@ async function refetch(page: Page): Promise<void> {
 }
 
 test.describe('Story 13.6 See on the Backup page how the last Dropbox backup went (ATDD)', () => {
-  test.skip('[P0] AC-2 the Export card shows the Dropbox backup line under "Last export" in UX-DR75 words for every state, cause, "when" and count', async ({
+  test('[P0] AC-2 the Export card shows the Dropbox backup line under "Last export" in UX-DR75 words for every state, cause, "when" and count', async ({
     page,
   }, testInfo) => {
     await page.clock.setFixedTime(NOW)
@@ -177,7 +177,7 @@ test.describe('Story 13.6 See on the Backup page how the last Dropbox backup wen
     }
   })
 
-  test.skip('[P1] AC-3 the line is plain meta text, ink only when failed, not a control or live region, never on Home, and axe passes in both themes', async ({
+  test('[P1] AC-3 the line is plain meta text, ink only when failed, not a control or live region, never on Home, and axe passes in both themes', async ({
     page,
   }, testInfo) => {
     await page.clock.setFixedTime(NOW)
@@ -281,7 +281,7 @@ test.describe('Story 13.6 See on the Backup page how the last Dropbox backup wen
     }
   })
 
-  test.skip('[P1] AC-4 a recorded upload moves the line and not "Last export", Export all data moves "Last export" and not the line, and a restore moves neither', async ({
+  test('[P1] AC-4 a recorded upload moves the line and not "Last export", Export all data moves "Last export" and not the line, and a restore moves neither', async ({
     page,
   }) => {
     // The browser at 10:00 on 28 Oct 2026; the server's clock at noon that day (--fake-today).

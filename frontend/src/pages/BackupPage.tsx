@@ -17,6 +17,7 @@ import PageHeading from '../components/PageHeading.tsx'
 import { folderLine, versionLine } from '../lib/aboutThisCopy.ts'
 import { announce, clearAnnouncements } from '../lib/announce.ts'
 import { COULDNT_LOAD } from '../lib/copy.ts'
+import { dropboxBackupLine } from '../lib/dropboxBackupLine.ts'
 import { usePageTitle } from '../lib/page.ts'
 import { lastExportLine, useNow } from '../lib/relativeDay.ts'
 import styles from './BackupPage.module.css'
@@ -99,6 +100,7 @@ export default function BackupPage() {
   }
 
   const before = view.data.lastExportAt
+  const dropbox = view.data.dropboxBackup
 
   const runExport = async () => {
     if (running.current) return
@@ -173,7 +175,16 @@ export default function BackupPage() {
         <Button ref={exportRef} variant="primary" busy={busy} onClick={() => void runExport()}>
           {busy ? EXPORTING : EXPORT_ALL}
         </Button>
-        <p className={styles.lastExport}>{lastExportLine(before, now)}</p>
+        <div className={styles.exportLines}>
+          <p className={styles.lastExport}>{lastExportLine(before, now)}</p>
+          <p
+            className={
+              dropbox.state === 'failed' ? `${styles.dropboxLine} ${styles.dropboxFailed}` : styles.dropboxLine
+            }
+          >
+            {dropboxBackupLine(dropbox, now)}
+          </p>
+        </div>
         {failure !== null && <FailureMessage>{failure}</FailureMessage>}
       </section>
       <section className={styles.card} aria-label="Restore">

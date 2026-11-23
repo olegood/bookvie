@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react'
 const DAY_MS = 86_400_000
 
 /** Days since the Unix epoch of the local calendar date of `date`. */
-function localDay(date: Date): number {
+export function localDay(date: Date): number {
   return Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / DAY_MS
 }
 

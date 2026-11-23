@@ -1639,4 +1639,20 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-5-take-out-the-morning-job.md`
   summary: Before Story 13.6: EXPERIENCE.md's Failed-reasons rows mix a capitalised start ("Dropbox sign-in expired.", "Dropbox is full.") with a lowercase one ("the last upload didn't finish.", "bookvie couldn't write…", "the last run stopped…") after "failed *when* · "; 13.6 renders them and should settle the casing. Low.
   evidence: build-auto blind-hunter finding 11; `EXPERIENCE.md` Dropbox backup line table.
+  resolved: kept as is, and the rule recorded in Story 13.6's spec (Design Notes): after "failed *when* · " a reason starts lowercase, like the line's other parts after "·" ("none yet · run…"), while the names Dropbox and bookvie keep their usual spelling, so the rows are already consistent. `frontend/src/lib/dropboxBackupLine.ts` renders them word for word (2026-11-23).
 
+
+## Deferred from: build-auto review of spec-13-6-see-on-the-backup-page-how-the-last-dropbox-backup-went (2026-11-23)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-6-see-on-the-backup-page-how-the-last-dropbox-backup-went.md`
+  summary: Spine drift (AD-22 Copied contracts), reconciled before the next epic: bookvie now has a second copy of the cause enum, `views.models.DropboxCause`, because `views` may not import `intents` beyond `intents.contract`; AD-22 says each copied contract exists once on each side. Alternative at reconciliation: move `CAUSES` into `intents.contract`. Low.
+  evidence: spine-check finding 1; `test_dropbox_backup_line.py::test_the_views_copy_of_the_causes_matches_intents` keeps the copies equal.
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-6-see-on-the-backup-page-how-the-last-dropbox-backup-went.md`
+  summary: Spine drift (AD-22 Dropbox backup line), reconciled before the next epic: the spine doesn't define "unreadable" per field. The code reads as `none` a report with an unknown outcome, an `at` without an offset, a failure without a known cause, or an upload or skip without a valid `lastUpload`; a failure with a bad `lastUpload` keeps its report and only drops the last upload. Low.
+  evidence: spine-check finding 2; `backend/bookvie/views/backup.py` `dropbox_backup`; the spec's I/O matrix.
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-6-see-on-the-backup-page-how-the-last-dropbox-backup-went.md`
+  summary: Spine drift (AD-22, AD-15, Testing row, Capability map FR-29, Structural Seed), reconciled before the next epic: the Dropbox backup line is built, but the spine still marks it planned ("planned for Epic 13", AD-15's "Epic 13 (planned)", the Testing row's "planned, AD-22: … the Dropbox backup line's states", the FR-29 row, the Seed's `local_state.py (planned …)`). Partly inherited from 13.1–13.5. Low.
+  evidence: spine-check finding 3.
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-6-see-on-the-backup-page-how-the-last-dropbox-backup-went.md`
+  summary: Spine drift (AD-6, Structural Seed), reconciled before the next epic: the Seed's `lib/` line and the FR-29 row don't name `lib/dropboxBackupLine` (nor `relativeDay`), and AD-6's App info sentence "`mode` is the only dev signal the client may read" should allow AD-22's server-decided `dropboxBackup.state === "dev"`. Low.
+  evidence: spine-check finding 4; `frontend/src/lib/dropboxBackupLine.ts`; `backend/bookvie/http/api.py` `backup_view`.

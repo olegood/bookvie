@@ -17,16 +17,14 @@ import re
 from pathlib import Path
 from typing import Any
 
-import pytest
-
 from bookvie.intents import CAUSES
+from bookvie.views.backup import CAUSES as VIEW_CAUSES
 from tests.helpers import api_client, failing_reasons
 from tests.test_dropbox_backup_guide import GUIDE, headed
 
 ROOT = Path(__file__).resolve().parents[2]
 SCHEMA_D_TS = ROOT / "frontend" / "src" / "api" / "generated" / "schema.d.ts"
-
-RED_13_6 = "red phase (Story 13.6): views/backup has no dropboxBackup and the guide quotes no line"
+LINE_TS = ROOT / "frontend" / "src" / "lib" / "dropboxBackupLine.ts"
 
 LAST_EXPORT = "2026-11-02T18:40:00+01:00"
 UPLOAD_AT = "2026-11-19T09:02:41+01:00"
@@ -72,8 +70,6 @@ def _dropbox_backup(data_dir: Path, *, dev: bool = False) -> Any:
     return response.json().get("dropboxBackup")
 
 
-# Un-skip when views/backup carries dropboxBackup (BackupView in views/models.py, then api:gen).
-@pytest.mark.skip(reason=RED_13_6)
 def test_views_backup_carries_the_dropbox_backup_state_computed_on_the_server(
     tmp_path: Path,
 ) -> None:
@@ -150,8 +146,6 @@ def test_views_backup_carries_the_dropbox_backup_state_computed_on_the_server(
     assert re.search(r"\bdropboxBackup\b", SCHEMA_D_TS.read_text(encoding="utf-8"))
 
 
-# Un-skip when docs/dropbox-backup.md quotes the line's words in each cause's entry.
-@pytest.mark.skip(reason=RED_13_6)
 def test_the_guide_has_one_troubleshooting_entry_per_cause_quoting_the_lines_words() -> None:
     # [P1] AC-5
     text = GUIDE.read_text(encoding="utf-8")
@@ -162,3 +156,67 @@ def test_the_guide_has_one_troubleshooting_entry_per_cause_quoting_the_lines_wor
         entries = [" ".join(entry.split()) for entry in headed(text, rf"^`{cause}`")]
         # The criterion: the cause's one entry quotes the line's reason word for word.
         assert len(entries) == 1 and reason in entries[0], (cause, reason, entries)
+
+
+def test_a_report_with_a_bad_field_reads_as_none_and_a_bad_upload_on_a_failure_is_dropped(
+    tmp_path: Path,
+) -> None:
+    # [P1] AC-1, I/O matrix "Unreadable" and "Bad lastUpload on a failure"
+    upload = UPLOAD_GROUP["lastUpload"]
+    unreadable: list[Any] = [
+        {"lastReport": "uploaded"},
+        {**UPLOAD_GROUP, "lastReport": {"outcome": "uploaded"}},
+        {**UPLOAD_GROUP, "lastReport": {"outcome": "uploaded", "at": "2026-11-19T09:02:41"}},
+        {**UPLOAD_GROUP, "lastReport": {"outcome": "uploaded", "at": "yesterday"}},
+        {**UPLOAD_GROUP, "lastReport": {"outcome": "uploaded", "at": 1763539361}},
+        {**FAIL_GROUP, "lastReport": {"outcome": "failed", "at": FAIL_AT}},
+        {**FAIL_GROUP, "lastReport": {"outcome": "failed", "at": FAIL_AT, "cause": "gone"}},
+        {"lastReport": {"outcome": "uploaded", "at": UPLOAD_AT}},
+        {"lastReport": {"outcome": "skipped", "at": SKIP_AT}},
+        {**UPLOAD_GROUP, "lastUpload": {**upload, "copies": 0}},
+        {**UPLOAD_GROUP, "lastUpload": {**upload, "copies": True}},
+        {**SKIP_GROUP, "lastUpload": {**upload, "backupAt": "2026-11-19T09:02:05"}},
+        {**SKIP_GROUP, "lastUpload": "bookvie-backup-2026-11-19.zip"},
+    ]
+    for group in unreadable:
+        _store(tmp_path, {"autoBackup": group})
+        assert _dropbox_backup(tmp_path) == {
+            "state": "none",
+            "reportAt": None,
+            "lastUploadAt": None,
+            "copies": None,
+            "cause": None,
+        }, group
+
+    # A failure keeps its report and cause; only the bad last upload is dropped.
+    for bad in (
+        {**upload, "copies": True},
+        {**upload, "copies": 2.0},
+        {**upload, "copies": -1},
+        {**upload, "backupAt": "not a time"},
+        {**upload, "backupAt": "2026-11-19T09:02:05"},
+    ):
+        _store(tmp_path, {"autoBackup": {**FAIL_GROUP, "lastUpload": bad}})
+        assert _dropbox_backup(tmp_path) == {
+            "state": "failed",
+            "reportAt": FAIL_AT,
+            "lastUploadAt": None,
+            "copies": None,
+            "cause": "dropbox_signin",
+        }, bad
+
+
+def test_the_views_copy_of_the_causes_matches_intents() -> None:
+    # [P1] AC-1: views may not import intents, so it keeps its own copy (test_layers.py).
+    assert VIEW_CAUSES == CAUSES
+
+
+def test_the_pages_reasons_match_experience_md_in_cause_order() -> None:
+    # [P1] AC-2: the frontend's REASONS copy EXPERIENCE.md's Failed reasons word for word.
+    source = LINE_TS.read_text(encoding="utf-8")
+    block = re.search(r"export const REASONS[^{]*\{(.*?)\n\}", source, re.S)
+    assert block, "REASONS not found in dropboxBackupLine.ts"
+    pairs = re.findall(r"^\s*(\w+):\s*(?:'([^']*)'|\"([^\"]*)\"),?\s*$", block.group(1), re.M)
+    reasons = {cause: single or double for cause, single, double in pairs}
+    expected = dict(zip(CAUSES, failing_reasons(), strict=True))
+    assert list(reasons.items()) == list(expected.items())

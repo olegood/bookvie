@@ -538,6 +538,7 @@ export interface components {
         BackupView: {
             /** Lastexportat */
             lastExportAt: string | null;
+            dropboxBackup: components["schemas"]["DropboxBackupView"];
         };
         /** Body_add_book_intent_api_intents_add_book_post */
         Body_add_book_intent_api_intents_add_book_post: {
@@ -880,6 +881,30 @@ export interface components {
             percent: number;
             /** Purpose */
             purpose: string | null;
+        };
+        /**
+         * DropboxBackupView
+         * @description How the last Dropbox backup went: the Backup page's Dropbox backup line (AD-22).
+         *
+         *     The server decides ``state``, first match wins: ``dev`` on a ``--dev``
+         *     server; ``none`` when ``local-state.json``'s upload state is missing or
+         *     unreadable; otherwise the last report's outcome. For ``dev`` and ``none``
+         *     every other field is ``None``.
+         */
+        DropboxBackupView: {
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "dev" | "none" | "uploaded" | "skipped" | "failed";
+            /** Reportat */
+            reportAt: string | null;
+            /** Lastuploadat */
+            lastUploadAt: string | null;
+            /** Copies */
+            copies: number | null;
+            /** Cause */
+            cause: ("dropbox_signin" | "upload_incomplete" | "dropbox_full" | "backup_write" | "other") | null;
         };
         /**
          * DuplicateMatch

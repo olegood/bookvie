@@ -77,6 +77,8 @@ Run `/bookvie-backup` a second time, without changing anything in bookvie. It an
 
 #### `dropbox_signin`: the Dropbox sign-in expired or is missing
 
+The Backup page shows "Dropbox backup: failed … · Dropbox sign-in expired. Nothing in Dropbox was deleted. Run bookvie-dropbox auth in Terminal."
+
 `upload_backup` answers `dropbox_signin` when Dropbox refuses bookvie-dropbox's sign-in, or when the Keychain has none or can't be read (it's locked, or access was denied). Nothing was uploaded or deleted. Run this in a terminal, and allow access in the browser:
 
 ```sh
@@ -87,19 +89,27 @@ If macOS asks whether a program may use the Keychain item `bookvie-dropbox`, cho
 
 #### `upload_incomplete`: the upload didn't finish, or didn't match the file
 
+The Backup page shows "Dropbox backup: failed … · the last upload didn't finish. Nothing in Dropbox was deleted; run /bookvie-backup again."
+
 `upload_backup` answers `upload_incomplete` when the upload broke off (a network error or a timeout), Dropbox refused it, or Dropbox's copy doesn't match the file in size or content hash. Nothing in Dropbox was deleted: the older daily backups are deleted only after a checked upload. Run `/bookvie-backup` again.
 
 To see what Dropbox holds, open `/Apps/bookvie/.backups` in Dropbox. The older daily backups are all still there. A mismatched upload may already have replaced today's file, `bookvie-backup-<YYYY-MM-DD>.zip`; it counts only once a run has checked it, and the next upload replaces it. If the same run keeps failing, check your network and Dropbox's status page, then run `/bookvie-backup` again.
 
 #### `dropbox_full`: Dropbox is full
 
+The Backup page shows "Dropbox backup: failed … · Dropbox is full. Nothing in Dropbox was deleted; free some space there."
+
 Dropbox refused the upload because your Dropbox has no space left. Nothing in Dropbox was deleted. Free some space in Dropbox, then run `/bookvie-backup` again.
 
 #### `backup_write`: bookvie couldn't write the backup file
 
+The Backup page shows "Dropbox backup: failed … · bookvie couldn't write the backup file. See docs/dropbox-backup.md → Troubleshooting."
+
 bookvie's `export_backup` couldn't write today's backup into the backups folder, so nothing was uploaded. Check that the disk isn't full and that `~/bookvie-backups` can be written. A data folder such as `~/bookvie` has no backups folder at all (see What bookvie records). Then run `/bookvie-backup` again.
 
 #### `other`: the last run stopped with an error
+
+The Backup page shows "Dropbox backup: failed … · the last run stopped with an error. See docs/dropbox-backup.md → Troubleshooting."
 
 Anything else: Dropbox's servers answered an error, the bookvie-dropbox tools weren't connected in Claude Code (see step 3 and "An MCP server is shown as failed" below), or deleting the older backups didn't finish after a checked upload. In that last case the upload itself worked: Dropbox may hold more than 3 copies for a while, nothing needs deleting by hand, and the next run deletes the extras. The skill's answer and the `upload_backup` message say which. Fix that, then run `/bookvie-backup` again.
 
@@ -125,7 +135,7 @@ The skill never retries a failed run and never restores. Run `/bookvie-backup` a
 
 ## What bookvie records
 
-At the end of each backup run, the agent tells bookvie how it went with `record_backup_upload`: uploaded, skipped or failed. bookvie keeps that in `local-state.json` in the data folder, under `autoBackup`, beside "Last export". It belongs to this computer and is never part of an export or a restore. For an upload, bookvie checks the file itself: it must be a daily backup in the backups folder whose Dropbox content hash matches, and bookvie fingerprints the `library.json` inside it. The next run's `export_backup` compares the library with that fingerprint, so an unchanged library is skipped instead of uploaded again. A backup run's backup doesn't count as an export, so "Last export" on the Backup page doesn't move.
+At the end of each backup run, the agent tells bookvie how it went with `record_backup_upload`: uploaded, skipped or failed. bookvie keeps that in `local-state.json` in the data folder, under `autoBackup`, beside "Last export". The Backup page shows the latest report as the "Dropbox backup: …" line under "Last export"; a state it can't read shows as "none yet". It belongs to this computer and is never part of an export or a restore. For an upload, bookvie checks the file itself: it must be a daily backup in the backups folder whose Dropbox content hash matches, and bookvie fingerprints the `library.json` inside it. The next run's `export_backup` compares the library with that fingerprint, so an unchanged library is skipped instead of uploaded again. A backup run's backup doesn't count as an export, so "Last export" on the Backup page doesn't move.
 
 The backups folder follows the data folder: `~/bookvie-backups` for `~/bookvie-data`, `~/bookvie-backups-dev` for `~/bookvie-data-dev`, and `<data folder>-backups` for any other. Only `~/bookvie-data` writes into `~/bookvie-backups`: a data folder such as `~/bookvie`, whose `-backups` sibling would be one of those two folders, gets no backups folder at all, so it can't write backups or list any. To back up such a library, stop bookvie, rename its data folder to `~/bookvie-data`, and start bookvie without `--data-dir`.
 

@@ -81,6 +81,7 @@ export {
   type CatalogView,
   type CurrentReading,
   type DateRange,
+  type DropboxBackupView,
   type HomeMainBook,
   type HomeSideRead,
   type HomeUpNext,

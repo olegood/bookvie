@@ -120,10 +120,19 @@ def test_bookvie_autobackup_is_not_a_command_and_cli_has_none_of_the_jobs_code(
 # --- AC-2: no launchd probe, and views/backup without autoBackup -------------------------
 
 
-def test_views_backup_carries_only_last_export_and_nothing_asks_launchd(tmp_path: Path) -> None:
+def test_views_backup_has_no_auto_backup_view_and_nothing_asks_launchd(tmp_path: Path) -> None:
     # [P0] AC-2
     response = api_client(tmp_path, raise_server_exceptions=True).get("/api/views/backup")
-    assert response.json() == {"lastExportAt": None}
+    assert response.json() == {
+        "lastExportAt": None,
+        "dropboxBackup": {
+            "state": "none",
+            "reportAt": None,
+            "lastUploadAt": None,
+            "copies": None,
+            "cause": None,
+        },
+    }
 
     assert "launchd_probe" not in inspect.signature(create_app).parameters
     assert not hasattr(bookvie_views, "AutoBackupView")

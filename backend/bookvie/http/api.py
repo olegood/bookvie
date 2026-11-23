@@ -344,7 +344,7 @@ def app_info_view(request: Request) -> views.AppInfoView:
 
 @router.get("/views/backup", response_model=views.BackupView)
 def backup_view(request: Request) -> views.BackupView:
-    return views.backup(request.app.state.store)
+    return views.backup(request.app.state.store, dev=request.app.state.app_info.mode == "dev")
 
 
 @router.get("/views/home", response_model=views.HomeView)

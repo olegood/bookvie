@@ -1,8 +1,8 @@
 """Story 13.5 follow-ups (bmad-testarch-automate): edges the ATDD leaves don't pin.
 
-- The Backup view, now ``lastExportAt`` only, leaves out the stored upload group
-  that ``record_backup_upload`` keeps writing, and reading the view changes nothing
-  on disk (the spec's I/O matrix, "Upload state").
+- Reading the Backup view changes nothing on disk, while ``record_backup_upload``
+  keeps writing the stored upload group (the spec's I/O matrix, "Upload state").
+  Story 13.6 shows that group as ``dropboxBackup``.
 - The guide's cleanup for a Mac that had the old job: it unloads the job before
   deleting its file, and its delete of the file is safe when the file is already
   gone (the build review's patch).
@@ -11,6 +11,7 @@ The removed job's words are imported from ``test_morning_job_removed`` so that t
 module stays out of that module's scan of the tests (AC-5).
 """
 
+import json
 from pathlib import Path
 
 from bookvie.domain.clock import FakeClock
@@ -22,7 +23,7 @@ from tests.test_morning_job_removed import BOOTOUT, OLD_LOGS, OLD_PLIST
 LAST_EXPORT = "2026-10-01T09:30:00+02:00"
 
 
-def test_the_backup_view_leaves_out_the_stored_upload_group_and_reading_it_changes_nothing(
+def test_the_backup_view_shows_the_stored_upload_group_and_reading_it_changes_nothing(
     tmp_path: Path,
 ) -> None:
     # [P1] AC-2, I/O matrix "Upload state"
@@ -39,7 +40,18 @@ def test_the_backup_view_leaves_out_the_stored_upload_group_and_reading_it_chang
     response = client.get("/api/views/backup")
 
     assert response.status_code == 200
-    assert response.json() == {"lastExportAt": LAST_EXPORT}
+    # Story 13.6: the view now reads the group for the Dropbox backup line.
+    report_at = json.loads(before)["autoBackup"]["lastReport"]["at"]
+    assert response.json() == {
+        "lastExportAt": LAST_EXPORT,
+        "dropboxBackup": {
+            "state": "failed",
+            "reportAt": report_at,
+            "lastUploadAt": None,
+            "copies": None,
+            "cause": "upload_incomplete",
+        },
+    }
     assert (tmp_path / "local-state.json").read_bytes() == before
 
 

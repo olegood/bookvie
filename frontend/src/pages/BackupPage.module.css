@@ -46,6 +46,26 @@
   color: var(--color-ink-tertiary);
 }
 
+/* "Last export" and the Dropbox backup line as one block, outside the card's flex gap. */
+.exportLines {
+  max-width: 100%;
+}
+
+/* DESIGN.md `dropbox-backup-line`: the .lastExport recipe, 4px under "Last export"; text only. */
+.dropboxLine {
+  margin: var(--space-1) 0 0;
+  font-family: var(--font-meta-family);
+  font-size: var(--font-meta-size);
+  font-weight: var(--font-meta-weight);
+  line-height: var(--font-meta-line-height);
+  color: var(--color-ink-tertiary);
+}
+
+/* With .dropboxLine: a failure is `ink` (text-color-strong), like every failure line. */
+.dropboxFailed {
+  color: var(--color-ink);
+}
+
 /* About this copy: a `section-label` heading (WaitingPane.module.css .heading recipe). */
 .aboutHeading {
   margin: 0;
