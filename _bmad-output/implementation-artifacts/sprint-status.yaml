@@ -1164,7 +1164,7 @@ action_items:
       unless an AC asks for a README change\". Changes: `_bmad/custom/bmad-testarch-automate.toml`,
       `_bmad/custom/bmad-code-review.toml`. Due: before Epic 14."
     owner: "Murat (TEA)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-13-retro-2026-11-23.md"
   - id: "epic-13-retro-item-95-split-backup-file-and-agent-tools"
     epic: 13
