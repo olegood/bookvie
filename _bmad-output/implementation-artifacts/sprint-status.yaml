@@ -1172,7 +1172,11 @@ action_items:
       Split `intents/backup_file.py` (627 lines, 8 concerns) by concern, and `agent/tools.py`
       (924 lines) by tool group with `TOOLS` kept in one place; no behavior change,
       `test_layers.py` and the full check stay green. Changes: `backend/bookvie/intents/backup_file.py`,
-      `backend/bookvie/intents/__init__.py`, `backend/bookvie/agent/tools.py`, `backend/tests/test_layers.py`.
+      `backend/bookvie/intents/__init__.py`, `backend/bookvie/agent/tools.py`, `backend/tests/test_layers.py`,
+      `backend/scripts/coverage_gate.py`, `backend/tests/test_coverage_gate.py`. Added by
+      item 90 (2026-11-23): `RESTORE_PATH` in `coverage_gate.py` must then name the restore
+      half's new modules, since a split that adds a module keeps the gate green without
+      measuring it.
       Due: before the first Epic 14 story that adds an agent tool or changes `intents/backup_file.py`."
     owner: "Amelia (dev)"
     status: open
