@@ -1151,7 +1151,7 @@ action_items:
       story for Oleg's decision. Changes: `_bmad/custom/bmad-create-epics-and-stories.toml`.
       Due: before Epic 14 planning."
     owner: "John (PM)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-13-retro-2026-11-23.md"
   - id: "epic-13-retro-item-94-automate-reads-done-at-head-and-readme-rule"
     epic: 13
