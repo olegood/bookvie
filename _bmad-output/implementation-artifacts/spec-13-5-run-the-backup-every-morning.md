@@ -3,7 +3,8 @@ title: 'Story 13.5: Run the backup every morning'
 type: 'feature'
 created: '2026-11-22'
 baseline_revision: '3fbe4bd203267fc2617f10b65ab67cfd6ee92e73'
-status: 'in-review'
+status: 'superseded'
+superseded_by: '_bmad-output/planning-artifacts/sprint-change-proposal-2026-11-23.md'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -41,6 +42,8 @@ deferred:
       backend/bookvie/cli.py
     severity: low
 ---
+
+> **Superseded 2026-11-23** by `sprint-change-proposal-2026-11-23.md`. Never done: AC-7 couldn't run, because the Mac's administration policy doesn't allow the LaunchAgent. Its code is removed by `spec-13-5-take-out-the-morning-job.md` (Story 13.5, rewritten). Kept as history.
 
 <intent-contract>
 

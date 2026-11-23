@@ -24,7 +24,7 @@ Mocks illustrate this spine; they are not the contract. If a mock and a spine di
 
 - **Platform.** Web app in desktop Chrome on a desktop or laptop (DESIGN.md → Viewport; AGENTS.md → Supported browser). Minimum viewport 1024px; below that the page scrolls horizontally. No phone or tablet layout (PRD §6.3) (documented deviation: Accessibility Floor → Reflow).
 - **UI system.** None named. Plain, semantic HTML controls styled by DESIGN.md tokens. Native elements (`button`, `input`, `select`, `dialog`) are preferred so roles and names come for free.
-- **Local-first.** All data lives on this computer; no account, no network (PRD §5). No sync or connection status is shown; the auto-backup line on Backup (FR-29) reports the daily Dropbox run, not a connection. There is no loading indicator: before a page's first view response, only the header and nav render (no spinner, no skeleton). A view that can't be loaded shows "Couldn't load" (see State Patterns); a failed background refetch keeps the last data silently. The only busy states are Export and Restore (see Backup page). A save that fails is never silent (see State Patterns → Couldn't save).
+- **Local-first.** All data lives on this computer; no account, no network (PRD §5). No sync or connection status is shown; the Dropbox backup line on Backup (FR-29) reports the last backup run, not a connection. There is no loading indicator: before a page's first view response, only the header and nav render (no spinner, no skeleton). A view that can't be loaded shows "Couldn't load" (see State Patterns); a failed background refetch keeps the last data silently. The only busy states are Export and Restore (see Backup page). A save that fails is never silent (see State Patterns → Couldn't save).
 - **One store, two operators.** The user's browsers and the agents' tools see the same data (PRD §5: a Book saved from any browser on this machine appears in every other; FR-28). One local server owns it (spine AD-1). UX rule for two open tabs, or a tab and an agent: last write wins; reloading shows the current data. No cross-tab warning is shown.
 - **Production and development.** A server started with `--dev` is a development server; anything else is production (plan D3). The mode comes from the `app-info` view (`mode`, `version`, `dataDir`, `commit`), never from how the page was served. Production looks exactly as before Epic 11, apart from the favicon, the About this copy card and, after an update, the update notice. A development server adds three marks, so a dev tab can't be taken for the real library: the amber favicon, the `DEV · ` tab-title prefix and the DEV pill.
 - **Theme.** Light · Dark · System toggle in the top nav. Default is System; the choice is remembered on this computer.
@@ -45,7 +45,7 @@ Top nav, left to right: **Home · Catalog · Stats · Card notes · Backup**, th
 | Book detail | A book title anywhere (Main book card, Home panes, List view row, catalog tile); "Open book →" in the spine popover; "Open book" in the "⋯" menu | One Book's metadata, current Reading, its first Card notes with search and the pile, Readings, actions, per-Book pace, spine color | FR-1, FR-4–FR-9, FR-14, FR-15; D31, D35 | Flows 1, 9, 10 |
 | Stats | Nav | Books finished and pages finished for a period, monthly bars | FR-16; D3, D30 | Flow 7 |
 | Card notes | Nav (all Books); "See card notes" on the Main book card or "See all card notes" on Book detail (scoped to one Book) | Card notes grouped by Book, quick search, entry to the pile | FR-17–FR-19; D23, D43 | Flow 6 |
-| Backup | Nav | Export, Restore, "Last export", the auto-backup line, About this copy (version, mode, data folder) | FR-22, FR-23, FR-27, FR-29; D19 | Flows 7, 8, 11, 12, 13 |
+| Backup | Nav | Export, Restore, "Last export", the Dropbox backup line, About this copy (version, mode, data folder) | FR-22, FR-23, FR-27, FR-29; D19 | Flows 7, 8, 11, 12, 13 |
 
 The app shell (top nav, and the update notice under it) is on every page. The favicon, the dev tab title, the DEV pill and the update notice trace to FR-26 and FR-27 (Flows 11, 12).
 
@@ -110,7 +110,7 @@ Microcopy. Brand voice lives in DESIGN.md → Brand & Style. A calm librarian: s
 | No greeting. The Home header is the date. | "Good morning, Oleg" |
 | "bookvie was updated to 1.2.0. Reload to use it." | "A new version is available! Please refresh now." |
 | "DEV" | "⚠ DEVELOPMENT MODE — DO NOT USE" |
-| "Auto-backup: Stalled · no backup since 19 Nov" | "⚠ Your library is not backed up!" |
+| "Dropbox backup: last upload on 19 Nov · 3 copies in Dropbox" | "⚠ Your library is not backed up!" |
 | "Not restored. Nothing was changed." | "Restore cancelled by user." |
 
 ## Component Patterns
@@ -157,8 +157,8 @@ Behavioral. Visual specs: DESIGN.md → Components, same names. Longer patterns 
 | Stats range picker | Stats | Presets This month · This year · Last year · All time, plus Custom ("From", "To" date fields). Default This year. Presets end today: This month runs from the 1st to today, This year from 1 January to today; Last year is the full year. If To is before From, the two dates swap silently. All time starts at the earliest finished Reading, back-filled ones included; with no finished Readings it shows 0 books, 0 pages, no bars, and "No books finished yet." A finish counts by its local date. Changing the range updates numbers and bars instantly and the `status` region announces "2 books, 610 pages." |
 | Monthly bars | Stats | Two numbers: books finished, pages finished. One bar per month in the range, counting only finishes inside the range (a range from 15 March counts March from the 15th); over 24 months, one bar per year. Each bar has a text value. All of a Reading's pages count in the period it finished (FR-16), using the page count it finished with. Exposed as a table to assistive tech (period, books, pages). |
 | About this copy | Backup page, third card | A `section` labelled by its visible heading "About this copy", an `h2` under the `h1` "Backup". Production: "bookvie 1.1.0" and "Data folder: ~/bookvie-data". Dev server: "bookvie 1.1.0 (a1b2c3d) · Development server" and "Data folder: ~/bookvie-data-dev"; with no commit (no git or no checkout) the part in brackets is left out: "bookvie 1.1.0 · Development server". The commit is never shown in production. The data folder is written as the server sends it: with `~` for the home folder, and as a full absolute path when it is outside the home folder. Plain read-only text, with no copy button. The card shows once `app-info` has loaded; if it can't load, the card is left out silently and Export and Restore work as usual. |
-| Backup page | Backup | **Export all data** builds one file (FR-22) and hands it to the browser's download. When Export or Restore takes longer than about 300 ms, its button reads "Exporting…" or "Restoring…" and is disabled until it finishes; there is no spinner. "Last export: today" is set only once the file has been built and handed over; the browser cannot confirm the file was kept. **Restore from file…** opens a file picker, then the Confirm dialog. The whole file is checked before anything is replaced. "Last export: N days ago" also appears on Home's re-entry line; "No export yet" before the first export. "Last export" and preferences (theme, Catalog view, sort and its direction, Add another) stay local: a restore neither brings nor replaces them. "Last export" is never a warning. The auto-backup line sits directly under "Last export" (see Auto-backup line). |
-| Auto-backup line | Backup page, Export card, under "Last export" | One status line for the daily Dropbox backup (FR-29), from `views/backup`. Pattern **"Auto-backup: *State* · *detail*"**; the state word comes first, so the meaning never depends on style. Plain text: not a control, not a link, not a Tab stop, not a live region; it updates with the page's refetch on focus, and a change found that way isn't announced, like "Last export". Shown only on Backup, never on Home's re-entry line. States and wording: see Auto-backup line below. |
+| Backup page | Backup | **Export all data** builds one file (FR-22) and hands it to the browser's download. When Export or Restore takes longer than about 300 ms, its button reads "Exporting…" or "Restoring…" and is disabled until it finishes; there is no spinner. "Last export: today" is set only once the file has been built and handed over; the browser cannot confirm the file was kept. **Restore from file…** opens a file picker, then the Confirm dialog. The whole file is checked before anything is replaced. "Last export: N days ago" also appears on Home's re-entry line; "No export yet" before the first export. "Last export" and preferences (theme, Catalog view, sort and its direction, Add another) stay local: a restore neither brings nor replaces them. "Last export" is never a warning. The Dropbox backup line sits directly under "Last export" (see Dropbox backup line). |
+| Dropbox backup line | Backup page, Export card, under "Last export" | One status line for the last Dropbox backup run (FR-29), from `views/backup`. Pattern **"Dropbox backup: *detail*"**; a failure says "failed" first, so the meaning never depends on style. Plain text: not a control, not a link, not a Tab stop, not a live region; it updates with the page's refetch on focus, and a change found that way isn't announced, like "Last export". Shown only on Backup, never on Home's re-entry line. States and wording: see Dropbox backup line below. |
 | Confirm dialog | Restore, Delete book, Delete card note, Pause | `alertdialog`. Restore: "Replace all data with this file? Your current books, readings and card notes will be replaced." with **Replace all data** and **Cancel**. Delete book: "Delete *X*? Its readings and card notes are deleted too." with the Book's role when it has one ("It is your Main book.", "It is Up next.", or "It is waiting for you at p.120."), then **Delete book** and **Cancel**. After deleting, the app goes to Catalog; a vacated Main book or Up next stays empty (nothing is promoted automatically). Delete card note: see Card note panel. Pause: see Book detail. Cancel has default focus. For Delete book, Delete card note and Pause, if the save fails the dialog stays open and shows the couldn't-save `alert` line inside it, above its buttons (State Patterns → Couldn't save). Restore is the exception, because a restore can take a while: **Replace all data** closes the dialog and starts it, so its busy state ("Restoring…") and any failure or refusal show on the Backup page, as the `ink` line under **Restore from file…**, announced in `alert`, with focus back on that button. Nothing has changed, and the user can pick the file again. |
 | Empty state | Home, Catalog (no Books) | Bare birch planks, "Your shelf is empty. Add your first book.", **New book** button. |
 | No-cover placeholder | Main book card, Up next, Book detail | Stands in for a missing cover at the same size; not interactive; the Book's title is still given in text beside it. |
@@ -189,25 +189,23 @@ The bundle knows the version it was built as; `app-info` says the server's.
 - **Place:** inside the `header` landmark, after the top bar, so it belongs to a landmark. Tab reaches **Reload** after the theme toggle and before the page; "Skip to content" skips it.
 - **Announcement:** once each time the notice appears or names a new server version, unless another message is pending or the regions are emptied within the tick; then the band and **Reload** stay and it isn't retried. See Accessibility Floor → Live regions.
 
-### Auto-backup line
+### Dropbox backup line
 
-The two signals are whether the daily job is installed on this computer and the latest report of the backup skill: an upload, a skip or an error (PRD FR-29; plan D9–D11). This line is plan D11's "badge"; it supersedes D11's colored dots and its wording (Oleg), so the guide and its docs test copy the strings below, not D11's. The first row that matches wins:
+One signal: the latest report of the backup skill, which Oleg runs by hand (`/bookvie-backup`): an upload, a skip or an error (PRD FR-29). Until 2026-11-23 this was the five-state auto-backup line of a 09:00 job; the job was dropped (`sprint-change-proposal-2026-11-23.md`). The first row that matches wins:
 
 | State | When | Line |
 |---|---|---|
-| Off | Development server | "Auto-backup: Off · never on a development server" |
-| Off | The job isn't installed, the check can't tell, or this isn't macOS | "Auto-backup: Off · not set up on this computer" |
-| Waiting | Installed, and no report yet | "Auto-backup: Waiting · first backup at 09:00" |
-| Failing | The latest report is an error, at most 26 hours old | "Auto-backup: Failing · *reason and fix*" (table below), then " Last upload *when*." if there has been one |
-| On | The latest report is an upload or a skip, at most 26 hours old | Upload: "Auto-backup: On · last upload today at 09:02 · 3 copies in Dropbox". Skip: "Auto-backup: On · checked today at 09:02, nothing new · last upload on 19 Nov · 3 copies in Dropbox" |
-| Stalled | The latest report is more than 26 hours old, whatever it was | "Auto-backup: Stalled · no backup since yesterday at 09:02" (the latest upload or skip; "no backup since it was set up" if there was none) |
+| Dev | Development server | "Dropbox backup: never from a development server" |
+| None | No report yet, or the upload state can't be read | "Dropbox backup: none yet · run /bookvie-backup in Claude Code" |
+| Failed | The latest report is an error | "Dropbox backup: failed *when* · *reason and fix*" (table below), then " Last upload *when*." if there has been one |
+| Uploaded | The latest report is an upload | "Dropbox backup: last upload today at 09:02 · 3 copies in Dropbox" |
+| Skipped | The latest report is a skip | "Dropbox backup: checked today at 09:02, nothing new · last upload on 19 Nov · 3 copies in Dropbox" |
 
-- **The 26-hour rule.** Measured from the latest report's time to now. At exactly 26 hours it's still On or Failing; past 26 hours it's Stalled. A report time in the future counts as now. Stalled catches a run that crashed before it could report, and an error nobody has fixed for a day (FR-29: no upload, skip or error in 26 hours).
-- **Waiting doesn't time out.** If the job never reports, the line keeps saying "first backup at 09:00"; accepted, because the guide's Waiting entry covers it and the first manual run (plan D12) ends it.
+- **No time-out.** The line never turns into a warning because time passed; "when" says how old the copy is, like "Last export".
 - **Unreadable state.** Upload state that is missing or can't be read counts as no report yet.
-- **When.** "today at 09:02", "yesterday at 09:02", otherwise "on 19 Nov" (Stalled: "since 19 Nov"). Local calendar days, recomputed on focus like every relative time (Foundation → Dates).
+- **When.** "today at 09:02", "yesterday at 09:02", otherwise "on 19 Nov". Local calendar days, recomputed on focus like every relative time (Foundation → Dates).
 - **Copies.** The number the last upload reported: "1 copy", "2 copies", "3 copies". A skip keeps the last upload's count.
-- **Failing reasons.** One or two sentences, from this list; every reason after the run reached Dropbox says nothing there was deleted (plan D2). The skill reports a cause from this list (note for architecture: a small fixed set of error codes in `record_backup_upload`):
+- **Failed reasons.** One or two sentences, from this list; every reason after the run reached Dropbox says nothing there was deleted (plan D2). The skill reports a cause from this list (`record_backup_upload`'s fixed set of causes). *Pending Story 13.5:* the header below becomes `After "failed *when* · "` and the `upload_incomplete` row becomes "the last upload didn't finish. Nothing in Dropbox was deleted; run /bookvie-backup again.", together with the skill's line and `tests/helpers.py`'s `failing_reasons`, which reads this table by its header.
 
 | Cause | After "Failing · " |
 |---|---|
@@ -217,8 +215,8 @@ The two signals are whether the daily job is installed on this computer and the 
 | bookvie couldn't write the backup | "bookvie couldn't write the backup file. See docs/dropbox-backup.md → Troubleshooting." |
 | Anything else | "the last run stopped with an error. See docs/dropbox-backup.md → Troubleshooting." |
 
-- **Fixes in words.** A command is written in the sentence in the body font, not as code, and isn't a copy button. The guide (`docs/dropbox-backup.md`) has one troubleshooting entry per state, with the same wording (plan D12).
-- **Never a warning.** Failing and Stalled are `ink`, like every failure line (DESIGN.md → `text-color-strong`); the other states are `ink-tertiary`, like "Last export" (DESIGN.md → Auto-backup line). No color, icon or dot.
+- **Fixes in words.** A command is written in the sentence in the body font, not as code, and isn't a copy button. The guide (`docs/dropbox-backup.md`) has one troubleshooting entry per cause, with the same wording (plan D12).
+- **Never a warning.** Failed is `ink`, like every failure line (DESIGN.md → `text-color-strong`); the other states are `ink-tertiary`, like "Last export" (DESIGN.md → Dropbox backup line). No color, icon or dot.
 - **Manual export.** **Export all data** changes "Last export", never this line, and an upload never changes "Last export". A restore changes neither.
 - **Can't load.** The line is part of `views/backup`: if that view can't load, the page shows "Couldn't load" as usual.
 
@@ -407,7 +405,7 @@ Tiles show the library as a grid of covers, so the user can find a Book by its c
 | `app-info` not loaded yet, or never loaded | Every page, Backup | The header and title look like production, no update notice, no About this copy card; nothing says it failed. Everything else works. |
 | `app-info` refetch failed after a success | Every page, Backup | The last data stays: the DEV pill, the `DEV · ` title, the About this copy card and any update notice keep showing as they were. Nothing says it failed. |
 | Versions differ | Every page | Update notice under the top nav until the tab reloads. |
-| Auto-backup Off, Waiting, On, Failing, Stalled | Backup | See Component Patterns → Auto-backup line. |
+| Dropbox backup none, failed, uploaded, skipped | Backup | See Component Patterns → Dropbox backup line. |
 | Restore done | Backup → Home | `status` "Restored." The app goes to Home with the restored data; focus on Home's `h1`. |
 | Finish moment | Home shelf slice | After **Done** in the Finish dialog for the Main book, the slice first scrolls the finished spine into view if needed, then the spine fills with its color from its current fill to full, bottom to top, **about 600 ms ease-out**, with the highlight ring; then it stays solid. Under reduced motion the fill is instant. It **never replays** (not on reload, not on revisit). The library meter updates, and one quiet line "Finished *X*." appears in the bookcase header; it is gone on the next visit to Home. Once focus has settled (see Focus after close), the `status` region announces "Finished *X*. 25 of 73 finished." The Main book card switches to the no-Main-book state with Up next suggested. No sound, no confetti. |
 | Finish moment, re-read | Home shelf slice | The spine is already full color: only the highlight ring plays. Header line "Finished *X* again."; the meter count does not change. |
@@ -720,18 +718,16 @@ Oleg, the morning after installing a new release.
 
 Failure path: bookvie is restarting when Oleg switches tabs and `app-info` fails. No notice appears and nothing complains; the notice shows on the next successful refetch.
 
-### Flow 13 — Notice a failing backup
+### Flow 13 — Fix a failed backup
 
-Oleg, a Saturday morning, two months after setting up auto-backup.
+Oleg, a Saturday morning, two months after setting up the Dropbox backup.
 
-Precondition: the daily job is installed; the last good upload was Thursday at 09:02.
+Precondition: Oleg last ran `/bookvie-backup` on Thursday, 21 Nov, and it failed; the last good upload was on 19 Nov.
 
-1. Oleg opens Backup to check something else. Under "Last export: 41 days ago" the line reads "Auto-backup: Failing · Dropbox sign-in expired. Nothing in Dropbox was deleted. Run bookvie-dropbox auth in Terminal. Last upload on 19 Nov."
+1. Oleg opens Backup to check something else. Under "Last export: 41 days ago" the line reads "Dropbox backup: failed on 21 Nov · Dropbox sign-in expired. Nothing in Dropbox was deleted. Run bookvie-dropbox auth in Terminal. Last upload on 19 Nov."
 2. Oleg opens Terminal, runs `bookvie-dropbox auth`, and signs in to Dropbox in the browser that opens.
-3. Oleg asks Claude Code to run `/bookvie-backup` now instead of waiting for tomorrow.
-4. **Climax:** back in the tab, the page refetches on focus: "Auto-backup: On · last upload today at 10:14 · 3 copies in Dropbox". Nothing in Dropbox was lost while it was failing.
-
-Failure path: after a Claude Code reinstall, launchd can't find `claude`, so the run crashes before it can report. Two days later the line reads "Auto-backup: Stalled · no backup since 19 Nov"; the guide's Stalled entry lists the causes. (A Mac asleep at 09:00 isn't one: launchd runs the job on wake.)
+3. Oleg runs `/bookvie-backup` in Claude Code again.
+4. **Climax:** back in the tab, the page refetches on focus: "Dropbox backup: last upload today at 10:14 · 3 copies in Dropbox". Nothing in Dropbox was lost while it was failing.
 
 ### Flow 14 — Restore through an agent
 
@@ -749,7 +745,7 @@ Failure path: at step 4 Oleg reads "Atomic Habits" in the list, remembers adding
 
 ## Agent conversations
 
-Agents have no screens, but two outcomes reach Oleg as text: the restore conversation in Claude Code (FR-30) and the auto-backup run's report (FR-29). Same voice as the app (Voice and Tone): short, plain, no exclamation marks, no praise. A backup is named by its date and time, "19 Nov, 09:02" (Foundation → Dates), because a safety copy and a daily backup can share a day. File names appear only in the preview's first line, the safety copy's path and the run report.
+Agents have no screens, but two outcomes reach Oleg as text: the restore conversation in Claude Code (FR-30) and the backup run's report (FR-29). Same voice as the app (Voice and Tone): short, plain, no exclamation marks, no praise. A backup is named by its date and time, "19 Nov, 09:02" (Foundation → Dates), because a safety copy and a daily backup can share a day. File names appear only in the preview's first line, the safety copy's path and the run report.
 
 ### Restore
 
@@ -802,9 +798,9 @@ The `bookvie-restore` skill and bookvie's `restore_backup` speak in this order (
 
 Paths are written with `~` for the home folder, as in About this copy.
 
-### Auto-backup report
+### Backup run report
 
-The headless run's own output (plan D7) goes to the launchd log; a manual `/bookvie-backup` (Flow 13) shows it in the chat. The line on Backup is what Oleg normally sees. The report states the outcome in one line, in the same words as that line's state and reason ("Uploaded bookvie-backup-2026-11-21.zip · 3 copies in Dropbox, deleted bookvie-backup-2026-11-18.zip", "Nothing new since the last upload; skipped.", "Failed: Dropbox sign-in expired. Run bookvie-dropbox auth in Terminal.").
+`/bookvie-backup` (Flow 13) shows its report in the chat; the line on Backup is what Oleg sees later. The report states the outcome in one line, in the same words as that line's state and reason ("Uploaded bookvie-backup-2026-11-21.zip · 3 copies in Dropbox, deleted bookvie-backup-2026-11-18.zip", "Nothing new since the last upload; skipped.", "Failed: Dropbox sign-in expired. Run bookvie-dropbox auth in Terminal.").
 
 ## Inspiration & Anti-patterns
 

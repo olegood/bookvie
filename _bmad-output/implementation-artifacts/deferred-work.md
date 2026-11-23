@@ -1599,24 +1599,31 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-5-run-the-backup-every-morning.md`
   summary: Spine drift (AD-22 Auto-backup state), reconciled before the next epic: `views/backup` carries `autoBackup: {installed: bool}` (Oleg's ATDD decision, 2026-11-22); AD-22 lists only `state`, `offReason`, `reportAt`, `lastOkAt`, `lastUploadAt`, `copies` and `cause`. Low.
   evidence: build-auto review spine-check finding 1; `backend/bookvie/views/models.py` `AutoBackupView`.
+  resolved: obsolete. `sprint-change-proposal-2026-11-23.md` drops the morning job (the Mac's administration policy doesn't allow a LaunchAgent); the spine's AD-22 schedule and auto-backup-state text is replaced in that pass, and Story 13.5 "Take out the morning job" removes the code (2026-11-23).
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-5-run-the-backup-every-morning.md`
   summary: Spine drift (AD-22, Source tree, Structural Seed), reconciled before the next epic: `cli.py`'s `autobackup install|uninstall|run`, `create_app`'s `launchd_probe` and the seed diagram's launchd 09:00 are built, but the spine still marks them "(planned)". Low.
   evidence: build-auto review spine-check finding 2.
+  resolved: obsolete. `sprint-change-proposal-2026-11-23.md` drops the morning job (the Mac's administration policy doesn't allow a LaunchAgent); the spine's AD-22 schedule and auto-backup-state text is replaced in that pass, and Story 13.5 "Take out the morning job" removes the code (2026-11-23).
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-5-run-the-backup-every-morning.md`
   summary: Spine drift (Consistency Conventions Config row, AD-22 The schedule), reconciled before the next epic: the Config row lists only `bookvie autobackup install` and `uninstall` as planned; `run` exists too. Low.
   evidence: build-auto review spine-check finding 3; `backend/bookvie/cli.py` `parse_args`.
+  resolved: obsolete. `sprint-change-proposal-2026-11-23.md` drops the morning job (the Mac's administration policy doesn't allow a LaunchAgent); the spine's AD-22 schedule and auto-backup-state text is replaced in that pass, and Story 13.5 "Take out the morning job" removes the code (2026-11-23).
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-5-run-the-backup-every-morning.md`
   summary: Spine drift (AD-1), reconciled before the next epic: AD-1 says the one thing written outside the data folder is an agent's backup; `bookvie autobackup install` also writes `~/Library/LaunchAgents/com.bookvie.autobackup.plist` and creates `~/Library/Logs/bookvie/`. Low.
   evidence: build-auto review spine-check finding 4; `backend/bookvie/cli.py` `_autobackup_install`.
+  resolved: obsolete. `sprint-change-proposal-2026-11-23.md` drops the morning job (the Mac's administration policy doesn't allow a LaunchAgent); the spine's AD-22 schedule and auto-backup-state text is replaced in that pass, and Story 13.5 "Take out the morning job" removes the code (2026-11-23).
 
 ## Deferred from: code review of spec-13-5-run-the-backup-every-morning (2026-11-22)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-5-run-the-backup-every-morning.md`
   summary: `_stop`'s SIGKILL fallback (a server that ignores SIGTERM for 30 s) has no test; removing the `except subprocess.TimeoutExpired` block would let `TimeoutExpired` escape the `finally` and leave the server running. The real server stops on SIGTERM. Low.
   evidence: code review verification-gap finding 5; `backend/bookvie/cli.py` `_stop`.
+  resolved: obsolete. `sprint-change-proposal-2026-11-23.md` drops the morning job (the Mac's administration policy doesn't allow a LaunchAgent); the spine's AD-22 schedule and auto-backup-state text is replaced in that pass, and Story 13.5 "Take out the morning job" removes the code (2026-11-23).
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-5-run-the-backup-every-morning.md`
   summary: Spine drift (Consistency Conventions Testing row, Capability Map FR-29), reconciled before the next epic: the Testing row still lists the generated plist, `autobackup run` and the guide's commands checked against the CLI as "planned, AD-22", and the FR-29 row and the "Every row below is built, except FR-29 and FR-30" line still say planned for the `cli.py` and `launchd_probe` parts Story 13.5 built. Low.
   evidence: code review spine-check finding 5; `backend/tests/test_autobackup.py`, `backend/tests/test_dropbox_backup_guide.py`.
+  resolved: obsolete. `sprint-change-proposal-2026-11-23.md` drops the morning job (the Mac's administration policy doesn't allow a LaunchAgent); the spine's AD-22 schedule and auto-backup-state text is replaced in that pass, and Story 13.5 "Take out the morning job" removes the code (2026-11-23).
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-5-run-the-backup-every-morning.md`
   summary: Spine drift (AD-22 `bookvie autobackup run` steps 1-4), reconciled before the next epic: the run waits at most 60 s for health and stops a started server that never answers or exits early, caps `claude` at 30 minutes, refuses before starting anything when `claude` is missing, and exits 1 for a signal-killed `claude`; the AD's steps state none of this. Low.
   evidence: code review spine-check finding 6; `backend/bookvie/cli.py` `_autobackup_run`.
+  resolved: obsolete. `sprint-change-proposal-2026-11-23.md` drops the morning job (the Mac's administration policy doesn't allow a LaunchAgent); the spine's AD-22 schedule and auto-backup-state text is replaced in that pass, and Story 13.5 "Take out the morning job" removes the code (2026-11-23).

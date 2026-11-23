@@ -7,6 +7,8 @@ source: party-mode session (Mary, John, Sally, Winston, Amelia, Murat) with Oleg
 idea: GitHub issue #7 → "Daily backup to Dropbox"
 ---
 
+> **2026-11-23:** the scheduled run (D7, and the launchd parts of D9–D12) is dropped: the Mac's administration policy doesn't allow a LaunchAgent. The backup skill is run by hand, and the Backup page shows a plain Dropbox backup line. See `sprint-change-proposal-2026-11-23.md`; the spine wins where they differ.
+
 # Daily backup to Dropbox, and restore through an agent — plan
 
 Back up the library once a day and upload it to Dropbox, so a copy exists off this machine without exporting by hand. A launchd job runs a new `bookvie-backup` skill headless every morning. The skill writes the backup with bookvie's `export_backup` and uploads it through a small Dropbox MCP server of our own, which verifies the upload and keeps the last 3 copies. The Backup page shows whether auto-backup is on and working.

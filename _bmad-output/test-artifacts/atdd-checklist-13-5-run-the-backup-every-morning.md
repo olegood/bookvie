@@ -32,6 +32,8 @@ acceptanceCriteria:
   - { id: AC-8, idSource: generated, text: 'Given the guide, when this story lands, then docs/dropbox-backup.md has install, uninstall (with claude mcp remove, deleting the Keychain item and revoking the app in Dropbox), the log location, running the job now with launchctl kickstart, and the launchd troubleshooting entries: claude not found on launchd''s PATH after a reinstall or move, a tool missing from --allowedTools, Claude Code signed out, a moved checkout (install again), and a Mac asleep at 09:00 (runs on wake); and the docs pytest covers the new commands.' }
 ---
 
+> **Superseded 2026-11-23** by `sprint-change-proposal-2026-11-23.md`: the morning job was dropped; Story 13.5 is now "Take out the morning job". Kept as history.
+
 # ATDD Checklist: Story 13.5 Run the backup every morning
 
 ## Preflight
