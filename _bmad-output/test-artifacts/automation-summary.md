@@ -2,15 +2,16 @@
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03-generate-tests', 'step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
 lastSaved: '2026-11-23'
-storyId: '13.5'
-storyKey: '13-5-take-out-the-morning-job'
+storyId: '13.6'
+storyKey: '13-6-see-on-the-backup-page-how-the-last-dropbox-backup-went'
 inputDocuments:
-  - _bmad-output/implementation-artifacts/spec-13-5-take-out-the-morning-job.md (I/O matrix, Review Findings, Auto Run Result)
-  - _bmad-output/test-artifacts/atdd-checklist-13-5-take-out-the-morning-job.md (Green-phase follow-ups)
+  - _bmad-output/implementation-artifacts/spec-13-6-see-on-the-backup-page-how-the-last-dropbox-backup-went.md (I/O matrix, Design Notes, Review Findings)
+  - _bmad-output/test-artifacts/atdd-checklist-13-6-see-on-the-backup-page-how-the-last-dropbox-backup-went.md (Green-phase follow-ups, Implementation checklist)
   - _bmad/tea/config.yaml
-  - docs/dropbox-backup.md (Uninstalling)
-  - backend/bookvie/views/backup.py, backend/bookvie/views/models.py, backend/bookvie/intents/backup_file.py (`record_backup_upload`)
-  - backend/tests/test_morning_job_removed.py, test_views.py, test_dropbox_backup_guide.py, test_agent_backup_upload.py, helpers.py
+  - backend/bookvie/views/backup.py, backend/bookvie/views/models.py, backend/bookvie/store/local_state.py
+  - frontend/src/lib/dropboxBackupLine.ts, frontend/src/pages/BackupPage.tsx
+  - backend/tests/test_dropbox_backup_line.py, test_agent_backup_upload.py, test_agent_backup.py, agent_client.py, conftest.py (connect_mcp)
+  - frontend/src/lib/dropboxBackupLine.test.ts, frontend/e2e/dropbox-backup-line.spec.ts, frontend/e2e/backup.spec.ts
   - knowledge/test-levels-framework.md
   - knowledge/test-priorities-matrix.md
   - knowledge/data-factories.md
@@ -19,55 +20,58 @@ inputDocuments:
   - knowledge/test-quality.md
 ---
 
-# Automation Summary: Story 13.5 Take out the morning job
+# Automation Summary: Story 13.6 See on the Backup page how the last Dropbox backup went
 
 ## Preflight
 
-- **Stack:** `fullstack` (auto). This is a removal story with no UI change: the frontend never read `autoBackup`. Every target is pytest. No browser session was opened, and the Playwright fragments weren't loaded.
-- **Where:** this worktree's branch (`hogback-creosote`). The story is `done` at `f1ef6b9`, the review commit.
-- **Mode:** BMad-integrated. The inputs were the ATDD checklist's 3 open follow-ups, the spec's I/O matrix, and the build review's two patches.
+- **Stack:** `fullstack` (auto). The targets are pytest (API) and `node --test` (unit). No e2e leaf was added, so no browser session was opened and the Playwright fragments weren't loaded.
+- **Where:** this worktree's branch (`hogback-creosote`). The story is `done` at `3483351`, the review commit.
+- **Mode:** BMad-integrated. The inputs were the ATDD checklist's follow-ups, the spec's I/O matrix, and the code review's rejected test-gap notes.
 - **Generation:** sequential, in this session.
-- **Knowledge:** the six core fragments only. `tea_use_playwright_utils` and `tea_use_pactjs_utils` are off, and there is no Pact artifact.
+- **Knowledge:** the six core fragments only. `tea_use_playwright_utils` and `tea_use_pactjs_utils` are off in `_bmad/tea/config.yaml`, and there is no Pact artifact.
 
 ## Coverage plan
 
-The 5 ATDD leaves already cover each AC's primary branch, and the existing view, export and upload tests cover the rest of the I/O matrix. Two edges were left unpinned:
+The ATDD leaves and the build's added leaves already cover every I/O matrix row. They seed the stored `autoBackup` group by hand, though, and nothing tied the real writer to the reader. The only place the real `record_backup_upload` fed the view was e2e AC-4, and that covered an upload only.
 
 | AC | Priority | Level | Leaf |
 |---|---|---|---|
-| AC-2, I/O "Upload state" | P1 | API | With `local-state.json` holding `lastExportAt` and an upload group written by the real `record_backup_upload` (a skip, then a failure), `GET /api/views/backup` is exactly `{"lastExportAt": …}`, and the read leaves the file's bytes unchanged. Before this, every view test had a `local-state.json` with no upload group. |
-| AC-4 | P2 | Docs | Uninstalling's old-job commands come first and in order: unload, then `rm -f` the plist, then `rm -r` the logs. The note is conditional ("If this Mac had the old daily job installed"), and the "that's fine" sentence follows the block. This pins the build review's patch. |
+| AC-1 | P1 | API | `test_what_record_backup_upload_stores_is_what_the_line_shows`: through the shipped MCP tools, export the day's backup, then record an upload (2 copies), a skip, and a failure for each of the five causes. After each one, `views/backup`'s `dropboxBackup` is the exact body: `lastUploadAt` is the zip's own time, not the report's; a skip keeps it; each failure carries its cause and the upload before it. |
+| AC-1 | P1 | API | `test_a_failure_recorded_before_any_upload_shows_no_last_upload`: a failure recorded by the tool on a fresh library reads `failed`, with its cause and null `lastUploadAt` and `copies` (I/O "Failure, never uploaded"). |
+| AC-1 | P2 | API | `test_only_a_failure_carries_a_cause_and_a_utc_time_reads_as_the_same_instant`: a stray stored `cause` on an upload or a skip reads `cause: null` (the spec's "cause is set only when failed"), and a `Z` time reads as the same instant as `+01:00`. |
+| AC-2 | P2 | Unit | Whole lines whose parts each take their own "when": a skip with "1 copy" and a last upload "on 19 Nov 2025"; an upload in another year; a failure later the same day with " Last upload today at 09:02.". |
+| AC-2 | P2 | Unit | `dropboxWhen` across a new year, from 2 Jan 2026: 1 Jan is "yesterday", and 31 Dec and 30 Dec are "on 31 Dec 2025" and "on 30 Dec 2025". |
 
-Scope: selective. Both are secondary branches. Other checks were not added: the CLI's usage error, the source scans and the schema are already pinned by the ATDD leaves.
+**Not added (duplicate coverage):** e2e for these combinations. The page renders `dropboxBackupLine`'s string as is (`BackupPage.tsx:178`), and e2e AC-2 already pins the rendering for every state. A bad `copies` on an upload or a skip goes through `_last_upload`, the same function the failure-path leaves cover, and the leaves at `test_dropbox_backup_line.py:167` already read `copies: 0` and `copies: true` on an upload as `none`.
 
 ## Files
 
-- `backend/tests/test_morning_job_removed_follow_ups.py` (new): the 2 leaves above, each with a `# [Pn] AC-n` tag. They import `BOOTOUT`, `OLD_PLIST` and `OLD_LOGS` from `test_morning_job_removed.py`, so this file never spells the removed words, and AC-5's scan of the tests stays green without another exclusion.
-- `_bmad-output/test-artifacts/atdd-checklist-13-5-take-out-the-morning-job.md`: 3 follow-ups ticked.
-
-No product, skill or docs file changed.
+- **Created:** `backend/tests/test_dropbox_backup_line_follow_ups.py` (3 leaves). It reuses `_connect`, `_uploaded`, `NOW`, `STEP` and `TODAY_BACKUP` from `test_agent_backup_upload.py`, `_when` from `test_agent_backup.py`, and `UPLOAD_GROUP`, `_store` and `_dropbox_backup` from `test_dropbox_backup_line.py`. The only helpers it adds are two private ones, `_line` and `_record`.
+- **Updated:** `frontend/src/lib/dropboxBackupLine.test.ts` gets 2 `it`s, one of them in a new `describe`.
+- **Updated:** the ATDD checklist. Every follow-up and implementation line is ticked with its evidence, and the forced-colors line is retired. Remaining `[ ]`: **0** (`grep -cF '[ ]'`).
 
 ## Validation
 
-- `uv run ruff format` and `ruff check` were clean on the new module.
-- The related set (the new module, `test_morning_job_removed.py`, `test_agent_backup_upload*.py`, `test_export.py`, `test_dropbox_backup_guide.py`, `test_views.py`, `test_backup_skill.py`): **112 passed**.
-- **Mutation probes:** each one edited a file with `sed`, ran the new module, then reverted the same edit with the inverse `sed`. No git command was used. **2 of 2 killed**, each by the leaf it targets:
-  - `rm -f` changed to `rm` for the plist in `docs/dropbox-backup.md`;
-  - an `auto_backup` field added to `BackupView` in `views/models.py`.
-- `git status` after the probes showed only the new test file.
-- `npm run check`, first run: `check:py` failed (exit 1), which stopped `check:e2e`. That run's pytest output wasn't kept, so the failing test is unknown. A re-run of `check:py` alone gave 2422 passed, with the coverage gate ok. The cause may be the known `bookvie-dropbox auth` port flake (13.4's run hit it), but this run didn't confirm that.
-- `npm run check`, second run on the final tree (before this Markdown): **exit 0**. check:api passed, check:py passed (2422), check:e2e gave 800 passed, and check:smoke passed.
+- **Each new leaf can fail.** Each code edit below was made by hand, run, and then reverted:
 
-## ATDD checklist
+  | Hand edit | Result |
+  |---|---|
+  | `_last_upload` reads `lastUpload.at` instead of `backupAt` | 1 of the 3 new API leaves failed |
+  | An upload or a skip keeps a stored cause | 1 of the 3 new API leaves failed |
+  | `dropboxWhen` drops the year for a date fewer than 3 days back | the new-year unit leaf failed |
+  | " Last upload" is worded from `reportAt` | 2 unit leaves failed, the new one included |
 
-3 of 3 follow-ups ticked. Each cites this run's evidence. `grep -cF '[ ]'` = **0**.
+  `git status` showed only the test files changed afterwards.
+- **Time zones:** the unit file passes under `TZ` Europe/Madrid, UTC, America/Los_Angeles and Pacific/Kiritimati (6 of 6 each).
+- **Suite:** `npm run check:py` gives 2430 passed (3 more than the review's run) with every coverage gate OK. `npm run check:api` exits 0 with 395 node tests (2 more), and Prettier, `tsc -b` and oxlint are clean. `check:e2e` wasn't re-run, because no e2e file or source file changed. The review's full `npm run check` after `3483351` had e2e at 803 passed.
+- **Quality checklist:** no hard waits or conditionals; every assert compares exact values; the leaves are parallel-safe (`tmp_path`, own app per test); one subject per leaf; no skips or focus.
+- **No browser sessions** were opened, and no temp files are left in the repo.
 
-## Risks and assumptions
+## Assumptions and risks
 
-- The guide leaf pins the three cleanup command lines exactly. That is deliberate, but rewording the block means updating the leaf.
-- The unexplained `check:py` failure in the first full run. If it recurs, it should be logged together with the port flake in `deferred-work.md`.
+- The contract leaves record through the MCP tools on an in-process app with a `SetClock`, as Story 13.3's tests do. The e2e AC-4 leaf remains the one run against a real server.
+- Spine drift for AD-22 stays open in `deferred-work.md` until the Epic 13 reconciliation. No test depends on it.
 
 ## Next
 
-- Commit this run (`test:`, story 13.5).
-- Story 13.6 (`see-on-the-backup-page-how-the-last-dropbox-backup-went`): ATDD, `bmad-build-auto`, then `bmad-code-review` in a new session. The deferred EXPERIENCE.md casing entry is addressed to it.
+Story 13.7 (`13-7-fetch-a-backup-from-my-dropbox`) is next in Epic 13, starting with `bmad-testarch-atdd`. Epic 13 isn't closed: 13.7 and 13.8 are in backlog.

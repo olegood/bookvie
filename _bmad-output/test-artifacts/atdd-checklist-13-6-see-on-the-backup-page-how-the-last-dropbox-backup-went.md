@@ -105,13 +105,13 @@ These pin `views/backup`'s exact body as `{"lastExportAt": …}`. Once `dropboxB
 
 ## Green-phase follow-ups (secondary branches, not red leaves)
 
-- **Unreadable parts:** a `lastReport.at` that isn't an ISO time with an offset; `copies` that isn't a positive int; `cause` outside `CAUSES`. Whether each is `none`, or the state with the bad field dropped, is for the spec. AC-1 only pins "unknown outcome → none".
-- **Field values for `none` and `dev`:** AC-1 asserts only `state` (and, for `none`, the five keys). Whether the other fields are null or carry the stored values is for the spec.
-- **A timestamp in the future** (clock change) reads "today at HH:MM" (Foundation → Dates). The leaves don't pin it.
-- **The year rule's wording:** AC-2 asserts "last upload on 19 Nov 2025". UX-DR76 lists "19 Nov 2025" next to "on 19 Nov", and this run reads it as the same "on" form. If the spec decides otherwise, change that one expected string.
-- **Words in the guide:** AC-5 asserts the reason verbatim, so the guide must not put backticks around `bookvie-dropbox auth` or `/bookvie-backup` inside the quoted sentence. That also follows "Fixes in words" (body font, not code).
-- **A failed `views/backup`** still shows "Couldn't load" (UX-DR74). That already ships (`backup.spec.ts:287`), and a line inside the loaded page can't change it.
-- **Forced colors:** DESIGN.md says the line needs no forced-colors rule, so there is no leaf.
+- [x] **Unreadable parts:** a `lastReport.at` that isn't an ISO time with an offset; `copies` that isn't a positive int; `cause` outside `CAUSES`. Whether each is `none`, or the state with the bad field dropped, is for the spec. AC-1 only pins "unknown outcome → none". (done: backend/tests/test_dropbox_backup_line.py:167 `test_a_report_with_a_bad_field_reads_as_none_and_a_bad_upload_on_a_failure_is_dropped`)
+- [x] **Field values for `none` and `dev`:** AC-1 asserts only `state` (and, for `none`, the five keys). Whether the other fields are null or carry the stored values is for the spec. (done: backend/tests/test_dropbox_backup_line.py:167 for `none`; backend/tests/test_dropbox_backup_line.py:141 for `dev`, the whole body since the code review's patch `3483351`)
+- [x] **A timestamp in the future** (clock change) reads "today at HH:MM" (Foundation → Dates). The leaves don't pin it. (done: frontend/src/lib/dropboxBackupLine.test.ts:27, "today at 08:05")
+- [x] **The year rule's wording:** AC-2 asserts "last upload on 19 Nov 2025". UX-DR76 lists "19 Nov 2025" next to "on 19 Nov", and this run reads it as the same "on" form. If the spec decides otherwise, change that one expected string. (done: the spec's Design Notes keep "on D Mon YYYY"; frontend/src/lib/dropboxBackupLine.test.ts:27, :82 and :105)
+- [x] **Words in the guide:** AC-5 asserts the reason verbatim, so the guide must not put backticks around `bookvie-dropbox auth` or `/bookvie-backup` inside the quoted sentence. That also follows "Fixes in words" (body font, not code). (done: backend/tests/test_dropbox_backup_line.py:155 `test_the_guide_has_one_troubleshooting_entry_per_cause_quoting_the_lines_words`; `docs/dropbox-backup.md:80`)
+- [x] **A failed `views/backup`** still shows "Couldn't load" (UX-DR74). That already ships (`backup.spec.ts:287`), and a line inside the loaded page can't change it. (done: `frontend/e2e/backup.spec.ts:287`, green in this run's `npm run check`)
+- ~~**Forced colors:** DESIGN.md says the line needs no forced-colors rule, so there is no leaf.~~ **Retired:** nothing to automate; DESIGN.md's Backup page row ("Text only … so it needs no forced-colors rule") carries it, and AC-3's text-only checks (`frontend/e2e/dropbox-backup-line.spec.ts:180`) pin the reason.
 
 ## Helper probes
 
@@ -187,12 +187,12 @@ AC-4's setup was checked in the same red copy: `record_backup_upload` answered `
 
 ## Implementation checklist (for `bmad-build-auto`)
 
-- [ ] `BackupView.dropbox_backup` (`views/models.py`): a `DropboxBackupView` (don't name it `AutoBackup…`; see `test_morning_job_removed.py:140`) with `state: Literal["dev", "none", "uploaded", "skipped", "failed"]`, `report_at`, `last_upload_at`, `copies`, `cause`. Then `npm --prefix frontend run api:gen`.
-- [ ] `views.backup(...)` reads `autoBackup` through `read_group` and gets the server's dev flag (from `create_app(dev=…)`, through `app.state` or the route). `dev` comes first, then `none` for anything unreadable, then `lastReport.outcome`.
-- [ ] A client formatter beside `lastExportLine` (`lib/relativeDay.ts` or its own module): "today at HH:MM", "yesterday at HH:MM", "on D Mon", "on D Mon YYYY" outside the current year, all from `useNow()`; "1 copy" and "N copies"; the five UX-DR77 reasons.
-- [ ] `BackupPage.tsx`: a second `p` directly after "Last export" in the Export card, styled `meta`, `ink-tertiary`, and `ink` when failed, with no live region. Never on Home.
-- [ ] `docs/dropbox-backup.md`: each `` #### `<cause>` `` entry quotes the line's exact reason (no backticks inside the quote).
-- [ ] Update the existing leaves listed above, then un-skip the 5 leaves and run `npm run check`.
+- [x] `BackupView.dropbox_backup` (`views/models.py`): a `DropboxBackupView` (don't name it `AutoBackup…`; see `test_morning_job_removed.py:140`) with `state: Literal["dev", "none", "uploaded", "skipped", "failed"]`, `report_at`, `last_upload_at`, `copies`, `cause`. Then `npm --prefix frontend run api:gen`. (done: `backend/bookvie/views/models.py` `DropboxBackupView`; backend/tests/test_dropbox_backup_line.py:73 checks `schema.d.ts`)
+- [x] `views.backup(...)` reads `autoBackup` through `read_group` and gets the server's dev flag (from `create_app(dev=…)`, through `app.state` or the route). `dev` comes first, then `none` for anything unreadable, then `lastReport.outcome`. (done: backend/tests/test_dropbox_backup_line.py:73, :167; backend/tests/test_dropbox_backup_line_follow_ups.py:37 with the real writer)
+- [x] A client formatter beside `lastExportLine` (`lib/relativeDay.ts` or its own module): "today at HH:MM", "yesterday at HH:MM", "on D Mon", "on D Mon YYYY" outside the current year, all from `useNow()`; "1 copy" and "N copies"; the five UX-DR77 reasons. (done: `frontend/src/lib/dropboxBackupLine.ts`; frontend/src/lib/dropboxBackupLine.test.ts:27–113)
+- [x] `BackupPage.tsx`: a second `p` directly after "Last export" in the Export card, styled `meta`, `ink-tertiary`, and `ink` when failed, with no live region. Never on Home. (done: `frontend/src/pages/BackupPage.tsx:178`; `frontend/e2e/dropbox-backup-line.spec.ts:100` and `:180`)
+- [x] `docs/dropbox-backup.md`: each `` #### `<cause>` `` entry quotes the line's exact reason (no backticks inside the quote). (done: backend/tests/test_dropbox_backup_line.py:155)
+- [x] Update the existing leaves listed above, then un-skip the 5 leaves and run `npm run check`. (done: build `8fff564`; `npm run check` green after the review patch, 2026-11-23, recorded in the spec's Review Findings)
 
 ## Next
 

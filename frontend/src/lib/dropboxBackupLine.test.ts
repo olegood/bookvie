@@ -78,4 +78,34 @@ describe('dropboxBackupLine', () => {
       `Dropbox backup: failed yesterday at 09:02 · ${REASONS.dropbox_full}`,
     )
   })
+
+  it('[P2] AC-2 words each part of a line by its own "when": another year, a single copy, a last upload today', () => {
+    const lastYear = iso(at(2025, 11, 19, 9, 2))
+    assert.equal(
+      dropboxBackupLine(view({ state: 'skipped', reportAt: TODAY, lastUploadAt: lastYear, copies: 1 }), NOW),
+      'Dropbox backup: checked today at 09:02, nothing new · last upload on 19 Nov 2025 · 1 copy in Dropbox',
+    )
+    assert.equal(
+      dropboxBackupLine(view({ state: 'uploaded', reportAt: TODAY, lastUploadAt: lastYear, copies: 3 }), NOW),
+      'Dropbox backup: last upload on 19 Nov 2025 · 3 copies in Dropbox',
+    )
+    // A run that failed later the same day as an upload: both read "today".
+    const laterToday = iso(at(2026, 11, 21, 9, 45))
+    assert.equal(
+      dropboxBackupLine(
+        view({ state: 'failed', reportAt: laterToday, lastUploadAt: TODAY, copies: 3, cause: 'upload_incomplete' }),
+        NOW,
+      ),
+      `Dropbox backup: failed today at 09:45 · ${REASONS.upload_incomplete} Last upload today at 09:02.`,
+    )
+  })
+})
+
+describe('dropboxWhen across a new year', () => {
+  it('[P2] AC-2 gives the year to a date two or more days back in the old year', () => {
+    const newYear = at(2026, 1, 2, 9, 0)
+    assert.equal(dropboxWhen(iso(at(2026, 1, 1, 8, 0)), newYear), 'yesterday at 08:00')
+    assert.equal(dropboxWhen(iso(at(2025, 12, 31, 8, 0)), newYear), 'on 31 Dec 2025')
+    assert.equal(dropboxWhen(iso(at(2025, 12, 30, 23, 59)), newYear), 'on 30 Dec 2025')
+  })
 })
