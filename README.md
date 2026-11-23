@@ -115,7 +115,7 @@ bookvie must be running for its tools to appear. If you start `bookvie` (or `boo
 
 ## AI skills
 
-The repo ships three Claude Code skills in [`.claude/skills/`](.claude/skills/). All three talk to a local `bookvie` on `127.0.0.1:8765`.
+The repo ships four Claude Code skills in [`.claude/skills/`](.claude/skills/). All four talk to a local `bookvie` on `127.0.0.1:8765`.
 
 - **[`bookvie-new-book`](.claude/skills/bookvie-new-book/SKILL.md)** adds a book to the catalog. It starts `bookvie` if needed and checks the catalog for a duplicate. It then looks up the metadata and front cover on amazon.com, manning.com, leanpub.com or oreilly.com, saves the book with bookvie's `add_book` agent tool (bookvie downloads the cover from its address) and tags it `added-by-skill`.
   - "Add *Designing Data-Intensive Applications* to bookvie"
@@ -126,6 +126,9 @@ The repo ships three Claude Code skills in [`.claude/skills/`](.claude/skills/).
 - **[`bookvie-backup`](.claude/skills/bookvie-backup/SKILL.md)** backs up the library to bookvie's own Dropbox App folder once: it exports today's daily backup, uploads it with `bookvie-dropbox` unless nothing changed since the last upload, tells bookvie how the run went and answers in one line. It never uploads from a `--dev` server. Set it up first with [Backing up to Dropbox, and restoring](docs/dropbox-backup.md).
   - "/bookvie-backup"
   - "Back up my library to Dropbox now"
+- **[`bookvie-restore`](.claude/skills/bookvie-restore/SKILL.md)** restores the library from a backup on this computer or in bookvie's Dropbox App folder. It lists both as one numbered list, newest first, and lets you pick; a Dropbox backup is downloaded first. It shows what the restore would lose, asks in the chat, and restores only after your yes, Claude Code's permission prompt and bookvie's own question, saving a safety copy first. Run it in the Claude Code terminal. Set it up with [Backing up to Dropbox, and restoring](docs/dropbox-backup.md) → Restoring.
+  - "/bookvie-restore"
+  - "Restore my library from Thursday morning's backup"
 
 ## Project docs
 

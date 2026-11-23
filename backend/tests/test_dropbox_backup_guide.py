@@ -266,12 +266,9 @@ def test_the_guide_says_how_the_backup_works_runs_it_once_by_hand_and_fixes_a_fa
     assert BACKUP_SKILL_LINK in ai_skills
 
 
-RED_13_8 = "red phase (Story 13.8): the guide has no bookvie-restore steps"
 RESTORE_SKILL_LINK = "[`bookvie-restore`](.claude/skills/bookvie-restore/SKILL.md)"
 
 
-# Un-skip when the guide's Restoring section walks through the bookvie-restore skill.
-@pytest.mark.skip(reason=RED_13_8)
 def test_the_guide_restores_with_the_skill_step_by_step_and_fixes_a_dropbox_download() -> None:
     # [P1] Story 13.8 AC-7
     restoring = section(GUIDE.read_text(encoding="utf-8"), "Restoring")

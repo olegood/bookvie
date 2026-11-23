@@ -167,6 +167,19 @@ The first confirmation is Claude Code's own permission prompt. Add an `ask` rule
 
 To check it's active, start a new Claude Code session and run `/permissions`. Both names should be listed under Ask. Without the rule, Claude Code may run `restore_backup` without asking you, and only bookvie's own question is left.
 
+### Restore with the `bookvie-restore` skill
+
+The [`bookvie-restore`](../.claude/skills/bookvie-restore/SKILL.md) skill walks you through a restore in one conversation, from a backup on this computer or in Dropbox. Run it in the Claude Code terminal, which can show bookvie's question, with `/bookvie-restore` or by asking, for example "restore my library from Thursday morning's backup":
+
+1. It makes sure bookvie is running, starting it if needed, as the other bookvie skills do.
+2. It lists the backups with `list_local_backups` and bookvie-dropbox's `list_backups`, as one numbered list, newest first: "Backups you can restore:", then each backup's date and time, kind (daily backup or safety copy), where it is (this computer, Dropbox, or both) and size. A backup that is both on this computer and in Dropbox is one row, restored from this computer. It shows the 10 newest; say show all to see the rest. It suggests the newest and waits for you to pick one: it never picks itself. When Dropbox can't be reached, it lists this computer's backups and says why.
+3. When you pick a backup that is only in Dropbox, it downloads it with `download_backup` into the backups folder's `from-dropbox/` (`~/bookvie-backups/from-dropbox/`, or `~/bookvie-backups-dev/from-dropbox/` on development). The file is kept only once it matches Dropbox's copy.
+4. It shows the preview from `preview_restore`: the backup's counts and your library's now, the books and card notes added since, which you'd lose, and that everything else changed since then goes back too.
+5. It asks you in the chat. Only a yes goes on, to `restore_backup`, and then the two prompts below follow: Claude Code's permission prompt, then bookvie's question.
+6. It answers in one line: "Restored from the backup of 19 Nov, 09:02. Safety copy: ~/bookvie-backups/bookvie-pre-restore-2026-11-21T1004.zip", or why nothing was changed. It never retries a declined or refused restore by itself.
+
+Asked to work on development, the skill uses the `bookvie-dev` tools and downloads with the `target` `bookvie-dev`, so it never touches the real library. Without the skill, or when Dropbox can't be reached from Claude Code, restore by hand: download the backup from `~/Dropbox/Apps/bookvie/.backups/` first, then choose **Restore from file…** on the Backup page and pick the downloaded file.
+
 ### The two prompts
 
 When the agent calls `restore_backup`, you see two prompts, in this order:
@@ -224,6 +237,14 @@ bookvie couldn't read the backup file or your library, or couldn't save the rest
 #### `restore_outside_backups`: "bookvie restores only from its backups folder. Nothing was changed."
 
 The path isn't a backup in the backups folder or its `from-dropbox/`. A path elsewhere, one with `..`, a symlink, a folder, or a file whose name isn't a daily backup (`bookvie-backup-<YYYY-MM-DD>.zip`) or a safety copy (`bookvie-pre-restore-<YYYY-MM-DDTHHMM>.zip`) is refused before bookvie opens it. Move or copy the backup into the backups folder under its original name, or pick one from `list_local_backups`.
+
+#### A download from Dropbox: `dropbox_signin`, the sign-in expired
+
+`download_backup` couldn't sign in to Dropbox, so nothing was downloaded and nothing was restored. The skill says "Couldn't download the backup from Dropbox: Dropbox sign-in expired; run bookvie-dropbox auth in Terminal. Nothing was changed." Sign in again with `bookvie-dropbox auth` in Terminal (Setup, step 2), then reconnect `bookvie-dropbox` with `/mcp` in Claude Code and ask for the restore again. Any other download failure names its reason in the same line ("Couldn't download the backup from Dropbox: *reason*. Nothing was changed."); a backup in Dropbox can always be restored by hand from the Backup page.
+
+#### A download from Dropbox: `download_incomplete`, the download didn't match
+
+"The download didn't match the copy in Dropbox, so nothing was restored. Try again." The downloaded file's size or content hash didn't match Dropbox's copy, or the download broke off. bookvie-dropbox kept nothing of it, and an earlier download of the same backup in `from-dropbox/` stays as it was. Check your connection and ask for the restore again; the skill doesn't retry by itself.
 
 ## Uninstalling
 

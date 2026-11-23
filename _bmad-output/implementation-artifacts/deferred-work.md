@@ -1668,3 +1668,12 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-7-fetch-a-backup-from-my-dropbox.md`
   summary: Spine drift (AD-1; Structural Seed, Capability map, Testing row), reconciled before the next epic: `download_backup`'s `mkdir(parents=True)` can create a missing backups folder, not only `from-dropbox/`; and the spine still marks `list_backups`/`download_backup` planned, with `list_backups` under FR-29 rather than FR-30. Low.
   evidence: build-auto review spine-check findings 5 and 7.
+
+## Deferred from: build-auto review of spec-13-8-restore-with-one-skill-from-this-computer-or-dropbox (2026-11-23)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-8-restore-with-one-skill-from-this-computer-or-dropbox.md`
+  summary: Spine drift (Design Paradigm, AD-8, Capability map FR-28), reconciled before the next epic: the spine names only `bookvie-new-book` and `bookvie-notes-summary` as agent-client skills that share step 1 ("both skills carry the same step 1"); `bookvie-restore` is a fourth one with the same step 1, and unlike `bookvie-backup` it uses `bookvie-dev` when asked (widens the `bookvie-backup` third-skill entry). Low.
+  evidence: build-auto review spine-check finding 1; `.claude/skills/bookvie-restore/SKILL.md` step 1; README → AI skills.
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-8-restore-with-one-skill-from-this-computer-or-dropbox.md`
+  summary: Spine drift (AD-22, Capability map FR-30, Structural Seed), reconciled before the next epic: the `bookvie-restore` skill and the guide's skill walkthrough are built, but the spine still marks them planned (AD-22's "planned for Epic 13", the FR-30 row's "Restore through an agent (planned)", the Seed's `docs/dropbox-backup.md` "planned (AD-22, plan D12)"); widens the 13.6 and 13.7 planned-marker entries. Low.
+  evidence: build-auto review spine-check finding 2.
