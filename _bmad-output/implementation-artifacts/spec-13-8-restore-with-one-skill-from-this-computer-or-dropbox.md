@@ -2,7 +2,7 @@
 title: 'Story 13.8: Restore with one skill, from this computer or Dropbox'
 type: 'feature'
 created: '2026-11-23'
-status: 'in-review'
+status: 'done'
 baseline_revision: 'c229ca3126bedcc05b03ed32fc971e7366d519c5'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -96,7 +96,7 @@ Code review of 2026-11-23, in a new session, on `c229ca3..bf040e3`, with five la
 - [x] [Review][Defer] Spine drift (AD-22, FR-30, Structural Seed): the restore skill and the guide walkthrough are still marked planned [`ARCHITECTURE-SPINE.md`] — deferred: spine drift, reconciled before the next epic. Already logged by the build.
 - Patches applied: `test_no_backups_anywhere_only_when_dropbox_answered_empty_otherwise_only_why_it_couldnt` pins the split (mutating the skill's rule to "whether or not Dropbox answered" failed it, and that edit was reverted); the guide's fallback now points to the Restoring intro's paragraph; step 6's other-error line falls back to the error's text.
 - Full check after the patches, 2026-11-23: `npm run check` exited 0 (pytest 2469 passed, unit 395 passed, e2e 803 passed, smoke ok).
-- Status stays `review` (spec `in-review`): AC-6's six manual runs are unrecorded. Oleg had no results at this review (2026-11-23). Record them under "AC-6 manual runs", then run this review again.
+- AC-6: Oleg ran all six runs with this review on 2026-11-23 (recorded under "AC-6 manual runs"); each behaved as the matrix says. With the three patches applied, the full check green and nothing unresolved, the story is `done`.
 
 **Rejected:**
 - (edit spec) (acceptance+blind) The I/O matrix row "Nothing anywhere … (Dropbox reachable or not)" contradicts the patched skill, and the Spec Change Log is empty. The fix edits the spec under review; the build's triage log records why the skill follows AC-1 and EXPERIENCE.md over the row.
@@ -149,12 +149,12 @@ Code review of 2026-11-23, in a new session, on `c229ca3..bf040e3`, with five la
 
 AC-6 manual runs (to be recorded by Oleg; empty until then):
 
-- [ ] Restore from a local backup:
-- [ ] Restore from Dropbox:
-- [ ] Declined in the chat:
-- [ ] Declined at Claude Code's permission prompt:
-- [ ] Declined at bookvie's question:
-- [ ] Undo from the safety copy:
+- [x] Restore from a local backup: 2026-11-23, same setup. Oleg picked "5. 22 Nov, 10:18 · daily backup · this computer · 343 KB"; no download; the preview used the nothing-added line and kept the "Everything else" line; Oleg said yes; both prompts appeared, bookvie's with its nothing-added sentence ("Every change since then goes back, such as pages reached."), and Oleg accepted both. Result: "Restored from the backup of 22 Nov, 10:18. Safety copy: ~/bookvie-backups-dev/bookvie-pre-restore-2026-11-23T1534.zip".
+- [x] Restore from Dropbox: 2026-11-23, Claude Code terminal, `bookvie --dev` from the hogback-creosote install (`npm run install:local`), `/bookvie-restore` on the dev library. Pick list: "1. 22 Nov, 23:52 · daily backup · Dropbox · 75 MB", "2. 22 Nov, 10:19 · safety copy (before a restore) · this computer · 343 KB", "3. 22 Nov, 10:18 · daily backup · this computer · 343 KB". Oleg picked 1; `download_backup({name: "bookvie-backup-2026-11-22.zip", target: "bookvie-dev"})` answered `~/bookvie-backups-dev/from-dropbox/bookvie-backup-2026-11-22.zip`; the preview (529 books · 57 card notes · 529 covers vs 2 · 6 · 2; lose 2 books, 6 card notes) was shown; Oleg said yes; Claude Code's permission prompt and bookvie's question both appeared, with counts and titles matching the preview, and Oleg accepted both. Result: "Restored from the backup of 22 Nov, 23:52. Safety copy: ~/bookvie-backups-dev/bookvie-pre-restore-2026-11-23T1531.zip".
+- [x] Declined in the chat: 2026-11-23, same setup. Six rows listed; Oleg picked "1. 23 Nov, 15:34 · safety copy (before a restore) · this computer · 343 KB"; the preview was shown; Oleg answered "no". Result: "Not restored. Nothing was changed."; `restore_backup` was never called and no prompt appeared.
+- [x] Declined at Claude Code's permission prompt: 2026-11-23, same setup. Oleg picked "5. 22 Nov, 10:18 · daily backup · this computer · 343 KB"; the preview used the nothing-added line ("No books or card notes were added since 22 Nov, 10:18.") and kept the "Everything else" line; Oleg said yes; at Claude Code's permission prompt for `restore_backup` Oleg rejected it, so the tool was never called. Result: "Not restored. Nothing was changed."; the skill didn't ask again or retry.
+- [x] Declined at bookvie's question: 2026-11-23, same setup. Oleg picked "1. 23 Nov, 15:34 · safety copy (before a restore) · this computer · 343 KB"; the preview was shown; Oleg said yes, chose Yes at Claude Code's permission prompt, then declined bookvie's question. `restore_backup` answered `{kind: refusal, code: restore_not_confirmed, message: "Not restored. Nothing was changed.", reason: declined}`. Result: "Not restored. Nothing was changed."; no safety copy was written and the skill didn't retry. (Two earlier attempts at this run were declined at Claude Code's prompt instead, the first dialog having only Yes / No; each ended "Not restored. Nothing was changed." with no retry.)
+- [x] Undo from the safety copy: 2026-11-23, same setup, right after the Dropbox restore. Pick list: "1. 23 Nov, 15:31 · safety copy (before a restore) · this computer · 343 KB", "2. 22 Nov, 23:52 · daily backup · this computer and Dropbox · 75 MB" (the earlier download, merged with Dropbox by content hash, kind `from_dropbox`), "3. 22 Nov, 10:19 · safety copy (before a restore) · this computer · 343 KB", "4. 22 Nov, 10:18 · daily backup · this computer · 343 KB". Oleg picked 1; no download; the preview (2 · 6 · 2 vs 529 · 57 · 529; "529 books: …; and 524 more", 57 card notes) was shown; Oleg said yes; both prompts appeared with matching counts, and Oleg accepted both. Result: "Restored from the backup of 23 Nov, 15:31. Safety copy: ~/bookvie-backups-dev/bookvie-pre-restore-2026-11-23T1533.zip"; the dev library is back to its 2 books.
 
 The `unsupported` reason path is pinned by 13.1 (`test_agent_restore.py`, the `unsupported` case of the anything-but-accept test); the skill only adds the advice line.
 
