@@ -178,7 +178,7 @@ The [`bookvie-restore`](../.claude/skills/bookvie-restore/SKILL.md) skill walks 
 5. It asks you in the chat. Only a yes goes on, to `restore_backup`, and then the two prompts below follow: Claude Code's permission prompt, then bookvie's question.
 6. It answers in one line: "Restored from the backup of 19 Nov, 09:02. Safety copy: ~/bookvie-backups/bookvie-pre-restore-2026-11-21T1004.zip", or why nothing was changed. It never retries a declined or refused restore by itself.
 
-Asked to work on development, the skill uses the `bookvie-dev` tools and downloads with the `target` `bookvie-dev`, so it never touches the real library. Without the skill, or when Dropbox can't be reached from Claude Code, restore by hand: download the backup from `~/Dropbox/Apps/bookvie/.backups/` first, then choose **Restore from file…** on the Backup page and pick the downloaded file.
+Asked to work on development, the skill uses the `bookvie-dev` tools and downloads with the `target` `bookvie-dev`, so it never touches the real library. Without the skill, or when Dropbox can't be reached from Claude Code, restore by hand, as the start of this section describes: download the backup from Dropbox first, then use **Restore from file…** on the Backup page.
 
 ### The two prompts
 

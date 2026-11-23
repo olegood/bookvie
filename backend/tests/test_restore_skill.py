@@ -380,6 +380,21 @@ def test_dropbox_out_of_reach_still_lists_this_computer_and_says_why_without_ret
     assert len(here) == 1 and here[0]["kind"] == "daily", here
 
 
+def test_no_backups_anywhere_only_when_dropbox_answered_empty_otherwise_only_why_it_couldnt() -> (
+    None
+):
+    # [P1] I/O matrix "Nothing anywhere": the none-anywhere line needs Dropbox's own empty
+    # answer; with nothing here and Dropbox out of reach, only the line saying why.
+    (none,) = [p for p in _paragraphs(_step("List the backups")) if NONE_ANYWHERE in p]
+    flat = " ".join(none.split())
+    said = flat.find(NONE_ANYWHERE)
+    assert 0 <= flat.find("Dropbox answered with an empty list") < said, flat
+    unreachable = flat.find("Dropbox couldn't be reached", said)
+    assert unreachable > said, flat
+    assert re.search(r"give only the matching line above", flat[unreachable:]), flat
+    assert NONE_ANYWHERE not in flat[unreachable:], flat
+
+
 @pytest.mark.parametrize("cause", DOWNLOAD_CAUSES)
 def test_each_failed_download_stops_with_its_causes_line_and_nothing_restored(cause: str) -> None:
     # [P1] I/O matrix "Dropbox pick" (its error column)

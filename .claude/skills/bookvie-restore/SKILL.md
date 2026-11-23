@@ -141,7 +141,7 @@ Tell the user the outcome in one line, from `restore_backup`'s answer or the err
 - `couldnt_save`: "Couldn't save. Your data wasn't changed."
 - `safety_copy_failed`: "Couldn't save a safety copy, so nothing was restored."
 - `restore_outside_backups`: "bookvie restores only from its backups folder. Nothing was changed."
-- Any other error: its `message`, as it is.
+- Any other error: its `message`, as it is, or the error's text when it has no `message`.
 
 The download's own failures have their lines in step 3. Never retry a refused, declined or unconfirmed restore, or a failed download, by yourself, and don't ask again: the user can ask for the restore again.
 

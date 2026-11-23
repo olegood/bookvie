@@ -85,6 +85,36 @@ deferred:
 - Given the skill, when the five `test_restore_skill.py` leaves and the AC-7 guide leaf run un-skipped, then they pass, and `npm run check` passes.
 - Given a `--dev` server with real data downloaded into it, when Oleg runs the skill in a real Claude Code terminal (a local restore, a Dropbox restore, declined in chat, declined at the permission prompt, declined at bookvie's question, an undo from the safety copy), then each behaves as the matrix says, and each run is recorded under "AC-6 manual runs" below. Until then the story stays in review.
 
+### Review Findings
+
+Code review of 2026-11-23, in a new session, on `c229ca3..bf040e3`, with five layers: blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor and spine-check. The layers filed 22 findings: 0 decision-needed, 3 patch (from 4 findings), 2 defer, 15 rejected, and 1 (acceptance: AC-6 not met) that is the manual-AC gate below. Verification-gap found no gaps; its re-run of `test_restore_skill.py` and `test_dropbox_backup_guide.py` gave 18 passed, no skips. AC-6 needs Oleg's six terminal runs, and none is recorded.
+
+- [x] [Review][Patch] The none-anywhere split has no test: AC-1's leaf checks only that `NONE_ANYWHERE` is somewhere in the skill, so the build review's medium patch (none-anywhere only when Dropbox answered with an empty list; no local backups and Dropbox unreachable give only the unreachable line) can regress unnoticed [`backend/tests/test_restore_skill.py:147`] (acceptance+blind)
+- [x] [Review][Patch] The guide's new manual fallback copies the Restoring intro's paragraph and has already drifted from it (drops the dropbox.com `/Apps/bookvie/.backups` option); point to that paragraph instead [`docs/dropbox-backup.md:185`] (blind)
+- [x] [Review][Patch] Step 6's "Any other error: its `message`, as it is" has no wording for an error with no `message` (a transport failure), unlike steps 2 and 3, which fall back to the error's text [`.claude/skills/bookvie-restore/SKILL.md:144`] (edge)
+- [x] [Review][Defer] Spine drift (Design Paradigm, AD-8, FR-28): `bookvie-restore` is a fourth agent-client skill with the shared step 1 [`.claude/skills/bookvie-restore/SKILL.md`] — deferred: spine drift, reconciled before the next epic. Already logged in `deferred-work.md` by the build, so no second entry was added.
+- [x] [Review][Defer] Spine drift (AD-22, FR-30, Structural Seed): the restore skill and the guide walkthrough are still marked planned [`ARCHITECTURE-SPINE.md`] — deferred: spine drift, reconciled before the next epic. Already logged by the build.
+- Patches applied: `test_no_backups_anywhere_only_when_dropbox_answered_empty_otherwise_only_why_it_couldnt` pins the split (mutating the skill's rule to "whether or not Dropbox answered" failed it, and that edit was reverted); the guide's fallback now points to the Restoring intro's paragraph; step 6's other-error line falls back to the error's text.
+- Full check after the patches, 2026-11-23: `npm run check` exited 0 (pytest 2469 passed, unit 395 passed, e2e 803 passed, smoke ok).
+- Status stays `review` (spec `in-review`): AC-6's six manual runs are unrecorded. Oleg had no results at this review (2026-11-23). Record them under "AC-6 manual runs", then run this review again.
+
+**Rejected:**
+- (edit spec) (acceptance+blind) The I/O matrix row "Nothing anywhere … (Dropbox reachable or not)" contradicts the patched skill, and the Spec Change Log is empty. The fix edits the spec under review; the build's triage log records why the skill follows AC-1 and EXPERIENCE.md over the row.
+- `false` (acceptance) The `dropbox_signin` download line fills *reason* with fixed words, not the error's `message`. UX-DR81's *reason* slot is open, and the build review accepted the wording (Blind 6).
+- `false` (acceptance) README's "All four talk to a local `bookvie` on `127.0.0.1:8765`" doesn't fit the restore skill. All four do talk to it; that `bookvie-restore` also talks to bookvie-dropbox doesn't make the sentence wrong.
+- `low` (blind) With Dropbox unreachable, every local row reads "this computer", even one that is also in Dropbox. That is true of where it is known to be, the row restores from this computer either way, and the fix adds a rule.
+- `false` (blind) Undoing a restore has no instructions. A safety copy is a row in the pick list ("safety copy (before a restore)"), so undo is an ordinary pick, and step 6 says so.
+- `false` (blind) README's "Thursday morning's backup" isn't handled. Step 2 covers a backup named by date or time: it is the user's pick, and the skill asks when more than one row fits.
+- `low` (blind) The guide has no step for the none-found stop or a failed `list_local_backups`. Rare stops, each already ending with its own line; the build review rejected the same (Blind 5).
+- `false` (blind) The date test checks the `short_when` helper, not the skill. Its last assert puts the helper's two strings into the skill's own rule.
+- `low` (blind) The "for real" half of the Dropbox-unreachable test can't fail because of the skill. The text half of the same test pins the row's three lines and the no-retry rule; the real half is extra, not the coverage.
+- `low` (blind) The fallback branches (non-JSON download error, missing tool, `list_backups` error without `message`) have no test. Rare prose fallbacks of an LLM skill; the build review rejected the same (Blind 9).
+- `false` (blind) No advice for `changed` and `expired`. UX-DR81 adds advice for `unsupported` only, and the guide's "Ask the agent again to get a fresh question" covers the rest.
+- (edit spec) (blind) AC-6's runs don't exercise the real library or the edge cases. The fix edits the spec's AC.
+- `low` (edge) A Dropbox pick can replace an older `from-dropbox/<name>` of the same name with different content. It needs the same day's backup re-uploaded with changes after an earlier download; replacing is 13.7's documented behavior, and a guard adds a branch.
+- `low` (edge) A date that matches only a row past the tenth. Rare, and the fix adds a rule.
+- `low` (edge) No dev start command when `bookvie` isn't on the PATH. Step 1 is `bookvie-notes-summary`'s step 1 word for word (spec "Always"); changing one copy breaks that.
+
 ## Spec Change Log
 
 ## Review Triage Log
