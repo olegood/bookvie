@@ -1108,7 +1108,7 @@ action_items:
       `backend/tests/test_agent_restore_follow_ups.py`, `_bmad-output/test-artifacts/atdd-checklist-13-1-restore-my-library-through-an-agent-with-two-confirmations.md`.
       Due: before Epic 14."
     owner: "Murat (TEA)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-13-retro-2026-11-23.md"
   - id: "epic-13-retro-item-91-make-the-dropbox-failure-messages-true"
     epic: 13

@@ -7,12 +7,16 @@ safety copy's stamped time, previews of a safety copy and of a download,
 the mixes UX-DR80 doesn't word, an accept carrying form content, the lock
 held once around the whole accepted restore, a third safety copy in one
 minute, the last two steps of the safety copy's write, a cover fault
-through the tool, and the tools' argument refusals.
+through the tool, and the tools' argument refusals. Epic 13 retro item 90 adds
+the file read's own refusals: a ``library.json`` that can't be read, a backup
+swapped for a FIFO or a symlink after the path check, and an interrupted read,
+plus ``preview_restore`` as an intent.
 
 Every test runs on :class:`~tests.restore_scene.Scene`'s folders under ``tmp_path``.
 """
 
 import hashlib
+import os
 import random
 import zipfile
 from collections.abc import Callable
@@ -22,6 +26,8 @@ from typing import Any
 
 import pytest
 
+from bookvie.intents import prepare_restore, preview_restore, restore_file
+from bookvie.intents.contract import COULDNT_SAVE_MESSAGE, IntentError
 from bookvie.intents.export import stamped_mtime
 from bookvie.store import OsFileSystem
 from tests.agent_client import (
@@ -45,6 +51,7 @@ from tests.helpers import (
 )
 from tests.restore_scene import (
     ACCEPT,
+    ADDED_CARD_NOTES,
     ADDED_TITLES,
     BACKUP_AT,
     COVER_FILE,
@@ -472,3 +479,110 @@ def test_a_missing_or_extra_argument_is_invalid_fields_and_changes_nothing(
     assert refused.get("code") == "invalid_fields", body
     assert [f["field"] for f in refused["fields"]] == fields, refused
     assert scene.kept() == before
+
+
+# --- Retro item 90: the file read's own refusals ------------------------------------
+
+COULDNT_SAVE = {"kind": "couldnt_save", "code": "couldnt_save", "message": COULDNT_SAVE_MESSAGE}
+SWAPPED = "bookvie-backup-2026-11-18.zip"
+
+
+def _no_staging(data_dir: Path) -> bool:
+    return not any((data_dir / ".staging").glob("*"))
+
+
+@pytest.mark.skipif(os.geteuid() == 0, reason="root reads a file whatever its mode")
+@pytest.mark.parametrize("tool", [PREVIEW_RESTORE, RESTORE_BACKUP], ids=["preview", "restore"])
+def test_a_library_json_that_cant_be_read_is_couldnt_save_and_changes_nothing(
+    scene: Scene, tool: str
+) -> None:
+    # [P1] AC-2, AC-7: the sealed hash of library.json can't be taken, so nothing is
+    # previewed or asked (restore_file.library_sha256), and no safety copy is written.
+    library = scene.data_dir / "library.json"
+    before, mode = scene.kept(), library.stat().st_mode
+    library.chmod(0)
+    try:
+        answer = scene.modern.answer(tool, {"path": scene.path(DAILY)})
+    finally:
+        library.chmod(mode)
+
+    assert tool_error(answer) == COULDNT_SAVE, answer
+    assert scene.kept() == before
+    assert _no_staging(scene.data_dir)
+
+
+def _swap_for_fifo(path: Path, _target: Path) -> None:
+    os.mkfifo(path)
+
+
+def _swap_for_symlink(path: Path, target: Path) -> None:
+    path.symlink_to(target)
+
+
+@pytest.mark.parametrize("swap", [_swap_for_fifo, _swap_for_symlink], ids=["fifo", "symlink"])
+def test_a_backup_swapped_after_the_path_check_is_couldnt_save_without_blocking(
+    scene: Scene, swap: Callable[[Path, Path], None]
+) -> None:
+    # [P1] AC-4: the path check ran, then the file became a FIFO (whose open would block
+    # under the lock) or a symlink to another backup. The read opens neither.
+    store = scene.client.http.app.state.store
+    path = scene.backups / SWAPPED
+    swap(path, scene.backups / DAILY)
+    before = library_bytes(scene.data_dir)
+
+    with pytest.raises(IntentError) as refused:
+        within(10, lambda: prepare_restore(store, path))
+
+    assert (refused.value.status, refused.value.body.message) == (503, COULDNT_SAVE_MESSAGE)
+    assert library_bytes(scene.data_dir) == before
+    assert _no_staging(scene.data_dir)
+
+
+class _Interrupted(BaseException):
+    """Not an OSError: what a Ctrl-C or a cancelled task raises in the middle of a read."""
+
+
+def test_an_interrupted_read_closes_its_spool_and_is_not_turned_into_couldnt_save(
+    scene: Scene, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # [P2] AC-7: the spool is closed and the interruption goes on up unchanged; the lock
+    # is released, so the next preview runs.
+    spools: list[restore_file.SpooledTemporaryFile] = []
+
+    class InterruptedSpool(restore_file.SpooledTemporaryFile):
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
+            super().__init__(*args, **kwargs)
+            spools.append(self)
+
+        def write(self, s: Any) -> int:
+            raise _Interrupted
+
+    monkeypatch.setattr(restore_file, "SpooledTemporaryFile", InterruptedSpool)
+    store = scene.client.http.app.state.store
+
+    with pytest.raises(_Interrupted):
+        within(10, lambda: prepare_restore(store, scene.backups / DAILY))
+
+    assert len(spools) == 1 and spools[0].closed
+    monkeypatch.undo()
+    previewed = structured(
+        within(30, lambda: scene.modern.answer(PREVIEW_RESTORE, {"path": scene.path(DAILY)}))
+    )
+    assert previewed["backup"] == THEN, previewed
+
+
+def test_preview_restore_is_the_prepared_preview_and_changes_nothing(scene: Scene) -> None:
+    # [P2] AC-3: the intent's own preview_restore, which the tool reaches through prepare_restore.
+    store = scene.client.http.app.state.store
+    before = scene.kept()
+
+    preview = preview_restore(store, scene.backups / DAILY)
+
+    assert preview == prepare_restore(store, scene.backups / DAILY).preview
+    wire = preview.model_dump(mode="json", by_alias=True)
+    assert (wire["backup"], wire["current"]) == (THEN, NOW_COUNTS)
+    assert wire["booksAddedSince"] == ADDED_TITLES
+    assert wire["cardNotesAddedSince"] == ADDED_CARD_NOTES
+    assert datetime.fromisoformat(wire["backupTime"]) == BACKUP_AT
+    assert scene.kept() == before
+    assert _no_staging(scene.data_dir)
