@@ -91,12 +91,12 @@ A skill is text for an agent, so most leaves pin what the text says, as Stories 
 ## Green-phase follow-ups (secondary branches, not red leaves)
 
 - [x] **AC-1:** the skill's setup and reconnect lines match the README, as `test_notes_summary_skill.py::test_the_skills_setup_and_reconnect_steps_match_the_readme` does for that skill. (done: backend/tests/test_backup_skill.py::test_the_skills_setup_and_reconnect_steps_match_the_readme)
-- [ ] **AC-1:** the frontmatter list equals 13.5's `--allowedTools` constant in `cli.py` (AR53). That's 13.5's leaf, and 13.4's list is its source.
+- ~~**AC-1:** the frontmatter list equals 13.5's `--allowedTools` constant in `cli.py` (AR53). That's 13.5's leaf, and 13.4's list is its source.~~ **Retired:** moot since the sprint change (`_bmad-output/planning-artifacts/sprint-change-proposal-2026-11-23.md`, "Technical impact": the `--allowedTools` constants went with the morning job; retro E13-S2). `cli.py` has no tool-list constant (`backend/tests/test_morning_job_removed.py:98`), and the frontmatter's exact four tools stay pinned by `backend/tests/test_backup_skill.py:173` and `backend/tests/test_morning_job_removed.py:173`.
 - [x] **AC-1:** an export that fails (`couldnt_save`, a missing backups folder) leads to `failed` with `backup_write`, and `record_backup_upload` accepts it (drive it with `FaultyFs`). (done: backend/tests/test_backup_skill.py::test_an_export_that_fails_is_recorded_as_failed_with_backup_write)
 - [x] **AC-1:** each `upload_backup` cause (`upload_incomplete`, `dropbox_full`, `other`) recorded as `failed` is accepted (`FakeDropbox` faults). (done: backend/tests/test_backup_skill.py::test_each_upload_cause_is_recorded_as_failed_with_that_cause; a prune failing after a checked upload: test_a_prune_that_fails_after_a_checked_upload_is_recorded_as_other_and_names_the_deleted)
 - [x] **AC-2:** `upload_backup` refuses a `~/bookvie-backups-dev` file before any network call. 13.2 already pins this; cite it in the spec. (done: backend/tests/test_dropbox_upload.py::test_any_other_path_is_refused_before_any_dropbox_call[dev] (Story 13.2))
 - [x] **AC-3:** the empty-`deleted` wording, once the spec decides it. (done: backend/tests/test_backup_skill.py::test_an_upload_that_deleted_nothing_drops_the_deleted_part_of_the_line)
-- [ ] **AC-6:** each auto-backup state's troubleshooting entry is 13.6's work.
+- ~~**AC-6:** each auto-backup state's troubleshooting entry is 13.6's work.~~ **Retired:** the auto-backup states (Off/Waiting/On/Failing/Stalled) were dropped by the sprint change (`_bmad-output/planning-artifacts/sprint-change-proposal-2026-11-23.md`, 13.6 shrunk to a plain Dropbox backup line; retro E13-S2). Its successor, one troubleshooting entry per failure cause quoting the line's words (Story 13.6 AC-5), is proved by `backend/tests/test_dropbox_backup_line.py:155`.
 
 ## Helper probes
 

@@ -1072,7 +1072,7 @@ action_items:
       `_bmad-output/test-artifacts/traceability/epic-13-gate-decision.json`. Due:
       before Epic 14."
     owner: "Murat (TEA)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-13-retro-2026-11-23.md"
   - id: "epic-13-retro-item-89-reconcile-the-spine-with-epic-13"
     epic: 13

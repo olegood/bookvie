@@ -129,7 +129,7 @@ This run changed these shared helpers. Every existing call keeps its behavior:
 - [x] **AC-8:** a fault at `close`, and a failed folder fsync after the rename (logged only; the restore goes on, as `export_backup` treats it). (done: backend/tests/test_agent_restore_follow_ups.py:203 `test_a_safety_copy_whose_close_fails_is_safety_copy_failed`, backend/tests/test_agent_restore_follow_ups.py:219 `test_a_failed_folder_flush_after_the_safety_copy_is_only_logged`)
 - [x] **AC-9:** a fault while copying covers in (`_StepFault` in `test_restore_refusals.py`) through the tool. (done: backend/tests/test_agent_restore_follow_ups.py:405 `test_a_cover_fault_is_couldnt_save_through_the_tool_as_through_the_route`, with its own `_SecondCoverFault`, since a test module never imports from another)
 - [x] **AC-10:** each new tool with an extra or missing argument is `invalid_fields` or the malformed intent, as AD-21's One validator says. (done: backend/tests/test_agent_restore_follow_ups.py:462 `test_a_missing_or_extra_argument_is_invalid_fields_and_changes_nothing`, 6 cases: all three tools answer `invalid_fields` naming the field, through `parse_view_arguments`; the One validator gap is already spine drift in `deferred-work.md`)
-- [ ] **Epic gate:** add `agent/`'s restore path (and later `bookvie_dropbox/`) to `scripts/coverage_gate.py` at 90%.
+- [ ] **Epic gate:** add `agent/`'s restore path (and later `bookvie_dropbox/`) to `scripts/coverage_gate.py` at 90%. (open, trace 2026-11-23: `backend/scripts/coverage_gate.py:28-32` gates `domain`, `intents+store` and `bookvie_dropbox` only; the restore path is Epic 13 retro item 90, `_bmad-output/implementation-artifacts/epic-13-retro-2026-11-23.md:291`)
 
 ## Helper probes
 

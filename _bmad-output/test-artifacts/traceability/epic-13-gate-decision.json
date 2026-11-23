@@ -1,0 +1,24 @@
+{
+  "schema_version": "0.1.0",
+  "evaluated_at": "2026-11-23T16:56:53.000000+01:00",
+  "repo": "bookvie",
+  "target": {
+    "type": "epic",
+    "id": "13",
+    "label": "Epic 13: Back up to Dropbox, and restore through an agent"
+  },
+  "collection_status": "COLLECTED",
+  "gate_basis": "priority_thresholds",
+  "gate_status": "FAIL",
+  "rationale": "P0 coverage is 91.8% (45/49; TR7 and workflow rule 1 require 100%), so the gate is FAIL. The four P0 criteria below FULL: 13.2 AC-9 (a same-day finish that answers a mismatch has already replaced that day's copy; deferred-work.md:1549, retro action 91); 13.2 AC-6 (the AC's whole-file content_hash on the commit is impossible in the SDK; the code verifies after the commit; spine drift deferred-work.md:1502, retro action 89); 13.2 AC-3 (neither content-hash copy is run on Dropbox's published test vector input, only the published digests are composed; Oleg's call not to commit the image, deferred-work.md:1481); 13.1 AC-11 (the manual gate-2 record lacks the message as shown and has runs B/C, VS Code and claude -p only as 'everything is ok', spec-13-1:258-259). P1 is 100% (11/11), overall 91.8% (56/61); the one P2, 13.1 AC-12, is PARTIAL. Other gate clauses not met: no coverage gate on agent/'s restore path, intents/restore_file.py at 88% (retro action 90); npm run check exited 1 in 2 of 2 runs, only on the three port-8790 sign-in tests under xdist (retro action 92), with every other step green when run alone (2469 pytest, coverage gates ok: domain 100.00%, intents+store 96.84%, bookvie_dropbox 94.12%; check:api clean with 395 node tests; 803 e2e; smoke ok). Held: every plan P0 risk in force except the same-day mismatch; all 7 new descriptions read from epics.md on both servers; every new error code has a tool test; the guide's commands parse; no test touches the network, Keychain, ~/bookvie-data or the real backups folders (unchanged). This trace added no test.",
+  "p0_status": "NOT_MET",
+  "p1_status": "MET",
+  "overall_status": "MET",
+  "critical_open": 4,
+  "links": {
+    "trace_report_path": "_bmad-output/test-artifacts/traceability/epic-13-traceability-matrix.md",
+    "trace_report_url": "",
+    "artifact_url": "",
+    "journey_evidence_url": ""
+  }
+}
