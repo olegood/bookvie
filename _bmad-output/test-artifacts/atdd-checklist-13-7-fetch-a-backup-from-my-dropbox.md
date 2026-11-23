@@ -111,17 +111,16 @@ AI generation. The criteria are clear and the story has no UI, so nothing needed
 ## Green-phase follow-ups (secondary branches, not red leaves)
 
 These are for `bmad-testarch-automate` after the story is `done`:
-- **`list_backups` failures:**
-  - A sign-in failure is `dropbox_signin`, and a listing that breaks (`ApiError`, `requests` errors) is `other`, or whatever cause the spec picks.
-  - Whether a list failure ever creates a file. It shouldn't.
-- **Order when name and `client_modified` disagree** (an older backup re-uploaded later, as 13.2's `seed_three_older` does with 17 Nov). The spec decides between ordering by backup time and by the date in the name.
-- **`download_backup` with an extra argument** (for example `localPath`): refused or ignored, once the spec decides. `upload_backup` refuses anything but exactly its own argument.
-- **A `from-dropbox` that is a symlink, or a file, or a backups folder that is itself a symlink:** nothing is written outside it. bookvie's `_candidates` already ignores a symlinked `from-dropbox/`.
-- **The `signin` message names `bookvie-dropbox auth`,** as the upload's does, and no message or log holds a token (the plan's "token" P0 risk).
-- **`files_download_to_file` versus `files_download`:** the fake supports both. If the build uses `_to_file`, a broken transfer leaves a partial file at the temporary path, which the build must remove (AC-5 checks it).
-- **A large download (over one 4 MiB hash block, sparse, as 13.2's `write_large_zip`):** it verifies across blocks.
-- **The response is closed** (`FakeDownload.closed`) after both a success and a failure.
-- **Coverage:** the epic gate wants ≥ 90% on `bookvie_dropbox/`. The new module's error branches are what to check.
+- [x] **`list_backups` failures:** a sign-in failure is `dropbox_signin`, and a listing that breaks is `other` (the spec's pick). A list failure creates no file. (done: backend/tests/test_dropbox_download_edges.py:29 and :42; backend/tests/test_dropbox_download_follow_ups.py:151 `test_a_failed_listing_or_download_writes_no_file`, ids `list_signin` and `list_other`)
+- [x] **Order when name and `client_modified` disagree:** the spec orders by backup time (`client_modified`), then by name, descending. (done: backend/tests/test_dropbox_download_follow_ups.py:39 `test_list_backups_orders_by_upload_time_when_the_names_disagree` with 13.2's `seed_three_older`; :55 `test_list_backups_breaks_a_tie_in_upload_time_by_name_newest_first`)
+- [x] **`download_backup` with an extra argument:** refused with `other` before `connect()`. (done: backend/tests/test_dropbox_download.py:283, `REFUSED_ARGUMENTS` gains `{name, target, path}`, run by :287)
+- [x] **A `from-dropbox` that is a symlink, or a file, or a backups folder that is itself a symlink:** a symlinked or file `from-dropbox` is refused before any call and nothing is written outside it; a symlinked backups folder is followed, and the answered path is the one bookvie lists and previews. (done: backend/tests/test_dropbox_download_edges.py:56; backend/tests/test_dropbox_download_follow_ups.py:87 `test_a_download_into_a_symlinked_backups_folder_is_the_path_bookvie_lists_and_previews`)
+- [x] **The `signin` message names `bookvie-dropbox auth`,** as the upload's does. (done: backend/tests/test_dropbox_download_edges.py:29 for the listing; backend/tests/test_dropbox_download_follow_ups.py:151, ids `list_signin` and `download_signin`)
+- ~~**No message or log holds a token** (the plan's "token" P0 risk).~~ **Retired:** `download.py` never reads a token. Its messages are fixed strings plus exception type names, and the one exception text it passes on is `SigninError`'s, which Story 13.2's tests own (`backend/tests/test_dropbox_upload.py:307`, `no_token_in_the_keychain`).
+- ~~**`files_download_to_file` versus `files_download`:** if the build uses `_to_file`, a broken transfer leaves a partial file at the temporary path.~~ **Retired:** the build streams `files_download` into its own temporary file (`backend/bookvie_dropbox/download.py:183`), and AC-5's `broken_transfer` (backend/tests/test_dropbox_download.py:312) checks that nothing is left.
+- [x] **A large download (over one 4 MiB hash block):** it verifies across blocks. (done: backend/tests/test_dropbox_download_follow_ups.py:67 `test_a_download_larger_than_one_hash_block_is_verified_and_lands_whole`, 8 MiB plus a partial block, not sparse)
+- [x] **The response is closed** (`FakeDownload.closed`) after both a success and a failure. (done: backend/tests/test_dropbox_download.py:244 and :337, added by the build's review)
+- [x] **Coverage:** the epic gate wants ≥ 90% on `bookvie_dropbox/`. (done: `npm run check:py` in this run, `bookvie_dropbox` 95.39%)
 
 ## Helper probes
 
@@ -196,10 +195,10 @@ AC-6's setup calls (`list_backups`, `download_backup`) stay opaque until its ass
 
 ## Implementation checklist (for `bmad-build-auto`)
 
-- [ ] `bookvie_dropbox`, in a module of its own (for example `download.py`):
+- [x] `bookvie_dropbox`, in a module of its own (for example `download.py`): (done: backend/bookvie_dropbox/download.py; backend/tests/test_dropbox_download.py:146)
   - `list_backups(connect)`: pages `/.backups` (reuse `upload._list_backups`) and keeps `FileMetadata` entries with `daily_date(name)`.
   - It returns them newest first as `{name, backupTime, size, contentHash}`, with `backupTime` being `client_modified` as aware UTC `isoformat()`.
-- [ ] `download_backup(name, target, connect, home=None)`:
+- [x] `download_backup(name, target, connect, home=None)`: (done: backend/tests/test_dropbox_download.py:194, :287 and :312; backend/tests/test_dropbox_download_edges.py:118 and :136)
   - Before `connect()`, check the name and target:
     - `name` is a `str` with `daily_date(name)` (so no `/`, no `..`, no NUL), and `target` is in `("bookvie", "bookvie-dev")`.
     - Anything else is refused with cause `other`.
@@ -210,13 +209,13 @@ AC-6's setup calls (`list_backups`, `download_backup`) stay opaque until its ass
     - `AuthError` or `SigninError` is `dropbox_signin`, with a message naming `bookvie-dropbox auth`.
     - A mismatch, `requests` errors, `OSError` mid-transfer or a rate limit is `download_incomplete`.
     - Anything else (an `ApiError` not-found included) is `other`.
-- [ ] A download failure type or cause set that holds `download_incomplete` without adding it to `contracts.CAUSES`.
-- [ ] `server.py`:
+- [x] A download failure type or cause set that holds `download_incomplete` without adding it to `contracts.CAUSES`. (done: `DOWNLOAD_CAUSES` in backend/bookvie_dropbox/download.py:30; `tests/test_dropbox_contracts.py` still pins `CAUSES` at 5, green in this run)
+- [x] `server.py`: (done: backend/tests/test_dropbox_download.py:109 over real stdio)
   - Register `list_backups` (no arguments, `additionalProperties: false`) and `download_backup` (`name` and `target`, both strings and both required, `additionalProperties: false`) after `upload_backup`.
   - Each description is epics.md's text verbatim.
   - Dispatch by name in `call_tool`, keeping the `{cause, message}` error shape.
-- [ ] `docs/dropbox-backup.md`, if the story's spec asks for it (13.8 owns the Restoring section and the download troubleshooting). `tests/test_dropbox_backup_guide.py` checks any `bookvie-dropbox` command it shows.
-- [ ] Un-skip the 6 leaves, then run `npm run check`.
+- [x] `docs/dropbox-backup.md`, if the story's spec asks for it (13.8 owns the Restoring section and the download troubleshooting). `tests/test_dropbox_backup_guide.py` checks any `bookvie-dropbox` command it shows. (done: `docs/dropbox-backup.md` "Restoring"; tests/test_dropbox_backup_guide.py green in this run)
+- [x] Un-skip the 6 leaves, then run `npm run check`. (done: no `RED_13_7` left; the code review's `npm run check` after `0e1281a`'s patch exited 0)
 
 ## Next
 
