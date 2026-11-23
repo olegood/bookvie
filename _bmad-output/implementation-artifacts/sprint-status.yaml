@@ -1097,7 +1097,7 @@ action_items:
       published hash; the published image itself is not hashed) and AC-6 to the per-request
       hash with the size and content_hash check after the commit (`deferred-work.md:1502`)."
     owner: "Winston (architect)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-13-retro-2026-11-23.md"
   - id: "epic-13-retro-item-90-enforce-the-restore-path-coverage-gate"
     epic: 13

@@ -147,7 +147,7 @@ Code review of 2026-11-23, in a new session, on `c229ca3..bf040e3`, with five la
 
 ## Design Notes
 
-AC-6 manual runs (to be recorded by Oleg; empty until then):
+AC-6 manual runs (recorded by Oleg on 2026-11-23, `2c7322b`):
 
 - [x] Restore from a local backup: 2026-11-23, same setup. Oleg picked "5. 22 Nov, 10:18 · daily backup · this computer · 343 KB"; no download; the preview used the nothing-added line and kept the "Everything else" line; Oleg said yes; both prompts appeared, bookvie's with its nothing-added sentence ("Every change since then goes back, such as pages reached."), and Oleg accepted both. Result: "Restored from the backup of 22 Nov, 10:18. Safety copy: ~/bookvie-backups-dev/bookvie-pre-restore-2026-11-23T1534.zip".
 - [x] Restore from Dropbox: 2026-11-23, Claude Code terminal, `bookvie --dev` from the hogback-creosote install (`npm run install:local`), `/bookvie-restore` on the dev library. Pick list: "1. 22 Nov, 23:52 · daily backup · Dropbox · 75 MB", "2. 22 Nov, 10:19 · safety copy (before a restore) · this computer · 343 KB", "3. 22 Nov, 10:18 · daily backup · this computer · 343 KB". Oleg picked 1; `download_backup({name: "bookvie-backup-2026-11-22.zip", target: "bookvie-dev"})` answered `~/bookvie-backups-dev/from-dropbox/bookvie-backup-2026-11-22.zip`; the preview (529 books · 57 card notes · 529 covers vs 2 · 6 · 2; lose 2 books, 6 card notes) was shown; Oleg said yes; Claude Code's permission prompt and bookvie's question both appeared, with counts and titles matching the preview, and Oleg accepted both. Result: "Restored from the backup of 22 Nov, 23:52. Safety copy: ~/bookvie-backups-dev/bookvie-pre-restore-2026-11-23T1531.zip".
@@ -181,6 +181,6 @@ Status: in-review
 
 **Verification:** `cd backend && uv run pytest -q tests/test_restore_skill.py tests/test_dropbox_backup_guide.py tests/test_dropbox_backup_line.py tests/test_backup_skill.py`: 41 passed, before and after the patches. `npm run check`: exit 0 after the patches.
 
-**Residual risks:** AC-6 isn't done; Oleg's six terminal runs must be recorded under "AC-6 manual runs" before the story can be `done`. The tests pin the skill's text and the tools' answers, not an agent's live run.
+**Residual risks:** AC-6 wasn't done at build time; Oleg's six terminal runs had to be recorded under "AC-6 manual runs" before the story could be `done`. *(Done: recorded on 2026-11-23, `2c7322b`. Epic 13 retro item 89.)* The tests pin the skill's text and the tools' answers, not an agent's live run.
 
-Next: run `bmad-code-review` in a new session (AGENTS.md "Story pipeline").
+Next: run `bmad-code-review` in a new session (AGENTS.md "Story pipeline"). *(Done: reviewed in a new session on 2026-11-23, `34d9870`; the story is `done`. Epic 13 retro item 89.)*

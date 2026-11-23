@@ -13,12 +13,12 @@ A read failure is ``build_export``'s ``couldnt_export``; a failure in any
 step before the rename, creating the folder included, is ``couldnt_save``,
 with the temp file removed and "Last export" unmoved.
 
-With ``for_upload`` (the daily backup run, Story 13.3) the file is written the
+With ``for_upload`` (a Dropbox backup run, Story 13.3) the file is written the
 same way but "Last export" isn't recorded. Every backup answers its
 ``libraryHash`` (the SHA-256 of the zip's ``library.json``) and
 ``unchangedSinceUpload``: whether that hash equals the last recorded upload's.
 
-:func:`record_backup_upload` (Story 13.3, AD-22) stores how a daily run
+:func:`record_backup_upload` (Story 13.3, AD-22) stores how a Dropbox backup run
 ended in ``local-state.json`` under ``autoBackup``, through the store's
 :class:`~bookvie.store.local_state.LocalStateWriter`.
 
@@ -491,10 +491,10 @@ def write_safety_copy(store: Store, now: datetime, backups_dir: Path | None) -> 
     return target
 
 
-# --- How a daily backup run ended (AD-22, Story 13.3) ---------------------------------------
+# --- How a Dropbox backup run ended (AD-22, Story 13.3) -------------------------------------
 
 CAUSES = ("dropbox_signin", "upload_incomplete", "dropbox_full", "backup_write", "other")
-"""AD-22's failure causes, in its order: why a daily run failed.
+"""AD-22's failure causes, in its order: why a Dropbox backup run failed.
 
 bookvie-dropbox's copy: ``bookvie_dropbox.contracts.CAUSES``; the packages never import
 each other, and ``tests/test_dropbox_contracts.py`` keeps the copies equal."""
@@ -564,7 +564,7 @@ def _read_upload(path: Path) -> tuple[str, str, datetime]:
 def record_backup_upload(
     store: Store, clock: Clock, backups_dir: Path | None, arguments: dict[str, Any]
 ) -> OkResponse:
-    """Store how a daily backup run ended under ``autoBackup`` in ``local-state.json``.
+    """Store how a Dropbox backup run ended under ``autoBackup`` in ``local-state.json``.
 
     An upload replaces ``lastReport``, ``lastOk`` and ``lastUpload``; a skip
     ``lastReport`` and ``lastOk``; a failure only ``lastReport``. Each ``at``

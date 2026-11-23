@@ -4,7 +4,7 @@ It holds top-level groups, each owned by one writer:
 
 - ``lastExportAt``, the ISO-8601 time (with offset) of the last complete
   export, written by :meth:`Store.record_export`;
-- ``autoBackup``, how the daily backup runs went (AD-22, Story 13.3), written
+- ``autoBackup``, how the Dropbox backup runs went (AD-22, Story 13.3), written
   by ``record_backup_upload``.
 
 Both go through one :class:`LocalStateWriter`, which read-modify-writes only

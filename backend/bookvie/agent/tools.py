@@ -45,11 +45,11 @@ same zip as ``GET /api/export``, into the app's ``backups_dir`` through
 :func:`~bookvie.intents.write_backup`, records it as "Last export", and
 answers the file's ``{path, size, createdAt, libraryHash,
 unchangedSinceUpload}``. Its one optional argument, ``forUpload`` (Story
-13.3), is sent only by the daily backup run: the file is written the same
-way, but "Last export" doesn't move.
+13.3), is sent only by a Dropbox backup run (the ``bookvie-backup`` skill):
+the file is written the same way, but "Last export" doesn't move.
 
 ``record_backup_upload`` (Story 13.3, AD-22), listed last, stores how a
-daily backup run ended (uploaded, skipped or failed) in ``local-state.json``
+Dropbox backup run ended (uploaded, skipped or failed) in ``local-state.json``
 under ``autoBackup`` through :func:`~bookvie.intents.record_backup_upload`,
 and answers ``{ok: true}``. A bad argument is ``invalid_fields`` naming it,
 and nothing is stored.
@@ -772,7 +772,7 @@ EXPORT_BACKUP = AgentTool(
         "Backup page's Export) to the backups folder, and return its path, size, time, "
         "libraryHash and unchangedSinceUpload. A second backup on the same day replaces that "
         "day's file. It counts as the library's last export, except when forUpload is true, "
-        "which only the daily backup run sends."
+        "which only a Dropbox backup run sends."
     ),
     model=ExportBackupArguments,
     run=_export_backup,
@@ -886,7 +886,7 @@ def _record_backup_upload(state: Any, arguments: dict[str, Any]) -> OkResponse:
 RECORD_BACKUP_UPLOAD = AgentTool(
     name="record_backup_upload",
     description=(
-        "Record how a daily backup run ended, so the Backup page can show it: uploaded (with the "
+        "Record how a Dropbox backup run ended, so the Backup page can show it: uploaded (with the "
         "path from export_backup, and copies and contentHash from upload_backup), skipped (when "
         "export_backup said unchangedSinceUpload), or failed (with its cause). Call it once at "
         "the end of every run, for a skip or a failure too."

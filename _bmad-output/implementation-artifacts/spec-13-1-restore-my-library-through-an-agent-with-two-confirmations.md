@@ -261,11 +261,11 @@ Status: in-review
 - If the terminal can't show bookvie's question, Stories 13.7 and 13.8 stop for Oleg's decision.
 - The UX wording when only Books or only Card notes were added is pending Oleg's confirmation (deferred-work.md).
 
-Next: run `bmad-code-review` in a new session (AGENTS.md "Story pipeline").
+Next: run `bmad-code-review` in a new session (AGENTS.md "Story pipeline"). *(Done: the review below ran in a new session on 2026-11-21, and the story was marked `done` in `1b38535` once AC-11 was recorded. The Epic 13 trace (`18d62dc`) found that record thin, and Oleg waived the rest of it (`2cacf0e`, retro item 88). Epic 13 retro item 89.)*
 
 ### Review Findings
 
-Code review (bmad-code-review, new session), 2026-11-21. Diff `1815bff..9dc90dc`. Layers: Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor, Spine Check; none failed.
+Code review (bmad-code-review, new session), 2026-11-21. Diff `1815bff..9dc90dc`. *(Those SHAs are from before the branch was rebased onto master between Stories 13.1 and 13.2, and no branch holds them now. After the rebase the same range is `b7a2aba..d47751a`: the ATDD commit `1815bff` is `b7a2aba`, the build `c602124` is `1346a0d` and the build's hardening commit `9dc90dc` is `d47751a`, matched by subject and author date. The frontmatter's `baseline_revision` `1815bff…` is `b7a2aba` likewise. Epic 13 retro item 89.)* Layers: Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor, Spine Check; none failed.
 
 - [x] [Review][Patch] A zip whose `library.json` has an impossible DOS date (month 0) passes staging, then `backup_time` raises `ValueError`, so `preview_restore` and `restore_backup` answer the generic `couldnt_save`, not `restore_invalid`; `_stage`'s "this can't be refused" comment is wrong, and `list_local_backups` already treats it as unreadable. Probed in this session: `prepare_restore` raised `ValueError: month must be in 1..12, not 0`. Low. [backend/bookvie/intents/restore_file.py:_stage]
 - [x] [Review][Patch] `DAILY_NAME`/`SAFETY_NAME` use `re.match` with `$`, which accepts a trailing newline (`bookvie-backup-2026-11-19.zip\n` matched in this session's probe), and `\d` accepts non-ASCII digits; use `fullmatch` and `re.ASCII`. Low. [backend/bookvie/intents/backup_file.py:176]

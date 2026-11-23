@@ -69,7 +69,7 @@ deferred:
 | Dropbox tools missing | no `upload_backup` tool | `record(failed, other)`; `other`'s line plus that `bookvie-dropbox` isn't connected (guide step 3) | — |
 | Dev server | `get_app_info.mode == "dev"` | stop: no export, upload or record; says a development library is never uploaded | — |
 | bookvie unreachable, by hand | no `get_app_info` tool | step 1 start fallback, probe, reconnect, go on | older-bookvie / code stops as the other skills |
-| bookvie unreachable, headless | no tool, no Bash allowed | stop with one `Failed:` line naming bookvie not running; nothing recorded | — |
+| ~~bookvie unreachable, headless~~ | ~~no tool, no Bash allowed~~ | Retired 2026-11-23 (Epic 13 retro item 89): there is no headless run. Story 13.5 took out the morning job and the skill's headless stop. | — |
 | Report refused | `record_backup_upload` error | still the outcome line, plus that bookvie couldn't save the report and its code | no retry |
 
 </intent-contract>
@@ -213,4 +213,4 @@ Status: done
 
 **Residual risks.** The skill is verified as text plus the tools it chains; no automated test runs an agent on it. `allowed-tools` only pre-grants; headless restriction is 13.5's `--allowedTools`. The port-8790 flake from 13.2 may still fail `npm run check` intermittently.
 
-Next: run `bmad-code-review` in a new session (AGENTS.md "Story pipeline").
+Next: run `bmad-code-review` in a new session (AGENTS.md "Story pipeline"). *(Done: reviewed in a new session on 2026-11-22, `1e97fe0`; the story is `done`. Epic 13 retro item 89.)*

@@ -1450,15 +1450,19 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-1-restore-my-library-through-an-agent-with-two-confirmations.md`
   summary: Spine drift (AD-21, AD-9), reconciled before the next epic: `list_local_backups`, `preview_restore` and `restore_backup` are built (AD-21's Tools list still says "planned for Epic 13"), and the three codes `restore_outside_backups`, `restore_not_confirmed` (with `reason`) and `safety_copy_failed` are in `ErrorCode` (AD-9 still says "planned"). The Agent-tools rule in Consistency Conventions still calls `restore_backup` planned. Low.
   evidence: `backend/bookvie/agent/tools.py` `TOOLS`; `backend/bookvie/intents/contract.py`; spine lines for AD-21 Tools, AD-9 and "Agent tools are a second way in".
+  resolved: Epic 13 retro item 89 (2026-11-23). In the spine, AD-21 Tools lists the five backup and restore tools as built, AD-9's three restore codes are marked story 13.1, and AD-3's agent-tools rule no longer says planned.
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-1-restore-my-library-through-an-agent-with-two-confirmations.md`
   summary: Spine drift (AD-22 Lock-free cores), reconciled before the next epic: the core is `write_export_zip(store, out, now)` and `build_export(store, now)` takes the backup time, because one `clock.now()` stamps `library.json`'s entry (local `date_time` plus a 0x5455 extended-timestamp field with the UTC instant) and names the backup. The spine gives `write_export_zip(store, out)` and doesn't name the 0x5455 field; `backup_time()` in `intents/export.py` reads it, falling back to `date_time` as local time. Low.
   evidence: `backend/bookvie/intents/export.py` `write_export_zip`, `extended_timestamp`, `backup_time`.
+  resolved: Epic 13 retro item 89 (2026-11-23). In the spine, AD-22 Lock-free cores gives `write_export_zip(store, out, now)` and `build_export(store, now)`, and AD-22 Backup time names the 0x5455 field and `backup_time`'s fallback to `date_time`.
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-1-restore-my-library-through-an-agent-with-two-confirmations.md`
   summary: Spine drift (AD-22 Restore through an agent), reconciled before the next epic: the spine gives the preview's contents but not its keys, now `{backupTime, backup: {books, cardNotes, covers}, current: {...}, booksAddedSince, cardNotesAddedSince}`; the gate is `agent/restore_gate.RestoreGate`, one per app (`app.state.restore_gate`), so a second `create_app` refuses the first's tokens as `expired`; the token is `<process nonce hex>.<base64url JSON payload>.<base64url HMAC>`, checked process nonce, MAC, expiry (the nonce is spent either way), nonce not issued or spent, then the answer (corrected by the code review of 2026-11-22: the build-auto review patch moved the expiry check before the issued-nonce check), then the path, then the hashes under the lock; the input request's key is `confirm`. Low.
   evidence: `backend/bookvie/agent/restore_gate.py`; `backend/bookvie/agent/tools.py` `_restore_backup`; `backend/bookvie/intents/restore_file.py` `RestorePreview`.
+  resolved: Epic 13 retro item 89 (2026-11-23). In the spine, AD-22 `preview_restore` gives `RestorePreview`'s keys; Gate 2 gives the token format, one `RestoreGate` per app (`app.state.restore_gate`), the `confirm` key and the check order (expiry before the issued nonce); Apply checks the library hash before reading the file.
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-1-restore-my-library-through-an-agent-with-two-confirmations.md`
   summary: Spine drift (AD-22 Allowed files), reconciled before the next epic, or a decision for Oleg: the spine allows "a daily name or a safety-copy name" in the backups folder or its `from-dropbox/`. The build accepts a safety-copy name only directly in the backups folder, and only daily names in `from-dropbox/`, matching AC-1's listing ("the `from-dropbox/` daily backups") so every restorable file is listable. A named file in the backups folder that can't be read as a zip holding `library.json` is left out of `list_local_backups` and logged; `preview_restore` on its path still names the refusal. Low.
   evidence: `backend/bookvie/intents/backup_file.py` `resolve_backup_path`, `_kind_in_from_dropbox`, `list_local_backups`.
+  resolved: Epic 13 retro item 89 (2026-11-23). In the spine, AD-22 Allowed files now says a safety-copy name only directly in the backups folder and only daily names in `from-dropbox/`, and `list_local_backups` says an unreadable file is left out and logged.
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-1-restore-my-library-through-an-agent-with-two-confirmations.md`
   summary: UX-DR80 doesn't word bookvie's question when only Books, or only Card notes, were added since the backup. The build says "You'd lose N books added since (…), and every other change since then." and "You'd lose N card notes added since, and every other change since then." (spec Design Notes). Oleg or the UX should confirm or reword it in EXPERIENCE.md, then `tests/helpers.confirmation_text` follows. Low.
   evidence: `backend/bookvie/agent/restore_gate.py` `confirmation_text`; `backend/tests/test_agent_restore.py::test_only_books_or_only_card_notes_added_names_just_those`.
@@ -1468,9 +1472,11 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-1-restore-my-library-through-an-agent-with-two-confirmations.md`
   summary: Spine drift (Structural Seed, Capability → Architecture Map), reconciled before the next epic: two new modules, `intents/restore_file.py` (`prepare_restore`, `apply_confirmed_restore`, `RestorePreview`, `Sealed`) and `agent/restore_gate.py` (`RestoreGate`, `confirmation_text`). The seed's `intents/` line names only `backup_file` for the restore pieces and its `agent/` line only `server.py` and `tools.py`; the FR-30 map row names `intents/restore` and `intents/backup_file` and still says "(planned)". Low.
   evidence: build-auto review spine-check layer, finding 5.
+  resolved: Epic 13 retro item 89 (2026-11-23). In the spine, AD-22 Modules names `intents/restore_file` and `agent/restore_gate`; the Seed's `agent/` and `intents/` lines and the FR-30 map row name them and no longer say planned.
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-1-restore-my-library-through-an-agent-with-two-confirmations.md`
   summary: Spine drift (AD-21 One validator), reconciled before the next epic: `restore_backup` is a write tool whose arguments are `{path}` (`PathArguments`), not an intent's JSON body, and it and `preview_restore` parse them with `parse_view_arguments`. AD-21 says a write tool's arguments are its intent's body parsed by the route's `parse_*_intent`; AD-22 doesn't state the exception. Low.
   evidence: build-auto review spine-check layer, finding 6; `backend/bookvie/agent/tools.py` `_restore_backup`.
+  resolved: Epic 13 retro item 89 (2026-11-23). In the spine, AD-21 One validator says `preview_restore` and `restore_backup` parse `PathArguments` (`{path}`) with `parse_view_arguments`, as `list_local_backups` and `export_backup` parse theirs.
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-1-restore-my-library-through-an-agent-with-two-confirmations.md`
   summary: In Story 13.3 (AR48, its AC on `backups_dir` being `None`): a non-default data folder whose sibling rule gives `~/bookvie-backups` or `~/bookvie-backups-dev` (for example `~/bookvie`) still gets that folder from `backups_folder`. Until 13.3 lands, a server on such a folder lists and restores the real library's backups and writes its safety copies there, since 13.1's tools read `backups_dir`. Medium.
   evidence: build-auto review spine-check layer, finding 7; `backend/bookvie/intents/backup_file.py` `backups_folder`; epics.md Story 13.3.
@@ -1485,12 +1491,15 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-1-restore-my-library-through-an-agent-with-two-confirmations.md`
   summary: Spine drift (AD-21 Same handler, same answers), reconciled before the next epic: AD-21's error-object list omits `reason`, which `restore_not_confirmed` carries (AD-9 has it); AD-21 doesn't mention an interactive tool's `InputRequiredResult` answer or the `interactive`/`ToolCall` path in `_answer`; and `list_local_backups`/`preview_restore` return `LocalBackups` and `RestorePreview` from `intents/`, not `views/` models, where AD-21 says a read tool returns its view's model. Low.
   evidence: `backend/bookvie/agent/server.py` `_answer`, `_tool_call`; code review spine-check finding 8.
+  resolved: Epic 13 retro item 89 (2026-11-23). In the spine, AD-21 Same handler lists `reason` in the error object, describes an interactive tool's `ToolCall` and `InputRequiredResult`, and says the restore tools return `intents/` models (`LocalBackups`, `RestorePreview`).
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-1-restore-my-library-through-an-agent-with-two-confirmations.md`
   summary: Spine drift (AD-1, Stack, Structural Seed, Consistency Conventions), reconciled before the next epic: lines outside AD-21/AD-9 still say "planned" for what 13.1 built: AD-1's "(planned, AD-22) … the backups listing", the Stack `mcp` row's "planned: `InputRequiredResult`", the seed's `docs/dropbox-backup.md # planned`, and the Testing row's "planned, AD-22" gates, safety copy and lock-free cores. (The build's first entry names a Consistency Conventions "Agent-tools rule"; the Testing row is the one that says it.) Low.
   evidence: code review spine-check finding 9.
+  resolved: Epic 13 retro item 89 (2026-11-23). In the spine, AD-1, the Stack `mcp` row, the Seed's `docs/dropbox-backup.md` and the Testing row no longer say planned.
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-1-restore-my-library-through-an-agent-with-two-confirmations.md`
   summary: Spine drift (AD-1, AD-22 Apply), reconciled before the next epic: `write_safety_copy` creates the backups folder (with parents) when it's missing and resolves it through symlinks; AD-1 says only that `export_backup` creates it. Low.
   evidence: `backend/bookvie/intents/backup_file.py` `write_safety_copy`; code review spine-check finding 10.
+  resolved: Epic 13 retro item 89 (2026-11-23). In the spine, AD-1 says `write_safety_copy` creates the folder with its parents and resolves it through symlinks.
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-1-restore-my-library-through-an-agent-with-two-confirmations.md`
   summary: `docs/dropbox-backup.md` states client behavior AC-11 hasn't observed yet: that Claude Code's permission prompt names `restore_backup` and the backup's path, and that the terminal CLI can show bookvie's question while VS Code, the desktop app and `claude -p` can't. Medium if wrong, unverified; settled by AC-11's recorded run, after which the guide is corrected if the run disagrees.
   evidence: `docs/dropbox-backup.md` "The two prompts"; code review blind-hunter finding 6 and acceptance-auditor finding 1.
@@ -1501,15 +1510,19 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-2-upload-a-backup-to-my-dropbox.md`
   summary: Spine drift (AD-22 Dropbox tools), reconciled before the next epic: `upload_backup` can't finish with "the whole file's `content_hash` (Dropbox refuses a mismatch)": the SDK's `content_hash` is per request and `CommitInfo` has none. The code sends Dropbox's per-request hash (`auto_content_hash`) and checks the returned `size` and `content_hash` against the bytes sent, before any prune; AC-6's wording needs the same fix. Low.
   evidence: spine-check finding 1, intent-alignment divergence 2; ATDD checklist "For the build" 1; `backend/bookvie_dropbox/upload.py` `_upload`.
+  resolved: Epic 13 retro item 89 (2026-11-23). In the spine, AD-22 Dropbox tools says every request carries Dropbox's per-request content hash (`auto_content_hash`) and the returned `size` and `content_hash` are checked against the bytes sent, before any prune. In `epics.md`, Story 13.2 AC-6 says the same (Oleg's decision in the Epic 13 trace).
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-2-upload-a-backup-to-my-dropbox.md`
   summary: Spine drift (AD-22 Dropbox scope and sign-in), reconciled before the next epic: there is no `DropboxApi` seam. The seam is `build_server(connect=…)`, whose `connect()` returns the SDK's `dropbox.Dropbox`; `upload.py` calls the SDK's own `files_*` methods and tests fake the SDK client (`tests/dropbox_fakes.py` `FakeDropbox`), as the ATDD pinned. Low.
   evidence: spine-check finding 2; `backend/bookvie_dropbox/server.py` `build_server`, `dropbox_api.py` `connect`.
+  resolved: Epic 13 retro item 89 (2026-11-23). In the spine, AD-22 Seam names `build_server(connect=…)`, the SDK's `dropbox.Dropbox` and `FakeDropbox`; the Seed and the Testing row no longer name `DropboxApi`.
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-2-upload-a-backup-to-my-dropbox.md`
   summary: Spine drift (AD-22 Dropbox tools, "Any failure deletes nothing"), reconciled before the next epic: a prune that fails after a verified upload answers `other` (the message says the upload was verified and names any name already deleted), so it may have deleted some older dailies. The spine should narrow "deletes nothing" to failures before the verify. Low.
   evidence: spine-check finding 3; spec I/O matrix row "Prune fails after verify"; `tests/test_dropbox_upload_edges.py`.
+  resolved: Epic 13 retro item 89 (2026-11-23). In the spine, AD-22 "What a failure leaves" narrows "deletes nothing" to failures before the finish, and says a prune that fails after the verify answers `other`, naming any backup already deleted.
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-2-upload-a-backup-to-my-dropbox.md`
   summary: Spine drift (AD-22 Causes, AD-9), reconciled before the next epic: `upload_backup`'s failure is `isError` with one JSON text `{cause, message}`, not AD-9's error object (`kind`, `code`, `message`), while AD-9's binding names "the agent tools' errors (AD-21, AD-22)". Low.
   evidence: spine-check finding 4; `backend/bookvie_dropbox/server.py` `_error`.
+  resolved: Epic 13 retro item 89 (2026-11-23). In the spine, AD-22 Causes "Error shape" gives `bookvie-dropbox`'s `{cause, message}`, and AD-9's Binds say its tools answer that instead of AD-9's error object.
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-2-upload-a-backup-to-my-dropbox.md`
   summary: In Story 13.3: the cause enum `CAUSES` exists only in `bookvie_dropbox/contracts.py`; AD-22's copied-contracts rule wants bookvie's copy (13.3's `record_backup_upload` cause) and a test comparing the two. 13.3's AC already asks for it ("bookvie's equals `bookvie_dropbox`'s (Story 13.2)"). Low.
   evidence: spine-check finding 5; epics.md Story 13.3.
@@ -1517,12 +1530,15 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-2-upload-a-backup-to-my-dropbox.md`
   summary: Spine drift (AD-22 Dropbox scope and sign-in, Consistency Conventions Config), reconciled before the next epic: the fixed loopback redirect is `http://127.0.0.1:8790/dropbox-auth` (`REDIRECT_PORT` 8790), a second fixed listener beside bookvie's 8765/8766 (AD-16); the spine names no port. Low.
   evidence: spine-check finding 6; `backend/bookvie_dropbox/auth.py`.
+  resolved: Epic 13 retro item 89 (2026-11-23). In the spine, AD-22 Dropbox scope and sign-in names port 8790 (`REDIRECT_PORT`) beside AD-16's 8765 and 8766, and the Config row names the port.
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-2-upload-a-backup-to-my-dropbox.md`
   summary: Spine drift (Stack), reconciled before the next epic: `requests` (2.34.x) is now a declared runtime dependency of `bookvie_dropbox` (it imports it directly in `auth.py` and `upload.py`), with no Stack row, like httpx2's note. Low.
   evidence: spine-check finding 7 (the undeclared import was patched in pyproject.toml); `backend/pyproject.toml`.
+  resolved: Epic 13 retro item 89 (2026-11-23). In the spine, the Stack table has a `requests` 2.34.x row, mapped in `backend/tests/test_stack_pins.py`.
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-2-upload-a-backup-to-my-dropbox.md`
   summary: Spine drift (Design Paradigm, AD-22, Consistency Conventions Config, Stack, Structural Seed), reconciled before the next epic: lines still say "planned" for what 13.2 built: the Design Paradigm's "(Epic 13, planned)", the mermaid "MCP over stdio (planned)", the Config row's `bookvie-dropbox auth` and `serve`, the Stack `dropbox`, `keyring` and `mcp` stdio rows, and the Structural Seed's wheel packages, smoke check, `bookvie_dropbox/` and `docs/dropbox-backup.md`. Low.
   evidence: spine-check finding 8.
+  resolved: Epic 13 retro item 89 (2026-11-23). In the spine, the Design Paradigm's mermaid, the Config row, the Stack `dropbox`, `keyring` and `mcp` rows (now checked by `test_stack_pins.py`) and the Seed's wheel packages, smoke check, `bookvie_dropbox/` and `docs/dropbox-backup.md` no longer say planned. The Paradigm's "(Epic 13, planned)" was already gone.
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-2-upload-a-backup-to-my-dropbox.md`
   summary: Before Story 13.4's manual run: `APP_KEY` in `backend/bookvie_dropbox/dropbox_api.py` is the placeholder `REPLACE-WITH-YOUR-DROPBOX-APP-KEY` (the app wasn't registered when the build ran). Oleg registers the Dropbox app as the guide's Setup says and commits the real key. `bookvie-dropbox auth` refuses to start until then. Medium.
   evidence: spec Design Notes "App key"; blind-hunter finding 2, edge-case finding 3, intent-alignment divergence 1.
@@ -1537,6 +1553,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-2-upload-a-backup-to-my-dropbox.md`
   summary: Spine drift (AD-8, AD-21 One validator), reconciled before the next epic: `upload_backup`'s input schema is a hand-written dict, not generated from a Pydantic model, and a bad argument answers cause `other`, not `invalid_fields`; AD-8 and AD-21 describe the rule for bookvie's `agent/` tools only, and AD-22 says neither that `bookvie_dropbox` is exempt nor how its arguments are validated. Low.
   evidence: `backend/bookvie_dropbox/server.py` `UPLOAD_BACKUP_SCHEMA`, `_answer`; code review spine-check finding 5.
+  resolved: Epic 13 retro item 89 (2026-11-23). In the spine, AD-8 says `bookvie_dropbox`'s three tools have hand-written schemas and check their own arguments, a wrong set being cause `other`; AD-22 Causes says the same.
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-2-upload-a-backup-to-my-dropbox.md`
   summary: AC-10's red leaf asserts only `cause in CAUSES` for a refused path, so a per-branch change of one refusal's cause passes; add a parametrised `== "other"` check over every AC-10 case in `test_dropbox_upload_edges.py` (the leaf itself can't change). For `bmad-testarch-automate`. Low.
   evidence: `backend/tests/test_dropbox_upload.py:477`; code review verification-gap finding 5.
@@ -1548,21 +1565,26 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-2-upload-a-backup-to-my-dropbox.md`
   summary: Spine drift (AD-22 Dropbox tools), reconciled before the next epic: `upload_backup` finishes straight to `/.backups/<name>` with `WriteMode.overwrite` and checks `size`/`content_hash` after the commit, so a finish answering a mismatch has already replaced an earlier same-day copy. epics.md AC-9 ("a failed second upload leaves the first in place") and the tool description ("A failed or mismatched upload deletes nothing") hold only for faults before the finish; narrow AD-22 and epics.md (the description changes in epics.md first). Oleg's call in review: an honest mismatch message, not a temp name plus `files_move_v2` (which can't overwrite, so it leaves a moment with no copy). Medium.
   evidence: `backend/bookvie_dropbox/upload.py` `_upload`; code review blind-hunter 1, edge-case 1, acceptance-auditor 1.
+  resolved: Epic 13 retro item 89 (2026-11-23). The spine side only: AD-22 "What a failure leaves" says a mismatch after the finish has already replaced that day's copy (Oleg's honest-message call). The `epics.md` side (Story 13.2 AC-9 and the `upload_backup` description) goes with Epic 13 retro item 91, as does the open non-drift Medium entry on the messages.
 
 ## Deferred from: build-auto review of spec-13-3-record-each-upload-in-bookvie (2026-11-22)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-3-record-each-upload-in-bookvie.md`
   summary: Spine drift (AD-15 State that is not exported), reconciled before the next epic: an unreadable `local-state.json` (an OSError other than not-found) is now `CouldntSave` and left as it is, so the next export no longer overwrites it; AD-15 still says the next export overwrites an unreadable or malformed file. A malformed one is still replaced. Low.
   evidence: spine-check finding 1; `backend/bookvie/store/local_state.py` `LocalStateWriter.update`; `backend/tests/test_export.py` `test_an_unreadable_local_state_reads_as_no_export_and_an_export_leaves_it_as_it_was`.
+  resolved: Epic 13 retro item 89 (2026-11-23). In the spine, AD-15 Damaged files says an unreadable file is `CouldntSave` for the writer and left as it is; only a malformed one is replaced.
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-3-record-each-upload-in-bookvie.md`
   summary: Spine drift (AD-15, AD-4 readers of `local-state.json`), reconciled before the next epic: `export_backup` (`intents/backup_file` `_last_upload_hash`, through `read_group`) now reads `local-state.json` outside the AD-4 lock to answer `unchangedSinceUpload`; AD-15 and AD-4 list only `views/backup` and `views/shelf` as readers. Low.
   evidence: spine-check finding 2; `backend/bookvie/intents/backup_file.py` `_last_upload_hash`.
+  resolved: Epic 13 retro item 89 (2026-11-23). In the spine, AD-4 and AD-15 list `export_backup` (`_last_upload_hash`, through `read_group`) as the third reader.
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-3-record-each-upload-in-bookvie.md`
   summary: Spine drift (AD-22 `record_backup_upload`), reconciled before the next epic: an argument the outcome doesn't need is refused as `invalid_fields` (`skipped` with any other argument, `failed` with `path`/`copies`/`contentHash`, `uploaded` with `cause`), `copies` must be at least 1 and `contentHash` 64 lowercase hex; AD-22 states only what each outcome needs. Low.
   evidence: spine-check finding 4; `backend/bookvie/intents/backup_file.py` `_WANTED`, `_argument_errors`; spec Design Notes "Extra arguments are refused".
+  resolved: Epic 13 retro item 89 (2026-11-23). In the spine, AD-22 `record_backup_upload` lists the refused extra arguments, `copies` at least 1 and `contentHash` 64 lowercase hex.
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-3-record-each-upload-in-bookvie.md`
   summary: Spine drift (AD-1, AD-3, AD-15, AD-21 Tools/One validator/Backup, AD-22, Structural Seed, Capability Map FR-29), reconciled before the next epic: lines still say "planned" for what 13.3 built (`record_backup_upload`, `forUpload`, `libraryHash` and `unchangedSinceUpload`, the one local-state writer, the `None` backups folder), and AD-21's tool list puts `record_backup_upload` before the restore tools while `TOOLS` registers it last. Low.
   evidence: spine-check finding 5; `backend/bookvie/agent/tools.py` `TOOLS`.
+  resolved: Epic 13 retro item 89 (2026-11-23). In the spine, AD-1, AD-3, AD-15, AD-21 (Tools, One validator, Backup), AD-22, the Seed and the FR-29 row no longer say planned, and AD-21's tool list follows `TOOLS`' order.
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-3-record-each-upload-in-bookvie.md`
   summary: Pre-existing flaky tests (from Story 13.2's automate commit `b64f901`): under `npm run check` (`pytest -n auto` with coverage, beside the e2e run), `test_dropbox_cli_follow_ups.py` and `test_dropbox_auth.py` sign-in leaves that bind the fixed redirect port 8790 intermittently fail with "Port 8790 … is in use" or a fake browser that visited nothing (`[] == [200]`). Both files pass serially (20/20, twice). Grouping them on one xdist worker (`xdist_group` + `--dist loadgroup`) didn't help (10 failures), so the cause isn't only cross-worker; likely a too-tight wait or a listener not yet released under load. The baseline `609cd19` shows it too (16 failures against the 13 expected red ones on one of three runs). It failed 4 of 7 full checks in this build. Medium.
   evidence: build-auto verification runs 2026-11-22 (check logs in the build's scratchpad); `backend/tests/test_dropbox_cli_follow_ups.py` `Browser`, `backend/tests/test_dropbox_auth.py:355` port-holder leaf; `bookvie_dropbox/auth.py` `_Redirect`.
@@ -1573,27 +1595,33 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-3-record-each-upload-in-bookvie.md`
   summary: Spine drift (AD-15 State that is not exported), reconciled before the next epic: `read_last_export` now reads a JSON object with no `lastExportAt` (`{}`, or a file holding only `autoBackup`) as no export without a log; AD-15 says only that an unreadable or malformed file is logged, and the `{}` case left `test_store.py`'s malformed list. The spine should say a missing key is valid and silent. Low.
   evidence: code review spine-check finding 5 and acceptance-auditor finding 4; `backend/bookvie/store/local_state.py` `read_last_export`; `backend/tests/test_agent_backup_upload.py` `test_a_state_file_with_only_the_upload_group_reads_as_no_export_without_a_log`.
+  resolved: Epic 13 retro item 89 (2026-11-23). In the spine, AD-15 Damaged files says a JSON object with no `lastExportAt` is valid and silent.
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-3-record-each-upload-in-bookvie.md`
   summary: Spine drift (AD-21 One validator), reconciled before the next epic: after the code review (Oleg's decision, 2026-11-22), `export_backup` parses its arguments with `parse_view_arguments`, so a bad `forUpload` or an unknown argument is `invalid_fields` naming that argument; AD-21 still says `export_backup` refuses as the malformed intent on `intent` "until Epic 13 gives it the optional `forUpload`", and doesn't say which parser it uses after. Low.
   evidence: `backend/bookvie/agent/tools.py` `_export_backup`; `backend/tests/test_agent_backup.py` `test_an_argument_is_refused_and_no_file_is_written`; `backend/tests/test_agent_backup_upload.py` `test_for_upload_that_isnt_a_boolean_is_refused_and_writes_no_file`.
+  resolved: Epic 13 retro item 89 (2026-11-23). In the spine, AD-21 One validator says `export_backup` parses `ExportBackupArguments` with `parse_view_arguments` (Oleg's decision in story 13.3's review).
 
 ## Deferred from: build-auto review of spec-13-4-back-up-to-dropbox-with-one-skill (2026-11-22)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-4-back-up-to-dropbox-with-one-skill.md`
   summary: Spine drift (AD-8, Design Paradigm, Capability Map FR-28), reconciled before the next epic: bookvie-backup is a third skill with the same step 1, cut to the `bookvie` entry (8765) only and never `bookvie-dev`; the spine still says "the two bookvie skills", "both skills carry the same step 1" and that the skills use `bookvie-dev` when asked. Low.
   evidence: spine-check finding 1; .claude/skills/bookvie-backup/SKILL.md step 1; README AI skills now lists three skills.
+  resolved: Epic 13 retro item 89 (2026-11-23). In the spine, the Design Paradigm, AD-8 and the FR-28 row name all four skills; AD-8 says `bookvie-backup`'s step 1 is cut to the `bookvie` entry.
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-4-back-up-to-dropbox-with-one-skill.md`
   summary: Spine drift (AD-22 bookvie-backup skill), reconciled before the next epic: the skill reads `get_app_info`'s `mode` and stops on `"dev"` (and on any answer other than `"production"`) before `export_backup`, uploading and recording nothing; AD-22 lists `get_app_info` only as a reachability check. Low.
   evidence: spine-check finding 2; SKILL.md step 2; test_on_a_dev_server_the_skill_uploads_nothing_records_nothing_and_says_so.
+  resolved: Epic 13 retro item 89 (2026-11-23). In the spine, AD-22 `bookvie-backup` skill "Before the export" gives the `mode` stop.
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-4-back-up-to-dropbox-with-one-skill.md`
   summary: Spine drift (AD-22 bookvie-backup skill), reconciled before the next epic: AD-22 says `record_backup_upload` is called always; the skill records nothing on a dev stop, an unreadable `get_app_info`, or a headless run without bookvie's tools, records `failed`/`other` when the `upload_backup` tool is missing, and never sends a refused report twice. Low.
   evidence: spine-check finding 3, intent-alignment divergence (extra no-record exceptions); SKILL.md steps 1, 2, 4, 5; spec I/O matrix.
+  resolved: Epic 13 retro item 89 (2026-11-23). In the spine, AD-22 `bookvie-backup` skill gives the stops that record nothing (dev, unreadable app info, an older bookvie), `failed`/`other` for a missing `upload_backup`, and no second report. The headless stop is gone since Story 13.5.
 
 ## Deferred from: code review of spec-13-4-back-up-to-dropbox-with-one-skill (2026-11-22)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-4-back-up-to-dropbox-with-one-skill.md`
   summary: Spine drift (AD-22 Causes), reconciled before the next epic: the skill records `other` for an `upload_backup` error whose text isn't JSON, has no `cause`, or names an unknown one (an MCP timeout on the client side, say); AD-22 puts "a timeout" in `upload_incomplete`, which is bookvie-dropbox's own timeout, and says nothing of a call the skill gets no answer from. Low.
   evidence: code review spine-check finding 4; `.claude/skills/bookvie-backup/SKILL.md` step 4.
+  resolved: Epic 13 retro item 89 (2026-11-23). In the spine, AD-22 Causes says `upload_incomplete` is `bookvie-dropbox`'s own fault and the skill records `other` for an error with no usable cause.
 
 ## Deferred from: build-auto review of spec-13-5-run-the-backup-every-morning (2026-11-22)
 
@@ -1634,9 +1662,11 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-5-take-out-the-morning-job.md`
   summary: Spine drift (AD-22 Causes), reconciled before the next epic: AD-22 still says "The UX's Failing line has one sentence per cause"; EXPERIENCE.md's table is now the Failed reasons of the Dropbox backup line, read after `failed *when* · `. Low.
   evidence: spine-check finding 1; `ARCHITECTURE-SPINE.md:360`; EXPERIENCE.md's Dropbox backup line table header; `backend/tests/helpers.py` `failing_reasons`.
+  resolved: Epic 13 retro item 89 (2026-11-23). In the spine, AD-22 Causes names EXPERIENCE.md's Failed reasons, read after `failed *when* · `.
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-5-take-out-the-morning-job.md`
   summary: "daily backup run" wording survives in agent tool descriptions and docstrings (`export_backup`'s forUpload "which only the daily backup run sends", `record_backup_upload` "Record how a daily backup run ended", `backup_file.py` and `local_state.py` docstrings), which now hints at a schedule. The two descriptions are copied from `epics.md` (lines 3168, 3173) and pinned by the description test, so a fix starts in `epics.md`. Low.
   evidence: build-auto blind-hunter finding 4; `backend/bookvie/agent/tools.py:775,889`; pre-existing since Story 13.3.
+  resolved: Epic 13 retro item 89 (2026-11-23). `epics.md` Story 13.3's two Description lines say "a Dropbox backup run", and `backend/bookvie/agent/tools.py` registers the same text; the `tools.py`, `backup_file.py` and `local_state.py` docstrings say it too.
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-5-take-out-the-morning-job.md`
   summary: Before Story 13.6: EXPERIENCE.md's Failed-reasons rows mix a capitalised start ("Dropbox sign-in expired.", "Dropbox is full.") with a lowercase one ("the last upload didn't finish.", "bookvie couldn't write…", "the last run stopped…") after "failed *when* · "; 13.6 renders them and should settle the casing. Low.
   evidence: build-auto blind-hunter finding 11; `EXPERIENCE.md` Dropbox backup line table.
@@ -1648,33 +1678,51 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-6-see-on-the-backup-page-how-the-last-dropbox-backup-went.md`
   summary: Spine drift (AD-22 Copied contracts), reconciled before the next epic: bookvie now has a second copy of the cause enum, `views.models.DropboxCause`, because `views` may not import `intents` beyond `intents.contract`; AD-22 says each copied contract exists once on each side. Alternative at reconciliation: move `CAUSES` into `intents.contract`. Low.
   evidence: spine-check finding 1; `test_dropbox_backup_line.py::test_the_views_copy_of_the_causes_matches_intents` keeps the copies equal.
+  resolved: Epic 13 retro item 89 (2026-11-23). In the spine, AD-22 Copied contracts records `views.models.DropboxCause` and the test that keeps it equal; `CAUSES` stays out of `intents.contract`.
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-6-see-on-the-backup-page-how-the-last-dropbox-backup-went.md`
   summary: Spine drift (AD-22 Dropbox backup line), reconciled before the next epic: the spine doesn't define "unreadable" per field. The code reads as `none` a report with an unknown outcome, an `at` without an offset, a failure without a known cause, or an upload or skip without a valid `lastUpload`; a failure with a bad `lastUpload` keeps its report and only drops the last upload. Low.
   evidence: spine-check finding 2; `backend/bookvie/views/backup.py` `dropbox_backup`; the spec's I/O matrix.
+  resolved: Epic 13 retro item 89 (2026-11-23). In the spine, AD-22 Dropbox backup line "Unreadable" lists the cases.
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-6-see-on-the-backup-page-how-the-last-dropbox-backup-went.md`
   summary: Spine drift (AD-22, AD-15, Testing row, Capability map FR-29, Structural Seed), reconciled before the next epic: the Dropbox backup line is built, but the spine still marks it planned ("planned for Epic 13", AD-15's "Epic 13 (planned)", the Testing row's "planned, AD-22: … the Dropbox backup line's states", the FR-29 row, the Seed's `local_state.py (planned …)`). Partly inherited from 13.1–13.5. Low.
   evidence: spine-check finding 3.
+  resolved: Epic 13 retro item 89 (2026-11-23). In the spine, AD-22, AD-15, the Testing row, the FR-29 row and the Seed's `local_state.py` no longer say planned.
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-6-see-on-the-backup-page-how-the-last-dropbox-backup-went.md`
   summary: Spine drift (AD-6, Structural Seed), reconciled before the next epic: the Seed's `lib/` line and the FR-29 row don't name `lib/dropboxBackupLine` (nor `relativeDay`), and AD-6's App info sentence "`mode` is the only dev signal the client may read" should allow AD-22's server-decided `dropboxBackup.state === "dev"`. Low.
   evidence: spine-check finding 4; `frontend/src/lib/dropboxBackupLine.ts`; `backend/bookvie/http/api.py` `backup_view`.
+  resolved: Epic 13 retro item 89 (2026-11-23). In the spine, the Seed's `lib/` line and the FR-29 row name `dropboxBackupLine` and `relativeDay`, and AD-6 App info allows `dropboxBackup.state` `dev`.
 
 ## Deferred from: build-auto review of spec-13-7-fetch-a-backup-from-my-dropbox (2026-11-23)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-7-fetch-a-backup-from-my-dropbox.md`
   summary: Spine drift (AD-22 Backup time, Dropbox tools), reconciled before the next epic: `list_backups` reports and orders by the `client_modified` that `upload_backup` stamped, not the zip entry's time; it lists only daily `FileMetadata`, newest first, as `{"backups": [...]}`, and a missing folder as `[]`. `download_backup` also checks the size, refuses a symlinked `from-dropbox`, fsyncs the folder, and maps `ApiError` to `other` and transfer faults to `download_incomplete`. Low.
   evidence: build-auto review spine-check findings 1-3, intent-alignment divergence 2; `backend/bookvie_dropbox/download.py`.
+  resolved: Epic 13 retro item 89 (2026-11-23). In the spine, AD-22 Backup time and Dropbox tools give `list_backups`' order, shape and empty folder, and `download_backup`'s size check, symlink refusal, folder fsync and causes.
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-7-fetch-a-backup-from-my-dropbox.md`
   summary: Spine drift (AD-22 Causes, Copied contracts; AD-9), reconciled before the next epic: `DOWNLOAD_CAUSES` (`dropbox_signin`, `download_incomplete`, `other`) is a `bookvie_dropbox`-only cause set beside the closed five-cause enum, and `list_backups`/`download_backup` answer `{cause, message}` with a bad argument set as `other`, not AD-9's error object (widens the `upload_backup` entries). Low.
   evidence: build-auto review spine-check findings 4 and 6; `backend/bookvie_dropbox/download.py` `DOWNLOAD_CAUSES`, `server.py` `_error`.
+  resolved: Epic 13 retro item 89 (2026-11-23). In the spine, AD-22 Causes and Copied contracts name `DOWNLOAD_CAUSES` as `bookvie_dropbox`'s alone, and the Error shape covers all three tools.
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-7-fetch-a-backup-from-my-dropbox.md`
   summary: Spine drift (AD-1; Structural Seed, Capability map, Testing row), reconciled before the next epic: `download_backup`'s `mkdir(parents=True)` can create a missing backups folder, not only `from-dropbox/`; and the spine still marks `list_backups`/`download_backup` planned, with `list_backups` under FR-29 rather than FR-30. Low.
   evidence: build-auto review spine-check findings 5 and 7.
+  resolved: Epic 13 retro item 89 (2026-11-23). In the spine, AD-1 and AD-22 say `download_backup` can create a missing backups folder; the Seed, the map and the Testing row no longer say planned, and `list_backups` is on the FR-30 row.
 
 ## Deferred from: build-auto review of spec-13-8-restore-with-one-skill-from-this-computer-or-dropbox (2026-11-23)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-8-restore-with-one-skill-from-this-computer-or-dropbox.md`
   summary: Spine drift (Design Paradigm, AD-8, Capability map FR-28), reconciled before the next epic: the spine names only `bookvie-new-book` and `bookvie-notes-summary` as agent-client skills that share step 1 ("both skills carry the same step 1"); `bookvie-restore` is a fourth one with the same step 1, and unlike `bookvie-backup` it uses `bookvie-dev` when asked (widens the `bookvie-backup` third-skill entry). Low.
   evidence: build-auto review spine-check finding 1; `.claude/skills/bookvie-restore/SKILL.md` step 1; README → AI skills.
+  resolved: Epic 13 retro item 89 (2026-11-23). In the spine, the Design Paradigm, AD-8 and the FR-28 row name all four skills, and AD-8 says `bookvie-restore` uses `bookvie-dev` when asked.
 - source_spec: `_bmad-output/implementation-artifacts/spec-13-8-restore-with-one-skill-from-this-computer-or-dropbox.md`
   summary: Spine drift (AD-22, Capability map FR-30, Structural Seed), reconciled before the next epic: the `bookvie-restore` skill and the guide's skill walkthrough are built, but the spine still marks them planned (AD-22's "planned for Epic 13", the FR-30 row's "Restore through an agent (planned)", the Seed's `docs/dropbox-backup.md` "planned (AD-22, plan D12)"); widens the 13.6 and 13.7 planned-marker entries. Low.
   evidence: build-auto review spine-check finding 2.
+  resolved: Epic 13 retro item 89 (2026-11-23). In the spine, AD-22's header, the FR-30 row and the Seed's `docs/dropbox-backup.md` no longer say planned.
+
+## Deferred from: build of spec-epic-13-retro-item-89-reconcile-the-spine-with-epic-13 (2026-11-23)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-epic-13-retro-item-89-reconcile-the-spine-with-epic-13.md`
+  summary: For Epic 13 retro item 91: besides Story 13.2 AC-9 and the `upload_backup` description, three more places still promise "nothing deleted" after a mismatched upload, which the narrowed AD-22 contradicts: `epics.md` AR47 ("any failure deletes nothing"), Story 13.4's guide AC ("troubleshooting for a failed or mismatched upload (nothing deleted; …)"), and `docs/dropbox-backup.md:131`. Also `docs/dropbox-backup.md:5` still calls `bookvie-dropbox` an MCP server "with one tool, `upload_backup`", stale since Story 13.7. Low.
+  evidence: item 89's Blind Hunter review; AD-22 "What a failure leaves"; `bookvie_dropbox/upload.py` `_upload` (the mismatch message says the earlier same-day copy was replaced).
+- source_spec: `_bmad-output/implementation-artifacts/spec-epic-13-retro-item-89-reconcile-the-spine-with-epic-13.md`
+  summary: `epic-13-traceability-matrix.md` (lines 57, 83–85, 97, 402–403) and `epic-13-gate-decision.json` still list Story 13.2 AC-3 and AC-6 as open gaps that "action 89" will reword. Item 89 reworded them in `epics.md`; the trace artifacts should say so (or be re-traced) before the Epic 14 gate reads them. Low.
+  evidence: item 89's Blind Hunter review; `epics.md` Story 13.2 AC-3 and AC-6 now carry "Reworded 2026-11-23" notes.
