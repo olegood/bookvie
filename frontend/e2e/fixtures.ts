@@ -187,15 +187,15 @@ export function seedLibrary(
  * Seeds `<run dir>/<name>-<test id>` with `partial`, writes each of `files`
  * (paths relative to the data dir, e.g. `local-state.json` or a cover) before
  * the server starts, then starts it, with `--fake-today` when `fakeToday` is
- * given. Unlike `seededServer`, the caller stops it and removes its data dir,
- * in a `finally`.
+ * given and with `--dev` when `dev` is. Unlike `seededServer`, the caller stops
+ * it and removes its data dir, in a `finally`.
  */
 export async function startSeededServer(
   testInfo: TestInfo,
   name: string,
   partial: Record<string, unknown>,
   files: Record<string, string | Buffer> = {},
-  { fakeToday }: { fakeToday?: string } = {},
+  { fakeToday, dev = false }: { fakeToday?: string; dev?: boolean } = {},
 ): Promise<Server> {
   const runId = process.env.BOOKVIE_E2E_RUN_ID
   if (!runId) throw new Error('BOOKVIE_E2E_RUN_ID is not set; run through playwright.config.ts')
@@ -207,7 +207,7 @@ export async function startSeededServer(
     mkdirSync(path.dirname(file), { recursive: true })
     writeFileSync(file, data)
   }
-  return startServer(dataDir, { port: await freePort(), fakeToday })
+  return startServer(dataDir, { port: await freePort(), fakeToday, dev })
 }
 
 type TestFixtures = {

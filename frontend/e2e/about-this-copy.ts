@@ -17,6 +17,11 @@ export function exportButton(page: Page): Locator {
   return page.getByRole('main').getByRole('button', { name: 'Export all data', exact: true })
 }
 
+/** The Backup page's Export card: a `section` labelled "Export", inside `main`. */
+export function exportCard(page: Page): Locator {
+  return page.getByRole('main').getByRole('region', { name: 'Export', exact: true })
+}
+
 /** The server's own `app-info`, read outside the page. */
 export async function serverAppInfo(page: Page, url: string): Promise<AppInfo> {
   return (await (await page.request.get(`${url}/api/views/app-info`)).json()) as AppInfo

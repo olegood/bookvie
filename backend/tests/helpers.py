@@ -239,8 +239,10 @@ def api_client(
     *,
     raise_server_exceptions: bool = False,
     today: date = TODAY,
+    dev: bool = False,
 ) -> TestClient:
-    """The app on the library in ``data_dir``, today pinned to ``today`` (:data:`TODAY`).
+    """The app on the library in ``data_dir``, today pinned to ``today`` (:data:`TODAY`);
+    a ``--dev`` app with ``dev``.
 
     ``fs`` injects faults into intents, not startup. By default an unexpected
     exception becomes the app's 500, as a browser would see it; view tests
@@ -249,7 +251,9 @@ def api_client(
     store = Store.open(data_dir)
     if fs is not None:
         store.fs = fs
-    app = create_app(data_dir / "no-static", data_dir=data_dir, store=store, clock=FakeClock(today))
+    app = create_app(
+        data_dir / "no-static", data_dir=data_dir, store=store, clock=FakeClock(today), dev=dev
+    )
     return TestClient(app, base_url=BASE_URL, raise_server_exceptions=raise_server_exceptions)
 
 
