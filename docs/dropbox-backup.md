@@ -1,10 +1,10 @@
 # Backing up to Dropbox, and restoring
 
-bookvie keeps your library on this computer. This guide sets up daily backups to bookvie's own folder in your Dropbox, and covers getting the library back from a backup through an agent in Claude Code.
+bookvie keeps your library on this computer. This guide sets up backups to bookvie's own folder in your Dropbox, which you run by hand, and covers getting the library back from a backup through an agent in Claude Code.
 
 The Dropbox side is a second command, `bookvie-dropbox`, installed with bookvie. It is an MCP server that Claude Code starts by itself, with one tool, `upload_backup`: it uploads a daily backup from `~/bookvie-backups`, checks that Dropbox's copy matches the file, and only then deletes the oldest daily backups beyond 3. A failed or mismatched upload deletes nothing. It never uploads from `~/bookvie-backups-dev`, the folder of a `--dev` server.
 
-One project skill, [`bookvie-backup`](../.claude/skills/bookvie-backup/SKILL.md), makes a backup run: run `/bookvie-backup` in Claude Code from this repo to back up now. The daily 09:00 job runs the same skill.
+One project skill, [`bookvie-backup`](../.claude/skills/bookvie-backup/SKILL.md), makes a backup run: run `/bookvie-backup` in Claude Code from this repo whenever you want an off-machine copy. Nothing runs it on a schedule.
 
 An agent can restore your library only through bookvie's own tools, and only after two confirmations it can't skip. bookvie saves a safety copy of your current library first, so a restore can always be undone.
 
@@ -63,30 +63,9 @@ claude mcp list
 
 Both `bookvie` and `bookvie-dropbox` should read as connected. bookvie must be running for `bookvie` to connect.
 
-### 5. Install the daily job
-
-Install the launchd job that runs the backup every morning at 09:00. Run this from the main bookvie checkout (the folder that holds `.claude/skills/bookvie-backup/SKILL.md`), not from a linked git worktree, which can be removed:
-
-```sh
-bookvie autobackup install
-```
-
-It finds `bookvie`, `bookvie-dropbox` and `claude` on your PATH and refuses, writing nothing, if one is missing. It writes `~/Library/LaunchAgents/com.bookvie.autobackup.plist`, which runs `bookvie autobackup run` from this checkout at 09:00 with a `PATH` holding those three commands' folders, and loads it with `launchctl bootstrap`. Running install again replaces the job, with every path found again. It refuses `--dev`: the daily job is only for your real library.
-
-Each run writes its output to `~/Library/Logs/bookvie/`: `autobackup.log` holds the skill's one-line answer, and `autobackup.err.log` holds the run's own lines: when it started, and either when it finished with `claude`'s exit status or why it stopped early. A run starts bookvie with `--no-browser` if it isn't running, and stops it again afterwards; that bookvie's server lines go into the same two logs. A bookvie you started yourself is left running.
-
-macOS asks again whether bookvie's Python may use the Keychain item `bookvie-dropbox` after each reinstall of bookvie (Troubleshooting the setup, `dropbox_signin`), and at 09:00 nobody is there to answer. After each reinstall, run `/bookvie-backup` by hand once and choose **Always Allow**.
-
-To run the job now instead of waiting for 09:00, and then read its answer:
-
-```sh
-launchctl kickstart gui/$(id -u)/com.bookvie.autobackup
-tail -n 20 ~/Library/Logs/bookvie/autobackup.log ~/Library/Logs/bookvie/autobackup.err.log
-```
-
 ### Your first run
 
-Back up once by hand, so you see a run work before the daily job takes over. In Claude Code, in this repo, run:
+Back up once by hand, so you see a run work. In Claude Code, in this repo, run:
 
 > /bookvie-backup
 
@@ -108,7 +87,7 @@ If macOS asks whether a program may use the Keychain item `bookvie-dropbox`, cho
 
 #### `upload_incomplete`: the upload didn't finish, or didn't match the file
 
-`upload_backup` answers `upload_incomplete` when the upload broke off (a network error or a timeout), Dropbox refused it, or Dropbox's copy doesn't match the file in size or content hash. Nothing in Dropbox was deleted: the older daily backups are deleted only after a checked upload. Run `/bookvie-backup` again, or leave it to the next 09:00 run.
+`upload_backup` answers `upload_incomplete` when the upload broke off (a network error or a timeout), Dropbox refused it, or Dropbox's copy doesn't match the file in size or content hash. Nothing in Dropbox was deleted: the older daily backups are deleted only after a checked upload. Run `/bookvie-backup` again.
 
 To see what Dropbox holds, open `/Apps/bookvie/.backups` in Dropbox. The older daily backups are all still there. A mismatched upload may already have replaced today's file, `bookvie-backup-<YYYY-MM-DD>.zip`; it counts only once a run has checked it, and the next upload replaces it. If the same run keeps failing, check your network and Dropbox's status page, then run `/bookvie-backup` again.
 
@@ -134,7 +113,7 @@ When `claude mcp list` shows `bookvie` or `bookvie-dropbox` as failed:
 
 ## How it works
 
-Every morning at 09:00, a launchd job runs the `bookvie-backup` skill headless with `claude -p`, allowed only the skill's four MCP tools and never `restore_backup`. Setup step 5 installs it. Each run does the same steps as `/bookvie-backup` by hand:
+You start each backup by hand: in Claude Code, in this repo, run `/bookvie-backup`. Nothing runs it on a schedule. The `bookvie-backup` skill uses only its four MCP tools and never `restore_backup`. Each run does these steps:
 
 1. It checks bookvie with `get_app_info`. A `--dev` server never uploads: the run stops there, and nothing is uploaded or recorded.
 2. It asks bookvie to export today's daily backup into `~/bookvie-backups`, with `export_backup`. That backup doesn't move "Last export".
@@ -142,37 +121,11 @@ Every morning at 09:00, a launchd job runs the `bookvie-backup` skill headless w
 4. Otherwise bookvie-dropbox's `upload_backup` uploads the file to `/Apps/bookvie/.backups` in Dropbox and verifies that Dropbox's copy matches it. Only then does it delete the oldest daily backups, keeping 3. A failed or mismatched upload deletes nothing.
 5. It reports the run to bookvie with `record_backup_upload`: uploaded, skipped or failed with a cause. Then it says the outcome in one line.
 
-The skill never retries a failed run and never restores. The next run, the next morning or by hand, tries again.
-
-### Troubleshooting the daily job
-
-Read `~/Library/Logs/bookvie/autobackup.log` and `autobackup.err.log` first: they say how each run ended. To check that launchd knows the job, run `launchctl print gui/$(id -u)/com.bookvie.autobackup`; it answers an error when the job isn't installed.
-
-#### `claude` not found on launchd's PATH
-
-launchd doesn't read your shell's PATH. The job uses the `PATH` that `bookvie autobackup install` wrote into the plist, from where `bookvie`, `bookvie-dropbox` and `claude` were when you installed it. After reinstalling Claude Code, `uv` or bookvie, a command may live somewhere else. A moved `claude` makes `autobackup.err.log` say "can't find claude on the job's PATH". A moved `bookvie` is worse: the plist starts bookvie by its absolute path, so launchd can't start the run at all and both logs stay empty; `launchctl print gui/$(id -u)/com.bookvie.autobackup` then shows a non-zero last exit code. Either way, check that `which claude` and `which bookvie` answer in a terminal, then run `bookvie autobackup install` again from the main checkout.
-
-If `bookvie autobackup install` itself fails with "launchctl bootstrap couldn't load the daily backup job", no daily job is loaded; on some macOS versions a bootstrap right after unloading the old job fails with error 5, and running `bookvie autobackup install` a second time succeeds.
-
-#### A tool missing from `--allowedTools`: a permission prompt nobody can answer
-
-The headless run allows only the skill's four MCP tools, with `--allowedTools`, and nobody is there to answer a permission prompt, so Claude Code refuses any other tool and the run fails. The list is one constant in bookvie that matches the skill's `allowed-tools`. If you changed the skill's tools, change the constant to match, reinstall bookvie with `npm run install:local`, and run the job again. Never allow `Bash` or skip permissions for this job.
-
-#### Claude Code signed out
-
-When Claude Code is signed out, or its sign-in expired, `claude -p` stops before the skill runs, and `autobackup.log` asks you to log in. Run `claude` in a terminal and sign in with `/login`, then run the job again.
-
-#### The checkout moved
-
-The job runs from the checkout you installed it from. If you moved, renamed or deleted that folder, launchd can't start the run. Run `bookvie autobackup install` again from the main checkout's new place, which replaces the job.
-
-#### The Mac was asleep at 09:00
-
-launchd runs a job that was due while the Mac slept as soon as it wakes, once, however many mornings it missed. A Mac that was shut down at 09:00 skips that day's run; the next 09:00 runs as usual. To back up now, run the job with `launchctl kickstart` (Setup step 5) or run `/bookvie-backup` by hand.
+The skill never retries a failed run and never restores. Run `/bookvie-backup` again to try again.
 
 ## What bookvie records
 
-At the end of each daily backup run, the agent tells bookvie how it went with `record_backup_upload`: uploaded, skipped or failed. bookvie keeps that in `local-state.json` in the data folder, under `autoBackup`, beside "Last export". It belongs to this computer and is never part of an export or a restore. For an upload, bookvie checks the file itself: it must be a daily backup in the backups folder whose Dropbox content hash matches, and bookvie fingerprints the `library.json` inside it. The next run's `export_backup` compares the library with that fingerprint, so an unchanged library is skipped instead of uploaded again. The daily run's backup doesn't count as an export, so "Last export" on the Backup page doesn't move.
+At the end of each backup run, the agent tells bookvie how it went with `record_backup_upload`: uploaded, skipped or failed. bookvie keeps that in `local-state.json` in the data folder, under `autoBackup`, beside "Last export". It belongs to this computer and is never part of an export or a restore. For an upload, bookvie checks the file itself: it must be a daily backup in the backups folder whose Dropbox content hash matches, and bookvie fingerprints the `library.json` inside it. The next run's `export_backup` compares the library with that fingerprint, so an unchanged library is skipped instead of uploaded again. A backup run's backup doesn't count as an export, so "Last export" on the Backup page doesn't move.
 
 The backups folder follows the data folder: `~/bookvie-backups` for `~/bookvie-data`, `~/bookvie-backups-dev` for `~/bookvie-data-dev`, and `<data folder>-backups` for any other. Only `~/bookvie-data` writes into `~/bookvie-backups`: a data folder such as `~/bookvie`, whose `-backups` sibling would be one of those two folders, gets no backups folder at all, so it can't write backups or list any. To back up such a library, stop bookvie, rename its data folder to `~/bookvie-data`, and start bookvie without `--data-dir`.
 
@@ -262,13 +215,17 @@ The path isn't a backup in the backups folder or its `from-dropbox/`. A path els
 
 ## Uninstalling
 
-To stop the daily backup and remove everything the setup added, do these steps. Removing the `bookvie` server is optional.
+To remove everything the setup added, do these steps. Removing the `bookvie` server is optional.
 
-Unload the launchd job and remove its plist. The log files in `~/Library/Logs/bookvie/` stay until you delete them:
+If this Mac had the old daily job installed (an earlier bookvie had a morning launchd job, since removed), unload it, then delete its plist, `~/Library/LaunchAgents/com.bookvie.autobackup.plist`, and its logs folder, `~/Library/Logs/bookvie/`:
 
 ```sh
-bookvie autobackup uninstall
+launchctl bootout gui/$(id -u)/com.bookvie.autobackup
+rm -f ~/Library/LaunchAgents/com.bookvie.autobackup.plist
+rm -r ~/Library/Logs/bookvie/
 ```
+
+When the job isn't loaded, or a file or folder is already gone, a command says so; that's fine, and nothing more needs cleaning up.
 
 Remove bookvie-dropbox from Claude Code:
 

@@ -123,7 +123,7 @@ The repo ships three Claude Code skills in [`.claude/skills/`](.claude/skills/).
 - **[`bookvie-notes-summary`](.claude/skills/bookvie-notes-summary/SKILL.md)** turns a book's card notes into a printable one-page Word summary of what you learned, grouped by theme. It saves the file to `~/Documents`. The book needs a Purpose and at least one card note. With no title given, it uses the Main book.
   - "Summarize my card notes for *Fluent Python*"
   - "Make a study sheet from what I learned in my current book"
-- **[`bookvie-backup`](.claude/skills/bookvie-backup/SKILL.md)** backs up the library to bookvie's own Dropbox App folder once: it exports today's daily backup, uploads it with `bookvie-dropbox` unless nothing changed since the last upload, tells bookvie how the run went and answers in one line. It never uploads from a `--dev` server. The daily 09:00 job runs the same skill. Set it up first with [Backing up to Dropbox, and restoring](docs/dropbox-backup.md).
+- **[`bookvie-backup`](.claude/skills/bookvie-backup/SKILL.md)** backs up the library to bookvie's own Dropbox App folder once: it exports today's daily backup, uploads it with `bookvie-dropbox` unless nothing changed since the last upload, tells bookvie how the run went and answers in one line. It never uploads from a `--dev` server. Set it up first with [Backing up to Dropbox, and restoring](docs/dropbox-backup.md).
   - "/bookvie-backup"
   - "Back up my library to Dropbox now"
 

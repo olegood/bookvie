@@ -323,21 +323,11 @@ class BookDetailView(_View):
     the calculator's prefill to one decimal. ``None`` when there is none."""
 
 
-class AutoBackupView(_View):
-    """Whether the daily 09:00 backup job is installed (Story 13.5; Story 13.6 extends it)."""
-
-    installed: bool
-    """Whether launchd knows the job (``launchctl print`` answers). Always ``False`` on a
-    ``--dev`` server and on a server whose backups folder isn't ``~/bookvie-backups``."""
-
-
 class BackupView(_View):
     """What the Backup page shows."""
 
     last_export_at: AwareDatetime | None
     """When the last complete export download finished; ``None`` before the first."""
-    auto_backup: AutoBackupView
-    """The daily backup job, as far as this server can tell."""
 
 
 class StatsBucket(_View):

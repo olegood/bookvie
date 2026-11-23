@@ -29,7 +29,7 @@ the guard refuses. This holds in browsers too old to send Sec-Fetch-Site.
 
 import os
 import threading
-from collections.abc import AsyncIterator, Callable, Iterable, Sequence
+from collections.abc import AsyncIterator, Iterable, Sequence
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -43,7 +43,6 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 
 from bookvie import agent, views
 from bookvie.intents import Clock, SystemClock, backups_folder
-from bookvie.intents.backup_file import DEFAULT_BACKUPS_NAME
 from bookvie.intents.cover_fetch import CoverFetcher
 
 from .api import BodySizeCap, install_api
@@ -192,21 +191,6 @@ class _McpRoute(BaseRoute):
         await JSONResponse({"detail": "Not Found"}, status_code=404)(scope, receive, send)
 
 
-def _is_real_backups_folder(backups_dir: Path | None) -> bool:
-    """Whether ``backups_dir`` is ``~/bookvie-backups``, the real library's (AD-22)."""
-    if backups_dir is None:
-        return False
-    real = Path.home() / DEFAULT_BACKUPS_NAME
-    try:
-        return os.path.samefile(backups_dir, real)
-    except OSError, ValueError:
-        pass
-    try:
-        return Path(backups_dir).resolve() == real.resolve()
-    except OSError, ValueError:
-        return False
-
-
 def create_app(
     static_dir: Path = STATIC_DIR,
     *,
@@ -221,7 +205,6 @@ def create_app(
     tools: Sequence[agent.AgentTool] | None = None,
     cover_fetcher: CoverFetcher | None = None,
     backups_dir: Path | None = None,
-    launchd_probe: Callable[[], bool] | None = None,
 ) -> FastAPI:
     """Build the app. ``store`` is the opened ``bookvie.store.Store``, if any.
 
@@ -240,11 +223,7 @@ def create_app(
     folder ``export_backup`` writes into (Story 12.6); ``cli.py`` resolves it
     from the data folder. Without it, the folder is derived from ``data_dir``
     by the same rule (:func:`bookvie.intents.backups_folder`), or is ``None``
-    when there is no ``data_dir``. ``launchd_probe`` says whether the daily
-    backup job is installed (Story 13.5); ``cli.py`` passes
-    :func:`bookvie.cli.launchd_job_installed`. ``views/backup`` asks it on each
-    read, and only on the real library's server: not ``--dev``, and the backups
-    folder is ``~/bookvie-backups``. Anywhere else the job reads as not installed.
+    when there is no ``data_dir``.
     """
     static_dir = Path(static_dir).resolve()
     resolved_data_dir = str(Path(data_dir).resolve()) if data_dir is not None else None
@@ -270,9 +249,6 @@ def create_app(
     if backups_dir is None and data_dir is not None:
         backups_dir = backups_folder(Path(data_dir), Path.home())
     app.state.backups_dir = backups_dir
-    app.state.launchd_probe = (
-        launchd_probe if not dev and _is_real_backups_folder(backups_dir) else None
-    )
     # AD-22: this app's own sealing key and nonces, so a restart refuses an older token.
     app.state.restore_gate = agent.RestoreGate()
     app.state.app_info = views.app_info(

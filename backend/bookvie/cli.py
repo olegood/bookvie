@@ -4,9 +4,7 @@ import argparse
 import asyncio
 import copy
 import os
-import plistlib
 import re
-import shutil
 import subprocess
 import sys
 import threading
@@ -14,7 +12,7 @@ import time
 import unicodedata
 import webbrowser
 from collections.abc import Sequence
-from datetime import date, datetime
+from datetime import date
 from pathlib import Path
 
 import uvicorn
@@ -38,33 +36,6 @@ _REFUSAL = (
 )
 _GIT_TIMEOUT_SECONDS = 5.0
 _BROWSER_WAIT_SECONDS = 30.0
-
-# The daily backup job (AD-22 The schedule, Story 13.5).
-AUTOBACKUP_LABEL = "com.bookvie.autobackup"
-"""The launchd job's one label: the plist's name, install, uninstall and the probe."""
-AUTOBACKUP_ALLOWED_TOOLS = (
-    "mcp__bookvie__get_app_info",
-    "mcp__bookvie__export_backup",
-    "mcp__bookvie__record_backup_upload",
-    "mcp__bookvie-dropbox__upload_backup",
-)
-"""What the headless run may call: ``bookvie-backup``'s ``allowed-tools``, MCP names only."""
-AUTOBACKUP_DISALLOWED_TOOLS = (
-    "mcp__bookvie__restore_backup",
-    "mcp__bookvie-dev__restore_backup",
-)
-"""What the headless run may never call: the daily run never restores."""
-AUTOBACKUP_SKILL = Path(".claude") / "skills" / "bookvie-backup" / "SKILL.md"
-AUTOBACKUP_PROMPT = "/bookvie-backup"
-LAUNCHCTL = "/bin/launchctl"
-_AUTOBACKUP_COMMANDS = ("bookvie", "bookvie-dropbox", "claude")
-_AUTOBACKUP_SYSTEM_PATH = ("/usr/bin", "/bin", "/usr/sbin", "/sbin")
-_LAUNCHD_PROBE_TIMEOUT_SECONDS = 2.0
-_LAUNCHCTL_TIMEOUT_SECONDS = 30.0
-_AUTOBACKUP_HEALTH_WAIT_SECONDS = 60.0
-_AUTOBACKUP_HEALTH_POLL_SECONDS = 0.25
-_AUTOBACKUP_CLAUDE_TIMEOUT_SECONDS = 30 * 60.0
-_AUTOBACKUP_STOP_WAIT_SECONDS = 30.0
 
 
 def _local_date(value: str) -> date:
@@ -114,24 +85,6 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         default=None,
         metavar="YYYY-MM-DD",
         help="pretend today is this local date (tests only; needs --no-browser)",
-    )
-    commands = parser.add_subparsers(dest="command", metavar="command")
-    autobackup = commands.add_parser(
-        "autobackup",
-        help="install, uninstall or run the daily 09:00 backup to Dropbox (production only)",
-        description=(
-            "The daily 09:00 backup to Dropbox, as a launchd job. "
-            "Production only: refused with --dev."
-        ),
-    )
-    actions = autobackup.add_subparsers(dest="action", metavar="action", required=True)
-    actions.add_parser(
-        "install",
-        help="install or replace the launchd job; run it from the main bookvie checkout",
-    )
-    actions.add_parser("uninstall", help="unload the launchd job and remove its plist")
-    actions.add_parser(
-        "run", help="what the job runs at 09:00: start bookvie if needed, then /bookvie-backup"
     )
     args = parser.parse_args(argv)
     if args.port is None:
@@ -306,268 +259,8 @@ def _port_conflict(
     return 1, False
 
 
-def launchd_job_installed() -> bool:
-    """Whether launchd knows the daily backup job: only ``launchctl print``'s exit status.
-
-    Any error, a timeout, or a system that isn't macOS reads as not installed.
-    """
-    if sys.platform != "darwin":
-        return False
-    try:
-        result = subprocess.run(
-            [LAUNCHCTL, "print", f"gui/{os.getuid()}/{AUTOBACKUP_LABEL}"],
-            capture_output=True,
-            timeout=_LAUNCHD_PROBE_TIMEOUT_SECONDS,
-            check=False,
-        )
-    except OSError, subprocess.SubprocessError, ValueError:
-        return False
-    return result.returncode == 0
-
-
-def _launchctl(*args: str) -> subprocess.CompletedProcess | None:
-    """``launchctl`` with ``args``; ``None`` when it can't be run or times out."""
-    try:
-        return subprocess.run(
-            [LAUNCHCTL, *args],
-            capture_output=True,
-            text=True,
-            timeout=_LAUNCHCTL_TIMEOUT_SECONDS,
-            check=False,
-        )
-    except OSError, subprocess.SubprocessError, ValueError:
-        return None
-
-
-def _launchd_domain() -> str:
-    return f"gui/{os.getuid()}"
-
-
-def _launch_agent_plist() -> Path:
-    return Path.home() / "Library" / "LaunchAgents" / f"{AUTOBACKUP_LABEL}.plist"
-
-
-def _autobackup_logs() -> Path:
-    return Path.home() / "Library" / "Logs" / "bookvie"
-
-
-def _now() -> str:
-    return datetime.now().astimezone().isoformat(timespec="seconds")
-
-
-def _refuses_dev(args: argparse.Namespace) -> bool:
-    if args.dev:
-        _say(
-            f"bookvie: autobackup {args.action} is refused with --dev: "
-            f"the daily backup is for your real library ({DEFAULT_DATA_DIR}) only. "
-            f"Run it without --dev."
-        )
-    return args.dev
-
-
-def _autobackup_install(args: argparse.Namespace) -> int:
-    """Write the launchd plist for this checkout and load it; refuse before any write."""
-    if _refuses_dev(args):
-        return 2
-    checkout = Path.cwd().resolve()
-    if (checkout / ".git").is_file():
-        _say(
-            "bookvie: this folder is a linked git worktree, which can be removed at any time. "
-            "Run bookvie autobackup install from the main bookvie checkout."
-        )
-        return 1
-    if not (checkout / AUTOBACKUP_SKILL).is_file():
-        _say(
-            f"bookvie: this folder has no {AUTOBACKUP_SKILL.as_posix()}, the bookvie-backup "
-            f"skill the job runs. Run bookvie autobackup install from the top folder "
-            f"of the main bookvie checkout."
-        )
-        return 1
-    found: dict[str, Path] = {}
-    for name in _AUTOBACKUP_COMMANDS:
-        where = shutil.which(name)
-        if where is None:
-            _say(
-                f"bookvie: can't find {name} on your PATH, and the job needs it. "
-                f"Install it (or fix your PATH), then run bookvie autobackup install again."
-            )
-            return 1
-        found[name] = Path(where).absolute()
-
-    folders = [str(found[name].parent) for name in _AUTOBACKUP_COMMANDS]
-    path = ":".join(dict.fromkeys([*folders, *_AUTOBACKUP_SYSTEM_PATH]))
-    logs = _autobackup_logs()
-    job = {
-        "Label": AUTOBACKUP_LABEL,
-        "ProgramArguments": [str(found["bookvie"]), "autobackup", "run"],
-        "WorkingDirectory": str(checkout),
-        "StartCalendarInterval": {"Hour": 9, "Minute": 0},
-        "EnvironmentVariables": {"PATH": path},
-        "StandardOutPath": str(logs / "autobackup.log"),
-        "StandardErrorPath": str(logs / "autobackup.err.log"),
-    }
-    plist = _launch_agent_plist()
-    try:
-        logs.mkdir(parents=True, exist_ok=True)
-        plist.parent.mkdir(parents=True, exist_ok=True)
-        temp = plist.with_name(f".{plist.name}.tmp")
-        temp.write_bytes(plistlib.dumps(job))
-        os.replace(temp, plist)
-    except OSError as exc:
-        _say(f"bookvie: couldn't write {display_path(plist, Path.home())}: {exc}")
-        return 1
-
-    # A job that is loaded, with or without a plist, is unloaded first; it may not be.
-    _launchctl("bootout", f"{_launchd_domain()}/{AUTOBACKUP_LABEL}")
-    loaded = _launchctl("bootstrap", _launchd_domain(), str(plist))
-    if loaded is None or loaded.returncode != 0:
-        why = "it couldn't be run" if loaded is None else f"it exited {loaded.returncode}"
-        detail = (loaded.stderr or "").strip() if loaded is not None else ""
-        _say(
-            f"bookvie: launchctl bootstrap couldn't load the daily backup job ({why})"
-            + (f": {detail}" if detail else "")
-            + f". Any earlier job was already unloaded, so no daily job is loaded now. "
-            f"The plist is at {display_path(plist, Path.home())}; "
-            f"run bookvie autobackup install again."
-        )
-        return 1
-    _say(
-        f"bookvie: installed the daily backup job ({AUTOBACKUP_LABEL}). It runs "
-        f"/bookvie-backup at 09:00 from {display_path(checkout, Path.home())}, "
-        f"with logs in {display_path(logs, Path.home())}/."
-    )
-    return 0
-
-
-def _autobackup_uninstall(args: argparse.Namespace) -> int:
-    """Unload the launchd job and remove its plist; with none, say so."""
-    if _refuses_dev(args):
-        return 2
-    plist = _launch_agent_plist()
-    had_plist = plist.is_file()
-    unloaded = _launchctl("bootout", f"{_launchd_domain()}/{AUTOBACKUP_LABEL}")
-    try:
-        plist.unlink(missing_ok=True)
-    except OSError as exc:
-        _say(f"bookvie: couldn't remove {display_path(plist, Path.home())}: {exc}")
-        return 1
-    if had_plist or (unloaded is not None and unloaded.returncode == 0):
-        _say(f"bookvie: uninstalled the daily backup job ({AUTOBACKUP_LABEL}).")
-    else:
-        _say(f"bookvie: the daily backup job ({AUTOBACKUP_LABEL}) isn't installed.")
-    return 0
-
-
-def _stop(server: subprocess.Popen) -> None:
-    """SIGTERM a server this run started, and wait for it to exit."""
-    if server.poll() is not None:
-        return
-    server.terminate()
-    try:
-        server.wait(timeout=_AUTOBACKUP_STOP_WAIT_SECONDS)
-    except subprocess.TimeoutExpired:
-        server.kill()
-        server.wait()
-
-
-def _wait_for_health(server: subprocess.Popen) -> bool:
-    """Whether bookvie answers on its port before the wait ends or the server exits."""
-    deadline = time.monotonic() + _AUTOBACKUP_HEALTH_WAIT_SECONDS
-    while True:
-        if instance.probe_health(DEFAULT_PORT) is not None:
-            return True
-        if server.poll() is not None or time.monotonic() >= deadline:
-            return False
-        time.sleep(_AUTOBACKUP_HEALTH_POLL_SECONDS)
-
-
-def _autobackup_run(args: argparse.Namespace) -> int:
-    """Start bookvie when it isn't running, run ``/bookvie-backup`` headless, stop what it started."""
-    if _refuses_dev(args):
-        return 2
-    _say(f"bookvie: autobackup run started at {_now()}")
-    claude = shutil.which("claude")
-    if claude is None:
-        _say(
-            "bookvie: can't find claude on the job's PATH, so nothing was backed up. "
-            "Run bookvie autobackup install again from the main bookvie checkout."
-        )
-        return 1
-    server: subprocess.Popen | None = None
-    try:
-        if instance.probe_health(DEFAULT_PORT) is None:
-            bookvie = shutil.which("bookvie")
-            if bookvie is None:
-                _say(
-                    "bookvie: can't find bookvie on the job's PATH, so nothing was backed up. "
-                    "Run bookvie autobackup install again from the main bookvie checkout."
-                )
-                return 1
-            _say("bookvie: bookvie isn't running; starting it for this run.")
-            try:
-                server = subprocess.Popen([bookvie, "--no-browser"], stdin=subprocess.DEVNULL)
-            except OSError as exc:
-                _say(f"bookvie: couldn't start bookvie, so nothing was backed up: {exc}")
-                return 1
-            if not _wait_for_health(server):
-                if server.poll() is not None:
-                    _say(
-                        f"bookvie: the bookvie this run started exited {server.returncode} "
-                        f"before it answered on port {DEFAULT_PORT}, so nothing was backed up."
-                    )
-                else:
-                    _say(
-                        f"bookvie: bookvie didn't answer on port {DEFAULT_PORT} within "
-                        f"{_AUTOBACKUP_HEALTH_WAIT_SECONDS:g} s, so nothing was backed up."
-                    )
-                return 1
-        command = [
-            claude,
-            "-p",
-            AUTOBACKUP_PROMPT,
-            "--allowedTools",
-            ",".join(AUTOBACKUP_ALLOWED_TOOLS),
-            "--disallowedTools",
-            ",".join(AUTOBACKUP_DISALLOWED_TOOLS),
-        ]
-        try:
-            result = subprocess.run(
-                command,
-                stdin=subprocess.DEVNULL,
-                timeout=_AUTOBACKUP_CLAUDE_TIMEOUT_SECONDS,
-                check=False,
-            )
-        except subprocess.TimeoutExpired:
-            _say(
-                f"bookvie: claude didn't finish within "
-                f"{_AUTOBACKUP_CLAUDE_TIMEOUT_SECONDS / 60:g} minutes and was stopped."
-            )
-            return 1
-        except OSError as exc:
-            _say(f"bookvie: couldn't run claude, so nothing was backed up: {exc}")
-            return 1
-        code = result.returncode if result.returncode >= 0 else 1
-        _say(f"bookvie: autobackup run finished at {_now()}, claude exited {result.returncode}")
-        return code
-    finally:
-        if server is not None:
-            _stop(server)
-
-
-def _autobackup(args: argparse.Namespace) -> int:
-    run = {
-        "install": _autobackup_install,
-        "uninstall": _autobackup_uninstall,
-        "run": _autobackup_run,
-    }[args.action]
-    return run(args)
-
-
 def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
-    if args.command == "autobackup":
-        # Before anything touches the data folder: the job writes nothing there.
-        return _autobackup(args)
     data_dir: Path = args.data_dir
     # Before anything touches the folder: no lock, no store, no new files.
     if _refuses_real_library(args):
@@ -619,7 +312,6 @@ def main(argv: Sequence[str] | None = None) -> int:
             commit=_checkout_commit() if args.dev else None,
             checkout=str(_checkout_folder()) if args.dev else None,
             backups_dir=backups_folder(data_dir, Path.home()),
-            launchd_probe=launchd_job_installed,
         )
 
         def release() -> None:

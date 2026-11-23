@@ -604,13 +604,13 @@ _FAILING_ROW = re.compile(r'^\| [^|]+ \| "([^"]+)" \|\s*$')
 
 
 def failing_reasons() -> list[str]:
-    """EXPERIENCE.md's Failing reasons, in the table's order, each as quoted after
-    "Failing · " (the auto-backup line's words, which the backup skill's "Failed: "
+    """EXPERIENCE.md's Failed reasons, in the table's order, each as quoted after
+    "failed *when* · " (the Dropbox backup line's words, which the backup skill's "Failed: "
     line repeats, UX-DR82). The rows follow AD-22's cause order: ``dropbox_signin``,
     ``upload_incomplete``, ``dropbox_full``, ``backup_write``, ``other``."""
     text = EXPERIENCE_MD.read_text(encoding="utf-8")
-    header = text.find('| Cause | After "Failing · " |')
-    assert header != -1, "no Failing reasons table in EXPERIENCE.md"
+    header = text.find('| Cause | After "failed *when* · " |')
+    assert header != -1, "no Failed reasons table in EXPERIENCE.md"
     reasons: list[str] = []
     for line in text[header:].splitlines()[2:]:
         row = _FAILING_ROW.match(line)

@@ -205,12 +205,12 @@ One signal: the latest report of the backup skill, which Oleg runs by hand (`/bo
 - **Unreadable state.** Upload state that is missing or can't be read counts as no report yet.
 - **When.** "today at 09:02", "yesterday at 09:02", otherwise "on 19 Nov". Local calendar days, recomputed on focus like every relative time (Foundation → Dates).
 - **Copies.** The number the last upload reported: "1 copy", "2 copies", "3 copies". A skip keeps the last upload's count.
-- **Failed reasons.** One or two sentences, from this list; every reason after the run reached Dropbox says nothing there was deleted (plan D2). The skill reports a cause from this list (`record_backup_upload`'s fixed set of causes). *Pending Story 13.5:* the header below becomes `After "failed *when* · "` and the `upload_incomplete` row becomes "the last upload didn't finish. Nothing in Dropbox was deleted; run /bookvie-backup again.", together with the skill's line and `tests/helpers.py`'s `failing_reasons`, which reads this table by its header.
+- **Failed reasons.** One or two sentences, from this list; every reason after the run reached Dropbox says nothing there was deleted (plan D2). The skill reports a cause from this list (`record_backup_upload`'s fixed set of causes).
 
-| Cause | After "Failing · " |
+| Cause | After "failed *when* · " |
 |---|---|
 | Dropbox sign-in expired or revoked | "Dropbox sign-in expired. Nothing in Dropbox was deleted. Run bookvie-dropbox auth in Terminal." |
-| Upload didn't match the file, or didn't finish | "the last upload didn't finish. Nothing in Dropbox was deleted; the next 09:00 run tries again." |
+| Upload didn't match the file, or didn't finish | "the last upload didn't finish. Nothing in Dropbox was deleted; run /bookvie-backup again." |
 | Dropbox is full | "Dropbox is full. Nothing in Dropbox was deleted; free some space there." |
 | bookvie couldn't write the backup | "bookvie couldn't write the backup file. See docs/dropbox-backup.md → Troubleshooting." |
 | Anything else | "the last run stopped with an error. See docs/dropbox-backup.md → Troubleshooting." |

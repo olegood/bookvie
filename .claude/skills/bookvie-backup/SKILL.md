@@ -4,7 +4,7 @@ description: >
   Back up the user's bookvie library to bookvie's own Dropbox App folder, once, and tell bookvie how the run went.
   Checks the local bookvie app with get_app_info and never backs up a --dev server, exports today's daily backup with export_backup, uploads it with bookvie-dropbox's upload_backup unless the library is unchanged since the last upload, and always ends with one record_backup_upload report.
   Reports the outcome in one line: what was uploaded and how many copies Dropbox keeps, that nothing was new, or why it failed and how to fix it.
-  The 09:00 launchd job runs this skill headless with claude -p; the user can also run /bookvie-backup by hand.
+  The user runs it by hand with /bookvie-backup, in an interactive Claude Code session; there is no scheduled run.
   Use this whenever the user asks to back up bookvie or their library to Dropbox now, to run the daily backup by hand, or to check that the Dropbox backup works.
 allowed-tools:
   - mcp__bookvie__get_app_info
@@ -17,19 +17,17 @@ metadata:
 
 # Back up the bookvie library to Dropbox
 
-bookvie is the user's local home-library app. This skill makes one backup run: it writes today's daily backup on this computer, uploads it to bookvie's own folder in the user's Dropbox, and tells bookvie how the run went, so the Backup page can say whether auto-backup works. The setup (the Dropbox app, the sign-in, both MCP servers) is in `docs/dropbox-backup.md`.
+bookvie is the user's local home-library app. This skill makes one backup run: it writes today's daily backup on this computer, uploads it to bookvie's own folder in the user's Dropbox, and tells bookvie how the run went, so the Backup page can say how the last Dropbox backup went. The setup (the Dropbox app, the sign-in, both MCP servers) is in `docs/dropbox-backup.md`.
 
 The run uses only four tools, the ones in the frontmatter: bookvie's `get_app_info`, `export_backup` and `record_backup_upload`, and bookvie-dropbox's `upload_backup`. bookvie-dropbox checks that Dropbox's copy matches the file before it deletes the oldest daily backups beyond 3, so a failed upload deletes nothing. The skill never restores, never retries a failed upload, and never calls bookvie's HTTP API for the backup.
 
-The 09:00 launchd job runs this skill headless (`claude -p`), allowed only those four tools, with bookvie already started. Run by hand (`/bookvie-backup`), step 1 may also start bookvie, and Claude Code asks permission for each of its shell commands.
+The user runs this skill by hand (`/bookvie-backup`), in an interactive Claude Code session; nothing runs it on a schedule. Step 1 may start bookvie, and Claude Code asks permission for each of its shell commands.
 
 ## 1. Make sure bookvie is running
 
 Call `get_app_info` on the `bookvie` entry. When it answers, go on to step 2 and skip the rest of this step.
 
-When the `bookvie` tools aren't there and you can't run shell commands (the headless run), report one line, "Failed: bookvie's tools aren't available (bookvie isn't running, or its `bookvie` entry isn't connected in Claude Code), so nothing was backed up. Start bookvie or reconnect the entry, then run /bookvie-backup again.", and stop. Don't call any other tool: nothing is recorded, because bookvie is the one that records a run.
-
-Only when the skill is run by hand, in an interactive session, start bookvie as the other bookvie skills do. Check it first:
+Otherwise, since the skill is run by hand in an interactive session, start bookvie as the other bookvie skills do. Check it first:
 
 ```bash
 curl -fsS http://127.0.0.1:8765/api/health
@@ -83,17 +81,17 @@ If `record_backup_upload` itself answers an error (`couldnt_save`, say), don't c
 
 ## 6. Report in one line
 
-Tell the user the outcome in one line, in the words of the Backup page's auto-backup line. Write names as they are, with no Markdown around them.
+Tell the user the outcome in one line, in the words of the Backup page's Dropbox backup line. Write names as they are, with no Markdown around them.
 
 - **Uploaded:** "Uploaded *name* · *N* copies in Dropbox, deleted *name*", with the upload's `name`, its `copies` and the names it `deleted`, joined with ", " when there are several. For example "Uploaded bookvie-backup-2026-11-21.zip · 3 copies in Dropbox, deleted bookvie-backup-2026-11-18.zip". When `deleted` is empty, leave out the deleted part: "Uploaded bookvie-backup-2026-11-21.zip · 2 copies in Dropbox". Write "1 copy" when `copies` is 1.
 - **Skipped:** "Nothing new since the last upload; skipped."
 - **Failed:** the line for the run's cause, word for word:
   - `dropbox_signin`: "Failed: Dropbox sign-in expired. Nothing in Dropbox was deleted. Run bookvie-dropbox auth in Terminal."
-  - `upload_incomplete`: "Failed: the last upload didn't finish. Nothing in Dropbox was deleted; the next 09:00 run tries again."
+  - `upload_incomplete`: "Failed: the last upload didn't finish. Nothing in Dropbox was deleted; run /bookvie-backup again."
   - `dropbox_full`: "Failed: Dropbox is full. Nothing in Dropbox was deleted; free some space there."
   - `backup_write`: "Failed: bookvie couldn't write the backup file. See docs/dropbox-backup.md → Troubleshooting."
   - `other`: "Failed: the last run stopped with an error. See docs/dropbox-backup.md → Troubleshooting." When the cause was that the `upload_backup` tool wasn't there, add on the same line: "bookvie-dropbox isn't connected in Claude Code: see docs/dropbox-backup.md → Setup, step 3."
 
 When `record_backup_upload` answered an error, still give the outcome line, and add on the same line "bookvie couldn't save this report (*code*)." with the error's code, or without the parentheses when the error has none. Don't call any tool to fix it.
 
-The stops in step 2 (a development library, unreadable app info, an older bookvie) and the headless stop in step 1 have their own lines, given there.
+The stops in step 2 (a development library, unreadable app info, an older bookvie) have their own lines, given there.

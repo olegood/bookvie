@@ -532,21 +532,12 @@ export interface components {
             commit: string | null;
         };
         /**
-         * AutoBackupView
-         * @description Whether the daily 09:00 backup job is installed (Story 13.5; Story 13.6 extends it).
-         */
-        AutoBackupView: {
-            /** Installed */
-            installed: boolean;
-        };
-        /**
          * BackupView
          * @description What the Backup page shows.
          */
         BackupView: {
             /** Lastexportat */
             lastExportAt: string | null;
-            autoBackup: components["schemas"]["AutoBackupView"];
         };
         /** Body_add_book_intent_api_intents_add_book_post */
         Body_add_book_intent_api_intents_add_book_post: {

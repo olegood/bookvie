@@ -38,8 +38,6 @@ BACKEND_SOURCE = ROOT / "backend" / "bookvie"
 SCHEMA_D_TS = ROOT / "frontend" / "src" / "api" / "generated" / "schema.d.ts"
 _THIS_MODULE = Path(__file__).resolve()
 
-RED_13_5 = "red phase (Story 13.5): the morning job is still in place"
-
 NEW_UPLOAD_INCOMPLETE = (
     "the last upload didn't finish. Nothing in Dropbox was deleted; run /bookvie-backup again."
 )
@@ -97,8 +95,6 @@ def _test_files() -> list[Path]:
 # --- AC-1: no `bookvie autobackup` ----------------------------------------------------
 
 
-# Un-skip when the build takes the `autobackup` subcommand and its code out of cli.py.
-@pytest.mark.skip(reason=RED_13_5)
 def test_bookvie_autobackup_is_not_a_command_and_cli_has_none_of_the_jobs_code(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
@@ -124,8 +120,6 @@ def test_bookvie_autobackup_is_not_a_command_and_cli_has_none_of_the_jobs_code(
 # --- AC-2: no launchd probe, and views/backup without autoBackup -------------------------
 
 
-# Un-skip when the build takes `launchd_probe` and `AutoBackupView` out (then `api:gen`).
-@pytest.mark.skip(reason=RED_13_5)
 def test_views_backup_carries_only_last_export_and_nothing_asks_launchd(tmp_path: Path) -> None:
     # [P0] AC-2
     response = api_client(tmp_path, raise_server_exceptions=True).get("/api/views/backup")
@@ -149,9 +143,6 @@ def test_views_backup_carries_only_last_export_and_nothing_asks_launchd(tmp_path
 # --- AC-3: the skill runs by hand ------------------------------------------------------
 
 
-# Un-skip when the build rewrites the skill's description, intro, step 1 and the
-# `upload_incomplete` line (and, in the same change, EXPERIENCE.md and failing_reasons).
-@pytest.mark.skip(reason=RED_13_5)
 def test_the_backup_skill_says_it_runs_by_hand_and_never_mentions_the_morning_job() -> None:
     # [P1] AC-3
     skill = _skill()
@@ -182,8 +173,6 @@ def test_the_backup_skill_says_it_runs_by_hand_and_never_mentions_the_morning_jo
 # --- AC-4: the guide and the README ----------------------------------------------------
 
 
-# Un-skip when the build takes the job out of docs/dropbox-backup.md and the README.
-@pytest.mark.skip(reason=RED_13_5)
 def test_the_guide_and_readme_describe_a_run_by_hand_and_how_to_remove_an_old_job() -> None:
     # [P1] AC-4
     text = GUIDE.read_text(encoding="utf-8")
@@ -218,8 +207,6 @@ def test_the_guide_and_readme_describe_a_run_by_hand_and_how_to_remove_an_old_jo
 # --- AC-5: the tests ------------------------------------------------------------------
 
 
-# Un-skip when the build deletes test_autobackup.py and updates the tests that name the job.
-@pytest.mark.skip(reason=RED_13_5)
 def test_no_test_refers_to_the_autobackup_command_or_launchd() -> None:
     # [P1] AC-5
     assert not (ROOT / "backend" / "tests" / "test_autobackup.py").exists()

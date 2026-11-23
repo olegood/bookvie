@@ -1627,3 +1627,16 @@
   summary: Spine drift (AD-22 `bookvie autobackup run` steps 1-4), reconciled before the next epic: the run waits at most 60 s for health and stops a started server that never answers or exits early, caps `claude` at 30 minutes, refuses before starting anything when `claude` is missing, and exits 1 for a signal-killed `claude`; the AD's steps state none of this. Low.
   evidence: code review spine-check finding 6; `backend/bookvie/cli.py` `_autobackup_run`.
   resolved: obsolete. `sprint-change-proposal-2026-11-23.md` drops the morning job (the Mac's administration policy doesn't allow a LaunchAgent); the spine's AD-22 schedule and auto-backup-state text is replaced in that pass, and Story 13.5 "Take out the morning job" removes the code (2026-11-23).
+
+## Deferred from: build-auto review of spec-13-5-take-out-the-morning-job (2026-11-23)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-5-take-out-the-morning-job.md`
+  summary: Spine drift (AD-22 Causes), reconciled before the next epic: AD-22 still says "The UX's Failing line has one sentence per cause"; EXPERIENCE.md's table is now the Failed reasons of the Dropbox backup line, read after `failed *when* · `. Low.
+  evidence: spine-check finding 1; `ARCHITECTURE-SPINE.md:360`; EXPERIENCE.md's Dropbox backup line table header; `backend/tests/helpers.py` `failing_reasons`.
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-5-take-out-the-morning-job.md`
+  summary: "daily backup run" wording survives in agent tool descriptions and docstrings (`export_backup`'s forUpload "which only the daily backup run sends", `record_backup_upload` "Record how a daily backup run ended", `backup_file.py` and `local_state.py` docstrings), which now hints at a schedule. The two descriptions are copied from `epics.md` (lines 3168, 3173) and pinned by the description test, so a fix starts in `epics.md`. Low.
+  evidence: build-auto blind-hunter finding 4; `backend/bookvie/agent/tools.py:775,889`; pre-existing since Story 13.3.
+- source_spec: `_bmad-output/implementation-artifacts/spec-13-5-take-out-the-morning-job.md`
+  summary: Before Story 13.6: EXPERIENCE.md's Failed-reasons rows mix a capitalised start ("Dropbox sign-in expired.", "Dropbox is full.") with a lowercase one ("the last upload didn't finish.", "bookvie couldn't write…", "the last run stopped…") after "failed *when* · "; 13.6 renders them and should settle the casing. Low.
+  evidence: build-auto blind-hunter finding 11; `EXPERIENCE.md` Dropbox backup line table.
+

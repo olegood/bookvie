@@ -4,7 +4,7 @@ The skill (``.claude/skills/bookvie-backup/SKILL.md``) checks bookvie with
 ``get_app_info``, calls ``export_backup({forUpload: true})``, calls
 ``upload_backup`` unless ``unchangedSinceUpload``, and always ends with exactly
 one ``record_backup_upload``. Its frontmatter's ``allowed-tools`` lists exactly
-its four MCP tools, the list the headless ``claude -p`` run gets (Story 13.5).
+its four MCP tools, and nothing else. It is run by hand, with ``/bookvie-backup``.
 
 Run by hand with bookvie not running, its step 1 falls back to the other
 skills' start (the health check, ``bookvie --no-browser``, the ``/mcp`` probe,
@@ -64,7 +64,7 @@ SKILL_TOOLS = [
     f"{BOOKVIE}{RECORD_BACKUP_UPLOAD}",
     f"{DROPBOX}{UPLOAD_BACKUP}",
 ]
-"""The skill's tools, AR51: what its frontmatter lists and ``claude -p`` is allowed (13.5)."""
+"""The skill's tools, AR51: exactly what its frontmatter lists."""
 
 # The calls, as the skill writes them (the notation epics.md uses).
 EXPORT_CALL = "`export_backup({forUpload: true})`"
@@ -279,7 +279,7 @@ def test_run_by_hand_the_skill_starts_bookvie_as_the_other_skills_do_and_goes_on
     health = start.find("curl -fsS http://127.0.0.1:8765/api/health")
     assert -1 < start.find("`get_app_info`") < health, start[:400]
 
-    # Only when run by hand: the headless run never starts bookvie (AR51).
+    # Run by hand, in an interactive session, so it may start bookvie (AR51).
     assert re.search(r"\b(?:by hand|interactive)\b", start, re.I)
     assert "--no-browser" in start
     # The other skills' start, for the `bookvie` entry only: never the dev one.
@@ -413,23 +413,6 @@ def test_with_no_dropbox_tools_the_run_fails_with_other_and_says_bookvie_dropbox
     ), report
 
 
-def test_headless_with_bookvie_not_running_the_skill_stops_with_one_failed_line_and_records_nothing() -> (
-    None
-):
-    # [P2] AC-4 (the spec's headless row): no shell, so no start; nothing is recorded.
-    start = _section(_skill(), START_STEP, numbered=True) or ""
-    (stop,) = [p for p in _paragraphs(start) if "headless" in p]
-    assert (
-        "\"Failed: bookvie's tools aren't available (bookvie isn't running, "
-        "or its `bookvie` entry isn't connected"
-    ) in stop, stop
-    assert re.search(r"\bstop\b", stop) and "Don't call any other tool" in stop
-    assert "nothing is recorded" in stop
-    # It comes before the start fallback's shell commands.
-    flat = _flat(start)
-    assert flat.index(stop) < flat.index("curl -fsS http://127.0.0.1:8765/api/health")
-
-
 def test_a_refused_report_still_gives_the_outcome_and_is_never_sent_twice() -> None:
     # [P2] AC-1 (the spec's report-refused row).
     body = _body(_skill())
@@ -554,6 +537,6 @@ def test_each_failed_line_says_failed_once_and_a_codeless_refused_report_drops_t
     # The closing note names every stop that has its own line.
     assert re.search(
         r"The stops in step 2 \(a development library, unreadable app info, an older bookvie\) "
-        r"and the headless stop in step 1 have their own lines",
+        r"have their own lines",
         flat,
     ), flat
