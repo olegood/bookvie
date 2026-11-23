@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Epic 14 options — card note boxes</title>
+<style>
+  body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; background: #ECE8DF; color: #2B2E2A; }
+  .wrap { max-width: 1400px; margin: 0 auto; padding: 32px 36px 64px; display: flex; flex-direction: column; gap: 40px; }
+  h1 { margin: 0; font-size: 22px; font-weight: 600; }
+  h2 { margin: 0 0 4px; font-size: 18px; font-weight: 600; }
+  p.lead { margin: 0; font-size: 14px; line-height: 1.5; color: #5F635C; max-width: 900px; }
+  .opts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+  .opts.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .opt { display: flex; flex-direction: column; gap: 10px; }
+  .opt h3 { margin: 0; font-size: 15px; font-weight: 600; }
+  .opt .note { margin: 0; font-size: 13px; line-height: 1.45; color: #5F635C; }
+  .panel { border-radius: 14px; padding: 24px 20px 20px; display: flex; gap: 20px; flex-wrap: wrap; }
+  .panel.light { background: #F6F4EF; border: 1px solid #E4DFD5; }
+  .panel.dark { background: #191B18; border: 1px solid #343831; }
+  .tag { font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; width: 100%; margin: -8px 0 0; }
+  .light .tag { color: #666961; } .dark .tag { color: #9A9E94; }
+
+  .box { position: relative; display: block; width: 216px; height: 196px; border-radius: 12px; text-decoration: none; transition: transform 150ms ease-out; }
+  .box:focus-visible { outline: 2px solid #557059; outline-offset: 4px; }
+  .dark .box:focus-visible { outline-color: #93B597; }
+  .box.lift { transform: translateY(-6px); }
+  .fadeable { transition: opacity 150ms ease-out; }
+  .card { position: absolute; left: 20px; width: 176px; height: 96px; box-sizing: border-box; background: #FFFFFF; border: 1px solid #E4DFD5; border-radius: 4px; }
+  .cards-surface .dark .card, .dark.cards-surface .card { background: #222520; border-color: #343831; }
+  .front { position: absolute; left: 0; right: 0; bottom: 0; height: 116px; box-sizing: border-box; border-radius: 6px 6px 12px 12px; box-shadow: inset 0 -3px 0 rgba(0,0,0,.12), 0 1px 2px rgba(43,46,42,.12); }
+  .front.edge { border: 1px solid #5E584D; }
+  .dark .front.edge { border-color: #858A7F; }
+  .label { position: absolute; left: 14px; right: 14px; top: 50%; transform: translateY(-50%); box-sizing: border-box; background: #FBF8F1; border-radius: 4px; padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; }
+  .lt { font-family: ui-serif, Georgia, "Iowan Old Style", serif; font-size: 15.5px; line-height: 1.25; color: #2B2E2A; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .ln { font-size: 13px; line-height: 1.45; color: #5F635C; }
+  .ln.strong { color: #2B2E2A; }
+  .hit { display: inline-flex; align-self: flex-start; align-items: center; gap: 6px; padding: 0 8px; border-radius: 9999px; background: #E3EBE2; color: #2B2E2A; font-size: 13px; font-weight: 600; line-height: 22px; }
+  .dot { width: 6px; height: 6px; border-radius: 9999px; background: #557059; }
+  @media (prefers-reduced-motion: reduce) { .box, .fadeable { transition: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div>
+    <h1>Epic 14 — card note boxes: the open visual choices</h1>
+    <p class="lead">Built from the approved mockups (canvas "Card notes boxes — mockups"). Each option shows a matched box ("3 of 12", lifted) and two boxes without a match, in light and dark. Tab through to see the focus ring on a faded box. Contrast numbers are computed for the faded title and count line on the label strip.</p>
+  </div>
+
+  <section>
+    <h2>1 · The fade (D11)</h2>
+    <p class="lead">Opacity on the whole box also fades the label. The mockup's 0.38 leaves the title at 2.18:1 in light. In every option the fade goes on the box's parts, never on the link, so the focus ring stays full strength.</p>
+    <div class="opts" id="fade"></div>
+  </section>
+
+  <section>
+    <h2>2 · The cards in the dark theme</h2>
+    <p class="lead">The box front keeps the Book's exact color and the label strip stays paper in both themes, like a spine. The cards peeking out are open.</p>
+    <div class="opts two" id="cards"></div>
+  </section>
+
+  <section>
+    <h2>3 · An edge on the box front</h2>
+    <p class="lead">A user can pick any color, including near-white or a pale yellow. Spines carry a fixed <code>spine-edge</code> line for that reason. The mockup's box has none.</p>
+    <div class="opts two" id="edge"></div>
+  </section>
+</div>
+
+<script>
+  const tilt = [-1.6, 1.2, -0.6, 1.8, -1.2, 0.8, -1.8]
+  const steps = (n) => (n <= 1 ? 1 : n <= 5 ? 3 : n <= 20 ? 5 : 7)
+  function box({ title, color, n, hits, searching, fade, mode, edge, strongCount }) {
+    const a = document.createElement('a')
+    a.className = 'box'
+    a.href = '#'
+    const matched = searching && hits > 0
+    const faded = searching && hits === 0
+    if (matched) a.classList.add('lift')
+    a.setAttribute('aria-label', searching ? (matched ? `${title}, ${hits} of ${n} card notes match` : `${title}, no match`) : `${title}, ${n} card notes`)
+    const k = steps(n)
+    const pile = document.createElement('div')
+    pile.className = 'fadeable'
+    for (let i = 0; i < k; i++) {
+      const c = document.createElement('div')
+      c.className = 'card'
+      c.style.top = 70 - (k - 1 - i) * 8 + 'px'
+      c.style.transform = `rotate(${tilt[i]}deg)`
+      pile.appendChild(c)
+    }
+    const front = document.createElement('div')
+    front.className = 'front fadeable' + (edge ? ' edge' : '')
+    front.style.background = color
+    const label = document.createElement('div')
+    label.className = 'label fadeable'
+    label.innerHTML = `<span class="lt">${title}</span>` + (matched ? `<span class="hit"><span class="dot"></span>${hits} of ${n}</span>` : `<span class="ln${strongCount ? ' strong' : ''}">${n === 1 ? '1 card note' : n + ' card notes'}</span>`)
+    if (faded) {
+      pile.style.opacity = fade
+      if (mode === 'whole') { front.style.opacity = fade }
+      else { front.style.background = 'transparent'; const fill = document.createElement('div'); fill.style.cssText = `position:absolute;inset:0;border-radius:inherit;background:${color};opacity:${fade}`; front.appendChild(fill) }
+    }
+    front.appendChild(label)
+    a.append(pile, front)
+    return a
+  }
+  const set = [
+    { title: 'Atomic Habits', color: '#749076', n: 12, hits: 3 },
+    { title: 'Designing Data-Intensive Applications', color: '#9B6753', n: 41, hits: 0 },
+    { title: 'Refactoring', color: '#6F7375', n: 1, hits: 0 },
+  ]
+  function panel(theme, opts, boxes = set) {
+    const p = document.createElement('div')
+    p.className = 'panel ' + theme
+    const t = document.createElement('p'); t.className = 'tag'; t.textContent = theme
+    p.appendChild(t)
+    boxes.forEach((b) => p.appendChild(box({ ...b, ...opts })))
+    return p
+  }
+  function option(host, name, note, opts, boxes, extraClass) {
+    const o = document.createElement('div'); o.className = 'opt'
+    o.innerHTML = `<h3>${name}</h3><p class="note">${note}</p>`
+    const l = panel('light', opts, boxes), d = panel('dark', opts, boxes)
+    if (extraClass) d.classList.add(extraClass)
+    o.append(l, d)
+    document.getElementById(host).appendChild(o)
+  }
+  option('fade', 'A · Whole box at 0.38 (the mockup)', 'Strongest fade. Faded title 2.18:1 light, 3.17:1 dark; count 1.74:1. Below AA: it would be a documented deviation.', { searching: true, fade: 0.38, mode: 'whole' })
+  option('fade', 'B · Whole box at 0.70, count in label ink', 'Milder fade. Faded title and count 5.14:1 light, 7.29:1 dark: passes AA. The count line turns from grey to label ink everywhere.', { searching: true, fade: 0.70, mode: 'whole', strongCount: true })
+  option('fade', 'C · Box and cards at 0.38, label at full strength', 'The color and the pile fall back; the paper label stays crisp. Faded title 12.97:1, count 5.78:1: passes AA. The fade reads mostly through the color.', { searching: true, fade: 0.38, mode: 'parts' })
+
+  const two = set.slice(0, 2)
+  option('cards', 'Paper cards in both themes', 'White cards with the light hairline, like the label strip: the same object morning and evening.', { searching: false }, two)
+  option('cards', 'Cards follow the theme', 'Dark theme cards use surface-dark with line-dark, like the card notes on the page.', { searching: false }, two, 'cards-surface')
+
+  const pale = [
+    { title: 'Four Thousand Weeks', color: '#F5F0E6', n: 3, hits: 0 },
+    { title: 'The Pragmatic Programmer', color: '#F2D35B', n: 18, hits: 0 },
+  ]
+  option('edge', 'No edge (the mockup)', 'Only the faint drop shadow outlines a near-white front.', { searching: false }, pale)
+  option('edge', '1px spine-edge on the front', 'The same fixed edge as a read spine: 6.41:1 against page in light, 4.90:1 in dark, for any fill.', { searching: false, edge: true }, pale)
+</script>
+</body>
+</html>

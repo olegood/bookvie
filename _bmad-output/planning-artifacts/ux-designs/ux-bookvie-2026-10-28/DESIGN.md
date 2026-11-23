@@ -2,7 +2,7 @@
 name: bookvie
 description: Personal, local-first desktop web app for one reader's home library and reading. Birch Morning direction — bright, flat, Nordic; a pale birch bookcase where read books are colored and unread books are outlined.
 status: final
-updated: 2026-11-21
+updated: 2026-11-23
 colors:
   # Light theme (default tokens). Dark twins carry the -dark suffix.
   page: '#F6F4EF'
@@ -463,6 +463,61 @@ components:
     text-color: '{colors.ink-tertiary}'
     text-color-strong: '{colors.ink}'
     margin-top: '{spacing.1}'
+  card-notes-view-toggle:
+    background: '{colors.surface}'
+    border: '1px solid {colors.input-border}'
+    radius: '{rounded.md}'
+    option-selected-background: '{colors.accent-soft}'
+    option-selected-foreground: '{colors.ink}'
+    option-selected-indicator: '2px solid {colors.accent}'
+  card-notes-count-line:
+    text: '{typography.meta}'
+    text-color: '{colors.ink-tertiary}'
+  card-note-box:
+    # The box is a Book's object: its front, label, cards and pill look the same in both themes, like a spine.
+    # The hex values below are fixed literals, not the light theme's tokens: never use the theme's custom properties for them.
+    width: 216px
+    height: 196px
+    radius: '{rounded.lg}'
+    column-gap: '{spacing.6}'
+    row-gap: '{spacing.8}'
+    front-height: 116px
+    front-radius: '6px 6px 12px 12px'
+    front-padding: 14px
+    label-background: '{colors.spine-label-strip}'
+    label-radius: '{rounded.cover}'
+    label-padding: '10px 12px'
+    label-gap: '{spacing.1}'
+    title: '{typography.book-title-sm}'
+    title-color: '{colors.spine-label}'
+    max-title-lines: 2
+    count: '{typography.meta}'
+    count-color: '#5F635C'
+    card-background: '#FFFFFF'
+    card-border: '1px solid #E4DFD5'
+    card-width: 176px
+    card-height: 96px
+    card-inset: 20px
+    card-radius: '{rounded.cover}'
+    card-top: 70px
+    card-step: 8px
+    pile-steps: '1, 3, 5, 7'
+    pill-background: '#E3EBE2'
+    pill-foreground: '{colors.spine-label}'
+    pill-dot: '#557059'
+    pill-dot-size: 6px
+    pill-radius: '{rounded.full}'
+    pill-text: '{typography.meta}'
+    pill-weight: '600'
+    pill-height: 22px
+    pill-padding: '0 {spacing.2}'
+    lift: -6px
+    fade: 0.38
+    transition: 150ms ease-out
+    focus-ring: '2px solid {colors.accent}'
+    focus-offset: 4px
+  open-box-strip:
+    height: 8px
 ---
 
 # bookvie — Design Spine
@@ -500,7 +555,7 @@ Light values first, dark twins (`-dark` suffix) second. All load-bearing text pa
 | `ink` | `#2B2E2A` | `#ECEAE3` | Body text, headings, invalid-field border, failure messages | — |
 | `ink-secondary` | `#5F635C` | `#B3B7AD` | Authors, re-entry line, inactive nav, field labels | — |
 | `ink-tertiary` | `#666961` | `#9A9E94` | Section labels, hints, page refs, placeholders, "×" glyph | Text on `accent-soft` |
-| `accent` (sage) | `#557059` | `#93B597` | Primary buttons; gauge, mini-bar, meter and monthly-bar fill; active nav underline, selected-option indicator, links, focus ring, highlight ring | Decoration, warnings |
+| `accent` (sage) | `#557059` | `#93B597` | Primary buttons; gauge, mini-bar, meter and monthly-bar fill; active nav underline, selected-option indicator, links, focus ring, highlight ring; search matches (the `<mark>` underline, a Card note box's match-pill dot) | Decoration, warnings |
 | `on-accent` | `#FFFFFF` | `#142017` | Text on `accent` | — |
 | `accent-soft` | `#E3EBE2` | `#2C3A2E` | Gauge, mini-bar and monthly-bar tracks; selected toggle option and chip fill (always with the `accent` indicator) | Selection on its own |
 | `focus-halo` | `rgba(85,112,89,.16)` | `rgba(147,181,151,.18)` | Soft halo around a focused field (decorative; the `accent` border carries the contrast) | — |
@@ -600,6 +655,19 @@ Non-text pairs (target 3.0):
 
 The marker dot is identified against its own `marker-ring`, and the focus ring by its internal `accent`-to-`page` edge, so neither depends on the spine fill (which may be any color).
 
+Card note box pairs. The label, cards and pill are the same in both themes, so their text pairs are the same in both themes too. The faded values are a documented deviation (EXPERIENCE.md → Accessibility Floor), not a target that's met.
+
+| Pair | Light | Dark | Target |
+|---|---|---|---|
+| Title (`spine-label`) on the label | 12.97 | 12.97 | 4.5 |
+| Count (`#5F635C`) on the label | 5.78 | 5.78 | 4.5 |
+| Pill text (`spine-label`) on the pill (`#E3EBE2`) | 11.30 | 11.30 | 4.5 |
+| Pill dot (`#557059`) vs the pill — marks a search match, like `<mark>`'s underline; "3 of 12" carries the match | 4.48 | 4.48 | — |
+| Faded title at 0.38, label over `page` | 2.18 | 3.17 | deviation |
+| Faded count at 0.38, label over `page` | 1.74 | 2.41 | deviation |
+| Count line (`ink-tertiary`) on `page` | 5.08 | 6.35 | 4.5 |
+| Box focus ring (`accent`) vs `page`, never faded | 4.96 | 7.68 | 3.0 |
+
 ### Dev amber
 
 Only a server started with `--dev` shows dev amber, and only on two things: the dev favicon and the DEV pill. Dev amber is a literal in `{components.favicon}` and `{components.dev-pill}`, not a `colors` primitive, so the DESIGN.md/`tokens.css` comparison in `e2e/app-shell.spec.ts` doesn't change until a story ships it.
@@ -633,6 +701,7 @@ Under `forced-colors: active`:
 - The update notice keeps its bottom border as `CanvasText`; Reload is a button and takes the system button colors.
 - The Back to top button is a native button: it takes the system button colors (`ButtonFace`, `ButtonText`) and keeps its border.
 - The favicon is outside the page and isn't affected.
+- Card note boxes: the front uses `forced-color-adjust: none` with a `CanvasText` fill, like a read spine. The label becomes `Canvas` with `CanvasText` text. Each card becomes `Canvas` with a 1px `CanvasText` border. The pill becomes `Canvas` with `CanvasText` text, a 1px `CanvasText` border and a `CanvasText` dot, like the DEV pill. The fade's opacity and the lift still apply, so the contrast deviation covers forced colors too. The box's focus ring takes the system color. The open box strip uses `forced-color-adjust: none` with `CanvasText`.
 - Catalog tiles: the finished ribbon and the reading bar's fill use `forced-color-adjust: none` with `CanvasText`, the bar's track becomes `Canvas` with a `CanvasText` outline, the typeset cover becomes `Canvas` with a `CanvasText` border, its text `CanvasText`, and the cover hairline and the loading box's border become `CanvasText`.
 
 Read and unread stay distinct.
@@ -653,7 +722,7 @@ Two families, both system stacks, nothing to download:
 | Panel heading | `{typography.panel-heading}` | Side panel and dialog headings ("New book", "Possible duplicate"); a book title inside one is set in `book-title-md` |
 | Main book title | `{typography.book-title-lg}` | Main book card, Book detail; clamped to 3 lines with an ellipsis |
 | Book title, medium | `{typography.book-title-md}` | Spine popover, dialog headings that name a book |
-| Book title, small | `{typography.book-title-sm}` | Up next, Waiting for you, On the side (clamped to 2 lines), List view, Card notes groups |
+| Book title, small | `{typography.book-title-sm}` | Up next, Waiting for you, On the side (clamped to 2 lines), List view, Card notes groups, a Card note box's label (2 lines) |
 | Author | `{typography.author}` | Author line on the Main book card and Book detail, `ink-secondary` |
 | Gauge figure | `{typography.gauge-figure}` | "64%" on the Main book card; the "%" at 20px in `ink-tertiary`; the two big Stats numbers |
 | Page field | `{typography.page-field}` | The number in the page field; tabular figures (`font-variant-numeric: tabular-nums`) |
@@ -680,6 +749,7 @@ Scale: 4 / 8 / 12 / 16 / 20 / 24 / 32 / 36 (`{spacing.1}`–`{spacing.8}`). Comp
 - **Bookcase.** Shelf rows `{spacing.shelf-row-height}` tall, spines bottom-aligned on the plank, `{spacing.spine-gap}` between spines, 12px inner padding at row ends. About 35 spines fit one plank at 1280px; the row count follows the viewport width.
 - **Spine sizing.** Width is always `{spacing.spine-width}` (28px). Height doesn't have to fit the title, but it still grows with it, so a shelf of mixed titles has mixed heights: **height = `{spacing.spine-height-min}` + `{components.spine.height-title-ratio}` × the title's rendered one-line length in `spine-label`**, rounded up to the next `{spacing.spine-height-step}` (8px) and capped at `{spacing.spine-height-max}` (120–200px). Examples: *Dune* (about 29px of text) → 136px; *Persuasion* (about 60px) → 144px; *The Left Hand of Darkness* (about 146px) → 168px; *The Visual Display of Quantitative Information* (about 250px) → 200px. Measure the rendered title, not a character count, so user text-spacing overrides grow the spine. The label itself is capped by the label strip (Components → Spine) and never wraps; the full title is always in the accessible name and the popover. Unread spines place their label at the same position and cap, without the strip.
 - **Tiles.** A grid on the plain `page` background (no card, no planks): `repeat(auto-fill, minmax({components.catalog-tile.cover-min-width}, 1fr))`, `{components.catalog-tile.column-gap}` between columns and `{components.catalog-tile.row-gap}` between rows. That gives 5 columns at 1024px, 7 at 1280px and 8 at 1440px. Each tile's cover box is the column width at 2:3, so every box in the grid has the same size and the grid never moves while covers load. Covers sit at the bottom of the box, so a row of mixed shapes shares one bottom line. Reference: [catalog-tiles-reference](imports/catalog-tiles-reference.png).
+- **Card notes.** `h1` "Card notes"; the "In *X*" chip under it (open box only); then the toolbar: Search card notes with its visible label, then, unscoped only, the Card notes view toggle and the Card notes count line, `{spacing.4}` apart. Then the boxes or the list. **Boxes:** a grid on the plain `page` background, `repeat(auto-fill, {components.card-note-box.width})`, left-aligned, `{components.card-note-box.column-gap}` between columns and `{components.card-note-box.row-gap}` between rows. That gives 4 columns at 1024px and 5 at 1280px and 1440px. Every box has the same size, so the grid never moves when a search changes. **The open box:** the open box strip runs the full width of the window directly under the app shell, above the page's top padding. Mocks: Components → Card note box.
 - **Side panel.** Anchored to the right edge over the current page (Catalog for New book, Book detail for Edit book), full height below the top nav. The panel body sets `scroll-padding-bottom` to the sticky footer's height, so a focused field is never hidden behind the footer.
 
 ## Elevation & Depth
@@ -691,6 +761,7 @@ Flat. Hierarchy comes from tone (`page` → `surface`) and hairlines, not shadow
 | Main book cover | `0 14px 30px rgba(60,80,100,.18)` | `0 14px 30px rgba(0,0,0,.45)` |
 | Spine popover, dialogs, side panel | `0 18px 40px rgba(40,40,30,.18), 0 2px 6px rgba(40,40,30,.08)` | `0 18px 40px rgba(0,0,0,.5)` |
 | Birch plank | `0 6px 10px rgba(120,100,60,.12)` | `0 6px 10px rgba(0,0,0,.35)` |
+| Card note box front (a physical box; the lift adds no shadow) | `inset 0 -3px 0 rgba(0,0,0,.12), 0 1px 2px rgba(43,46,42,.12)` | `inset 0 -3px 0 rgba(0,0,0,.12), 0 1px 2px rgba(0,0,0,.35)` |
 | Scrim under modal dialogs and the side panel | `ink` at 24% | `page-dark` at 60% |
 
 ## Shapes
@@ -701,7 +772,7 @@ Soft but not round: furniture, not toys. `{rounded.spine}` is a four-value radiu
 |---|---|---|
 | `{rounded.plank}` | 2px | Birch plank |
 | `{rounded.spine}` | 3px 3px 0 0 | Spines |
-| `{rounded.cover}` | 4px | Cover images and the no-cover placeholder |
+| `{rounded.cover}` | 4px | Cover images and the no-cover placeholder; a Card note box's label and cards |
 | `{rounded.sm}` | 6px | Toggle options, small inputs |
 | `{rounded.md}` | 9px | Buttons, page field, theme toggle, form fields |
 | `{rounded.lg}` | 12px | Popover, dialogs, Card notes, page-field container |
@@ -736,6 +807,10 @@ Visual specs. Behavior lives in EXPERIENCE.md → Component Patterns, under the 
 | **Spine** | See [Spine](#spine) below. |
 | **Spine popover** | See [Spine popover](#spine-popover) below. |
 | **Catalog view toggle** | Three-option segmented control (Bookcase · List · Tiles), same visual as the theme toggle. |
+| **Card notes view toggle** | `{components.card-notes-view-toggle}`. Two-option segmented control (Boxes · List), the Catalog view toggle's visual, text only with no glyphs. |
+| **Card notes count line** | `{components.card-notes-count-line}`. One line at the end of the toolbar, Boxes view only. Its text swaps in place, so nothing below it moves. Wording: EXPERIENCE.md → Card notes shelf. |
+| **Card note box** | See [Card note box](#card-note-box) below. |
+| **Open box strip** | `{components.open-box-strip}`. An 8px band, full width, in the Book's exact spine color, under the app shell, on the open box only (Layout & Spacing → Card notes). No edge, no label, no shadow. Same in both themes. |
 | **List view** | Compact table: Title (`book-title-sm`), Author, Pages, Status, Date added. `{components.list-view-row}`; header in `section-label`. Status shown as text plus a mini spine glyph (colored or outlined). |
 | **Catalog tile** | See [Catalog tile](#catalog-tile) below. |
 | **Search field** | Text field with a leading magnifier glyph and a visible label in `body-sm`/`ink-secondary` to its left: "Search titles" (Catalog) or "Search card notes" (Card notes). No placeholder text. |
@@ -826,6 +901,21 @@ Visual specs. Behavior lives in EXPERIENCE.md → Component Patterns, under the 
 - **Focus and highlight:** the whole tile is one link; the `{components.focus-ring}` (and the `{components.highlight-ring}` after an add) goes around the cover box, not the visible cover, so every ring in the grid has the same size.
 - **Dark theme:** same layout. Ribbon fills, the ribbon halo, read typeset fills and the plate are the same in both themes; `spine-edge`, the chrome colors and the unread typeset cover's `spine-unread-*` colors take their dark twins, as on unread spines.
 
+### Card note box
+
+`{components.card-note-box}`. One Book's card notes drawn as an open box with cards in it. Grid layout: Layout & Spacing → Card notes. Mocks: [epic14-options](mockups/epic14-options.html) and the claude.ai canvas "Card notes boxes — mockups" (private; boards 1, 2 and 5; not needed to build: this spine and epic14-options are enough). Oleg picked fade A, paper cards in both themes, and no edge line on the front. Where a mock and the spines differ, the spines win. The canvas uses a 32px column gap (it fits only 3 columns at 1024px), shows a placeholder in the search field, puts the search sentence on its own line, and puts the chip beside the `h1`.
+
+- **Frame:** `{components.card-note-box.width}` × `{components.card-note-box.height}`. The whole box is one link, with `{components.card-note-box.radius}` corners for its focus ring. The cards and the front sit inside it, positioned absolutely.
+- **Front:** the lower `{components.card-note-box.front-height}`, full width, `{components.card-note-box.front-radius}` corners, filled with the Book's exact spine color (Colors → Spine colors) whether the Book is read or unread. It has the box-front shadow (Elevation & Depth) and no edge line, so a near-white front is outlined only by its shadow. The label carries the text, so the fill never has to.
+- **Label:** a `{components.card-note-box.label-background}` plate (the spine label strip's paper), centered in the front with `{components.card-note-box.front-padding}` around it, `{components.card-note-box.label-radius}` corners, `{components.card-note-box.label-padding}` padding, `{components.card-note-box.label-gap}` between its lines. First comes the title in `book-title-sm`, `spine-label`, up to `{components.card-note-box.max-title-lines}` lines, then an ellipsis. Under it is the count ("12 card notes") in `meta`, `{components.card-note-box.count-color}`. Text never sits straight on the Book's color.
+- **Cards:** `{components.card-note-box.card-width}` × `{components.card-note-box.card-height}` paper cards, `{components.card-note-box.card-background}` with `{components.card-note-box.card-border}`, `{components.card-note-box.card-radius}` corners, `{components.card-note-box.card-inset}` from the box's left edge. They stand behind the front, which hides their lower part. How many show depends on the note count (`{components.card-note-box.pile-steps}`; EXPERIENCE.md → Card notes shelf → A box). Card *i* of *k* (0 at the back) has its top at `{components.card-note-box.card-top}` − (*k* − 1 − *i*) × `{components.card-note-box.card-step}`, so a single card shows 10px above the front, and the back card of 7 shows 58px. Each card is turned slightly, by −1.6°, 1.2°, −0.6°, 1.8°, −1.2°, 0.8° and −1.8° in that order from the back; a smaller pile uses the first *k* angles. The pile looks handled, not stacked by a machine.
+- **Match pill:** during a search it replaces the count on a box with matches: "3 of 12" in `meta` at weight 600, `{components.card-note-box.pill-foreground}`, on a `{components.card-note-box.pill-background}` pill, `{components.card-note-box.pill-height}` tall, `{components.card-note-box.pill-padding}` padding, `{components.card-note-box.pill-radius}` corners. A leading `{components.card-note-box.pill-dot-size}` dot in `{components.card-note-box.pill-dot}` comes `{spacing.2}` before the text. The pill is left-aligned in the label, where the count was.
+- **Lift:** a box with matches moves up by 6px (`translateY({components.card-note-box.lift})`). No extra shadow, no scale.
+- **Fade:** a box without a match shows its cards and front, label included, at `{components.card-note-box.fade}` opacity. One inner wrapper holds the cards and the front and takes the opacity, so they fade as one picture over `page` (the cards don't show through the front, nor the color through the label). The link around the wrapper is never faded, so the focus ring stays full strength. The faded contrast is a documented deviation (Colors → Contrast; EXPERIENCE.md → Accessibility Floor).
+- **Motion:** the lift and the fade change over `{components.card-note-box.transition}`. Under `prefers-reduced-motion: reduce` they change at once.
+- **Focus:** `{components.card-note-box.focus-ring}` at `{components.card-note-box.focus-offset}` offset around the whole box, faded or not. No hover change apart from the pointer cursor.
+- **Dark theme:** the same box. The front keeps the Book's color, and the label, cards, count and pill keep the values above, like a spine's label strip. Only the page around the box and the shadow's strength change.
+
 ### Book detail
 
 Accepted layout; mock [key-book-detail](mockups/key-book-detail.html). Mirrors the Main book card.
@@ -844,7 +934,7 @@ Accepted layout; mock [key-book-detail](mockups/key-book-detail.html). Mirrors t
 | Do | Don't |
 |---|---|
 | Keep color for the books; chrome stays neutral | Color chrome, headings, or status badges (except the DEV pill: Colors → Dev amber); the Dropbox backup line is words only |
-| Use sage only for actions, progress, focus, selection | Use sage decoratively or as a warning |
+| Use sage only for actions, progress, focus, selection and search matches | Use sage decoratively or as a warning |
 | Serif for book titles only | Serif for UI text or numbers |
 | Same 28px width for every spine; height in 8px steps within 120–200px | Variable widths, page-count-based widths, heights outside the range |
 | Show every read spine in its exact color — user-set, from cover, or curated — with the `spine-edge` line and the label strip | Lighten, darken or clamp a book's color for contrast, or put the title straight on the fill |
@@ -857,6 +947,7 @@ Accepted layout; mock [key-book-detail](mockups/key-book-detail.html). Mirrors t
 | Use dev amber only for the dev favicon and the DEV pill | Amber in production, or amber on the update notice or any message |
 | One quiet fill on finish | Confetti, sound, bouncing, replays |
 | Show a tile's cover as is, with status by ribbon and bar | Dim, desaturate, crop or tint covers to show status |
+| When a Card note box fades, keep its "M of N" pill or count, its accessible name and a full-strength focus ring | Let the fade alone say "no match", or fade the focus ring with the box |
 | Same layout in light and dark; read spine fills and label strips identical in both (only `spine-edge` has a dark twin) | Theme-specific layouts or recolored read spines |
 
 ## Direction history
