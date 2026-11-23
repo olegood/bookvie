@@ -93,9 +93,12 @@ AGENT_TOOL_NAMES = [*EPIC_12_TOOL_NAMES, *RESTORE_TOOL_NAMES, RECORD_BACKUP_UPLO
 """Every tool, cumulative across Epics 12 and 13: what ``tools/list`` must list, in order."""
 
 UPLOAD_BACKUP = "upload_backup"
-DROPBOX_TOOL_NAMES = [UPLOAD_BACKUP]
-"""``bookvie-dropbox``'s tools, cumulative (Story 13.2; Story 13.7 adds ``list_backups`` and
-``download_backup``): what its stdio server must list, in order. Not bookvie's tools."""
+LIST_BACKUPS = "list_backups"
+DOWNLOAD_BACKUP = "download_backup"
+DROPBOX_TOOL_NAMES = [UPLOAD_BACKUP, LIST_BACKUPS, DOWNLOAD_BACKUP]
+"""``bookvie-dropbox``'s tools, cumulative (Story 13.2's ``upload_backup``, then Story 13.7's
+``list_backups`` and ``download_backup``): what its stdio server must list, in order. Not
+bookvie's tools."""
 
 EPICS_MD = Path(__file__).resolve().parents[2] / "_bmad-output" / "planning-artifacts" / "epics.md"
 # A note in parentheses may follow the quote ("(Superseded by Story 13.3's description once
@@ -132,6 +135,8 @@ _EPIC_13_STORY_OF = {
     UPLOAD_BACKUP: "13.2",
     EXPORT_BACKUP: "13.3",
     RECORD_BACKUP_UPLOAD: "13.3",
+    LIST_BACKUPS: "13.7",
+    DOWNLOAD_BACKUP: "13.7",
 }
 _EPIC_13_DESCRIBED = list(_EPIC_13_STORY_OF)
 _STORY_HEADING = re.compile(r"^### Story (\d+\.\d+):", re.M)
@@ -450,13 +455,17 @@ def _result_dict(result: Any) -> dict[str, Any]:
     return result.model_dump(by_alias=True, mode="json", exclude_none=True)
 
 
-def call_in_process(server: Any, tool: str, arguments: dict[str, Any]) -> dict[str, Any]:
+def call_in_process(
+    server: Any, tool: str, arguments: dict[str, Any], *, rpc_errors: bool = False
+) -> dict[str, Any]:
     """Call ``tool`` on an in-process MCP ``server`` (``mcp.Client(server)``) and return the
     result as wire JSON, for :func:`structured_of` and :func:`error_of`.
 
     ``server`` may be an :class:`ImportFailed` (the package isn't there yet); the
     answer is then an error result naming why, so a red leaf fails at its first
-    assertion rather than here.
+    assertion rather than here. With ``rpc_errors``, a JSON-RPC error (an unknown
+    tool: one a story hasn't registered yet) is returned as ``{"rpcError": {code,
+    message}}``, as :class:`McpClient` returns it, instead of raised (Story 13.7).
     """
     if isinstance(server, ImportFailed):
         return {
@@ -466,10 +475,16 @@ def call_in_process(server: Any, tool: str, arguments: dict[str, Any]) -> dict[s
 
     import anyio
     from mcp import Client
+    from mcp.shared.exceptions import MCPError
 
     async def call() -> dict[str, Any]:
         async with Client(server, raise_exceptions=True) as client:
-            return _result_dict(await client.call_tool(tool, arguments))
+            try:
+                return _result_dict(await client.call_tool(tool, arguments))
+            except MCPError as exc:
+                if not rpc_errors:
+                    raise
+                return {"rpcError": {"code": exc.error.code, "message": exc.error.message}}
 
     return anyio.run(call)
 

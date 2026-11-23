@@ -130,7 +130,8 @@ def test_the_stdio_server_lists_exactly_upload_backup_with_its_story_description
     )
 
     assert [tool["name"] for tool in listed.get("tools", [])] == DROPBOX_TOOL_NAMES, listed
-    (tool,) = listed["tools"]
+    # Story 13.7 adds list_backups and download_backup after it; their leaf checks them.
+    (tool,) = [tool for tool in listed["tools"] if tool["name"] == UPLOAD_BACKUP]
     assert tool["description"] == DESCRIPTIONS[UPLOAD_BACKUP]
     schema = tool["inputSchema"]
     assert schema["type"] == "object"

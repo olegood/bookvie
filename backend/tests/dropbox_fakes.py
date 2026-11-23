@@ -138,6 +138,69 @@ class StoredFile:
     content_hash: str
     client_modified: datetime
     folder: bool = False
+    data: bytes | None = None
+    """The bytes :meth:`FakeDropbox.put` stored, which a download returns (Story 13.7); an
+    upload keeps only the size and hash, so downloading an uploaded file isn't faked."""
+
+
+class FakeDownload:
+    """The ``requests.Response`` that ``files_download`` hands back, over ``body`` (Story 13.7).
+
+    It streams through ``iter_content`` and ``raw.read`` and reads whole through
+    ``content``. With ``break_after`` set, each of them gives that many bytes, then raises
+    ``requests.exceptions.ChunkedEncodingError``, as a transfer cut off midway would.
+    ``closed`` says whether the caller closed it.
+    """
+
+    def __init__(self, body: bytes, *, break_after: int | None = None) -> None:
+        self._body = body
+        self._break_after = break_after
+        self._offset = 0
+        self._content: bytes | None = None
+        self.status_code = 200
+        self.headers = {"content-length": str(len(body))}
+        self.closed = False
+        self.raw = self
+
+    def _broken(self) -> requests.exceptions.ChunkedEncodingError:
+        return requests.exceptions.ChunkedEncodingError("connection broken: incomplete read")
+
+    def read(self, amount: int | None = None, *args: Any, **kwargs: Any) -> bytes:
+        end = len(self._body) if amount is None or amount < 0 else self._offset + amount
+        if self._break_after is not None and end > self._break_after:
+            if self._offset >= self._break_after:
+                raise self._broken()
+            end = self._break_after
+        piece = self._body[self._offset : end]
+        self._offset += len(piece)
+        return piece
+
+    def iter_content(self, chunk_size: int | None = 1, decode_unicode: bool = False) -> Any:
+        if self._content is not None:  # as requests does once content was read
+            yield from ((self._content,) if self._content else ())
+            return
+        size = chunk_size or len(self._body) or 1
+        while piece := self.read(size):
+            yield piece
+
+    @property
+    def content(self) -> bytes:
+        """The whole body, which consumes the stream, as ``requests`` reads it."""
+        if self._content is None:
+            if self._break_after is not None:
+                raise self._broken()
+            self._content = self._body[self._offset :]
+            self._offset = len(self._body)
+        return self._content
+
+    def close(self) -> None:
+        self.closed = True
+
+    def __enter__(self) -> FakeDownload:
+        return self
+
+    def __exit__(self, *exc: object) -> None:
+        self.close()
 
 
 @dataclass
@@ -147,7 +210,7 @@ class _Session:
 
 
 class FakeDropbox:
-    """``dropbox.Dropbox``'s upload, list and delete calls over an in-memory App folder.
+    """``dropbox.Dropbox``'s upload, list, download and delete calls over an in-memory App folder.
 
     ``fault`` makes one thing go wrong, as Dropbox or the network would:
 
@@ -162,7 +225,11 @@ class FakeDropbox:
       the SDK does when Dropbox refuses the refresh token.
     - ``server_error``: the finish raises ``InternalServerError`` (503), as the
       SDK does once its own retries are spent.
-    - ``unexpected``: the finish raises ``RuntimeError``.
+    - ``unexpected``: the finish, or a download, raises ``RuntimeError``.
+    - ``other_bytes``: a download answers the stored metadata (its content hash)
+      but a body of other bytes, of the same length (Story 13.7).
+    - ``broken_transfer``: a download's body breaks off halfway with
+      ``requests.exceptions.ChunkedEncodingError`` (Story 13.7).
 
     Each request body over 150 MiB is refused with ``payload_too_large``. A
     folder listing pages ``page_size`` entries at a time. ``calls`` records
@@ -187,12 +254,14 @@ class FakeDropbox:
     def put(
         self, name: str, data: bytes = b"", *, client_modified: datetime | None = None
     ) -> StoredFile:
-        """Put ``name`` into ``/.backups`` as an earlier upload would have left it."""
+        """Put ``name`` into ``/.backups`` as an earlier upload would have left it, keeping
+        ``data`` for a download."""
         stored = StoredFile(
             name=name,
             size=len(data),
             content_hash=content_hash(data),
             client_modified=client_modified or datetime(2026, 1, 1, tzinfo=UTC),
+            data=data,
         )
         self.files[f"{BACKUPS}/{name}".lower()] = stored
         return stored
@@ -382,6 +451,48 @@ class FakeDropbox:
         return dbx_files.ListFolderResult(
             entries=[self._metadata(f, folder) for f in page], cursor=cursor, has_more=bool(rest)
         )
+
+    def _download(self, call: str, path: str) -> tuple[Any, FakeDownload]:
+        self._enter(call, path)
+        if self.fault == "unexpected":
+            raise RuntimeError("something nobody expected")
+        stored = self.files.get(path.lower())
+        if stored is None or stored.folder or stored.data is None:
+            raise ApiError(
+                "req-not-found",
+                dbx_files.DownloadError.path(dbx_files.LookupError.not_found),
+                None,
+                None,
+            )
+        body = stored.data
+        if self.fault == "other_bytes":
+            body = bytes(b ^ 0xFF for b in body) if body else b"x"
+        break_after = len(body) // 2 if self.fault == "broken_transfer" else None
+        metadata = self._metadata(stored, path.rpartition("/")[0])
+        return metadata, FakeDownload(body, break_after=break_after)
+
+    def files_download(self, path: str, rev: Any = None, extra_headers: Any = None) -> Any:
+        """``(FileMetadata, response)`` for the file at ``path`` (Story 13.7)."""
+        return self._download("files_download", path)
+
+    def files_download_to_file(
+        self, download_path: str, path: str, rev: Any = None, extra_headers: Any = None
+    ) -> Any:
+        """Write the file at ``path`` to ``download_path``, as the SDK does: in pieces, so a
+        broken transfer leaves a partial file there; its ``FileMetadata`` (Story 13.7)."""
+        metadata, response = self._download("files_download_to_file", path)
+        with open(download_path, "wb") as out, response:
+            for piece in response.iter_content(64 * 1024):
+                out.write(piece)
+        return metadata
+
+    def downloads(self) -> list[str]:
+        """The paths downloaded, in order, by either download call."""
+        return [
+            path
+            for call, path in self.calls
+            if call in ("files_download", "files_download_to_file")
+        ]
 
     def files_delete_v2(self, path: str, parent_rev: Any = None) -> Any:
         self._enter("files_delete_v2", path)
