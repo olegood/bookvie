@@ -53,11 +53,13 @@ Each step is its own skill run, in a fresh context.
 | 3 | PRD | **FR-19** amendment: the unscoped view can show the Books as boxes, one per Book, or as today's list. The choice is remembered on this computer and isn't exported. In box view the search shows which Books match and how many, and it's kept when a Book is opened and when the user comes back. Not a new FR. Bump `updated:`. | `bmad-prd` (update) |
 | 4 | Architecture spine | AD-15: add `bookvie.cardNotesView`. The `card-notes` view's shape: `spineColor` on group and scope. The carried search as router state, not URL (AD-6 or wherever the page's search is described). Not a new AD. | `bmad-architecture` (update) |
 | 5 | Epics (`epics.md`) | New **Epic 14: See card notes as boxes**, covering the FR-19 amendment, with three stories (below). Add it to the Epic List and the FR coverage map. | `bmad-create-epics-and-stories` |
-| 6 | Sprint status | Add Epic 14 and Stories 14.1–14.3. | `bmad-sprint-planning` |
-| 7 | Stories 14.1–14.3 | Each: ATDD → `bmad-build-auto` → `bmad-code-review` (new session) → `bmad-testarch-automate`, per AGENTS.md → Story pipeline. Then the Epic 14 retro after 14.3. | per story |
+| 6 | Sprint status | Add Epic 14 and Stories 14.1–14.5. | `bmad-sprint-planning` |
+| 7 | Stories 14.1–14.5 | Each: ATDD → `bmad-build-auto` → `bmad-code-review` (new session) → `bmad-testarch-automate`, per AGENTS.md → Story pipeline. Then the Epic 14 retro after 14.5. | per story |
 | 8 | Issue #17 | Link this plan. Close it when Epic 14 is done. | — |
 
 ## 4. Story cut (Epic 14)
+
+**Split on 2026-11-24** (`bmad-create-epics-and-stories`, Oleg) into five stories, so each fits one build session: 14.1 as below; 14.2 below without the open box's spine strip; **14.3** the open box's spine strip (D14); **14.4** below's 14.3 without the carried search (D10, D11, D13); **14.5** the carried search (D12). `epics.md` holds the five stories and their ACs. The three-story cut below is kept as the room agreed it.
 
 Three stories, each depending only on the one before it (John, over Amelia's two: a schema change in its own story lands `api:gen` and the byte-for-byte check green before anyone touches the shelf, Murat).
 

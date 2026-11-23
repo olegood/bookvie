@@ -1,7 +1,7 @@
 ---
 name: bookvie
 status: final
-updated: 2026-11-23
+updated: 2026-11-24
 design: ./DESIGN.md
 sources:
   - _bmad-output/planning-artifacts/prds/prd-bookvie-2026-10-28/prd.md
@@ -368,7 +368,7 @@ Use: the Card notes page. Plan: [card-note-boxes-plan](../../card-note-boxes-pla
 - **Back out with the search.** Browser Back from the open box, or removing its "In *X*" chip, returns to the unscoped page in the remembered view. The field holds the open box's text at that moment ("habits" if the user changed "habit" there, empty if they cleared it), and the boxes are faded and lifted for that text. Focus goes to the `h1`, and once it has settled, `status` announces the view's own count once: the shelf sentence in Boxes, "N notes match." in List. The page opens at the top, as after any route change. Removing the chip carries the text whichever way the open box was entered. It pushes `/card-notes` as before Epic 14, so Back from there returns to the open box with an empty field.
 - **Starts empty.** Every other way into the page starts with an empty field, as before Epic 14: the nav, a box opened with an empty field, "See card notes", "See all card notes", Back to the shelf from any other page, a reload (even of the same history entry), Forward, a typed URL. The search text never appears in the URL.
 - **Temporary.** Remove each note when its condition is met.
-  - *Staging (until the Epic 14 retro).* Story 14.2 ships both views without the shelf search. Until Story 14.3, Boxes view with non-blank text in the field shows exactly the List view's results and announcements ("N notes match."), hides the count line, and shows the boxes again once the field is blank. Story 14.3 adds Search on the shelf and the carried search.
+  - *Staging (until the Epic 14 retro).* Story 14.2 ships both views without the shelf search. Until Story 14.4, Boxes view with non-blank text in the field shows exactly the List view's results and announcements ("N notes match."), hides the count line, and shows the boxes again once the field is blank. Story 14.4 adds Search on the shelf, and Story 14.5 the carried search.
 
 ## Bookcase
 
