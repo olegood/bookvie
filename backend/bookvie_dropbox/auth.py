@@ -51,14 +51,14 @@ def _pkce() -> tuple[str, str]:
     return verifier, challenge
 
 
-def authorize_url(challenge: str, state: str) -> str:
+def authorize_url(challenge: str, state: str, redirect_uri: str = REDIRECT_URI) -> str:
     query = {
         "client_id": dropbox_api.APP_KEY,
         "response_type": "code",
         "code_challenge": challenge,
         "code_challenge_method": "S256",
         "token_access_type": "offline",
-        "redirect_uri": REDIRECT_URI,
+        "redirect_uri": redirect_uri,
         "state": state,
     }
     return f"{AUTHORIZE_URL}?{urlencode(query)}"
@@ -67,10 +67,16 @@ def authorize_url(challenge: str, state: str) -> str:
 class _Redirect(HTTPServer):
     """A one-shot loopback listener for Dropbox's redirect."""
 
-    def __init__(self, state: str) -> None:
+    def __init__(self, state: str, port: int = REDIRECT_PORT) -> None:
         self.state = state
         self.query: dict[str, str] | None = None
-        super().__init__(("127.0.0.1", REDIRECT_PORT), _Handler)
+        super().__init__(("127.0.0.1", port), _Handler)
+
+    @property
+    def uri(self) -> str:
+        """The redirect URI on the port it listens on: :data:`REDIRECT_URI` on the fixed port."""
+        host, port = self.server_address[:2]
+        return f"http://{host}:{port}{REDIRECT_PATH}"
 
 
 class _Handler(BaseHTTPRequestHandler):
@@ -118,14 +124,14 @@ def _wait_for_redirect(listener: _Redirect) -> dict[str, str] | None:
     return listener.query
 
 
-def exchange_code(session: Any, code: str, verifier: str) -> str:
+def exchange_code(session: Any, code: str, verifier: str, redirect_uri: str = REDIRECT_URI) -> str:
     """The refresh token Dropbox gives for ``code``, through ``session``."""
     form = {
         "grant_type": "authorization_code",
         "code": code,
         "client_id": dropbox_api.APP_KEY,
         "code_verifier": verifier,
-        "redirect_uri": REDIRECT_URI,
+        "redirect_uri": redirect_uri,
     }
     try:
         response = session.post(TOKEN_URL, data=form, timeout=30)
@@ -152,20 +158,26 @@ def run_auth(
     open_browser: Callable[[str], Any] = webbrowser.open,
     session: Any = None,
     say: Callable[[str], None] = print,
+    port: int = REDIRECT_PORT,
 ) -> None:
-    """Sign in to Dropbox and keep the refresh token in the Keychain; :class:`AuthFailed` if not."""
+    """Sign in to Dropbox and keep the refresh token in the Keychain; :class:`AuthFailed` if not.
+
+    ``port`` is a test seam, never set by the CLI: Dropbox accepts only the registered
+    :data:`REDIRECT_URI`. Tests pass 0 for a free port, so parallel test processes don't
+    compete for the fixed one."""
     verifier, challenge = _pkce()
     state = secrets.token_urlsafe(16)
     try:
-        listener = _Redirect(state)
+        listener = _Redirect(state, port)
     except OSError as exc:
         raise AuthFailed(
-            f"Port {REDIRECT_PORT} on 127.0.0.1 is in use ({exc.strerror or exc}), so Dropbox can't "
+            f"Port {port} on 127.0.0.1 is in use ({exc.strerror or exc}), so Dropbox can't "
             "send the browser back. Close whatever holds it (another `bookvie-dropbox auth`?) "
             "and run auth again."
         ) from None
+    redirect_uri = listener.uri
     with listener:
-        url = authorize_url(challenge, state)
+        url = authorize_url(challenge, state, redirect_uri)
         say("Opening Dropbox in your browser to allow bookvie-dropbox. If it doesn't open, visit:")
         say(url)
         open_browser(url)
@@ -175,7 +187,9 @@ def run_auth(
     code = query.get("code")
     if not code:
         raise AuthFailed("Dropbox access wasn't allowed, so nothing was saved.")
-    token = exchange_code(session if session is not None else requests.Session(), code, verifier)
+    token = exchange_code(
+        session if session is not None else requests.Session(), code, verifier, redirect_uri
+    )
     try:
         keyring.set_password(dropbox_api.KEYRING_SERVICE, dropbox_api.KEYRING_ACCOUNT, token)
     except keyring.errors.KeyringError as exc:

@@ -1,12 +1,17 @@
 """Story 13.2: ``bookvie-dropbox auth``, the one-time sign-in (AD-22).
 
 ``bookvie_dropbox.auth.run_auth(open_browser=..., session=...)`` runs OAuth
-with PKCE through a loopback redirect on the fixed registered port. Here the
+with PKCE through a loopback redirect, on the fixed registered port unless a
+test passes its ``port`` seam. Here the
 "browser" is a function that reads Dropbox's authorize URL and visits the
 redirect with a code, as Dropbox would after the user allows access. The code
 exchange goes to :class:`tests.dropbox_fakes.FakeDropboxHttp` through the
 ``requests`` session the test passes, and the refresh token lands in an
 in-memory Keychain. Nothing reaches the network or the real Keychain.
+
+Only the first test listens on the fixed port 8790. Every other sign-in passes
+``port=FREE_PORT``, so tests running at once in other xdist workers never
+compete for one port (Epic 13 retro item 92).
 """
 
 import importlib
@@ -25,6 +30,8 @@ from tests.agent_client import ImportFailed, import_or_fail
 OLD_TOKEN = "refresh-OLD-0001-from-last-year"
 NEW_TOKEN = "refresh-NEW-5ecret-42"
 CODE = "the-authorization-code-77"
+FREE_PORT = 0
+"""``run_auth``'s test seam: the redirect listener takes any free loopback port."""
 
 
 @pytest.fixture
@@ -229,9 +236,9 @@ def _token_session(status: int, payload: Any) -> Any:
     return session
 
 
-def _refused(auth: Any, browser: Any, session: Any) -> Exception:
+def _refused(auth: Any, browser: Any, session: Any, port: int = FREE_PORT) -> Exception:
     with pytest.raises(auth.AuthFailed) as raised:
-        auth.run_auth(open_browser=browser, session=session)
+        auth.run_auth(open_browser=browser, session=session, port=port)
     browser_join = getattr(browser, "join", None)
     if callable(browser_join):
         browser_join()
@@ -258,7 +265,7 @@ def test_a_redirect_with_another_state_is_refused_and_the_real_one_still_signs_i
         http, lambda p: [{"code": "someone-elses-code", "state": "forged"}, *_with_code(p)]
     )
 
-    auth.run_auth(open_browser=browser, session=fakes.http_session(http))
+    auth.run_auth(open_browser=browser, session=fakes.http_session(http), port=FREE_PORT)
     browser.join()
 
     assert browser.visited == [400, 200]
@@ -356,15 +363,43 @@ def test_a_taken_redirect_port_is_a_clear_error_before_the_browser_opens(
     holder = socket.socket()
     holder.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     try:
-        holder.bind(("127.0.0.1", auth.REDIRECT_PORT))
+        holder.bind(("127.0.0.1", FREE_PORT))
         holder.listen()
-        error = _refused(auth, browser, None)
+        taken = holder.getsockname()[1]
+        error = _refused(auth, browser, None, port=taken)
     finally:
         holder.close()
 
     assert browser.opened == 0
-    assert str(auth.REDIRECT_PORT) in str(error)
+    assert f"Port {taken} on 127.0.0.1 is in use" in str(error)
     _assert_untouched(keychain, fakes, error, capsys)
+
+
+def test_the_fixed_redirect_port_in_use_names_8790(
+    fakes: Any, keychain: Any, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # The CLI's own message, without binding 8790: the listener can't bind, as when it is held.
+    import errno
+
+    auth = import_or_fail("bookvie_dropbox.auth")
+    ports: list[int] = []
+
+    def held(state: str, port: int) -> Any:
+        ports.append(port)
+        raise OSError(errno.EADDRINUSE, "Address already in use")
+
+    monkeypatch.setattr(auth, "_Redirect", held)
+    browser = ScriptedBrowser(None, _with_code, allow=False)
+
+    with pytest.raises(auth.AuthFailed) as raised:
+        auth.run_auth(open_browser=browser)
+
+    assert ports == [8790]
+    assert browser.opened == 0
+    assert str(raised.value).startswith(
+        "Port 8790 on 127.0.0.1 is in use (Address already in use), so Dropbox can't send"
+    )
+    _assert_untouched(keychain, fakes, raised.value, capsys)
 
 
 def test_an_idle_connection_before_the_redirect_is_dropped_and_the_sign_in_finishes(
@@ -384,13 +419,16 @@ def test_an_idle_connection_before_the_redirect_is_dropped_and_the_sign_in_finis
     idle: list[socket.socket] = []
 
     def preconnect_then_visit(url: str) -> bool:
-        idle.append(socket.create_connection(("127.0.0.1", auth.REDIRECT_PORT)))
+        redirect = urlsplit(fakes.authorize_params(url)["redirect_uri"])
+        idle.append(socket.create_connection((redirect.hostname, redirect.port)))
         threading.Timer(3.0, idle[0].close).start()
         return browser(url)
 
     started = time.monotonic()
     try:
-        auth.run_auth(open_browser=preconnect_then_visit, session=fakes.http_session(http))
+        auth.run_auth(
+            open_browser=preconnect_then_visit, session=fakes.http_session(http), port=FREE_PORT
+        )
     finally:
         for sock in idle:
             sock.close()

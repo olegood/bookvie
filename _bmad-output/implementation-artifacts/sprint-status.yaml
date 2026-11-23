@@ -1139,7 +1139,7 @@ action_items:
       `backend/tests/test_dropbox_cli_follow_ups.py`, `_bmad-output/implementation-artifacts/deferred-work.md`.
       Due: before Epic 14."
     owner: "Murat (TEA)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-13-retro-2026-11-23.md"
   - id: "epic-13-retro-item-93-check-the-mac-before-planning-on-it"
     epic: 13

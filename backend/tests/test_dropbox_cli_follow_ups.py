@@ -3,7 +3,8 @@
 ``cli.main``'s exits (the review's deferral), the installed command's
 subcommands (AC-13: the guide's commands parse as the installed command), and
 the sign-in's stray request, unreachable token endpoint and non-JSON answer
-(AC-4). ``auth`` runs on the real loopback port against
+(AC-4). ``auth`` runs on a free loopback port (``port=FREE_PORT``, so xdist
+workers never compete for the fixed 8790; Epic 13 retro item 92) against
 :class:`tests.dropbox_fakes.FakeDropboxHttp` or a scripted ``requests``
 session, with an in-memory Keychain; nothing reaches the network.
 """
@@ -24,6 +25,8 @@ import pytest
 OLD_TOKEN = "refresh-OLD-0001-from-last-year"
 NEW_TOKEN = "refresh-NEW-5ecret-42"
 CODE = "the-authorization-code-77"
+FREE_PORT = 0
+"""``run_auth``'s test seam: the redirect listener takes any free loopback port."""
 COMMAND = Path(sys.executable).parent / "bookvie-dropbox"
 
 
@@ -151,11 +154,13 @@ class Browser:
         self.paths = paths
         self.allow = allow
         self.visited: list[int | str] = []
+        self.redirect_uri = ""
         self._thread: threading.Thread | None = None
 
     def __call__(self, url: str) -> bool:
         fakes = importlib.import_module("tests.dropbox_fakes")
         params = fakes.authorize_params(url)
+        self.redirect_uri = params["redirect_uri"]
         if self.allow:
             self.http.authorize(params["code_challenge"], CODE)
         redirect = urlsplit(params["redirect_uri"])
@@ -194,11 +199,14 @@ def test_a_stray_request_before_the_redirect_is_404_and_the_sign_in_still_finish
     http = fakes.FakeDropboxHttp(app_key=dropbox_api.APP_KEY, issue_refresh_token=NEW_TOKEN)
     browser = Browser(http, lambda p: ["/favicon.ico", _redirect(p)])
 
-    auth.run_auth(open_browser=browser, session=fakes.http_session(http))
+    auth.run_auth(open_browser=browser, session=fakes.http_session(http), port=FREE_PORT)
     browser.join()
 
     assert browser.visited == [404, 200]
     assert [form["code"] for form in http.exchanges()] == [CODE]
+    # The seam's redirect is the port it listened on, and the exchange sends that same URI.
+    assert urlsplit(browser.redirect_uri).port not in (None, auth.REDIRECT_PORT)
+    assert [form["redirect_uri"] for form in http.exchanges()] == [browser.redirect_uri]
     assert keychain.items == {(fakes.KEYRING_SERVICE, fakes.KEYRING_ACCOUNT): NEW_TOKEN}
     out = capsys.readouterr()
     assert NEW_TOKEN not in out.out + out.err
@@ -247,7 +255,7 @@ def test_a_code_exchange_that_gets_no_token_keeps_the_old_sign_in(
     browser = Browser(None, lambda p: [_redirect(p)], allow=False)
 
     with pytest.raises(auth.AuthFailed) as raised:
-        auth.run_auth(open_browser=browser, session=session)
+        auth.run_auth(open_browser=browser, session=session, port=FREE_PORT)
     browser.join()
 
     assert browser.visited == [200]
