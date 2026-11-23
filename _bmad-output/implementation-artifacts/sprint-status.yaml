@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-29-2026 17:21
-last_updated: 11-23-2026 15:45
+last_updated: 11-23-2026 16:23
 project: bookvie
 project_key: NOKEY
 tracking_system: file-system
@@ -139,7 +139,7 @@ development_status:
   13-6-see-on-the-backup-page-how-the-last-dropbox-backup-went: done
   13-7-fetch-a-backup-from-my-dropbox: done
   13-8-restore-with-one-skill-from-this-computer-or-dropbox: done
-  epic-13-retrospective: optional
+  epic-13-retrospective: done
 action_items:
   - id: "epic-1-retro-item-1-run-an-epic-1-trace-and-gate-against-tr7"
     epic: 1
@@ -1061,3 +1061,112 @@ action_items:
     owner: "Murat (TEA)"
     status: done
     ref: "_bmad-output/implementation-artifacts/epic-12-retro-2026-11-20.md"
+  - id: "epic-13-retro-item-88-trace-and-gate-epic-13"
+    epic: 13
+    action: "Run the Epic 13 trace and gate. Run `bmad-testarch-trace` against TR7
+      and the Epic 13 gate's P0 risks (verify then prune, prune scope, same-day rerun,
+      dev refusal, token, skip reports, the Dropbox line's states, gates fail closed,
+      the confirmation shows the truth, safety copy, allowed folders, same handler,
+      `download_backup`, still banned), the descriptions against the ACs, and no network,
+      Keychain or real folders in tests. Changes: `_bmad-output/test-artifacts/traceability/epic-13-traceability-matrix.md`,
+      `_bmad-output/test-artifacts/traceability/epic-13-gate-decision.json`. Due:
+      before Epic 14."
+    owner: "Murat (TEA)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-13-retro-2026-11-23.md"
+  - id: "epic-13-retro-item-89-reconcile-the-spine-with-epic-13"
+    epic: 13
+    action: "Reconcile the spine and the planning text with Epic 13 (E13-SP1, E13-S2).
+      Mark AD-22, the FR-29/FR-30 rows, Stack, Seed and Testing row built; record
+      what the 38 drift entries name; narrow AD-22's \"deletes nothing\" to failures
+      before the verify; add `resolved:` to the 38 entries listed in the retro (`deferred-work.md:1450`
+      … `:1677`). Fix the stale text: 13.4's \"How it works\" AC, the \"daily backup
+      run\" descriptions (epics.md first, then `agent/tools.py`; resolves `deferred-work.md:1636`),
+      `spec-13-4`'s headless row, `spec-13-8:150,184`, `spec-13-1:263` and its pre-rebase
+      SHAs; retire `atdd-checklist-13-4:94,99` and the superseded 13.5 checklist's
+      open lines. Changes: `_bmad-output/planning-artifacts/architecture/architecture-bookvie-2026-10-29/ARCHITECTURE-SPINE.md`,
+      `_bmad-output/implementation-artifacts/deferred-work.md`, `_bmad-output/planning-artifacts/epics.md`,
+      `backend/bookvie/agent/tools.py`, `_bmad-output/implementation-artifacts/spec-13-1-restore-my-library-through-an-agent-with-two-confirmations.md`,
+      `_bmad-output/implementation-artifacts/spec-13-4-back-up-to-dropbox-with-one-skill.md`,
+      `_bmad-output/implementation-artifacts/spec-13-8-restore-with-one-skill-from-this-computer-or-dropbox.md`,
+      `_bmad-output/test-artifacts/atdd-checklist-13-4-back-up-to-dropbox-with-one-skill.md`,
+      `_bmad-output/test-artifacts/atdd-checklist-13-5-run-the-backup-every-morning.md`.
+      Due: before Epic 14."
+    owner: "Winston (architect)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-13-retro-2026-11-23.md"
+  - id: "epic-13-retro-item-90-enforce-the-restore-path-coverage-gate"
+    epic: 13
+    action: "Enforce the restore-path coverage gate (E13-S1). Add a 90% gate in `coverage_gate.py`
+      for `agent/restore_gate.py`, `intents/restore_file.py` and the restore half
+      of `intents/backup_file.py` (or those modules whole); add tests until `intents/restore_file.py`
+      is at least 90% (88% today); tick `atdd-checklist-13-1:132`. Changes: `backend/scripts/coverage_gate.py`,
+      `backend/tests/test_agent_restore_follow_ups.py`, `_bmad-output/test-artifacts/atdd-checklist-13-1-restore-my-library-through-an-agent-with-two-confirmations.md`.
+      Due: before Epic 14."
+    owner: "Murat (TEA)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-13-retro-2026-11-23.md"
+  - id: "epic-13-retro-item-91-make-the-dropbox-failure-messages-true"
+    epic: 13
+    action: "Make the Dropbox failure messages true (E13-B1, E13-B2; `deferred-work.md:1549`).
+      A mismatch after the finish says today's Dropbox copy was replaced, never \"\
+      Nothing in Dropbox was deleted\", in the skill line, the Backup page and the
+      guide; a prune that fails after a verified upload is recorded as the upload
+      it was, noting older copies remain, not `failed/other`. EXPERIENCE.md's Failed
+      reasons and `epics.md` (the `upload_backup` description, AC-9) change first;
+      the tests follow (`test_backup_skill.py:491`). Changes: `_bmad-output/planning-artifacts/ux-designs/ux-bookvie-2026-10-28/EXPERIENCE.md`,
+      `_bmad-output/planning-artifacts/epics.md`, `backend/bookvie_dropbox/upload.py`,
+      `backend/bookvie_dropbox/server.py`, `.claude/skills/bookvie-backup/SKILL.md`,
+      `frontend/src/lib/dropboxBackupLine.ts`, `docs/dropbox-backup.md`, `backend/tests/test_backup_skill.py`,
+      `backend/tests/test_dropbox_upload_edges.py`. Due: before Epic 14."
+    owner: "Amelia (dev)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-13-retro-2026-11-23.md"
+  - id: "epic-13-retro-item-92-stop-the-port-8790-flake"
+    epic: 13
+    action: "Stop the port-8790 sign-in tests flaking (E13-V1; `deferred-work.md:1567`).
+      Find the cause (tight wait, unreleased listener or the fixed port) and fix it,
+      for example by letting tests pass their own redirect port while the CLI keeps
+      8790; prove it with at least 5 green `npm run check` runs in a row and resolve
+      the entry. Changes: `backend/bookvie_dropbox/auth.py`, `backend/tests/test_dropbox_auth.py`,
+      `backend/tests/test_dropbox_cli_follow_ups.py`, `_bmad-output/implementation-artifacts/deferred-work.md`.
+      Due: before Epic 14."
+    owner: "Murat (TEA)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-13-retro-2026-11-23.md"
+  - id: "epic-13-retro-item-93-check-the-mac-before-planning-on-it"
+    epic: 13
+    action: "Check the Mac before planning on it (E13-P1). A persistent fact for epics-and-stories
+      planning: anything a story needs from the Mac itself that nobody has seen work
+      there (a scheduler or LaunchAgent, a system service, a Keychain prompt, a fixed
+      port, a client feature) gets a manual check by Oleg before that story's ATDD,
+      and the epic orders it first, as 13.1's gate 2 was; a failed check stops the
+      story for Oleg's decision. Changes: `_bmad/custom/bmad-create-epics-and-stories.toml`.
+      Due: before Epic 14 planning."
+    owner: "John (PM)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-13-retro-2026-11-23.md"
+  - id: "epic-13-retro-item-94-automate-reads-done-at-head-and-readme-rule"
+    epic: 13
+    action: "Close the automate-before-done gap and the README rule (E13-P2, E13-S3).
+      `bmad-testarch-automate` treats a story as `done` only when `sprint-status.yaml`
+      at HEAD says so; uncommitted review edits mean stop and commit the review in
+      its own session. `bmad-code-review` commits its own record (spec, deferred-work,
+      sprint-status) before its session ends, including the manual-AC record that
+      moves a story to `done`. The \"No README updates from stories\" fact gains \"\
+      unless an AC asks for a README change\". Changes: `_bmad/custom/bmad-testarch-automate.toml`,
+      `_bmad/custom/bmad-code-review.toml`. Due: before Epic 14."
+    owner: "Murat (TEA)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-13-retro-2026-11-23.md"
+  - id: "epic-13-retro-item-95-split-backup-file-and-agent-tools"
+    epic: 13
+    action: "Split the two files every backup or tool change lands in (E13-A2, E12-A2).
+      Split `intents/backup_file.py` (627 lines, 8 concerns) by concern, and `agent/tools.py`
+      (924 lines) by tool group with `TOOLS` kept in one place; no behavior change,
+      `test_layers.py` and the full check stay green. Changes: `backend/bookvie/intents/backup_file.py`,
+      `backend/bookvie/intents/__init__.py`, `backend/bookvie/agent/tools.py`, `backend/tests/test_layers.py`.
+      Due: before the first Epic 14 story that adds an agent tool or changes `intents/backup_file.py`."
+    owner: "Amelia (dev)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-13-retro-2026-11-23.md"
