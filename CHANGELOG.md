@@ -6,6 +6,10 @@ All notable changes to bookvie are recorded here. The format follows
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [2.1.0] - 2026-11-23
+
 ### Added
 
 - Back up the library to bookvie's own Dropbox App folder with the `bookvie-backup` skill: it exports today's daily backup, uploads it unless nothing changed since the last upload, checks Dropbox's copy and keeps the 3 newest daily copies. It never uploads from a `--dev` server. Run it by hand with `/bookvie-backup` (Epic 13).
@@ -141,7 +145,8 @@ The first complete version: all seven v1 epics (41 stories) are done.
 - The Change color refusal is still announced after its popover closes.
 - The pace calculator agrees with Home's days-left figure.
 
-[Unreleased]: https://github.com/olegood/bookvie/compare/v2.0.1...HEAD
+[Unreleased]: https://github.com/olegood/bookvie/compare/v2.1.0...HEAD
+[2.1.0]: https://github.com/olegood/bookvie/compare/v2.0.1...v2.1.0
 [2.0.1]: https://github.com/olegood/bookvie/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/olegood/bookvie/compare/v1.2.0...v2.0.0
 [1.2.0]: https://github.com/olegood/bookvie/compare/v1.1.0...v1.2.0
