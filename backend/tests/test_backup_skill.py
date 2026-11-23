@@ -82,9 +82,10 @@ NOW = datetime(2026, 11, 20, 9, 1, 36).astimezone()
 """The run's time, 09:01:36 in Madrid."""
 
 
-def _skill() -> str:
-    """The skill's text, or ``""`` while it doesn't exist (so a red leaf fails at its assertion)."""
-    return SKILL_MD.read_text(encoding="utf-8") if SKILL_MD.is_file() else ""
+def _skill(path: Path = SKILL_MD) -> str:
+    """A skill's text (by default ``bookvie-backup``'s), or ``""`` while it doesn't exist
+    (so a red leaf fails at its assertion)."""
+    return path.read_text(encoding="utf-8") if path.is_file() else ""
 
 
 def _frontmatter(text: str) -> str:

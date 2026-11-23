@@ -18,7 +18,7 @@
   :func:`check_the_older_bookvie_probe`.
 - Backups (Epic 13): :class:`SetClock`, :func:`files_under`,
   :func:`dropbox_content_hash`, :func:`backup_zip`, :func:`short_when`,
-  :func:`confirmation_text` and :func:`failing_reasons`.
+  :func:`confirmation_text`, :func:`failing_reasons` and :func:`restore_outcomes`.
 """
 
 import hashlib
@@ -622,3 +622,23 @@ def failing_reasons() -> list[str]:
             break
         reasons.append(row.group(1))
     return reasons
+
+
+_OUTCOME_ROW = re.compile(r"^\| ([^|]+?) \| (.+?) \|\s*$")
+
+
+def restore_outcomes() -> dict[str, list[str]]:
+    """EXPERIENCE.md's Restore outcomes (Agent conversations, Restore, step 4; UX-DR81),
+    in the table's order: each row's Outcome cell, mapped to the texts its Text cell
+    quotes, in order. "Not restored. Nothing was changed." comes before the terminal
+    advice, and a template keeps its ``*reason*``."""
+    text = EXPERIENCE_MD.read_text(encoding="utf-8")
+    header = text.find("| Outcome | Text |")
+    assert header != -1, "no Restore outcome table in EXPERIENCE.md"
+    outcomes: dict[str, list[str]] = {}
+    for line in text[header:].splitlines()[2:]:
+        row = _OUTCOME_ROW.match(line)
+        if row is None:
+            break
+        outcomes[row.group(1)] = re.findall(r'"([^"]+)"', row.group(2))
+    return outcomes

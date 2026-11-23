@@ -264,3 +264,35 @@ def test_the_guide_says_how_the_backup_works_runs_it_once_by_hand_and_fixes_a_fa
 
     ai_skills = section(README.read_text(encoding="utf-8"), "AI skills")
     assert BACKUP_SKILL_LINK in ai_skills
+
+
+RED_13_8 = "red phase (Story 13.8): the guide has no bookvie-restore steps"
+RESTORE_SKILL_LINK = "[`bookvie-restore`](.claude/skills/bookvie-restore/SKILL.md)"
+
+
+# Un-skip when the guide's Restoring section walks through the bookvie-restore skill.
+@pytest.mark.skip(reason=RED_13_8)
+def test_the_guide_restores_with_the_skill_step_by_step_and_fixes_a_dropbox_download() -> None:
+    # [P1] Story 13.8 AC-7
+    restoring = section(GUIDE.read_text(encoding="utf-8"), "Restoring")
+    with_skill = headed(restoring, r"`bookvie-restore`")
+    assert with_skill, "no bookvie-restore section under Restoring"
+
+    # Step by step: the skill, its numbered steps, and a Dropbox pick downloaded first.
+    (raw,) = with_skill
+    steps = " ".join(raw.split())
+    assert "/bookvie-restore" in steps, steps
+    assert len(re.findall(r"^\d+\. ", raw, re.M)) >= 4, raw
+    assert "`download_backup`" in steps and "from-dropbox" in steps, steps
+    # The manual fallback stays: Dropbox's folder, then the Backup page's Restore.
+    flat = " ".join(restoring.split())
+    assert DROPBOX_BACKUPS in flat and "Restore from file" in flat
+
+    # Troubleshooting a download: the sign-in, and a download that didn't match.
+    signin = [" ".join(e.split()) for e in headed(restoring, r"`dropbox_signin`")]
+    assert any("bookvie-dropbox auth" in e and re.search(r"\bdownload", e) for e in signin), signin
+    mismatch = [" ".join(e.split()) for e in headed(restoring, r"`download_incomplete`")]
+    assert any(re.search(r"\bnothing was restored\b", e, re.I) for e in mismatch), mismatch
+
+    ai_skills = section(README.read_text(encoding="utf-8"), "AI skills")
+    assert RESTORE_SKILL_LINK in ai_skills
