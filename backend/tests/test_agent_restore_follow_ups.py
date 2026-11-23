@@ -100,7 +100,7 @@ def _listed(scene: Scene) -> dict[str, dict[str, Any]]:
 def test_a_safety_copy_name_in_from_dropbox_is_neither_listed_nor_restorable(
     scene: Scene,
 ) -> None:
-    # [P2] AC-1, AC-4: only daily backups come down from Dropbox (backup_file._kind_in_from_dropbox).
+    # [P2] AC-1, AC-4: only daily backups come down from Dropbox (backup_names._kind_in_from_dropbox).
     relative = f"{FROM_DROPBOX}/{SAFETY_COPY}"
     (scene.backups / FROM_DROPBOX).mkdir()
     (scene.backups / relative).write_bytes(backup_zip(scene.then, BACKUP_AT))

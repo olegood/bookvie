@@ -33,11 +33,14 @@ HEALTHY = {
     "bookvie/store/c.py": (50, 40),
     "bookvie_dropbox/upload.py": (80, 76),
     "bookvie_dropbox/auth.py": (20, 19),
-    # The restore path's modules. The two in intents/ count in intents+store too, so they
+    # The restore path's modules. The five in intents/ count in intents+store too, so they
     # have 0 statements here and leave that group's sums as they are.
     "bookvie/agent/restore_gate.py": (100, 96),
     "bookvie/intents/restore_file.py": (0, 0),
-    "bookvie/intents/backup_file.py": (0, 0),
+    "bookvie/intents/backup_names.py": (0, 0),
+    "bookvie/intents/backup_daily.py": (0, 0),
+    "bookvie/intents/backup_listing.py": (0, 0),
+    "bookvie/intents/backup_restore.py": (0, 0),
     "bookvie/agent/tools.py": (100, 0),  # agent/ outside the restore path
     "bookvie/cli.py": (100, 0),  # outside every gate
     "bookvie/http/app.py": (100, 0),
@@ -103,7 +106,10 @@ def test_groups_whose_files_have_zero_statements_pass(tmp_path: Path) -> None:
         "bookvie_dropbox/__init__.py": (0, 0),
         "bookvie/agent/restore_gate.py": (0, 0),
         "bookvie/intents/restore_file.py": (0, 0),
-        "bookvie/intents/backup_file.py": (0, 0),
+        "bookvie/intents/backup_names.py": (0, 0),
+        "bookvie/intents/backup_daily.py": (0, 0),
+        "bookvie/intents/backup_listing.py": (0, 0),
+        "bookvie/intents/backup_restore.py": (0, 0),
     }
     result = _run(_report(tmp_path, files))
     assert result.returncode == 0, result.stdout
@@ -129,7 +135,9 @@ def test_groups_that_match_no_file_fail(tmp_path: Path, files: dict) -> None:
     assert "bookvie_dropbox FAIL: nothing under bookvie_dropbox/ was measured" in result.stdout
     assert (
         "restore path FAIL: bookvie/agent/restore_gate.py, "
-        "bookvie/intents/restore_file.py, bookvie/intents/backup_file.py not measured"
+        "bookvie/intents/restore_file.py, bookvie/intents/backup_names.py, "
+        "bookvie/intents/backup_daily.py, bookvie/intents/backup_listing.py, "
+        "bookvie/intents/backup_restore.py not measured"
     ) in result.stdout
 
 
@@ -147,7 +155,10 @@ def test_groups_match_by_path_segment_not_prefix(tmp_path: Path) -> None:
         "bookvie/agent/restore_gate.py.orig": (10, 0),
         "/repo/bookvie/backend/bookvie/agent/restore_gate.py": (10, 9),
         "backend\\bookvie\\intents\\restore_file.py": (0, 0),
-        "bookvie/intents/backup_file.py": (0, 0),
+        "bookvie/intents/backup_names.py": (0, 0),
+        "bookvie/intents/backup_daily.py": (0, 0),
+        "bookvie/intents/backup_listing.py": (0, 0),
+        "bookvie/intents/backup_restore.py": (0, 0),
     }
     result = _run(_report(tmp_path, files))
     assert result.returncode == 0, result.stdout
@@ -157,12 +168,12 @@ def test_groups_match_by_path_segment_not_prefix(tmp_path: Path) -> None:
     assert "restore path 90.00% (9/10" in result.stdout
 
 
-def test_the_restore_path_sums_its_three_modules(tmp_path: Path) -> None:
+def test_the_restore_path_sums_its_modules(tmp_path: Path) -> None:
     # Epic 13's gate: 90% on the agent's restore path, summed over its modules (retro item 90).
     files = HEALTHY | {
         "bookvie/agent/restore_gate.py": (100, 96),
         "bookvie/intents/restore_file.py": (100, 88),
-        "bookvie/intents/backup_file.py": (100, 95),
+        "bookvie/intents/backup_names.py": (100, 95),
     }
     result = _run(_report(tmp_path, files))
     assert "restore path 93.00% (279/300 lines, needs >= 90%) ok" in result.stdout

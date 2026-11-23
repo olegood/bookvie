@@ -47,6 +47,7 @@ from bookvie.intents import (
 )
 from tests.agent_client import (
     AGENT_TOOL_NAMES,
+    BOOK_TOOL_NAMES,
     DESCRIPTIONS,
     WRITE_TOOL_NAMES,
     McpClient,
@@ -591,7 +592,8 @@ def _assert_a_broken_handler_breaks_tool_and_route_alike(
         raise RuntimeError(f"{tool} broke")
 
     # The handler is named after its tool in both modules that call it.
-    monkeypatch.setattr(f"bookvie.agent.tools.{tool}", broken)
+    module = "book_tools" if tool in BOOK_TOOL_NAMES else "write_tools"
+    monkeypatch.setattr(f"bookvie.agent.{module}.{tool}", broken)
     monkeypatch.setattr(f"bookvie.http.api.{tool}", broken)
 
     route_client = TestClient(

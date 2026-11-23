@@ -14,9 +14,9 @@ import random
 import typing
 from pathlib import Path
 
-from bookvie.intents import FROM_DROPBOX, backup_file
+from bookvie.intents import FROM_DROPBOX, backup_upload
 from bookvie.intents import dropbox_content_hash as bookvie_content_hash
-from bookvie.intents.backup_file import (
+from bookvie.intents.backup_names import (
     DAILY_NAME,
     DEFAULT_BACKUPS_NAME,
     DEV_BACKUPS_NAME,
@@ -108,8 +108,8 @@ def test_bookvie_keeps_the_same_cause_enum_as_bookvie_dropbox() -> None:
     # [P0] AC-5 (Story 13.3)
     contracts = import_or_fail("bookvie_dropbox.contracts")
 
-    assert tuple(getattr(backup_file, "CAUSES", ())) == tuple(contracts.CAUSES)
+    assert tuple(getattr(backup_upload, "CAUSES", ())) == tuple(contracts.CAUSES)
     # The validator's Literal is the same set, in the same order.
-    assert typing.get_args(backup_file.Cause) == backup_file.CAUSES
+    assert typing.get_args(backup_upload.Cause) == backup_upload.CAUSES
 
     assert tuple(contracts.CAUSES) == CAUSES

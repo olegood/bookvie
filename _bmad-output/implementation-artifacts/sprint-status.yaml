@@ -1179,5 +1179,5 @@ action_items:
       measuring it.
       Due: before the first Epic 14 story that adds an agent tool or changes `intents/backup_file.py`."
     owner: "Amelia (dev)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-13-retro-2026-11-23.md"

@@ -1,7 +1,7 @@
 """Restore from a backup file in the backups folder (AD-22, Story 13.1).
 
 The agent's restore reads a file bookvie already has, instead of an upload.
-The path is checked first (:func:`~bookvie.intents.backup_file.resolve_backup_path`),
+The path is checked first (:func:`~bookvie.intents.backup_restore.resolve_backup_path`),
 before the file is opened.
 
 :func:`preview_restore` stages and validates the file under the AD-4 lock and
@@ -14,7 +14,7 @@ hold of the lock and in this order: the current ``library.json``'s SHA-256
 against the sealed one; the file read once into a spool, and its SHA-256
 against the sealed one (either moved is ``restore_not_confirmed`` with
 ``changed``); stage and validate; the safety copy
-(:func:`~bookvie.intents.backup_file.write_safety_copy`); then
+(:func:`~bookvie.intents.backup_restore.write_safety_copy`); then
 :func:`~bookvie.intents.restore.apply_staged`. ``.staging/`` is emptied
 whatever happened. ``local-state.json`` is never written.
 """
@@ -34,7 +34,7 @@ from pydantic.alias_generators import to_camel
 from bookvie.domain import Clock, Library
 from bookvie.store import Store, referenced_covers
 
-from .backup_file import write_safety_copy
+from .backup_restore import write_safety_copy
 from .commit import log
 from .contract import (
     RestoreNotConfirmedReason,

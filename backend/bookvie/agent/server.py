@@ -12,7 +12,7 @@ refused as unexpected. An ``IntentError`` is ``isError`` with
 the AD-9 ``error`` object as JSON; anything else is ``couldnt_save``.
 
 An interactive tool (``restore_backup``) also gets the call's
-:class:`~bookvie.agent.tools.ToolCall`, and its ``InputRequiredResult`` is
+:class:`~bookvie.agent.tool_base.ToolCall`, and its ``InputRequiredResult`` is
 passed through unchanged.
 """
 
@@ -29,7 +29,7 @@ from pydantic import BaseModel
 
 from bookvie.intents import IntentError, OkResponse, couldnt_save
 
-from .tools import AgentTool, ToolCall, advertised_schema
+from .tool_base import AgentTool, ToolCall, advertised_schema
 
 logger = logging.getLogger(__name__)
 

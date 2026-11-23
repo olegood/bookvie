@@ -33,11 +33,16 @@ DROPBOX_PACKAGE = "bookvie_dropbox"
 RESTORE_PATH = (
     "bookvie/agent/restore_gate.py",
     "bookvie/intents/restore_file.py",
-    "bookvie/intents/backup_file.py",
+    "bookvie/intents/backup_names.py",
+    "bookvie/intents/backup_daily.py",
+    "bookvie/intents/backup_listing.py",
+    "bookvie/intents/backup_restore.py",
 )
 """The agent's restore path (Story 13.1), gated as whole modules: Epic 13's gate asks for
-90% (retro item 90). ``backup_file.py`` is whole until retro item 95 splits it; then
-this list names the restore half's modules."""
+90% (retro item 90). Of the backup modules (retro item 95), the restore half: the allowed
+names, the listing, and the path and safety-copy rules, and ``backup_daily.py``, because
+the safety copy writes through its ``_write_atomic``. Only ``backup_upload.py`` counts
+solely in intents+store."""
 
 GATES = (
     Gate("domain", ("domain",), 90.0),

@@ -188,10 +188,10 @@ def test_the_cross_package_scanner_catches_each_crossing(tmp_path: Path) -> None
         "import dropbox\nfrom keyring import get_password\nimport bookvie_dropbox.server\n"
         "from . import commit\nimport json\n"
     )
-    (bookvie / "fine.py").write_text("from .backup_file import dropbox_content_hash\n")
+    (bookvie / "fine.py").write_text("from .backup_listing import dropbox_content_hash\n")
     dropbox_side = tmp_path / "bookvie_dropbox"
     dropbox_side.mkdir()
-    (dropbox_side / "bad.py").write_text("from bookvie.intents import backup_file\n")
+    (dropbox_side / "bad.py").write_text("from bookvie.intents import backup_names\n")
     (dropbox_side / "worse.py").write_text("import bookvie\n")
     (dropbox_side / "fine.py").write_text(
         "import dropbox\nimport keyring\nfrom . import contracts\n"

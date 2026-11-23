@@ -31,7 +31,7 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
-from bookvie.intents import backup_file, record_backup_upload
+from bookvie.intents import backup_daily, record_backup_upload
 from bookvie.store import local_state
 from bookvie.store.fs import OsFileSystem
 from tests.agent_client import (
@@ -670,7 +670,7 @@ def test_a_built_zip_that_cant_be_read_is_couldnt_save_and_moves_nothing(
     # Review follow-up: write_backup hashes the built zip's library.json before it writes.
     client, folder, backups, _ = _connect(connect_mcp, tmp_path)
     (folder / LOCAL_STATE).write_bytes(EARLIER_EXPORT)
-    monkeypatch.setattr(backup_file, "build_export", lambda store, now: io.BytesIO(b"not a zip"))
+    monkeypatch.setattr(backup_daily, "build_export", lambda store, now: io.BytesIO(b"not a zip"))
 
     for arguments in ({}, {"forUpload": True}):
         capsys.readouterr()

@@ -29,7 +29,7 @@ from typing import Any
 
 import pytest
 
-from bookvie.intents.backup_file import CAUSES
+from bookvie.intents.backup_upload import CAUSES
 from tests.agent_client import (
     DROPBOX_TOOL_NAMES,
     EXPORT_BACKUP,
