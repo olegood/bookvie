@@ -1729,6 +1729,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-epic-13-retro-item-89-reconcile-the-spine-with-epic-13.md`
   summary: `epic-13-traceability-matrix.md` (lines 57, 83–85, 97, 402–403) and `epic-13-gate-decision.json` still list Story 13.2 AC-3 and AC-6 as open gaps that "action 89" will reword. Item 89 reworded them in `epics.md`; the trace artifacts should say so (or be re-traced) before the Epic 14 gate reads them. Low.
   evidence: item 89's Blind Hunter review; `epics.md` Story 13.2 AC-3 and AC-6 now carry "Reworded 2026-11-23" notes.
+  resolved: Epic 13 retro item 88's re-trace (`d6bbd40`, 2026-11-23). `epic-13-traceability-matrix.md` lists 13.2 AC-3 and AC-6 as FULL, reworded by item 89 (gaps G2 and G3 closed by `b7fe93a`), and `epic-13-gate-decision.json` names only 13.1 AC-11 as the P0 gap.
 
 ## Deferred from: build of spec-epic-13-retro-item-95-split-backup-file-and-agent-tools (2026-11-23)
 
@@ -1742,3 +1743,4 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-epic-13-retro-item-95-split-backup-file-and-agent-tools.md`
   summary: Besides the spine, the planning and trace artifacts still cite the modules item 95 split: `epics.md`, `dropbox-backup-plan-2026-11-21.md`, `epic-13-traceability-matrix.md`, `epic-13-e2e-trace-summary.json` and Epic 12–13 ATDD checklists name `intents/backup_file` or `agent/tools.py`. The trace artifacts and checklists record the code as it was when they were written. `epics.md` should point at the new modules (`intents/backup_*`, `agent/*_tools.py`) when the spine is reconciled before Epic 14. Low.
   evidence: item 95's Blind Hunter review; `grep -rln "backup_file\|agent/tools" _bmad-output/planning-artifacts _bmad-output/test-artifacts`.
+  resolved: 2026-11-23, after the item 95 spine reconciliation. `epics.md` AR42 now names `intents/backup_daily` and `intents/backup_names`; it was the only mention left in `epics.md`. `dropbox-backup-plan-2026-11-21.md`, the trace artifacts and the ATDD checklists stay as written: they record the plan and the code as they were, and AD-22 wins where the plan differs.
