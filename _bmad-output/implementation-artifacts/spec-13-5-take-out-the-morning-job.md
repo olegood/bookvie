@@ -2,7 +2,7 @@
 title: 'Story 13.5: Take out the morning job'
 type: 'refactor'
 created: '2026-11-23'
-status: 'in-review'
+status: 'done'
 baseline_revision: '08bb1adae588adc1f25167f614b8e4301d76749c'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -106,6 +106,32 @@ deferred:
 - Given the skill, when it is read, then it says it runs by hand and never mentions launchd, 09:00, `claude -p` or a headless run. The `upload_incomplete` line reads "Failed: the last upload didn't finish. Nothing in Dropbox was deleted; run /bookvie-backup again.", and EXPERIENCE.md and `failing_reasons` match it.
 - Given the guide and the README, when this story lands, then they hold no install step, no daily-job troubleshooting and no `autobackup` command. How it works describes a run by hand, and Uninstalling has the one old-job note.
 - Given the tests, when `npm run check` runs, then `test_autobackup.py` is gone, no test other than `test_morning_job_removed.py` names launchd or the `autobackup` command, and the check is green.
+
+### Review Findings
+
+Code review of 2026-11-23, in a new session, on `08bb1ad..5c1b9ef`, with five layers: blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor and spine-check. There were 19 findings: 0 decision-needed, 0 patch, 1 defer and 18 rejected. No patch was applied, so the full `npm run check` didn't need re-running. No AC needs a manual run: all five are covered by tests.
+
+- [x] [Review][Defer] AD-22 "Causes" still says "the UX's Failing line", while EXPERIENCE.md and `failing_reasons` now use the header `After "failed *when* · "` [`ARCHITECTURE-SPINE.md:360`] — deferred: spine drift, reconciled before the next epic. It was already logged in `deferred-work.md` by the build ("Spine drift (AD-22 Causes)"), so no second entry was added.
+
+**Rejected:**
+- `false` (blind) The guide's "uses only its four MCP tools and never `restore_backup`" is now unenforced. The guide says MCP tools, which is true: step 1's Bash calls only start bookvie. The skill's "only four tools" sentence is unchanged since 13.4, which was already a run by hand.
+- `low` (blind) Step 1 has no time limit when it polls a bookvie it started. That text is unchanged since 13.4 and matches the other bookvie skills, and the session is interactive, so the user can interrupt.
+- `low` (blind) The closing note doesn't name step 1's stops. The note never listed them, even before this diff, and step 1 gives each stop's line in place, so it doesn't mislead.
+- `false` (blind) The clause "since the skill is run by hand" in step 1 is redundant, and the test that matches it is vacuous. The clause states the reason step 1 may run shell commands (AC-3), and the leaf pins that statement. No behaviour is lost.
+- `low` (blind+acceptance) The Uninstalling `rm -r` and `bootout` print errors when the job or files are already gone. The build's review patched this with `rm -f` and the "that's fine" sentence, and the policy removed the only installed job on 2026-11-22.
+- `low` (blind+edge) The old-job cleanup is only under Uninstalling, with no pointer from Setup, and a loaded job would fail its runs. AC-4 places the note there, and the only Mac that had the job lost it to admin policy on 2026-11-22 (sprint change §1), so no Mac runs it.
+- `low` (blind) "Daily copies" could be read as the last 3 calendar days. "Daily backup" names the file kind (one file per day), and the guide says the oldest daily backups beyond 3 are deleted. The build's review rejected the same point.
+- `low` (blind) The guide doesn't say how often to back up or when the last upload was. That isn't in the intent, and Story 13.6 adds the Backup page line.
+- `false` (blind) The Auto Run Result tally disagrees with the triage log. The duplicate edge patch row was grouped with the blind patch, giving 2 patch entries. The fix would edit the spec under review anyway.
+- `low` (blind) The UX examples use 09:0x times. They are pre-existing illustrative times outside this diff and imply nothing about a schedule.
+- `false` (blind) The test docstrings imply a headless path. "Falls back" means step 1 falls back to starting bookvie when `get_app_info` doesn't answer, and `SKILL_TOOLS` still cites AR51.
+- `false` (blind) `deferred-work.md` ends with a blank line. Markdown renders the same, and nothing reads that file byte for byte.
+- `false` (blind) The guide's intro "which you run by hand" is ambiguous. It can't attach to a folder, and "so you see a run work" still gives the first run its purpose.
+- `false` (acceptance) The step 6 intro was reworded outside the allowed exceptions. The constraint covers steps 2 to 5 and the report lines, and step 6's intro is neither. AC-3 requires removing the "auto-backup" wording.
+- `false` (acceptance) `epic-13-context.md` was added outside the Code Map. The Auto Run Result records it, and it is consistent with the sprint change.
+- `low` (edge) A refused Bash prompt in step 1 has no outcome line. AC-3 removes that stop on purpose, and a refusal is the user's own choice in an interactive session. The build's review rejected the same point.
+- `false` (blind) The Uninstalling intro "remove everything the setup added" conflicts with the old-job block. That block opens with "If this Mac had the old daily job installed", so it is clearly conditional.
+- `false` (verification-gap) No gap was filed: the layer reported none.
 
 ## Spec Change Log
 
