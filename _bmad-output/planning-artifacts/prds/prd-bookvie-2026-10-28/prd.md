@@ -8,6 +8,7 @@ inputs:
   - _bmad-output/planning-artifacts/ux-designs/ux-bookvie-2026-10-28/prd-deltas.md
   - _bmad-output/planning-artifacts/mcp-server-plan-2026-11-19.md
   - _bmad-output/planning-artifacts/dropbox-backup-plan-2026-11-21.md
+  - _bmad-output/planning-artifacts/card-note-boxes-plan-2026-11-23.md
 assumptions: all confirmed by the user on 2026-10-28
 ---
 
@@ -223,9 +224,12 @@ The user can open a Book's Card notes as a pile and go through them one at a tim
   - The user can jump straight to a particular Card note in the pile.
 
 #### FR-19: Card notes view and quick search
-The user can open a separate Card notes view that shows all Card notes, grouped by Book. The quick search lives on this view and finds the Card notes that contain the typed text, so the user can quickly find where in a Book a thought was written.
+The user can open a separate Card notes view that shows all Card notes, grouped by Book, either as a list or as one box per Book. The quick search lives on this view and finds the Card notes that contain the typed text, so the user can quickly find where in a Book a thought was written.
 - **Consequences:**
-  - **Search across all Books:** on the Card notes view, the search covers every Book's Card notes, and results stay grouped by Book.
+  - **Boxes or list:** across all Books, the view shows the Books as boxes (default) or as the list of Card notes grouped by Book. The last choice is remembered on this computer and isn't part of an export, like the theme and the sort. The view scoped to one Book has no choice.
+  - **Boxes:** each Book that has Card notes gets one box in its spine color, read or not, with its title, how many Card notes it holds, and a pile of cards that grows with that number. Boxes come in the same Book order as the list. Opening a box opens the view scoped to that Book, which shows the Book's spine color too.
+  - **Search across all Books:** on the Card notes view, the search covers every Book's Card notes. In the list, results stay grouped by Book. In boxes, each Book with a match shows how many of its Card notes match ("3 of 12"), and the other boxes fall back but can still be opened. Which Books match never depends on color or fading alone.
+  - **Search carried into a box:** opening a box during a search keeps the search text, so the Book's view shows only its matches. Going back to the boxes keeps the text as it was when the user left. Switching between boxes and the list keeps the text too. Every other way into the view starts with an empty search.
   - **Search inside a Book:** the Card notes view scoped to one Book searches only that Book's Card notes. The pile itself has no search.
   - Results update while the user types. The match ignores case.
   - Each result shows the page or page range and the matching text highlighted. Search across all Books also shows the Book's title.
