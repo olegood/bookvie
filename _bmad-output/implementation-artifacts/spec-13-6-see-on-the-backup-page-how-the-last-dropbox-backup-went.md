@@ -2,7 +2,7 @@
 title: 'Story 13.6: See on the Backup page how the last Dropbox backup went'
 type: 'feature'
 created: '2026-11-23'
-status: 'in-review'
+status: 'done'
 baseline_revision: 'e367d0384739e7c8c14220addaf7f3bb68897bcf'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -115,6 +115,34 @@ deferred:
 - AC-3: Given the line, when it is inspected, then it is `meta` text, `ink` when failed and `ink-tertiary` otherwise, text only, not a control, Tab stop or live region, absent from Home, and axe passes in light and dark.
 - AC-4: Given a manual export, a recorded upload and a restore, when each finishes, then only "Last export" moves for the export, only the line moves for the upload, and neither moves for the restore.
 - AC-5: Given the guide, when the docs pytest runs, then each cause has exactly one entry that quotes its reason word for word.
+
+### Review Findings
+
+Code review of 2026-11-23, in a new session, on `e367d03..8fff564`, with five layers: blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor and spine-check. The layers filed 21 findings (acceptance-auditor none), grouped into 20 entries: 0 decision-needed, 1 patch, 4 defer and 15 rejected. No AC needs a manual run: all five are covered by tests.
+
+- [x] [Review][Patch] The `dev` state's null fields are never checked: the AC-1 leaf asserts only `["state"] == "dev"`, so a dev view that leaked the stored report's `reportAt`, `lastUploadAt`, `copies` or `cause` would pass, while the spec says all four are `null` for `dev` [`backend/tests/test_dropbox_backup_line.py:141`]
+- [x] [Review][Defer] AD-22 Copied contracts: a second cause-enum copy inside bookvie (`views.models.DropboxCause`) [`backend/bookvie/views/models.py:326`] — deferred: spine drift, reconciled before the next epic. Already logged in `deferred-work.md` by the build, so no second entry was added.
+- [x] [Review][Defer] AD-22 Dropbox backup line doesn't define "unreadable" per field, nor that a failure carries `lastUploadAt` and `copies` [`backend/bookvie/views/backup.py:33`] — deferred: spine drift, reconciled before the next epic. Already logged by the build.
+- [x] [Review][Defer] AD-22, AD-15, the Testing row, the FR-29 row and the Seed still mark the line planned [`ARCHITECTURE-SPINE.md`] — deferred: spine drift, reconciled before the next epic. Already logged by the build.
+- [x] [Review][Defer] AD-6's "`mode` is the only dev signal" sentence, and the Seed's `lib/` line and FR-29 row omit `lib/dropboxBackupLine` and the exported `localDay` [`frontend/src/lib/dropboxBackupLine.ts`] — deferred: spine drift, reconciled before the next epic. Already logged by the build.
+- Full check after the patch, 2026-11-23: `npm run check` exited 0 (pytest 2427 passed, unit 393 passed, e2e 803 passed, smoke ok). Applied: the AC-1 leaf now compares the whole dev body; a hand-made leaky dev view (the stored report with `state` set to `dev`) failed it, and that edit was reverted.
+
+**Rejected:**
+- `low` (edge) `views.backup` reads `local-state.json` twice, so a corrupt file logs two lines and the two fields could come from different versions. The two groups have independent writers, so each field is still a true fact. The fix is a reader refactor, and the build's review rejected the same point.
+- `false` (edge+blind) The class and the words can disagree, drawing "none yet" in `ink` when `failed` has no `reportAt` or `cause`. `dropbox_backup` returns `failed` only with an aware `at` and a cause in `CAUSES` (`views/backup.py`), so the server never sends that payload.
+- `false` (edge) `dropboxWhen` renders "on NaN undefined NaN" for an unparseable time. `reportAt` and `lastUploadAt` are Pydantic `AwareDatetime` values, always serialized as ISO-8601.
+- `low` (verification-gap other, blind) `test_the_pages_reasons_match_experience_md_in_cause_order` regex-parses `dropboxBackupLine.ts` and would break if Prettier wrapped an entry. It fails loudly ("REASONS" pairs missing), never silently, and the fix (moving `REASONS` to a shared JSON file) is a restructure for a reformat that hasn't happened.
+- `low` (blind) "none yet · run /bookvie-backup" can't fix an unreadable `local-state.json`. Bad JSON is replaced by the group writer (`local_state._parse_or_empty`), so the next run clears it. Only an unreadable file (`chmod 000`) stays, and `record_backup_upload` then answers `CouldntSave` with the file named. That's rare, and the fix is new guide content.
+- `false` (blind) The guide never explains the dev state. `docs/dropbox-backup.md:5` and `:128` say a `--dev` server never uploads, and the line's words say it too.
+- `false` (blind) `_NONE` and `_DEV` are shared mutable instances. No code mutates a view: the only use is `backup()`, whose result FastAPI serializes.
+- `false` (blind) `backup(store, *, dev=False)` fails open. Its only caller, `http/api.py:347`, passes `dev`, and no agent tool calls `views.backup`.
+- `false` (blind) `copies` lacks `Field(ge=1)` in the schema. The server enforces it in `_last_upload`, and the client only formats, so nothing goes wrong.
+- `false` (blind) The unit and backend tests miss some cases: an other-year full line, a year boundary, a failure whose last upload is today, a skip with "1 copy", and a bad `copies` on an upload. Each piece is covered: `dropboxWhen` handles other years and the 31 Dec / 1 Jan case, `copiesText(1)` is tested, and the `copies` check lives in the shared `_last_upload`, which the failure-path leaves already cover.
+- `low` (blind) The `none` body is spelled out in four test files. The cost is a few extra edits when a field is added, and the build kept each file's expected body explicit.
+- `low` (blind) The `epic-13-context.md` rewrite dropped the gate numbers, "the backup run can never restore", `_on_the_machine` and other details. It was recompiled by `compile-epic-context.md` (800–1500 tokens), and each dropped fact still lives in the spine, `epics.md` or `test-design-qa.md`, which later stories load.
+- `false` (blind) The spec's `deferred:` entries 3 and 4 lack `location:`, and `review_loop_iteration` is still 0. The fix would edit the spec's own bookkeeping, not code, and neither field is read by a check.
+- `false` (blind) `deferred-work.md` has two blank lines before the new heading. Markdown renders the same, and nothing reads that file byte for byte (the same call as Story 13.5's review).
+- `false` (blind) CHANGELOG has no entry. `[Unreleased]` stayed "Nothing yet" through 13.1–13.5; entries are written in the release commit (`6c0f404`, `7c68a46`).
 
 ## Spec Change Log
 

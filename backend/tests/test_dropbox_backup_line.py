@@ -140,7 +140,13 @@ def test_views_backup_carries_the_dropbox_backup_state_computed_on_the_server(
     # Dev: a --dev server says dev, whatever is stored.
     for stored in (UPLOAD_GROUP, FAIL_GROUP):
         _store(tmp_path, {"autoBackup": stored})
-        assert _dropbox_backup(tmp_path, dev=True)["state"] == "dev"
+        assert _dropbox_backup(tmp_path, dev=True) == {
+            "state": "dev",
+            "reportAt": None,
+            "lastUploadAt": None,
+            "copies": None,
+            "cause": None,
+        }
 
     # Pydantic, then api:gen: the client's types carry it.
     assert re.search(r"\bdropboxBackup\b", SCHEMA_D_TS.read_text(encoding="utf-8"))
