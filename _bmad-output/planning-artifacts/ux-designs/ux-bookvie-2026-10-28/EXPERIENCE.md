@@ -369,7 +369,6 @@ Use: the Card notes page. Plan: [card-note-boxes-plan](../../card-note-boxes-pla
 - **Starts empty.** Every other way into the page starts with an empty field, as before Epic 14: the nav, a box opened with an empty field, "See card notes", "See all card notes", Back to the shelf from any other page, a reload (even of the same history entry), Forward, a typed URL. The search text never appears in the URL.
 - **Temporary.** Remove each note when its condition is met.
   - *Staging (until the Epic 14 retro).* Story 14.2 ships both views without the shelf search. Until Story 14.3, Boxes view with non-blank text in the field shows exactly the List view's results and announcements ("N notes match."), hides the count line, and shows the boxes again once the field is blank. Story 14.3 adds Search on the shelf and the carried search.
-  - *Notes for architecture (plan step 4; until the architecture spine records them).* The carried text travels in router state, never in the URL. A reload must ignore it even though the browser keeps a history entry's state across a reload. Back must find the open box's latest text, not the text it was opened with. The `card-notes` view carries `spineColor` on each group and on the scope.
 
 ## Bookcase
 
