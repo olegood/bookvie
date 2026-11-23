@@ -6,7 +6,17 @@ All notable changes to bookvie are recorded here. The format follows
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+
+- Back up the library to bookvie's own Dropbox App folder with the `bookvie-backup` skill: it exports today's daily backup, uploads it unless nothing changed since the last upload, checks Dropbox's copy and keeps the 3 newest daily copies. It never uploads from a `--dev` server. Run it by hand with `/bookvie-backup` (Epic 13).
+- A second command, `bookvie-dropbox`, is installed with bookvie: sign in once with `bookvie-dropbox auth`, and Claude Code starts it as an MCP server that uploads, lists and downloads backups. The sign-in is kept only in the macOS Keychain (Epic 13).
+- Restore the library from a backup on this computer or in Dropbox with the `bookvie-restore` skill. It lists both as one pick list, newest first, shows what the restore would lose and restores only after your yes, Claude Code's permission prompt and bookvie's own question. bookvie saves a safety copy of the current library first, so a restore can be undone (Epic 13).
+- New agent tools: `list_local_backups`, `preview_restore`, `restore_backup` and `record_backup_upload`; `export_backup` can export for an upload without changing "Last export" (Epic 13).
+- The Backup page shows how the last Dropbox backup went (Epic 13).
+
+### Changed
+
+- To back up to Dropbox and restore, restart a running bookvie and follow [Backing up to Dropbox, and restoring](docs/dropbox-backup.md): it sets up the Dropbox app, the sign-in, both MCP servers and the permission rule.
 
 ## [2.0.1] - 2026-11-21
 
