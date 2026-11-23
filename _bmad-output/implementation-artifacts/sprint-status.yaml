@@ -1091,7 +1091,11 @@ action_items:
       `_bmad-output/implementation-artifacts/spec-13-8-restore-with-one-skill-from-this-computer-or-dropbox.md`,
       `_bmad-output/test-artifacts/atdd-checklist-13-4-back-up-to-dropbox-with-one-skill.md`,
       `_bmad-output/test-artifacts/atdd-checklist-13-5-run-the-backup-every-morning.md`.
-      Due: before Epic 14."
+      Due: before Epic 14. Added by the Epic 13 trace (2026-11-23, gaps G2 and G3,
+      Oleg's decision): reword Story 13.2 AC-3 to what the test proves (both copies
+      agree across block boundaries, and Dropbox's published block digests give its
+      published hash; the published image itself is not hashed) and AC-6 to the per-request
+      hash with the size and content_hash check after the commit (`deferred-work.md:1502`)."
     owner: "Winston (architect)"
     status: open
     ref: "_bmad-output/implementation-artifacts/epic-13-retro-2026-11-23.md"
@@ -1118,7 +1122,10 @@ action_items:
       `_bmad-output/planning-artifacts/epics.md`, `backend/bookvie_dropbox/upload.py`,
       `backend/bookvie_dropbox/server.py`, `.claude/skills/bookvie-backup/SKILL.md`,
       `frontend/src/lib/dropboxBackupLine.ts`, `docs/dropbox-backup.md`, `backend/tests/test_backup_skill.py`,
-      `backend/tests/test_dropbox_upload_edges.py`. Due: before Epic 14."
+      `backend/tests/test_dropbox_upload_edges.py`. Due: before Epic 14. Decided
+      by Oleg on 2026-11-23 (retro open question): a prune that fails after a verified
+      upload is recorded as `uploaded` with the real copy count, and the skill line
+      notes that older copies remain; no new outcome."
     owner: "Amelia (dev)"
     status: open
     ref: "_bmad-output/implementation-artifacts/epic-13-retro-2026-11-23.md"
