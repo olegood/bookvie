@@ -2,7 +2,7 @@
 title: 'Story 13.7: Fetch a backup from my Dropbox'
 type: 'feature'
 created: '2026-11-23'
-status: 'in-review'
+status: 'done'
 baseline_revision: '4a6496266c7c007b5cad37561d864c0e62f04ab0'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -93,6 +93,39 @@ deferred:
 - Given the stdio server, when a client lists tools, then it holds exactly `upload_backup`, `list_backups`, `download_backup` with their story descriptions, and none deletes, moves, renames or restores.
 - Given a downloaded file, when bookvie's `list_local_backups` and `preview_restore` read it, then it is `from_dropbox` with the same `contentHash` as `list_backups` gave, and previews like the same daily backup in the backups folder.
 - Given the I/O matrix, when `npm run check` runs, then the six 13.7 leaves and the rest of the suite pass and the coverage gate holds.
+
+### Review Findings
+
+Code review of 2026-11-23, in a new session, on `4a64962..eb7c151`, with five layers: blind-hunter, edge-case-hunter, verification-gap, acceptance-auditor and spine-check. The layers filed 28 findings: 0 decision-needed, 1 patch, 6 defer and 21 rejected. No AC needs a manual run: all three are covered by tests (Story 13.8 runs the first real download).
+
+- [x] [Review][Patch] The best-effort folder fsync after the rename (the build review's medium EC-1 patch) has no test: replacing `contextlib.suppress(OSError)` with `if True:` leaves all 14 download tests passing, so a failed folder fsync could again answer `download_incomplete` "Nothing was written" with the verified file in place [`backend/bookvie_dropbox/download.py:208`]
+- [x] [Review][Defer] AD-22 Backup time: `list_backups` reports and sorts by `client_modified`, not the zip entry's time [`backend/bookvie_dropbox/download.py:99`] — deferred: spine drift, reconciled before the next epic. Already logged in `deferred-work.md` by the build, so no second entry was added.
+- [x] [Review][Defer] AD-22 Dropbox tools, `list_backups`: daily `FileMetadata` only, newest first, `{"backups": [...]}` with `name`, a missing folder `[]`, its own causes [`backend/bookvie_dropbox/download.py:79`] — deferred: spine drift. Already logged by the build.
+- [x] [Review][Defer] AD-22 Dropbox tools, `download_backup`: the size check, the symlinked `from-dropbox` refusal, the best-effort folder fsync, `{"path": ...}`, and `download_incomplete` also covering `RateLimitError` and local `OSError` [`backend/bookvie_dropbox/download.py:178`] — deferred: spine drift. Already logged by the build.
+- [x] [Review][Defer] AD-22 Causes, Copied contracts and AD-9: `DOWNLOAD_CAUSES` is a second cause set, and both tools answer `{cause, message}` with a bad argument set as `other` [`backend/bookvie_dropbox/server.py:153`] — deferred: spine drift. Already logged by the build.
+- [x] [Review][Defer] AD-1: `mkdir(parents=True)` can create a missing backups folder, not only `from-dropbox/` [`backend/bookvie_dropbox/download.py:164`] — deferred: spine drift. Already logged by the build.
+- [x] [Review][Defer] The Paradigm and Seed diagrams, the Seed's `bookvie_dropbox/` line, the Stack rows and the Testing row still say "planned", and the Capability map lists `list_backups` under FR-29 [`ARCHITECTURE-SPINE.md`] — deferred: spine drift. Already logged, by the build's third entry and by Story 13.2's "planned" entry.
+- Full check after the patch, 2026-11-23: `npm run check` exited 0 (pytest 2445 passed, unit 395 passed, e2e 803 passed, smoke ok; coverage gate `bookvie_dropbox` 95.39%). Applied: `test_a_failed_folder_fsync_after_the_rename_still_answers_the_verified_download` in `test_dropbox_download_edges.py` makes every fsync after `os.replace` raise `OSError` and asserts the answer's path, the verified bytes and no leftover temp file; the mutation `contextlib.suppress(OSError)` → `if True:` failed it, and that edit was reverted.
+
+**Rejected:**
+- `low` (blind+edge) A Dropbox 5xx (`InternalServerError`) from the download answers `other` without "try again". The spec's matrix sends "any other exception" to `other`; `upload_backup` maps the same 503 to `other` and pins it (`test_dropbox_upload.py:308`); and the SDK already retries 5xx four times (`max_retries_on_error=4`). Changing it is a cause-contract change for both tools, not a fix.
+- `low` (blind) The edges test's "mid-transfer" faults are raised by `files_download`, before `mkstemp`. A fault inside the stream takes the same `finally` cleanup that AC-5's `broken_transfer` exercises mid-stream, and the cause mapping per exception type is what the edges test pins.
+- `low` (blind+edge) A process killed mid-download leaves a hidden `.*.tmp` in `from-dropbox/`. It needs the server killed during a transfer, bookvie already skips `.tmp*` names, and the fix adds a sweep.
+- `false` (blind) A download is mode 0600. bookvie and bookvie-dropbox run as the same user on a single-user Mac, so bookvie reads it, and nothing else needs to.
+- `false` (blind) A download already present is fetched again. That is the spec's behavior: a verified download replaces an earlier one, and the guide says so.
+- `false` (blind) `getattr(metadata, "size"/"content_hash", None)` could hide a missing field. The SDK's `FileMetadata` from `files_download` always carries both.
+- `false` (blind) The build triage's tally miscounts medium and low. The fix edits this spec's own bookkeeping, and the follow-up decision rests on one root cause (EC-1/EC-7/BH-1), which the log says.
+- `false` (blind+acceptance) The Code Map and Verification don't name `test_dropbox_download_edges.py`. The fix edits the spec under review; `npm run check` runs the file, and the Auto Run Result's own run lists it.
+- `false` (blind) Some refusals lack "Nothing was downloaded."/"No backups were listed.". They start "Not downloaded:", or refuse the arguments before any listing, so the fact is already stated.
+- `low` (blind) The guide doesn't say to reinstall and restart to get the two new tools. The guide already says to reinstall bookvie to update `bookvie-dropbox`, and download troubleshooting is Story 13.8's (spec "Never").
+- `false` (blind) The returned path may disagree with bookvie's under a symlinked backups folder. Both sides resolve the folder (`landing.resolve()`, bookvie's `resolve_backup_path`), and the reviewer agrees it works.
+- `low` (blind) `DownloadRefused` checks its cause with `assert`. It copies `UploadRefused`, every cause is a literal in two modules, and tests run with assertions on.
+- `low` (edge) `from-dropbox/<name>` as a folder gives `download_incomplete` on every retry. Only a person could make that folder, and the fix adds a branch (the same call as the build review's EC-2).
+- `low` (edge) Every `ApiError` gets the "may not hold that backup" message. The message already hedges ("couldn't give … may not hold"), and splitting the error union adds branches.
+- `maybe-false` (edge) `_close(dbx)` raising after a verified download would answer `other`. `Dropbox.close` closes a `requests` session, which doesn't raise in practice; if true it is low.
+- `maybe-false` (edge) A symlink swapped in between `_check_landing` and the write (TOCTOU). It needs a local process racing a single-user Mac; if true it is low (the build review's BH-9).
+- `low` (acceptance) A failed download can leave an empty `from-dropbox/` (or backups folder). The spec's check order puts `mkdir` before `files_download`, no file is written, and the AD-1 side is deferred as spine drift.
+- `low` (acceptance) "Nothing was written" could read as "no local copy" when an earlier download stays. It describes this download; the guide says an earlier one stays as it was.
 
 ## Spec Change Log
 

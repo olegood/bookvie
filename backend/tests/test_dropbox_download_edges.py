@@ -5,6 +5,7 @@ else), and ``download_backup`` into a ``from-dropbox`` that is a symlink or a
 file. Every test's ``HOME`` is temporary (``conftest._isolated_home``).
 """
 
+import os
 from pathlib import Path
 from typing import Any
 
@@ -130,3 +131,35 @@ def test_a_rate_limited_or_failing_transfer_is_download_incomplete(
     assert answer.get("cause") == "download_incomplete", answer
     landing = _isolated_home / "bookvie-backups" / "from-dropbox"
     assert list(landing.iterdir()) == []
+
+
+def test_a_failed_folder_fsync_after_the_rename_still_answers_the_verified_download(
+    _isolated_home: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # [P1] matrix: Download (the verified file is in place, so a failed folder fsync
+    # after the rename doesn't turn it into "Nothing was written")
+    fake = fakes.FakeDropbox()
+    stored = seed_three_dailies(fakes, fake)
+    name = daily("2026-11-19")
+    real_fsync, real_replace = os.fsync, os.replace
+    renamed: list[str] = []
+
+    def replace(src: Any, dst: Any, *args: Any, **kwargs: Any) -> None:
+        real_replace(src, dst, *args, **kwargs)
+        renamed.append(str(dst))
+
+    def fsync(fd: int) -> None:
+        if renamed:
+            raise OSError("the folder can't be fsynced")
+        real_fsync(fd)
+
+    monkeypatch.setattr(os, "replace", replace)
+    monkeypatch.setattr(os, "fsync", fsync)
+
+    answer = dropbox_call(DOWNLOAD_BACKUP, {"name": name, "target": "bookvie"}, Connect(fake))
+
+    landing = _isolated_home / "bookvie-backups" / "from-dropbox"
+    assert renamed, "the download never reached the rename"
+    assert Path(structured_of(answer)["path"]).resolve() == (landing / name).resolve(), answer
+    assert (landing / name).read_bytes() == stored[name]
+    assert [entry.name for entry in landing.iterdir()] == [name]
