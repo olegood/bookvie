@@ -30,9 +30,11 @@ UPLOAD_BACKUP = "upload_backup"
 UPLOAD_BACKUP_DESCRIPTION = (
     "Upload a daily backup from ~/bookvie-backups (the path export_backup returned) to "
     "bookvie's Dropbox folder, check that Dropbox's copy matches the file, and only then "
-    "delete the oldest daily backups beyond 3. A failed or mismatched upload deletes nothing "
-    "and returns its cause. Returns the uploaded name, the number of copies, the names deleted "
-    "and the content hash; pass them to record_backup_upload."
+    "delete the oldest daily backups beyond 3. A failed upload deletes no older backup and "
+    "returns its cause; a mismatch found after the upload has already replaced that day's copy. "
+    "Returns the uploaded name, the number of copies, the names deleted and the content hash, "
+    "plus pruneFailed when deleting older backups didn't finish; pass them to "
+    "record_backup_upload."
 )
 """Story 13.2's "Description:" line in epics.md, verbatim."""
 UPLOAD_BACKUP_SCHEMA: dict[str, Any] = {

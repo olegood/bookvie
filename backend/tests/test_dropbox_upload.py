@@ -345,7 +345,7 @@ def test_a_failed_upload_deletes_nothing_and_returns_its_cause(
     assert tuple(import_or_fail("bookvie_dropbox.contracts").CAUSES) == CAUSES
 
 
-# --- AC-9: today's copy is replaced only by a verified one ------------------------
+# --- AC-9: a second upload the same day replaces that day's copy -----------------
 
 
 def test_a_second_upload_the_same_day_replaces_that_days_copy_only_once_it_verifies(

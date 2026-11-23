@@ -2,8 +2,9 @@
 
 An older zip's backup time, a backups folder that is a symlink to the dev
 one, a daily name that isn't a bookvie zip, an older daily over newer ones, a
-prune that fails halfway, a mismatched finish, and a rate limit (at the
-finish, and through the real SDK's retry cap). Each runs
+prune that fails halfway (still the upload, Epic 13 retro item 91), a
+mismatched finish, and a rate limit (at the finish, and through the real SDK's
+retry cap). Each runs
 the in-process server against :class:`tests.dropbox_fakes.FakeDropbox`, in
 the test's temporary ``HOME``.
 """
@@ -91,7 +92,7 @@ def test_a_backups_folder_that_is_a_symlink_to_the_dev_folder_is_refused(
     assert fake.calls == []
 
 
-def test_a_prune_that_fails_halfway_reports_the_verified_upload_and_what_it_deleted(
+def test_a_prune_that_fails_halfway_answers_the_verified_upload_and_what_it_deleted(
     fakes: Any, backups: Path
 ) -> None:
     class SecondDeleteFails(fakes.FakeDropbox):  # type: ignore[name-defined,misc]
@@ -112,11 +113,18 @@ def test_a_prune_that_fails_halfway_reports_the_verified_upload_and_what_it_dele
 
     result = upload(path, Connect(fake))
 
-    error = error_of(result)
-    assert error["cause"] == "other", result
-    assert "verified" in error["message"]
-    assert f"It deleted {daily('2026-11-16')}." in error["message"]
-    assert f"It didn't delete {daily('2026-11-17')}." in error["message"]
+    # Epic 13 retro item 91 (E13-B2): the verified upload is the answer, with the copies
+    # Dropbox now holds, only what was deleted, and `pruneFailed` saying what didn't finish.
+    answer = structured_of(result)
+    assert answer["name"] == TODAY_NAME
+    assert answer["deleted"] == [daily("2026-11-16")]
+    assert answer["copies"] == 4 == len(fake.names()), (answer, fake.names())
+    assert answer["contentHash"] == fake.file(TODAY_NAME).content_hash
+    note = answer["pruneFailed"]
+    assert "uploaded and verified" in note and "RuntimeError" in note
+    assert f"It deleted {daily('2026-11-16')}." in note
+    assert f"It didn't delete {daily('2026-11-17')}." in note
+    assert "the connection dropped" not in note
     assert TODAY_NAME in fake.names()
     assert daily("2026-11-16") not in fake.names()
     assert daily("2026-11-17") in fake.names()

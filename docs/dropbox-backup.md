@@ -2,7 +2,7 @@
 
 bookvie keeps your library on this computer. This guide sets up backups to bookvie's own folder in your Dropbox, which you run by hand, and covers getting the library back from a backup through an agent in Claude Code.
 
-The Dropbox side is a second command, `bookvie-dropbox`, installed with bookvie. It is an MCP server that Claude Code starts by itself, with one tool, `upload_backup`: it uploads a daily backup from `~/bookvie-backups`, checks that Dropbox's copy matches the file, and only then deletes the oldest daily backups beyond 3. A failed or mismatched upload deletes nothing. It never uploads from `~/bookvie-backups-dev`, the folder of a `--dev` server.
+The Dropbox side is a second command, `bookvie-dropbox`, installed with bookvie. It is an MCP server that Claude Code starts by itself, with three tools. `upload_backup` uploads a daily backup from `~/bookvie-backups`, checks that Dropbox's copy matches the file, and only then deletes the oldest daily backups beyond 3. A failed or mismatched upload deletes no older backup, though a mismatch may already have replaced that day's copy. It never uploads from `~/bookvie-backups-dev`, the folder of a `--dev` server. `list_backups` and `download_backup` list and download the backups in Dropbox for a restore (see Restoring).
 
 One project skill, [`bookvie-backup`](../.claude/skills/bookvie-backup/SKILL.md), makes a backup run: run `/bookvie-backup` in Claude Code from this repo whenever you want an off-machine copy. Nothing runs it on a schedule.
 
@@ -89,11 +89,11 @@ If macOS asks whether a program may use the Keychain item `bookvie-dropbox`, cho
 
 #### `upload_incomplete`: the upload didn't finish, or didn't match the file
 
-The Backup page shows "Dropbox backup: failed … · the last upload didn't finish. Nothing in Dropbox was deleted; run /bookvie-backup again."
+The Backup page shows "Dropbox backup: failed … · the last upload didn't finish or didn't match. No older backup in Dropbox was deleted, but that day's copy there may be damaged; run /bookvie-backup again."
 
-`upload_backup` answers `upload_incomplete` when the upload broke off (a network error or a timeout), Dropbox refused it, or Dropbox's copy doesn't match the file in size or content hash. Nothing in Dropbox was deleted: the older daily backups are deleted only after a checked upload. Run `/bookvie-backup` again.
+`upload_backup` answers `upload_incomplete` when the upload broke off (a network error or a timeout), Dropbox refused it, or Dropbox's copy doesn't match the file in size or content hash. Nothing else in Dropbox was deleted: the older daily backups are deleted only after a checked upload. A copy that didn't match is found only after Dropbox has stored it, so it has already replaced that day's file. Run `/bookvie-backup` again.
 
-To see what Dropbox holds, open `/Apps/bookvie/.backups` in Dropbox. The older daily backups are all still there. A mismatched upload may already have replaced today's file, `bookvie-backup-<YYYY-MM-DD>.zip`; it counts only once a run has checked it, and the next upload replaces it. If the same run keeps failing, check your network and Dropbox's status page, then run `/bookvie-backup` again.
+To see what Dropbox holds, open `/Apps/bookvie/.backups` in Dropbox. The older daily backups are all still there. A mismatched upload may already have replaced today's file, `bookvie-backup-<YYYY-MM-DD>.zip`. Until the next upload replaces it, that file is listed and counted like the others, so when you restore, pick an older one rather than that day's. If the same run keeps failing, check your network and Dropbox's status page, then run `/bookvie-backup` again.
 
 #### `dropbox_full`: Dropbox is full
 
@@ -111,7 +111,7 @@ bookvie's `export_backup` couldn't write today's backup into the backups folder,
 
 The Backup page shows "Dropbox backup: failed … · the last run stopped with an error. See docs/dropbox-backup.md → Troubleshooting."
 
-Anything else: Dropbox's servers answered an error, the bookvie-dropbox tools weren't connected in Claude Code (see step 3 and "An MCP server is shown as failed" below), or deleting the older backups didn't finish after a checked upload. In that last case the upload itself worked: Dropbox may hold more than 3 copies for a while, nothing needs deleting by hand, and the next run deletes the extras. The skill's answer and the `upload_backup` message say which. Fix that, then run `/bookvie-backup` again.
+Anything else: Dropbox's servers answered an error, the bookvie-dropbox tools weren't connected in Claude Code (see step 3 and "An MCP server is shown as failed" below), or listing the older backups failed after a checked upload. In that last case the upload itself worked and nothing was deleted: Dropbox may hold more than 3 copies for a while, nothing needs deleting by hand, and a later upload deletes the extras. The skill's answer and the `upload_backup` message say which. Fix that, then run `/bookvie-backup` again.
 
 #### An MCP server is shown as failed
 
@@ -128,7 +128,7 @@ You start each backup by hand: in Claude Code, in this repo, run `/bookvie-backu
 1. It checks bookvie with `get_app_info`. A `--dev` server never uploads: the run stops there, and nothing is uploaded or recorded.
 2. It asks bookvie to export today's daily backup into `~/bookvie-backups`, with `export_backup`. That backup doesn't move "Last export".
 3. When the library hasn't changed since the last upload, it skips the upload.
-4. Otherwise bookvie-dropbox's `upload_backup` uploads the file to `/Apps/bookvie/.backups` in Dropbox and verifies that Dropbox's copy matches it. Only then does it delete the oldest daily backups, keeping 3. A failed or mismatched upload deletes nothing.
+4. Otherwise bookvie-dropbox's `upload_backup` uploads the file to `/Apps/bookvie/.backups` in Dropbox and verifies that Dropbox's copy matches it. Only then does it delete the oldest daily backups, keeping 3. A failed or mismatched upload deletes no older backup; a mismatch may already have replaced that day's copy, which the next upload replaces again. If deleting the older backups doesn't finish, the upload still counts: the skill's line adds "Older copies remain: deleting them didn't finish, and a later upload deletes them.", Dropbox holds more than 3 copies for a while, and nothing needs deleting by hand.
 5. It reports the run to bookvie with `record_backup_upload`: uploaded, skipped or failed with a cause. Then it says the outcome in one line.
 
 The skill never retries a failed run and never restores. Run `/bookvie-backup` again to try again.

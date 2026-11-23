@@ -11,7 +11,8 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 /** The words after "failed *when* · ", per cause (EXPERIENCE.md → Failed reasons). */
 export const REASONS: Record<Cause, string> = {
   dropbox_signin: 'Dropbox sign-in expired. Nothing in Dropbox was deleted. Run bookvie-dropbox auth in Terminal.',
-  upload_incomplete: "the last upload didn't finish. Nothing in Dropbox was deleted; run /bookvie-backup again.",
+  upload_incomplete:
+    "the last upload didn't finish or didn't match. No older backup in Dropbox was deleted, but that day's copy there may be damaged; run /bookvie-backup again.",
   dropbox_full: 'Dropbox is full. Nothing in Dropbox was deleted; free some space there.',
   backup_write: "bookvie couldn't write the backup file. See docs/dropbox-backup.md → Troubleshooting.",
   other: 'the last run stopped with an error. See docs/dropbox-backup.md → Troubleshooting.',

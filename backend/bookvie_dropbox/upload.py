@@ -7,7 +7,9 @@ so a same-day copy is replaced only by a finished upload. Dropbox's answer is
 then checked against the file: its ``size`` and its ``content_hash``, hashed
 from the very bytes that were sent. Only after that are the oldest daily
 backups beyond 3 deleted, by the date in their names, never the name just
-written and never a file or folder without a daily name.
+written and never a file or folder without a daily name. A prune that doesn't
+finish deleting doesn't undo the verified upload: the result is still the upload,
+with ``pruneFailed`` saying what didn't finish (Epic 13 retro item 91).
 """
 
 import os
@@ -61,14 +63,19 @@ class Uploaded:
     copies: int
     deleted: list[str]
     content_hash: str
+    prune_failed: str | None = None
+    """What didn't finish when the prune failed after the verified upload; else ``None``."""
 
     def answer(self) -> dict[str, Any]:
-        return {
+        body: dict[str, Any] = {
             "name": self.name,
             "copies": self.copies,
             "deleted": list(self.deleted),
             "contentHash": self.content_hash,
         }
+        if self.prune_failed is not None:
+            body["pruneFailed"] = self.prune_failed
+        return body
 
 
 def _refused(why: str) -> UploadRefused:
@@ -173,12 +180,18 @@ def upload_backup(
         dbx = _connect(connect)
         try:
             content_hash = _upload(dbx, source, path.name, backup_time, size)
-            copies, deleted = _prune(dbx, path.name)
+            copies, deleted, prune_failed = _prune(dbx, path.name)
         finally:
             close = getattr(dbx, "close", None)
             if callable(close):
                 close()
-    return Uploaded(name=path.name, copies=copies, deleted=deleted, content_hash=content_hash)
+    return Uploaded(
+        name=path.name,
+        copies=copies,
+        deleted=deleted,
+        content_hash=content_hash,
+        prune_failed=prune_failed,
+    )
 
 
 def _signin(why: str) -> UploadRefused:
@@ -254,11 +267,14 @@ def _upload(dbx: Any, source: BinaryIO, name: str, backup_time: datetime, size: 
     except (requests.exceptions.RequestException, OSError, RateLimitError) as exc:
         raise UploadRefused(
             "upload_incomplete",
-            f"The upload didn't finish ({type(exc).__name__}). Nothing was deleted; try again.",
+            f"The upload didn't finish ({type(exc).__name__}). No older backup was deleted, "
+            f"but that day's copy in Dropbox may be damaged; try again.",
         ) from None
     except Exception as exc:  # noqa: BLE001 - any other fault is reported as other
         raise UploadRefused(
-            "other", f"The upload failed ({type(exc).__name__}). Nothing was deleted."
+            "other",
+            f"The upload failed ({type(exc).__name__}). No older backup was deleted, but that "
+            "day's copy in Dropbox may be damaged.",
         ) from None
 
     expected = hasher.hexdigest()
@@ -299,37 +315,49 @@ def _list_backups(dbx: Any) -> list[Any]:
     return entries
 
 
-def _prune(dbx: Any, written: str) -> tuple[int, list[str]]:
-    """Delete the oldest daily backups beyond :data:`KEEP`, never ``written``; the copies left
-    and the names deleted. A failure here is ``other``: the upload stands, verified."""
-    deleted: list[str] = []
-    due: list[str] = []
+def _prune(dbx: Any, written: str) -> tuple[int, list[str], str | None]:
+    """Delete the oldest daily backups beyond :data:`KEEP`, never ``written``; the copies left,
+    the names deleted, and what didn't finish when a delete failed (else ``None``).
+
+    A delete that fails doesn't fail the run: the upload stands, verified, and the copies are
+    ``written`` plus every daily backup listed and not deleted (Epic 13 retro item 91). A
+    listing that fails is ``other``: the upload stands too, but how many copies Dropbox holds
+    isn't known, so there is no true count to record."""
     try:
-        others: dict[str, tuple[Any, str]] = {}
-        for entry in _list_backups(dbx):
-            if not isinstance(entry, dbx_files.FileMetadata):
-                continue
-            day = daily_date(entry.name)
-            if day is None or entry.name.lower() == written.lower():
-                continue
-            others[entry.name.lower()] = (day, entry.name)
-        newest_first = sorted(others.values(), reverse=True)
-        kept, extra = newest_first[: KEEP - 1], newest_first[KEEP - 1 :]
-        due = [name for _, name in sorted(extra)]
+        entries = _list_backups(dbx)
+    except Exception as exc:  # noqa: BLE001 - the upload is verified; the listing is reported
+        raise UploadRefused(
+            "other",
+            f"{written} was uploaded and verified, but listing the older daily backups "
+            f"failed ({type(exc).__name__}), so none was deleted. Dropbox may hold more than "
+            f"{KEEP} daily backups until a later upload deletes them.",
+        ) from None
+    others: dict[str, tuple[Any, str]] = {}
+    for entry in entries:
+        if not isinstance(entry, dbx_files.FileMetadata):
+            continue
+        day = daily_date(entry.name)
+        if day is None or entry.name.lower() == written.lower():
+            continue
+        others[entry.name.lower()] = (day, entry.name)
+    newest_first = sorted(others.values(), reverse=True)
+    due = [name for _, name in sorted(newest_first[KEEP - 1 :])]
+    deleted: list[str] = []
+    try:
         for name in due:
             dbx.files_delete_v2(f"{DROPBOX_FOLDER}/{name}")
             deleted.append(name)
     except Exception as exc:  # noqa: BLE001 - the upload is verified; the prune is reported
         done = f" It deleted {', '.join(deleted)}." if deleted else ""
         left = due[len(deleted) :]
-        kept_on = f" It didn't delete {', '.join(left)}." if left else ""
-        raise UploadRefused(
-            "other",
+        return (
+            1 + len(others) - len(deleted),
+            deleted,
             f"{written} was uploaded and verified, but deleting the older daily backups "
-            f"didn't finish ({type(exc).__name__}).{done}{kept_on} Dropbox may hold more "
-            f"than {KEEP} daily backups until the next upload.",
-        ) from None
-    return 1 + len(kept), deleted
+            f"didn't finish ({type(exc).__name__}).{done} It didn't delete {', '.join(left)}. "
+            f"Dropbox may hold more than {KEEP} daily backups until a later upload deletes them.",
+        )
+    return 1 + len(others) - len(deleted), deleted, None
 
 
 __all__ = [

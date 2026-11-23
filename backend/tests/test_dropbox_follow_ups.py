@@ -373,7 +373,8 @@ def test_a_client_that_cant_be_built_is_other_and_touches_nothing(
 def test_a_listing_that_fails_after_a_verified_upload_deletes_nothing_and_says_so(
     fakes: Any, backups: Path
 ) -> None:
-    # [P1] AC-8: the prune's listing fails; the verified upload stands
+    # [P1] AC-8: the prune's listing fails; the verified upload stands. It stays `other`
+    # (Epic 13 retro item 91): with no listing there is no true copy count to record.
     from dropbox import files as dbx_files
     from dropbox.exceptions import ApiError
 
@@ -391,7 +392,11 @@ def test_a_listing_that_fails_after_a_verified_upload_deletes_nothing_and_says_s
 
     assert error["cause"] == "other", error
     assert f"{TODAY_NAME} was uploaded and verified" in error["message"]
-    assert "It deleted" not in error["message"]
+    assert (
+        "listing the older daily backups failed (ApiError), so none was deleted"
+        in (error["message"])
+    )
+    assert "may hold more than 3" in error["message"]
     assert fake.deletes() == []
     assert fake.file(TODAY_NAME).content_hash == file_content_hash(path)
 

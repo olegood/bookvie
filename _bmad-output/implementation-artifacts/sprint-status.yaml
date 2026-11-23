@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-29-2026 17:21
-last_updated: 11-23-2026 16:23
+last_updated: 11-23-2026 18:07
 project: bookvie
 project_key: NOKEY
 tracking_system: file-system
@@ -1127,7 +1127,7 @@ action_items:
       upload is recorded as `uploaded` with the real copy count, and the skill line
       notes that older copies remain; no new outcome."
     owner: "Amelia (dev)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-13-retro-2026-11-23.md"
   - id: "epic-13-retro-item-92-stop-the-port-8790-flake"
     epic: 13

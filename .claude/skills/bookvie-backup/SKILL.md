@@ -19,7 +19,7 @@ metadata:
 
 bookvie is the user's local home-library app. This skill makes one backup run: it writes today's daily backup on this computer, uploads it to bookvie's own folder in the user's Dropbox, and tells bookvie how the run went, so the Backup page can say how the last Dropbox backup went. The setup (the Dropbox app, the sign-in, both MCP servers) is in `docs/dropbox-backup.md`.
 
-The run uses only four tools, the ones in the frontmatter: bookvie's `get_app_info`, `export_backup` and `record_backup_upload`, and bookvie-dropbox's `upload_backup`. bookvie-dropbox checks that Dropbox's copy matches the file before it deletes the oldest daily backups beyond 3, so a failed upload deletes nothing. The skill never restores, never retries a failed upload, and never calls bookvie's HTTP API for the backup.
+The run uses only four tools, the ones in the frontmatter: bookvie's `get_app_info`, `export_backup` and `record_backup_upload`, and bookvie-dropbox's `upload_backup`. bookvie-dropbox checks that Dropbox's copy matches the file before it deletes the oldest daily backups beyond 3, so a failed upload deletes no older backup. The skill never restores, never retries a failed upload, and never calls bookvie's HTTP API for the backup.
 
 The user runs this skill by hand (`/bookvie-backup`), in an interactive Claude Code session; nothing runs it on a schedule. Step 1 may start bookvie, and Claude Code asks permission for each of its shell commands.
 
@@ -63,9 +63,9 @@ If `export_backup` answers an error (any code, `couldnt_save` say), don't upload
 
 When `unchangedSinceUpload` is `true`, the library hasn't changed since the last upload bookvie recorded: don't upload, and go to step 5 as skipped. bookvie compares the library itself; only branch on the flag.
 
-Otherwise call `upload_backup({localPath: path})`, with the `path` that `export_backup` answered. It uploads the file to `/Apps/bookvie/.backups` in Dropbox, checks Dropbox's copy, deletes the oldest daily backups beyond 3, and answers the uploaded file's `name`, the `copies` now in Dropbox, the names it `deleted` (a list, often empty) and Dropbox's `contentHash`.
+Otherwise call `upload_backup({localPath: path})`, with the `path` that `export_backup` answered. It uploads the file to `/Apps/bookvie/.backups` in Dropbox, checks Dropbox's copy, deletes the oldest daily backups beyond 3, and answers the uploaded file's `name`, the `copies` now in Dropbox, the names it `deleted` (a list, often empty) and Dropbox's `contentHash`. When deleting the older backups didn't finish after the checked upload, the answer is still the upload, with the `copies` Dropbox now holds (it can be more than 3) and only the names it did delete, and it adds `pruneFailed`, a message saying what didn't finish. That run is still an upload.
 
-If `upload_backup` answers an error, its text is JSON with a `cause` (`dropbox_signin`, `upload_incomplete`, `dropbox_full` or `other`) and a `message`: the run failed with that `cause`. When the error's text isn't JSON, has no `cause`, or names a cause outside those four (an MCP timeout, say), the run failed with the cause `other`. Don't retry the upload. After `dropbox_signin`, `upload_incomplete` or `dropbox_full`, nothing in Dropbox was deleted. An `other` can come after a checked upload whose deleting of older backups didn't finish: its `message` says so and names any it already deleted. Without a usable `cause`, don't say whether anything was deleted.
+If `upload_backup` answers an error, its text is JSON with a `cause` (`dropbox_signin`, `upload_incomplete`, `dropbox_full` or `other`) and a `message`: the run failed with that `cause`. When the error's text isn't JSON, has no `cause`, or names a cause outside those four (an MCP timeout, say), the run failed with the cause `other`. Don't retry the upload. After `dropbox_signin` or `dropbox_full`, nothing in Dropbox was deleted. After `upload_incomplete`, no older backup was deleted, but today's copy in Dropbox may have been replaced by one that didn't match. An `other` can also come after a checked upload whose listing of the older backups failed: its `message` says the upload was verified and that none was deleted; it is still a failed run, because the number of copies isn't known. Without a usable `cause`, don't say whether anything was deleted.
 
 If the `upload_backup` tool isn't available at all (bookvie-dropbox isn't connected in Claude Code), don't upload any other way: the run failed with the cause `other`.
 
@@ -73,7 +73,7 @@ If the `upload_backup` tool isn't available at all (bookvie-dropbox isn't connec
 
 Always end the run with exactly one `record_backup_upload`, whatever happened after the export, so bookvie's Backup page can show it:
 
-- **Uploaded:** `record_backup_upload({outcome: "uploaded", path, copies, contentHash})`, with the `path` that `export_backup` answered and the `copies` and `contentHash` that `upload_backup` answered. bookvie checks the file against the hash itself.
+- **Uploaded:** `record_backup_upload({outcome: "uploaded", path, copies, contentHash})`, with the `path` that `export_backup` answered and the `copies` and `contentHash` that `upload_backup` answered, also when its answer has `pruneFailed`. bookvie checks the file against the hash itself.
 - **Skipped:** `record_backup_upload({outcome: "skipped"})`, when `unchangedSinceUpload` was `true`.
 - **Failed:** `record_backup_upload({outcome: "failed", cause})`. The cause is `backup_write` when `export_backup` failed, the `cause` that `upload_backup` answered when the upload failed, and `other` when the `upload_backup` tool wasn't there.
 
@@ -83,11 +83,11 @@ If `record_backup_upload` itself answers an error (`couldnt_save`, say), don't c
 
 Tell the user the outcome in one line, in the words of the Backup page's Dropbox backup line. Write names as they are, with no Markdown around them.
 
-- **Uploaded:** "Uploaded *name* · *N* copies in Dropbox, deleted *name*", with the upload's `name`, its `copies` and the names it `deleted`, joined with ", " when there are several. For example "Uploaded bookvie-backup-2026-11-21.zip · 3 copies in Dropbox, deleted bookvie-backup-2026-11-18.zip". When `deleted` is empty, leave out the deleted part: "Uploaded bookvie-backup-2026-11-21.zip · 2 copies in Dropbox". Write "1 copy" when `copies` is 1.
+- **Uploaded:** "Uploaded *name* · *N* copies in Dropbox, deleted *name*", with the upload's `name`, its `copies` and the names it `deleted`, joined with ", " when there are several. For example "Uploaded bookvie-backup-2026-11-21.zip · 3 copies in Dropbox, deleted bookvie-backup-2026-11-18.zip". When `deleted` is empty, leave out the deleted part: "Uploaded bookvie-backup-2026-11-21.zip · 2 copies in Dropbox". Write "1 copy" when `copies` is 1. When the answer has `pruneFailed`, add on the same line: "Older copies remain: deleting them didn't finish, and a later upload deletes them." For example "Uploaded bookvie-backup-2026-11-21.zip · 4 copies in Dropbox, deleted bookvie-backup-2026-11-16.zip. Older copies remain: deleting them didn't finish, and a later upload deletes them.", or without the deleted part when `deleted` is empty.
 - **Skipped:** "Nothing new since the last upload; skipped."
 - **Failed:** the line for the run's cause, word for word:
   - `dropbox_signin`: "Failed: Dropbox sign-in expired. Nothing in Dropbox was deleted. Run bookvie-dropbox auth in Terminal."
-  - `upload_incomplete`: "Failed: the last upload didn't finish. Nothing in Dropbox was deleted; run /bookvie-backup again."
+  - `upload_incomplete`: "Failed: the last upload didn't finish or didn't match. No older backup in Dropbox was deleted, but that day's copy there may be damaged; run /bookvie-backup again."
   - `dropbox_full`: "Failed: Dropbox is full. Nothing in Dropbox was deleted; free some space there."
   - `backup_write`: "Failed: bookvie couldn't write the backup file. See docs/dropbox-backup.md → Troubleshooting."
   - `other`: "Failed: the last run stopped with an error. See docs/dropbox-backup.md → Troubleshooting." When the cause was that the `upload_backup` tool wasn't there, add on the same line: "bookvie-dropbox isn't connected in Claude Code: see docs/dropbox-backup.md → Setup, step 3."

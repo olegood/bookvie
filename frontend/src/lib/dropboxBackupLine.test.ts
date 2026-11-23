@@ -46,6 +46,14 @@ describe('copiesText', () => {
 })
 
 describe('dropboxBackupLine', () => {
+  it('[P1] an upload whose prune did not finish shows its real count, more than 3', () => {
+    // Epic 13 retro item 91: the run is recorded as uploaded with the copies Dropbox holds.
+    assert.equal(
+      dropboxBackupLine(view({ state: 'uploaded', reportAt: TODAY, lastUploadAt: TODAY, copies: 4 }), NOW),
+      'Dropbox backup: last upload today at 09:02 · 4 copies in Dropbox',
+    )
+  })
+
   it('[P1] AC-2 words every state', () => {
     assert.equal(dropboxBackupLine(view({ state: 'dev' }), NOW), 'Dropbox backup: never from a development server')
     assert.equal(

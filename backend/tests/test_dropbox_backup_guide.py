@@ -247,10 +247,12 @@ def test_the_guide_says_how_the_backup_works_runs_it_once_by_hand_and_fixes_a_fa
     first = headed(text, r"\bfirst\b.*\brun\b")
     assert any("/bookvie-backup" in entry for entry in first), first
 
-    # A failed or mismatched upload: nothing deleted, run it again, what to check in Dropbox.
+    # A failed or mismatched upload: no older backup deleted, though a mismatch has already
+    # replaced that day's copy (Epic 13 retro item 91); run it again; what to check in Dropbox.
     failed = [" ".join(entry.split()) for entry in headed(text, r"`upload_incomplete`")]
     assert any(
-        re.search(r"\bnothing\b[^.]*\bdeleted\b", entry, re.I)
+        re.search(r"\bnothing else\b[^.]*\bdeleted\b", entry, re.I)
+        and re.search(r"\balready replaced that day's file\b", entry)
         and "/bookvie-backup" in entry
         and "/Apps/bookvie/.backups" in entry
         for entry in failed

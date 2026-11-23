@@ -38,8 +38,10 @@ BACKEND_SOURCE = ROOT / "backend" / "bookvie"
 SCHEMA_D_TS = ROOT / "frontend" / "src" / "api" / "generated" / "schema.d.ts"
 _THIS_MODULE = Path(__file__).resolve()
 
+# Story 13.5's wording, since made true for a mismatch after the finish (Epic 13 retro item 91).
 NEW_UPLOAD_INCOMPLETE = (
-    "the last upload didn't finish. Nothing in Dropbox was deleted; run /bookvie-backup again."
+    "the last upload didn't finish or didn't match. No older backup in Dropbox was deleted, "
+    "but that day's copy there may be damaged; run /bookvie-backup again."
 )
 NEW_REASONS_HEADER = '| Cause | After "failed *when* · " |'
 

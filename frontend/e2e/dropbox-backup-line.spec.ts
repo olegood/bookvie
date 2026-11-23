@@ -27,7 +27,8 @@ const DUNE = { title: 'Dune', authors: ['Frank Herbert'], pages: 412 }
 // UX-DR77, in AD-22's cause order: the words after "failed *when* · ".
 const REASONS = {
   dropbox_signin: 'Dropbox sign-in expired. Nothing in Dropbox was deleted. Run bookvie-dropbox auth in Terminal.',
-  upload_incomplete: "the last upload didn't finish. Nothing in Dropbox was deleted; run /bookvie-backup again.",
+  upload_incomplete:
+    "the last upload didn't finish or didn't match. No older backup in Dropbox was deleted, but that day's copy there may be damaged; run /bookvie-backup again.",
   dropbox_full: 'Dropbox is full. Nothing in Dropbox was deleted; free some space there.',
   backup_write: "bookvie couldn't write the backup file. See docs/dropbox-backup.md → Troubleshooting.",
   other: 'the last run stopped with an error. See docs/dropbox-backup.md → Troubleshooting.',

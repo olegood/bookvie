@@ -477,22 +477,27 @@ def test_an_upload_error_without_a_usable_cause_is_other_and_claims_nothing_abou
         errors,
     ), errors
     assert "Don't retry the upload." in errors
-    # Nothing deleted: said only for the causes that come before Dropbox's copy is checked.
+    # Nothing deleted: said only for the causes that come before Dropbox writes anything.
     (before,) = re.findall(r"After ([^.]*), nothing in Dropbox was deleted\.", errors)
-    assert set(re.findall(r"`(\w+)`", before)) == {
-        "dropbox_signin",
-        "upload_incomplete",
-        "dropbox_full",
-    }, before
+    assert set(re.findall(r"`(\w+)`", before)) == {"dropbox_signin", "dropbox_full"}, before
+    # `upload_incomplete` can come after the finish replaced today's copy (Epic 13 retro
+    # item 91, E13-B1): no older backup was deleted, but today's copy may not match.
+    assert re.search(
+        r"After `upload_incomplete`, no older backup was deleted, but today's copy in Dropbox "
+        r"may have been replaced",
+        errors,
+    ), errors
     assert "Without a usable `cause`, don't say whether anything was deleted." in errors
     assert "Nothing in Dropbox was deleted." not in errors
 
 
-def test_a_prune_that_fails_after_a_checked_upload_is_recorded_as_other_and_names_the_deleted(
+def test_a_prune_that_fails_after_a_checked_upload_is_recorded_as_uploaded_with_its_real_count(
     connect_mcp: Callable[..., McpClient], _isolated_home: Path, fakes: Any
 ) -> None:
-    # [P1] AC-1 (review patch, driven for real): `other` after a checked upload, whose
-    # message names what it already deleted, as the skill's step 4 says it does.
+    # [P1] Epic 13 retro item 91 (E13-B2, Oleg's decision 2026-11-23), driven for real: a
+    # prune that fails after a checked upload is still the upload. The skill records
+    # `uploaded` with the copies Dropbox holds (more than 3 here), bookvie takes it, the
+    # next export sees the library as uploaded, and the skill line notes the older copies.
     class SecondDeleteFails(fakes.FakeDropbox):  # type: ignore[name-defined,misc]
         deleted = 0
 
@@ -505,24 +510,47 @@ def test_a_prune_that_fails_after_a_checked_upload_is_recorded_as_other_and_name
     client = _connect_default(connect_mcp, _isolated_home)
     export = structured_of(client.call_tool(EXPORT_BACKUP, {"forUpload": True}))
     fake = SecondDeleteFails()
-    older = [f"bookvie-backup-2026-11-{day}.zip" for day in (16, 17, 18, 19)]
+    older = [f"bookvie-backup-2026-11-{day}.zip" for day in (15, 16, 17, 18, 19)]
     for name in older:
         fake.put(name, name.encode())
 
-    refused = error_of(upload(export["path"], Connect(fake)))
+    answer = structured_of(upload(export["path"], Connect(fake)))
 
-    assert refused["cause"] == "other", refused
-    assert f"It deleted {older[0]}." in refused["message"], refused
-    assert older[0] not in fake.names() and Path(export["path"]).name in fake.names()
-    recorded = client.call_tool(RECORD_BACKUP_UPLOAD, {"outcome": "failed", "cause": "other"})
+    assert answer["deleted"] == [older[0]], answer
+    assert answer["copies"] == 5 == len(fake.names()), (answer, fake.names())
+    assert f"It deleted {older[0]}." in answer["pruneFailed"], answer
+    recorded = client.call_tool(
+        RECORD_BACKUP_UPLOAD,
+        {
+            "outcome": "uploaded",
+            "path": export["path"],
+            "copies": answer["copies"],
+            "contentHash": answer["contentHash"],
+        },
+    )
     assert recorded.get("isError") is not True, recorded
+    again = structured_of(client.call_tool(EXPORT_BACKUP, {"forUpload": True}))
+    assert again["unchangedSinceUpload"] is True, again
 
     upload_step = _flat(_section(_body(_skill()), "Upload unless unchanged", numbered=True) or "")
+    assert "adds `pruneFailed`" in upload_step and "That run is still an upload." in upload_step
+    # Only a failed listing stays `other`: its count of copies isn't known.
     assert re.search(
-        r"An `other` can come after a checked upload[^.]*: its `message` says so and names any "
-        r"it already deleted\.",
+        r"An `other` can also come after a checked upload whose listing of the older backups "
+        r"failed",
         upload_step,
     ), upload_step
+    report = _flat(_section(_body(_skill()), "Report in one line", numbered=True) or "")
+    assert re.search(
+        r"When the answer has `pruneFailed`, add on the same line: \"Older copies remain: "
+        r"deleting them didn't finish, and a later upload deletes them\.\"",
+        report,
+    ), report
+    # With a name deleted too, the note follows the deleted part.
+    assert re.search(
+        r"\"Uploaded [^\"·]+ · 4 copies in Dropbox, deleted [^\"]+\.zip\. Older copies remain: ",
+        report,
+    ), report
 
 
 def test_each_failed_line_says_failed_once_and_a_codeless_refused_report_drops_the_parentheses() -> (
