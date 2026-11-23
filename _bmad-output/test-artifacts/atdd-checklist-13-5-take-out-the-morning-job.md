@@ -84,9 +84,9 @@ These pass today and pin the job. The build updates or deletes them in the same 
 
 ## Green-phase follow-ups (secondary branches, not red leaves)
 
-- [ ] **AC-2:** re-run `test_agent_backup_upload.py`, `test_agent_backup_upload_follow_ups.py` and `test_export.py`, except the one `views/backup` assertion above, unchanged. That shows the `autoBackup` group, `record_backup_upload` and `unchangedSinceUpload` are untouched.
-- [ ] **AC-2:** `check:api` byte-compares the regenerated `schema.d.ts`, which `npm run check` runs.
-- [ ] **AC-4:** the existing guide-commands leaf (`test_the_guide_sets_up_…_commands_match_the_cli`) still parses every remaining `bookvie`/`bookvie-dropbox` command after the removal.
+- [x] **AC-2:** re-run `test_agent_backup_upload.py`, `test_agent_backup_upload_follow_ups.py` and `test_export.py`, except the one `views/backup` assertion above, unchanged. That shows the `autoBackup` group, `record_backup_upload` and `unchangedSinceUpload` are untouched. (done: those three files passed unchanged in automate's run on 2026-11-23; `test_morning_job_removed_follow_ups.py::test_the_backup_view_leaves_out_the_stored_upload_group_and_reading_it_changes_nothing` adds the view against a stored group)
+- [x] **AC-2:** `check:api` byte-compares the regenerated `schema.d.ts`, which `npm run check` runs. (done: `npm run check` exit 0 in automate's run on 2026-11-23, check:api passed)
+- [x] **AC-4:** the existing guide-commands leaf (`test_the_guide_sets_up_…_commands_match_the_cli`) still parses every remaining `bookvie`/`bookvie-dropbox` command after the removal. (done: backend/tests/test_dropbox_backup_guide.py:143 passed)
 
 ## Helper probes
 

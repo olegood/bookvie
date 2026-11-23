@@ -1,17 +1,16 @@
 ---
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03-generate-tests', 'step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
-lastSaved: '2026-11-22'
-storyId: '13.4'
-storyKey: '13-4-back-up-to-dropbox-with-one-skill'
+lastSaved: '2026-11-23'
+storyId: '13.5'
+storyKey: '13-5-take-out-the-morning-job'
 inputDocuments:
-  - _bmad-output/implementation-artifacts/spec-13-4-back-up-to-dropbox-with-one-skill.md (Boundaries, I/O matrix, Review Findings, AC-5 result)
-  - _bmad-output/test-artifacts/atdd-checklist-13-4-back-up-to-dropbox-with-one-skill.md (Green-phase follow-ups)
-  - _bmad-output/implementation-artifacts/deferred-work.md (13.4's entries; none is addressed to this step)
+  - _bmad-output/implementation-artifacts/spec-13-5-take-out-the-morning-job.md (I/O matrix, Review Findings, Auto Run Result)
+  - _bmad-output/test-artifacts/atdd-checklist-13-5-take-out-the-morning-job.md (Green-phase follow-ups)
   - _bmad/tea/config.yaml
-  - .claude/skills/bookvie-backup/SKILL.md
-  - backend/bookvie_dropbox/upload.py (`_prune`)
-  - backend/tests/test_backup_skill.py, test_dropbox_upload.py, test_dropbox_upload_edges.py, dropbox_fakes.py
+  - docs/dropbox-backup.md (Uninstalling)
+  - backend/bookvie/views/backup.py, backend/bookvie/views/models.py, backend/bookvie/intents/backup_file.py (`record_backup_upload`)
+  - backend/tests/test_morning_job_removed.py, test_views.py, test_dropbox_backup_guide.py, test_agent_backup_upload.py, helpers.py
   - knowledge/test-levels-framework.md
   - knowledge/test-priorities-matrix.md
   - knowledge/data-factories.md
@@ -20,71 +19,55 @@ inputDocuments:
   - knowledge/test-quality.md
 ---
 
-# Automation Summary: Story 13.4 Back up to Dropbox with one skill
+# Automation Summary: Story 13.5 Take out the morning job
 
 ## Preflight
 
-- **Stack:** `fullstack` (auto). The story has no UI and no product code: it ships a skill (`SKILL.md`), its guide and README lines. Every target is pytest: text leaves on the skill, plus the tools it chains driven for real (bookvie in process over `/mcp`, `bookvie-dropbox` over `FakeDropbox`). No browser session was opened, and the Playwright fragments weren't loaded.
-- **Where:** this worktree's branch (`hogback-creosote`). The story is `done` at `1e97fe0`, the review commit.
-- **Mode:** BMad-integrated. The inputs were the ATDD checklist's 7 open follow-ups and the review's rejected "no leaf" findings (blind-hunter 4 and 5), which it handed to this step.
+- **Stack:** `fullstack` (auto). This is a removal story with no UI change: the frontend never read `autoBackup`. Every target is pytest. No browser session was opened, and the Playwright fragments weren't loaded.
+- **Where:** this worktree's branch (`hogback-creosote`). The story is `done` at `f1ef6b9`, the review commit.
+- **Mode:** BMad-integrated. The inputs were the ATDD checklist's 3 open follow-ups, the spec's I/O matrix, and the build review's two patches.
 - **Generation:** sequential, in this session.
 - **Knowledge:** the six core fragments only. `tea_use_playwright_utils` and `tea_use_pactjs_utils` are off, and there is no Pact artifact.
-- **Coverage tool:** not used. A skill is text, so line coverage says nothing about it. The mutation probes below take its place.
 
 ## Coverage plan
 
-The build and the review had already covered 5 of the 7 follow-ups (see ATDD checklist). This run adds leaves for the wording the review patched and the build's patches left unpinned:
+The 5 ATDD leaves already cover each AC's primary branch, and the existing view, export and upload tests cover the rest of the I/O matrix. Two edges were left unpinned:
 
 | AC | Priority | Level | Leaf |
 |---|---|---|---|
-| AC-1, AC-2 | P1 | Text | `get_app_info` answering an error, no `mode` or another value stops before the export with its own Failed line, and no export, upload or report. |
-| AC-1 | P1 | Text | An upload error that isn't JSON, has no `cause` or names an unknown one is `other`. "Nothing in Dropbox was deleted" is said only after `dropbox_signin`, `upload_incomplete` and `dropbox_full`. Without a usable `cause`, the skill makes no claim. |
-| AC-1 | P1 | Integration | Export from bookvie, then a prune that fails after a checked upload: `other`, whose message names the backup already deleted. bookvie accepts `failed`/`other`, and step 4 says the message names what was deleted. |
-| AC-3 | P2 | Text | No line of step 6 says "Failed:" twice. A refused report without a code drops the parentheses. The closing note names every stop that has its own line. |
+| AC-2, I/O "Upload state" | P1 | API | With `local-state.json` holding `lastExportAt` and an upload group written by the real `record_backup_upload` (a skip, then a failure), `GET /api/views/backup` is exactly `{"lastExportAt": …}`, and the read leaves the file's bytes unchanged. Before this, every view test had a `local-state.json` with no upload group. |
+| AC-4 | P2 | Docs | Uninstalling's old-job commands come first and in order: unload, then `rm -f` the plist, then `rm -r` the logs. The note is conditional ("If this Mac had the old daily job installed"), and the "that's fine" sentence follows the block. This pins the build review's patch. |
 
-The review's older-bookvie stop already has its leaf (`test_an_older_bookvie_without_record_backup_upload_stops_the_run_before_the_export`, added with the patch).
-
-Scope: selective. These are secondary branches of a text artifact, not new primary paths.
-
-Not automated:
-- An agent actually running the skill. That is AC-5's manual run, which passed on 2026-11-22 (spec, Acceptance Criteria).
-- The frontmatter list against `--allowedTools` (13.5) and the per-state troubleshooting entries (13.6): later stories' work.
+Scope: selective. Both are secondary branches. Other checks were not added: the CLI's usage error, the source scans and the schema are already pinned by the ATDD leaves.
 
 ## Files
 
-- `backend/tests/test_backup_skill.py`: 4 new leaves under "Automate (2026-11-22)", each with a `# [Pn] AC-n` tag. They reuse the file's `_skill`, `_body`, `_section`, `_paragraphs`, `_flat` and `_connect_default`, and 13.2's `upload`/`Connect`/`FakeDropbox`. The prune fault subclasses `FakeDropbox`, as `test_dropbox_upload_edges.py` does.
-- `_bmad-output/test-artifacts/atdd-checklist-13-4-back-up-to-dropbox-with-one-skill.md`: 5 follow-ups ticked.
+- `backend/tests/test_morning_job_removed_follow_ups.py` (new): the 2 leaves above, each with a `# [Pn] AC-n` tag. They import `BOOTOUT`, `OLD_PLIST` and `OLD_LOGS` from `test_morning_job_removed.py`, so this file never spells the removed words, and AC-5's scan of the tests stays green without another exclusion.
+- `_bmad-output/test-artifacts/atdd-checklist-13-5-take-out-the-morning-job.md`: 3 follow-ups ticked.
 
-No file under `backend/bookvie/`, `backend/bookvie_dropbox/` or `.claude/skills/` changed.
+No product, skill or docs file changed.
 
 ## Validation
 
-- `uv run pytest -q tests/test_backup_skill.py`: 19 passed on the first run.
-- **Mutation probes:** a shell function edited `SKILL.md`, ran `test_backup_skill.py`, then copied the original back from the scratchpad. `cmp` confirmed the original bytes. No git command was used. **6 of 6 killed**, each by the leaf it targets:
-  - the old blanket "Nothing in Dropbox was deleted." back in step 4;
-  - `other` added to the nothing-deleted causes;
-  - the old `"Failed: " and the reason` intro in step 6;
-  - the codeless-suffix clause removed;
-  - the unreadable-app-info stop replaced by "go on.";
-  - "names any it already deleted" removed.
-- `git status` after the probes showed only this run's test file.
-- `npm run check:py`, first run: 1 failed, 2415 passed. The failure was the `bookvie-dropbox auth` redirect-port flake ("Port … on 127.0.0.1 is in use"), in a file this run didn't touch. Re-run of the whole pytest suite: **2416 passed**.
-- `npm run check` on the final tree (before this line, which is Markdown only): **exit 0**. ruff, 2416 pytest passed with the coverage gate (total 97%), api, 800 e2e passed, and the smoke test.
+- `uv run ruff format` and `ruff check` were clean on the new module.
+- The related set (the new module, `test_morning_job_removed.py`, `test_agent_backup_upload*.py`, `test_export.py`, `test_dropbox_backup_guide.py`, `test_views.py`, `test_backup_skill.py`): **112 passed**.
+- **Mutation probes:** each one edited a file with `sed`, ran the new module, then reverted the same edit with the inverse `sed`. No git command was used. **2 of 2 killed**, each by the leaf it targets:
+  - `rm -f` changed to `rm` for the plist in `docs/dropbox-backup.md`;
+  - an `auto_backup` field added to `BackupView` in `views/models.py`.
+- `git status` after the probes showed only the new test file.
+- `npm run check`, first run: `check:py` failed (exit 1), which stopped `check:e2e`. That run's pytest output wasn't kept, so the failing test is unknown. A re-run of `check:py` alone gave 2422 passed, with the coverage gate ok. The cause may be the known `bookvie-dropbox auth` port flake (13.4's run hit it), but this run didn't confirm that.
+- `npm run check`, second run on the final tree (before this Markdown): **exit 0**. check:api passed, check:py passed (2422), check:e2e gave 800 passed, and check:smoke passed.
 
 ## ATDD checklist
 
-5 of 7 follow-ups ticked. Each cites the passing leaf that proves it; the AC-2 dev-folder line cites 13.2's `test_any_other_path_is_refused_before_any_dropbox_call[dev]`. `grep -cF '[ ]'` = **2**, both planned for later stories:
-- the frontmatter list equals `--allowedTools` in `cli.py`: Story 13.5;
-- each auto-backup state's troubleshooting entry: Story 13.6.
+3 of 3 follow-ups ticked. Each cites this run's evidence. `grep -cF '[ ]'` = **0**.
 
 ## Risks and assumptions
 
-- The skill is checked as text and through the tools it chains. Nothing automated runs an agent on it; AC-5's manual run is the behavioral check, and 13.5's headless run will be the next.
-- The text leaves pin exact sentences. That is deliberate, since the skill's wording is its behavior, but a rewording of `SKILL.md` must update them.
-- The port flake in `bookvie-dropbox auth`'s tests (`deferred-work.md`, 13.3's medium entry) still fails full runs at random.
+- The guide leaf pins the three cleanup command lines exactly. That is deliberate, but rewording the block means updating the leaf.
+- The unexplained `check:py` failure in the first full run. If it recurs, it should be logged together with the port flake in `deferred-work.md`.
 
 ## Next
 
-- Commit this run (`test:`, story 13.4).
-- Story 13.5 (`run-the-backup-every-morning`): ATDD, `bmad-build-auto`, then `bmad-code-review` in a new session.
-- Fixing the port flake would keep 13.5's full checks from failing at random.
+- Commit this run (`test:`, story 13.5).
+- Story 13.6 (`see-on-the-backup-page-how-the-last-dropbox-backup-went`): ATDD, `bmad-build-auto`, then `bmad-code-review` in a new session. The deferred EXPERIENCE.md casing entry is addressed to it.
