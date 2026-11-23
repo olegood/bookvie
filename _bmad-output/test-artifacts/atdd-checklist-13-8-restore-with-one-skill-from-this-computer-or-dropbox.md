@@ -101,14 +101,14 @@ A skill is text for an agent, so most leaves pin what the text says, as 13.4 did
 
 ## Green-phase follow-ups (secondary branches, not red leaves)
 
-- [ ] **AC-1:** with `list_backups` refusing `dropbox_signin` (`FakeDropbox(fault="signin")`), the local list still answers. The skill's sign-in line is the cause's. Drive it for real.
-- [ ] **AC-1:** "show all" lists the rest (once the spec decides how).
-- [ ] **AC-1:** the skill's setup and reconnect lines match the README for both entries, as `test_backup_skill.py::test_the_skills_setup_and_reconnect_steps_match_the_readme` does for one.
-- [ ] **AC-2:** each `download_backup` cause (`dropbox_signin`, `download_incomplete`, `other`) leaves nothing to preview, and the skill stops with that cause's line. 13.7 pins the tool's side.
-- [ ] **AC-3:** the preview's "nothing added" branch against a real preview (`restore_scene` with `grown=False`).
-- [ ] **AC-4:** `restore_backup` from a client below 2026-07-28 answers `reason: "unsupported"`. 13.1 pins this (`test_anything_but_an_accept_…[unsupported…]`); cite it in the spec.
-- [ ] **AC-5:** the dev path never names an `mcp__bookvie__` tool (if the skill names tools by full name).
-- [ ] **AC-7:** the guide's walkthrough names the same steps, in the same order, as the skill's headings.
+- [x] **AC-1:** with `list_backups` refusing `dropbox_signin` (`FakeDropbox(fault="signin")`), the local list still answers. The skill's sign-in line is the cause's. Drive it for real. (done: backend/tests/test_restore_skill.py:356 `test_dropbox_out_of_reach_still_lists_this_computer_and_says_why_without_retrying`)
+- [x] **AC-1:** "show all" lists the rest (once the spec decides how). (done: backend/tests/test_restore_skill.py:347 `test_more_than_10_backups_show_the_10_newest_and_show_all_lists_every_row_numbered_on`)
+- [x] **AC-1:** the skill's setup and reconnect lines match the README for both entries, as `test_backup_skill.py::test_the_skills_setup_and_reconnect_steps_match_the_readme` does for one. (done: backend/tests/test_restore_skill.py:486 `test_the_skills_setup_and_reconnect_steps_match_the_readme_for_both_entries`)
+- [x] **AC-2:** each `download_backup` cause (`dropbox_signin`, `download_incomplete`, `other`) leaves nothing to preview, and the skill stops with that cause's line. 13.7 pins the tool's side. (done: backend/tests/test_restore_skill.py:399 `test_each_failed_download_stops_with_its_causes_line_and_nothing_restored`, all three causes; nothing written: `backend/tests/test_dropbox_download_follow_ups.py:151` `test_a_failed_listing_or_download_writes_no_file`)
+- [x] **AC-3:** the preview's "nothing added" branch against a real preview (`restore_scene` with `grown=False`). (done: backend/tests/test_restore_skill.py:416 `test_a_preview_with_nothing_added_says_so_and_keeps_the_everything_else_line`)
+- [x] **AC-4:** `restore_backup` from a client below 2026-07-28 answers `reason: "unsupported"`. 13.1 pins this (`test_anything_but_an_accept_…[unsupported…]`); cite it in the spec. (done: `backend/tests/test_agent_restore.py:525` `test_anything_but_an_accept_on_a_valid_token_is_restore_not_confirmed_and_changes_nothing`, cases `handshake_revision`, `no_elicitation`, `url_elicitation_only`; cited in the spec's Design Notes; the skill's advice line: backend/tests/test_restore_skill.py:255 `test_the_skill_reports_each_outcome_in_its_words_and_never_retries_by_itself`)
+- [x] **AC-5:** the dev path never names an `mcp__bookvie__` tool (if the skill names tools by full name). (done: backend/tests/test_restore_skill.py:507 `test_on_development_every_bookvie_tool_goes_to_the_dev_entry_and_none_is_named_in_full`: no `mcp__` name anywhere, and the dev paragraph routes every bookvie tool the skill calls)
+- [x] **AC-7:** the guide's walkthrough names the same steps, in the same order, as the skill's headings. (done: backend/tests/test_restore_skill.py:523 `test_the_guide_walks_through_the_skills_steps_in_the_skills_order`)
 
 ## Helper probes
 

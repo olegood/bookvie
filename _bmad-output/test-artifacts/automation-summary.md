@@ -2,15 +2,15 @@
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03-generate-tests', 'step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
 lastSaved: '2026-11-23'
-storyId: '13.7'
-storyKey: '13-7-fetch-a-backup-from-my-dropbox'
+storyId: '13.8'
+storyKey: '13-8-restore-with-one-skill-from-this-computer-or-dropbox'
 inputDocuments:
-  - _bmad-output/implementation-artifacts/spec-13-7-fetch-a-backup-from-my-dropbox.md (I/O matrix, Design Notes, Review Findings)
-  - _bmad-output/test-artifacts/atdd-checklist-13-7-fetch-a-backup-from-my-dropbox.md (Green-phase follow-ups, Implementation checklist)
+  - _bmad-output/implementation-artifacts/spec-13-8-restore-with-one-skill-from-this-computer-or-dropbox.md (I/O matrix, Review Findings, Design Notes)
+  - _bmad-output/test-artifacts/atdd-checklist-13-8-restore-with-one-skill-from-this-computer-or-dropbox.md (Green-phase follow-ups)
   - _bmad/tea/config.yaml
-  - backend/bookvie_dropbox/download.py, server.py, contracts.py
-  - backend/bookvie/intents/backup_file.py (_candidates, _locate_backup)
-  - backend/tests/test_dropbox_download.py, test_dropbox_download_edges.py, test_dropbox_upload.py (seed_three_older, Connect), dropbox_fakes.py, helpers.py, restore_scene.py, conftest.py (_isolated_home, connect_mcp)
+  - .claude/skills/bookvie-restore/SKILL.md
+  - docs/dropbox-backup.md (Restoring, "Restore with the `bookvie-restore` skill"), README.md (Agent tools)
+  - backend/tests/test_restore_skill.py, test_backup_skill.py, test_notes_summary_skill.py (the README-match precedent), test_agent_mount.py (_section), test_agent_restore.py, test_dropbox_download_follow_ups.py
   - knowledge/test-levels-framework.md
   - knowledge/test-priorities-matrix.md
   - knowledge/data-factories.md
@@ -19,65 +19,64 @@ inputDocuments:
   - knowledge/test-quality.md
 ---
 
-# Automation Summary: Story 13.7 Fetch a backup from my Dropbox
+# Automation Summary: Story 13.8 Restore with one skill, from this computer or Dropbox
 
 ## Preflight
 
-- **Stack:** `fullstack` (auto). This story is backend only: two tools on the `bookvie-dropbox` stdio server. Every target is a pytest leaf, so no browser session was opened and the Playwright fragments weren't loaded.
-- **Where:** this worktree's branch (`hogback-creosote`). The story is `done` at `0e1281a`, the review commit.
-- **Mode:** BMad-integrated. The inputs were the ATDD checklist's green-phase follow-ups, the spec's I/O matrix and Design Notes, and the code review's rejected test-gap notes.
-- **Generation:** sequential, in this session. There are 5 leaves (8 cases) in one file, all reusing the story's own helpers.
+- **Stack:** `fullstack` (auto). The story adds a skill, guide text and a README entry, with no UI and no source change. Every target is a pytest leaf, so no browser session was opened and the Playwright fragments weren't loaded.
+- **Where:** this worktree's branch (`hogback-creosote`). The story is `done` at `2c7322b`.
+- **Mode:** BMad-integrated. The inputs were the ATDD checklist's 8 open green-phase follow-ups and the spec's I/O matrix and Review Findings.
+- **Generation:** sequential, in this session. There are 3 leaves in one file, all reusing the story's own helpers.
 - **Knowledge:** the six core fragments only. `tea_use_playwright_utils` and `tea_use_pactjs_utils` are off, and there is no Pact artifact.
 
 ## Coverage plan
 
-The ATDD leaves, the build's edge leaves and the review's added leaf already cover every I/O matrix row at least once. What was left were the checklist's follow-ups that nothing pinned yet.
+The ATDD leaves, the build's one-test-per-matrix-row leaves and the review's added leaf already cover every I/O matrix row. Of the 8 follow-ups, 5 were already pinned by those leaves or by 13.1 and 13.7, and are ticked with that evidence. Three had no test, and this run adds one each:
 
-| Source | Priority | Level | Leaf (`backend/tests/test_dropbox_download_follow_ups.py`) |
+| Source | Priority | Level | Leaf (`backend/tests/test_restore_skill.py`) |
 |---|---|---|---|
-| Matrix "List", follow-up "order" | P1 | API | `:39` `test_list_backups_orders_by_upload_time_when_the_names_disagree`: with 13.2's `seed_three_older` (17 Nov uploaded last), the order is 17, 19, 18 Nov. The times run newest first, and the first is 19 Nov 23:00 UTC. |
-| Design Notes "ties" | P2 | API | `:55` `test_list_backups_breaks_a_tie_in_upload_time_by_name_newest_first`: three dailies with the same `client_modified` list 20, 19, 18 Nov. |
-| Follow-up "large download" | P2 | API + file | `:67` `test_a_download_larger_than_one_hash_block_is_verified_and_lands_whole`: 8 MiB plus a partial block, streamed in 1 MiB pieces, lands byte for byte, with the listed size and hash. |
-| Follow-up "symlinked backups folder", AC-6 | P2 | Integration (both servers) | `:87` `test_a_download_into_a_symlinked_backups_folder_is_the_path_bookvie_lists_and_previews`: `~/bookvie-backups` is a symlink. The answered path is the resolved one, bookvie's `list_local_backups` lists exactly that path as `from_dropbox`, and `preview_restore` accepts it. |
-| Matrix "List fails", "Sign-in", "Other"; follow-ups "list failure writes nothing", "signin message" | P1 | API + file | `:151` `test_a_failed_listing_or_download_writes_no_file` (4 cases): a list sign-in failure, a broken listing, a download sign-in failure and a name Dropbox doesn't hold each answer their cause, change no file under `HOME` and leave every response closed. Only the sign-in cases name `bookvie-dropbox auth`. |
+| AC-1 follow-up "setup and reconnect match the README for both entries" | P2 | Text | `:486` `test_the_skills_setup_and_reconnect_steps_match_the_readme_for_both_entries`: step 1 holds the README's `bookvie` setup line whole, names `bookvie-dev` by the name and URL the README gives (8766), and repeats the README's reconnect step for both entries. |
+| AC-5 follow-up "dev path never names an `mcp__bookvie__` tool" | P1 | Text | `:507` `test_on_development_every_bookvie_tool_goes_to_the_dev_entry_and_none_is_named_in_full`: no `mcp__` name anywhere in the skill, and the Development paragraph sends exactly the bookvie tools the intro says the skill calls, in the same order, to `bookvie-dev`. |
+| AC-7 follow-up "the guide's walkthrough names the skill's steps in order" | P2 | Docs | `:523` `test_the_guide_walks_through_the_skills_steps_in_the_skills_order`: the skill's `## N.` titles are the six expected ones, in order, and the guide's walkthrough has steps 1 to 6, each in words that match the skill's step with the same number. |
 
-**Not added:**
-- **Mid-stream `RateLimitError` or `OSError`.** The cleanup is the same `finally` that AC-5's `broken_transfer` exercises mid-stream, and the per-exception cause mapping is what `test_dropbox_download_edges.py:118` pins. The code review rejected the same gap.
-- **A token in a message or log.** `download.py` never reads a token. It is retired in the checklist, with Story 13.2's `no_token_in_the_keychain` as the owner.
-- **`files_download_to_file`.** The build doesn't use it, so this is retired as moot.
+**Already covered (ticked, no new leaf):** the Dropbox sign-in refusal with the local list still answering (`:356`), "show all" (`:347`), each download cause's line (`:399`, plus 13.7's `test_dropbox_download_follow_ups.py:151` for nothing written), the nothing-added preview against a real preview (`:416`), and `reason: unsupported` (13.1's `test_agent_restore.py:525`, three cases, cited in the spec's Design Notes).
+
+**Not added:** the review's rejected prose-fallback branches (a non-JSON download error, a missing tool, a `list_backups` error without a `message`). Both reviews rejected them as rare fallbacks of an LLM skill, and AC-6's six manual runs cover the live behavior.
 
 ## Files
 
-- **Created:** `backend/tests/test_dropbox_download_follow_ups.py` (5 leaves, 8 cases). It reuses `dropbox_call` and `same_path` from `test_dropbox_download.py`; `Connect`, `daily` and `seed_three_older` from `test_dropbox_upload.py`; and `files_under`, `backup_zip`, `SetClock`, `write_library`, `BACKUP_AT` and `NOW`. It adds only a private `_names`, a `BLOCK` constant and a `_ListingRefused` fake.
-- **Updated:** the ATDD checklist. All 6 implementation lines and 8 follow-ups are ticked with their evidence, and 2 follow-ups are retired. Remaining `[ ]`: **0** (`grep -cF '[ ]'`).
+- **Updated:** `backend/tests/test_restore_skill.py`, with 3 leaves plus `GUIDE_MD`, `README_MD` and the `GUIDE_STEPS` map. Nothing new was imported.
+- **Updated:** the ATDD checklist. All 8 green-phase follow-ups are ticked with their evidence. Remaining `[ ]`: **0** (`grep -cF '[ ]'`).
 
 ## Validation
 
-- **Each new leaf can fail.** Each source edit below was made by hand, run against the new file, and then reverted:
+- **Each new leaf can fail.** Each hand edit below was made, run against `test_restore_skill.py`, then reverted:
 
   | Hand edit | Result |
   |---|---|
-  | `list_backups` sorts by the name alone | 1 of 8 failed (order) |
-  | `list_backups` sorts by `client_modified` alone, with no name tie-break | 1 of 8 failed (tie) |
-  | `contracts.DROPBOX_BLOCK` set to 8 MiB | 1 of 8 failed (large download) |
-  | `download_backup` returns the unresolved `landing / name` | 1 of 8 failed (symlinked folder) |
-  | The `dropbox_signin` message drops "Run `bookvie-dropbox auth` …" | 2 of 8 failed (`list_signin`, `download_signin`) |
+  | Skill's reconnect names only `bookvie` | 1 of 18 failed (README match) |
+  | Skill's `bookvie-dev` setup URL set to 8765 | 1 of 18 failed (README match) |
+  | Development paragraph drops `restore_backup` | 1 of 18 failed (dev routing) |
+  | Step 5 calls `mcp__bookvie__restore_backup` | 1 of 18 failed (dev routing) |
+  | Guide's walkthrough steps 4 and 5 swap their text, numbers kept | 1 of 18 failed (guide order) |
+  | Skill's `## 4. Preview` renamed | 2 of 18 failed (guide order, and the existing nothing-added leaf) |
 
-  `git status` showed only the new test file and the checklist changed afterwards.
-- **Suite:** `npm run check:py` gives 2453 passed (8 more than the review's 2445), ruff is clean, and every coverage gate is OK (`bookvie_dropbox` 95.39%). `check:api` and `check:e2e` weren't re-run, because no frontend or source file changed. The review's full `npm run check` after its patch had unit at 395 passed and e2e at 803 passed.
+  A first guide edit didn't touch the walkthrough's step 4 enough and passed. It was a weak edit, not a gap, and the stronger swap above fails the leaf. `git status` showed only the test file changed afterwards.
+- **Suite:** the first `npm run check:py` had 3 failures in `test_dropbox_cli_follow_ups.py`, a file this run didn't touch: the stray-request and the two no-token sign-in cases, which use the fixed sign-in port 8790. That file alone gave 10 passed, and a second full run exited 0 with **2472 passed** (2469 + 3), ruff clean and every coverage gate OK. `check:api` and `check:e2e` weren't re-run, because no frontend or source file changed. The review's full `npm run check` had unit at 395 passed and e2e at 803 passed.
 - **Quality checklist:**
   - No hard waits or conditionals.
-  - Every assert compares exact values.
-  - The leaves are parallel-safe: each test has its own `HOME` and `tmp_path` and an in-process server.
+  - Every assert compares exact strings or lists.
+  - The leaves read files only and are parallel-safe.
   - One subject per leaf.
   - No skips or focus.
-- **No browser sessions** were opened, and no temp files are left in the repo.
+- **No browser sessions** were opened, and no temp files are left in the repo. The mutation helper and the guide's backup copy are in the session scratchpad.
 
 ## Assumptions and risks
 
-- Everything runs against `FakeDropbox` (AR46: no test touches the network). The first real download is Story 13.8's manual restore.
-- The failure leaf allows an empty `from-dropbox/` (or `~/bookvie-backups-dev/`) folder after a failed download, because the spec's check order creates the folder before the download. AD-1's side of that stays deferred as spine drift until the Epic 13 reconciliation.
+- The leaves pin the skill's text, the guide and the README, not an agent's live run. The live run is AC-6, and Oleg's six recorded runs cover it.
+- `GUIDE_STEPS` holds the guide's words for each step by hand. A deliberate rewording of a guide step means editing the map, which is the point: the guide and the skill change together.
+- The one-time `test_dropbox_cli_follow_ups.py` failure didn't come back. If it comes back, look for something else holding port 8790 during the run, such as another worktree's suite or a `bookvie-dropbox auth`.
 
 ## Next
 
-Story 13.8 (`13-8-restore-with-one-skill-from-this-computer-or-dropbox`) is next, and it is Epic 13's last story. It starts with `bmad-testarch-atdd`. After 13.8 is `done` and automated, the Epic 13 retrospective, trace and gate, and spine reconciliation come before Epic 14.
+13.8 closes Epic 13 (AGENTS.md → Epic boundaries). Next comes the Epic 13 retrospective (`bmad-retrospective`), then its before-next-epic items: the trace and gate, and the spine reconciliation of Epic 13's "spine drift" entries. Don't start Epic 14's first story before those.

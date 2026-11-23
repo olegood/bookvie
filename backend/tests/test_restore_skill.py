@@ -465,3 +465,72 @@ def test_backups_are_named_by_local_24_hour_time_with_the_year_only_outside_this
     last_year = short_when(datetime(2025, 11, 19, 9, 2).astimezone(), today)
     assert (this_year, last_year) == ("19 Nov, 09:02", "19 Nov 2025, 09:02")
     assert f'"{this_year}", and "{last_year}" when it isn\'t this year' in rule.group()
+
+
+# --- Automate (13.8 ATDD follow-ups) ----------------------------------------------------
+
+GUIDE_MD = REPO_ROOT / "docs" / "dropbox-backup.md"
+README_MD = REPO_ROOT / "README.md"
+
+GUIDE_STEPS = {
+    "Make sure bookvie is running": "makes sure bookvie is running",
+    "List the backups": "lists the backups with `list_local_backups`",
+    "Download a Dropbox pick": "downloads it with `download_backup`",
+    "Preview": "shows the preview from `preview_restore`",
+    "Ask, then restore": "asks you in the chat",
+    "Report the outcome": "answers in one line",
+}
+"""The skill's step title, in its order → the words the guide's step of the same number uses."""
+
+
+def test_the_skills_setup_and_reconnect_steps_match_the_readme_for_both_entries() -> None:
+    # [P2] AC-1 (ATDD follow-up). Step 1 repeats the README's one-time setup line for
+    # `bookvie`, names `bookvie-dev` by its name and URL, and repeats the reconnect step.
+    readme = _section(README_MD.read_text(encoding="utf-8"), "Agent tools")
+    assert readme is not None
+    start = _flat(_step(START_STEP))
+
+    setup = re.findall(r"claude mcp add [^\n`]*/mcp", readme)
+    assert len(setup) == 2 and "http://127.0.0.1:8765/mcp" in setup[0], setup
+    assert f"`{setup[0]}`" in start, setup[0]
+    dev = re.search(r"--scope user (\S+) (\S+/mcp)", setup[1])
+    assert dev is not None and dev.groups() == ("bookvie-dev", "http://127.0.0.1:8766/mcp"), setup
+    assert f"`{dev.group(1)}` with `{dev.group(2)}`" in start
+
+    assert "run `/mcp` in Claude Code, pick the entry and choose reconnect" in readme
+    assert (
+        "run `/mcp` in Claude Code, pick the entry (`bookvie` or `bookvie-dev`) and choose reconnect"
+        in start
+    )
+
+
+def test_on_development_every_bookvie_tool_goes_to_the_dev_entry_and_none_is_named_in_full() -> (
+    None
+):
+    # [P1] AC-5 (ATDD follow-up). The skill names tools by their short names, so the entry
+    # picks the library; the dev paragraph sends every bookvie tool the skill calls to it.
+    skill = _restore_skill()
+    assert "mcp__" not in skill, "a tool named in full ties it to one entry"
+    intro = _flat(_body(skill).split("## 1.", 1)[0])
+    called = re.search(r"uses bookvie's (`\w+`), (`\w+`) and (`\w+`)", intro)
+    assert called is not None, intro
+    dev = _flat(_step("Development"))
+    routed = re.search(r"every bookvie call \(([^)]*)\) goes to the `bookvie-dev` entry", dev)
+    assert routed is not None, dev
+    assert re.findall(r"`\w+`", routed.group(1)) == list(called.groups()), routed.group(1)
+
+
+def test_the_guide_walks_through_the_skills_steps_in_the_skills_order() -> None:
+    # [P2] AC-7 (ATDD follow-up). The guide's numbered walkthrough has one step per skill
+    # step, in the same order, each in words that match the skill's step.
+    titles = re.findall(r"^## \d+\. (.+?)[ \t]*$", _body(_restore_skill()), re.M)
+    assert titles == list(GUIDE_STEPS), titles
+
+    walkthrough = _section(
+        GUIDE_MD.read_text(encoding="utf-8"), "Restore with the `bookvie-restore` skill"
+    )
+    assert walkthrough is not None
+    steps = re.findall(r"^(\d+)\. (.+)$", walkthrough, re.M)
+    assert [int(n) for n, _ in steps] == list(range(1, len(GUIDE_STEPS) + 1)), steps
+    for (n, step), (title, words) in zip(steps, GUIDE_STEPS.items(), strict=True):
+        assert words in step, (n, title, step)
