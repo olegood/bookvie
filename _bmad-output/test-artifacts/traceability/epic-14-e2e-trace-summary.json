@@ -1,0 +1,196 @@
+{
+  "schema_version": "0.3.0",
+  "snapshot_at": "2026-11-24T16:46:00.000000+01:00",
+  "repo": "bookvie",
+  "collection_mode": "contract_static",
+  "collection_status": "COLLECTED",
+  "inventory_basis": "acceptance_criteria",
+  "gate_basis": "priority_thresholds",
+  "source_sha": "c5d200490f6e1ff29ccb4cd235912f2d247a15ce",
+  "target": {
+    "type": "epic",
+    "id": "14",
+    "label": "Epic 14: See card notes as boxes"
+  },
+  "decision_mode": "deterministic",
+  "evaluator": "Oleg",
+  "confidence": "high",
+  "oracle": {
+    "resolution_mode": "formal_requirements",
+    "confidence": "high",
+    "sources": [
+      "_bmad-output/planning-artifacts/epics.md (TR7, Epic 14 gate :3416, Stories 14.1-14.5; 14.2 AC-10 not counted, superseded by 14.4)",
+      "_bmad-output/implementation-artifacts/spec-14-*.md",
+      "_bmad-output/implementation-artifacts/epic-14-context.md",
+      "_bmad-output/implementation-artifacts/epic-14-retro-2026-11-24.md (action 96)",
+      "_bmad-output/test-artifacts/atdd-checklist-14-*.md",
+      "_bmad-output/test-artifacts/automation-summary.md (Story 14.5)"
+    ],
+    "external_pointer_status": "not_used",
+    "synthetic": false
+  },
+  "coverage": {
+    "inventory": {
+      "covered": 34,
+      "total": 34,
+      "pct": 100
+    },
+    "priority_breakdown": {
+      "P0": {
+        "total": 19,
+        "covered": 19,
+        "pct": 100
+      },
+      "P1": {
+        "total": 13,
+        "covered": 13,
+        "pct": 100
+      },
+      "P2": {
+        "total": 2,
+        "covered": 2,
+        "pct": 100
+      },
+      "P3": {
+        "total": 0,
+        "covered": 0,
+        "pct": 100
+      }
+    },
+    "by_level": {
+      "e2e": {
+        "tests": 70,
+        "criteria_covered": 27
+      },
+      "api": {
+        "tests": 11,
+        "criteria_covered": 7
+      },
+      "component": {
+        "tests": 0,
+        "criteria_covered": 0
+      },
+      "unit": {
+        "tests": 20,
+        "criteria_covered": 8
+      },
+      "live": {
+        "tests": 0,
+        "criteria_covered": 0
+      },
+      "other": {
+        "tests": 0,
+        "criteria_covered": 0
+      },
+      "note": "e2e counts the 69 Epic 14 Playwright cases in 11 files plus the rewritten card-notes.spec.ts:497; api counts the 11 pytest cases in test_card_notes_spine_color*.py; unit counts the node --test cases in cardNotes.test.ts (13 Epic 14 cases), cardNotesView.test.ts (5) and carriedSearch.test.ts (2). criteria_covered counts criteria with at least one test at that level."
+    }
+  },
+  "tests": {
+    "files": 16,
+    "cases": 101,
+    "skipped_cases": 0,
+    "fixme_cases": 0,
+    "pending_cases": 0,
+    "note": "Epic 14 cases only. e2e 70: card-note-boxes 11, card-note-boxes-automate 9, card-note-boxes-dark-theme 1, open-box 3, open-box-automate 11, open-box-unscoped 1, search-boxes 7, search-boxes-automate 9, search-boxes-view-switch 1, carried-search 6, carried-search-automate 10, card-notes.spec.ts:497 1. unit 20. pytest 11. This trace's runs: 94 e2e passed (the Epic 14 specs plus all of card-notes.spec.ts), 59 unit passed (the three files), 17 pytest passed (with test_card_notes_view.py)."
+  },
+  "risk_summary": {
+    "critical_open": 0,
+    "high_open": 0,
+    "medium_open": 0,
+    "low_open": 0
+  },
+  "heuristics": {
+    "endpoint_gaps": 0,
+    "auth_negative_path_status": "present",
+    "error_path_status": "partial",
+    "ui_journey_status": "not_applicable",
+    "ui_state_status": "not_applicable"
+  },
+  "live_evidence": {
+    "present": false,
+    "results_file": "_bmad-output/test-artifacts/live-verification-results.json",
+    "freshness": "not_present",
+    "recorded_source_sha": "",
+    "current_source_sha": "c5d200490f6e1ff29ccb4cd235912f2d247a15ce",
+    "producer": "",
+    "counted": 0,
+    "stale": 0,
+    "unverifiable": 0,
+    "failed": 0,
+    "contradicted": 0,
+    "blocked": 0,
+    "skipped": 0,
+    "unmatched": 0,
+    "invalid": 0,
+    "requirements_live_only": 0
+  },
+  "blockers": [],
+  "open_defects": [
+    {
+      "id": "E14-R1",
+      "severity": "medium",
+      "reason": "A carried search announces a stale cached count after a note in the box is edited and Back is pressed (CardNotesPage.tsx carriedLine reads cached data reported ready). Outside what 14.5's ACs state; no test.",
+      "owner": "Amelia",
+      "action": "retro item 98, with a leaf, before Epic 15"
+    },
+    {
+      "id": "E14-R2",
+      "severity": "low",
+      "reason": "A stale empty cached view clears the carried text (noGroups read from the cache). Outside what 14.5's ACs state; no test.",
+      "owner": "Amelia",
+      "action": "retro item 98, with a leaf, before Epic 15"
+    },
+    {
+      "id": "E14-S3",
+      "severity": "low",
+      "reason": "The faded box's name '*Refactoring*, no match' omits its visible count (WCAG 2.5.3). 14.4 AC-2 specifies that name, so it is covered as written; known axe gap at search-boxes-automate.spec.ts:83.",
+      "owner": "Amelia",
+      "action": "retro item 98: name it '*Title*, N card notes, no match', update 14.4 AC-2, EXPERIENCE.md and the tests"
+    }
+  ],
+  "rejected_evidence": [],
+  "recommendations": [
+    {
+      "priority": "HIGH",
+      "action": "Retro item 98: make the carried announcement and the no-groups drop read fresh data, and put the count in the faded box's name, with a leaf for each; then re-trace 14.4 AC-2 and 14.5 AC-2 and AC-5 (before Epic 15)",
+      "requirements": [
+        "14.4 · AC-2",
+        "14.5 · AC-2",
+        "14.5 · AC-5"
+      ]
+    },
+    {
+      "priority": "MEDIUM",
+      "action": "Retro item 97: reconcile the spine (seven spine drift entries) and fix the wording of 14.3 AC-1, 14.4 AC-2, the gate's 'unchanged' and UX-DR92 in epics.md",
+      "requirements": [
+        "14.2 · AC-10",
+        "14.3 · AC-1",
+        "14.4 · AC-2"
+      ]
+    },
+    {
+      "priority": "LOW",
+      "action": "Retro item 100 (fold the copied e2e helpers), then /bmad-testarch-test-review on the Epic 14 specs; optionally refresh the stale done: pointer in atdd-checklist-14-2 (card-note-boxes-automate.spec.ts:258 is now :265)",
+      "requirements": []
+    }
+  ],
+  "links": {
+    "trace_report_path": "_bmad-output/test-artifacts/traceability/epic-14-traceability-matrix.md",
+    "trace_report_url": "",
+    "artifact_url": "",
+    "journey_evidence_url": ""
+  },
+  "gate_status": "PASS",
+  "gate_criteria": {
+    "p0_coverage_required": "100%",
+    "p0_coverage_actual": "100%",
+    "p0_status": "MET",
+    "p1_coverage_target": "95%",
+    "p1_coverage_minimum": "80%",
+    "p1_coverage_actual": "100%",
+    "p1_status": "MET",
+    "overall_coverage_minimum": "80%",
+    "overall_coverage_actual": "100%",
+    "overall_status": "MET"
+  }
+}

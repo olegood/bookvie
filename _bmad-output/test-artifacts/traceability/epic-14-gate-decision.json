@@ -1,0 +1,24 @@
+{
+  "schema_version": "0.1.0",
+  "evaluated_at": "2026-11-24T16:46:00.000000+01:00",
+  "repo": "bookvie",
+  "target": {
+    "type": "epic",
+    "id": "14",
+    "label": "Epic 14: See card notes as boxes"
+  },
+  "collection_status": "COLLECTED",
+  "gate_basis": "priority_thresholds",
+  "gate_status": "PASS",
+  "rationale": "Trace at c5d2004 (632db9c content plus the retro and sprint-status). P0 coverage is 100% (19/19), P1 100% (13/13; TR7 requires 95%), overall 100% (34/34) of the 35 Story 14.1-14.5 ACs, with 14.2 AC-10 (UX-DR92's staging, 'until Story 14.4') not counted as superseded. Workflow rule 4 gives PASS. Every gate P0 risk is green: List unchanged (the only edit to a pre-Epic-14 Card notes spec is 14.5 AC-3's deliberate chip leaf, card-notes.spec.ts:497), the Boxes default and bookvie.cardNotesView storage (never in an export, kept across a restore), spineColor on every group and the scope, the shelf search, and the carried search both ways with every other way in starting empty; UX-DR92's staging is gone from the code and EXPERIENCE.md. This trace re-ran the Epic 14 tests: 94 e2e passed (69 Epic 14 cases plus card-notes.spec.ts), 59 unit, 17 pytest, none skipped or flaky; the TR7 check:api and coverage clauses rest on the earlier full npm run check on 632db9c content (exit 0: 2,508 pytest with the coverage gate, 872 e2e, smoke). Three known defects lie outside what the ACs state and don't lower the derived decision: E14-R1 (stale cached count announced after an edit in the box and Back) and E14-R2 (a stale empty view clears the carried text) are untested error paths, and E14-S3 (the faded box's name omits its visible count, WCAG 2.5.3) is the name 14.4 AC-2 specifies, pinned as a known axe gap. All three are routed to retro item 98, due before Epic 15.",
+  "p0_status": "MET",
+  "p1_status": "MET",
+  "overall_status": "MET",
+  "critical_open": 0,
+  "links": {
+    "trace_report_path": "_bmad-output/test-artifacts/traceability/epic-14-traceability-matrix.md",
+    "trace_report_url": "",
+    "artifact_url": "",
+    "journey_evidence_url": ""
+  }
+}
