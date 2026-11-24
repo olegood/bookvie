@@ -1829,9 +1829,11 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-epic-14-retro-item-98-fresh-carried-search-and-faded-box-name.md`
   summary: Spine drift (AD-7), reconciled before the next epic. AD-7's Carried Card notes search says the carried line is announced "from the new entry's view once it is `ready`" and that "While the view has no groups, the text is dropped". Item 98 made both wait for a settled view (ready and not fetching: `useCardNotesView`'s `fetching`, `noGroups` and `carriedLine` in `frontend/src/pages/CardNotesPage.tsx`), and typing or opening Edit, Add, the pile or the chip first drops a pending carried line (`silence()`). Item 99 records the announcement rule; this entry also covers the `noGroups` half and the drop. The code is right and the spine is out of date. Low.
   evidence: Spine Check, build-auto review of item 98; ARCHITECTURE-SPINE.md lines 137 and 140.
+  resolved: 2026-11-24, Epic 14 retro item 99. AD-7's carried-search bullets say the text is dropped only while the view is settled (ready and not fetching) with no groups, and the announcement waits for a settled view (`useCardNotesView`'s `fetching`), with typing or opening Edit, Add, the pile or the chip dropping a pending carried line first (`silence()`). AD-7 gains the general rule "One-shot reads on arrival read a settled view" (`ARCHITECTURE-SPINE.md`).
 - source_spec: `_bmad-output/implementation-artifacts/spec-epic-14-retro-item-98-fresh-carried-search-and-faded-box-name.md`
   summary: Spine drift (AD-6), reconciled before the next epic. The client presentation list's search item says a carried search's one announcement reads the count line "once the view is `ready`"; since item 98 it reads it once the view is settled (ready and not fetching). The code is right and the spine is out of date. Low.
   evidence: Spine Check, build-auto review of item 98; ARCHITECTURE-SPINE.md line 118.
+  resolved: 2026-11-24, Epic 14 retro item 99. The client presentation list's search item says a carried search's one announcement reads the count line once the view is settled, ready and not fetching (AD-7) (`ARCHITECTURE-SPINE.md`).
 
 ## Deferred from: code review of spec-epic-14-retro-item-98-fresh-carried-search-and-faded-box-name (2026-11-24)
 
