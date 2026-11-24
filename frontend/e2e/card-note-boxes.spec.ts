@@ -639,18 +639,4 @@ test.describe('Story 14.2 See my card notes as boxes (ATDD)', () => {
       expect(value.trim(), `--${component}-${key}`).toBe(designComponentValue(component, key))
     }
   })
-
-  test('[P2] AC-6 an explicit Dark theme gives the box front its dark shadow', async ({ page, seededServer }) => {
-    const server = await seededServer(PILE_SHELF)
-    await page.emulateMedia({ colorScheme: 'light' })
-    await page.goto(cardNotesPage(server))
-    const anathem = box(page, boxName('Anathem', 21))
-    await expect(anathem).toBeVisible()
-
-    await page.getByRole('group', { name: 'Theme' }).getByRole('button', { name: 'Dark', exact: true }).click()
-    await expect(page.locator('body')).toHaveCSS('background-color', PAGE_DARK)
-
-    const look = await boxLook(anathem, 'Anathem', noteCount(21))
-    expect(look.front?.boxShadow).toBe(BOX_FRONT_SHADOW_DARK)
-  })
 })

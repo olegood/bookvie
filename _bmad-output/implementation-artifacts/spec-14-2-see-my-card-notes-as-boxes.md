@@ -2,7 +2,7 @@
 title: 'Story 14.2: See my card notes as boxes'
 type: 'feature'
 created: '2026-11-24'
-status: 'in-review'
+status: 'done'
 baseline_revision: 'a54a9d965b4606a01fd1b282719de72ffd2f6821'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -119,6 +119,30 @@ deferred:
   - `[low]` `[reject]` (blind) The scoped page reads `localStorage` for nothing. — One try/catch read per mount, harmless; guarding it adds a branch for no user-visible gain.
   - `[low]` `[reject]` (blind) The Code Map's line numbers are stale after the diff. — The fix edits this build's spec; the Code Map records the code as it was planned.
   - Edge Case Hunter found nothing.
+
+### Review Findings
+
+Code review, 2026-11-24, in a new session (`bmad-code-review`). The five layers were Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor and Spine Check. They raised 19 findings: 0 `decision-needed`, 1 `patch` (Blind Hunter and the Acceptance Auditor found the same defect), 2 `defer` (both already recorded by the build) and 15 rejected (13 lines below, two of them shared by both layers). Edge Case Hunter and Verification Gap found nothing. Verification Gap re-ran `node --test src/lib/cardNotes.test.ts src/lib/cardNotesView.test.ts` (49 passed), then `npm run build` and Playwright on `card-note-boxes.spec.ts`, `catalog-tiles.spec.ts` and `bookcase.spec.ts` (39 passed). Spine Check found that AD-1, AD-3, AD-7, AD-8 and AD-17 match. The `tokens.css` literals and `--shadow-box-front` match DESIGN.md character for character (checked by the Acceptance Auditor and by hand). The spec has no manual AC.
+
+- [x] [Review][Patch] The ATDD file gained a 13th leaf, but the spec says the ATDD files change only by removing `test.skip` [frontend/e2e/card-note-boxes.spec.ts:653] — the build's review appended "[P2] AC-6 an explicit Dark theme gives the box front its dark shadow" to the ATDD spec. That leaf isn't in the ATDD checklist's 12-leaf registry, which the trace and gate map to the 12 ACs, and it sits after AC-12. Fix: move the leaf, unchanged, into its own spec file beside the ATDD file, so that the ATDD file differs from its red phase only by the un-skips and the coverage stays. Applied: the leaf now lives in `frontend/e2e/card-note-boxes-dark-theme.spec.ts`, with its own `test.use({ cardNotesView: null })` and copies of the two constants it needs. `git diff a54a9d9 -- frontend/e2e/card-note-boxes.spec.ts` now shows only the 12 un-skips and the red-phase comments removed.
+- Full check after the patch, 2026-11-24: `npm run check` exited 0. pytest 2508 passed, unit 406 passed, e2e 816 passed (the moved leaf among them), smoke passed.
+- [x] [Review][Defer] Spine drift (AD-6, AD-15): the Capability → Architecture Map still calls the Boxes view planned [ARCHITECTURE-SPINE.md:556,568] — deferred: already in `deferred-work.md` from the build's review. The reconciliation should drop "planned" from the Boxes · List part only, because the open box strip (14.3) and the carried search (14.5) are still unbuilt.
+- [x] [Review][Defer] Spine drift (AD-6): the Structural Seed still ties `ViewToggle` to Catalog [ARCHITECTURE-SPINE.md:550] — deferred: already in `deferred-work.md` from the build's review.
+
+**Rejected:**
+- (blind, `low`) Acceptance Criteria, Verification and the Code Map still say "12 leaves" or "12 passed". The fix edits this spec, and once the patch moves the 13th leaf out, the count is 12 again.
+- (blind, `low`) Verification's unit count (398) predates the build's patches. The fix edits this spec, and the post-patch `npm run check` ran `node --test`.
+- (blind, `low`) The Auto Run Result's "Files changed" omits `sprint-status.yaml`. The fix edits this spec.
+- (blind, `low`) The ATDD checklist doesn't list the new leaf. The patch moves the leaf out of the ATDD file, so the checklist stays right.
+- (blind + auditor, `low`) `overflow-wrap: anywhere` on the title and `box-shadow: none` under forced colors aren't written in DESIGN.md. Both serve what DESIGN.md states: a 2-line clamp, then an ellipsis, for any title, and system colors under forced colors, where the browser would otherwise drop the shadow itself. No user sees a difference from the design, and the build's review recorded both.
+- (blind, `low`) The counts aren't formatted with `Intl.NumberFormat` ("1234 card notes"). The Card notes copy already in place (`notesMatchCopy`) uses a plain `${count}` too. EXPERIENCE.md gives no 4-digit example, and 1,000 card notes is far from today's library. The fix adds a formatter.
+- (blind, `low`) The Boxes `ul` has no accessible name. EXPERIENCE.md → Card notes shelf asks for none. The page's `h1` "Card notes" heads it, and every box link carries the Book's full title and count.
+- (blind, `false`) "Boxes stays pressed while the List's results show." That is the specified staging until Story 14.4 (EXPERIENCE.md → Card notes shelf → Staging; this spec's I/O matrix).
+- (blind, `false`) "Nothing ties the pile size to `CARD_ANGLES`." `pileCards` returns at most 7, which is exactly `CARD_ANGLES.length`, and the unit test pins the steps. The harm needs a future change to the steps that DESIGN.md doesn't plan.
+- (blind + auditor, `low`) The scoped page reads `localStorage` and wraps `SearchTitles` in the toolbar `div`, though it shows no toggle. Nothing visible changes (AC-5 opens the scoped page with no toggle), and the read is one try/catch per mount. The build's review rejected the same finding.
+- (blind, `low`) The new `deferred-work.md` heading says "build-auto review of" where earlier ones say "build of". The retro and the gate match "spine drift", not the heading. Cosmetic.
+- (blind, `false`) "The 14.4 fade wrapper is only a Residual risk." The fade is Story 14.4's scope (this spec's Never). The ATDD lets 14.4 add an unpainted wrapper, and the Residual risks record it.
+- (auditor, `false`) "Boxes visibility follows `query`, not `shownQuery`." The auditor itself found no violation: the toolbar renders only when `groups.length > 0`, and then `shownQuery === query`. It follows the Design Notes exactly.
 
 ## Design Notes
 
