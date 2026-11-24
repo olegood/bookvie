@@ -37,8 +37,8 @@ export default function CardNoteBox({ bookId, title, spineColor, count }: Props)
       ))}
       <span className={styles.front} style={front}>
         <span className={styles.label}>
-          <span className={styles.title}>{title}</span>
-          <span className={styles.count}>{cardNoteCount(count)}</span>
+          {/* The space keeps the visible text ("Title 12 card notes") inside the link's name (WCAG 2.5.3). */}
+          <span className={styles.title}>{title}</span> <span className={styles.count}>{cardNoteCount(count)}</span>
         </span>
       </span>
     </Link>

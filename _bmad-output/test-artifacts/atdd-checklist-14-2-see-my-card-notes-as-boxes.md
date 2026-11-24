@@ -103,16 +103,16 @@ Every leaf is in `frontend/e2e/card-note-boxes.spec.ts`. The specs about Boxes t
 
 ## Green-phase follow-ups (secondary branches, not red leaves)
 
-- [ ] **E2E, AC-3 restore:** a restore of another library's export leaves `bookvie.cardNotesView` as it was (`"boxes"` and `"list"`), like `restore.spec.ts` does for `bookvie.catalogView`.
-- [ ] **E2E, AC-3 dark and forced colors:** the toggle matches the Catalog toggle in dark. Under forced colors the pressed option keeps its `Highlight` indicator.
-- [ ] **E2E, AC-5 twins:** two Books with the same title get two boxes in Book-id order, and their names are the same (no disambiguation is promised).
-- [ ] **E2E, AC-6 near-white front:** a white or near-white spine color still shows its front, outlined by its shadow, with no edge line.
-- [ ] **E2E, AC-7 axe:** Boxes view passes axe (`AXE_TAGS`) in light and dark, with a focused box.
-- [ ] **E2E, AC-8 count line copy:** "1 card note in 1 Book" (covered by AC-9's witness) and "12 card notes in 1 Book". The line in dark is `ink-tertiary` dark `#9A9E94`.
-- [ ] **E2E, AC-8 refetch:** a note added in another context updates the count line and adds a box after a focus refetch, as `card-notes.spec.ts` XUI-E2E-002 does for the groups.
-- [ ] **Unit (`node --test`, `src/lib/cardNotes.test.ts`), AC-5/AC-8:** the pile step at 0, 1, 2, 5, 6, 20, 21 and 100; the count line copy; the box name ("1 card note"); `lib/cardNotesView.ts` read and write with junk, empty, throwing, `"boxes"` and `"list"`, mirroring `catalogView.test.ts`.
-- [ ] **E2E, AC-10 typing back to blank:** the boxes return when the text is deleted character by character, not only with Esc.
-- [ ] **E2E, AC-11 automate:** Back to top passes axe in Boxes view (`back-to-top-automate.spec.ts` covers List).
+- [x] **E2E, AC-3 restore:** a restore of another library's export leaves `bookvie.cardNotesView` as it was (`"boxes"` and `"list"`), like `restore.spec.ts` does for `bookvie.catalogView`. (done: frontend/e2e/card-note-boxes-automate.spec.ts:69)
+- [x] **E2E, AC-3 dark and forced colors:** the toggle matches the Catalog toggle in dark. Under forced colors the pressed option keeps its `Highlight` indicator. (done: frontend/e2e/card-note-boxes-automate.spec.ts:98)
+- [x] **E2E, AC-5 twins:** two Books with the same title get two boxes in Book-id order, and their names are the same (no disambiguation is promised). (done: frontend/e2e/card-note-boxes-automate.spec.ts:119)
+- [x] **E2E, AC-6 near-white front:** a white or near-white spine color still shows its front, outlined by its shadow, with no edge line. (done: frontend/e2e/card-note-boxes-automate.spec.ts:139)
+- [x] **E2E, AC-7 axe:** Boxes view passes axe (`AXE_TAGS`) in light and dark, with a focused box. (done: frontend/e2e/card-note-boxes-automate.spec.ts:167; it caught a WCAG 2.5.3 `label-content-name-mismatch` on every box, fixed in `CardNoteBox.tsx`)
+- [x] **E2E, AC-8 count line copy:** "1 card note in 1 Book" (covered by AC-9's witness) and "12 card notes in 1 Book". The line in dark is `ink-tertiary` dark `#9A9E94`. (done: frontend/e2e/card-note-boxes-automate.spec.ts:186 for "12 card notes in 1 Book" and the dark color; "1 card note in 1 Book" in frontend/e2e/card-note-boxes.spec.ts:511 (AC-9) and frontend/src/lib/cardNotes.test.ts:310)
+- [x] **E2E, AC-8 refetch:** a note added in another context updates the count line and adds a box after a focus refetch, as `card-notes.spec.ts` XUI-E2E-002 does for the groups. (done: frontend/e2e/card-note-boxes-automate.spec.ts:202)
+- [x] **Unit (`node --test`, `src/lib/cardNotes.test.ts`), AC-5/AC-8:** the pile step at 0, 1, 2, 5, 6, 20, 21 and 100; the count line copy; the box name ("1 card note"); `lib/cardNotesView.ts` read and write with junk, empty, throwing, `"boxes"` and `"list"`, mirroring `catalogView.test.ts`. (done: frontend/src/lib/cardNotes.test.ts:282, :298, :310 and frontend/src/lib/cardNotesView.test.ts:15, written by the build)
+- [x] **E2E, AC-10 typing back to blank:** the boxes return when the text is deleted character by character, not only with Esc. (done: frontend/e2e/card-note-boxes-automate.spec.ts:232)
+- [x] **E2E, AC-11 automate:** Back to top passes axe in Boxes view (`back-to-top-automate.spec.ts` covers List). (done: frontend/e2e/card-note-boxes-automate.spec.ts:258)
 
 ## Helper probes
 
