@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-29-2026 17:21
-last_updated: 11-24-2026 16:20
+last_updated: 11-24-2026 16:42
 project: bookvie
 project_key: NOKEY
 tracking_system: file-system
@@ -147,7 +147,7 @@ development_status:
   14-3-see-the-open-box-in-its-book-s-color: done
   14-4-search-the-boxes: done
   14-5-keep-the-search-when-i-open-a-box-and-come-back: done
-  epic-14-retrospective: optional
+  epic-14-retrospective: done
 action_items:
   - id: "epic-1-retro-item-1-run-an-epic-1-trace-and-gate-against-tr7"
     epic: 1
@@ -1189,3 +1189,93 @@ action_items:
     owner: "Amelia (dev)"
     status: done
     ref: "_bmad-output/implementation-artifacts/epic-13-retro-2026-11-23.md"
+  - id: "epic-14-retro-item-96-trace-and-gate-epic-14"
+    epic: 14
+    action: "Run the Epic 14 trace and gate: bmad-testarch-trace against TR7 and the
+      gate's P0 risks (epics.md:3416): List unchanged; the default and storage, including
+      the key never in an export; spineColor on every group and the scope; the shelf
+      search; the carried search both ways, with every other way in starting empty.
+      Changes: `_bmad-output/test-artifacts/traceability/epic-14-traceability-matrix.md`,
+      `_bmad-output/test-artifacts/traceability/epic-14-gate-decision.json`. Due:
+      before Epic 15."
+    owner: "Murat (TEA)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-14-retro-2026-11-24.md"
+  - id: "epic-14-retro-item-97-reconcile-the-spine-with-epic-14"
+    epic: 14
+    action: "Reconcile the spine and the planning text with Epic 14 (E14-SP1, E14-S1,
+      E14-S2, E14-S4). Spine: mark Boxes · List, the generic ViewToggle, CardNoteBox,
+      the open box strip, the shelf search and the carried search (lib/carriedSearch.ts)
+      as built in the Capability → Architecture Map lead-in and FR-17 to FR-19 row,
+      the Structural Seed's components/ and lib/ lines, the client presentation list
+      (line 118) and AD-7's second scroll after a client-side POP; add resolved: lines
+      to the drift entries at deferred-work.md:1757, :1760, :1766, :1781, :1793, :1799,
+      :1811 and to the closed test gap at :1808. epics.md: retire UX-DR92 (line 357),
+      fix 14.3's 'reached from Book detail' (:3554), 14.4's '14 card notes' example
+      to 17 (:3585) and the gate's 'pass unchanged' to name 14.5's AC-3 (:3416); resolve
+      deferred-work.md:1769, :1784, :1802. DESIGN.md Open box strip (line 813): record
+      that a spine close to the page color reads faintly and the chip names the box
+      (Oleg, 2026-11-24); resolve deferred-work.md:1775. Changes: `_bmad-output/planning-artifacts/architecture/architecture-bookvie-2026-10-29/ARCHITECTURE-SPINE.md`,
+      `_bmad-output/implementation-artifacts/deferred-work.md`, `_bmad-output/planning-artifacts/epics.md`,
+      `_bmad-output/planning-artifacts/ux-designs/ux-bookvie-2026-10-28/DESIGN.md`.
+      Due: before Epic 15."
+    owner: "Winston (architect)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-14-retro-2026-11-24.md"
+  - id: "epic-14-retro-item-98-fresh-carried-search-and-faded-box-name"
+    epic: 14
+    action: "Make the carried search wait for fresh data, and put the count in the
+      faded box's name (E14-R1, E14-R2, E14-S3). The carried announcement reads the
+      view only once it is fresh, so Back after an edit announces the refetched count;
+      noGroups clears the text only for a fresh empty view. The faded box is named
+      'Title, N card notes, no match' (cardNoteBoxName); update EXPERIENCE.md Search
+      on the shelf, 14.4's AC-2 wording, the tests that assert the name and the axe
+      leaf's known name gap; resolve deferred-work.md:1787. New leaves: edit a matching
+      note in a box then Back announces the fresh count; a stale empty view doesn't
+      clear a carried search. Run as a retro-item spec through bmad-build-auto and
+      bmad-code-review. Changes: `frontend/src/pages/CardNotesPage.tsx`, `frontend/src/lib/carriedSearch.ts`,
+      `frontend/src/lib/cardNotes.ts`, `frontend/src/lib/cardNotes.test.ts`, `frontend/e2e/carried-search-automate.spec.ts`,
+      `frontend/e2e/search-boxes.spec.ts`, `frontend/e2e/search-boxes-automate.spec.ts`,
+      `_bmad-output/planning-artifacts/ux-designs/ux-bookvie-2026-10-28/EXPERIENCE.md`,
+      `_bmad-output/planning-artifacts/epics.md`, `_bmad-output/implementation-artifacts/deferred-work.md`.
+      Due: before Epic 15."
+    owner: "Amelia (dev)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-14-retro-2026-11-24.md"
+  - id: "epic-14-retro-item-99-spine-rule-announce-from-fresh-data"
+    epic: 14
+    action: "Record the stale-cache rule for later views (E14-R1): an announcement
+      made once on arrival reads a fresh view, never a stale cached one, in AD-7 or
+      the client presentation list. Changes: `_bmad-output/planning-artifacts/architecture/architecture-bookvie-2026-10-29/ARCHITECTURE-SPINE.md`.
+      Due: with item 98, before Epic 15."
+    owner: "Winston (architect)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-14-retro-2026-11-24.md"
+  - id: "epic-14-retro-item-100-helper-reuse-in-build-and-automate"
+    epic: 14
+    action: "Put the helper-reuse rule into the build and automate steps, and fold
+      the Epic 14 copies (E14-D1). Add a pointer to Epic 11 item 78's reuse check
+      (grep the exports and spec-local helpers first, import or extend before writing)
+      to bmad-build-auto and bmad-testarch-automate. Move openPaused into a shared
+      e2e module and import it in its four copies and the inline steps in carried-search-automate.spec.ts:230-236;
+      have both search-boxes specs import resting/HABIT_STATE (or boxStates) from
+      card-note-boxes.ts and drop its comment about local copies. No assertion or
+      title changes. Changes: `_bmad/custom/bmad-build-auto.toml`, `_bmad/custom/bmad-testarch-automate.toml`,
+      `frontend/e2e/library.ts`, `frontend/e2e/card-note-boxes.ts`, `frontend/e2e/card-notes.spec.ts`,
+      `frontend/e2e/card-notes-pile.spec.ts`, `frontend/e2e/search-boxes.spec.ts`,
+      `frontend/e2e/search-boxes-automate.spec.ts`, `frontend/e2e/search-boxes-view-switch.spec.ts`,
+      `frontend/e2e/carried-search-automate.spec.ts`. Due: before Epic 15."
+    owner: "Murat (TEA)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-14-retro-2026-11-24.md"
+  - id: "epic-14-retro-item-101-automate-never-fixes-production-code"
+    epic: 14
+    action: "Automate doesn't fix production code (E14-P1; bbb8174 edited CardNoteBox.tsx
+      after 14.2's review closed). bmad-testarch-automate adds tests only; when it
+      finds a production defect it records it in deferred-work.md or leaves it for
+      a fix spec through bmad-code-review, never editing frontend/src or backend/bookvie
+      (test-support files are fine). Changes: `_bmad/custom/bmad-testarch-automate.toml`.
+      Due: before Epic 15's first automate step."
+    owner: "Murat (TEA)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-14-retro-2026-11-24.md"
