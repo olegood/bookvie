@@ -810,7 +810,7 @@ Visual specs. Behavior lives in EXPERIENCE.md → Component Patterns, under the 
 | **Card notes view toggle** | `{components.card-notes-view-toggle}`. Two-option segmented control (Boxes · List), the Catalog view toggle's visual, text only with no glyphs. |
 | **Card notes count line** | `{components.card-notes-count-line}`. One line at the end of the toolbar, Boxes view only. Its text swaps in place, so nothing below it moves. Wording: EXPERIENCE.md → Card notes shelf. |
 | **Card note box** | See [Card note box](#card-note-box) below. |
-| **Open box strip** | `{components.open-box-strip}`. An 8px band, full width, in the Book's exact spine color, under the app shell, on the open box only (Layout & Spacing → Card notes). No edge, no label, no shadow. Same in both themes. |
+| **Open box strip** | `{components.open-box-strip}`. An 8px band, full width, in the Book's exact spine color, under the app shell, on the open box only (Layout & Spacing → Card notes). No edge, no label, no shadow. Same in both themes. A spine close to the page color (near-white on the light page, near-black on the dark one) makes the strip faint; that is accepted, since the strip is decoration (`aria-hidden`) and the "In *X*" chip names the box (Epic 14 retro, 2026-11-24). |
 | **List view** | Compact table: Title (`book-title-sm`), Author, Pages, Status, Date added. `{components.list-view-row}`; header in `section-label`. Status shown as text plus a mini spine glyph (colored or outlined). |
 | **Catalog tile** | See [Catalog tile](#catalog-tile) below. |
 | **Search field** | Text field with a leading magnifier glyph and a visible label in `body-sm`/`ink-secondary` to its left: "Search titles" (Catalog) or "Search card notes" (Card notes). No placeholder text. |

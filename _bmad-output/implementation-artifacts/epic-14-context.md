@@ -16,7 +16,7 @@ The unscoped Card notes page gains a Boxes view: one box per Book that has notes
 
 ## Requirements & Constraints
 
-- **List is unchanged.** List view is the unscoped page as it was before Epic 14: groups, search with highlights and "N notes match.", Edit, "Go through as a pile", Back to top. The existing Card notes e2e specs pass with no edit to their files: one option fixture in `frontend/e2e/fixtures.ts` stores `bookvie.cardNotesView = "list"` before each test, and new Epic 14 specs turn it off.
+- **List is unchanged.** List view is the unscoped page as it was before Epic 14: groups, search with highlights and "N notes match.", Edit, "Go through as a pile", Back to top. The existing Card notes e2e specs pass with no edit to their files, except the Story 5.3 chip leaf in `card-notes.spec.ts` that Story 14.5's AC-3 rewrote (removing the chip now carries the search): one option fixture in `frontend/e2e/fixtures.ts` stores `bookvie.cardNotesView = "list"` before each test, and new Epic 14 specs turn it off.
 - **Boxes is the default** when nothing is stored, the value is empty or junk, or the storage read throws. The toggle and count line show only on the unscoped page, only with at least one card note, never on the open box, and never while loading or under "Couldn't load". With no notes at all the page keeps "No card notes yet."
 - **Only Books with notes get a box,** in the view's group order. Neither view sorts.
 - **The fade is never the only signal.** A faded box stays in place, stays a link and a Tab stop, keeps a full-strength focus ring, and carries its match in its accessible name ("*Refactoring*, no match"). The fade is a documented deviation (UX-DR93). Otherwise WCAG 2.2 AA in both themes and under `forced-colors: active`.
