@@ -80,7 +80,7 @@ The e2e leaves are in `frontend/e2e/carried-search.spec.ts`. They run with the f
 **Wording for the review (not a test change).**
 - AC-1's "the page is at the top" can't fail today. Clicking a box shows the open box's loading state first, which clamps `scrollY` to 0 (probe: 0 after a click from 76). The leaf still asserts it. AC-2 and AC-3 are where the scroll rule is really tested.
 - The epic context says the existing Card notes specs pass "with no edit to their files". AC-3 overrides that for one leaf (next section). The review may want the context's line narrowed.
-- AC-5's "fresh view query (no placeholder data) and fresh pile, panels, pending count and focus maps" isn't read by the unit leaf. It's covered by AC-4's nav-link branch (the body really remounts) and listed as green follow-ups below.
+- AC-5's "fresh view query (no placeholder data) and fresh pile, panels, pending count and focus maps" isn't read by the unit leaf. It was meant to be covered by AC-4's nav-link branch, but the review found that branch passes with the body keyed by `bookId` too (the hook empties the field on its own). The green follow-up "E2E, AC-5 fresh body" below now covers it, checked against that mutation (automate, 2026-11-24).
 
 ## Existing leaves this story changes (for the build)
 
@@ -92,18 +92,18 @@ Both still pass today. The build edits them, because the carried search changes 
 
 ## Green-phase follow-ups (secondary branches, not red leaves)
 
-- [ ] **E2E, AC-1 singular:** Deep Work or Walden opened with "habit" announces "1 note matches." once.
-- [ ] **E2E, AC-1 keyboard:** Enter on a focused box carries the text the same way as a click.
-- [ ] **E2E, AC-2 List view:** with List remembered (the fixture's default), removing the chip of an open box with "habit" shows the List's grouped results for "habit" with highlights, and `status` reads "17 notes match." once with the `h1` focused. Boxes are Boxes-only, so in List view the chip is the way out with the text.
-- [ ] **E2E, AC-2 no match:** Back with a text that matches nothing shows every box faded and "No card notes contain “…”." announced once.
-- [ ] **E2E, AC-3 the other two ways in:** the chip carries the text when the open box was entered by a box and by Home's "See card notes" too.
-- [ ] **E2E, AC-4 the remaining ways:** a box opened with an empty field, "See card notes", "See all card notes" (from Book detail, with text typed on the shelf before leaving), and the nav link from the open box all start empty, with nothing announced.
-- [ ] **E2E, AC-4 bfcache:** not testable in the e2e server setup; leave it to the review if needed (AD-7: "a bfcache restore keeps the page as left").
-- [ ] **E2E, AC-5 fresh body:** after the nav-link REPLACE, an open pile or panel is gone, a pending count (typed less than 500ms before the click) is never announced, and the view is refetched with no placeholder data. Use a paused clock, as `search-boxes-automate.spec.ts` `openPaused` does.
-- [ ] **E2E, AC-6 by the chip:** a chip removal with text draws every box in its final state from its first frame.
-- [ ] **E2E, reduced motion and dark:** a carried arrival under `reducedMotion: 'reduce'` and in dark is drawn the same.
-- [ ] **E2E, axe:** the open box arriving with a carried search passes axe (`AXE_TAGS`).
-- [ ] **Unit, AC-5 coalesced moves:** a `navigate(-2)` from a box opened from a shelf two entries back counts from the handled location (AD-7 "a move the router coalesced counts from it").
+- [x] **E2E, AC-1 singular:** Deep Work or Walden opened with "habit" announces "1 note matches." once. (done: frontend/e2e/carried-search-automate.spec.ts:77, Walden)
+- [x] **E2E, AC-1 keyboard:** Enter on a focused box carries the text the same way as a click. (done: frontend/e2e/carried-search-automate.spec.ts:77)
+- [x] **E2E, AC-2 List view:** with List remembered (the fixture's default), removing the chip of an open box with "habit" shows the List's grouped results for "habit" with highlights, and `status` reads "17 notes match." once with the `h1` focused. Boxes are Boxes-only, so in List view the chip is the way out with the text. (done: frontend/e2e/carried-search-automate.spec.ts:321)
+- [x] **E2E, AC-2 no match:** Back with a text that matches nothing shows every box faded and "No card notes contain “…”." announced once. (done: frontend/e2e/carried-search-automate.spec.ts:98)
+- [x] **E2E, AC-3 the other two ways in:** the chip carries the text when the open box was entered by a box and by Home's "See card notes" too. (done: frontend/e2e/carried-search-automate.spec.ts:122)
+- [x] **E2E, AC-4 the remaining ways:** a box opened with an empty field, "See card notes", "See all card notes" (from Book detail, with text typed on the shelf before leaving), and the nav link from the open box all start empty, with nothing announced. (done: frontend/e2e/carried-search-automate.spec.ts:166)
+- ~~**E2E, AC-4 bfcache:** not testable in the e2e server setup; leave it to the review if needed (AD-7: "a bfcache restore keeps the page as left").~~ **Retired:** Playwright can't force a bfcache restore, and nothing in the code handles one (a restore shows the page as the browser kept it). Recorded in `automation-summary.md` (Story 14.5) as not automated; AD-7 states the behavior.
+- [x] **E2E, AC-5 fresh body:** after the nav-link REPLACE, an open pile or panel is gone, a pending count (typed less than 500ms before the click) is never announced, and the view is refetched with no placeholder data. Use a paused clock, as `search-boxes-automate.spec.ts` `openPaused` does. (done: frontend/e2e/carried-search-automate.spec.ts:225, the nav-link REPLACE: the view's GET is sent again, the pending count is never announced, `scrollY` 0; frontend/e2e/carried-search-automate.spec.ts:350, an open pile gone after a two-step Back between two shelf entries. Both fail with the body keyed by `bookId`. "No placeholder data" is shown by the refetch on mount; `useCardNotesView` sets no `placeholderData`.)
+- [x] **E2E, AC-6 by the chip:** a chip removal with text draws every box in its final state from its first frame. (done: frontend/e2e/carried-search-automate.spec.ts:255)
+- [x] **E2E, reduced motion and dark:** a carried arrival under `reducedMotion: 'reduce'` and in dark is drawn the same. (done: frontend/e2e/carried-search-automate.spec.ts:279)
+- [x] **E2E, axe:** the open box arriving with a carried search passes axe (`AXE_TAGS`). (done: frontend/e2e/carried-search-automate.spec.ts:299, light and dark)
+- [x] **Unit, AC-5 coalesced moves:** a `navigate(-2)` from a box opened from a shelf two entries back counts from the handled location (AD-7 "a move the router coalesced counts from it"). (done: frontend/src/lib/carriedSearch.test.ts:195)
 
 ## Helper probes
 

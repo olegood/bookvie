@@ -9,7 +9,7 @@
 // fixtures.ts stores "list" before every other spec; this one turns that off.
 
 import { scrollToY } from './back-to-top.ts'
-import { recordStatus, statusTexts, watchFocusAtStatus, focusAtStatus } from './card-note-add-another.ts'
+import { recordStatus, watchFocusAtStatus, focusAtStatus } from './card-note-add-another.ts'
 import { editOf, noteItem } from './card-note-keys.ts'
 import {
   boxFrames,
@@ -24,59 +24,25 @@ import {
   searchField,
   viewButton,
 } from './card-note-boxes.ts'
+import {
+  announced,
+  AT_REST,
+  chip,
+  FADE,
+  H1,
+  HABIT_LINE,
+  HABIT_STATE,
+  HABITS_LINE,
+  HABITS_STATE,
+  LIFT,
+  notes,
+  searchTheShelf,
+} from './carried-search.ts'
 import { mainNav } from './dev-mode.ts'
 import { expect, test } from './fixtures.ts'
-import type { Page } from '@playwright/test'
 import { afterAnnounceDelay } from './stats.ts'
 
 const [ATOMIC, , REFACTORING, TINY, WALDEN] = HABIT_BOXES
-
-/** DESIGN.md components.card-note-box.lift and .fade (14.4). */
-const LIFT = -6
-const FADE = 0.38
-
-/** The shelf sentence for "habit" (17 notes in 4 Books; 14.4's measured count). */
-const HABIT_LINE = '17 card notes in 4 Books contain “habit”.'
-/** The shelf sentence for "habits": Atomic Habits 1 of 12, Tiny Habits 4 of 12 (probed on the shipped List and shelf). */
-const HABITS_LINE = '5 card notes in 2 Books contain “habits”.'
-
-/** The h1's text, as `focusAtStatus` names the focused h1. */
-const H1 = 'Card notes'
-
-/** Every box lifted when `matched` holds it, else faded. */
-function searchedState(matched: readonly string[]): [string, number, number][] {
-  return HABIT_BOXES.map((b): [string, number, number] => (matched.includes(b.id) ? [b.id, LIFT, 1] : [b.id, 0, FADE]))
-}
-
-/** "habit": every box but Refactoring has a match. */
-const HABIT_STATE = searchedState(HABIT_BOXES.filter((b) => b.matches > 0).map((b) => b.id))
-/** "habits": only Atomic Habits and Tiny Habits. */
-const HABITS_STATE = searchedState([ATOMIC.id, TINY.id])
-/** Every box at rest. */
-const AT_REST = HABIT_BOXES.map((b): [string, number, number] => [b.id, 0, 1])
-
-/** The open box's chip text, which ships: proves the open box has rendered. */
-function chip(page: Page, title: string) {
-  return page.getByRole('main').getByText(`In ${title}`, { exact: true })
-}
-
-/** The notes listed in main (the open box's, or the List's). */
-function notes(page: Page) {
-  return page.getByRole('main').getByRole('listitem')
-}
-
-/** The non-empty texts the status region has shown since `recordStatus`. */
-async function announced(page: Page): Promise<string[]> {
-  return (await statusTexts(page)).filter((text) => text !== '')
-}
-
-/** Opens the shelf, types `text` and waits for 14.4's announcement of it, so later recordings start clean. */
-async function searchTheShelf(page: Page, url: string, text: string, line: string): Promise<void> {
-  await page.goto(url)
-  await expect(boxLinks(page)).toHaveCount(HABIT_BOXES.length)
-  await searchField(page).fill(text)
-  await expect(page.getByRole('status')).toHaveText(line)
-}
 
 test.describe('Story 14.5 Keep the search when I open a box and come back (ATDD)', () => {
   test.use({ cardNotesView: null, viewport: { width: 1280, height: 400 } })

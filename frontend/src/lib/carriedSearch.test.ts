@@ -190,3 +190,41 @@ describe('Story 14.5 carried search decision (ATDD)', () => {
     assert.doesNotMatch(readFileSync(SOURCE, 'utf8'), /\buse(Layout|Insertion)?Effect\b|\buseRef\b/)
   })
 })
+
+describe('Story 14.5 carried search decision (automate)', () => {
+  test('[P1] AC-5 a move of two entries at once counts from the entry just left, not from the entry it skipped', async () => {
+    const mod = await load()
+    const shelf = await mount(mod, { pathname: '/card-notes' })
+    try {
+      await shelf.type('habit')
+      const shelfKey = keyOf(shelf.commits)
+      // Shelf → box (openedFrom: the shelf) → the chip's shelf (no openedFrom).
+      const intoBox = await shelf.navigate('/card-notes?book=11', { state: mod.carryState(shelfKey) })
+      assert.deepEqual(texts(intoBox), ['habit'])
+      const chip = await shelf.navigate('/card-notes', { state: mod.carryState() })
+      assert.deepEqual(texts(chip), ['habit'])
+
+      // Two back to the first shelf: the box skipped over named it, but the entry just left didn't.
+      await shelf.type('zettel')
+      const twoBack = await shelf.navigate(-2)
+      assert.equal(keyOf(twoBack), shelfKey)
+      assert.deepEqual(texts(twoBack), [''])
+
+      // Two forward to the chip's shelf: a POP from an entry with no openedFrom.
+      await shelf.type('habit')
+      const twoForward = await shelf.navigate(2)
+      assert.equal(keyOf(twoForward), keyOf(chip))
+      assert.deepEqual(texts(twoForward), [''])
+
+      // One back to the box, then one back to the shelf: the entry just left names it, so the text comes out.
+      const backToBox = await shelf.navigate(-1)
+      assert.deepEqual(texts(backToBox), [''])
+      await shelf.type('habits')
+      const backToShelf = await shelf.navigate(-1)
+      assert.equal(keyOf(backToShelf), shelfKey)
+      assert.deepEqual(texts(backToShelf), ['habits'])
+    } finally {
+      await shelf.root.unmount()
+    }
+  })
+})
