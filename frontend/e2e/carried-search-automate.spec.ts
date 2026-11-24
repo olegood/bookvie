@@ -4,13 +4,15 @@
 // the other ways into an open box, the remaining ways that start empty, a
 // fresh body for every history entry of the same scope (the nav link's
 // REPLACE and a two-step Back), the chip's arrival drawn at once, reduced
-// motion and dark, and axe on the open box. fixtures.ts stores "list" before
-// every spec; the Boxes leaves turn that off.
+// motion and dark, and axe on the open box. Epic 14 retro item 98 adds two
+// stale-cache leaves: an edit in a box, then Back, announces the refetched
+// count, and a stale empty open box keeps the carried text. fixtures.ts stores
+// "list" before every spec; the Boxes leaves turn that off.
 
 import AxeBuilder from '@axe-core/playwright'
 import type { Page } from '@playwright/test'
 import { scrollToY } from './back-to-top.ts'
-import { focusAtStatus, recordStatus, seeCardNotes, watchFocusAtStatus } from './card-note-add-another.ts'
+import { focusAtStatus, noteField, recordStatus, seeCardNotes, watchFocusAtStatus } from './card-note-add-another.ts'
 import {
   boxFrames,
   boxLinks,
@@ -39,8 +41,10 @@ import {
   notes,
   searchTheShelf,
 } from './carried-search.ts'
+import { addCardNote, cardNotePanel, editOf, editPanel, noteItem, SAVED } from './card-note-keys.ts'
 import { mainNav } from './dev-mode.ts'
 import { expect, test } from './fixtures.ts'
+import { bookId } from './library.ts'
 import { pile, pileOpener } from './pile.ts'
 import { AXE_TAGS, afterAnnounceDelay } from './stats.ts'
 
@@ -51,6 +55,27 @@ const ATOMIC_ON_HOME = {
   ...HABIT_SHELF,
   mainBookId: ATOMIC.id,
   books: HABIT_SHELF.books.map((b) => (b.id === ATOMIC.id ? { ...b, readings: [{ currentPage: 100 }] } : b)),
+}
+
+/** A Main book with no notes yet, beside HABIT_SHELF: Home's card offers "See card notes" and Add card note. */
+const EMPTY_MAIN = { id: bookId(16), title: 'Emma', authors: ['Jane Austen'], pages: 474 }
+const EMPTY_MAIN_ON_HOME = {
+  ...HABIT_SHELF,
+  mainBookId: EMPTY_MAIN.id,
+  books: [...HABIT_SHELF.books, { ...EMPTY_MAIN, readings: [{ currentPage: 10 }] }],
+}
+
+/** How long the stale-cache leaves hold a view's GET, so the cached copy shows for a while first. */
+const HELD_MS = 1_500
+
+/** Holds every GET `matches` accepts for HELD_MS before it goes to the server. */
+async function holdViewGets(page: Page, matches: (url: string) => boolean): Promise<void> {
+  await page.route('**/api/views/card-notes*', async (route) => {
+    if (route.request().method() === 'GET' && matches(route.request().url())) {
+      await new Promise((resolve) => setTimeout(resolve, HELD_MS))
+    }
+    await route.continue()
+  })
 }
 
 /** Inside the search pause (500 ms): the count is still waiting. */
@@ -117,6 +142,110 @@ test.describe('Story 14.5 Keep the search when I open a box and come back (autom
     await expect.poll(() => announced(page)).toEqual([none])
     await afterAnnounceDelay(page)
     expect(await focusAtStatus(page)).toEqual([{ text: none, focused: H1 }])
+  })
+
+  test("[P1] item 98 an edit in the open box, then Back, announces the shelf's refetched count once, never the cached one", async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer(HABIT_SHELF)
+    await searchTheShelf(page, cardNotesPage(server), 'habit', HABIT_LINE)
+    await boxOfBook(page, ATOMIC.id).click()
+    await expect(chip(page, ATOMIC.title)).toBeVisible()
+    await expect(searchField(page)).toHaveValue('habit')
+
+    // Atomic Habits's note 02 ("Every HABIT worth keeping.") stops matching: the shelf now holds 16.
+    const main = page.getByRole('main')
+    await editOf(noteItem(main, 'AH note 02: Every HABIT worth keeping.')).click()
+    await noteField(editPanel(page)).fill('AH note 02: a line worth keeping.')
+    await editPanel(page).getByRole('button', { name: 'Save note', exact: true }).click()
+    await expect(editPanel(page)).toBeHidden()
+    await expect(page.getByRole('status')).toHaveText(SAVED)
+    await expect(notes(page)).toHaveCount(ATOMIC.matches - 1)
+
+    // The shelf's cached view still holds 17; its refetch is held, so the stale copy shows first.
+    await holdViewGets(page, isShelfView)
+    await recordStatus(page)
+    await watchFocusAtStatus(page)
+    await page.goBack()
+    await expect(boxLinks(page)).toHaveCount(HABIT_BOXES.length)
+    await expect(searchField(page)).toHaveValue('habit')
+    // The stale window: the cached shelf shows at once, its 17 not yet refetched.
+    await expect(page.getByRole('main').getByText(HABIT_LINE, { exact: true })).toBeVisible()
+
+    const fresh = '16 card notes in 4 Books contain “habit”.'
+    await expect(page.getByRole('main').getByText(fresh, { exact: true })).toBeVisible()
+    await expect.poll(() => announced(page)).toEqual([fresh])
+    await afterAnnounceDelay(page)
+    expect(await announced(page)).toEqual([fresh])
+    expect(await focusAtStatus(page)).toEqual([{ text: fresh, focused: H1 }])
+  })
+
+  test('[P1] item 98 a stale empty open box keeps the carried search: the refetched note shows marked, "1 note matches." once', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer(EMPTY_MAIN_ON_HOME)
+    // Home's "See card notes" caches Emma's open box empty.
+    await page.goto(server.url)
+    await seeCardNotes(page, 0).click()
+    await expect(chip(page, EMPTY_MAIN.title)).toBeVisible()
+    await expect(page.getByRole('main').getByText('No card notes yet.', { exact: true })).toBeVisible()
+
+    // Back on Home, a note for Emma: the cached empty view is now stale, not refetched (inactive).
+    await mainNav(page).getByRole('link', { name: 'Home', exact: true }).click()
+    await addCardNote(page).click()
+    await noteField(cardNotePanel(page)).fill('Emma note 01: a habit of matchmaking.')
+    await cardNotePanel(page).getByRole('button', { name: 'Save note', exact: true }).click()
+    await expect(page.getByRole('status')).toHaveText(SAVED)
+    await expect(seeCardNotes(page, 1)).toBeVisible()
+
+    // The shelf, client-side so the cache stays: "habit", then Emma's box with its refetch held.
+    await mainNav(page).getByRole('link', { name: 'Card notes', exact: true }).click()
+    await expect(boxLinks(page)).toHaveCount(HABIT_BOXES.length + 1)
+    await searchField(page).fill('habit')
+    await expect(page.getByRole('status')).toHaveText('18 card notes in 5 Books contain “habit”.')
+    await holdViewGets(page, (url) => new URL(url).searchParams.get('book') === EMPTY_MAIN.id)
+    await recordStatus(page)
+    await boxOfBook(page, EMPTY_MAIN.id).click()
+    await expect(chip(page, EMPTY_MAIN.title)).toBeVisible()
+    // The stale window: the cached empty view shows first.
+    await expect(page.getByRole('main').getByText('No card notes yet.', { exact: true })).toBeVisible()
+
+    await expect(notes(page)).toHaveCount(1)
+    await expect(searchField(page)).toHaveValue('habit')
+    await expect(page.getByRole('main').locator('mark')).toHaveText(['habit'])
+    await expect.poll(() => announced(page)).toEqual(['1 note matches.'])
+    await afterAnnounceDelay(page)
+    expect(await announced(page)).toEqual(['1 note matches.'])
+  })
+
+  test('[P1] item 98 typing before a carried search is announced drops it: only the typed count speaks', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer(HABIT_SHELF)
+    await searchTheShelf(page, cardNotesPage(server), 'habit', HABIT_LINE)
+    await boxOfBook(page, ATOMIC.id).click()
+    await expect(chip(page, ATOMIC.title)).toBeVisible()
+    await expect(searchField(page)).toHaveValue('habit')
+    await expect(page.getByRole('status')).toHaveText('3 notes match.')
+
+    // Back with the shelf's refetch held, and "habits" typed before it settles.
+    await holdViewGets(page, isShelfView)
+    const released = page.waitForResponse((response) => isShelfView(response.url()))
+    await recordStatus(page)
+    await page.goBack()
+    await expect(boxLinks(page)).toHaveCount(HABIT_BOXES.length)
+    await searchField(page).fill('habits')
+    await released
+
+    await expect(page.getByRole('main').getByText(HABITS_LINE, { exact: true })).toBeVisible()
+    await expect.poll(() => announced(page)).toEqual([HABITS_LINE])
+    // Past where a late carried line would land (just after the release), then announce's tick.
+    await page.evaluate((ms) => new Promise<void>((resolve) => setTimeout(resolve, ms)), PAST_THE_PAUSE_MS)
+    await afterAnnounceDelay(page)
+    expect(await announced(page)).toEqual([HABITS_LINE])
   })
 
   test('[P1] AC-3 the chip carries the text when the open box was entered by a box, and by Home\'s "See card notes"; Back from the chip\'s shelf to a box-entered open box starts empty', async ({

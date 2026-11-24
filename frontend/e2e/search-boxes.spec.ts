@@ -47,7 +47,7 @@ const HABIT_LINE = '17 card notes in 4 Books contain “habit”.'
 const HABIT_NAMES = [
   'Atomic Habits, 3 of 12 card notes match',
   'Deep Work, 1 of 12 card notes matches',
-  'Refactoring, no match',
+  'Refactoring, 4 card notes, no match',
   'Tiny Habits, 12 of 12 card notes match',
   'Walden, 1 of 1 card note matches',
 ]
@@ -192,7 +192,7 @@ test.describe('Story 14.4 Search the boxes (ATDD)', () => {
     await expect(main.getByText('1 card note in 1 Book contains “WOODS”.', { exact: true })).toBeVisible()
     await expect(page.getByRole('status')).toHaveText('1 card note in 1 Book contains “WOODS”.')
     await expect(box(page, 'Walden, 1 of 1 card note matches')).toBeVisible()
-    await expect(box(page, 'Atomic Habits, no match')).toBeVisible()
+    await expect(box(page, 'Atomic Habits, 12 card notes, no match')).toBeVisible()
   })
 
   test('[P1] AC-3 with "zettel" every box fades, the count line reads "No card notes contain “zettel”." and status reads it once', async ({
@@ -209,13 +209,15 @@ test.describe('Story 14.4 Search the boxes (ATDD)', () => {
     const line = 'No card notes contain “zettel”.'
     await expect.poll(() => resting(page)).toEqual(HABIT_BOXES.map((b) => [b.id, 0, FADE]))
 
-    // The count line is the one place saying it; every box stays, faded through its inner wrapper, named "no match".
+    // The count line is the one place saying it; every box stays, faded through its inner wrapper, named with its
+    // visible count and "no match".
     await expect(main.getByText(line, { exact: true })).toHaveCount(1)
     expect(await inLiveRegion(main.getByText(line, { exact: true }))).toBe(false)
     const [frame] = await boxFrames(page)
     for (const b of frame) expect(b.faded, b.id).toMatchObject(ONE_FADED_WRAPPER)
     for (const [i, b] of HABIT_BOXES.entries()) {
-      await expect(boxLinks(page).nth(i)).toHaveAccessibleName(`${b.title}, no match`)
+      const count = b.notes === 1 ? '1 card note' : `${b.notes} card notes`
+      await expect(boxLinks(page).nth(i)).toHaveAccessibleName(`${b.title}, ${count}, no match`)
       await expect(boxLinks(page).nth(i)).toBeVisible()
     }
     await expect(page.getByRole('status')).toHaveText(line)
@@ -377,7 +379,7 @@ test.describe('Story 14.4 Search the boxes (ATDD)', () => {
     await searchField(page).focus()
     for (let i = 0; i < 5; i++) await page.keyboard.press('Tab')
     await expect(refactoring).toBeFocused()
-    await expect(refactoring).toHaveAccessibleName('Refactoring, no match')
+    await expect(refactoring).toHaveAccessibleName('Refactoring, 4 card notes, no match')
     await expect(refactoring).toHaveCSS('outline', `${ACCENT} solid 2px`)
     await expect(refactoring).toHaveCSS('outline-offset', '4px')
     await expect(refactoring).toHaveCSS('opacity', '1')

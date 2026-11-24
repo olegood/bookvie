@@ -207,12 +207,12 @@ export function cardNoteCount(count: number): string {
 /**
  * A box's accessible name, with the full title: "Dune, 12 card notes". During
  * a search (`matches` from `boxMatches`): "Dune, 3 of 12 card notes match",
- * "…, 1 of 12 card notes matches", "…, 1 of 1 card note matches", or
- * "Dune, no match".
+ * "…, 1 of 12 card notes matches", "…, 1 of 1 card note matches", or, for a
+ * faded box, its visible count: "Dune, 12 card notes, no match".
  */
 export function cardNoteBoxName(title: string, count: number, matches: number | null = null): string {
   if (matches === null) return `${title}, ${cardNoteCount(count)}`
-  if (matches === 0) return `${title}, no match`
+  if (matches === 0) return `${title}, ${cardNoteCount(count)}, no match`
   return `${title}, ${matches} of ${cardNoteCount(count)} ${matches === 1 ? 'matches' : 'match'}`
 }
 

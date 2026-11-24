@@ -352,7 +352,8 @@ describe('cardNoteBoxName during a search', () => {
     assert.equal(cardNoteBoxName('Deep Work', 12, 1), 'Deep Work, 1 of 12 card notes matches')
     assert.equal(cardNoteBoxName('Walden', 1, 1), 'Walden, 1 of 1 card note matches')
     assert.equal(cardNoteBoxName('Tiny Habits', 12, 12), 'Tiny Habits, 12 of 12 card notes match')
-    assert.equal(cardNoteBoxName('Refactoring', 4, 0), 'Refactoring, no match')
+    assert.equal(cardNoteBoxName('Refactoring', 4, 0), 'Refactoring, 4 card notes, no match')
+    assert.equal(cardNoteBoxName('Walden', 1, 0), 'Walden, 1 card note, no match')
   })
 
   it('reads the count with no search', () => {

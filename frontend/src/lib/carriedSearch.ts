@@ -44,8 +44,10 @@ type Held = { key: string; state: unknown; text: string }
 
 /**
  * The search text of the current history entry and its setter. `noGroups` is
- * true while the entry's view is ready with no groups (never while it loads):
- * the text is cleared then, not just hidden.
+ * true while the entry's view is settled with no groups: ready and not
+ * fetching (never while it loads, nor while a stale cached copy refetches,
+ * since that copy may predate the Book's notes). The text is cleared then,
+ * not just hidden.
  */
 export function useCarriedSearch({ noGroups }: { noGroups: boolean }): readonly [string, (text: string) => void] {
   const location = useLocation()

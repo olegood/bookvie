@@ -149,9 +149,11 @@ function Group({
  * along; Back from a box lands on its `openedFrom` and brings the box's
  * latest text out. Every other way in (the nav link, another link, Forward,
  * a reload, a typed URL, Back from another page) starts empty, and the text
- * is dropped while the view is ready with no groups. Each entry scrolls to
- * the top, then the `h1` takes focus; a body that mounts with text announces
- * its count once, as the typed path would, once the view is ready.
+ * is dropped while the view is settled (ready and not fetching) with no
+ * groups. Each entry scrolls to the top, then the `h1` takes focus; a body
+ * that mounts with text announces its count once, as the typed path would,
+ * once the view is settled, so the count is the notes as they are now, not a
+ * stale cached copy. Typing before then drops the carried announcement.
  *
  * Scoped, the "In *X*" chip sits under the `h1`; its remove button ("Remove
  * In *X*") pushes `/card-notes` with the search, and the `h1` takes focus as
@@ -183,9 +185,10 @@ export default function CardNotesPage() {
   // An empty `?book=` is unscoped.
   const bookId = params.get('book') || undefined
   const location = useLocation()
-  // The same cached query the body reads: the text is dropped while the view is ready with no groups.
+  // The same cached query the body reads: the text is dropped while the view is settled with no groups. A
+  // stale cached empty view still refetching may be older than the Book's notes, so it doesn't count.
   const view = useCardNotesView(bookId)
-  const noGroups = view.status === 'ready' && view.data.groups.length === 0
+  const noGroups = view.status === 'ready' && !view.fetching && view.data.groups.length === 0
   const [query, setQuery] = useCarriedSearch({ noGroups })
   // Each history entry gets a fresh body: a fresh view query, pile, panels, pending count and focus maps.
   return <CardNotesBody key={location.key} bookId={bookId} query={query} onQueryChange={setQuery} />
@@ -227,7 +230,11 @@ function CardNotesBody({
     boxesShown ? shelfCountLine(groups, text) : notesMatchCopy(countNotes(visibleGroups(groups, text)))
   // Read when the pause ends, so it announces the view shown then.
   const count = useSearchCount(countLine)
+  // Set once a carried search is announced, or dropped because the user typed first.
+  const carriedAnnounced = useRef(false)
   const search = (value: string) => {
+    // The typed path speaks after its own pause; a late carried line would speak a second count.
+    carriedAnnounced.current = true
     onQueryChange(value)
     count.typed(value)
   }
@@ -257,15 +264,21 @@ function CardNotesBody({
   }, [restored, ready])
 
   // A search carried into this entry is announced once, as the typed path reads it, once the view is
-  // ready with groups; the `h1` has focus by then (child effects run first). The guard is set only
-  // when the timer fires, and cleanup cancels the timer, so a StrictMode re-run announces once and an
-  // unmount before it fires announces nothing.
+  // settled (ready and not fetching) with groups, so a stale cached copy never speaks; the `h1` has focus
+  // by then (child effects run first). The guard is set only when the timer fires, and cleanup cancels
+  // the timer, so a StrictMode re-run announces once and an unmount before it fires announces nothing.
+  // A panel, the pile or the chip's push cancels a count still waiting, the carried line included.
+  const silence = () => {
+    count.cancel()
+    carriedAnnounced.current = true
+  }
   const [carried] = useState(() => query.trim() !== '')
-  const carriedLine = carried && ready && groups.length > 0 ? countLine(query) : null
-  const carriedAnnounced = useRef(false)
+  const settled = ready && !view.fetching
+  const carriedLine = carried && settled && groups.length > 0 ? countLine(query) : null
   useEffect(() => {
     if (carriedLine === null || carriedAnnounced.current) return
     const timer = setTimeout(() => {
+      if (carriedAnnounced.current) return
       carriedAnnounced.current = true
       announce('status', carriedLine)
     }, 0)
@@ -308,7 +321,7 @@ function CardNotesBody({
   })
   const openEdit = (note: BookCardNote, id: string) => {
     // A count still waiting would empty the panel's regions.
-    count.cancel()
+    silence()
     openEditFor(note, id)
   }
 
@@ -330,7 +343,7 @@ function CardNotesBody({
     const full = groups.find((group) => group.bookId === id)
     if (!full) return
     // A count still waiting would speak over the pile.
-    count.cancel()
+    silence()
     openPileFor({ bookId: full.bookId, title: full.title, notes: full.notes }, noteId)
   }
 
@@ -377,7 +390,7 @@ function CardNotesBody({
               className={styles.chipRemove}
               aria-label={scopeChipRemoveName(scope.title)}
               onClick={() => {
-                count.cancel()
+                silence()
                 // The search goes along to the wider view (Story 14.5).
                 void navigate(cardNotesPath(), { state: carryState() })
               }}
@@ -395,7 +408,7 @@ function CardNotesBody({
               <Button
                 ref={addButton}
                 onClick={() => {
-                  count.cancel()
+                  silence()
                   openAdd()
                 }}
               >

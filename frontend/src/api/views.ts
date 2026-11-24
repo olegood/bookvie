@@ -146,13 +146,22 @@ export async function fetchCardNotesView(bookId?: string): Promise<CardNotesView
   return (await response.json()) as CardNotesView
 }
 
-/** A view state, plus `missing` when the scoped Book doesn't exist. */
-export type CardNotesViewState = ViewState<CardNotesView> | { status: 'missing' }
+/**
+ * A view state, plus `missing` when the scoped Book doesn't exist, and
+ * `fetching` while any fetch is in flight, a background one included (a
+ * window-focus refetch or one after an intent). Cached data still reads `ready`
+ * while it refetches (no loading flash on Back); a view that is ready and not
+ * fetching is settled, the notes as they are now. A failed refetch ends
+ * fetching and keeps the cached copy, which then counts as settled.
+ */
+export type CardNotesViewState = (ViewState<CardNotesView> | { status: 'missing' }) & { fetching: boolean }
 
 export function useCardNotesView(bookId?: string): CardNotesViewState {
   const query = useQuery({ queryKey: cardNotesViewKey(bookId), queryFn: () => fetchCardNotesView(bookId) })
-  if (query.data === null) return { status: 'missing' }
-  return toViewState<CardNotesView>({ ...query, data: query.data })
+  // The optimistic result already reports fetching on a mount (or key change) that will refetch.
+  const fetching = query.isFetching
+  if (query.data === null) return { status: 'missing', fetching }
+  return { ...toViewState<CardNotesView>({ ...query, data: query.data }), fetching }
 }
 
 /**

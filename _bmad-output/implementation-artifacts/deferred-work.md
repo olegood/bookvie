@@ -1793,6 +1793,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-14-4-search-the-boxes.md`
   summary: During a search, a faded box shows "4 card notes" but is named "*Refactoring*, no match", so its visible count isn't in its accessible name (WCAG 2.5.3, label in name), and the comment in `frontend/src/components/CardNoteBox.tsx` that the space keeps the visible text in the name now holds only at rest and for boxes with matches. The name is the exact string the story's AC-2 and EXPERIENCE.md → Card notes shelf → Search on the shelf prescribe, and `search-boxes.spec.ts` asserts it, so a change (for example "*Refactoring*, 4 card notes, no match") is a UX decision for the Epic 14 retro, not a build fix. Low.
   evidence: Edge Case Hunter, build-auto review of Story 14.4; `cardNoteBoxName` in `frontend/src/lib/cardNotes.ts`.
+  resolved: 2026-11-24, Epic 14 retro item 98. A faded box is named "*Title*, N card notes, no match" ("*Refactoring*, 4 card notes, no match"; `cardNoteBoxName` in `frontend/src/lib/cardNotes.ts`), so its visible count is in its name. EXPERIENCE.md, UX-DR90, Story 14.4's AC-2 and `epic-14-context.md` say so, and the axe leaf in `search-boxes-automate.spec.ts` runs `label-content-name-mismatch` and expects no violation.
 
 ## Deferred from: code review of spec-14-4-search-the-boxes (2026-11-24)
 
@@ -1822,3 +1823,12 @@
   summary: Spine drift (AD-7), reconciled before the next epic. "Where the text lives" says each key scrolls to the top before the `h1` takes focus, but doesn't record the second scroll after a client-side POP (once the view is ready, and on the next frame) that Story 14.5 added against the browser's own Back scroll restoration, limited to a POP because a first load's queued frame undid a later scroll. The code is right and the spine is out of date. Low.
   evidence: Spine Check, code review of Story 14.5; ARCHITECTURE-SPINE.md line 135; `frontend/src/pages/CardNotesPage.tsx` (`restored`, `scrolledReady`).
   resolved: 2026-11-24, Epic 14 retro item 97. AD-7's "Where the text lives" records the second scroll after a client-side POP, once the view is `ready` and on the next frame, and why it runs only after a POP (`ARCHITECTURE-SPINE.md`).
+
+## Deferred from: build-auto review of spec-epic-14-retro-item-98-fresh-carried-search-and-faded-box-name (2026-11-24)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-epic-14-retro-item-98-fresh-carried-search-and-faded-box-name.md`
+  summary: Spine drift (AD-7), reconciled before the next epic. AD-7's Carried Card notes search says the carried line is announced "from the new entry's view once it is `ready`" and that "While the view has no groups, the text is dropped". Item 98 made both wait for a settled view (ready and not fetching: `useCardNotesView`'s `fetching`, `noGroups` and `carriedLine` in `frontend/src/pages/CardNotesPage.tsx`), and typing or opening Edit, Add, the pile or the chip first drops a pending carried line (`silence()`). Item 99 records the announcement rule; this entry also covers the `noGroups` half and the drop. The code is right and the spine is out of date. Low.
+  evidence: Spine Check, build-auto review of item 98; ARCHITECTURE-SPINE.md lines 137 and 140.
+- source_spec: `_bmad-output/implementation-artifacts/spec-epic-14-retro-item-98-fresh-carried-search-and-faded-box-name.md`
+  summary: Spine drift (AD-6), reconciled before the next epic. The client presentation list's search item says a carried search's one announcement reads the count line "once the view is `ready`"; since item 98 it reads it once the view is settled (ready and not fetching). The code is right and the spine is out of date. Low.
+  evidence: Spine Check, build-auto review of item 98; ARCHITECTURE-SPINE.md line 118.

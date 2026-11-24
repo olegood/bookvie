@@ -37,13 +37,13 @@ const FADE = 0.38
 const BOX_FRONT_SHADOW_DARK = 'rgba(0, 0, 0, 0.12) 0px -3px 0px 0px inset, rgba(0, 0, 0, 0.35) 0px 1px 2px 0px'
 
 /**
- * axe rules a faded box is known to fail, and only a faded box:
+ * The axe rule a faded box is known to fail, and only a faded box:
  * `color-contrast`, the documented deviation (EXPERIENCE.md → Accessibility
- * Floor → Faded Card note boxes), and `label-content-name-mismatch`, since
- * "*Title*, no match" leaves out the visible "4 card notes" (WCAG 2.5.3;
- * `deferred-work.md`, Story 14.4's build, a UX decision for the Epic 14 retro).
+ * Floor → Faded Card note boxes). Its name, "*Title*, 4 card notes, no match",
+ * holds its visible count, so `label-content-name-mismatch` passes (WCAG
+ * 2.5.3; Epic 14 retro item 98).
  */
-const FADED_BOX_GAPS = ['color-contrast', 'label-content-name-mismatch']
+const FADED_BOX_GAPS = ['color-contrast']
 
 /** Past the search pause (500 ms) and announce's tick together. */
 const PAST_THE_PAUSE_MS = 1_000
@@ -80,7 +80,7 @@ async function openPaused(page: Page, url: string, loaded: Locator): Promise<voi
 test.describe('Story 14.4 Search the boxes (automate)', () => {
   test.use({ cardNotesView: null })
 
-  test('[P1] AC-1 the searched shelf passes axe in light and dark, apart from two known gaps on the faded box: its contrast and its name', async ({
+  test('[P1] AC-1 the searched shelf passes axe in light and dark, apart from one known gap on the faded box: its contrast', async ({
     page,
     seededServer,
   }) => {
@@ -96,7 +96,11 @@ test.describe('Story 14.4 Search the boxes (automate)', () => {
       const others = await new AxeBuilder({ page }).withTags(AXE_TAGS).disableRules(FADED_BOX_GAPS).analyze()
       expect(others.violations.map(({ id, nodes }) => `${colorScheme}: ${id} (${nodes.length})`)).toEqual([])
 
-      // The two gaps: any node that fails them is in Refactoring's faded box.
+      // Every box's name holds its visible text, the faded box's count too (an experimental rule, so named).
+      const names = await new AxeBuilder({ page }).withRules(['label-content-name-mismatch']).analyze()
+      expect(names.violations.map(({ id, nodes }) => `${colorScheme}: ${id} (${nodes.length})`)).toEqual([])
+
+      // The one gap: any node that fails it is in Refactoring's faded box.
       const gaps = await new AxeBuilder({ page }).withRules(FADED_BOX_GAPS).analyze()
       for (const { id, nodes } of gaps.violations) {
         for (const { target } of nodes) {
@@ -126,7 +130,7 @@ test.describe('Story 14.4 Search the boxes (automate)', () => {
     await searchField(page).fill('s.')
     await expect(main.getByText('1 card note in 1 Book contains “s.”.', { exact: true })).toBeVisible()
     await expect(boxOfBook(page, WALDEN.id)).toHaveAccessibleName('Walden, 1 of 1 card note matches')
-    await expect(boxOfBook(page, TINY.id)).toHaveAccessibleName('Tiny Habits, no match')
+    await expect(boxOfBook(page, TINY.id)).toHaveAccessibleName('Tiny Habits, 12 card notes, no match')
 
     // An unbalanced bracket or a class is plain text: no note holds it, and nothing breaks.
     for (const query of ['(habit', '[a-z]', 'habit)*']) {
@@ -272,7 +276,7 @@ test.describe('Story 14.4 Search the boxes (automate)', () => {
     await expect(boxLinks(page)).toHaveCount(HABIT_BOXES.length)
     await searchField(page).fill('habit')
     const refactoring = boxOfBook(page, REFACTORING.id)
-    await expect(refactoring).toHaveAccessibleName('Refactoring, no match')
+    await expect(refactoring).toHaveAccessibleName('Refactoring, 4 card notes, no match')
     await expect.poll(() => resting(page)).toEqual(HABIT_STATE)
 
     await refactoring.click()
