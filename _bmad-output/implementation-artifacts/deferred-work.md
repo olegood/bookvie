@@ -1792,3 +1792,12 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-14-4-search-the-boxes.md`
   summary: Spine drift (AD-6), reconciled before the next epic. The client presentation list's `lib/cardNotes.ts`, `lib/useSearchCount.ts` item still says the client counts matching notes only for "N notes match.". In Boxes view, `status` now reads the shelf sentence from `shelfCountLine` (`frontend/src/pages/CardNotesPage.tsx`). Line 121 already allows "M of N" and the shelf sentence, so this is stale wording only. Reconcile it with the build's 14.4 entry above. Low.
   evidence: Spine Check, code review of Story 14.4; ARCHITECTURE-SPINE.md line 118.
+
+## Deferred from: build-auto review of spec-14-5-keep-the-search-when-i-open-a-box-and-come-back (2026-11-24)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-14-5-keep-the-search-when-i-open-a-box-and-come-back.md`
+  summary: Spine drift (AD-6, AD-7), reconciled before the next epic. The Capability → Architecture Map's FR-17 to FR-19 row (line 568) still lists "the carried search, Epic 14, planned", and neither the Structural Seed's `lib/` line (549) nor AD-7's carried-search bullets name the new module `frontend/src/lib/carriedSearch.ts` (`useCarriedSearch`, `carryState`). Story 14.5 built the carried search, so after it nothing in that row is planned. This closes the chain of 14.2, 14.3 and 14.4 entries above. The code is right and the spine is out of date. Low.
+  evidence: Spine Check, build-auto review of Story 14.5; ARCHITECTURE-SPINE.md lines 549 and 568.
+- source_spec: `_bmad-output/implementation-artifacts/spec-14-5-keep-the-search-when-i-open-a-box-and-come-back.md`
+  summary: The Epic 14 gate in `epics.md` (line 3416, "the existing Card notes e2e specs pass unchanged in List view") and `epic-14-context.md` ("with no edit to their files") don't allow for Story 14.5's AC-3. Removing the "In *X*" chip now carries the search into the wider view, in List view too, so `frontend/e2e/card-notes.spec.ts`'s Story 5.3 chip leaf was rewritten to expect "spice" carried (the ATDD checklist planned it). No code is wrong. Narrow the gate's wording to name 14.5's exception, for example in the Epic 14 retro or its trace and gate. Low.
+  evidence: Intent Alignment and Blind Hunter, build-auto review of Story 14.5; the ATDD checklist's "Existing leaves this story changes".

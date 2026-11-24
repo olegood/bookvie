@@ -10,6 +10,7 @@
 
 import { scrollToY } from './back-to-top.ts'
 import { recordStatus, statusTexts, watchFocusAtStatus, focusAtStatus } from './card-note-add-another.ts'
+import { editOf, noteItem } from './card-note-keys.ts'
 import {
   boxFrames,
   boxLinks,
@@ -28,7 +29,7 @@ import { expect, test } from './fixtures.ts'
 import type { Page } from '@playwright/test'
 import { afterAnnounceDelay } from './stats.ts'
 
-const [ATOMIC, , REFACTORING, TINY] = HABIT_BOXES
+const [ATOMIC, , REFACTORING, TINY, WALDEN] = HABIT_BOXES
 
 /** DESIGN.md components.card-note-box.lift and .fade (14.4). */
 const LIFT = -6
@@ -80,8 +81,7 @@ async function searchTheShelf(page: Page, url: string, text: string, line: strin
 test.describe('Story 14.5 Keep the search when I open a box and come back (ATDD)', () => {
   test.use({ cardNotesView: null, viewport: { width: 1280, height: 400 } })
 
-  // Red phase: today a box opens with an empty field.
-  test.skip('[P0] AC-1 opening a box with "habit" on the shelf opens it with "habit" applied: only its matches, in <mark>, focus on the h1, at the top, "3 notes match." once; a faded box reads "No card notes contain “habit”." and announces "0 notes match."; the URL has no search text', async ({
+  test('[P0] AC-1 opening a box with "habit" on the shelf opens it with "habit" applied: only its matches, in <mark>, focus on the h1, at the top, "3 notes match." once; a faded box reads "No card notes contain “habit”." and announces "0 notes match."; the URL has no search text', async ({
     page,
     seededServer,
   }) => {
@@ -126,8 +126,7 @@ test.describe('Story 14.5 Keep the search when I open a box and come back (ATDD)
     await expect(page).toHaveURL(cardNotesPage(server, REFACTORING.id))
   })
 
-  // Red phase: today Back from the open box shows the shelf with an empty field, scrolled where it was left.
-  test.skip('[P0] AC-2 Back from a box opened with "habit" and changed to "habits" returns to the shelf in Boxes with "habits", faded and lifted for it, focus on the h1, at the top, the shelf sentence once; a cleared field comes back empty with every box at rest', async ({
+  test('[P0] AC-2 Back from a box opened with "habit" and changed to "habits" returns to the shelf in Boxes with "habits", faded and lifted for it, focus on the h1, at the top, the shelf sentence once; a cleared field comes back empty with every box at rest', async ({
     page,
     seededServer,
   }) => {
@@ -177,8 +176,7 @@ test.describe('Story 14.5 Keep the search when I open a box and come back (ATDD)
     expect(await announced(page)).toEqual([])
   })
 
-  // Red phase: today removing the chip starts the shelf with an empty field.
-  test.skip('[P1] AC-3 removing the "In X" chip of a box entered by "See all card notes" with "habit" pushes /card-notes with "habit", faded and lifted, announced once; Back returns to the open box with an empty field', async ({
+  test('[P1] AC-3 removing the "In X" chip of a box entered by "See all card notes" with "habit" pushes /card-notes with "habit", faded and lifted, announced once; Back returns to the open box with an empty field', async ({
     page,
     seededServer,
   }) => {
@@ -212,8 +210,7 @@ test.describe('Story 14.5 Keep the search when I open a box and come back (ATDD)
     await expect(notes(page)).toHaveCount(ATOMIC.notes)
   })
 
-  // Red phase: today the nav link on the shelf keeps the field's text (the page's body isn't keyed by location.key).
-  test.skip('[P0] AC-4 the nav link from the shelf, Forward, a reload, Back from another page and a typed URL all start empty with nothing announced; the text is never in the URL, localStorage or history.state', async ({
+  test('[P0] AC-4 the nav link from the shelf, Forward, a reload, Back from another page and a typed URL all start empty with nothing announced; the text is never in the URL, localStorage or history.state', async ({
     page,
     seededServer,
   }) => {
@@ -275,8 +272,7 @@ test.describe('Story 14.5 Keep the search when I open a box and come back (ATDD)
     await expect(searchField(page)).toHaveValue('')
   })
 
-  // Red phase: today the shelf after Back has an empty field, so Refactoring is never faded.
-  test.skip('[P1] AC-6 a carried search arriving on the shelf by Back renders the boxes in their search state from their first frame, with no lift or fade animation', async ({
+  test('[P1] AC-6 a carried search arriving on the shelf by Back renders the boxes in their search state from their first frame, with no lift or fade animation', async ({
     page,
     seededServer,
   }) => {
@@ -297,5 +293,38 @@ test.describe('Story 14.5 Keep the search when I open a box and come back (ATDD)
     // The boxes were drawn for most of the sample, so "every frame" isn't a handful.
     expect(boxTrack(frames, REFACTORING.id).length).toBeGreaterThan(30)
     await expect(searchField(page)).toHaveValue('habit')
+  })
+  test('[P1] a search carried into a box whose only note is then deleted is dropped: removing the chip shows the shelf with an empty field and nothing announced', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer(HABIT_SHELF)
+    await searchTheShelf(page, cardNotesPage(server), 'woods', '1 card note in 1 Book contains “woods”.')
+    await boxOfBook(page, WALDEN.id).click()
+    await expect(chip(page, WALDEN.title)).toBeVisible()
+    await expect(searchField(page)).toHaveValue('woods')
+    await expect(page.getByRole('status')).toHaveText('1 note matches.')
+
+    const main = page.getByRole('main')
+    await editOf(noteItem(main, 'Walden note 01: a habit of the woods.')).click()
+    await page
+      .getByRole('dialog', { name: 'Edit card note', exact: true })
+      .getByRole('button', { name: 'Delete', exact: true })
+      .click()
+    await page
+      .getByRole('alertdialog', { name: 'Delete this card note?', exact: true })
+      .getByRole('button', { name: 'Delete card note', exact: true })
+      .click()
+    await expect(main.getByText('No card notes yet.', { exact: true })).toBeVisible()
+    await afterAnnounceDelay(page)
+    await recordStatus(page)
+
+    await main.getByRole('button', { name: `Remove In ${WALDEN.title}`, exact: true }).click()
+    await expect(page).toHaveURL(cardNotesPage(server))
+    await expect(boxLinks(page)).toHaveCount(HABIT_BOXES.length - 1)
+    await expect(searchField(page)).toHaveValue('')
+    await expect.poll(() => boxStates(page)).toEqual(AT_REST.filter(([id]) => id !== WALDEN.id))
+    await afterAnnounceDelay(page)
+    expect(await announced(page)).toEqual([])
   })
 })

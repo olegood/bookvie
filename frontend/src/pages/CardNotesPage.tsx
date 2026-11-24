@@ -1,5 +1,14 @@
-import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode, type RefCallback } from 'react'
-import { useNavigate, useSearchParams } from 'react-router'
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+  type RefCallback,
+} from 'react'
+import { useLocation, useNavigate, useNavigationType, useSearchParams } from 'react-router'
 import {
   useCachedCardNotesView,
   useCardNotesView,
@@ -15,6 +24,7 @@ import FailureMessage from '../components/FailureMessage.tsx'
 import PageHeading from '../components/PageHeading.tsx'
 import ViewToggle from '../components/ViewToggle.tsx'
 import { announce, clearAnnouncements } from '../lib/announce.ts'
+import { carryState, useCarriedSearch } from '../lib/carriedSearch.ts'
 import {
   boxMatches,
   cardNotesPath,
@@ -34,7 +44,7 @@ import {
   type CardNotesViewChoice,
 } from '../lib/cardNotesView.ts'
 import { COULDNT_LOAD } from '../lib/copy.ts'
-import { usePageTitle } from '../lib/page.ts'
+import { useNavigatedHere, usePageTitle } from '../lib/page.ts'
 import { useCardNoteEditFlow, useCardNoteFlow } from '../lib/useCardNoteFlow.tsx'
 import { usePileFlow } from '../lib/usePileFlow.tsx'
 import { useSearchCount } from '../lib/useSearchCount.ts'
@@ -130,11 +140,22 @@ function Group({
  * the notes whose text contains the query, ignoring case, matches in
  * `<mark>`, and hides groups without a match; about 500 ms after typing
  * pauses `status` reads "N notes match.". No match reads "No card notes
- * contain “…”.". The search lives in this page's state, never in the URL.
+ * contain “…”.".
+ *
+ * The carried search (Story 14.5; AD-7, `lib/carriedSearch.ts`): the text
+ * lives in this route component's state, never in the URL, router state or
+ * storage, and the body is keyed by `location.key`. A box link's push (with
+ * `openedFrom`, the shelf entry's key) and the chip's push carry the text
+ * along; Back from a box lands on its `openedFrom` and brings the box's
+ * latest text out. Every other way in (the nav link, another link, Forward,
+ * a reload, a typed URL, Back from another page) starts empty, and the text
+ * is dropped while the view is ready with no groups. Each entry scrolls to
+ * the top, then the `h1` takes focus; a body that mounts with text announces
+ * its count once, as the typed path would, once the view is ready.
  *
  * Scoped, the "In *X*" chip sits under the `h1`; its remove button ("Remove
- * In *X*") pushes `/card-notes`, and the `h1` takes focus as after any
- * navigation. With no notes the page reads "No card notes yet." with no
+ * In *X*") pushes `/card-notes` with the search, and the `h1` takes focus as
+ * after any navigation. With no notes the page reads "No card notes yet." with no
  * field; scoped, it adds **Add card note** (`useCardNoteFlow`, Page
  * prefilled from the Book's current page). An unknown or deleted Book in
  * `?book=` shows the not-found page.
@@ -161,19 +182,33 @@ export default function CardNotesPage() {
   const [params] = useSearchParams()
   // An empty `?book=` is unscoped.
   const bookId = params.get('book') || undefined
-  // A new scope (Remove In X, Back, Forward, a link) starts with an empty search and no pending count.
-  return <CardNotesBody key={bookId ?? ''} bookId={bookId} />
+  const location = useLocation()
+  // The same cached query the body reads: the text is dropped while the view is ready with no groups.
+  const view = useCardNotesView(bookId)
+  const noGroups = view.status === 'ready' && view.data.groups.length === 0
+  const [query, setQuery] = useCarriedSearch({ noGroups })
+  // Each history entry gets a fresh body: a fresh view query, pile, panels, pending count and focus maps.
+  return <CardNotesBody key={location.key} bookId={bookId} query={query} onQueryChange={setQuery} />
 }
 
-function CardNotesBody({ bookId }: { bookId: string | undefined }) {
+function CardNotesBody({
+  bookId,
+  query,
+  onQueryChange,
+}: {
+  bookId: string | undefined
+  /** The search text, held by the route component so it can be carried between entries. */
+  query: string
+  onQueryChange: (text: string) => void
+}) {
   const view = useCardNotesView(bookId)
   const navigate = useNavigate()
+  const location = useLocation()
   const failed = view.status === 'failed'
   const data = view.status === 'ready' ? view.data : undefined
   const groups = data?.groups ?? NO_GROUPS
   const scope = data?.scope ?? null
 
-  const [query, setQuery] = useState('')
   const searchRef = useRef<HTMLInputElement | null>(null)
   // No field without notes, so no filter either.
   const shownQuery = groups.length === 0 ? '' : query
@@ -187,14 +222,55 @@ function CardNotesBody({ bookId }: { bookId: string | undefined }) {
     writeCardNotesView(next)
   }
   const boxesShown = unscoped && shelfView === 'boxes'
-  // Read when the pause ends, so it announces the view shown then: the shelf sentence in Boxes, else "N notes match.".
-  const count = useSearchCount((text) =>
-    boxesShown ? shelfCountLine(groups, text) : notesMatchCopy(countNotes(visibleGroups(groups, text))),
-  )
+  // The count line for the view shown: the shelf sentence in Boxes, else "N notes match.".
+  const countLine = (text: string) =>
+    boxesShown ? shelfCountLine(groups, text) : notesMatchCopy(countNotes(visibleGroups(groups, text)))
+  // Read when the pause ends, so it announces the view shown then.
+  const count = useSearchCount(countLine)
   const search = (value: string) => {
-    setQuery(value)
+    onQueryChange(value)
     count.typed(value)
   }
+
+  // Each entry starts at the top, before `PageHeading`'s passive effect focuses the `h1`.
+  useLayoutEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'auto' })
+  }, [])
+  // On a client-side Back or Forward, the browser restores the entry's old scroll position right after the
+  // router has rendered it (once the popstate handlers have run), so scroll again when the view is ready and
+  // once more on the next frame, before it paints. Only then: on a first load a queued frame could undo a
+  // scroll made after the content is shown.
+  const navigationType = useNavigationType()
+  const { navigated } = useNavigatedHere()
+  const [restored] = useState(() => navigated && navigationType === 'POP')
+  const ready = view.status === 'ready'
+  const scrolledReady = useRef(false)
+  useLayoutEffect(() => {
+    if (!restored || !ready || scrolledReady.current) return
+    window.scrollTo({ top: 0, behavior: 'auto' })
+    // Marked done only when the frame runs, so a StrictMode re-run schedules it again.
+    const frame = requestAnimationFrame(() => {
+      scrolledReady.current = true
+      window.scrollTo({ top: 0, behavior: 'auto' })
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [restored, ready])
+
+  // A search carried into this entry is announced once, as the typed path reads it, once the view is
+  // ready with groups; the `h1` has focus by then (child effects run first). The guard is set only
+  // when the timer fires, and cleanup cancels the timer, so a StrictMode re-run announces once and an
+  // unmount before it fires announces nothing.
+  const [carried] = useState(() => query.trim() !== '')
+  const carriedLine = carried && ready && groups.length > 0 ? countLine(query) : null
+  const carriedAnnounced = useRef(false)
+  useEffect(() => {
+    if (carriedLine === null || carriedAnnounced.current) return
+    const timer = setTimeout(() => {
+      carriedAnnounced.current = true
+      announce('status', carriedLine)
+    }, 0)
+    return () => clearTimeout(timer)
+  }, [carriedLine])
 
   // The scoped empty view's Add card note: Page prefilled from the Book's current page.
   const scopedEmpty = scope !== null && groups.length === 0
@@ -302,7 +378,8 @@ function CardNotesBody({ bookId }: { bookId: string | undefined }) {
               aria-label={scopeChipRemoveName(scope.title)}
               onClick={() => {
                 count.cancel()
-                void navigate(cardNotesPath())
+                // The search goes along to the wider view (Story 14.5).
+                void navigate(cardNotesPath(), { state: carryState() })
               }}
             >
               <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
@@ -350,6 +427,7 @@ function CardNotesBody({ bookId }: { bookId: string | undefined }) {
                       spineColor={group.spineColor}
                       count={group.notes.length}
                       matches={boxMatches(group.notes, shownQuery)}
+                      linkState={carryState(location.key)}
                     />
                   </li>
                 ))}

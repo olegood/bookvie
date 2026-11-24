@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react'
 import { Link } from 'react-router'
+import type { CarryState } from '../lib/carriedSearch.ts'
 import { boxMatchPill, cardNoteBoxName, cardNoteCount, cardNotesPath, pileCards } from '../lib/cardNotes.ts'
 import styles from './CardNoteBox.module.css'
 
@@ -20,6 +21,8 @@ type Props = {
   count: number
   /** During a search, how many of them match (`boxMatches`); `null` with no search. */
   matches: number | null
+  /** Router state for the link's push (`carryState`), so the search goes into the box (Story 14.5). */
+  linkState: CarryState
 }
 
 /**
@@ -34,12 +37,17 @@ type Props = {
  * of the count, or fades to 0.38 when it has none. The link itself is never
  * faded or moved, so its focus ring stays full strength and its slot stays.
  */
-export default function CardNoteBox({ bookId, title, spineColor, count, matches }: Props) {
+export default function CardNoteBox({ bookId, title, spineColor, count, matches, linkState }: Props) {
   const cards = pileCards(count)
   const front: CSSProperties & Record<'--box-color', string> = { '--box-color': spineColor }
   const searched = matches === null ? '' : matches > 0 ? styles.lifted : styles.faded
   return (
-    <Link to={cardNotesPath(bookId)} className={styles.box} aria-label={cardNoteBoxName(title, count, matches)}>
+    <Link
+      to={cardNotesPath(bookId)}
+      state={linkState}
+      className={styles.box}
+      aria-label={cardNoteBoxName(title, count, matches)}
+    >
       <span className={`${styles.picture} ${searched}`.trim()}>
         {CARD_ANGLES.slice(0, cards).map((angle, i) => (
           <span key={i} className={styles.card} style={cardStyle(cards - 1 - i, angle)} />

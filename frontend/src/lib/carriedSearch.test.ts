@@ -7,10 +7,7 @@
 // dropped. The decision runs during render: never in an effect, never by
 // writing a ref in render.
 //
-// Red phase: `lib/carriedSearch.ts` doesn't exist yet. It is imported by a
-// computed path, so `tsc -b` and `node --test` load this file today, and a
-// missing module stands in as a hook that never carries anything. The build
-// switches to a static import once the module exists.
+// The module is imported statically and passed to the probe as `CarriedSearch`.
 
 import assert from 'node:assert/strict'
 import { existsSync, readFileSync } from 'node:fs'
@@ -18,8 +15,9 @@ import { describe, test } from 'node:test'
 import { createElement, useLayoutEffect } from 'react'
 import { MemoryRouter, useLocation, useNavigate, type NavigateFunction } from 'react-router'
 import { strictRoot } from '../test-support/strictRoot.ts'
+import { carryState, useCarriedSearch } from './carriedSearch.ts'
 
-/** What the page needs from `lib/carriedSearch.ts` (the build may rename it; this test follows). */
+/** The shape of `lib/carriedSearch.ts` that the page uses. */
 type CarriedSearch = {
   /**
    * The search text of this history entry and its setter. `noGroups` is true
@@ -30,16 +28,11 @@ type CarriedSearch = {
   carryState: (openedFrom?: string) => unknown
 }
 
-const MODULE = './carriedSearch.ts'
-const SOURCE = new URL(MODULE, import.meta.url)
+const SOURCE = new URL('./carriedSearch.ts', import.meta.url)
 
-/** The module, or a stand-in that never carries anything while it doesn't exist (red phase). */
+/** The module, as the page uses it. */
 async function load(): Promise<CarriedSearch> {
-  const loaded = (await import(MODULE).catch(() => null)) as Partial<CarriedSearch> | null
-  return {
-    useCarriedSearch: loaded?.useCarriedSearch ?? (() => ['', () => {}] as const),
-    carryState: loaded?.carryState ?? (() => ({})),
-  }
+  return { useCarriedSearch, carryState }
 }
 
 /** One committed render of the probe: the entry it showed and the text the hook gave it. */
@@ -106,7 +99,7 @@ function keyOf(commits: readonly Commit[]): string {
 }
 
 describe('Story 14.5 carried search decision (ATDD)', () => {
-  test.skip('[P0] AC-5 under <StrictMode> the text is kept only on a PUSH carrying the marker and on a POP landing on the openedFrom of the entry just left; every other key change starts empty; decided in render; dropped while the view has no groups', async () => {
+  test('[P0] AC-5 under <StrictMode> the text is kept only on a PUSH carrying the marker and on a POP landing on the openedFrom of the entry just left; every other key change starts empty; decided in render; dropped while the view has no groups', async () => {
     const mod = await load()
     const shelf = await mount(mod, { pathname: '/card-notes' })
     try {

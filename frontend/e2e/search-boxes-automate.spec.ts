@@ -277,11 +277,12 @@ test.describe('Story 14.4 Search the boxes (automate)', () => {
 
     await refactoring.click()
 
-    // The field's text on arrival is Story 14.5's (the carried search), so it isn't asserted here.
+    // The search goes into the box (Story 14.5): no note matches, and the pile stays reachable.
     await expect(page).toHaveURL(cardNotesPage(server, REFACTORING.id))
     const main = page.getByRole('main')
     await expect(main.getByRole('heading', { level: 1, name: 'Card notes', exact: true })).toBeFocused()
     await expect(main.getByText('In Refactoring', { exact: true })).toBeVisible()
-    await expect(main.getByText('RF note 01: a line worth keeping.', { exact: true })).toBeVisible()
+    await expect(main.getByText('No card notes contain “habit”.', { exact: true })).toBeVisible()
+    await expect(main.getByRole('button', { name: 'Go through as a pile', exact: true })).toBeVisible()
   })
 })

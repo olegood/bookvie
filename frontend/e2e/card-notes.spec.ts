@@ -494,7 +494,7 @@ test.describe('Story 5.3 follow-ups', () => {
     await expect(main.getByRole('heading', { level: 1, name: 'Card notes', exact: true })).toBeFocused()
   })
 
-  test('[P1] AC-5 removing the chip while searching starts the wider view with an empty search', async ({
+  test('[P1] AC-5 removing the chip while searching carries the search into the wider view (Story 14.5)', async ({
     page,
     seededServer,
   }) => {
@@ -506,9 +506,9 @@ test.describe('Story 5.3 follow-ups', () => {
 
     await main.getByRole('button', { name: 'Remove In Dune', exact: true }).click()
     await expect(page).toHaveURL(cardNotesPage(server))
-    await expect(searchField(main)).toHaveValue('')
-    await expect(groupHeadings(page)).toHaveText(['Dune', 'Neuromancer', 'The Left Hand of Darkness'])
-    await expect(notes(main)).toHaveCount(7)
+    await expect(searchField(main)).toHaveValue('spice')
+    await expect(groupHeadings(page)).toHaveText(['Dune'])
+    await expect(notes(main)).toHaveCount(1)
   })
 
   test('[P1] AC-5 an unknown ?book= shows the not-found page', async ({ page, seededServer }) => {

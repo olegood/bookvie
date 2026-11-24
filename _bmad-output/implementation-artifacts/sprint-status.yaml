@@ -146,7 +146,7 @@ development_status:
   14-2-see-my-card-notes-as-boxes: done
   14-3-see-the-open-box-in-its-book-s-color: done
   14-4-search-the-boxes: done
-  14-5-keep-the-search-when-i-open-a-box-and-come-back: backlog
+  14-5-keep-the-search-when-i-open-a-box-and-come-back: review
   epic-14-retrospective: optional
 action_items:
   - id: "epic-1-retro-item-1-run-an-epic-1-trace-and-gate-against-tr7"
