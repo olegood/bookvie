@@ -1768,3 +1768,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-14-3-see-the-open-box-in-its-book-s-color.md`
   summary: Story 14.3's AC-1 in `epics.md` says the open box of a Book with no notes is "reached from Book detail", but Book detail links "See all card notes" only when the Book has notes (`frontend/src/pages/CardNotesBlock.tsx`, the `notes.length > 0` branch; `card-notes.spec.ts:571`). The ATDD leaf reaches that open box through the Main book card's bare "See card notes", the same `/card-notes?book=<id>`. Fix the AC's wording ("reached from the Main book card") when `epics.md` is next touched, for example in the Epic 14 retro. The wording predates the story; no code is wrong. Low.
   evidence: the ATDD checklist's "Wording for the review"; Intent Alignment and Blind Hunter, build-auto review of Story 14.3.
+
+## Deferred from: code review of spec-14-3-see-the-open-box-in-its-book-s-color (2026-11-24)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-14-3-see-the-open-box-in-its-book-s-color.md`
+  summary: A near-white spine on the light page, or a near-black one on the dark page, makes the open box strip nearly invisible. DESIGN.md → Components → Open box strip says "No edge, no label, no shadow. Same in both themes", and `spine_color` can be any hex color, so for such a Book only the "In *X*" chip tells Oleg which box he is in. The box front handles near-white with its shadow (DESIGN.md → Card note box → Front); the strip has nothing. Decide in the Epic 14 retro whether to accept this in DESIGN.md or give the strip an edge, like the read spine's edge line. No code is wrong against today's DESIGN.md. Low.
+  evidence: Blind Hunter, code review of Story 14.3; DESIGN.md lines 813 and 909; the ATDD checklist's "near-white color" follow-up.

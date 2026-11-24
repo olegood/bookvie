@@ -3,7 +3,7 @@ title: "Story 14.3: See the open box in its Book's color"
 type: 'feature'
 created: '2026-11-24'
 baseline_revision: '7d0ddff9668588776b378b0b8d363cb1f51df40d'
-status: 'in-review'
+status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -110,6 +110,28 @@ deferred:
   - `[low]` `[reject]` (blind) The `oversized` warning is unexplained. — It is the template's mechanical size rule (over ~1600 tokens); the fix edits this spec.
   - `[false]` `[reject]` (blind) The strip's "directly under the app shell" relies on `main` having no padding, with no warning. — AC-1's leaf asserts `strip.top === headerBottom`, so padding added to `main` would fail the suite.
   - Edge Case Hunter and Verification Gap found nothing.
+
+### Review Findings
+
+Code review, 2026-11-24, in a new session (`bmad-code-review`), on `git diff 7d0ddff..05e5f35`. The five layers were Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor and Spine Check. They raised 16 findings: 1 `decision-needed` (rejected by Oleg, below), 0 `patch`, 3 `defer` (two of them already recorded by the build) and 12 more rejected (11 lines below, one shared by both layers). There was no patch, so the review needs no full-check re-run. Edge Case Hunter and Verification Gap found nothing; Verification Gap confirmed that both `open-box.spec.ts` and `open-box-unscoped.spec.ts` run in `check:e2e` (`playwright.config.ts` has `testDir: 'e2e'` and no `testIgnore`). Spine Check found that AD-6 (client presentation), AD-7, AD-8, AD-9, AD-15, AD-17, AD-21 and the Structural Seed match. The Acceptance Auditor found no AC or constraint violation, and `--open-box-strip-height: 8px;` matches DESIGN.md `components.open-box-strip.height` character for character. The spec has no manual AC.
+
+- [x] [Review][Defer] A near-white spine on the light page, or a near-black one on the dark page, makes the open box strip nearly invisible [DESIGN.md → Components → Open box strip] — deferred: DESIGN.md line 813 says "No edge, no label, no shadow. Same in both themes", and `spine_color` is any hex color (`is_hex_color`), so such a Book's open box looks like any other page apart from its "In *X*" chip. The box front handles near-white with its shadow (DESIGN.md line 909); the strip has nothing. Whether to accept that or give the strip an edge is a DESIGN.md decision for the Epic 14 retro, not this story. The ATDD checklist's "near-white color" follow-up only observes it. (blind, `low`)
+- [x] [Review][Defer] Spine drift (AD-6): the Capability → Architecture Map still calls the open box strip "Epic 14, planned" [ARCHITECTURE-SPINE.md:556,568] — deferred: already in `deferred-work.md` from the build's review. (spine)
+- [x] [Review][Defer] AC-1's "reached from Book detail" names a route that doesn't exist for a Book with no notes [epics.md, Story 14.3 AC-1] — deferred: already in `deferred-work.md` from the build's review. (auditor)
+
+**Rejected:**
+- (blind, `low`, decision: keep as is, Oleg, 2026-11-24) The `h1` moves down 8px when a box's view finishes loading. `useCardNotesView` is a plain `useQuery`, so the first open of a box (and Try again) shows the loading frame with the `h1` alone at 84px; once the view is `ready` the strip comes in above `.page` and the `h1` moves to 92px, in the same frame as the chip, toolbar and notes appear. Reserving the strip's height while loading would go against DESIGN.md's "only once the view has loaded" and add a branch; on localhost the move is barely visible. [frontend/src/pages/CardNotesPage.tsx:262]
+- (blind, `false`) "After Remove In Candide the old scoped page with its strip stays on screen for about 300 ms, on an unscoped URL." The router has no loaders, lazy routes or Suspense (`main.tsx`), and `useCardNotesView` is a plain `useQuery`. The new `CardNotesBody` (keyed `''`) has `scope === null`, so it can never render a strip; what lingers is the old scoped tree until React Router's transition commits. This change doesn't cause the lag, and the leaf checks the rule the spec names: once the unscoped page has rendered, there is no strip.
+- (blind, `false`) "The unscoped null checks are one-shot, and a strip appearing a tick later would pass." Unscoped, `scope` is `null` in every view state (the server sends a scope only for `?book=`), so no later render can add a strip. The positive leaves in `open-box.spec.ts` catch a strip with no height or fill.
+- (blind, `false`) "No fallback when `scope.spineColor` isn't a usable color." The server stores only hex colors (`is_hex_color` in `domain/book_fields.py:181` and `intents/set_spine_color.py:46`), so an empty or malformed value can't reach the strip.
+- (blind, `false`) "The doc comment and the CSS comment restate 8px and will drift from the token." Both match the token and DESIGN.md today. Drift needs a DESIGN.md height change, which would also change DESIGN.md's own prose ("An 8px band", line 813) that the comments quote.
+- (blind, `false`) "`stripStyle` checks `stripColor === null` twice." The variable keeps the custom property typed without an `as CSSProperties` cast. No caller or rule is harmed.
+- (blind, `false`) "The deferred entries cite the spine by line number only." The spine entry in `deferred-work.md` quotes its anchors: "the Capability → Architecture Map's FR-17 to FR-19 row" and its lead-in.
+- (blind + auditor, `low`) `open-box-unscoped.spec.ts` isn't in the spec's Tasks, Code Map or Verification commands. The fix edits this spec. The Auto Run Result and the Review Triage Log name the file, and `npm run check` runs it.
+- (blind, `low`) The unscoped leaf checks two behaviors under one "AC-1" title. Splitting it would only sharpen a failure message, and several leaves per AC is the repo's norm. The fix is a restructure, not a correction.
+- (auditor, `false`) "The unscoped leaf only half-covers the 'remove the chip' follow-up (Back isn't checked)." The ATDD checklist's follow-up stays unchecked for `bmad-testarch-automate`. Nothing marks it done.
+- (auditor, `low`) The Code Map calls `stripColor` "optional" while it is required and nullable. Only the wording differs; the fix edits this spec.
+- (auditor, `false`) The spine-drift deferral's marker. The auditor listed it as compliant; it isn't a defect.
 
 ## Design Notes
 
