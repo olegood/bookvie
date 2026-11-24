@@ -27,7 +27,7 @@ import {
   writeCatalogSortReversed,
   type CatalogSortKey,
 } from '../lib/catalogSort.ts'
-import { readCatalogView, writeCatalogView, type CatalogViewChoice } from '../lib/catalogView.ts'
+import { CATALOG_VIEWS, readCatalogView, writeCatalogView, type CatalogViewChoice } from '../lib/catalogView.ts'
 import { COULDNT_LOAD } from '../lib/copy.ts'
 import { prefersReducedMotion } from '../lib/motion.ts'
 import { usePageTitle } from '../lib/page.ts'
@@ -40,6 +40,11 @@ import CatalogTiles from './CatalogTiles.tsx'
 import NewBookPanel from './NewBookPanel.tsx'
 import SearchTitles from './SearchTitles.tsx'
 import styles from './CatalogPage.module.css'
+
+const CATALOG_VIEW_LABELS: Record<CatalogViewChoice, string> = { bookcase: 'Bookcase', list: 'List', tiles: 'Tiles' }
+
+/** The Catalog view toggle's options: Bookcase · List · Tiles. */
+const CATALOG_VIEW_OPTIONS = CATALOG_VIEWS.map((value) => ({ value, label: CATALOG_VIEW_LABELS[value] }))
 
 export const EMPTY_SHELF = 'Your shelf is empty. Add your first book.'
 const NO_FILTER_MATCH = 'No books match these filters.'
@@ -330,7 +335,9 @@ export default function CatalogPage() {
       <div className={styles.toolbar}>
         {!empty && <SearchTitles value={query} onChange={search} inputRef={searchRef} />}
         {!empty && <SortSelect value={sortKey} onChange={chooseSort} reversed={reversed} onReverse={reverse} />}
-        {!empty && <ViewToggle value={catalogView} onChange={chooseView} />}
+        {!empty && (
+          <ViewToggle label="Catalog view" options={CATALOG_VIEW_OPTIONS} value={catalogView} onChange={chooseView} />
+        )}
         <Button ref={newBookRef} variant="primary" className={styles.newBook} onClick={openPanel}>
           New book
         </Button>

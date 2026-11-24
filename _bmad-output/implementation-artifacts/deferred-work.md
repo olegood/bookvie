@@ -1750,3 +1750,12 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-14-1-carry-each-book-s-spine-color-in-the-card-notes-view.md`
   summary: `frontend/e2e/back-to-top.spec.ts:290` ("[P2] AC-8 … short window") failed once in Story 14.1's full `npm run check`, on `/stats`, with a scroll height of 0. It looks like a timing flake: the page wasn't tall yet when the test scrolled. It passed 30 of 30 with `--repeat-each=3`, and the next full run exited 0. The test predates this story, and 14.1 doesn't touch `/stats`. If it fails again, wait for the page's content before scrolling. Low.
   evidence: the spec's Auto Run Result, Verification and Residual risks (the build's `npm run check` after its patches); Blind Hunter, code review of Story 14.1.
+
+## Deferred from: build-auto review of spec-14-2-see-my-card-notes-as-boxes (2026-11-24)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-14-2-see-my-card-notes-as-boxes.md`
+  summary: Spine drift (AD-6, AD-15), reconciled before the next epic. The Capability → Architecture Map's lead-in still says "except FR-19's Boxes view, which Epic 14 plans", and its FR-17 to FR-19 row still lists Boxes · List with `lib/cardNotesView` and `components/CardNoteBox` as "Epic 14, planned". Story 14.2 built them. The code is right and the spine is out of date. Low.
+  evidence: Spine Check, build-auto review of Story 14.2; `frontend/src/lib/cardNotesView.ts`, `frontend/src/components/CardNoteBox.tsx`.
+- source_spec: `_bmad-output/implementation-artifacts/spec-14-2-see-my-card-notes-as-boxes.md`
+  summary: Spine drift (AD-6), reconciled before the next epic. The Structural Seed's `components/` line ties `ViewToggle` to Catalog's toolbar, and the FR-17 to FR-19 row doesn't list it for the Card notes page. Story 14.2 made `ViewToggle` generic (`label`, `options`), and both Catalog and the Card notes toolbar use it. Low.
+  evidence: Spine Check, build-auto review of Story 14.2; `frontend/src/components/ViewToggle.tsx`, `frontend/src/pages/CatalogPage.tsx`, `frontend/src/pages/CardNotesPage.tsx`.

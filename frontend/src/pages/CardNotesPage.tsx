@@ -9,11 +9,14 @@ import {
 } from '../api/index.ts'
 import BackToTop from '../components/BackToTop.tsx'
 import Button from '../components/Button.tsx'
+import CardNoteBox from '../components/CardNoteBox.tsx'
 import CardNoteItem from '../components/CardNoteItem.tsx'
 import FailureMessage from '../components/FailureMessage.tsx'
 import PageHeading from '../components/PageHeading.tsx'
+import ViewToggle from '../components/ViewToggle.tsx'
 import { announce, clearAnnouncements } from '../lib/announce.ts'
 import {
+  cardNotesCountLine,
   cardNotesPath,
   NO_CARD_NOTES,
   noNotesMatchCopy,
@@ -23,6 +26,12 @@ import {
   scopeChipRemoveName,
   SEARCH_CARD_NOTES,
 } from '../lib/cardNotes.ts'
+import {
+  CARD_NOTES_VIEWS,
+  readCardNotesView,
+  writeCardNotesView,
+  type CardNotesViewChoice,
+} from '../lib/cardNotesView.ts'
 import { COULDNT_LOAD } from '../lib/copy.ts'
 import { usePageTitle } from '../lib/page.ts'
 import { useCardNoteEditFlow, useCardNoteFlow } from '../lib/useCardNoteFlow.tsx'
@@ -33,6 +42,10 @@ import SearchTitles from './SearchTitles.tsx'
 import styles from './CardNotesPage.module.css'
 
 const NO_GROUPS: readonly CardNotesGroup[] = []
+
+/** The Card notes view toggle's options: Boxes · List. */
+const CARD_NOTES_VIEW_LABELS: Record<CardNotesViewChoice, string> = { boxes: 'Boxes', list: 'List' }
+const CARD_NOTES_VIEW_OPTIONS = CARD_NOTES_VIEWS.map((value) => ({ value, label: CARD_NOTES_VIEW_LABELS[value] }))
 
 /** The groups with only the notes matching `query`; a group without a match is left out. */
 function visibleGroups(groups: readonly CardNotesGroup[], query: string): readonly CardNotesGroup[] {
@@ -124,6 +137,12 @@ function Group({
  * field; scoped, it adds **Add card note** (`useCardNoteFlow`, Page
  * prefilled from the Book's current page). An unknown or deleted Book in
  * `?book=` shows the not-found page.
+ *
+ * Unscoped with notes (Story 14.2; EXPERIENCE.md → Card notes shelf), the
+ * toolbar adds the remembered Boxes · List toggle (`lib/cardNotesView.ts`,
+ * Boxes by default) and, in Boxes view, the count line. Boxes view shows one
+ * `CardNoteBox` per group, in the groups' order; List view is the page above.
+ * Until Story 14.4, text in the field shows the List's results in Boxes view.
  */
 export default function CardNotesPage() {
   const [params] = useSearchParams()
@@ -148,6 +167,16 @@ function CardNotesBody({ bookId }: { bookId: string | undefined }) {
   const shown = visibleGroups(groups, shownQuery)
 
   const count = useSearchCount((text) => notesMatchCopy(countNotes(visibleGroups(groups, text))))
+
+  // The remembered Boxes · List choice (unscoped only). A press switches in place and stays silent.
+  const unscoped = bookId === undefined
+  const [shelfView, setShelfView] = useState<CardNotesViewChoice>(readCardNotesView)
+  const chooseView = (next: CardNotesViewChoice) => {
+    setShelfView(next)
+    writeCardNotesView(next)
+  }
+  // Staging (UX-DR92, until Story 14.4): text in the field shows the List's results in Boxes view.
+  const boxesShown = unscoped && shelfView === 'boxes' && query.trim() === ''
   const search = (value: string) => {
     setQuery(value)
     count.typed(value)
@@ -281,8 +310,32 @@ function CardNotesBody({ bookId }: { bookId: string | undefined }) {
           </div>
         ) : (
           <>
-            <SearchTitles label={SEARCH_CARD_NOTES} value={query} onChange={search} inputRef={searchRef} />
-            {shown.length === 0 ? (
+            <div className={styles.toolbar}>
+              <SearchTitles label={SEARCH_CARD_NOTES} value={query} onChange={search} inputRef={searchRef} />
+              {unscoped && (
+                <ViewToggle
+                  label="Card notes view"
+                  options={CARD_NOTES_VIEW_OPTIONS}
+                  value={shelfView}
+                  onChange={chooseView}
+                />
+              )}
+              {boxesShown && <p className={styles.countLine}>{cardNotesCountLine(groups)}</p>}
+            </div>
+            {boxesShown ? (
+              <ul className={styles.shelf} role="list">
+                {groups.map((group) => (
+                  <li key={group.bookId}>
+                    <CardNoteBox
+                      bookId={group.bookId}
+                      title={group.title}
+                      spineColor={group.spineColor}
+                      count={group.notes.length}
+                    />
+                  </li>
+                ))}
+              </ul>
+            ) : shown.length === 0 ? (
               <>
                 <p className={styles.none}>{noNotesMatchCopy(query)}</p>
                 {/* Scoped to one Book with notes: its pile stays reachable while the search matches nothing. */}

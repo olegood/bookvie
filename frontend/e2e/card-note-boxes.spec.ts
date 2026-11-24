@@ -5,8 +5,7 @@
 // Book's scoped page; a count line sums the notes. List is the page as it was.
 // Until Story 14.4, text in the search shows the List's results in Boxes view
 // (UX-DR92's staging). fixtures.ts stores "list" before every other spec; the
-// specs here turn that off, except the two about the List itself. Red phase:
-// every leaf is `test.skip` until the build activates it.
+// specs here turn that off, except the two about the List itself.
 
 import { readFileSync } from 'node:fs'
 import type { Page } from '@playwright/test'
@@ -74,8 +73,7 @@ async function spineColors(page: Page, url: string): Promise<Map<string, string>
 test.describe('Story 14.2 See my card notes as boxes, the List view (ATDD)', () => {
   // No test.use here: the default fixture stores "list", as for every Card notes spec written before Epic 14.
 
-  // Red phase: skipped until the build adds the Card notes view toggle.
-  test.skip('[P0] AC-1 the default fixture stores "list", so the existing Card notes specs open the List view unchanged', async ({
+  test('[P0] AC-1 the default fixture stores "list", so the existing Card notes specs open the List view unchanged', async ({
     page,
     seededServer,
   }) => {
@@ -90,8 +88,7 @@ test.describe('Story 14.2 See my card notes as boxes, the List view (ATDD)', () 
     expect(await storedChoice(page, VIEW_KEY)).toBe('list')
   })
 
-  // Red phase: skipped until the build adds the Card notes view toggle.
-  test.skip('[P0] AC-4 List view is the unscoped page as before: groups, search with highlights and "N notes match.", Edit and "Go through as a pile"', async ({
+  test('[P0] AC-4 List view is the unscoped page as before: groups, search with highlights and "N notes match.", Edit and "Go through as a pile"', async ({
     page,
     seededServer,
   }) => {
@@ -121,8 +118,7 @@ test.describe('Story 14.2 See my card notes as boxes, the List view (ATDD)', () 
 test.describe('Story 14.2 See my card notes as boxes (ATDD)', () => {
   test.use({ cardNotesView: null })
 
-  // Red phase: skipped until the build adds the Boxes view and lib/cardNotesView.ts.
-  test.skip('[P0] AC-2 with nothing stored, an empty or junk value, or storage whose read throws, the page opens in Boxes; a stored "list" opens List', async ({
+  test('[P0] AC-2 with nothing stored, an empty or junk value, or storage whose read throws, the page opens in Boxes; a stored "list" opens List', async ({
     page,
     seededServer,
   }) => {
@@ -166,8 +162,7 @@ test.describe('Story 14.2 See my card notes as boxes (ATDD)', () => {
     await throwing.close()
   })
 
-  // Red phase: skipped until the build adds the toolbar's toggle and count line.
-  test.skip('[P0] AC-3 the toolbar holds Search card notes, the Card notes view toggle and the count line; List switches in place, keeps focus and text, stays silent, and is stored', async ({
+  test('[P0] AC-3 the toolbar holds Search card notes, the Card notes view toggle and the count line; List switches in place, keeps focus and text, stays silent, and is stored', async ({
     page,
     seededServer,
   }) => {
@@ -270,8 +265,7 @@ test.describe('Story 14.2 See my card notes as boxes (ATDD)', () => {
     expect(texts.filter((text) => /cardNotesView/i.test(text))).toEqual([])
   })
 
-  // Red phase: skipped until the build adds components/CardNoteBox and the pile step in lib/cardNotes.ts.
-  test.skip('[P1] AC-5 one box per Book with notes, in the groups\' order, with 1, 3, 3, 5, 5 and 7 cards, its label, and a link named "Title, N card notes"', async ({
+  test('[P1] AC-5 one box per Book with notes, in the groups\' order, with 1, 3, 3, 5, 5 and 7 cards, its label, and a link named "Title, N card notes"', async ({
     page,
     seededServer,
   }) => {
@@ -323,8 +317,7 @@ test.describe('Story 14.2 See my card notes as boxes (ATDD)', () => {
     await expect(page.getByRole('main').getByText('In Beloved', { exact: true })).toBeVisible()
   })
 
-  // Red phase: skipped until the build adds the shelf grid and the box's front, label and cards.
-  test.skip('[P1] AC-6 a left-aligned grid of 216 × 196 boxes in 4, 5 and 5 columns; the front in the exact spine color, the label strip and the turned paper cards, the same in dark', async ({
+  test('[P1] AC-6 a left-aligned grid of 216 × 196 boxes in 4, 5 and 5 columns; the front in the exact spine color, the label strip and the turned paper cards, the same in dark', async ({
     page,
     seededServer,
   }) => {
@@ -415,8 +408,7 @@ test.describe('Story 14.2 See my card notes as boxes (ATDD)', () => {
     expect(colors.get(PILE_BOXES[0].id)).toBe(rgbOf(ANATHEM_COLOR))
   })
 
-  // Red phase: skipped until the build adds the box's focus ring and forced-colors rules.
-  test.skip('[P1] AC-7 a focused box shows a 2px accent ring 4px out with rounded.lg corners in both themes, no hover change, and system colors under forced colors', async ({
+  test('[P1] AC-7 a focused box shows a 2px accent ring 4px out with rounded.lg corners in both themes, no hover change, and system colors under forced colors', async ({
     page,
     seededServer,
   }) => {
@@ -471,8 +463,7 @@ test.describe('Story 14.2 See my card notes as boxes (ATDD)', () => {
     await expect(first).not.toHaveCSS('outline-color', ACCENT)
   })
 
-  // Red phase: skipped until the build adds the count line (totals summed in lib/cardNotes.ts).
-  test.skip('[P1] AC-8 with an empty search the toolbar ends with "55 card notes in 6 Books" in meta/ink-tertiary, not a live region; no toggle or count line while loading, under "Couldn\'t load" or in List', async ({
+  test('[P1] AC-8 with an empty search the toolbar ends with "55 card notes in 6 Books" in meta/ink-tertiary, not a live region; no toggle or count line while loading, under "Couldn\'t load" or in List', async ({
     page,
     seededServer,
   }) => {
@@ -517,8 +508,7 @@ test.describe('Story 14.2 See my card notes as boxes (ATDD)', () => {
     await expect(line).toHaveCount(0)
   })
 
-  // Red phase: skipped until the build adds the toggle and the count line (the witness below needs both).
-  test.skip('[P1] AC-9 with no card notes at all the page reads "No card notes yet." with no toggle, no count line and no boxes', async ({
+  test('[P1] AC-9 with no card notes at all the page reads "No card notes yet." with no toggle, no count line and no boxes', async ({
     page,
     seededServer,
   }) => {
@@ -548,8 +538,7 @@ test.describe('Story 14.2 See my card notes as boxes (ATDD)', () => {
     await expect(searchField(page)).toHaveCount(0)
   })
 
-  // Red phase: skipped until the build adds the Boxes view and its staging rule (UX-DR92).
-  test.skip('[P1] AC-10 until Story 14.4, text in the search shows the List\'s results and "N notes match." in Boxes view, hides the count line, and blank brings the boxes back', async ({
+  test('[P1] AC-10 until Story 14.4, text in the search shows the List\'s results and "N notes match." in Boxes view, hides the count line, and blank brings the boxes back', async ({
     page,
     seededServer,
   }) => {
@@ -590,8 +579,7 @@ test.describe('Story 14.2 See my card notes as boxes (ATDD)', () => {
     )
   })
 
-  // Red phase: skipped until the build adds the Boxes view (Back to top must keep working in it).
-  test.skip('[P1] AC-11 Back to top shows past one window height in Boxes and in List view, and moves focus to Search card notes', async ({
+  test('[P1] AC-11 Back to top shows past one window height in Boxes and in List view, and moves focus to Search card notes', async ({
     page,
     seededServer,
   }) => {
@@ -618,8 +606,7 @@ test.describe('Story 14.2 See my card notes as boxes (ATDD)', () => {
     }
   })
 
-  // Red phase: skipped until the build styles the box from DESIGN.md's components block.
-  test.skip("[P2] AC-12 the box, the toggle and the count line take DESIGN.md's component values, and tokens.css copies any of them character for character", async ({
+  test("[P2] AC-12 the box, the toggle and the count line take DESIGN.md's component values, and tokens.css copies any of them character for character", async ({
     page,
     seededServer,
   }) => {
@@ -651,5 +638,19 @@ test.describe('Story 14.2 See my card notes as boxes (ATDD)', () => {
     for (const [, component, key, value] of copied) {
       expect(value.trim(), `--${component}-${key}`).toBe(designComponentValue(component, key))
     }
+  })
+
+  test('[P2] AC-6 an explicit Dark theme gives the box front its dark shadow', async ({ page, seededServer }) => {
+    const server = await seededServer(PILE_SHELF)
+    await page.emulateMedia({ colorScheme: 'light' })
+    await page.goto(cardNotesPage(server))
+    const anathem = box(page, boxName('Anathem', 21))
+    await expect(anathem).toBeVisible()
+
+    await page.getByRole('group', { name: 'Theme' }).getByRole('button', { name: 'Dark', exact: true }).click()
+    await expect(page.locator('body')).toHaveCSS('background-color', PAGE_DARK)
+
+    const look = await boxLook(anathem, 'Anathem', noteCount(21))
+    expect(look.front?.boxShadow).toBe(BOX_FRONT_SHADOW_DARK)
   })
 })

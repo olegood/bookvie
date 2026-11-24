@@ -185,3 +185,33 @@ export const PILE_AT_FIRST = 'This is the first note.'
 
 /** Why Next is `aria-disabled` at the last note. */
 export const PILE_AT_LAST = 'This is the last note.'
+
+// The Card notes shelf (Story 14.2; EXPERIENCE.md → Card notes shelf): one
+// box per Book with notes. The pile step, the count copy and the box's name
+// live here (AR63), so the page only calls them.
+
+/** How many cards a box's pile shows for `count` notes: 1 → 1, 2–5 → 3, 6–20 → 5, 21+ → 7; none at 0. */
+export function pileCards(count: number): number {
+  if (count <= 0) return 0
+  if (count === 1) return 1
+  if (count <= 5) return 3
+  if (count <= 20) return 5
+  return 7
+}
+
+/** A box's count: "12 card notes", "1 card note". */
+export function cardNoteCount(count: number): string {
+  return count === 1 ? '1 card note' : `${count} card notes`
+}
+
+/** A box's accessible name, with the full title: "Dune, 12 card notes". */
+export function cardNoteBoxName(title: string, count: number): string {
+  return `${title}, ${cardNoteCount(count)}`
+}
+
+/** The count line, summed over the loaded groups: "139 card notes in 9 Books", "1 card note in 1 Book". */
+export function cardNotesCountLine(groups: readonly { notes: readonly unknown[] }[]): string {
+  const notes = groups.reduce((total, group) => total + group.notes.length, 0)
+  const books = groups.length === 1 ? '1 Book' : `${groups.length} Books`
+  return `${cardNoteCount(notes)} in ${books}`
+}

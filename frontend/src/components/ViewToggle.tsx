@@ -1,26 +1,30 @@
-import { CATALOG_VIEWS, type CatalogViewChoice } from '../lib/catalogView.ts'
 import styles from './ViewToggle.module.css'
 
-const LABELS: Record<CatalogViewChoice, string> = { bookcase: 'Bookcase', list: 'List', tiles: 'Tiles' }
-
-type Props = {
-  value: CatalogViewChoice
-  onChange: (value: CatalogViewChoice) => void
+type Props<T extends string> = {
+  /** The group's accessible name: "Catalog view", "Card notes view". */
+  label: string
+  /** The options in order, each its value and its visible text. */
+  options: readonly { value: T; label: string }[]
+  value: T
+  onChange: (value: T) => void
 }
 
-/** The Bookcase · List · Tiles segmented control, with the theme toggle's look. */
-export default function ViewToggle({ value, onChange }: Props) {
+/**
+ * A segmented view control (Catalog's Bookcase · List · Tiles, Card notes'
+ * Boxes · List), with the theme toggle's look: text only, `aria-pressed`.
+ */
+export default function ViewToggle<T extends string>({ label, options, value, onChange }: Props<T>) {
   return (
-    <div role="group" aria-label="Catalog view" className={styles.group}>
-      {CATALOG_VIEWS.map((option) => (
+    <div role="group" aria-label={label} className={styles.group}>
+      {options.map((option) => (
         <button
-          key={option}
+          key={option.value}
           type="button"
           className={styles.option}
-          aria-pressed={value === option}
-          onClick={() => onChange(option)}
+          aria-pressed={value === option.value}
+          onClick={() => onChange(option.value)}
         >
-          {LABELS[option]}
+          {option.label}
         </button>
       ))}
     </div>

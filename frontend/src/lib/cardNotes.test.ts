@@ -4,6 +4,9 @@ import {
   BLOCK_NOTES,
   blockNotes,
   CARD_NOTE_SAVED,
+  cardNoteBoxName,
+  cardNoteCount,
+  cardNotesCountLine,
   cardNotesHeading,
   cardNotesPath,
   highlightParts,
@@ -21,6 +24,7 @@ import {
   pageRef,
   openInPileName,
   pileAnnouncement,
+  pileCards,
   pilePosition,
   pileStart,
   shuffled,
@@ -271,5 +275,47 @@ describe('the pile', () => {
       shuffled([notes[0]!], () => 0.99),
       [notes[0]],
     )
+  })
+})
+
+// Story 14.2 See my card notes as boxes: the pile step, the count copy and the box's name.
+describe('pileCards', () => {
+  it('steps 1, 3, 5 and 7 cards at 1, 2–5, 6–20 and 21+ notes, and none at 0', () => {
+    const steps = [0, 1, 2, 5, 6, 20, 21, 100].map((count) => [count, pileCards(count)])
+    assert.deepEqual(steps, [
+      [0, 0],
+      [1, 1],
+      [2, 3],
+      [5, 3],
+      [6, 5],
+      [20, 5],
+      [21, 7],
+      [100, 7],
+    ])
+  })
+})
+
+describe('cardNoteCount and cardNoteBoxName', () => {
+  it('reads "1 card note" for one and "N card notes" otherwise', () => {
+    assert.equal(cardNoteCount(1), '1 card note')
+    assert.equal(cardNoteCount(12), '12 card notes')
+  })
+
+  it('names a box with its full title and its count', () => {
+    assert.equal(cardNoteBoxName('Emma', 1), 'Emma, 1 card note')
+    assert.equal(cardNoteBoxName('Dune, Messiah', 12), 'Dune, Messiah, 12 card notes')
+  })
+})
+
+describe('cardNotesCountLine', () => {
+  const group = (count: number) => ({ notes: Array.from({ length: count }, (_, n) => n) })
+
+  it('sums the notes over the groups and counts the Books', () => {
+    assert.equal(cardNotesCountLine([21, 1, 5, 2, 6, 20].map(group)), '55 card notes in 6 Books')
+    assert.equal(cardNotesCountLine([group(12)]), '12 card notes in 1 Book')
+  })
+
+  it('reads one note in one Book in the singular', () => {
+    assert.equal(cardNotesCountLine([group(1)]), '1 card note in 1 Book')
   })
 })

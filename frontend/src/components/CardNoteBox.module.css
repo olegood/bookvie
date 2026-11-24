@@ -1,0 +1,113 @@
+/*
+ * DESIGN.md → Card note box (components.card-note-box): one Book's notes as an
+ * open box. The cards, front, label and count are fixed literals, the same in
+ * both themes; only the page and the front's shadow change in dark theme.
+ */
+
+/* The frame: one link, positioned so the cards and the front sit inside it. */
+.box {
+  position: relative;
+  display: block;
+  box-sizing: border-box;
+  width: var(--card-note-box-width);
+  height: var(--card-note-box-height);
+  border-radius: var(--radius-lg);
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+/* The focus ring: base.css's 2px accent ring, further out, around the whole box. */
+.box,
+.box:focus-visible {
+  outline-offset: var(--card-note-box-focus-offset);
+}
+
+/* A paper card behind the front: card i of k topped at card-top − (k − 1 − i) × card-step. */
+.card {
+  position: absolute;
+  top: calc(var(--card-note-box-card-top) - var(--card-offset) * var(--card-note-box-card-step));
+  left: var(--card-note-box-card-inset);
+  box-sizing: border-box;
+  width: var(--card-note-box-card-width);
+  height: var(--card-note-box-card-height);
+  border: var(--card-note-box-card-border);
+  border-radius: var(--radius-cover);
+  background: var(--card-note-box-card-background);
+}
+
+/* The front: the lower part, in the Book's exact spine color, with no edge line. */
+.front {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  box-sizing: border-box;
+  display: grid;
+  align-content: center;
+  width: 100%;
+  height: var(--card-note-box-front-height);
+  padding: var(--card-note-box-front-padding);
+  border-radius: var(--card-note-box-front-radius);
+  background: var(--box-color);
+  box-shadow: var(--shadow-box-front);
+}
+
+/* The label: a spine-label-strip plate carrying the title and the count. */
+.label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  box-sizing: border-box;
+  min-width: 0;
+  padding: var(--card-note-box-label-padding);
+  border-radius: var(--radius-cover);
+  background: var(--color-spine-label-strip);
+}
+
+/* The full title, cut by the clamp after two lines (never by slicing the string). */
+.title {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  font-family: var(--font-book-title-sm-family);
+  font-size: var(--font-book-title-sm-size);
+  font-weight: var(--font-book-title-sm-weight);
+  line-height: var(--font-book-title-sm-line-height);
+  color: var(--color-spine-label);
+  overflow-wrap: anywhere;
+}
+
+.count {
+  display: block;
+  font-family: var(--font-meta-family);
+  font-size: var(--font-meta-size);
+  font-weight: var(--font-meta-weight);
+  line-height: var(--font-meta-line-height);
+  color: var(--card-note-box-count-color);
+}
+
+/* DESIGN.md → Forced colors: the front CanvasText like a read spine, the label Canvas, each card Canvas with a CanvasText edge. */
+@media (forced-colors: active) {
+  .front {
+    forced-color-adjust: none;
+    background: CanvasText;
+    box-shadow: none;
+  }
+
+  .label {
+    background: Canvas;
+  }
+
+  .title,
+  .count {
+    color: CanvasText;
+  }
+
+  .card {
+    forced-color-adjust: none;
+    border: var(--hairline) solid CanvasText;
+    background: Canvas;
+  }
+}

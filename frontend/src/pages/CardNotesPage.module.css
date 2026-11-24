@@ -110,3 +110,32 @@
   font-size: var(--font-body-sm-size);
   line-height: var(--font-body-sm-line-height);
 }
+
+/* Search card notes, then (unscoped) the Card notes view toggle and the count line, spacing.4 apart. */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+/* components.card-notes-count-line: plain text, not a live region. */
+.countLine {
+  margin: 0;
+  font-family: var(--font-meta-family);
+  font-size: var(--font-meta-size);
+  font-weight: var(--font-meta-weight);
+  line-height: var(--font-meta-line-height);
+  color: var(--color-ink-tertiary);
+}
+
+/* The shelf: a left-aligned grid of same-size boxes across the content width (Layout & Spacing → Card notes). */
+.shelf {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, var(--card-note-box-width));
+  column-gap: var(--space-6);
+  row-gap: var(--space-8);
+  align-self: stretch;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}

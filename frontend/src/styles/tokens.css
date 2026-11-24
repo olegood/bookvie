@@ -159,6 +159,7 @@
   --shadow-cover: 0 14px 30px rgba(60,80,100,.18);
   --shadow-overlay: 0 18px 40px rgba(40,40,30,.18), 0 2px 6px rgba(40,40,30,.08);
   --shadow-plank: 0 6px 10px rgba(120,100,60,.12);
+  --shadow-box-front: inset 0 -3px 0 rgba(0,0,0,.12), 0 1px 2px rgba(43,46,42,.12);
   --color-scrim: rgba(43,46,42,0.24);
 
   /* components (literal dimensions from DESIGN.md → components) */
@@ -193,6 +194,22 @@
   --catalog-tile-typeset-plate-inset: 10px;
   --catalog-tile-typeset-plate-top: 34px;
   --catalog-tile-typeset-plate-radius: 2px;
+  /* The Card note box's fixed literals: the same in both themes, like a spine. */
+  --card-note-box-width: 216px;
+  --card-note-box-height: 196px;
+  --card-note-box-front-height: 116px;
+  --card-note-box-front-radius: 6px 6px 12px 12px;
+  --card-note-box-front-padding: 14px;
+  --card-note-box-label-padding: 10px 12px;
+  --card-note-box-count-color: #5F635C;
+  --card-note-box-card-background: #FFFFFF;
+  --card-note-box-card-border: 1px solid #E4DFD5;
+  --card-note-box-card-width: 176px;
+  --card-note-box-card-height: 96px;
+  --card-note-box-card-inset: 20px;
+  --card-note-box-card-top: 70px;
+  --card-note-box-card-step: 8px;
+  --card-note-box-focus-offset: 4px;
 }
 
 :root[data-theme="dark"] {
@@ -223,6 +240,7 @@
   --shadow-cover: 0 14px 30px rgba(0,0,0,.45);
   --shadow-overlay: 0 18px 40px rgba(0,0,0,.5);
   --shadow-plank: 0 6px 10px rgba(0,0,0,.35);
+  --shadow-box-front: inset 0 -3px 0 rgba(0,0,0,.12), 0 1px 2px rgba(0,0,0,.35);
   --color-scrim: rgba(25,27,24,0.60);
 }
 
@@ -255,6 +273,7 @@
     --shadow-cover: 0 14px 30px rgba(0,0,0,.45);
     --shadow-overlay: 0 18px 40px rgba(0,0,0,.5);
     --shadow-plank: 0 6px 10px rgba(0,0,0,.35);
+    --shadow-box-front: inset 0 -3px 0 rgba(0,0,0,.12), 0 1px 2px rgba(0,0,0,.35);
     --color-scrim: rgba(25,27,24,0.60);
   }
 }
