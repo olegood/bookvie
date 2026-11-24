@@ -6,6 +6,10 @@ All notable changes to bookvie are recorded here. The format follows
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [2.2.0] - 2026-11-24
+
 ### Added
 
 - See your card notes as boxes: the Card notes page has a Boxes · List toggle, and Boxes shows one box per Book, in its spine color, with a pile of cards that grows with its notes. The page remembers your choice and starts as List, as before (Epic 14).
@@ -150,7 +154,8 @@ The first complete version: all seven v1 epics (41 stories) are done.
 - The Change color refusal is still announced after its popover closes.
 - The pace calculator agrees with Home's days-left figure.
 
-[Unreleased]: https://github.com/olegood/bookvie/compare/v2.1.0...HEAD
+[Unreleased]: https://github.com/olegood/bookvie/compare/v2.2.0...HEAD
+[2.2.0]: https://github.com/olegood/bookvie/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/olegood/bookvie/compare/v2.0.1...v2.1.0
 [2.0.1]: https://github.com/olegood/bookvie/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/olegood/bookvie/compare/v1.2.0...v2.0.0
