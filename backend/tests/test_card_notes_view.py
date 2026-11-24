@@ -21,7 +21,7 @@ The follow-ups pin the scoped view (``?book=<id>``: one group and ``scope``,
 from pathlib import Path
 
 from tests.builder import LibraryBuilder
-from tests.helpers import api_client, library_bytes
+from tests.helpers import api_client, library_bytes, stored_book
 
 CARD_NOTES_VIEW = "/api/views/card-notes"
 
@@ -129,7 +129,11 @@ def test_the_scoped_view_holds_only_that_books_group_and_its_scope(
 
     assert response.status_code == 200
     body = response.json()
-    assert body["scope"] == {"bookId": dune, "title": "Dune"}
+    assert body["scope"] == {
+        "bookId": dune,
+        "title": "Dune",
+        "spineColor": stored_book(tmp_path, dune)["spineColor"],
+    }
     assert [(g["bookId"], g["title"]) for g in body["groups"]] == [(dune, "Dune")]
     assert [note["id"] for note in body["groups"][0]["notes"]] == [first, later]
     assert library_bytes(tmp_path) == before
@@ -148,7 +152,12 @@ def test_the_scoped_view_of_a_book_without_notes_has_its_scope_and_no_groups(
     )
 
     assert response.status_code == 200
-    assert response.json() == {"scope": {"bookId": emma, "title": "Emma"}, "groups": []}
+    scope = {
+        "bookId": emma,
+        "title": "Emma",
+        "spineColor": stored_book(tmp_path, emma)["spineColor"],
+    }
+    assert response.json() == {"scope": scope, "groups": []}
 
 
 def test_the_scoped_view_of_an_unknown_book_is_404_book_not_found(

@@ -1,6 +1,6 @@
 """Story 14.1 Carry each Book's spine color in the card-notes view (FR-19, AR62).
 
-Red-phase acceptance tests, one leaf per criterion of ``epics.md`` Story 14.1
+Acceptance tests, one leaf per criterion of ``epics.md`` Story 14.1
 (AC-1 to AC-7 in source order). The view gains ``spineColor`` on every
 ``CardNotesGroup`` and on ``CardNotesScope``: the Book's stored resolved
 ``spineColor`` (AD-11) exactly as stored, never re-resolved. Nothing else on
@@ -15,7 +15,6 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-import pytest
 from fastapi.testclient import TestClient
 
 from tests.agent_client import DESCRIPTIONS, McpClient, structured_of
@@ -30,8 +29,6 @@ from tests.helpers import (
     stored_book,
     stored_books,
 )
-
-RED_14_1 = "Red phase (story 14.1): the card-notes view doesn't carry spineColor yet"
 
 CARD_NOTES_VIEW = "/api/views/card-notes"
 UNKNOWN_ID = "00000000-0000-4000-8000-000000000000"
@@ -124,7 +121,6 @@ def _schema_block(name: str) -> str:
 # --- AC-1: every group carries its Book's stored resolved color ------------------
 
 
-@pytest.mark.skip(reason=RED_14_1)
 def test_ac1_p0_every_group_carries_its_books_stored_spine_color(tmp_path: Path) -> None:
     # [P0] AC-1 every group carries spineColor, the Book's stored resolved spine_color exactly
     # as stored, the same value the book and catalog views give; nothing else changes.
@@ -166,7 +162,6 @@ def test_ac1_p0_every_group_carries_its_books_stored_spine_color(tmp_path: Path)
 # --- AC-2: the scoped view's scope and group carry it ----------------------------
 
 
-@pytest.mark.skip(reason=RED_14_1)
 def test_ac2_p0_the_scoped_views_scope_and_group_carry_the_spine_color(tmp_path: Path) -> None:
     # [P0] AC-2 card-notes?book=<id> for a Book with notes: scope carries bookId, title and
     # spineColor, and the one group carries the same spineColor.
@@ -185,7 +180,6 @@ def test_ac2_p0_the_scoped_views_scope_and_group_carry_the_spine_color(tmp_path:
 # --- AC-3: a scoped Book without notes still carries it; unknown is 404 ----------
 
 
-@pytest.mark.skip(reason=RED_14_1)
 def test_ac3_p0_a_scoped_book_without_notes_carries_its_color_and_no_groups(
     tmp_path: Path,
 ) -> None:
@@ -212,7 +206,6 @@ def test_ac3_p0_a_scoped_book_without_notes_carries_its_color_and_no_groups(
 # --- AC-4: a changed color shows on the next read --------------------------------
 
 
-@pytest.mark.skip(reason=RED_14_1)
 def test_ac4_p1_a_changed_spine_color_shows_on_the_next_read(tmp_path: Path) -> None:
     # [P1] AC-4 after the spine color changes (from the spine popover, or by editing the Book),
     # the group and the scope carry the new color on the next read.
@@ -244,7 +237,6 @@ def test_ac4_p1_a_changed_spine_color_shows_on_the_next_read(tmp_path: Path) -> 
 # --- AC-5: OpenAPI and the regenerated client types ------------------------------
 
 
-@pytest.mark.skip(reason=RED_14_1)
 def test_ac5_p0_the_client_types_carry_spine_color_on_group_and_scope(tmp_path: Path) -> None:
     # [P0] AC-5 after api:gen, schema.d.ts has spineColor: string on CardNotesGroup and
     # CardNotesScope; OpenAPI marks it required on both.
@@ -268,7 +260,6 @@ def test_ac5_p0_the_client_types_carry_spine_color_on_group_and_scope(tmp_path: 
 # --- AC-6: get_card_notes returns the view as is ---------------------------------
 
 
-@pytest.mark.skip(reason=RED_14_1)
 def test_ac6_p1_get_card_notes_carries_spine_color_on_each_group_and_the_scope(
     connect_mcp: Callable[..., McpClient], tmp_path: Path
 ) -> None:
@@ -300,7 +291,6 @@ def test_ac6_p1_get_card_notes_carries_spine_color_on_each_group_and_the_scope(
 # --- AC-7: nothing stored or exported changes ------------------------------------
 
 
-@pytest.mark.skip(reason=RED_14_1)
 def test_ac7_p1_the_color_is_read_only_and_no_stored_data_changes(tmp_path: Path) -> None:
     # [P1] AC-7 nothing visible changes and no stored data or backup format changes: reading
     # the views writes nothing and a stored Book gains no key.
@@ -308,8 +298,7 @@ def test_ac7_p1_the_color_is_read_only_and_no_stored_data_changes(tmp_path: Path
     before = library_bytes(tmp_path)
     client = api_client(tmp_path, raise_server_exceptions=True)
 
-    # Witness first: the view carries the color (red until the story lands), so the
-    # guards below run against the changed view, not today's.
+    # Witness first: the view carries the color, so the guards below run against it.
     assert _get(client)["groups"][0].get("spineColor") == FROM_COVER
     _get(client, ids["bare"])
     client.get("/api/views/home")

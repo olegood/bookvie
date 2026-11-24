@@ -216,6 +216,9 @@ class CardNotesScope(_View):
 
     book_id: str
     title: str
+    spine_color: str
+    """The resolved color: user, else from cover, else curated (AD-11); as stored, never
+    re-resolved here."""
 
 
 class CardNotesGroup(_View):
@@ -223,6 +226,9 @@ class CardNotesGroup(_View):
 
     book_id: str
     title: str
+    spine_color: str
+    """The resolved color: user, else from cover, else curated (AD-11); as stored, never
+    re-resolved here."""
     notes: list[BookCardNote]
     """In page order: ``pageStart``, then ``createdAt``."""
 

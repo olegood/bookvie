@@ -1,7 +1,8 @@
 """The ``card-notes`` view: every Card note grouped by Book, or one Book's (FR-19).
 
 The group order and the scope are server selections (AD-6); search and
-highlighting run in the client.
+highlighting run in the client. Each group and the scope carry the Book's
+``spineColor`` (AD-11) as stored.
 """
 
 from bookvie.domain import Book, Library, title_key
@@ -12,7 +13,12 @@ from .shelf import card_note_views
 
 
 def _group(book: Book) -> CardNotesGroup:
-    return CardNotesGroup(book_id=book.id, title=book.title, notes=card_note_views(book))
+    return CardNotesGroup(
+        book_id=book.id,
+        title=book.title,
+        spine_color=book.spine_color,
+        notes=card_note_views(book),
+    )
 
 
 def card_notes(library: Library, book_id: str | None) -> CardNotesView | None:
@@ -27,7 +33,7 @@ def card_notes(library: Library, book_id: str | None) -> CardNotesView | None:
         if book is None:
             return None
         return CardNotesView(
-            scope=CardNotesScope(book_id=book.id, title=book.title),
+            scope=CardNotesScope(book_id=book.id, title=book.title, spine_color=book.spine_color),
             groups=[_group(book)] if book.card_notes else [],
         )
     books = sorted(

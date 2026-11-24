@@ -828,6 +828,8 @@ export interface components {
             bookId: string;
             /** Title */
             title: string;
+            /** Spinecolor */
+            spineColor: string;
             /** Notes */
             notes: components["schemas"]["BookCardNote"][];
         };
@@ -840,6 +842,8 @@ export interface components {
             bookId: string;
             /** Title */
             title: string;
+            /** Spinecolor */
+            spineColor: string;
         };
         /**
          * CardNotesView
