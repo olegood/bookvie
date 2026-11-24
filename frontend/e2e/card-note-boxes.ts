@@ -6,6 +6,8 @@
 // not by class names, with each part's layout box as it is before any
 // rotation). Story 14.3 adds the open box's helpers: `openBoxColor` (a
 // scope's spine color from the view) and the measuring helper `openBoxStrip`.
+// Story 14.4 adds the shelf search's seed (`HABIT_SHELF`), `boxOfBook` and
+// the measuring helpers `boxFrames` and `pillLook`.
 
 import type { Locator, Page } from '@playwright/test'
 import { finished } from './bookcase.ts'
@@ -353,4 +355,287 @@ export function openBoxStrip(page: Page): Promise<StripLook | null> {
       forcedColorAdjust: style.forcedColorAdjust,
     }
   })
+}
+
+// Story 14.4 Search the boxes: a seed with every kind of match, a box found by
+// its Book rather than its (changing) name, and two measuring helpers:
+// `boxFrames` (each box's lift, fade and slot, once or every frame for a
+// while) and `pillLook` (the match pill and its dot).
+
+/** `count` notes for a Book whose text never holds "habit" unless `matching` holds its index (from 0). */
+function habitNotes(tag: string, count: number, matching: readonly number[]): { text: string; pageStart: number }[] {
+  return Array.from({ length: count }, (_, n) => ({
+    text: matching.includes(n)
+      ? `${tag} note ${String(n + 1).padStart(2, '0')}: ${['A habit', 'Every HABIT', 'Small habits'][n % 3]} worth keeping.`
+      : `${tag} note ${String(n + 1).padStart(2, '0')}: a line worth keeping.`,
+    pageStart: n + 1,
+  }))
+}
+
+/**
+ * Five Books with notes for "habit": 3 of Atomic Habits's 12, 1 of Deep
+ * Work's 12, none of Refactoring's 4, all of Tiny Habits's 12 and Walden's
+ * only note (which alone holds "woods"). Seeded out of title order. No note
+ * holds "zettel". The titles never count: the search reads note text only.
+ */
+export const HABIT_SHELF = {
+  books: [
+    {
+      id: bookId(14),
+      title: 'Tiny Habits',
+      authors: ['BJ Fogg'],
+      pages: 320,
+      readings: finished(),
+      cardNotes: habitNotes('TH', 12, [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]),
+    },
+    {
+      id: bookId(11),
+      title: 'Atomic Habits',
+      authors: ['James Clear'],
+      pages: 320,
+      readings: finished(),
+      cardNotes: habitNotes('AH', 12, [1, 5, 9]),
+    },
+    {
+      id: bookId(15),
+      title: 'Walden',
+      authors: ['Henry David Thoreau'],
+      pages: 352,
+      cardNotes: [{ text: 'Walden note 01: a habit of the woods.', pageStart: 90 }],
+    },
+    {
+      id: bookId(13),
+      title: 'Refactoring',
+      authors: ['Martin Fowler'],
+      pages: 448,
+      readings: finished(),
+      cardNotes: habitNotes('RF', 4, []),
+    },
+    { id: bookId(12), title: 'Deep Work', authors: ['Cal Newport'], pages: 296, cardNotes: habitNotes('DW', 12, [7]) },
+  ],
+}
+
+/** HABIT_SHELF's boxes in the groups' order, with how many notes hold "habit". */
+export const HABIT_BOXES = [
+  { title: 'Atomic Habits', id: bookId(11), notes: 12, matches: 3 },
+  { title: 'Deep Work', id: bookId(12), notes: 12, matches: 1 },
+  { title: 'Refactoring', id: bookId(13), notes: 4, matches: 0 },
+  { title: 'Tiny Habits', id: bookId(14), notes: 12, matches: 12 },
+  { title: 'Walden', id: bookId(15), notes: 1, matches: 1 },
+]
+
+/** HABIT_SHELF's count line with an empty search. */
+export const HABIT_COUNT_LINE = '41 card notes in 5 Books'
+
+/** One box by its Book, whatever its name says. */
+export function boxOfBook(page: Page, id: string): Locator {
+  return page.getByRole('main').locator(`a[href="/card-notes?book=${id}"]`)
+}
+
+/** An element whose computed opacity isn't 1, inside a box's link or on the link or its list item. */
+export type FadedPart = {
+  opacity: number
+  /** The link itself or its list item (which would fade the focus ring). */
+  outer: boolean
+  /** It holds the front and every card. */
+  holdsAll: boolean
+  /** Its transitions, by property: `{ opacity: '0.15s ease-out' }` (duration, then timing function). */
+  transitions: Record<string, string>
+}
+
+/** One box as it is drawn in one frame. */
+export type BoxFrame = {
+  /** The Book id, from the link's href. */
+  id: string
+  /** px the front is moved up or down, summed over the front and its ancestors up to the list item (negative is up). */
+  lift: number
+  /** Whether the front or an ancestor up to the list item is scaled. */
+  scaled: boolean
+  /** The front's effective opacity: the product over the front and its ancestors up to the list item, to two decimals. */
+  opacity: number
+  faded: FadedPart[]
+  /** The link's layout slot, which a transform doesn't move. */
+  slot: { x: number; y: number; width: number; height: number }
+  /** The front's box-shadow. */
+  shadow: string
+  /** The transitions, by property, of each element in that chain that is moved up or down, merged. */
+  liftTransitions: Record<string, string>
+}
+
+/**
+ * Every box in main, drawn: the front is the outermost painted element in the
+ * link that holds text, the cards the painted elements without text outside
+ * it (no class names). With `ms` 0, one frame read at once; otherwise the
+ * first frame is read at once, then one per animation frame until `ms` pass.
+ * Start it before the change it should watch and await it after.
+ */
+export function boxFrames(page: Page, ms = 0): Promise<BoxFrame[][]> {
+  return page.evaluate(async (ms) => {
+    const painted = (el: Element) => !/^rgba\(.*,\s*0\)$/.test(getComputedStyle(el).backgroundColor)
+    const hasText = (el: Element) => (el.textContent ?? '').trim() !== ''
+    const translateY = (el: Element) => {
+      const style = getComputedStyle(el)
+      const matrix = style.transform === 'none' ? 0 : new DOMMatrixReadOnly(style.transform).m42
+      const translate = style.translate === 'none' ? 0 : Number.parseFloat(style.translate.split(' ')[1] ?? '0') || 0
+      return matrix + translate
+    }
+    const isScaled = (el: Element) => {
+      const style = getComputedStyle(el)
+      if (style.scale !== 'none') return true
+      if (style.transform === 'none') return false
+      const m = new DOMMatrixReadOnly(style.transform)
+      return Math.abs(Math.hypot(m.a, m.b) - 1) > 0.001 || Math.abs(Math.hypot(m.c, m.d) - 1) > 0.001
+    }
+    const transitionsOf = (el: Element) => {
+      const style = getComputedStyle(el)
+      const props = style.transitionProperty.split(',').map((p) => p.trim())
+      const durations = style.transitionDuration.split(',').map((d) => d.trim())
+      const timings = style.transitionTimingFunction.split(/,(?![^(]*\))/).map((t) => t.trim())
+      return Object.fromEntries(
+        props.map((p, i) => [p, `${durations[i % durations.length]} ${timings[i % timings.length]}`]),
+      )
+    }
+    const frame = () =>
+      Array.from(document.querySelectorAll<HTMLAnchorElement>('main a[href^="/card-notes?book="]')).map((link) => {
+        const item = link.parentElement ?? link
+        const inside = Array.from(link.querySelectorAll<HTMLElement>('*'))
+        const front =
+          inside.find(
+            (el) =>
+              painted(el) && hasText(el) && !inside.some((o) => o !== el && o.contains(el) && painted(o) && hasText(o)),
+          ) ?? null
+        const cards = inside.filter((el) => painted(el) && !hasText(el) && !(front?.contains(el) ?? false))
+        const chain: Element[] = []
+        for (let el: Element | null = front; el; el = el.parentElement) {
+          chain.push(el)
+          if (el === item) break
+        }
+        const faded = [item, link, ...inside]
+          .filter((el) => getComputedStyle(el).opacity !== '1')
+          .map((el) => ({
+            opacity: Math.round(Number.parseFloat(getComputedStyle(el).opacity) * 100) / 100,
+            outer: el === link || el === item,
+            holdsAll: front !== null && el.contains(front) && cards.every((card) => el.contains(card)),
+            transitions: transitionsOf(el),
+          }))
+        return {
+          id: new URLSearchParams((link.getAttribute('href') ?? '').split('?')[1] ?? '').get('book') ?? '',
+          lift: Math.round(chain.reduce((sum, el) => sum + translateY(el), 0) * 100) / 100,
+          scaled: chain.some(isScaled),
+          opacity:
+            Math.round(
+              chain.reduce((product, el) => product * Number.parseFloat(getComputedStyle(el).opacity), 1) * 100,
+            ) / 100,
+          faded,
+          slot: { x: link.offsetLeft, y: link.offsetTop, width: link.offsetWidth, height: link.offsetHeight },
+          shadow: front ? getComputedStyle(front).boxShadow : '',
+          liftTransitions: Object.assign({}, ...chain.filter((el) => translateY(el) !== 0).map(transitionsOf)),
+        }
+      })
+    const frames = [frame()]
+    const start = performance.now()
+    while (performance.now() - start < ms) {
+      await new Promise((resolve) => requestAnimationFrame(resolve))
+      frames.push(frame())
+    }
+    return frames
+  }, ms)
+}
+
+/** A box's frame now, by Book id (one `boxFrames` read). */
+export async function boxFrameOf(page: Page, id: string): Promise<BoxFrame | undefined> {
+  const [frame] = await boxFrames(page)
+  return frame?.find((box) => box.id === id)
+}
+
+export type PillLook = {
+  height: number
+  background: string
+  color: string
+  fontFamily: string
+  fontSize: string
+  fontWeight: string
+  radius: string
+  padding: string
+  /** Top border: width, style and color. */
+  border: string
+  /** The pill's left edge minus the title's left edge (0 when it's left-aligned in the label). */
+  leftOfTitle: number
+  /** The dot: an element without text inside the pill, else the pill's `::before`. */
+  dot: { width: number; height: number; background: string; gapToText: number } | null
+}
+
+/**
+ * A match pill inside a box's link: the nearest painted element around the
+ * deepest element whose text is `text`, found without class names. `null` when
+ * there's none. `title` is the box's title text, to compare left edges.
+ */
+export function pillLook(link: Locator, text: string, title: string): Promise<PillLook | null> {
+  return link.evaluate(
+    (root, [text, title]) => {
+      const painted = (el: Element) => !/^rgba\(.*,\s*0\)$/.test(getComputedStyle(el).backgroundColor)
+      const deepest = (wanted: string) =>
+        Array.from(root.querySelectorAll<HTMLElement>('*'))
+          .filter((el) => (el.textContent ?? '').trim() === wanted)
+          .find((el) => !Array.from(el.children).some((child) => (child.textContent ?? '').trim() === wanted)) ?? null
+      const textEl = deepest(text)
+      if (!textEl) return null
+      let pill: HTMLElement | null = textEl
+      while (pill && pill !== root && !painted(pill)) pill = pill.parentElement
+      if (!pill || pill === root) return null
+      const style = getComputedStyle(pill)
+      const rect = pill.getBoundingClientRect()
+      const node = Array.from(textEl.childNodes).find(
+        (n) => n.nodeType === Node.TEXT_NODE && (n.textContent ?? '').trim(),
+      )
+      const range = document.createRange()
+      if (node) range.selectNodeContents(node)
+      else range.selectNodeContents(textEl)
+      const textLeft = range.getBoundingClientRect().left
+      const dotEl = Array.from(pill.querySelectorAll<HTMLElement>('*')).find(
+        (el) => painted(el) && (el.textContent ?? '').trim() === '',
+      )
+      let dot: { width: number; height: number; background: string; gapToText: number } | null = null
+      if (dotEl) {
+        const r = dotEl.getBoundingClientRect()
+        dot = {
+          width: r.width,
+          height: r.height,
+          background: getComputedStyle(dotEl).backgroundColor,
+          gapToText: Math.round((textLeft - r.right) * 100) / 100,
+        }
+      } else {
+        const before = getComputedStyle(pill, '::before')
+        if (before.content !== 'none' && !/^rgba\(.*,\s*0\)$/.test(before.backgroundColor)) {
+          const width = Number.parseFloat(before.width)
+          const left =
+            rect.left +
+            Number.parseFloat(style.borderLeftWidth) +
+            Number.parseFloat(style.paddingLeft) +
+            Number.parseFloat(before.marginLeft)
+          dot = {
+            width,
+            height: Number.parseFloat(before.height),
+            background: before.backgroundColor,
+            gapToText: Math.round((textLeft - (left + width)) * 100) / 100,
+          }
+        }
+      }
+      const titleEl = deepest(title)
+      return {
+        height: rect.height,
+        background: style.backgroundColor,
+        color: getComputedStyle(textEl).color,
+        fontFamily: getComputedStyle(textEl).fontFamily,
+        fontSize: getComputedStyle(textEl).fontSize,
+        fontWeight: getComputedStyle(textEl).fontWeight,
+        radius: style.borderTopLeftRadius,
+        padding: style.padding,
+        border: `${style.borderTopWidth} ${style.borderTopStyle} ${style.borderTopColor}`,
+        leftOfTitle: titleEl ? Math.round((rect.left - titleEl.getBoundingClientRect().left) * 100) / 100 : Number.NaN,
+        dot,
+      }
+    },
+    [text, title] as const,
+  )
 }
