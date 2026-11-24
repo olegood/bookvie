@@ -4,11 +4,12 @@
 // `columnsOf` (how many boxes share the first row) and `boxLook` (a box's
 // front, label, title, count and cards, found by their text and background,
 // not by class names, with each part's layout box as it is before any
-// rotation).
+// rotation). Story 14.3 adds the open box's helpers: `openBoxColor` (a
+// scope's spine color from the view) and the measuring helper `openBoxStrip`.
 
 import type { Locator, Page } from '@playwright/test'
 import { finished } from './bookcase.ts'
-import { bookId } from './library.ts'
+import { bookId, rgbOf } from './library.ts'
 
 export { cardNotesPage } from './pile.ts'
 
@@ -283,4 +284,73 @@ export function boxLook(link: Locator, title: string, count: string): Promise<Bo
     },
     [title, count] as const,
   )
+}
+
+/** The `card-notes` view's `scope.spineColor` for one Book (Story 14.1), as `rgb(…)`; a Book with no notes has one too. */
+export async function openBoxColor(page: Page, url: string, id: string): Promise<string> {
+  const response = await page.request.get(`${url}/api/views/card-notes?book=${id}`)
+  const body = (await response.json()) as { scope: { spineColor: string } }
+  return rgbOf(body.scope.spineColor)
+}
+
+/** True for the `card-notes` view's request, scoped or not, whatever its query (for `page.route`). */
+export function isCardNotesView(url: URL): boolean {
+  return url.pathname === '/api/views/card-notes'
+}
+
+export type StripLook = {
+  /** The strip's rect in the window, and the app shell header's bottom edge and the window's width beside it. */
+  top: number
+  left: number
+  width: number
+  height: number
+  headerBottom: number
+  windowWidth: number
+  background: string
+  /** The four border widths, top right bottom left. */
+  borders: string
+  boxShadow: string
+  text: string
+  /** Inside an `aria-hidden="true"` subtree (itself included). */
+  hidden: boolean
+  forcedColorAdjust: string
+}
+
+/**
+ * The open box strip (Story 14.3), found without class names: the first
+ * element outside the app shell's header and any dialog whose background
+ * color has a nonzero alpha and whose rect is under 40px tall and at least half the
+ * window wide. `null` when there's none. A strip drawn only by a background
+ * image or a pseudo-element isn't found.
+ */
+export function openBoxStrip(page: Page): Promise<StripLook | null> {
+  return page.evaluate(() => {
+    const header = document.querySelector('nav[aria-label="Main"]')?.closest('header') ?? null
+    const headerBottom = header ? header.getBoundingClientRect().bottom : Number.NaN
+    const windowWidth = document.documentElement.clientWidth
+    const strip = Array.from(document.body.querySelectorAll<HTMLElement>('*')).find((el) => {
+      if (header?.contains(el) || el.closest('dialog, [role="dialog"], [role="alertdialog"]')) return false
+      // Transparent is any zero alpha: forced colors writes it `rgba(255, 255, 255, 0)`.
+      if (/^rgba\(.*,\s*0\)$/.test(getComputedStyle(el).backgroundColor)) return false
+      const rect = el.getBoundingClientRect()
+      return rect.height > 0 && rect.height < 40 && rect.width >= windowWidth / 2
+    })
+    if (!strip) return null
+    const rect = strip.getBoundingClientRect()
+    const style = getComputedStyle(strip)
+    return {
+      top: rect.top,
+      left: rect.left,
+      width: rect.width,
+      height: rect.height,
+      headerBottom,
+      windowWidth,
+      background: style.backgroundColor,
+      borders: [style.borderTopWidth, style.borderRightWidth, style.borderBottomWidth, style.borderLeftWidth].join(' '),
+      boxShadow: style.boxShadow,
+      text: (strip.textContent ?? '').trim(),
+      hidden: strip.closest('[aria-hidden="true"]') !== null,
+      forcedColorAdjust: style.forcedColorAdjust,
+    }
+  })
 }
