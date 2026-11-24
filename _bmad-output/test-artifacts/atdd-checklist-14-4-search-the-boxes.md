@@ -89,15 +89,15 @@ The staging is removed on purpose, so two of 14.2's leaves stop holding. The bui
 
 ## Green-phase follow-ups (secondary branches, not red leaves)
 
-- [ ] **Unit (`node --test`, `src/lib/cardNotes.test.ts`), AC-1/AC-2:** the shelf sentence (plural, singular, none, trimmed quote), the match count per group, and the match name in all four forms, through `noteMatches`.
-- [ ] **E2E, AC-1 axe:** the searched shelf passes axe (`AXE_TAGS`) in light and dark. The faded contrast is the documented deviation, so the run either passes or excludes only `color-contrast` on faded boxes, and says so.
-- [ ] **E2E, AC-1 regex characters:** a query like "(habit" or "." matches literally, as in the List.
-- [ ] **E2E, AC-2 pause:** `status` stays silent while typing continues inside 500 ms, then reads the last sentence once.
-- [ ] **E2E, AC-2 window widths:** at 1024px (4 columns) and 1440px (5), a search moves no slot.
-- [ ] **E2E, AC-4 blank field:** emptying the field announces nothing, and a pending sentence is dropped (as `useSearchCount` does for a blank query).
-- [ ] **E2E, AC-5 dark:** the lift and fade look the same in dark, and the front's dark shadow is unchanged by the lift.
-- [ ] **E2E, AC-6 open a faded box:** a click on a faded box still opens its open box (the carried text is Story 14.5's).
-- [ ] **E2E, AC-7 pill dark:** the pill keeps `#E3EBE2` and `spine-label` in dark (fixed literals).
+- [x] **Unit (`node --test`, `src/lib/cardNotes.test.ts`), AC-1/AC-2:** the shelf sentence (plural, singular, none, trimmed quote), the match count per group, and the match name in all four forms, through `noteMatches`. (done: frontend/src/lib/cardNotes.test.ts:327 `boxMatches and boxMatchPill`, :349 `cardNoteBoxName during a search`, :364 `shelfCountLine`; written by the build, read and run green by this run)
+- [x] **E2E, AC-1 axe:** the searched shelf passes axe (`AXE_TAGS`) in light and dark. The faded contrast is the documented deviation, so the run either passes or excludes only `color-contrast` on faded boxes, and says so. (done: frontend/e2e/search-boxes-automate.spec.ts:83. Every other rule gives `[]`. Two rules are allowed, and only on Refactoring's faded box: `color-contrast`, and also `label-content-name-mismatch`, which axe reports on every faded box ("*Title*, no match" leaves out the visible count, WCAG 2.5.3; the build's deferred entry in `deferred-work.md`, for the Epic 14 retro))
+- [x] **E2E, AC-1 regex characters:** a query like "(habit" or "." matches literally, as in the List. (done: frontend/e2e/search-boxes-automate.spec.ts:111)
+- [x] **E2E, AC-2 pause:** `status` stays silent while typing continues inside 500 ms, then reads the last sentence once. (done: frontend/e2e/search-boxes-automate.spec.ts:141, under a paused clock)
+- [x] **E2E, AC-2 window widths:** at 1024px (4 columns) and 1440px (5), a search moves no slot. (done: frontend/e2e/search-boxes-automate.spec.ts:198, one test per width)
+- [x] **E2E, AC-4 blank field:** emptying the field announces nothing, and a pending sentence is dropped (as `useSearchCount` does for a blank query). (done: frontend/e2e/search-boxes-automate.spec.ts:163, under a paused clock, with a control)
+- [x] **E2E, AC-5 dark:** the lift and fade look the same in dark, and the front's dark shadow is unchanged by the lift. (done: frontend/e2e/search-boxes-automate.spec.ts:218)
+- [x] **E2E, AC-6 open a faded box:** a click on a faded box still opens its open box (the carried text is Story 14.5's). (done: frontend/e2e/search-boxes-automate.spec.ts:269; the field's text on arrival is left to 14.5)
+- [x] **E2E, AC-7 pill dark:** the pill keeps `#E3EBE2` and `spine-label` in dark (fixed literals). (done: frontend/e2e/search-boxes-automate.spec.ts:244)
 
 ## Helper probes
 
