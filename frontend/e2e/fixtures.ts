@@ -212,6 +212,15 @@ export async function startSeededServer(
 
 type TestFixtures = {
   /**
+   * What `bookvie.cardNotesView` holds when each test starts (Story 14.2):
+   * `'list'` by default, so the Card notes specs written before Epic 14 keep
+   * opening the List view they were written for. A spec about the Boxes view
+   * turns it off with `test.use({ cardNotesView: null })` and starts with
+   * nothing stored. It is stored only when the key is absent, so a test that
+   * switches the view and reloads keeps its own choice.
+   */
+  cardNotesView: 'boxes' | 'list' | null
+  /**
    * Seeds a fresh data dir under the run folder with `seedLibrary` and starts
    * a server on it. Every server it started is stopped and its data dir
    * removed after the test; the test fails if one wrote to stdout.
@@ -226,6 +235,21 @@ type WorkerFixtures = {
 }
 
 export const test = base.extend<TestFixtures, WorkerFixtures>({
+  cardNotesView: ['list', { option: true }],
+  page: async ({ page, cardNotesView }, provide) => {
+    if (cardNotesView !== null) {
+      await page.addInitScript((value) => {
+        try {
+          if (window.localStorage.getItem('bookvie.cardNotesView') === null) {
+            window.localStorage.setItem('bookvie.cardNotesView', value)
+          }
+        } catch {
+          // Storage a test made throw: the app reads nothing either way.
+        }
+      }, cardNotesView)
+    }
+    await provide(page)
+  },
   seededServer: async ({ serverDev }, provide, testInfo) => {
     const runId = process.env.BOOKVIE_E2E_RUN_ID
     if (!runId) throw new Error('BOOKVIE_E2E_RUN_ID is not set; run through playwright.config.ts')

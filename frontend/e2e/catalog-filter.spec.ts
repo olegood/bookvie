@@ -26,13 +26,15 @@ const ACCENT_SOFT = 'rgb(227, 235, 226)'
 // DESIGN.md `accent-soft`, dark theme (#2C3A2E). `accent` dark comes from library.ts.
 const ACCENT_SOFT_DARK = 'rgb(44, 58, 46)'
 
-// The only keys the app keeps in localStorage (lib/catalogSort's key and its reversal, catalogView, theme, cardNoteAddAnother).
+// The only keys the app keeps in localStorage (lib/catalogSort's key and its reversal, catalogView, theme, cardNoteAddAnother,
+// cardNotesView). fixtures.ts stores cardNotesView = "list" before each test.
 const APP_STORAGE_KEYS = [
   'bookvie.catalogSort',
   'bookvie.catalogSortReversed',
   'bookvie.catalogView',
   'bookvie.theme',
   'bookvie.cardNoteAddAnother',
+  'bookvie.cardNotesView',
 ]
 
 /**

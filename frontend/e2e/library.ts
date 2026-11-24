@@ -134,6 +134,22 @@ export function designComponentColor(component: string, key: string): string {
   return match[1]
 }
 
+/**
+ * Any value from DESIGN.md's frontmatter `components:` block, as written, its
+ * quotes removed (`components.card-note-box.width` → `216px`,
+ * `components.card-note-box.radius` → `{rounded.lg}`). Throws when the
+ * component or key is missing.
+ */
+export function designComponentValue(component: string, key: string): string {
+  const block = designSection('components')
+    .split(new RegExp(`^ {2}${component}:[ \\t]*$`, 'm'))[1]
+    ?.split(/^ {2}\S/m)[0]
+  if (block === undefined) throw new Error(`DESIGN.md has no component ${component}`)
+  const match = block.match(new RegExp(`^ {4}${key}:[ \\t]*(.+?)[ \\t]*$`, 'm'))
+  if (!match) throw new Error(`DESIGN.md components.${component} has no ${key}`)
+  return match[1].replace(/^'(.*)'$/, '$1')
+}
+
 const TYPOGRAPHY_PROPS: Record<string, string> = {
   fontFamily: 'family',
   fontSize: 'size',

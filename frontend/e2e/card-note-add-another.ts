@@ -41,9 +41,9 @@ export function pageField(panel: Locator): Locator {
   return panel.getByRole('textbox', { name: 'Page', exact: true })
 }
 
-/** The stored Add another choice, as the page's localStorage holds it (null when absent). */
-export function storedChoice(page: Page): Promise<string | null> {
-  return page.evaluate((key) => window.localStorage.getItem(key), STORAGE_KEY)
+/** A stored choice, as the page's localStorage holds it (null when absent): Add another's unless `key` names another. */
+export function storedChoice(page: Page, key: string = STORAGE_KEY): Promise<string | null> {
+  return page.evaluate((key) => window.localStorage.getItem(key), key)
 }
 
 /**
