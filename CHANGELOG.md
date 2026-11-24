@@ -12,7 +12,7 @@ Nothing yet.
 
 ### Added
 
-- See your card notes as boxes: the Card notes page has a Boxes · List toggle, and Boxes shows one box per Book, in its spine color, with a pile of cards that grows with its notes. The page remembers your choice and starts as List, as before (Epic 14).
+- See your card notes as boxes: the Card notes page has a Boxes · List toggle, and Boxes shows one box per Book, in its spine color, with a pile of cards that grows with its notes. The page remembers your choice and starts as Boxes; List is the page as it was (Epic 14).
 - Open a box to read that Book's card notes under a strip in its spine color (Epic 14).
 - Search the boxes: a search on the shelf fades the boxes without a match and shows how many of each box's notes match, such as "3 of 12" (Epic 14).
 - The search goes with you into a box and comes back out, with Back or by removing the "In *Book*" chip, so you don't have to type it again (Epic 14).
