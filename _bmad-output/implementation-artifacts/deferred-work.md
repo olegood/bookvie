@@ -1759,3 +1759,12 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-14-2-see-my-card-notes-as-boxes.md`
   summary: Spine drift (AD-6), reconciled before the next epic. The Structural Seed's `components/` line ties `ViewToggle` to Catalog's toolbar, and the FR-17 to FR-19 row doesn't list it for the Card notes page. Story 14.2 made `ViewToggle` generic (`label`, `options`), and both Catalog and the Card notes toolbar use it. Low.
   evidence: Spine Check, build-auto review of Story 14.2; `frontend/src/components/ViewToggle.tsx`, `frontend/src/pages/CatalogPage.tsx`, `frontend/src/pages/CardNotesPage.tsx`.
+
+## Deferred from: build-auto review of spec-14-3-see-the-open-box-in-its-book-s-color (2026-11-24)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-14-3-see-the-open-box-in-its-book-s-color.md`
+  summary: Spine drift (AD-6), reconciled before the next epic. The Capability → Architecture Map's FR-17 to FR-19 row still lists "the open box strip … Epic 14, planned", and its lead-in still calls FR-19's Boxes view something Epic 14 plans. Story 14.3 built the strip (`CardNotesFrame`'s `.strip` in `frontend/src/pages/CardNotesPage.tsx`, `--open-box-strip-height` in `tokens.css`). This widens the 14.2 entry above: the reconciliation should drop "planned" from the strip too, leaving only the carried search (14.5) and the shelf search (14.4) planned. The code is right and the spine is out of date. Low.
+  evidence: Spine Check, build-auto review of Story 14.3; ARCHITECTURE-SPINE.md lines 556 and 568.
+- source_spec: `_bmad-output/implementation-artifacts/spec-14-3-see-the-open-box-in-its-book-s-color.md`
+  summary: Story 14.3's AC-1 in `epics.md` says the open box of a Book with no notes is "reached from Book detail", but Book detail links "See all card notes" only when the Book has notes (`frontend/src/pages/CardNotesBlock.tsx`, the `notes.length > 0` branch; `card-notes.spec.ts:571`). The ATDD leaf reaches that open box through the Main book card's bare "See card notes", the same `/card-notes?book=<id>`. Fix the AC's wording ("reached from the Main book card") when `epics.md` is next touched, for example in the Epic 14 retro. The wording predates the story; no code is wrong. Low.
+  evidence: the ATDD checklist's "Wording for the review"; Intent Alignment and Blind Hunter, build-auto review of Story 14.3.

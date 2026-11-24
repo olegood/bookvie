@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode, type RefCallback } from 'react'
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode, type RefCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import {
   useCachedCardNotesView,
@@ -143,6 +143,11 @@ function Group({
  * Boxes by default) and, in Boxes view, the count line. Boxes view shows one
  * `CardNoteBox` per group, in the groups' order; List view is the page above.
  * Until Story 14.4, text in the field shows the List's results in Boxes view.
+ *
+ * Scoped, the open box (Story 14.3; DESIGN.md → Open box strip) adds an 8px,
+ * full-width, `aria-hidden` strip in `scope.spineColor` directly under the
+ * app shell, once the view is ready (notes or none); never while loading or
+ * under "Couldn't load".
  */
 export default function CardNotesPage() {
   const [params] = useSearchParams()
@@ -253,7 +258,11 @@ function CardNotesBody({ bookId }: { bookId: string | undefined }) {
 
   if (view.status === 'missing') return <NotFoundPage />
 
-  return <CardNotesFrame>{content()}</CardNotesFrame>
+  return (
+    <CardNotesFrame stripColor={view.status === 'ready' && scope !== null ? scope.spineColor : null}>
+      {content()}
+    </CardNotesFrame>
+  )
 
   function content() {
     if (view.status === 'loading') return null
@@ -377,13 +386,22 @@ function CardNotesBody({ bookId }: { bookId: string | undefined }) {
   }
 }
 
-/** The page frame: the title and the `h1`, whatever the view's state. */
-function CardNotesFrame({ children }: { children: ReactNode }) {
+/**
+ * The page frame: the title and the `h1`, whatever the view's state. With a
+ * `stripColor` (the open box once its view is ready), the open box strip comes
+ * first, above `.page`'s padding and outside its `page-x` inset.
+ */
+function CardNotesFrame({ children, stripColor }: { children: ReactNode; stripColor: string | null }) {
   usePageTitle('Card notes')
+  const stripStyle: (CSSProperties & Record<'--strip-color', string>) | null =
+    stripColor === null ? null : { '--strip-color': stripColor }
   return (
-    <div className={styles.page}>
-      <PageHeading className={styles.title}>Card notes</PageHeading>
-      {children}
-    </div>
+    <>
+      {stripStyle !== null && <div className={styles.strip} aria-hidden="true" style={stripStyle} />}
+      <div className={styles.page}>
+        <PageHeading className={styles.title}>Card notes</PageHeading>
+        {children}
+      </div>
+    </>
   )
 }

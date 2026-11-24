@@ -45,8 +45,7 @@ const BELOVED_ID = bookId(2)
 test.describe("Story 14.3 See the open box in its Book's color (ATDD)", () => {
   test.use({ cardNotesView: null })
 
-  // Red phase: no open box strip yet. The scoped page renders, but openBoxStrip finds nothing, so the first poll times out.
-  test.skip("[P1] AC-1 opening a box shows the scoped page under the open box strip, an 8px full-width band in the Book's spine color, shown only once the view has loaded, however the open box is reached", async ({
+  test("[P1] AC-1 opening a box shows the scoped page under the open box strip, an 8px full-width band in the Book's spine color, shown only once the view has loaded, however the open box is reached", async ({
     page,
     seededServer,
   }) => {
@@ -172,8 +171,7 @@ test.describe("Story 14.3 See the open box in its Book's color (ATDD)", () => {
     await expect.poll(async () => (await openBoxStrip(page))?.background).toBe(dune)
   })
 
-  // Red phase: no open box strip yet, so the first poll (the Given: the open box) times out.
-  test.skip('[P1] AC-2 on the open box, Back to top shows past one window height and a press scrolls up and focuses Search card notes', async ({
+  test('[P1] AC-2 on the open box, Back to top shows past one window height and a press scrolls up and focuses Search card notes', async ({
     page,
     seededServer,
   }) => {
@@ -198,8 +196,7 @@ test.describe("Story 14.3 See the open box in its Book's color (ATDD)", () => {
     await expect(searchField(page)).toBeFocused()
   })
 
-  // Red phase: no open box strip yet, so the first poll reads "undefinedpx" and times out.
-  test.skip("[P2] AC-3 the open box strip's height is DESIGN.md's open-box-strip.height, and tokens.css copies any open-box-strip value character for character", async ({
+  test("[P2] AC-3 the open box strip's height is DESIGN.md's open-box-strip.height, and tokens.css copies any open-box-strip value character for character", async ({
     page,
     seededServer,
   }) => {

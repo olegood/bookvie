@@ -1,3 +1,20 @@
+/*
+ * DESIGN.md → Open box strip: an 8px band in the Book's exact spine color,
+ * full width, directly under the app shell, on the open box only. The color
+ * comes inline as `--strip-color`, so forced colors can override it.
+ */
+.strip {
+  height: var(--open-box-strip-height);
+  background-color: var(--strip-color);
+}
+
+@media (forced-colors: active) {
+  .strip {
+    forced-color-adjust: none;
+    background-color: CanvasText;
+  }
+}
+
 .page {
   display: flex;
   flex-direction: column;

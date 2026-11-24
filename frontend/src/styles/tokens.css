@@ -210,6 +210,7 @@
   --card-note-box-card-top: 70px;
   --card-note-box-card-step: 8px;
   --card-note-box-focus-offset: 4px;
+  --open-box-strip-height: 8px;
 }
 
 :root[data-theme="dark"] {
