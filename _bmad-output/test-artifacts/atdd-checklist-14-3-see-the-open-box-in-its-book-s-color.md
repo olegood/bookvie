@@ -75,16 +75,16 @@ Every leaf is in `frontend/e2e/open-box.spec.ts`, with the fixture turned off (`
 
 ## Green-phase follow-ups (secondary branches, not red leaves)
 
-- [ ] **E2E, AC-1 axe:** the open box passes axe (`AXE_TAGS`) in light and dark, with notes and without. The strip adds no node to the accessibility tree.
-- [ ] **E2E, AC-1 read vs unread:** an unread Book's strip uses its `spineColor`, never a `spine-unread-*` color (AR63), like 14.2's box front for Dubliners and Emma.
-- [ ] **E2E, AC-1 near-white color:** a white or near-white `spineColor` still paints the strip, with no edge line added.
-- [ ] **E2E, AC-1 remove the chip:** "Remove In *X*" goes to `/card-notes` (in the remembered view) and the strip goes. Back returns to the open box and the strip comes back.
-- [ ] **E2E, AC-1 window width:** at 1024px and 1440px the strip stays as wide as the window, and at the bottom of a long page it scrolls away with the page (it isn't fixed).
-- [ ] **E2E, AC-1 update notice:** with the update notice showing (11.4's app-info fake), the strip starts under the notice, the header's new bottom.
-- [ ] **E2E, AC-1 refetch:** a note added in another context, on an empty open box, shows after a focus refetch, and the strip stays the whole time.
-- [ ] **E2E, AC-1 color change:** after the Book's spine color is changed on Book detail, its open box strip shows the new color.
-- [ ] **E2E, AC-2 axe:** Back to top passes axe on the open box.
-- [ ] **E2E, AC-3:** if `--open-box-strip-height` is added, `app-shell.spec.ts` still passes, and the strip's computed height comes from it.
+- [x] **E2E, AC-1 axe:** the open box passes axe (`AXE_TAGS`) in light and dark, with notes and without. The strip adds no node to the accessibility tree. (done: frontend/e2e/open-box-automate.spec.ts:52; the strip's `aria-hidden` is pinned by `open-box.spec.ts:49`)
+- [x] **E2E, AC-1 read vs unread:** an unread Book's strip uses its `spineColor`, never a `spine-unread-*` color (AR63), like 14.2's box front for Dubliners and Emma. (done: frontend/e2e/open-box-automate.spec.ts:77, Dubliners, unread, in its user color `#2F6B6B` in light and dark)
+- [x] **E2E, AC-1 near-white color:** a white or near-white `spineColor` still paints the strip, with no edge line added. (done: frontend/e2e/open-box-automate.spec.ts:92)
+- [x] **E2E, AC-1 remove the chip:** "Remove In *X*" goes to `/card-notes` (in the remembered view) and the strip goes. Back returns to the open box and the strip comes back. (done: removal in `frontend/e2e/open-box-unscoped.spec.ts:24`, Back in frontend/e2e/open-box-automate.spec.ts:114)
+- [x] **E2E, AC-1 window width:** at 1024px and 1440px the strip stays as wide as the window, and at the bottom of a long page it scrolls away with the page (it isn't fixed). (done: frontend/e2e/open-box-automate.spec.ts:136, at 1024px and 1440px)
+- [x] **E2E, AC-1 update notice:** with the update notice showing (11.4's app-info fake), the strip starts under the notice, the header's new bottom. (done: frontend/e2e/open-box-automate.spec.ts:162)
+- [x] **E2E, AC-1 refetch:** a note added in another context, on an empty open box, shows after a focus refetch, and the strip stays the whole time. (done: frontend/e2e/open-box-automate.spec.ts:180, the same strip node stays connected)
+- [x] **E2E, AC-1 color change:** after the Book's spine color is changed on Book detail, its open box strip shows the new color. (done: frontend/e2e/open-box-automate.spec.ts:212, Teal picked on Book detail, then Forward to the cached open box)
+- [x] **E2E, AC-2 axe:** Back to top passes axe on the open box. (done: frontend/e2e/open-box-automate.spec.ts:236)
+- [x] **E2E, AC-3:** if `--open-box-strip-height` is added, `app-shell.spec.ts` still passes, and the strip's computed height comes from it. (done: frontend/e2e/open-box-automate.spec.ts:255, the strip follows a changed `--open-box-strip-height`; `app-shell.spec.ts` passes in `npm run check`)
 
 ## Helper probes
 

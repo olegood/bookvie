@@ -2,14 +2,15 @@
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03-generate-tests', 'step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
 lastSaved: '2026-11-24'
-storyId: '14.2'
-storyKey: '14-2-see-my-card-notes-as-boxes'
+storyId: '14.3'
+storyKey: '14-3-see-the-open-box-in-its-book-s-color'
 inputDocuments:
-  - _bmad-output/implementation-artifacts/spec-14-2-see-my-card-notes-as-boxes.md (I/O matrix, Review Findings, Auto Run Result)
-  - _bmad-output/test-artifacts/atdd-checklist-14-2-see-my-card-notes-as-boxes.md (Green-phase follow-ups)
+  - _bmad-output/implementation-artifacts/spec-14-3-see-the-open-box-in-its-book-s-color.md (I/O matrix, Review Findings, Auto Run Result)
+  - _bmad-output/test-artifacts/atdd-checklist-14-3-see-the-open-box-in-its-book-s-color.md (Green-phase follow-ups)
+  - _bmad-output/implementation-artifacts/epic-14-context.md
   - _bmad/tea/config.yaml
-  - frontend/src/components/CardNoteBox.tsx, frontend/src/pages/CardNotesPage.tsx, frontend/src/components/ViewToggle.module.css
-  - frontend/e2e/card-note-boxes.spec.ts, card-note-boxes.ts, card-note-boxes-dark-theme.spec.ts, restore.spec.ts, restore.ts, card-notes.spec.ts (XUI-E2E-002), back-to-top-automate.spec.ts, fixtures.ts
+  - frontend/src/pages/CardNotesPage.tsx, frontend/src/pages/CardNotesPage.module.css, frontend/src/components/AppShell.tsx, frontend/src/api/views.ts
+  - frontend/e2e/open-box.spec.ts, open-box-unscoped.spec.ts, card-note-boxes.ts, card-note-boxes-automate.spec.ts, update-notice.ts, spine-popover.spec.ts, back-to-top.ts, card-note-keys.ts, library.ts, fixtures.ts
   - knowledge/test-levels-framework.md
   - knowledge/test-priorities-matrix.md
   - knowledge/data-factories.md
@@ -21,66 +22,66 @@ inputDocuments:
   - knowledge/playwright-cli.md
 ---
 
-# Automation Summary: Story 14.2 See my card notes as boxes
+# Automation Summary: Story 14.3 See the open box in its Book's color
 
 ## Preflight
 
-- **Stack:** `fullstack` (auto). The story is frontend only: a Boxes · List toggle, the `CardNoteBox` component and a count line on the unscoped Card notes page. Every new target is an e2e leaf.
-- **Gate:** `sprint-status.yaml` at HEAD (`3fc7763`) says `14-2-…: done`, and the tree was clean at the start.
+- **Stack:** `fullstack` (auto). The story is frontend only: the open box strip on the scoped Card notes page. Every new target is an e2e leaf.
+- **Gate:** `sprint-status.yaml` at HEAD (`591f39c`) says `14-3-…: done`, and the tree was clean at the start.
 - **Mode:** BMad-integrated. The inputs were the ATDD checklist's 10 open green-phase follow-ups and the spec's I/O matrix and Review Findings.
-- **Generation:** sequential, in this session. The leaves reuse the ATDD module's seeds and helpers (`card-note-boxes.ts`), so a worker would need this session's reading anyway.
-- **Knowledge:** the six core fragments, plus Traditional Patterns (`fixture-architecture.md`, `network-first.md`) and `playwright-cli.md`. `@seontechnologies/playwright-utils` isn't in `package.json`, so the Playwright Utils branch didn't open. There is no Pact artifact. No browser session was opened for exploration: the ATDD run had already probed the page, and the leaves pin only roles, names and computed styles that the ATDD helpers read.
+- **Generation:** sequential, in this session. The leaves reuse the ATDD module's seeds and helpers (`card-note-boxes.ts`, `openBoxStrip`), so a worker would need this session's reading anyway.
+- **Knowledge:** the six core fragments, plus Traditional Patterns (`fixture-architecture.md`, `network-first.md`) and `playwright-cli.md`. `@seontechnologies/playwright-utils` isn't in `package.json`, so the Playwright Utils branch didn't open. There is no Pact artifact. No browser session was opened for exploration: the ATDD run had already probed the page, and the leaves read the strip through `openBoxStrip`, which that run probed.
 
 ## Coverage plan
 
-The 12 ATDD leaves cover AC-1 to AC-12, and the review's explicit-Dark leaf (`card-note-boxes-dark-theme.spec.ts`) covers the dark shadow through the Theme toggle. The build had already written the unit follow-up (`cardNotes.test.ts`, `cardNotesView.test.ts`). This run adds one e2e leaf for each of the other 9 follow-ups, in `frontend/e2e/card-note-boxes-automate.spec.ts`:
+The 3 ATDD leaves (`open-box.spec.ts`) cover AC-1 to AC-3, and the build's `open-box-unscoped.spec.ts` covers the "Unscoped" matrix row and the strip going when the chip is removed. This run adds one e2e leaf for each of the 10 follow-ups (11 tests, since the window-width leaf runs at two widths), in `frontend/e2e/open-box-automate.spec.ts`:
 
 | Follow-up | Priority | Level | Leaf |
 |---|---|---|---|
-| AC-3 restore | P1 | E2E | `:69` a restore of another library's export keeps `bookvie.cardNotesView` as it was, for `"boxes"` and for `"list"`. The kept `"list"` then opens List on the restored library. |
-| AC-3 dark and forced colors | P2 | E2E | `:98` in dark, the toggle's computed look (group, pressed and unpressed options) equals the Catalog view toggle's. Under forced colors, the pressed option's bottom border is `Highlight` and the unpressed one's isn't. |
-| AC-5 twins | P2 | E2E | `:119` two Books titled "Emma", seeded in reverse id order, get two boxes in Book-id order (`href`), both named "Emma, 1 card note". The count line reads "2 card notes in 2 Books". |
-| AC-6 near-white front | P2 | E2E | `:139` a `#FFFFFF` spine color: the front is white at (0, 80) 216 × 116, with the light box-front shadow and a 0px border, and 3 cards show. |
-| AC-7 axe | P1 | E2E | `:167` Boxes view passes axe (`AXE_TAGS`) in light and dark, with Candide's box focused by keyboard. |
-| AC-8 count line copy | P2 | E2E | `:186` "12 card notes in 1 Book", in `ink-tertiary` dark (`#9A9E94`) in dark. "1 card note in 1 Book" was already pinned by AC-9 (`card-note-boxes.spec.ts:511`) and `cardNotes.test.ts:310`. |
-| AC-8 refetch | P1 | E2E | `:202` a note added to Austerlitz from another context: after a focus refetch, the line reads "56 card notes in 7 Books", and Austerlitz's box is second, in title order. No alert. |
-| AC-10 typing back to blank | P2 | E2E | `:232` "Emma" typed, then deleted one character at a time. "Emm", "Em" and "E" still show no boxes, and the empty field brings back the six boxes and the count line, with no groups and Boxes still pressed. |
-| AC-11 automate | P2 | E2E | `:258` with `MANY_BOXES` at 1280 × 720, scrolled to the bottom with Back to top shown, Boxes view passes axe in light and dark. |
+| AC-1 axe | P1 | E2E | `:52` the open box passes axe (`AXE_TAGS`) in light and dark, for Candide (5 notes) and Austerlitz (no notes), each after its strip has rendered. |
+| AC-1 read vs unread | P1 | E2E | `:77` Dubliners (no finished reading, color set by the user) opened from its box: the strip is `#2F6B6B` exactly, in light and dark. |
+| AC-1 near-white color | P2 | E2E | `:92` a `#FFFFFF` spine color: the strip is `rgb(255, 255, 255)`, 8px tall, with 0px borders and no shadow. |
+| AC-1 remove the chip | P2 | E2E | `:114` after "Remove In Candide" there's no strip, and Back returns to Candide's open box with its strip. The removal half was already in `open-box-unscoped.spec.ts:24`. |
+| AC-1 window width | P2 | E2E | `:136` at 1024px and 1440px, the strip is at `left: 0`, as wide as the window, at y = 60. One window down it sits at 60 − 720, still at the header's bottom: it scrolls with the page. |
+| AC-1 update notice | P2 | E2E | `:162` with the update notice faked (`answerAppInfo`, a newer version), the header's bottom is the banner's bottom, below 60, and the strip starts there. |
+| AC-1 refetch | P1 | E2E | `:180` a note added to Austerlitz's empty open box from another context shows after a focus refetch. The strip node from before the refetch is still connected, with the same color, and there's no alert. |
+| AC-1 color change | P2 | E2E | `:212` Book detail → "See all card notes" (Candide's strip), Back, Teal picked on Book detail, Forward: the cached open box's strip is Teal. |
+| AC-2 axe | P1 | E2E | `:236` Solaris's open box (50 notes), scrolled to the bottom with Back to top shown, passes axe in light and dark. |
+| AC-3 | P2 | E2E | `:255` the strip is 8px, and setting `--open-box-strip-height: 12px` on `:root` makes it 12px. `app-shell.spec.ts` passes in the full check. |
 
-## Defect found and fixed
+## Mutation checks
 
-The two axe leaves (`:167` and `:258`) failed on the first run. axe 4.14 reported `label-content-name-mismatch` (WCAG 2.5.3 Label in Name, impact "serious") on every box link. The link's `aria-label` reads "Anathem, 21 card notes", but its visible text ran the title and count spans together as "Anathem21 card notes", which isn't inside the name.
+The new leaves passed on the first run, so each kind was checked against a broken build. Each edit was made by hand, rebuilt, run, then reverted by the inverse edit and compared with a saved copy (`cmp`). No git command changed the tree.
 
-- **Fix:** one space text node between the title and count spans in `frontend/src/components/CardNoteBox.tsx`. Oleg chose this fix in this run, over deferring it or reopening the story. The label is a flex column, so the space renders nothing, and the name is unchanged.
-- **Probe before the choice:** the space was added, the app rebuilt, and the 22 Story 14.2 e2e leaves (12 ATDD, 1 dark-theme, 9 automate) passed. The edit was then reverted and the app rebuilt, before Oleg answered.
-- The ATDD and review leaves never ran axe on Boxes view, so this gap was invisible to them.
+- `.strip` given `height: 8px; position: sticky; top: 0`: both window-width leaves and the AC-3 token leaf failed (3 failed).
+- The strip given `key={Math.random()}`, so every render remounts it: the refetch leaf failed (`isConnected` was `false`).
 
 ## Files
 
-- **Created:** `frontend/e2e/card-note-boxes-automate.spec.ts`, with 9 leaves. It imports the seeds and locators from `card-note-boxes.ts`, and has a module-local `toggleLook` (the same computed-style pick as the ATDD AC-3 leaf's inline `look`, which the ATDD file can't export) plus the DESIGN.md literals `BOX_FRONT_SHADOW` and `INK_TERTIARY_DARK`.
-- **Changed (source):** `frontend/src/components/CardNoteBox.tsx`: the space and a one-line comment.
+- **Created:** `frontend/e2e/open-box-automate.spec.ts`: 10 leaves (11 tests). It imports the seeds and locators from `card-note-boxes.ts`, the update-notice fake from `update-notice.ts`, and has one module-local locator, `stripNode` (the `aria-hidden` child of `main`, used only for node identity in the refetch leaf), plus the literals `TOPBAR_HEIGHT` (60, `--space-topbar-height`) and `TEAL` (`#4B7C7B`, a curated swatch, as in `spine-popover.spec.ts`).
+- **Changed (source):** none.
 - **Updated:** the ATDD checklist. All 10 green-phase follow-ups are ticked with their evidence. Remaining `[ ]`: **0** (`grep -cF '[ ]'`).
 
 ## Validation
 
-- **The axe leaves can fail:** they failed on the shipped code and passed only with the fix.
-- **Story leaves:** `TZ=Europe/Madrid npx playwright test e2e/card-note-boxes-automate.spec.ts e2e/card-note-boxes.spec.ts e2e/card-note-boxes-dark-theme.spec.ts` gave 22 passed with the fix.
-- **Full check, after the fix and the new leaves (2026-11-24):** `npm run check` exited 0. pytest 2508 passed, unit 406 passed, e2e 825 passed (the review's 816, plus 9), smoke passed. oxlint, `tsc -b` and Prettier were clean.
+- **Story leaves:** `TZ=Europe/Madrid npx playwright test e2e/open-box-automate.spec.ts` gave 11 passed.
+- **Full check, after the new leaves (2026-11-24):** `npm run check` exited 0. pytest 2508 passed, unit 406 passed, e2e 840 passed (the build's 829, plus 11), smoke passed. oxlint, `tsc -b` and Prettier were clean.
 - **Quality checklist:**
-  - No hard waits.
-  - No conditionals: the two `for` loops run fixed lists.
-  - Every leaf seeds its own server, so they are parallel-safe. The restore leaf stops and removes its target server in `finally`.
+  - No hard waits. Every one-shot `openBoxStrip` read comes after a web-first poll of the strip or an awaited scroll position.
+  - No conditionals: the `for` loops run fixed lists (themes, Books, widths).
+  - Every leaf seeds its own server, so they are parallel-safe. The other context in the refetch leaf is closed in `finally`.
   - One subject per leaf.
   - No skips or focus.
-  - Exact values throughout: names, `href`s, computed colors and shadows, axe violation lists compared with `[]`.
-- **No CLI browser sessions** were opened. The one probe file (`e2e/zz-axe.probe.spec.ts`) was removed with `rm`, and `git status` showed no leftovers.
+  - Exact values throughout: computed colors, rects, borders, shadows, node identity, axe violation lists compared with `[]`.
+- **No CLI browser sessions** were opened, and `git status` showed only this run's files.
 
 ## Assumptions and risks
 
-- The restore leaf seeds the target with one other Book, so the restore really replaces data. It asserts only the stored key and the view it opens, not the restored data, which `restore.spec.ts` covers.
-- `toggleLook` copies the ATDD leaf's style pick. If the toggle's look gains a property, both need it.
-- The twins leaf relies on the view ordering by title, then Book id (AD-6). It asserts the `href` order, not the title order.
+- The window-width leaf asserts the strip at y = 60, `--space-topbar-height`, with no update notice. A change to the top bar's height fails it; `TOPBAR_HEIGHT` names the value.
+- `stripNode` finds the strip by structure (the `aria-hidden` child of `main`), not by class. If another `aria-hidden` child of `main` came before the page, the refetch leaf would track the wrong node. The color check beside it still reads the strip through `openBoxStrip`.
+- The color-change leaf goes through Back and Forward so the open box's view stays cached. That proves the strip follows the new color after a set-spine-color, whether the cache is invalidated or refetched on mount; it doesn't tell those two apart.
+- The review deferred one design question this run only observes: a near-white strip on the light page (or near-black on dark) is nearly invisible (`deferred-work.md`, code review of spec-14-3). The `:92` leaf pins that it is still painted, with no edge.
 
 ## Next
 
-Story 14.2's pipeline is complete. Story 14.3 (`see-the-open-box-in-its-book-s-color`) is the next story of Epic 14. Start it with `bmad-testarch-atdd`.
+Story 14.3's pipeline is complete. Story 14.4 (`search-the-boxes`) is the next story of Epic 14. Start it with `bmad-testarch-atdd`.
