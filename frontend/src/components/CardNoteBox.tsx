@@ -46,7 +46,7 @@ export default function CardNoteBox({ bookId, title, spineColor, count, matches 
         ))}
         <span className={styles.front} style={front}>
           <span className={styles.label}>
-            {/* The space keeps the visible text ("Title 12 card notes") inside the link's name (WCAG 2.5.3). */}
+            {/* The space keeps the visible text ("Title 12 card notes", "Title 3 of 12") inside the link's name (WCAG 2.5.3). A faded box's name, "Title, no match", leaves out its count: deferred to the Epic 14 retro (deferred-work.md). */}
             <span className={styles.title}>{title}</span>{' '}
             {matches !== null && matches > 0 ? (
               <span className={styles.pill}>{boxMatchPill(matches, count)}</span>

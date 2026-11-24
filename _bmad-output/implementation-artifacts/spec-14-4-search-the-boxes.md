@@ -3,7 +3,7 @@ title: 'Story 14.4: Search the boxes'
 type: 'feature'
 created: '2026-11-24'
 baseline_revision: '263613cf9e6ecc93b25ed4e22a0b1269dfeb5951'
-status: 'in-review'
+status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -129,6 +129,30 @@ deferred:
   - `[false]` `[reject]` (blind) Nothing asserts no `<mark>` in Boxes view with text. — `search-boxes.spec.ts` AC-4 asserts `main.locator('mark')` has count 0.
   - `[low]` `[patch]` (verification-gap) A Boxes ⇄ List press during the typing pause isn't tested for which sentence `status` reads. — New `e2e/search-boxes-view-switch.spec.ts` leaf: Boxes → List reads "17 notes match.", List → Boxes reads the shelf sentence.
   - `[false]` `[reject]` (verification-gap, other) AC-6's "status stays silent" vs an announcement after a press during the pause. — The press itself announces nothing; the pending typing announcement reads the view shown, as the spec's Design Notes say.
+
+### Review Findings
+
+Code review, 2026-11-24, in a new session (`bmad-code-review`), on `git diff 263613c..e2566c3`. The five layers were Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor and Spine Check. They raised 17 findings: 0 `decision-needed`, 3 `patch` entries (5 findings: two layers each raised the overflow and the comment), 1 `defer` and 11 rejected. Verification Gap found no gap. The Acceptance Auditor found no AC or constraint violation. The review checked the new `tokens.css` lines against DESIGN.md `components.card-note-box` (lines 505–516): they match character for character. A review probe in Chromium at 1024px confirmed the overflow: a 120-character unbroken query gave `scrollWidth` 1414 against `clientWidth` 1024; 30 and 60 characters fit. The probe file was deleted afterwards. The spec has no manual AC.
+
+- [x] [Review][Patch] A long unbroken query makes the shelf sentence widen the toolbar and scroll the page sideways [frontend/src/pages/CardNotesPage.module.css:139] (edge + blind, `low`)
+- [x] [Review][Patch] `CardNoteBox.tsx`'s comment says the space keeps the visible text in the link's name, which a faded box ("*Title*, no match" while it shows "4 card notes") no longer does [frontend/src/components/CardNoteBox.tsx:48] (blind + auditor, `low`)
+- [x] [Review][Patch] `search-boxes-view-switch.spec.ts` relies on the real 500 ms pause: if `fill` and the view press take longer than the pause on a loaded machine, `status` reads the other view's sentence first and the exact-array assertions fail. The repo's clock pattern (`openPaused` in `card-notes.spec.ts`, from the Epic 6 trace flake) makes "a press inside the pause" certain [frontend/e2e/search-boxes-view-switch.spec.ts:35] (blind, `low`)
+- [x] [Review][Defer] Spine drift (AD-6): the client presentation list's `lib/cardNotes.ts`, `lib/useSearchCount.ts` item still says the client counts matching notes only for "N notes match." [ARCHITECTURE-SPINE.md:118] — deferred: spine drift, reconciled before the next epic; added to the build's 14.4 entry in `deferred-work.md`. (spine)
+
+Full check after the patches, 2026-11-24, in this review session: `npm run check` exit 0 — pytest 2508 passed, unit 414 passed, e2e 847 passed, smoke ok. Before it, `search-boxes-view-switch.spec.ts` and `search-boxes.spec.ts` passed 24 of 24 with `--repeat-each=3`, and the overflow probe at 1024px read `scrollWidth` 1024 for a 120-character query (deleted afterwards).
+
+**Rejected:**
+- (spine) Spine drift (AD-6) on the Structural Seed's `lib/` line (549) and the Capability → Architecture Map (556, 568): already deferred by the build's 14.4 entry in `deferred-work.md`.
+- (auditor, `low`) `card-note-boxes-automate.spec.ts` was edited outside the plan's "three planned edits". Its 14.2 AC-10 leaf asserted the staging that AC-4 removes, so it had to change; the Auto Run Result names the file and why.
+- (auditor, `low`) `card-note-boxes.spec.ts` also lost its `DESIGN_MD` import. It followed from deleting the staging leaf, its only user; oxlint would flag it otherwise.
+- (auditor, `false`) The count line and `matches` take `shownQuery`, not `query`. They differ only with no groups, which renders the empty state, not the shelf; List view uses the same variable.
+- (blind, `low`) The rewritten automate AC-10 regex accepts any count, and `left` goes into `new RegExp` unescaped. The exact shelf sentences are pinned by `search-boxes.spec.ts` AC-2/AC-3; this leaf checks that every box stays and the count line comes back. `left` comes from a fixed list of letters.
+- (blind, `low`) The spec's Always rule and Execution task list seven tokens, not eight (`pill-weight`), and the Spec Change Log is empty. The fix edits this spec; the Review Triage Log and Files changed record the eighth token.
+- (blind, `low`) The spec's Verification commands leave out `search-boxes-view-switch.spec.ts`. The fix edits this spec; `npm run check` runs the file.
+- (blind, `false`) "A lifted box's picture reaches the focus ring's outer edge." The tallest pile's back card sits 22px below the link's top (`card-top` 70 − 6 × `card-step` 8), so lifted 6px it is still 16px inside the link; the ring is 4px outside it. DESIGN.md has the link never move.
+- (blind, `low`) No unit case for regex characters or typographic quotes in `boxMatches`/`shelfCountLine`, nor for `cardNoteBoxName('X', 1, 0)`. `boxMatches` only calls `noteMatches`, which has its own regex-character tests; the quote case is cosmetic and the one-note no-match name is the same branch as any no-match.
+- (blind, `low`) The automate leaf now tests 14.4 behavior under the 14.2 describe and an "AC-10" id. Relabelling coverage is `bmad-testarch-automate`'s job for this story, which runs next; the leaf's assertions are right.
+- (blind, `false`) "The 14 vs 17 deferral reads differently in the spec and `deferred-work.md`." Both say only `epics.md` needs the wording fix; the spec's frontmatter adds that EXPERIENCE.md's examples have no seed and stand.
 
 ## Design Notes
 

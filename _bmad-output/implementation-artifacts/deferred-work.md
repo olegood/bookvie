@@ -1786,3 +1786,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-14-4-search-the-boxes.md`
   summary: During a search, a faded box shows "4 card notes" but is named "*Refactoring*, no match", so its visible count isn't in its accessible name (WCAG 2.5.3, label in name), and the comment in `frontend/src/components/CardNoteBox.tsx` that the space keeps the visible text in the name now holds only at rest and for boxes with matches. The name is the exact string the story's AC-2 and EXPERIENCE.md → Card notes shelf → Search on the shelf prescribe, and `search-boxes.spec.ts` asserts it, so a change (for example "*Refactoring*, 4 card notes, no match") is a UX decision for the Epic 14 retro, not a build fix. Low.
   evidence: Edge Case Hunter, build-auto review of Story 14.4; `cardNoteBoxName` in `frontend/src/lib/cardNotes.ts`.
+
+## Deferred from: code review of spec-14-4-search-the-boxes (2026-11-24)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-14-4-search-the-boxes.md`
+  summary: Spine drift (AD-6), reconciled before the next epic. The client presentation list's `lib/cardNotes.ts`, `lib/useSearchCount.ts` item still says the client counts matching notes only for "N notes match.". In Boxes view, `status` now reads the shelf sentence from `shelfCountLine` (`frontend/src/pages/CardNotesPage.tsx`). Line 121 already allows "M of N" and the shelf sentence, so this is stale wording only. Reconcile it with the build's 14.4 entry above. Low.
+  evidence: Spine Check, code review of Story 14.4; ARCHITECTURE-SPINE.md line 118.
