@@ -107,9 +107,9 @@ AC-7's "every existing Card notes test passes unchanged" is about the page and i
 
 ## Green-phase follow-ups (secondary branches, not red leaves)
 
-- [ ] **A Book whose color changes on a cover edit:** `edit-book` with a new cover re-resolves `spineColorFromCover`. AC-4 covers the popover and the Spine color field. A cover replaced through `edit-book` gives the same stored `spineColor` path, which is worth one automate leaf.
-- [ ] **The scope's color for a Book with notes equals its group's color**, across all seeded Books (AC-2 checks one).
-- [ ] **A restored library:** after a restore, the view carries the restored Books' colors. A restore writes `library.json`, which the view reads, so no new code is needed. One leaf would pin it.
+- [x] **A Book whose color changes on a cover edit:** `edit-book` with a new cover re-resolves `spineColorFromCover`. AC-4 covers the popover and the Spine color field. A cover replaced through `edit-book` gives the same stored `spineColor` path, which is worth one automate leaf. (done: backend/tests/test_card_notes_spine_color_follow_ups.py:72 `test_a_cover_replaced_through_edit_book_shows_its_new_color_on_the_next_read`, which also covers `removeCover`; and :95 `test_a_user_color_survives_a_cover_replaced_through_edit_book_in_the_view`)
+- [x] **The scope's color for a Book with notes equals its group's color**, across all seeded Books (AC-2 checks one). (done: backend/tests/test_card_notes_spine_color_follow_ups.py:114 `test_the_scopes_color_equals_its_groups_for_every_book_with_notes`)
+- [x] **A restored library:** after a restore, the view carries the restored Books' colors. A restore writes `library.json`, which the view reads, so no new code is needed. One leaf would pin it. (done: backend/tests/test_card_notes_spine_color_follow_ups.py:132 `test_after_a_restore_the_view_carries_the_restored_books_colors`)
 
 ## Helper probes
 
@@ -159,12 +159,12 @@ There are 7 skipped leaves in `backend/tests/test_card_notes_spine_color.py`, ea
 
 ## Implementation checklist (for `bmad-build-auto`)
 
-- [ ] `CardNotesGroup.spine_color: str` and `CardNotesScope.spine_color: str` (`views/models.py`), each with a docstring line: the Book's stored resolved color (AD-11), as stored.
-- [ ] `views/card_notes.py`: pass `book.spine_color` to both. Don't re-resolve it from `spine_color_user`/`from_cover`/`curated` (Neuromancer's `#123456` pins this).
-- [ ] `npm --prefix frontend run api:gen`, then `npm --prefix frontend run check:api`. Only `frontend/src/api/generated/schema.d.ts` changes, and no other file is reformatted (`git status`).
-- [ ] Update `test_card_notes_view.py:132` and `:151` (above).
-- [ ] Un-skip the 7 leaves, remove `RED_14_1`, and run `npm run check`.
-- [ ] Nothing else: no domain, store, backup, intent, agent-tool or page change (AR62).
+- [x] `CardNotesGroup.spine_color: str` and `CardNotesScope.spine_color: str` (`views/models.py`), each with a docstring line: the Book's stored resolved color (AD-11), as stored. (done: `backend/bookvie/views/models.py:219` and `:229`; AC-5's leaf `test_card_notes_spine_color.py::test_ac5_p0_the_client_types_carry_spine_color_on_group_and_scope` passes)
+- [x] `views/card_notes.py`: pass `book.spine_color` to both. Don't re-resolve it from `spine_color_user`/`from_cover`/`curated` (Neuromancer's `#123456` pins this). (done: `backend/bookvie/views/card_notes.py` `_group` and the scoped `CardNotesScope(...)`; AC-1's leaf passes with `AS_STORED`, and this run's two mutants of `card_notes.py` failed the follow-ups)
+- [x] `npm --prefix frontend run api:gen`, then `npm --prefix frontend run check:api`. Only `frontend/src/api/generated/schema.d.ts` changes, and no other file is reformatted (`git status`). (done: commit `862b856` changes only the planned files; AC-5's leaf reads `spineColor: string;` in both `schema.d.ts` blocks)
+- [x] Update `test_card_notes_view.py:132` and `:151` (above). (done: `backend/tests/test_card_notes_view.py:135` and `:158`)
+- [x] Un-skip the 7 leaves, remove `RED_14_1`, and run `npm run check`. (done: no `skip` or `RED_14_1` left in `test_card_notes_spine_color.py`; this run's `npm run check:py` runs all 7)
+- [x] Nothing else: no domain, store, backup, intent, agent-tool or page change (AR62). (done: commit `862b856`'s source changes are `views/models.py` and `views/card_notes.py` only; AC-6 and AC-7 pass)
 
 ## Suite
 
