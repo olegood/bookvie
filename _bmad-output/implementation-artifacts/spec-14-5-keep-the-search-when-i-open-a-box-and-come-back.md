@@ -3,7 +3,7 @@ title: 'Story 14.5: Keep the search when I open a box and come back'
 type: 'feature'
 created: '2026-11-24'
 baseline_revision: 'e8cc5f995c2538d091c7284717ec5f8f94e7af01'
-status: 'in-review'
+status: 'done'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
@@ -126,6 +126,33 @@ deferred:
   - `[low]` `[reject]` (edge) A stale cached empty view drops the carried text. — Same as the blind row above.
   - `[low]` `[reject]` (edge) A pending typed or carried announcement lands on the next entry. — Same as the blind row above.
   - `[low]` `[reject]` (edge) A POP to a view that fails or is missing never reaches `ready`, so the re-scroll never runs. — Those pages are a line or two tall, so restoration can't leave them scrolled. Rare.
+
+### Review Findings
+
+Code review, 2026-11-24, in a new session (`bmad-code-review`), on `git diff e8cc5f9..900b325`. The five layers were Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor and Spine Check. They raised 23 findings, which grouped into 18 entries: 0 `decision-needed`, 3 `patch`, 2 `defer` and 13 rejected. The Edge Case Hunter found nothing (`[]`). The Acceptance Auditor found no behavioral AC violation; its findings were about the spec's own wording. The spec has no manual AC: every AC is a test run or `npm run check`.
+
+- [x] [Review][Patch] The review-added `noGroups` leaf carries no AC id although it covers AC-5's "No groups" matrix row, and it lacks the blank line every other leaf in the file has before it [frontend/e2e/carried-search.spec.ts:297] (blind, `low`)
+- [x] [Review][Patch] The rewrapped chip paragraph of `CardNotesPage`'s doc comment runs to 82 columns while the rest of the block wraps at about 78 [frontend/src/pages/CardNotesPage.tsx:158] (blind, `low`)
+- [x] [Review][Patch] The build's spine-drift entry says it "closes the chain of 14.2, 14.3 and 14.4 entries above". Drift entries are closed only by the reconciliation pass's `resolved:` lines (AGENTS.md "Architecture spine"), so the wording could make the retro or the next-epic gate skip those entries [_bmad-output/implementation-artifacts/deferred-work.md:1799] (blind, `low`)
+- [x] [Review][Defer] Keying the body by `location.key` is not verified by any test: the only same-`bookId` key change, the nav link on the shelf (a REPLACE), now empties the field through `useCarriedSearch`, so AC-4's nav-link branch passes with `key={bookId ?? ''}` too. A fresh pile or panel, a dropped pending count and the scroll to the top after that REPLACE are unpinned. The ATDD checklist's line 83 ("covered by AC-4's nav-link branch") is out of date [frontend/src/pages/CardNotesPage.tsx:191] — deferred: the checklist's green follow-up "E2E, AC-5 fresh body" plans this leaf for `bmad-testarch-automate`, the next step; it should also scroll the shelf down before the click and assert `scrollY` 0 after it. (verification-gap, `low`)
+- [x] [Review][Defer] Spine drift (AD-7): "Where the text lives" says each key scrolls to the top before the `h1` takes focus, but doesn't record the second scroll after a client-side POP (when the view is ready, and on the next frame) that the spec's Always rule asks for [ARCHITECTURE-SPINE.md:135] — deferred: spine drift, reconciled before the next epic. (spine)
+
+Full check after the patches, 2026-11-24, in this review session: `npm run check` exit 0 — pytest 2508 passed, unit 415 passed, e2e 862 passed, smoke ok.
+
+**Rejected:**
+- (blind + auditor, `low`) The spec's AC and Verification still count 5 leaves in `carried-search.spec.ts`; there are 6. The fix edits this spec; the Auto Run Result and the Review Triage Log name the sixth leaf.
+- (auditor + blind, `low`) The sixth leaf breaks the Never rule "no edit to `carried-search.spec.ts` beyond removing each `test.skip`", and the Spec Change Log is empty. The rule keeps the ATDD leaves from being weakened, and adding a leaf weakens none; the fix edits this spec, and the Review Triage Log records the patch.
+- (blind, `low`) The Auto Run Result's counts (15 rejected, 3 patched) don't add up against its own Review Triage Log. The fix edits this spec, and the triage log rows stand on their own.
+- (auditor + blind, `low`) The recompiled `epic-14-context.md` still says the existing Card notes specs pass "with no edit to their files". Already deferred by the build's 14.5 entry in `deferred-work.md`, which names both `epics.md` and the context.
+- (blind, `low`) The recompile dropped the gate thresholds and the shelf's column counts from `epic-14-context.md`. The file is a generated cache; the facts stay in `epics.md`, DESIGN.md and the test design, which the trace and gate read. The build's triage rejected the same finding.
+- (blind, `low`) `carriedSearch.test.ts` keeps the ATDD's `load()`, `existsSync` and loosely typed `CarriedSearch`. No assertion is weaker for it, and the runtime key checks catch a shape change; no named harm.
+- (blind, `low`) A reload's scroll may land at the top or at the browser's restored position, depending on timing. It wasn't shown to happen, and with the view loading the page is short at mount; at most cosmetic.
+- (blind, `false`) Back from another route into List view now goes to the top instead of the browser's restored position. AD-7 and the epic context say every key change scrolls to the top, so this is the specified behavior, not an unrecorded change.
+- (blind, `low`) The scroll fix depends on timing instead of `history.scrollRestoration = 'manual'` or `<ScrollRestoration>`. The spec's Always rule chose the ready-time re-scroll; a global switch would change Back on every other page (Catalog, Book detail).
+- (blind, `low`) `carriedLine` recomputes the count line on every render. It runs one `shelfCountLine` per keystroke, the same work as the typed path; no measurable cost.
+- (blind, `low`) A stale cached view with 0 groups drops a carried search for good. The build's triage already rejected this as rare and as needing new surface (fetch state through `toViewState`); it is listed under residual risks.
+- (auditor, `false`) The POP-only re-scroll and its extra frame go beyond the spec. The Always rule says "if the browser's own Back scroll restoration lands later, scroll again once the view is ready", which is what the code does.
+- (spine) Spine drift (AD-6, AD-7) on the Structural Seed's `lib/` line (549) and the Capability → Architecture Map row (568): already deferred by the build's 14.5 entry in `deferred-work.md`.
 
 ## Design Notes
 

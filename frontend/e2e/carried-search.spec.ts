@@ -294,7 +294,8 @@ test.describe('Story 14.5 Keep the search when I open a box and come back (ATDD)
     expect(boxTrack(frames, REFACTORING.id).length).toBeGreaterThan(30)
     await expect(searchField(page)).toHaveValue('habit')
   })
-  test('[P1] a search carried into a box whose only note is then deleted is dropped: removing the chip shows the shelf with an empty field and nothing announced', async ({
+
+  test('[P1] AC-5 a search carried into a box whose only note is then deleted is dropped: removing the chip shows the shelf with an empty field and nothing announced', async ({
     page,
     seededServer,
   }) => {

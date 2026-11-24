@@ -155,8 +155,8 @@ function Group({
  *
  * Scoped, the "In *X*" chip sits under the `h1`; its remove button ("Remove
  * In *X*") pushes `/card-notes` with the search, and the `h1` takes focus as
- * after any navigation. With no notes the page reads "No card notes yet." with no
- * field; scoped, it adds **Add card note** (`useCardNoteFlow`, Page
+ * after any navigation. With no notes the page reads "No card notes yet."
+ * with no field; scoped, it adds **Add card note** (`useCardNoteFlow`, Page
  * prefilled from the Book's current page). An unknown or deleted Book in
  * `?book=` shows the not-found page.
  *
