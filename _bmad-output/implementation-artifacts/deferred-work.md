@@ -1793,7 +1793,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-14-4-search-the-boxes.md`
   summary: During a search, a faded box shows "4 card notes" but is named "*Refactoring*, no match", so its visible count isn't in its accessible name (WCAG 2.5.3, label in name), and the comment in `frontend/src/components/CardNoteBox.tsx` that the space keeps the visible text in the name now holds only at rest and for boxes with matches. The name is the exact string the story's AC-2 and EXPERIENCE.md → Card notes shelf → Search on the shelf prescribe, and `search-boxes.spec.ts` asserts it, so a change (for example "*Refactoring*, 4 card notes, no match") is a UX decision for the Epic 14 retro, not a build fix. Low.
   evidence: Edge Case Hunter, build-auto review of Story 14.4; `cardNoteBoxName` in `frontend/src/lib/cardNotes.ts`.
-  resolved: 2026-11-24, Epic 14 retro item 98. A faded box is named "*Title*, N card notes, no match" ("*Refactoring*, 4 card notes, no match"; `cardNoteBoxName` in `frontend/src/lib/cardNotes.ts`), so its visible count is in its name. EXPERIENCE.md, UX-DR90, Story 14.4's AC-2 and `epic-14-context.md` say so, and the axe leaf in `search-boxes-automate.spec.ts` runs `label-content-name-mismatch` and expects no violation.
+  resolved: 2026-11-24, Epic 14 retro item 98. A faded box is named "*Title*, N card notes, no match" ("*Refactoring*, 4 card notes, no match"; `cardNoteBoxName` in `frontend/src/lib/cardNotes.ts`), so its visible count is in its name. EXPERIENCE.md, UX-DR90, Story 14.4's AC-2 and `epic-14-context.md` say so, `card-note-boxes-plan-2026-11-23.md` D11 notes it supersedes the plan, and the axe leaf in `search-boxes-automate.spec.ts` runs `label-content-name-mismatch` and expects no violation.
 
 ## Deferred from: code review of spec-14-4-search-the-boxes (2026-11-24)
 
@@ -1832,3 +1832,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-epic-14-retro-item-98-fresh-carried-search-and-faded-box-name.md`
   summary: Spine drift (AD-6), reconciled before the next epic. The client presentation list's search item says a carried search's one announcement reads the count line "once the view is `ready`"; since item 98 it reads it once the view is settled (ready and not fetching). The code is right and the spine is out of date. Low.
   evidence: Spine Check, build-auto review of item 98; ARCHITECTURE-SPINE.md line 118.
+
+## Deferred from: code review of spec-epic-14-retro-item-98-fresh-carried-search-and-faded-box-name (2026-11-24)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-epic-14-retro-item-98-fresh-carried-search-and-faded-box-name.md`
+  summary: Item 98's "settled" means not fetching, not fetched. Two cases are accepted for now: a failed refetch ends fetching and keeps the cached copy, so a carried search announces the stale count, or a stale empty open box clears the carried text for good (E14-R2 again, but only on a refetch error); and the typed path reads whatever copy is shown when its 500 ms pause ends, so a refetch longer than the pause can make it speak a stale count. Both need a local server that errors or stalls during a Back or a box press. Accepted in the spec's Design Notes; recorded here so a later epic that reads a view on arrival (item 99's rule) can decide whether "settled" should mean "fetched". Low.
+  evidence: Edge Case Hunter and Blind Hunter, code review of item 98; `frontend/src/pages/CardNotesPage.tsx` (`noGroups`, `settled`, `carriedLine`), `frontend/src/api/views.ts` (`fetching`), `frontend/src/lib/useSearchCount.ts`.

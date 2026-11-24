@@ -2,7 +2,7 @@
 title: 'Make the carried search wait for fresh data, and put the count in the faded box''s name'
 type: 'bugfix'
 created: '2026-11-24'
-status: 'in-review'
+status: 'done'
 baseline_revision: '9c879f49f134454dfca34e4463f6ceb2b9456805'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -82,6 +82,31 @@ deferred:
 - Given a carried search and a cached empty scoped view, when the box mounts and the refetch returns notes, then the field still holds the text.
 - Given a shelf search, when a box has no match, then its name is "*Title*, N card notes, no match", and axe on the searched shelf reports no `label-content-name-mismatch`.
 - `npm run check` passes.
+
+### Review Findings
+
+Code review, 2026-11-24 (`bmad-code-review`, new session; diff `9c879f4..c371563`; layers: Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor, Spine Check; none failed).
+
+- [x] [Review][Patch] No leaf opens a panel while a carried line waits, so `silence()` can regress unnoticed: putting `count.cancel()` back at any of its four sites passes every test [frontend/e2e/carried-search-automate.spec.ts:223]
+- [x] [Review][Patch] `epic-14-context.md` still says the text is dropped "while the view has no groups", not while it is settled with no groups [_bmad-output/implementation-artifacts/epic-14-context.md:37]
+- [x] [Review][Patch] EXPERIENCE.md says neither that the announcement into an open box waits for the refetched notes nor that typing or opening a panel first drops it [_bmad-output/planning-artifacts/ux-designs/ux-bookvie-2026-10-28/EXPERIENCE.md:367]
+- [x] [Review][Patch] The header comment of `carried-search-automate.spec.ts` says item 98 adds two leaves; it adds three [frontend/e2e/carried-search-automate.spec.ts:7]
+- [x] [Review][Patch] The faded-name entry's `resolved:` line leaves out the `card-note-boxes-plan` D11 note [_bmad-output/implementation-artifacts/deferred-work.md:1796]
+- [x] [Review][Defer] The accepted residual risks live only in this spec: a failed refetch counts as settled, so it announces the cached count, or clears a carried search from a stale empty box (R2 again, on error); the typed path can read a stale copy when a refetch outlasts the 500 ms pause [frontend/src/pages/CardNotesPage.tsx:191] — deferred: accepted by design (Design Notes); recorded in `deferred-work.md` so the retro sees it
+- [x] [Review][Defer] Spine drift (AD-6 line 118, AD-7 lines 137 and 140): settled, not `ready`, and the drop of a pending carried line [ARCHITECTURE-SPINE.md:137] — deferred: already recorded by the build's review in `deferred-work.md` (spine drift, reconciled before the next epic; item 99)
+
+- Full check after the patches, 2026-11-24: `npm run check` exit 0 (pytest 2508 passed, unit 416 passed, e2e 876 passed, smoke ok). The new Edit leaf failed with `count.cancel()` put back at `openEdit` by hand ("3 notes match." spoken over the panel), then passed with `silence()` restored.
+
+**Rejected:**
+- `false` — Acceptance Auditor: `silence()` goes beyond the "typed search" Always rule. Nothing forbids it; it keeps the announcement once and never over a panel, and the build's triage recorded it.
+- `false` — Acceptance Auditor: the "Fresh empty box" row has no leaf. `carried-search.spec.ts:285` empties a box on a refetched (settled) view, and the chip then lands with an empty field.
+- `low` — Acceptance Auditor: item 98's `action_items` entry in `sprint-status.yaml` still reads `open`. It is no `development_status` story, and the review's status facts write the spec frontmatter only.
+- `low` — Blind Hunter: the spec contradicts itself on the number of leaves, its Spec Change Log is empty, and its ACs omit the typing drop. Each fix edits the spec under review.
+- `false` — Blind Hunter: UX-DR90, EXPERIENCE.md:362 and D10 still quote "14 card notes in 4 Books". They describe an illustrative library (*Deep Work* "5 of 27"), not the e2e fixture; Story 14.4's AC-2 carries the fixture's 17.
+- `low` — Blind Hunter: the stale-window assertions race the fixed 1,500 ms hold. They are in-page checks well inside the hold, and they passed the full suite; a test-released hold adds plumbing.
+- `low` — Blind Hunter: `search-boxes.spec.ts:219` rebuilds the plural inline. The unit test pins both numbers with literals.
+- `low` — Blind Hunter: no unit test for `fetching`. The edit-then-Back leaf fails if the mount doesn't report fetching (it would announce 17).
+- `low` — Edge Case Hunter: a hung refetch never announces. A local fetch that never resolves isn't an everyday case, and a timeout adds state.
 
 ## Spec Change Log
 

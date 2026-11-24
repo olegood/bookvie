@@ -4,9 +4,10 @@
 // the other ways into an open box, the remaining ways that start empty, a
 // fresh body for every history entry of the same scope (the nav link's
 // REPLACE and a two-step Back), the chip's arrival drawn at once, reduced
-// motion and dark, and axe on the open box. Epic 14 retro item 98 adds two
+// motion and dark, and axe on the open box. Epic 14 retro item 98 adds four
 // stale-cache leaves: an edit in a box, then Back, announces the refetched
-// count, and a stale empty open box keeps the carried text. fixtures.ts stores
+// count; a stale empty open box keeps the carried text; and typing, or opening
+// Edit, before the carried count speaks drops it. fixtures.ts stores
 // "list" before every spec; the Boxes leaves turn that off.
 
 import AxeBuilder from '@axe-core/playwright'
@@ -246,6 +247,36 @@ test.describe('Story 14.5 Keep the search when I open a box and come back (autom
     await page.evaluate((ms) => new Promise<void>((resolve) => setTimeout(resolve, ms)), PAST_THE_PAUSE_MS)
     await afterAnnounceDelay(page)
     expect(await announced(page)).toEqual([HABITS_LINE])
+  })
+
+  test('[P1] item 98 opening Edit before a carried search is announced drops it: the count never speaks over the panel', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer(HABIT_SHELF)
+    // Atomic Habits's open box, visited once so its view is cached, then the shelf again.
+    await searchTheShelf(page, cardNotesPage(server), 'habit', HABIT_LINE)
+    await boxOfBook(page, ATOMIC.id).click()
+    await expect(page.getByRole('status')).toHaveText('3 notes match.')
+    await page.goBack()
+    await expect(page.getByRole('status')).toHaveText(HABIT_LINE)
+
+    // Into the box again with its refetch held, and Edit opened on the cached copy before it settles.
+    await holdViewGets(page, (url) => new URL(url).searchParams.get('book') === ATOMIC.id)
+    const released = page.waitForResponse((response) => new URL(response.url()).searchParams.get('book') === ATOMIC.id)
+    await recordStatus(page)
+    await boxOfBook(page, ATOMIC.id).click()
+    await expect(chip(page, ATOMIC.title)).toBeVisible()
+    await expect(searchField(page)).toHaveValue('habit')
+    await editOf(noteItem(page.getByRole('main'), 'AH note 02: Every HABIT worth keeping.')).click()
+    await expect(editPanel(page)).toBeVisible()
+    await released
+
+    // Past where a late carried line would land (just after the release), then announce's tick.
+    await page.evaluate((ms) => new Promise<void>((resolve) => setTimeout(resolve, ms)), PAST_THE_PAUSE_MS)
+    await afterAnnounceDelay(page)
+    await expect(editPanel(page)).toBeVisible()
+    expect(await announced(page)).not.toContain('3 notes match.')
   })
 
   test('[P1] AC-3 the chip carries the text when the open box was entered by a box, and by Home\'s "See card notes"; Back from the chip\'s shelf to a box-entered open box starts empty', async ({
