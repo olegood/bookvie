@@ -21,7 +21,6 @@ import json
 from pathlib import Path
 
 import pytest
-from fastapi.testclient import TestClient
 
 from bookvie.http.app import create_app
 from tests.builder import LibraryBuilder
@@ -34,6 +33,7 @@ from tests.helpers import (
     assert_invariants,
     field_messages,
     library_bytes,
+    post_set_spine_color,
     seed_dune_with_cover,
     stored_book,
 )
@@ -46,13 +46,7 @@ FROM_COVER = "#A85A4A"
 """The cover color ``seed_dune_with_cover`` stores."""
 
 
-def _set(client: TestClient, book_id: str, color: str | None):
-    """``set-spine-color`` as a swatch (``#RRGGBB``) or "From cover" (``None``) sends it."""
-    intent = {"bookId": book_id, "spineColor": color}
-    return client.post(
-        SET_SPINE_COLOR,
-        files={"intent": (None, json.dumps(intent), "application/json")},
-    )
+_set = post_set_spine_color
 
 
 def _colors(data_dir: Path, book_id: str) -> tuple[str | None, str | None, str, str]:

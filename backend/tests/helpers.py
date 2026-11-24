@@ -282,6 +282,15 @@ def post_edit_book(
     return client.post(EDIT_BOOK, files={"intent": (None, json.dumps(intent), "application/json")})
 
 
+def post_set_spine_color(client: TestClient, book_id: str, color: str | None) -> httpx.Response:
+    """``set-spine-color`` as a swatch (``#RRGGBB``) or "From cover" (``None``) sends it."""
+    intent = {"bookId": book_id, "spineColor": color}
+    return client.post(
+        SET_SPINE_COLOR,
+        files={"intent": (None, json.dumps(intent), "application/json")},
+    )
+
+
 def assert_invariants(data_dir: Path) -> None:
     check_invariants(Library.model_validate_json(library_bytes(data_dir)))
 
