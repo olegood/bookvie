@@ -7,7 +7,9 @@
 // rotation). Story 14.3 adds the open box's helpers: `openBoxColor` (a
 // scope's spine color from the view) and the measuring helper `openBoxStrip`.
 // Story 14.4 adds the shelf search's seed (`HABIT_SHELF`), `boxOfBook` and
-// the measuring helpers `boxFrames` and `pillLook`.
+// the measuring helpers `boxFrames` and `pillLook`. Story 14.5 adds
+// `boxStates` (every box's lift and fade now) and `boxTrack` (one box across
+// sampled frames), which 14.4's specs still keep as local copies.
 
 import type { Locator, Page } from '@playwright/test'
 import { finished } from './bookcase.ts'
@@ -638,4 +640,15 @@ export function pillLook(link: Locator, text: string, title: string): Promise<Pi
     },
     [text, title] as const,
   )
+}
+
+/** Every box's id, lift and front opacity now, in grid order: one `boxFrames` read, for a poll. */
+export async function boxStates(page: Page): Promise<[string, number, number][]> {
+  const [frame] = await boxFrames(page)
+  return (frame ?? []).map((b) => [b.id, b.lift, b.opacity])
+}
+
+/** One box's front opacity and lift in each sampled frame where it is drawn. */
+export function boxTrack(frames: BoxFrame[][], id: string): { opacity: number; lift: number }[] {
+  return frames.flatMap((frame) => frame.filter((b) => b.id === id).map(({ opacity, lift }) => ({ opacity, lift })))
 }
