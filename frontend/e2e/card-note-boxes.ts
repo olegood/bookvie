@@ -9,7 +9,8 @@
 // Story 14.4 adds the shelf search's seed (`HABIT_SHELF`), `boxOfBook` and
 // the measuring helpers `boxFrames` and `pillLook`. Story 14.5 adds
 // `boxStates` (every box's lift and fade now) and `boxTrack` (one box across
-// sampled frames), which 14.4's specs still keep as local copies.
+// sampled frames); the box states they are compared with (`LIFT`, `FADE`,
+// `HABIT_STATE`, `HABITS_STATE`, `AT_REST`) sit beside `HABIT_BOXES`.
 
 import type { Locator, Page } from '@playwright/test'
 import { finished } from './bookcase.ts'
@@ -425,6 +426,22 @@ export const HABIT_BOXES = [
   { title: 'Tiny Habits', id: bookId(14), notes: 12, matches: 12 },
   { title: 'Walden', id: bookId(15), notes: 1, matches: 1 },
 ]
+
+/** DESIGN.md components.card-note-box.lift and .fade (14.4). */
+export const LIFT = -6
+export const FADE = 0.38
+
+/** Every box lifted when `matched` holds it, else faded. */
+export function searchedState(matched: readonly string[]): [string, number, number][] {
+  return HABIT_BOXES.map((b): [string, number, number] => (matched.includes(b.id) ? [b.id, LIFT, 1] : [b.id, 0, FADE]))
+}
+
+/** "habit": every box but Refactoring has a match. */
+export const HABIT_STATE = searchedState(HABIT_BOXES.filter((b) => b.matches > 0).map((b) => b.id))
+/** "habits": only Atomic Habits and Tiny Habits. */
+export const HABITS_STATE = searchedState([HABIT_BOXES[0].id, HABIT_BOXES[3].id])
+/** Every box at rest. */
+export const AT_REST = HABIT_BOXES.map((b): [string, number, number] => [b.id, 0, 1])
 
 /** HABIT_SHELF's count line with an empty search. */
 export const HABIT_COUNT_LINE = '41 card notes in 5 Books'

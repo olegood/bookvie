@@ -5,33 +5,32 @@
 // "list" before every other spec; this one turns that off.
 
 import AxeBuilder from '@axe-core/playwright'
-import type { Locator, Page } from '@playwright/test'
 import { SPINE_LABEL } from './bookcase.ts'
 import { recordStatus, statusTexts } from './card-note-add-another.ts'
 import {
   boxFrames,
   boxLinks,
   boxOfBook,
+  boxStates,
   cardNotesPage,
   columnsOf,
+  FADE,
   HABIT_BOXES,
   HABIT_COUNT_LINE,
   HABIT_SHELF,
+  HABIT_STATE,
+  LIFT,
   pillLook,
   searchField,
 } from './card-note-boxes.ts'
 import { expect, test } from './fixtures.ts'
-import { designComponentColor, rgbOf } from './library.ts'
+import { designComponentColor, openPaused, rgbOf } from './library.ts'
 import { AXE_TAGS } from './stats.ts'
 
 const [ATOMIC, DEEP_WORK, REFACTORING, TINY, WALDEN] = HABIT_BOXES
 
 /** "habit": 17 notes in 4 Books. */
 const HABIT_LINE = '17 card notes in 4 Books contain “habit”.'
-
-/** DESIGN.md components.card-note-box.lift and .fade. */
-const LIFT = -6
-const FADE = 0.38
 
 /** DESIGN.md → Elevation & Depth → Card note box front, dark, as computed style writes a box-shadow. */
 const BOX_FRONT_SHADOW_DARK = 'rgba(0, 0, 0, 0.12) 0px -3px 0px 0px inset, rgba(0, 0, 0, 0.35) 0px 1px 2px 0px'
@@ -51,32 +50,6 @@ const PAST_THE_PAUSE_MS = 1_000
 /** Inside the search pause: less than SEARCH_PAUSE_MS. */
 const INSIDE_THE_PAUSE_MS = 400
 
-/** Every box's id, lift and front opacity now. */
-async function resting(page: Page): Promise<[string, number, number][]> {
-  const [frame] = await boxFrames(page)
-  return (frame ?? []).map((b) => [b.id, b.lift, b.opacity])
-}
-
-/** The "habit" end state: matches lifted, Refactoring faded. */
-const HABIT_STATE = HABIT_BOXES.map((b): [string, number, number] =>
-  b.matches > 0 ? [b.id, LIFT, 1] : [b.id, 0, FADE],
-)
-
-/**
- * Opens `url` with Playwright's clock installed, then pauses it once `loaded`
- * shows, so the search pause and announce's tick only run when the test calls
- * `runFor`. Pausing before the page has its data could strand the first load
- * (TanStack Query's `setTimeout(0)`; the Epic 6 trace flake, `card-notes.spec.ts`).
- */
-async function openPaused(page: Page, url: string, loaded: Locator): Promise<void> {
-  const start = new Date('2026-11-10T10:00:00+01:00')
-  await page.clock.install({ time: start })
-  await page.goto(url)
-  await expect(loaded).toBeVisible()
-  // A minute on: always ahead of the running clock, and still the same day.
-  await page.clock.pauseAt(new Date(start.getTime() + 60_000))
-}
-
 test.describe('Story 14.4 Search the boxes (automate)', () => {
   test.use({ cardNotesView: null })
 
@@ -90,7 +63,7 @@ test.describe('Story 14.4 Search the boxes (automate)', () => {
       await page.goto(cardNotesPage(server))
       await expect(boxLinks(page)).toHaveCount(HABIT_BOXES.length)
       await searchField(page).fill('habit')
-      await expect.poll(() => resting(page)).toEqual(HABIT_STATE)
+      await expect.poll(() => boxStates(page)).toEqual(HABIT_STATE)
 
       // Every other rule: no violation anywhere, the lifted boxes and their pills included.
       const others = await new AxeBuilder({ page }).withTags(AXE_TAGS).disableRules(FADED_BOX_GAPS).analyze()
@@ -124,7 +97,7 @@ test.describe('Story 14.4 Search the boxes (automate)', () => {
     for (const b of HABIT_BOXES) {
       await expect(boxOfBook(page, b.id).getByText(`${b.notes} of ${b.notes}`, { exact: true }), b.title).toBeVisible()
     }
-    await expect.poll(() => resting(page)).toEqual(HABIT_BOXES.map((b) => [b.id, LIFT, 1]))
+    await expect.poll(() => boxStates(page)).toEqual(HABIT_BOXES.map((b) => [b.id, LIFT, 1]))
 
     // "s." only in Walden's "woods.": a pattern would match "s " in "Small habits worth".
     await searchField(page).fill('s.')
@@ -136,7 +109,7 @@ test.describe('Story 14.4 Search the boxes (automate)', () => {
     for (const query of ['(habit', '[a-z]', 'habit)*']) {
       await searchField(page).fill(query)
       await expect(main.getByText(`No card notes contain “${query}”.`, { exact: true }), query).toBeVisible()
-      await expect.poll(() => resting(page), query).toEqual(HABIT_BOXES.map((b) => [b.id, 0, FADE]))
+      await expect.poll(() => boxStates(page), query).toEqual(HABIT_BOXES.map((b) => [b.id, 0, FADE]))
     }
     await expect(boxLinks(page)).toHaveCount(HABIT_BOXES.length)
     await expect(page.getByRole('alert')).toHaveText('')
@@ -209,12 +182,12 @@ test.describe('Story 14.4 Search the boxes (automate)', () => {
       const before = await slots()
 
       await searchField(page).fill('habit')
-      await expect.poll(() => resting(page)).toEqual(HABIT_STATE)
+      await expect.poll(() => boxStates(page)).toEqual(HABIT_STATE)
       expect(await slots()).toEqual(before)
       expect(await columnsOf(page)).toBe(columns)
 
       await searchField(page).fill('zettel')
-      await expect.poll(() => resting(page)).toEqual(HABIT_BOXES.map((b) => [b.id, 0, FADE]))
+      await expect.poll(() => boxStates(page)).toEqual(HABIT_BOXES.map((b) => [b.id, 0, FADE]))
       expect(await slots()).toEqual(before)
     })
   }
@@ -231,7 +204,7 @@ test.describe('Story 14.4 Search the boxes (automate)', () => {
     for (const b of before) expect(b.shadow, b.id).toBe(BOX_FRONT_SHADOW_DARK)
 
     await searchField(page).fill('habit')
-    await expect.poll(() => resting(page)).toEqual(HABIT_STATE)
+    await expect.poll(() => boxStates(page)).toEqual(HABIT_STATE)
     const [after] = await boxFrames(page)
     for (const b of after) {
       expect(b.shadow, b.id).toBe(BOX_FRONT_SHADOW_DARK)
@@ -277,7 +250,7 @@ test.describe('Story 14.4 Search the boxes (automate)', () => {
     await searchField(page).fill('habit')
     const refactoring = boxOfBook(page, REFACTORING.id)
     await expect(refactoring).toHaveAccessibleName('Refactoring, 4 card notes, no match')
-    await expect.poll(() => resting(page)).toEqual(HABIT_STATE)
+    await expect.poll(() => boxStates(page)).toEqual(HABIT_STATE)
 
     await refactoring.click()
 

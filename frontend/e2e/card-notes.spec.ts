@@ -13,6 +13,7 @@ import type { Locator, Page } from '@playwright/test'
 import { expect, test } from './fixtures.ts'
 import { DUNE, DUNE_ID, LEFT_HAND, LEFT_HAND_ID, mainAt, mainBookCard } from './home.ts'
 import { ADD_CARD_NOTE } from './intents.ts'
+import { openPaused } from './library.ts'
 
 const EMMA_ID = '9c4d2b1a-7e6f-4a5b-8c9d-0e1f2a3b4c5d'
 const SAVED = 'Card note saved.'
@@ -615,23 +616,6 @@ test.describe('Story 5.3 follow-ups', () => {
 /** "Dune" on Book detail, whose Card notes block holds four notes. */
 function duneDetail(server: { url: string }): string {
   return `${server.url}/book/${DUNE_ID}`
-}
-
-/**
- * Opens `url` with Playwright's clock installed, then pauses it once `loaded`
- * shows, so the search pause (500 ms) and announce's 100 ms tick only run when
- * the test calls `runFor`. Pausing before the page has its data could strand
- * the first load: TanStack Query hands a result to React through a
- * `setTimeout(0)`, which a paused clock never fires, so a view that answered
- * after the pause left only the `h1` (Epic 6 trace flake, `deferred-work.md`).
- */
-async function openPaused(page: Page, url: string, loaded: Locator): Promise<void> {
-  const start = new Date('2026-11-10T10:00:00+01:00')
-  await page.clock.install({ time: start })
-  await page.goto(url)
-  await expect(loaded).toBeVisible()
-  // A minute on: always ahead of the running clock, and still the same day.
-  await page.clock.pauseAt(new Date(start.getTime() + 60_000))
 }
 
 /** Past the search pause and announce's tick together. */

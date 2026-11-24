@@ -12,32 +12,24 @@ import { scrollToY } from './back-to-top.ts'
 import { recordStatus, watchFocusAtStatus, focusAtStatus } from './card-note-add-another.ts'
 import { editOf, noteItem } from './card-note-keys.ts'
 import {
+  AT_REST,
   boxFrames,
   boxLinks,
   boxOfBook,
   boxStates,
   boxTrack,
   cardNotesPage,
+  FADE,
   HABIT_BOXES,
   HABIT_COUNT_LINE,
   HABIT_SHELF,
+  HABIT_STATE,
+  HABITS_STATE,
+  LIFT,
   searchField,
   viewButton,
 } from './card-note-boxes.ts'
-import {
-  announced,
-  AT_REST,
-  chip,
-  FADE,
-  H1,
-  HABIT_LINE,
-  HABIT_STATE,
-  HABITS_LINE,
-  HABITS_STATE,
-  LIFT,
-  notes,
-  searchTheShelf,
-} from './carried-search.ts'
+import { announced, chip, H1, HABIT_LINE, HABITS_LINE, notes, searchTheShelf } from './carried-search.ts'
 import { mainNav } from './dev-mode.ts'
 import { expect, test } from './fixtures.ts'
 import { afterAnnounceDelay } from './stats.ts'

@@ -12,22 +12,27 @@
 import { readFileSync } from 'node:fs'
 import { inLiveRegion, recordStatus, statusTexts } from './card-note-add-another.ts'
 import {
+  AT_REST,
   box,
+  type BoxFrame,
   boxFrameOf,
   boxFrames,
   boxLinks,
   boxName,
   boxOfBook,
+  boxStates,
   cardNotesPage,
+  FADE,
   groupHeadings,
   HABIT_BOXES,
   HABIT_COUNT_LINE,
   HABIT_SHELF,
+  HABIT_STATE,
+  LIFT,
   noteCount,
   pillLook,
   searchField,
   viewButton,
-  type BoxFrame,
 } from './card-note-boxes.ts'
 import { systemColor } from './dev-mode.ts'
 import { expect, test } from './fixtures.ts'
@@ -60,26 +65,8 @@ const HABIT_PILLS = [
   [WALDEN, '1 of 1'],
 ] as const
 
-/** DESIGN.md components.card-note-box.lift and .fade. */
-const LIFT = -6
-const FADE = 0.38
-
 /** One inner wrapper, holding the cards and the front, at 0.38; never the link or its list item. */
 const ONE_FADED_WRAPPER = [{ opacity: FADE, outer: false, holdsAll: true }]
-
-/** Every box's id, lift and front opacity, for a poll that waits out the transition. */
-async function resting(page: Parameters<typeof boxFrames>[0]): Promise<[string, number, number][]> {
-  const [frame] = await boxFrames(page)
-  return (frame ?? []).map((b) => [b.id, b.lift, b.opacity])
-}
-
-/** The "habit" end state: matches lifted, Refactoring faded. */
-const HABIT_STATE = HABIT_BOXES.map((b): [string, number, number] =>
-  b.matches > 0 ? [b.id, LIFT, 1] : [b.id, 0, FADE],
-)
-
-/** Every box at rest. */
-const AT_REST = HABIT_BOXES.map((b): [string, number, number] => [b.id, 0, 1])
 
 /** A box's front opacity and lift in each sampled frame where it is drawn. */
 function track(frames: BoxFrame[][], id: string): { opacity: number; lift: number }[] {
@@ -107,7 +94,7 @@ test.describe('Story 14.4 Search the boxes (ATDD)', () => {
     await expect(boxOfBook(page, ATOMIC.id).getByText('3 of 12', { exact: true })).toBeVisible()
 
     // The lift and the fade, once the transition is over; the grid keeps every slot.
-    await expect.poll(() => resting(page)).toEqual(HABIT_STATE)
+    await expect.poll(() => boxStates(page)).toEqual(HABIT_STATE)
     const [after] = await boxFrames(page)
     for (const b of after) {
       const was = before.find(({ id }) => id === b.id)
@@ -149,9 +136,9 @@ test.describe('Story 14.4 Search the boxes (ATDD)', () => {
     await searchField(page).fill('  HaBiT  ')
     await expect(boxOfBook(page, ATOMIC.id).getByText('3 of 12', { exact: true })).toBeVisible()
     await expect(boxOfBook(page, TINY.id).getByText('12 of 12', { exact: true })).toBeVisible()
-    await expect.poll(() => resting(page)).toEqual(HABIT_STATE)
+    await expect.poll(() => boxStates(page)).toEqual(HABIT_STATE)
     await searchField(page).fill('   ')
-    await expect.poll(() => resting(page)).toEqual(AT_REST)
+    await expect.poll(() => boxStates(page)).toEqual(AT_REST)
     await expect(boxOfBook(page, ATOMIC.id).getByText(noteCount(12), { exact: true })).toBeVisible()
     await expect(page.getByRole('main').getByText(HABIT_COUNT_LINE, { exact: true })).toBeVisible()
     await expect(groupHeadings(page)).toHaveCount(0)
@@ -207,7 +194,7 @@ test.describe('Story 14.4 Search the boxes (ATDD)', () => {
 
     const main = page.getByRole('main')
     const line = 'No card notes contain “zettel”.'
-    await expect.poll(() => resting(page)).toEqual(HABIT_BOXES.map((b) => [b.id, 0, FADE]))
+    await expect.poll(() => boxStates(page)).toEqual(HABIT_BOXES.map((b) => [b.id, 0, FADE]))
 
     // The count line is the one place saying it; every box stays, faded through its inner wrapper, named with its
     // visible count and "no match".
@@ -244,7 +231,7 @@ test.describe('Story 14.4 Search the boxes (ATDD)', () => {
     await expect(page.getByRole('status')).toHaveText(HABIT_LINE)
 
     const restored = async () => {
-      await expect.poll(() => resting(page)).toEqual(AT_REST)
+      await expect.poll(() => boxStates(page)).toEqual(AT_REST)
       for (const [i, b] of HABIT_BOXES.entries()) {
         await expect(boxLinks(page).nth(i)).toHaveAccessibleName(boxName(b.title, b.notes))
       }
@@ -301,7 +288,7 @@ test.describe('Story 14.4 Search the boxes (ATDD)', () => {
 
     // Under reduced motion, no frame in between.
     await searchField(page).press('Escape')
-    await expect.poll(() => resting(page)).toEqual(AT_REST)
+    await expect.poll(() => boxStates(page)).toEqual(AT_REST)
     await page.emulateMedia({ reducedMotion: 'reduce' })
     sampling = boxFrames(page, 400)
     await searchField(page).fill('habit')
@@ -353,7 +340,7 @@ test.describe('Story 14.4 Search the boxes (ATDD)', () => {
     await expect(viewButton(page, 'Boxes')).toBeFocused()
     await expect(searchField(page)).toHaveValue('habit')
     for (const [i, name] of HABIT_NAMES.entries()) await expect(boxLinks(page).nth(i)).toHaveAccessibleName(name)
-    await expect.poll(() => resting(page)).toEqual(HABIT_STATE)
+    await expect.poll(() => boxStates(page)).toEqual(HABIT_STATE)
     await expect(boxOfBook(page, ATOMIC.id).getByText('3 of 12', { exact: true })).toBeVisible()
     await expect(main.getByText(HABIT_LINE, { exact: true })).toBeVisible()
     await expect(groupHeadings(page)).toHaveCount(0)
@@ -402,7 +389,7 @@ test.describe('Story 14.4 Search the boxes (ATDD)', () => {
       border: `1px solid ${canvasText}`,
       dot: { background: canvasText },
     })
-    await expect.poll(() => resting(page)).toEqual(HABIT_STATE)
+    await expect.poll(() => boxStates(page)).toEqual(HABIT_STATE)
     expect((await boxFrameOf(page, REFACTORING.id))?.faded).toMatchObject(ONE_FADED_WRAPPER)
   })
 })

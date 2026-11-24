@@ -15,37 +15,29 @@ import type { Page } from '@playwright/test'
 import { scrollToY } from './back-to-top.ts'
 import { focusAtStatus, noteField, recordStatus, seeCardNotes, watchFocusAtStatus } from './card-note-add-another.ts'
 import {
+  AT_REST,
   boxFrames,
   boxLinks,
   boxOfBook,
   boxStates,
   boxTrack,
   cardNotesPage,
+  FADE,
   groupHeadings,
   HABIT_BOXES,
   HABIT_COUNT_LINE,
   HABIT_SHELF,
+  HABIT_STATE,
+  HABITS_STATE,
+  LIFT,
   searchField,
   viewButton,
 } from './card-note-boxes.ts'
-import {
-  announced,
-  AT_REST,
-  chip,
-  FADE,
-  H1,
-  HABIT_LINE,
-  HABIT_STATE,
-  HABITS_LINE,
-  HABITS_STATE,
-  LIFT,
-  notes,
-  searchTheShelf,
-} from './carried-search.ts'
+import { announced, chip, H1, HABIT_LINE, HABITS_LINE, notes, searchTheShelf } from './carried-search.ts'
 import { addCardNote, cardNotePanel, editOf, editPanel, noteItem, SAVED } from './card-note-keys.ts'
 import { mainNav } from './dev-mode.ts'
 import { expect, test } from './fixtures.ts'
-import { bookId } from './library.ts'
+import { bookId, openPaused } from './library.ts'
 import { pile, pileOpener } from './pile.ts'
 import { AXE_TAGS, afterAnnounceDelay } from './stats.ts'
 
@@ -388,12 +380,10 @@ test.describe('Story 14.5 Keep the search when I open a box and come back (autom
   }) => {
     const server = await seededServer(HABIT_SHELF)
     // The clock is paused only once the shelf is drawn and scrolled (scrollToY waits on frames).
-    const start = new Date('2026-11-10T10:00:00+01:00')
-    await page.clock.install({ time: start })
-    await page.goto(cardNotesPage(server))
-    await expect(boxLinks(page)).toHaveCount(HABIT_BOXES.length)
-    expect(await scrollToY(page, 'bottom')).toBeGreaterThan(0)
-    await page.clock.pauseAt(new Date(start.getTime() + 60_000))
+    await openPaused(page, cardNotesPage(server), boxLinks(page).first(), async () => {
+      await expect(boxLinks(page)).toHaveCount(HABIT_BOXES.length)
+      expect(await scrollToY(page, 'bottom')).toBeGreaterThan(0)
+    })
     await recordStatus(page)
 
     // "habit" typed, and the nav link clicked inside the pause.

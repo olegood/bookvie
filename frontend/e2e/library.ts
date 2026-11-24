@@ -1,12 +1,13 @@
 // Shared by the specs that work with Books: the seeded ids, the catalog as the
 // API returns it, the New book and Edit book panels, computed colors, DESIGN.md's
-// frontmatter, and the `app-info` view a test answers in place of the server.
+// frontmatter, the `app-info` view a test answers in place of the server, and
+// `openPaused` (a page opened under Playwright's clock, paused once it shows).
 
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import type { APIRequestContext, Locator, Page, Route } from '@playwright/test'
 import type { components } from '../src/api/generated/schema.d.ts'
-import type { Server } from './fixtures.ts'
+import { expect, type Server } from './fixtures.ts'
 
 /** A stable v4-shaped id for the n-th seeded Book. */
 export function bookId(n: number): string {
@@ -274,4 +275,29 @@ export async function callTool(
   await expectStatus(`tools/call ${name}`, called, 200)
   const body = (await called.json()) as { result?: ToolResult; error?: unknown }
   return body.result ?? { isError: true, content: [{ type: 'text', text: JSON.stringify(body.error) }] }
+}
+
+/**
+ * Opens `url` with Playwright's clock installed, then pauses it once `loaded`
+ * shows, so the search pause (500 ms) and announce's 100 ms tick only run when
+ * the test calls `runFor`. Pausing before the page has its data could strand
+ * the first load: TanStack Query hands a result to React through a
+ * `setTimeout(0)`, which a paused clock never fires, so a view that answered
+ * after the pause left only the `h1` (Epic 6 trace flake, `deferred-work.md`).
+ * `beforePause` runs once `loaded` shows, while the clock still runs: for a
+ * step that waits on frames, such as a scroll.
+ */
+export async function openPaused(
+  page: Page,
+  url: string,
+  loaded: Locator,
+  beforePause?: () => Promise<void>,
+): Promise<void> {
+  const start = new Date('2026-11-10T10:00:00+01:00')
+  await page.clock.install({ time: start })
+  await page.goto(url)
+  await expect(loaded).toBeVisible()
+  await beforePause?.()
+  // A minute on: always ahead of the running clock, and still the same day.
+  await page.clock.pauseAt(new Date(start.getTime() + 60_000))
 }

@@ -16,7 +16,7 @@ import AxeBuilder from '@axe-core/playwright'
 import type { Locator, Page } from '@playwright/test'
 import { expect, test } from './fixtures.ts'
 import { DUNE_ID } from './home.ts'
-import { PAGE as PAGE_LIGHT, SCRIM } from './library.ts'
+import { openPaused, PAGE as PAGE_LIGHT, SCRIM } from './library.ts'
 import {
   announcedNote,
   announcement,
@@ -61,23 +61,6 @@ function cardNotesBlock(page: Page, count: number): Locator {
 
 function searchField(scope: Locator): Locator {
   return scope.getByRole('searchbox', { name: 'Search card notes', exact: true })
-}
-
-/**
- * Opens `url` with Playwright's clock installed, then pauses it once `loaded`
- * shows, so the search pause (500 ms) and announce's 100 ms tick only run when
- * the test calls `runFor`. Pausing before the page has its data could strand
- * the first load: TanStack Query hands a result to React through a
- * `setTimeout(0)`, which a paused clock never fires, so a view that answered
- * after the pause left only the `h1` (Epic 6 trace flake, `deferred-work.md`).
- */
-async function openPaused(page: Page, url: string, loaded: Locator): Promise<void> {
-  const start = new Date('2026-11-10T10:00:00+01:00')
-  await page.clock.install({ time: start })
-  await page.goto(url)
-  await expect(loaded).toBeVisible()
-  // A minute on: always ahead of the running clock, and still the same day.
-  await page.clock.pauseAt(new Date(start.getTime() + 60_000))
 }
 
 /** Past the search pause and announce's tick together. */
