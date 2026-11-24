@@ -2,7 +2,7 @@
 title: "Story 14.1: Carry each Book's spine color in the card-notes view"
 type: 'feature'
 created: '2026-11-24'
-status: 'in-review'
+status: 'done'
 baseline_revision: 'bca6863d4fc56e224a8fa234d8874e06733b06b7'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -95,6 +95,24 @@ deferred: []
   - `[false]` `[reject]` (intent) Nothing in the diff runs `check:api`'s byte-for-byte compare, the "no other file reformatted" check or the UI. — `npm run check` (check:api, check:py, 803 e2e, smoke) exited 0 after the patches, and `git status` lists only the planned files.
   - `[false]` `[reject]` (intent) `sprint-status.yaml` still says `backlog` while the spec says `in-review`. — Finalize sets `14-1-…` to `review` in the same commit.
   - Edge Case Hunter, Verification Gap and Spine Check reported no findings. Spine Check: AD-6, AD-11 and AD-21 already record 14.1's `spineColor` (commit `b9a33c8`).
+
+### Review Findings
+
+Code review, 2026-11-24, in a new session (`bmad-code-review`). The five layers were Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor and Spine Check. They raised 11 findings: 0 `decision-needed`, 0 `patch`, 1 `defer` and 10 rejected. Edge Case Hunter, Verification Gap and Spine Check found nothing. Verification Gap re-ran `uv run pytest -q tests/test_card_notes_spine_color.py tests/test_card_notes_view.py tests/test_agent_read.py` itself: 31 passed, 0 skipped. Spine Check found that AD-6, AD-8, AD-11 and AD-21 match. No patch was applied, so the full `npm run check` re-run wasn't needed.
+
+- [x] [Review][Defer] The one-time `back-to-top.spec.ts:290` e2e flake isn't tracked anywhere durable [frontend/e2e/back-to-top.spec.ts:290] — deferred: it predates this story (on `/stats`, which 14.1 doesn't touch), and it was recorded only in this spec's Residual risks. It is now in `deferred-work.md`.
+
+**Rejected:**
+- (blind, `low`) The Auto Run Result's rejection split adds up to 14, not 12. The fix edits this spec.
+- (blind, `low`) The Code Map still describes the leaves as skipped and points at the old line anchors. The fix edits this spec, and the Code Map records the plan as it was before the build.
+- (blind, `low`) The spec's ACs aren't numbered AC-1 to AC-7 like the tests. The fix edits this spec, and the ATDD checklist maps them.
+- (blind, `false`) "AC-7's witness doesn't check the scope." AC-7's witness only confirms that the guards run against the changed view. AC-3 already pins the scope of the no-notes Book (`bare`) to its stored color, so no defect slips through.
+- (blind, `false`) "AC-4 never reaches the curated branch." The view never resolves the color; it passes `book.spine_color` through. AC-1's `palette` Book ("Emma") already carries the curated color, and the resolution itself belongs to the domain, not to this view.
+- (blind, `low`) The field has no OpenAPI description or `#RRGGBB` pattern. It matches the existing `ShelfBook`/`BookDetailView` `spine_color` convention, and the fix would add contract surface the spec rules out ("change nothing else").
+- (blind, `low`) The docstring wording is duplicated, and its "here" sounds odd. It's cosmetic and names no harm. The build's review chose this wording on purpose, to match `ShelfBook`.
+- (blind, `low`) The `test_card_notes_view.py` expectations read `spineColor` from `stored_book`, and the Story 5.3 docstring doesn't mention the field. AC-1 to AC-3 already pin the literal values, and the build's review rejected the same finding.
+- (auditor, `low`) The field docstring differs from the Code Map's prescribed wording. The meaning is the same, and the fix edits this spec.
+- (auditor, `low`) The module docstring was updated although it doesn't list fields. The added sentence is accurate and harmless, and the build's review recorded the change.
 
 ## Verification
 

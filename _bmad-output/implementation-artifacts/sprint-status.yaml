@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-29-2026 17:21
-last_updated: 11-24-2026 00:16
+last_updated: 11-24-2026 10:05
 project: bookvie
 project_key: NOKEY
 tracking_system: file-system
@@ -142,7 +142,7 @@ development_status:
   epic-13-retrospective: done
 
   epic-14: backlog
-  14-1-carry-each-book-s-spine-color-in-the-card-notes-view: review
+  14-1-carry-each-book-s-spine-color-in-the-card-notes-view: done
   14-2-see-my-card-notes-as-boxes: backlog
   14-3-see-the-open-box-in-its-book-s-color: backlog
   14-4-search-the-boxes: backlog

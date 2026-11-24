@@ -1744,3 +1744,9 @@
   summary: Besides the spine, the planning and trace artifacts still cite the modules item 95 split: `epics.md`, `dropbox-backup-plan-2026-11-21.md`, `epic-13-traceability-matrix.md`, `epic-13-e2e-trace-summary.json` and Epic 12–13 ATDD checklists name `intents/backup_file` or `agent/tools.py`. The trace artifacts and checklists record the code as it was when they were written. `epics.md` should point at the new modules (`intents/backup_*`, `agent/*_tools.py`) when the spine is reconciled before Epic 14. Low.
   evidence: item 95's Blind Hunter review; `grep -rln "backup_file\|agent/tools" _bmad-output/planning-artifacts _bmad-output/test-artifacts`.
   resolved: 2026-11-23, after the item 95 spine reconciliation. `epics.md` AR42 now names `intents/backup_daily` and `intents/backup_names`; it was the only mention left in `epics.md`. `dropbox-backup-plan-2026-11-21.md`, the trace artifacts and the ATDD checklists stay as written: they record the plan and the code as they were, and AD-22 wins where the plan differs.
+
+## Deferred from: code review of spec-14-1-carry-each-book-s-spine-color-in-the-card-notes-view (2026-11-24)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-14-1-carry-each-book-s-spine-color-in-the-card-notes-view.md`
+  summary: `frontend/e2e/back-to-top.spec.ts:290` ("[P2] AC-8 … short window") failed once in Story 14.1's full `npm run check`, on `/stats`, with a scroll height of 0. It looks like a timing flake: the page wasn't tall yet when the test scrolled. It passed 30 of 30 with `--repeat-each=3`, and the next full run exited 0. The test predates this story, and 14.1 doesn't touch `/stats`. If it fails again, wait for the page's content before scrolling. Low.
+  evidence: the spec's Auto Run Result, Verification and Residual risks (the build's `npm run check` after its patches); Blind Hunter, code review of Story 14.1.
