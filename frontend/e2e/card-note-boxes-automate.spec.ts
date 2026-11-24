@@ -4,7 +4,7 @@
 // Highlight indicator under forced colors; twin titles get one box each in
 // Book-id order; a white front is still drawn by its shadow; Boxes view and
 // Back to top pass axe; the count line's singular Book and dark color; a focus
-// refetch adds a box; and typing back to blank brings the boxes back.
+// refetch adds a box; and typing back to blank brings the count line back.
 
 import { rmSync } from 'node:fs'
 import AxeBuilder from '@axe-core/playwright'
@@ -229,7 +229,7 @@ test.describe('Story 14.2 See my card notes as boxes (automate)', () => {
     await expect(page.getByRole('alert')).toHaveText('')
   })
 
-  test('[P2] AC-10 deleting the search text character by character brings the boxes and the count line back', async ({
+  test('[P2] AC-10 deleting the search text character by character keeps every box and brings the count line back', async ({
     page,
     seededServer,
   }) => {
@@ -237,19 +237,26 @@ test.describe('Story 14.2 See my card notes as boxes (automate)', () => {
     await page.goto(cardNotesPage(server))
     await expect(boxLinks(page)).toHaveCount(PILE_BOXES.length)
 
+    // Story 14.4: every box stays while the field holds text, and the count line is the shelf sentence.
+    const main = page.getByRole('main')
     await searchField(page).pressSequentially('Emma')
-    await expect(groupHeadings(page)).toHaveText(['Emma'])
-    await expect(boxLinks(page)).toHaveCount(0)
+    await expect(main.getByText(/^\d+ card notes? in \d+ Books? contains? “Emma”\.$/)).toBeVisible()
+    await expect(groupHeadings(page)).toHaveCount(0)
+    await expect(boxLinks(page)).toHaveCount(PILE_BOXES.length)
 
     for (const left of ['Emm', 'Em', 'E']) {
       await page.keyboard.press('Backspace')
       await expect(searchField(page)).toHaveValue(left)
-      await expect(boxLinks(page), left).toHaveCount(0)
+      await expect(
+        main.getByText(new RegExp(`^\\d+ card notes? in \\d+ Books? contains? “${left}”\\.$`)),
+        left,
+      ).toBeVisible()
+      await expect(boxLinks(page), left).toHaveCount(PILE_BOXES.length)
     }
     await page.keyboard.press('Backspace')
     await expect(searchField(page)).toHaveValue('')
     await expect(boxLinks(page)).toHaveCount(PILE_BOXES.length)
-    await expect(page.getByRole('main').getByText(PILE_COUNT_LINE, { exact: true })).toBeVisible()
+    await expect(main.getByText(PILE_COUNT_LINE, { exact: true })).toBeVisible()
     await expect(groupHeadings(page)).toHaveCount(0)
     await expect(viewButton(page, 'Boxes')).toHaveAttribute('aria-pressed', 'true')
     await expect(cardNotesViewToggle(page)).toBeVisible()

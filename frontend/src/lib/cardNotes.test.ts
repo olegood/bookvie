@@ -3,6 +3,8 @@ import { describe, it } from 'node:test'
 import {
   BLOCK_NOTES,
   blockNotes,
+  boxMatches,
+  boxMatchPill,
   CARD_NOTE_SAVED,
   cardNoteBoxName,
   cardNoteCount,
@@ -27,6 +29,7 @@ import {
   pileCards,
   pilePosition,
   pileStart,
+  shelfCountLine,
   shuffled,
 } from './cardNotes.ts'
 
@@ -317,5 +320,69 @@ describe('cardNotesCountLine', () => {
 
   it('reads one note in one Book in the singular', () => {
     assert.equal(cardNotesCountLine([group(1)]), '1 card note in 1 Book')
+  })
+})
+
+// Story 14.4 Search the boxes: each box's matches, its pill and name, and the shelf sentence.
+describe('boxMatches and boxMatchPill', () => {
+  const notes = ['A habit', 'Every HABIT', 'a line', 'Small habits'].map((text) => ({ text }))
+
+  it('is null for a blank or spaces-only query', () => {
+    assert.equal(boxMatches(notes, ''), null)
+    assert.equal(boxMatches(notes, '   '), null)
+  })
+
+  it("counts the notes the List's matcher keeps, ignoring case, on the trimmed query", () => {
+    assert.equal(boxMatches(notes, 'habit'), 3)
+    assert.equal(boxMatches(notes, '  HaBiT  '), 3)
+    assert.equal(boxMatches(notes, 'habits'), 1)
+    assert.equal(boxMatches(notes, 'zettel'), 0)
+  })
+
+  it('reads "M of N"', () => {
+    assert.equal(boxMatchPill(3, 12), '3 of 12')
+    assert.equal(boxMatchPill(12, 12), '12 of 12')
+    assert.equal(boxMatchPill(1, 1), '1 of 1')
+  })
+})
+
+describe('cardNoteBoxName during a search', () => {
+  it('carries the match in every form', () => {
+    assert.equal(cardNoteBoxName('Atomic Habits', 12, 3), 'Atomic Habits, 3 of 12 card notes match')
+    assert.equal(cardNoteBoxName('Deep Work', 12, 1), 'Deep Work, 1 of 12 card notes matches')
+    assert.equal(cardNoteBoxName('Walden', 1, 1), 'Walden, 1 of 1 card note matches')
+    assert.equal(cardNoteBoxName('Tiny Habits', 12, 12), 'Tiny Habits, 12 of 12 card notes match')
+    assert.equal(cardNoteBoxName('Refactoring', 4, 0), 'Refactoring, no match')
+  })
+
+  it('reads the count with no search', () => {
+    assert.equal(cardNoteBoxName('Dune', 12, null), 'Dune, 12 card notes')
+    assert.equal(cardNoteBoxName('Dune', 12), 'Dune, 12 card notes')
+  })
+})
+
+describe('shelfCountLine', () => {
+  const group = (texts: string[]) => ({ notes: texts.map((text) => ({ text })) })
+  const shelf = [group(['A habit', 'a line', 'Small habits']), group(['a line']), group(['Every HABIT', 'the woods'])]
+
+  it('reads the totals for a blank or spaces-only query', () => {
+    assert.equal(shelfCountLine(shelf, ''), '6 card notes in 3 Books')
+    assert.equal(shelfCountLine(shelf, '   '), '6 card notes in 3 Books')
+  })
+
+  it('counts the matching notes and the Books holding them, quoting the trimmed text as typed', () => {
+    assert.equal(shelfCountLine(shelf, 'habit'), '3 card notes in 2 Books contain “habit”.')
+    assert.equal(shelfCountLine(shelf, '  HaBiT  '), '3 card notes in 2 Books contain “HaBiT”.')
+    assert.equal(shelfCountLine(shelf, 'habits'), '1 card note in 1 Book contains “habits”.')
+    assert.equal(
+      shelfCountLine([group(['A habit', 'Small habits'])], 'habit'),
+      '2 card notes in 1 Book contain “habit”.',
+    )
+    assert.equal(shelfCountLine(shelf, ' WOODS '), '1 card note in 1 Book contains “WOODS”.')
+  })
+
+  it('reads the no-match line when nothing matches', () => {
+    assert.equal(shelfCountLine(shelf, ' zettel '), 'No card notes contain “zettel”.')
+    assert.equal(shelfCountLine(shelf, 'zettel'), noNotesMatchCopy('zettel'))
   })
 })

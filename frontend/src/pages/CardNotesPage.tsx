@@ -16,7 +16,7 @@ import PageHeading from '../components/PageHeading.tsx'
 import ViewToggle from '../components/ViewToggle.tsx'
 import { announce, clearAnnouncements } from '../lib/announce.ts'
 import {
-  cardNotesCountLine,
+  boxMatches,
   cardNotesPath,
   NO_CARD_NOTES,
   noNotesMatchCopy,
@@ -25,6 +25,7 @@ import {
   notesMatchCopy,
   scopeChipRemoveName,
   SEARCH_CARD_NOTES,
+  shelfCountLine,
 } from '../lib/cardNotes.ts'
 import {
   CARD_NOTES_VIEWS,
@@ -142,7 +143,14 @@ function Group({
  * toolbar adds the remembered Boxes · List toggle (`lib/cardNotesView.ts`,
  * Boxes by default) and, in Boxes view, the count line. Boxes view shows one
  * `CardNoteBox` per group, in the groups' order; List view is the page above.
- * Until Story 14.4, text in the field shows the List's results in Boxes view.
+ *
+ * Search on the shelf (Story 14.4): in Boxes view, text in the field keeps
+ * every box. A box with matches lifts and shows "3 of 12" in place of its
+ * count, a box without one fades, and each box's name carries its match. The
+ * count line becomes the shelf sentence ("17 card notes in 4 Books contain
+ * “habit”.", or "No card notes contain “…”."), which `status` reads once
+ * after the pause in place of "N notes match.". All of it comes from
+ * `lib/cardNotes.ts` through `noteMatches`, the List's own matcher.
  *
  * Scoped, the open box (Story 14.3; DESIGN.md → Open box strip) adds an 8px,
  * full-width, `aria-hidden` strip in `scope.spineColor` directly under the
@@ -171,8 +179,6 @@ function CardNotesBody({ bookId }: { bookId: string | undefined }) {
   const shownQuery = groups.length === 0 ? '' : query
   const shown = visibleGroups(groups, shownQuery)
 
-  const count = useSearchCount((text) => notesMatchCopy(countNotes(visibleGroups(groups, text))))
-
   // The remembered Boxes · List choice (unscoped only). A press switches in place and stays silent.
   const unscoped = bookId === undefined
   const [shelfView, setShelfView] = useState<CardNotesViewChoice>(readCardNotesView)
@@ -180,8 +186,11 @@ function CardNotesBody({ bookId }: { bookId: string | undefined }) {
     setShelfView(next)
     writeCardNotesView(next)
   }
-  // Staging (UX-DR92, until Story 14.4): text in the field shows the List's results in Boxes view.
-  const boxesShown = unscoped && shelfView === 'boxes' && query.trim() === ''
+  const boxesShown = unscoped && shelfView === 'boxes'
+  // Read when the pause ends, so it announces the view shown then: the shelf sentence in Boxes, else "N notes match.".
+  const count = useSearchCount((text) =>
+    boxesShown ? shelfCountLine(groups, text) : notesMatchCopy(countNotes(visibleGroups(groups, text))),
+  )
   const search = (value: string) => {
     setQuery(value)
     count.typed(value)
@@ -329,7 +338,7 @@ function CardNotesBody({ bookId }: { bookId: string | undefined }) {
                   onChange={chooseView}
                 />
               )}
-              {boxesShown && <p className={styles.countLine}>{cardNotesCountLine(groups)}</p>}
+              {boxesShown && <p className={styles.countLine}>{shelfCountLine(groups, shownQuery)}</p>}
             </div>
             {boxesShown ? (
               <ul className={styles.shelf} role="list">
@@ -340,6 +349,7 @@ function CardNotesBody({ bookId }: { bookId: string | undefined }) {
                       title={group.title}
                       spineColor={group.spineColor}
                       count={group.notes.length}
+                      matches={boxMatches(group.notes, shownQuery)}
                     />
                   </li>
                 ))}

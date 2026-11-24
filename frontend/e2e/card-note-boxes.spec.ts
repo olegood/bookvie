@@ -3,9 +3,8 @@
 // Boxes shows one Card note box per Book with notes, in the groups' order, in
 // the Book's spine color with a pile of 1, 3, 5 or 7 cards, each a link to the
 // Book's scoped page; a count line sums the notes. List is the page as it was.
-// Until Story 14.4, text in the search shows the List's results in Boxes view
-// (UX-DR92's staging). fixtures.ts stores "list" before every other spec; the
-// specs here turn that off, except the two about the List itself.
+// fixtures.ts stores "list" before every other spec; the specs here turn that
+// off, except the two about the List itself.
 
 import { readFileSync } from 'node:fs'
 import type { Page } from '@playwright/test'
@@ -37,7 +36,6 @@ import { expect, test } from './fixtures.ts'
 import {
   ACCENT,
   ACCENT_DARK,
-  DESIGN_MD,
   designComponentColor,
   designComponentValue,
   designTokens,
@@ -50,7 +48,6 @@ import { exportOf } from './restore.ts'
 import { afterAnnounceDelay, COULDNT_LOAD } from './stats.ts'
 
 const TOKENS_CSS = new URL('../src/styles/tokens.css', import.meta.url)
-const EXPERIENCE_MD = DESIGN_MD.replace(/DESIGN\.md$/, 'EXPERIENCE.md')
 const PILE_TITLES = PILE_BOXES.map(({ title }) => title)
 
 /** DESIGN.md → Elevation & Depth → Card note box front, as computed style writes a box-shadow. */
@@ -211,7 +208,7 @@ test.describe('Story 14.2 See my card notes as boxes (ATDD)', () => {
     await page.goto(cardNotesPage(server))
     await expect(boxLinks(page)).toHaveCount(PILE_BOXES.length)
     await searchField(page).fill('Candide note')
-    await expect(page.getByRole('status')).toHaveText('5 notes match.')
+    await expect(page.getByRole('status')).toHaveText('5 card notes in 1 Book contain “Candide note”.')
     await recordStatus(page)
     await viewButton(page, 'List').click()
     await expect(viewButton(page, 'List')).toHaveAttribute('aria-pressed', 'true')
@@ -536,47 +533,6 @@ test.describe('Story 14.2 See my card notes as boxes (ATDD)', () => {
     await expect(page.getByRole('main').getByText(/card notes? in \d+ Books?/)).toHaveCount(0)
     await expect(boxLinks(page)).toHaveCount(0)
     await expect(searchField(page)).toHaveCount(0)
-  })
-
-  test('[P1] AC-10 until Story 14.4, text in the search shows the List\'s results and "N notes match." in Boxes view, hides the count line, and blank brings the boxes back', async ({
-    page,
-    seededServer,
-  }) => {
-    const server = await seededServer(PILE_SHELF)
-    await page.goto(cardNotesPage(server))
-    await searchField(page).fill('candide NOTE 0')
-
-    await expect(viewButton(page, 'Boxes')).toHaveAttribute('aria-pressed', 'true')
-
-    const main = page.getByRole('main')
-    await expect(groupHeadings(page)).toHaveText(['Candide'])
-    await expect(main.locator('mark')).toHaveCount(5)
-    await expect(page.getByRole('status')).toHaveText('5 notes match.')
-    await expect(boxLinks(page)).toHaveCount(0)
-    await expect(main.getByText(/card notes? in \d+ Books?/)).toHaveCount(0)
-
-    // Spaces only is blank: the boxes stay.
-    await searchField(page).fill('   ')
-    await expect(boxLinks(page)).toHaveCount(PILE_BOXES.length)
-    await expect(main.getByText(PILE_COUNT_LINE, { exact: true })).toBeVisible()
-
-    await searchField(page).fill('nothing like this')
-    await expect(main.getByText('No card notes contain “nothing like this”.', { exact: true })).toBeVisible()
-    await expect(boxLinks(page)).toHaveCount(0)
-
-    // Esc empties the field: the boxes and the count line come back.
-    await searchField(page).press('Escape')
-    await expect(boxLinks(page)).toHaveCount(PILE_BOXES.length)
-    await expect(main.getByText(PILE_COUNT_LINE, { exact: true })).toBeVisible()
-    await expect(groupHeadings(page)).toHaveCount(0)
-
-    // EXPERIENCE.md → Card notes shelf → Temporary keeps its staging note.
-    const experience = readFileSync(EXPERIENCE_MD, 'utf8')
-    const shelf = experience.split('### Card notes shelf')[1]?.split(/^## /m)[0] ?? ''
-    expect(shelf).toMatch(/\*\*Temporary\.\*\*/)
-    expect(shelf).toContain(
-      '*Staging (until the Epic 14 retro).* Story 14.2 ships both views without the shelf search.',
-    )
   })
 
   test('[P1] AC-11 Back to top shows past one window height in Boxes and in List view, and moves focus to Search card notes', async ({

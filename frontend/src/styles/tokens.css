@@ -210,6 +210,14 @@
   --card-note-box-card-top: 70px;
   --card-note-box-card-step: 8px;
   --card-note-box-focus-offset: 4px;
+  --card-note-box-pill-background: #E3EBE2;
+  --card-note-box-pill-dot: #557059;
+  --card-note-box-pill-dot-size: 6px;
+  --card-note-box-pill-height: 22px;
+  --card-note-box-pill-weight: 600;
+  --card-note-box-lift: -6px;
+  --card-note-box-fade: 0.38;
+  --card-note-box-transition: 150ms ease-out;
   --open-box-strip-height: 8px;
 }
 

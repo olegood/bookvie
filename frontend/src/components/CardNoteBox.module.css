@@ -23,6 +23,33 @@
   outline-offset: var(--card-note-box-focus-offset);
 }
 
+/*
+ * The picture: one wrapper holding the cards and the front, so a fade shows
+ * them as one picture and the link's focus ring is never faded or moved.
+ * During a search it lifts (a box with matches) or fades (one without).
+ */
+.picture {
+  position: absolute;
+  inset: 0;
+  transition:
+    opacity var(--card-note-box-transition),
+    transform var(--card-note-box-transition);
+}
+
+.lifted {
+  transform: translateY(var(--card-note-box-lift));
+}
+
+.faded {
+  opacity: var(--card-note-box-fade);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .picture {
+    transition: none;
+  }
+}
+
 /* A paper card behind the front: card i of k topped at card-top − (k − 1 − i) × card-step. */
 .card {
   position: absolute;
@@ -88,6 +115,35 @@
   color: var(--card-note-box-count-color);
 }
 
+/* The match pill in place of the count: "3 of 12" after a 6px dot, left-aligned in the label. */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  box-sizing: border-box;
+  height: var(--card-note-box-pill-height);
+  padding: 0 var(--space-2);
+  border: none;
+  border-radius: var(--radius-full);
+  background: var(--card-note-box-pill-background);
+  font-family: var(--font-meta-family);
+  font-size: var(--font-meta-size);
+  font-weight: var(--card-note-box-pill-weight);
+  line-height: var(--font-meta-line-height);
+  color: var(--color-spine-label);
+  white-space: nowrap;
+}
+
+.pill::before {
+  content: '';
+  flex: none;
+  width: var(--card-note-box-pill-dot-size);
+  height: var(--card-note-box-pill-dot-size);
+  margin-right: var(--space-2);
+  border-radius: 50%;
+  background: var(--card-note-box-pill-dot);
+}
+
 /* DESIGN.md → Forced colors: the front CanvasText like a read spine, the label Canvas, each card Canvas with a CanvasText edge. */
 @media (forced-colors: active) {
   .front {
@@ -109,5 +165,17 @@
     forced-color-adjust: none;
     border: var(--hairline) solid CanvasText;
     background: Canvas;
+  }
+
+  /* The pill in system colors; the fade and the lift stay. */
+  .pill {
+    forced-color-adjust: none;
+    border: 1px solid CanvasText;
+    background: Canvas;
+    color: CanvasText;
+  }
+
+  .pill::before {
+    background: CanvasText;
   }
 }

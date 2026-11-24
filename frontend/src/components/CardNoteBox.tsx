@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react'
 import { Link } from 'react-router'
-import { cardNoteBoxName, cardNoteCount, cardNotesPath, pileCards } from '../lib/cardNotes.ts'
+import { boxMatchPill, cardNoteBoxName, cardNoteCount, cardNotesPath, pileCards } from '../lib/cardNotes.ts'
 import styles from './CardNoteBox.module.css'
 
 /** DESIGN.md → Card note box → Cards: each card's turn in degrees, from the back; a smaller pile takes the first k. */
@@ -18,6 +18,8 @@ type Props = {
   spineColor: string
   /** How many card notes the Book has. */
   count: number
+  /** During a search, how many of them match (`boxMatches`); `null` with no search. */
+  matches: number | null
 }
 
 /**
@@ -26,19 +28,32 @@ type Props = {
  * "*Title*, N card notes", holding a pile of 1, 3, 5 or 7 paper cards
  * (`pileCards`), then the front in the Book's exact spine color with the
  * label: the title (2 lines, then an ellipsis) and the count.
+ *
+ * During a search (Story 14.4), one inner wrapper holding the cards and the
+ * front lifts 6px when the box has matches, with the pill "3 of 12" in place
+ * of the count, or fades to 0.38 when it has none. The link itself is never
+ * faded or moved, so its focus ring stays full strength and its slot stays.
  */
-export default function CardNoteBox({ bookId, title, spineColor, count }: Props) {
+export default function CardNoteBox({ bookId, title, spineColor, count, matches }: Props) {
   const cards = pileCards(count)
   const front: CSSProperties & Record<'--box-color', string> = { '--box-color': spineColor }
+  const searched = matches === null ? '' : matches > 0 ? styles.lifted : styles.faded
   return (
-    <Link to={cardNotesPath(bookId)} className={styles.box} aria-label={cardNoteBoxName(title, count)}>
-      {CARD_ANGLES.slice(0, cards).map((angle, i) => (
-        <span key={i} className={styles.card} style={cardStyle(cards - 1 - i, angle)} />
-      ))}
-      <span className={styles.front} style={front}>
-        <span className={styles.label}>
-          {/* The space keeps the visible text ("Title 12 card notes") inside the link's name (WCAG 2.5.3). */}
-          <span className={styles.title}>{title}</span> <span className={styles.count}>{cardNoteCount(count)}</span>
+    <Link to={cardNotesPath(bookId)} className={styles.box} aria-label={cardNoteBoxName(title, count, matches)}>
+      <span className={`${styles.picture} ${searched}`.trim()}>
+        {CARD_ANGLES.slice(0, cards).map((angle, i) => (
+          <span key={i} className={styles.card} style={cardStyle(cards - 1 - i, angle)} />
+        ))}
+        <span className={styles.front} style={front}>
+          <span className={styles.label}>
+            {/* The space keeps the visible text ("Title 12 card notes") inside the link's name (WCAG 2.5.3). */}
+            <span className={styles.title}>{title}</span>{' '}
+            {matches !== null && matches > 0 ? (
+              <span className={styles.pill}>{boxMatchPill(matches, count)}</span>
+            ) : (
+              <span className={styles.count}>{cardNoteCount(count)}</span>
+            )}
+          </span>
         </span>
       </span>
     </Link>

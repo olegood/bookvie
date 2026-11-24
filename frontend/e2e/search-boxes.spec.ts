@@ -89,8 +89,7 @@ function track(frames: BoxFrame[][], id: string): { opacity: number; lift: numbe
 test.describe('Story 14.4 Search the boxes (ATDD)', () => {
   test.use({ cardNotesView: null })
 
-  // Red phase: Boxes view with text shows the List's results (UX-DR92's staging); no lift, pill or fade yet.
-  test.skip('[P0] AC-1 a box with matches lifts 6px and shows the pill "3 of 12" where its count was; a box without one fades through one inner wrapper; nothing hides or reflows; the List\'s matcher decides', async ({
+  test('[P0] AC-1 a box with matches lifts 6px and shows the pill "3 of 12" where its count was; a box without one fades through one inner wrapper; nothing hides or reflows; the List\'s matcher decides', async ({
     page,
     seededServer,
   }) => {
@@ -158,8 +157,7 @@ test.describe('Story 14.4 Search the boxes (ATDD)', () => {
     await expect(groupHeadings(page)).toHaveCount(0)
   })
 
-  // Red phase: in Boxes view the staging hides the count line during a search and announces "N notes match.".
-  test.skip('[P0] AC-2 the count line reads "17 card notes in 4 Books contain “habit”." as I type, status reads it once after the pause, and each box\'s name carries its match', async ({
+  test('[P0] AC-2 the count line reads "17 card notes in 4 Books contain “habit”." as I type, status reads it once after the pause, and each box\'s name carries its match', async ({
     page,
     seededServer,
   }) => {
@@ -197,8 +195,7 @@ test.describe('Story 14.4 Search the boxes (ATDD)', () => {
     await expect(box(page, 'Atomic Habits, no match')).toBeVisible()
   })
 
-  // Red phase: in Boxes view the staging hides every box and shows the List's "No card notes contain …" line.
-  test.skip('[P1] AC-3 with "zettel" every box fades, the count line reads "No card notes contain “zettel”." and status reads it once', async ({
+  test('[P1] AC-3 with "zettel" every box fades, the count line reads "No card notes contain “zettel”." and status reads it once', async ({
     page,
     seededServer,
   }) => {
@@ -226,8 +223,7 @@ test.describe('Story 14.4 Search the boxes (ATDD)', () => {
     expect((await statusTexts(page)).filter(Boolean)).toEqual([line])
   })
 
-  // Red phase: the staging swaps the boxes for the List's flat results while the field holds text.
-  test.skip("[P0] AC-4 Esc, or emptying the field, brings every box back to full strength with its count and the count line's totals; Boxes never shows the List's results, and EXPERIENCE.md drops the staging note", async ({
+  test("[P0] AC-4 Esc, or emptying the field, brings every box back to full strength with its count and the count line's totals; Boxes never shows the List's results, and EXPERIENCE.md drops the staging note", async ({
     page,
     seededServer,
   }) => {
@@ -276,8 +272,7 @@ test.describe('Story 14.4 Search the boxes (ATDD)', () => {
     expect(shelf).not.toContain('Until Story 14.4')
   })
 
-  // Red phase: nothing lifts or fades yet, so no frame shows the change under way.
-  test.skip('[P1] AC-5 the lift and the fade change over 150ms ease-out as I type, at once under reduced motion, and at once on a List → Boxes switch with text in the field', async ({
+  test('[P1] AC-5 the lift and the fade change over 150ms ease-out as I type, at once under reduced motion, and at once on a List → Boxes switch with text in the field', async ({
     page,
     seededServer,
   }) => {
@@ -327,8 +322,7 @@ test.describe('Story 14.4 Search the boxes (ATDD)', () => {
     expect(atomic.every(({ opacity, lift }) => opacity === 1 && lift === LIFT)).toBe(true)
   })
 
-  // Red phase: with text in the field, Boxes view shows the List's results rather than lifted, faded boxes.
-  test.skip('[P1] AC-6 with text in the field, Boxes ⇄ List keeps the text, each view applies it its own way, focus stays on the pressed button, and status stays silent', async ({
+  test('[P1] AC-6 with text in the field, Boxes ⇄ List keeps the text, each view applies it its own way, focus stays on the pressed button, and status stays silent', async ({
     page,
     seededServer,
   }) => {
@@ -366,8 +360,7 @@ test.describe('Story 14.4 Search the boxes (ATDD)', () => {
     expect(await statusTexts(page)).toEqual([])
   })
 
-  // Red phase: no box fades yet, so there's no faded box to focus.
-  test.skip('[P1] AC-7 a faded box with keyboard focus keeps a full-strength ring in light, dark and forced colors; under forced colors the pill is Canvas with CanvasText text, border and dot, and the fade and lift still apply', async ({
+  test('[P1] AC-7 a faded box with keyboard focus keeps a full-strength ring in light, dark and forced colors; under forced colors the pill is Canvas with CanvasText text, border and dot, and the fade and lift still apply', async ({
     page,
     seededServer,
   }) => {

@@ -204,9 +204,16 @@ export function cardNoteCount(count: number): string {
   return count === 1 ? '1 card note' : `${count} card notes`
 }
 
-/** A box's accessible name, with the full title: "Dune, 12 card notes". */
-export function cardNoteBoxName(title: string, count: number): string {
-  return `${title}, ${cardNoteCount(count)}`
+/**
+ * A box's accessible name, with the full title: "Dune, 12 card notes". During
+ * a search (`matches` from `boxMatches`): "Dune, 3 of 12 card notes match",
+ * "…, 1 of 12 card notes matches", "…, 1 of 1 card note matches", or
+ * "Dune, no match".
+ */
+export function cardNoteBoxName(title: string, count: number, matches: number | null = null): string {
+  if (matches === null) return `${title}, ${cardNoteCount(count)}`
+  if (matches === 0) return `${title}, no match`
+  return `${title}, ${matches} of ${cardNoteCount(count)} ${matches === 1 ? 'matches' : 'match'}`
 }
 
 /** The count line, summed over the loaded groups: "139 card notes in 9 Books", "1 card note in 1 Book". */
@@ -214,4 +221,33 @@ export function cardNotesCountLine(groups: readonly { notes: readonly unknown[] 
   const notes = groups.reduce((total, group) => total + group.notes.length, 0)
   const books = groups.length === 1 ? '1 Book' : `${groups.length} Books`
   return `${cardNoteCount(notes)} in ${books}`
+}
+
+// Search on the shelf (Story 14.4; EXPERIENCE.md → Card notes shelf): every
+// box stays; the counts come from `noteMatches`, the List's own matcher.
+
+/** How many of a box's notes match the query: `null` for a blank query (no search). */
+export function boxMatches(notes: readonly { text: string }[], query: string): number | null {
+  if (needle(query) === '') return null
+  return notes.filter((note) => noteMatches(note.text, query)).length
+}
+
+/** The match pill on a box with matches: "3 of 12". */
+export function boxMatchPill(matches: number, count: number): string {
+  return `${matches} of ${count}`
+}
+
+/**
+ * The shelf's count line, and what `status` reads after the pause in Boxes
+ * view: the totals for a blank query, else "17 card notes in 4 Books contain
+ * “habit”.", "1 card note in 1 Book contains “habit”.", or "No card notes
+ * contain “habit”.", quoting the trimmed text as typed.
+ */
+export function shelfCountLine(groups: readonly { notes: readonly { text: string }[] }[], query: string): string {
+  if (needle(query) === '') return cardNotesCountLine(groups)
+  const counts = groups.map((group) => boxMatches(group.notes, query) ?? 0).filter((matches) => matches > 0)
+  const notes = counts.reduce((total, matches) => total + matches, 0)
+  if (notes === 0) return noNotesMatchCopy(query)
+  const books = counts.length === 1 ? '1 Book' : `${counts.length} Books`
+  return `${cardNoteCount(notes)} in ${books} ${notes === 1 ? 'contains' : 'contain'} “${query.trim()}”.`
 }
