@@ -2,7 +2,7 @@
 title: bookvie PRD
 status: final
 created: 2026-10-28
-updated: 2026-11-23
+updated: 2026-11-25
 inputs:
   - _bmad-output/brainstorming/brainstorm-personal-library-tracker-2026-10-27/brainstorm-intent.md
   - _bmad-output/planning-artifacts/ux-designs/ux-bookvie-2026-10-28/prd-deltas.md
@@ -242,7 +242,8 @@ The user can filter and sort the catalog.
 - **Consequences:**
   - **Sort:** Author (default), Title, Date added, or Pages. The bookcase (FR-24) reorders its spines and the tiles (FR-25) reorder to match.
   - **Sort direction:** each sort has a natural direction (Author and Title A–Z, Date added newest first, Pages fewest first), and the user can reverse it. The catalog shows which order is in effect. Books that tie keep the same order either way. The direction is remembered on this computer with the sort and isn't part of an export; choosing another sort goes back to that sort's natural direction. Home's bookcase slice follows the same order.
-  - **Filter chips:** Read / Unread, Type, Language, and Tag. Books that don't match are hidden and the bookcase or the tiles close up; they aren't dimmed.
+  - **Filter chips:** Read / Unread, Type, Language, Tag, and Publisher. Books that don't match are hidden and the bookcase or the tiles close up; they aren't dimmed.
+  - **Publisher:** the user can pick one or more publishers to see only their Books, such as everything from Manning. The publishers are listed by how many Books each has, most first, with that count across the whole library, so the list keeps its order while other filters change.
 
 #### FR-25: Catalog tiles
 The user can see the catalog as tiles: one tile per Book with its cover, title, and author, so a Book can be found by its cover. Tiles is a third view next to the bookcase and the list.
@@ -355,7 +356,7 @@ Each item below is a one-line summary; the addendum has the full rules.
 - **Donation and the Past shelf:** physical Books only, with the Book's history kept.
 - **Wishlist:** a separate list. Ownership stays owned or donated.
 - **Progress visuals:** beyond the MVP bookcase (FR-24) and the tiles' progress bar (FR-25): a cover that fills with color as you read, an outline for wishlisted Books, a dust layer on long-unread Books, and a re-read badge.
-- **Organizing extras:** smart shelves, author and publisher groups, and publisher series.
+- **Organizing extras:** smart shelves and publisher series.
 - **Card note extras:** shuffling Card notes across scopes, and Card note export.
 - **Resuming:** review pages, resume with rewind, and a pause note.
 - **More stats:** language stats and a "What I can do now" wall of fulfilled Purposes.
