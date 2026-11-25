@@ -2,7 +2,7 @@
 title: 'Story 15.2: Filter the catalog by publisher'
 type: 'feature'
 created: '2026-11-25'
-status: 'in-review'
+status: 'done'
 baseline_revision: '335d577dc7c50c3bd62d0c16fcc9bde0c8812e4e'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -186,3 +186,32 @@ Both edits follow from AC-1's row order and keep each leaf's intent. No other as
 - The `.popup` `box-sizing` change makes long Language and Tag lists 10px shorter and their popups 2px narrower at the minimum.
 
 Next: run `bmad-code-review` in a new session (AGENTS.md "Story pipeline").
+
+### Review Findings
+
+Code review 2026-11-25 (bmad-code-review, new session). Layers: Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor, Spine Check. 18 findings: 0 decision-needed, 2 patch, 1 defer, 15 rejected. Spine Check: none (AD-6, AD-7, AD-8, AD-15, AD-17, AD-18). Verification Gap: none.
+
+- [x] [Review][Patch] No test pins "one space apart" visually: AC-2's `rowText` uses `textContent`, which keeps the `{' '}` text node even if the name/count wrapper `<span>` goes, and then `.option`'s 8px flex `gap` would sit between name and count [frontend/e2e/catalog-publisher-filter.spec.ts:238]
+- [x] [Review][Patch] The `FilterChips` doc comment line now runs past the block's ~80-column wrap [frontend/src/components/FilterChips.tsx:161]
+- [x] [Review][Defer] `rawFilters` keeps a checked key that `liveFilters` dropped, so it filters again if a Book is edited back to that value in the same Catalog visit (Language, Tag and now Publisher) [frontend/src/pages/CatalogPage.tsx:164] — deferred: pre-existing design since Story 7.2; Publisher only extends it
+
+Patches applied 2026-11-25: AC-2 now asserts the drawn gap from the name to the count is one space's advance in the row's font (±1px); a mutation that drops the name/count wrapper `<span>` fails it (off by 4.2px). The `FilterChips` doc comment is rewrapped.
+
+Full check after the last patch, 2026-11-25: `npm run check` exit 0 — pytest 2515 passed, unit 425 passed, e2e 884 passed, smoke ok.
+
+**Rejected:**
+- (blind) `false` Spec Change Log is empty though the build deviated — the deviations are recorded under Auto Run Result, and the fix edits the spec under review.
+- (blind) `false` The `.popup` `box-sizing` change is untested for Language/Tag — all three lists share the one `.popup` class, and AC-1 measures its rendered height ≤ 320px (`catalog-publisher-filter.spec.ts:204–212`).
+- (blind) `low` `FilterValue & { count?: number }` written twice in `FilterChips.tsx` — cosmetic, two lines apart; no caller can diverge.
+- (blind) `low` `liveFilters` takes three same-typed positional arrays — a swap is hypothetical, both call sites are in `CatalogPage.tsx` and pass the same names; a `Record` argument is a refactor.
+- (blind) `low` `publisherValues` duplicates `filterValues`' keying — a shared helper is a refactor; the doc comment cross-references the rules.
+- (blind) `low` AC-2's noun check finds the element by exact own text — a markup change fails it loudly (`not.toBeNull`), it can't pass wrongly.
+- (blind) `false` CHANGELOG `[Unreleased]` says "Nothing yet" — the changelog is written per epic at release (`272e8d4` for Epic 14), not per story.
+- (blind) `false` `epic-15: backlog` in sprint-status — not changed by this diff, and `epic-14` reads the same; epic status isn't the story review's to set.
+- (blind) `false` Nothing guards "every Book, never the filtered set" — AC-3 asserts the same counts and order with Unread, a Tag and Search titles on.
+- (edge) `low` The left-anchored Publisher popup could cross the viewport's right edge with a very long name — desktop Chrome only, the row wraps, and real names are short; a guard adds positioning logic.
+- (acceptance) `low` Two older e2e leaves edited despite "pass unchanged" — AC-1 puts Publisher ▾ last, so the Tab-order steps had to include it; each leaf keeps its intent. The fix would edit the spec/epic context.
+- (acceptance) `low` `bookcase-details.spec.ts` is outside the Code Map — same root cause as the item above.
+- (acceptance) `low` The shared `.popup` `box-sizing` changes Language and Tag — intended: DESIGN.md's 320px cap applies to all three lists, and a full list rendered 330px before.
+- (acceptance) `false` Every row's label is now wrapped in a `<span>` — Language and Tag rows render no count and no noun; their names and look are unchanged (AC-2 checks both).
+- (acceptance) `false` The ATDD file gained a noun-size assertion beyond un-skipping — a build-review patch that strengthens AC-2; no AC is weakened.

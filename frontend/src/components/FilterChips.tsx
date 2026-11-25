@@ -158,8 +158,8 @@ function ValueList({
 
 /**
  * Catalog's toolbar row 2 (DESIGN.md → Filter chips): the Status and Type
- * chip groups, Language ▾, Tag ▾ and Publisher ▾, then "Clear filters" while any filter
- * is on. Every chip is a toggle button with `aria-pressed`.
+ * chip groups, Language ▾, Tag ▾ and Publisher ▾, then "Clear filters" while
+ * any filter is on. Every chip is a toggle button with `aria-pressed`.
  */
 export default function FilterChips({ filters, languages, tags, publishers, onChange, onClear, on, readRef }: Props) {
   const statusId = useId()

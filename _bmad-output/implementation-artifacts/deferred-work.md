@@ -1846,3 +1846,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-15-1-carry-the-publisher-in-the-catalog-view.md`
   summary: No pipeline step moves an epic's status out of `backlog`. `sprint-status.yaml`'s header says an epic moves to `in-progress` when its first story starts (via the build's sprint sync), but `epic-15` reads `backlog` while Story 15.1 is in review, and `epic-14` still reads `backlog` with every story and `epic-14-retrospective` done (Epics 12 and 13 read `done`). Either the build's sprint sync and the retrospective should set the epic's status, or the header should drop the rule. Pre-existing, not caused by Story 15.1. Low.
   evidence: Acceptance Auditor, code review of Story 15.1; `_bmad-output/implementation-artifacts/sprint-status.yaml` lines 26, 144 and 152; no epic-status write in `.claude/skills/bmad-build-auto`.
+
+## Deferred from: code review of spec-15-2-filter-the-catalog-by-publisher.md (2026-11-25)
+
+- `rawFilters` in `CatalogPage.tsx` keeps a checked Language, Tag or Publisher key after `liveFilters` drops it as gone, so the filter comes back if a Book is edited back to that value within the same Catalog visit (the chip then reads "Publisher: 1" again). Pre-existing since Story 7.2; Story 15.2 extends it to Publisher, the field most likely to be fixed by an edit. Fix: prune `rawFilters` when `liveFilters` drops a key.

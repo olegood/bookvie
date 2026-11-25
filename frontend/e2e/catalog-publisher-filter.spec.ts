@@ -263,6 +263,36 @@ test.describe('Story 15.2 Filter the catalog by publisher (ATDD)', () => {
       expect(nounBox).not.toBeNull()
       expect(nounBox!.width).toBeLessThanOrEqual(1)
       expect(nounBox!.height).toBeLessThanOrEqual(1)
+      // "One space apart" as drawn, not only in the text: the gap from the name's end to the
+      // count is one space's advance in the row's font, not the row's flex gap.
+      const spacing = await listPopup(page, 'Publisher')
+        .getByRole('checkbox', { name: rowStart(name, Number(count)) })
+        .evaluate(
+          (input, [wantedName, wantedCount]) => {
+            const row = (input as HTMLInputElement).labels?.[0] ?? input.closest('label')!
+            const walker = document.createTreeWalker(row, NodeFilter.SHOW_TEXT)
+            let nameNode: Text | null = null
+            for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+              if (node.textContent === wantedName) nameNode = node as Text
+            }
+            const countElement = Array.from(row.querySelectorAll('*')).find(
+              (element) => element.childElementCount === 0 && element.textContent === wantedCount,
+            )
+            if (!nameNode || !countElement) return null
+            const range = document.createRange()
+            range.selectNodeContents(nameNode)
+            const context = document.createElement('canvas').getContext('2d')!
+            const style = getComputedStyle(row)
+            context.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`
+            return {
+              gap: countElement.getBoundingClientRect().left - range.getBoundingClientRect().right,
+              space: context.measureText(' ').width,
+            }
+          },
+          [name, count] as const,
+        )
+      expect(spacing).not.toBeNull()
+      expect(Math.abs(spacing!.gap - spacing!.space)).toBeLessThanOrEqual(1)
     }
     await page.keyboard.press('Escape')
 
