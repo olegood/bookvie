@@ -2,7 +2,7 @@
 name: bookvie
 description: Personal, local-first desktop web app for one reader's home library and reading. Birch Morning direction — bright, flat, Nordic; a pale birch bookcase where read books are colored and unread books are outlined.
 status: final
-updated: 2026-11-23
+updated: 2026-11-25
 colors:
   # Light theme (default tokens). Dark twins carry the -dark suffix.
   page: '#F6F4EF'
@@ -859,9 +859,10 @@ Visual specs. Behavior lives in EXPERIENCE.md → Component Patterns, under the 
 
 `{components.chip}` toggle chips in labelled groups.
 
-- **Groups:** names in `meta`/`ink-tertiary`: Status (Read · Unread), Type (Paperback · Hardcover · Ebook), Language ▾, Tag ▾.
+- **Groups:** names in `meta`/`ink-tertiary`: Status (Read · Unread), Type (Paperback · Hardcover · Ebook), Language ▾, Tag ▾, Publisher ▾.
 - **Selected chip:** `accent-soft` fill, 2px `accent` border, and a leading check glyph.
-- **Language ▾ and Tag ▾:** open a small `surface` list of checkboxes. When values are selected, the chip reads "Language: 2".
+- **Language ▾, Tag ▾ and Publisher ▾:** open a small `surface` list of checkboxes, each row in `body-sm`/`ink`, at most 320px tall and scrolling beyond that. When values are selected, the chip reads "Language: 2".
+- **Publisher count:** after the name, one space apart, in `body-sm`/`ink-tertiary` ("Manning 49"). Not a right-aligned column. Language and Tag rows have no count.
 - **Clear filters:** a `link` at the row end when any filter is on.
 
 ### Spine
