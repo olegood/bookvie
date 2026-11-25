@@ -5,6 +5,7 @@
 // case, a checked publisher no Book has any more, the chip being page state
 // only, and the rows' accessible names and keyboard behavior.
 
+import AxeBuilder from '@axe-core/playwright'
 import type { Page } from '@playwright/test'
 import { bookcase, bookRows, finished, search, viewToggle } from './bookcase.ts'
 import {
@@ -20,6 +21,7 @@ import {
   listPopup,
   main,
   publisherChip,
+  recordStatus,
   spineNames,
   storageKeys,
   tagChip,
@@ -530,5 +532,119 @@ test.describe('Story 15.2 Filter the catalog by publisher (ATDD)', () => {
     await page.keyboard.press('Shift+Tab')
     await expect(tagChip(page)).toBeFocused()
     await expect(page.getByRole('checkbox')).toHaveCount(0)
+  })
+})
+
+test.describe('Story 15.2 Filter the catalog by publisher (automate)', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 })
+  })
+
+  test('[P2] AC-1/AC-2 with Manning checked and the Publisher list open, axe finds nothing in both themes, and the dark rows use ink-dark and ink-tertiary-dark', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: PUBLISHER_SHELF })
+    const themes = [
+      { colorScheme: 'light', ink: 'ink', tertiary: 'ink-tertiary' },
+      { colorScheme: 'dark', ink: 'ink-dark', tertiary: 'ink-tertiary-dark' },
+    ] as const
+    for (const { colorScheme, ink, tertiary } of themes) {
+      await page.emulateMedia({ colorScheme })
+      await page.goto(`${server.url}/catalog`)
+      await checkPublisher(page, PUBLISHER_ROWS, 'Manning')
+      await expect(publisherChip(page)).toHaveText('Publisher: 1')
+      await publisherChip(page).click()
+      await expect(listPopup(page, 'Publisher').getByRole('checkbox')).toHaveCount(PUBLISHER_ROWS.length)
+
+      for (const [name, count] of PUBLISHER_ROWS) {
+        const look = await countLook(page, 'Publisher', fullName([name, count]), String(count))
+        expect(look.count?.color).toBe(rgbOf(designColor(tertiary)))
+        expect(look.row.color).toBe(rgbOf(designColor(ink)))
+      }
+      const { violations } = await new AxeBuilder({ page })
+        .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
+        .analyze()
+      expect(violations.map(({ id, nodes }) => `${colorScheme}: ${id} (${nodes.length})`)).toEqual([])
+    }
+  })
+
+  test('[P2] AC-4 a publisher that matches nothing under the other filters shows "No books match these filters." with a Clear filters link', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: PUBLISHER_SHELF })
+    await page.goto(`${server.url}/catalog`)
+    await expect.poll(() => spineNames(bookcase(page))).toEqual(BY_AUTHOR)
+
+    // Pro Git, Apress's only Book, is unread: Read + Apress match nothing.
+    await chip(page, 'Status', 'Read').click()
+    await checkPublisher(page, PUBLISHER_ROWS, 'Apress')
+    await expect(page.getByRole('status')).toHaveText('0 books match.')
+    await expect(main(page).getByText('No books match these filters.', { exact: true })).toBeVisible()
+    await expect(publisherChip(page)).toHaveText('Publisher: 1')
+
+    const link = main(page).getByRole('button', { name: 'Clear filters', exact: true })
+    await expect(link).toHaveCount(2)
+    await link.last().click()
+    await expect(main(page).getByText('No books match these filters.', { exact: true })).toHaveCount(0)
+    await expect(publisherChip(page)).toHaveText(/^Publisher\s*▾$/)
+    await expect.poll(() => spineNames(bookcase(page))).toEqual(BY_AUTHOR)
+  })
+
+  test('[P2] AC-4 each Publisher change announces its count again, even word for word the same', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: PUBLISHER_SHELF })
+    await page.goto(`${server.url}/catalog`)
+    await expect.poll(() => spineNames(bookcase(page))).toEqual(BY_AUTHOR)
+    const announced = await recordStatus(page)
+
+    // Read: Kubernetes and Learning Go.
+    await chip(page, 'Status', 'Read').click()
+    await expect.poll(announced).toEqual(['2 books match.'])
+    await expect.poll(() => listNames(page, 'Publisher')).toEqual(startsOf(PUBLISHER_ROWS))
+    const row = (name: string) =>
+      listPopup(page, 'Publisher').getByRole('checkbox', { name: new RegExp(`^${escapeRegExp(name)} \\d`) })
+    await row('Manning').check()
+    await expect.poll(announced).toEqual(['2 books match.', '', '1 book matches.'])
+    await row("O'Reilly Media").check()
+    await expect.poll(announced).toEqual(['2 books match.', '', '1 book matches.', '', '2 books match.'])
+    // Apress's Pro Git is unread, so the count stays 2: the same words right after themselves.
+    await row('Apress').check()
+    await expect
+      .poll(announced)
+      .toEqual(['2 books match.', '', '1 book matches.', '', '2 books match.', '', '2 books match.'])
+  })
+
+  test('[P2] AC-1/AC-2 a long publisher name with an apostrophe stays on one line, its count beside it, and the list widens to fit', async ({
+    page,
+    seededServer,
+  }) => {
+    // Sorts last among the one-Book publishers.
+    const long = "Zed's Very Long Imprint for Professional Computing and Engineering Series Books"
+    const server = await seededServer({
+      books: [
+        ...PUBLISHER_SHELF,
+        { id: bookId(8), title: 'Effective Java', authors: ['Joshua Bloch'], publisher: long },
+      ],
+    })
+    await page.goto(`${server.url}/catalog`)
+    const rows: [string, number][] = [...PUBLISHER_ROWS, [long, 1]]
+    await expect.poll(() => listNames(page, 'Publisher')).toEqual(startsOf(rows))
+
+    const heights = await listPopup(page, 'Publisher')
+      .locator('label')
+      .evaluateAll((labels) => labels.map((label) => label.getBoundingClientRect().height))
+    // Every row is the one-line height of the shortest name.
+    expect(new Set(heights).size).toBe(1)
+    const look = await countLook(page, 'Publisher', fullName([long, 1]), '1')
+    expect(look.rowText).toBe(`${long} 1 book`)
+    const [popup, chipBox] = await Promise.all([
+      listPopup(page, 'Publisher').boundingBox(),
+      publisherChip(page).boundingBox(),
+    ])
+    expect(popup!.width).toBeGreaterThan(chipBox!.width)
   })
 })

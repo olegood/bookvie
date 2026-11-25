@@ -94,15 +94,15 @@ Every leaf is in `frontend/e2e/catalog-publisher-filter.spec.ts`, at 1280×900 i
 
 ## Green-phase follow-ups (secondary branches, not red leaves)
 
-- [ ] **Unit (`node --test`, `src/lib/catalogFilter.test.ts`), AC-2/AC-5:** `publisherValues()` orders by count descending, then by collator (numeric, for example "Part 2" before "Part 10"). It merges case into the first spelling, counts every spelling, skips a blank value and doesn't mutate its input.
-- [ ] **Unit, AC-4/AC-5:** `matchesFilters` with `publishers` ORs within the group, ANDs with the other groups and ignores case. `filtersOn` is true with only a publisher checked.
-- [ ] **Unit, AC-6:** `liveFilters` drops a publisher no Book has any more, and returns the same object when everything is live.
-- [ ] **E2E, AC-1 axe:** with the Publisher list open, axe finds nothing in light and dark (as `catalog-filter.spec.ts:712` does for Language). Check that the count's `ink-tertiary` on `surface` passes contrast.
-- [ ] **E2E, AC-2 dark:** the count is `ink-tertiary-dark` (`#9A9E94`) and the name is `ink-dark`.
-- [ ] **E2E, AC-4:** checking a publisher with zero matches under other filters shows "No books match these filters." with the Clear filters link.
-- [ ] **E2E, AC-4:** each publisher change announces its count again, even when it is word for word the same (as `catalog-filter.spec.ts:569`).
-- [ ] **E2E, AC-8:** Esc after clicks that move no focus works as for Language (Chromium-observable only; AGENTS.md → Supported browser).
-- [ ] **E2E, AC-1/AC-2:** a publisher name with an apostrophe or a long name doesn't wrap in its row (`white-space: nowrap`).
+- [x] **Unit (`node --test`, `src/lib/catalogFilter.test.ts`), AC-2/AC-5:** `publisherValues()` orders by count descending, then by collator (numeric, for example "Part 2" before "Part 10"). It merges case into the first spelling, counts every spelling, skips a blank value and doesn't mutate its input. (done: frontend/src/lib/catalogFilter.test.ts:117–161, `describe('publisherValues')`, written by the build)
+- [x] **Unit, AC-4/AC-5:** `matchesFilters` with `publishers` ORs within the group, ANDs with the other groups and ignores case. `filtersOn` is true with only a publisher checked. (done: frontend/src/lib/catalogFilter.test.ts:75 "matches Publisher ignoring case", :79 "combines publishers with OR and with other groups with AND", :168 `filtersOn`)
+- [x] **Unit, AC-6:** `liveFilters` drops a publisher no Book has any more, and returns the same object when everything is live. (done: frontend/src/lib/catalogFilter.test.ts:196 "drops a checked publisher no Book has any more", :202 "returns the same filters when every checked value is live")
+- [x] **E2E, AC-1 axe:** with the Publisher list open, axe finds nothing in light and dark (as `catalog-filter.spec.ts:712` does for Language). Check that the count's `ink-tertiary` on `surface` passes contrast. (done: frontend/e2e/catalog-publisher-filter.spec.ts:543 "[P2] AC-1/AC-2 with Manning checked and the Publisher list open, axe finds nothing in both themes…")
+- [x] **E2E, AC-2 dark:** the count is `ink-tertiary-dark` (`#9A9E94`) and the name is `ink-dark`. (done: frontend/e2e/catalog-publisher-filter.spec.ts:543, the same leaf: every row's count is `ink-tertiary-dark` and its name `ink-dark` from DESIGN.md)
+- [x] **E2E, AC-4:** checking a publisher with zero matches under other filters shows "No books match these filters." with the Clear filters link. (done: frontend/e2e/catalog-publisher-filter.spec.ts:572 "[P2] AC-4 a publisher that matches nothing under the other filters…")
+- [x] **E2E, AC-4:** each publisher change announces its count again, even when it is word for word the same (as `catalog-filter.spec.ts:569`). (done: frontend/e2e/catalog-publisher-filter.spec.ts:595 "[P2] AC-4 each Publisher change announces its count again…"; `recordStatus` moved to `e2e/catalog-filter.ts`)
+- ~~**E2E, AC-8:** Esc after clicks that move no focus works as for Language (Chromium-observable only; AGENTS.md → Supported browser).~~ **Retired:** a click that moves no focus is macOS Safari behavior. AGENTS.md → Supported browser says to add no test for it, and the two 7.2 leaves that model it (`catalog-filter.spec.ts` "Esc closes the Language list after clicks that move no focus") are kept but are not a precedent for more. Publisher reuses the same `ValueList`, so the existing leaf already exercises its code.
+- [x] **E2E, AC-1/AC-2:** a publisher name with an apostrophe or a long name doesn't wrap in its row (`white-space: nowrap`). (done: frontend/e2e/catalog-publisher-filter.spec.ts:621 "[P2] AC-1/AC-2 a long publisher name with an apostrophe stays on one line…"; it fails with `nowrap` removed)
 
 ## Helper probes
 

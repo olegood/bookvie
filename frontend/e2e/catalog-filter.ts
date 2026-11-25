@@ -1,7 +1,8 @@
 // Shared by the Catalog filter specs (Story 7.2, Story 15.2): the toolbar's
 // chips and checkbox lists found by role and name, the spine names in a list,
-// the keys in storage, and an add from the New book panel. Story 15.2 moved
-// them here from catalog-filter.spec.ts and added the list chips' readers.
+// the keys in storage, an add from the New book panel, and a recorder of the
+// `status` region's texts. Story 15.2 moved them here from
+// catalog-filter.spec.ts and added the list chips' readers.
 
 import type { Locator, Page } from '@playwright/test'
 import { bookcase, SWING_TIME } from './bookcase.ts'
@@ -163,3 +164,20 @@ export async function addSwingTime(page: Page): Promise<void> {
 }
 
 export const SWING = 'Swing Time by Zadie Smith, not read yet'
+
+/**
+ * Records every text the `status` region shows from now on, empty ones
+ * included, so an announcement repeated word for word shows up as a new one.
+ */
+export async function recordStatus(page: Page): Promise<() => Promise<string[]>> {
+  await page.getByRole('status').evaluate((region) => {
+    const seen: string[] = []
+    ;(window as Window & { statusTexts?: string[] }).statusTexts = seen
+    new MutationObserver(() => seen.push(region.textContent ?? '')).observe(region, {
+      childList: true,
+      characterData: true,
+      subtree: true,
+    })
+  })
+  return async () => (await page.evaluate(() => (window as Window & { statusTexts?: string[] }).statusTexts)) ?? []
+}

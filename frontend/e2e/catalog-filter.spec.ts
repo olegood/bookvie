@@ -5,7 +5,6 @@
 // remembered or applied to Home and the meter, and an add clearing them.
 
 import AxeBuilder from '@axe-core/playwright'
-import type { Page } from '@playwright/test'
 import {
   ACCENT,
   bookcase,
@@ -27,6 +26,7 @@ import {
   languageChip,
   main,
   publisherChip,
+  recordStatus,
   spineNames,
   storageKeys,
   SWING,
@@ -121,23 +121,6 @@ const EMMA = 'Emma by Jane Austen, not read yet'
 
 // The default sort: first author with Intl.Collator.
 const BY_AUTHOR = [BLEAK_HOUSE, DUBLINERS, EMMA, FLIGHTS, CANDIDE, AUSTERLITZ]
-
-/**
- * Records every text the `status` region shows from now on, empty ones
- * included, so an announcement repeated word for word shows up as a new one.
- */
-async function recordStatus(page: Page): Promise<() => Promise<string[]>> {
-  await page.getByRole('status').evaluate((region) => {
-    const seen: string[] = []
-    ;(window as Window & { statusTexts?: string[] }).statusTexts = seen
-    new MutationObserver(() => seen.push(region.textContent ?? '')).observe(region, {
-      childList: true,
-      characterData: true,
-      subtree: true,
-    })
-  })
-  return async () => (await page.evaluate(() => (window as Window & { statusTexts?: string[] }).statusTexts)) ?? []
-}
 
 /**
  * "Classic" on the first Book in library order, "classic" on a later one
