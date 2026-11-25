@@ -17,13 +17,14 @@ inputDocuments:
   - _bmad-output/planning-artifacts/dropbox-backup-plan-2026-11-21.md
   - _bmad-output/planning-artifacts/card-note-boxes-plan-2026-11-23.md
   - _bmad-output/planning-artifacts/catalog-publisher-filter-plan-2026-11-25.md
+  - _bmad-output/planning-artifacts/favourite-books-plan-2026-11-25.md
 ---
 
 # bookvie - Epic Breakdown
 
 ## Overview
 
-This document breaks bookvie's PRD, UX design (DESIGN.md, EXPERIENCE.md) and architecture spine into fifteen epics of implementable stories. Each story names the requirement IDs it satisfies and lists Given/When/Then acceptance criteria.
+This document breaks bookvie's PRD, UX design (DESIGN.md, EXPERIENCE.md) and architecture spine into sixteen epics of implementable stories. Each story names the requirement IDs it satisfies and lists Given/When/Then acceptance criteria.
 
 **How to read it.** The Epic List gives the build order and what each epic delivers. Each epic section starts with its gate. Every story follows the conventions in "Conventions for every story", just before Epic 1. The Requirements Inventory is a lookup table; the source documents stay authoritative.
 
@@ -56,6 +57,7 @@ Gates are in each epic's section.
 | 13. Back up to Dropbox, and restore through an agent | An agent restores a local or Dropbox backup only after showing what will be lost and passing two confirmations it can't skip, with a safety copy first (built first, to prove the riskiest part). When Oleg runs the backup skill, the library goes to bookvie's own Dropbox folder: 3 copies, the oldest deleted only after a checked upload, an unchanged library skipped, a development library never uploaded. The Backup page says in words how the last Dropbox backup went. Setup and a fix for each failure ship in `docs/dropbox-backup.md`. (The 09:00 launchd job was dropped on 2026-11-23: the Mac's administration policy doesn't allow it; see `sprint-change-proposal-2026-11-23.md`.) | FR-29, FR-30, FR-28 (restore lifted from the ban, the backup run's export not counted as Last export) |
 | 14. See card notes as boxes | The Card notes page shows one box per Book, in its spine color with a pile of cards that grows with its notes; a remembered Boxes · List toggle keeps today's page as List. Opening a box opens that Book's notes under a strip in its spine color. A search on the shelf fades the boxes without a match and shows "3 of 12" on those with matches, and the search text goes into the box and back out. | FR-19 (Boxes · List, the boxes, the shelf search, the carried search) |
 | 15. See one publisher's shelf | A Publisher ▾ filter chip after Tag shows only the Books from the publishers picked, such as everything from Manning, in the bookcase, the list and the tiles. Its list puts the biggest publishers first, each with its Book count in the whole library, so the list keeps its order while other filters change. | FR-20 (Publisher filter) |
+| 16. Remember the Books that mattered | Star any Book, read or not, to remember that it had an impact: on its page, on its cover in Tiles, in its List row, and in the Bookcase's spine popover. A starred Book shows its star everywhere, with a small mark on its spine. A one-click ★ Favourites chip, first in the filter row, shows only the starred Books, with the search and every other chip. Edits never touch the star, a backup carries it, and agents can see it but not set it. | FR-31, FR-20 (Favourites chip), FR-28 (read-only star) |
 
 ## Requirements Inventory
 
@@ -97,7 +99,7 @@ FR-18 [Must]: Review a Book's Card notes as a pile, one at a time: page order or
 
 FR-19 [Must]: Card notes view and quick search. A separate Card notes view shows all Card notes grouped by Book, either as a list or as one box per Book, with a quick search that finds notes containing the typed text. Boxes or list: across all Books the view shows the Books as boxes (default) or as the list of Card notes grouped by Book; the last choice is remembered on this computer and isn't part of an export; the view scoped to one Book has no choice. Boxes: each Book that has Card notes gets one box in its spine color, read or not, with its title, how many Card notes it holds and a pile of cards that grows with that number, in the same Book order as the list; opening a box opens the view scoped to that Book, which shows the Book's spine color too. Search across all Books keeps the list's results grouped by Book; in boxes, each Book with a match shows how many of its Card notes match ("3 of 12") and the other boxes fall back but can still be opened, and which Books match never depends on color or fading alone. Opening a box during a search keeps the search text, so the Book's view shows only its matches; going back to the boxes keeps the text as it was when the user left; switching between boxes and the list keeps it too; every other way into the view starts with an empty search. The view scoped to one Book searches only that Book's notes; the pile itself has no search. Results update while typing, case-insensitive; each result shows the page or range and the matching text highlighted (plus the Book title in all-Books search). Opening a result shows that note in its Book's pile.
 
-FR-20 [Should]: Filter and sort. Sort: Author (default), Title, Date added, Pages; the bookcase reorders to match. Each sort has a natural direction (Author and Title A–Z, Date added newest first, Pages fewest first) that the user can reverse; the catalog shows which order is in effect, ties keep their order either way, the direction is remembered on this computer with the sort and not exported, choosing another sort goes back to its natural direction, and Home's bookcase slice follows the same order. Filter chips: Read / Unread, Type, Language, Tag, Publisher; non-matching Books are hidden and the bookcase closes up (not dimmed). Publisher lets the user pick one or more publishers; the publishers are listed by how many Books each has, most first, with that count across the whole library, so the list keeps its order while other filters change.
+FR-20 [Should]: Filter and sort. Sort: Author (default), Title, Date added, Pages; the bookcase reorders to match. Each sort has a natural direction (Author and Title A–Z, Date added newest first, Pages fewest first) that the user can reverse; the catalog shows which order is in effect, ties keep their order either way, the direction is remembered on this computer with the sort and not exported, choosing another sort goes back to its natural direction, and Home's bookcase slice follows the same order. Filter chips: Favourites (FR-31), Read / Unread, Type, Language, Tag, Publisher; non-matching Books are hidden and the bookcase closes up (not dimmed). Publisher lets the user pick one or more publishers; the publishers are listed by how many Books each has, most first, with that count across the whole library, so the list keeps its order while other filters change.
 
 FR-21 [Should]: Cover on the main screen. The main screen shows the Main book's uploaded cover, or the placeholder.
 
@@ -113,7 +115,9 @@ FR-26 [Must]: Development and production stay apart. A Development server (bookv
 
 FR-27 [Must]: The version is visible. The Backup page shows the version and the library's folder in About this copy; on a Development server it also says so and shows the exact build (the source commit); the real app shows no build. When the running app's version differs from the version an open tab was loaded with (a rollback counts too), the tab shows a quiet notice that bookvie was updated, with a Reload button; if the app can't be reached, for example while it restarts, there's no notice. The notice is announced once, never on every check; it's never a dialog and blocks nothing: the old tab keeps working until the user reloads it.
 
-FR-28 [Should]: Agents read and update the library through MCP. An AI agent in Claude Code can read the library and record reading through bookvie's agent tools, under the same rules as the UI and with no way to delete a Book or a Card note (uses: "I'm on page X of Y", the bookvie skills, reading lists, time-boxed plans, reading order). The tools are on whenever bookvie runs, with nothing extra to start; a Development server offers its own against its own library, so an agent trying something out never writes to the real library. Claude Code is the only supported client; the README gives the setup. A request from another site or host is refused. A write follows the same rules as the same action in the UI and is refused with the same reason and fields; adding a likely duplicate is refused until the agent confirms it. A free-text search (abbreviation, author, part of a title) returns every likely match with edition and type, or an empty list; every other tool names the Book by id, so a page is never logged on the wrong edition. Agents can read the catalog, a Book, Home, Card notes and Stats; start, update, pause and finish a Reading, choose Up next, edit a Purpose; add and edit Card notes; mark and unmark Side reads; add and edit Books; export a backup; upload it to Dropbox (FR-29); restore a backup, with two confirmations (FR-30). They can't delete a Book or a Card note. Adding or editing a Book can take a cover's web address, which bookvie downloads; only an image from a public address is accepted, and a failed download saves nothing. An agent's export writes a dated backup file to a fixed folder (separate for a Development server), says where, replaces a same-day file, and counts as the last export, except the daily backup run's export, which never moves it (FR-29). Each tool's description says what it does and how to use it; a refusal gives the same reason and fields as the UI. There are no planning tools: the agent answers from titles, tags, Purposes, Card notes, pages left and measured pace. (Amended 2026-11-21: restore is no longer banned.)
+FR-28 [Should]: Agents read and update the library through MCP. An AI agent in Claude Code can read the library and record reading through bookvie's agent tools, under the same rules as the UI and with no way to delete a Book or a Card note (uses: "I'm on page X of Y", the bookvie skills, reading lists, time-boxed plans, reading order). The tools are on whenever bookvie runs, with nothing extra to start; a Development server offers its own against its own library, so an agent trying something out never writes to the real library. Claude Code is the only supported client; the README gives the setup. A request from another site or host is refused. A write follows the same rules as the same action in the UI and is refused with the same reason and fields; adding a likely duplicate is refused until the agent confirms it. A free-text search (abbreviation, author, part of a title) returns every likely match with edition and type, or an empty list; every other tool names the Book by id, so a page is never logged on the wrong edition. Agents can read the catalog, a Book, Home, Card notes and Stats; start, update, pause and finish a Reading, choose Up next, edit a Purpose; add and edit Card notes; mark and unmark Side reads; add and edit Books; export a backup; upload it to Dropbox (FR-29); restore a backup, with two confirmations (FR-30). They can't delete a Book or a Card note, or star or unstar a Book (FR-31), though they can see whether it is starred. Adding or editing a Book can take a cover's web address, which bookvie downloads; only an image from a public address is accepted, and a failed download saves nothing. An agent's export writes a dated backup file to a fixed folder (separate for a Development server), says where, replaces a same-day file, and counts as the last export, except the daily backup run's export, which never moves it (FR-29). Each tool's description says what it does and how to use it; a refusal gives the same reason and fields as the UI. There are no planning tools: the agent answers from titles, tags, Purposes, Card notes, pages left and measured pace. (Amended 2026-11-21: restore is no longer banned. Amended 2026-11-25: agents can't set the favourite star.)
+
+FR-31 [Should]: Favourite Books. The user can star a Book to remember that it had an impact on them, and the catalog can show only the starred Books. Any Book can be starred: unread, being read, paused, a Side read or finished. Starring and unstarring are one action each, from the Book's page and from the catalog in every view. A starred Book shows its star in the bookcase, the list and the tiles, and on its page; in the list and the tiles an unstarred Book shows an empty star only while the user points at it or reaches it with the keyboard. The star never depends on color alone. One filter chip, Favourites, shows only starred Books; it combines with search (FR-4) and every other filter (FR-20), isn't remembered between visits, and never changes Home's bookcase slice or the "X of Y finished" count. Editing a Book, in the UI or through the agent tools, never stars or unstars it. An agent sees whether a Book is starred (FR-28) but can't star or unstar it. The star is part of an export and comes back with a restore (FR-22, FR-23); a backup from before favourites restores with no Book starred. Not included: a favourites filter on Card notes, sort by favourite, a count of favourites in Stats, a separate favourites page.
 
 FR-29 [Should]: Off-machine backup to Dropbox. When the user asks, an agent backs up the library and uploads it to the user's Dropbox, so a copy exists off this computer without exporting by hand. Run by hand: the user starts a backup run from Claude Code whenever they want; there is no schedule, because the user's managed Mac doesn't allow a scheduled background job (2026-11-23). Three copies, deleted only after a checked upload: Dropbox keeps the last 3; the oldest is deleted only after the new one has uploaded and been checked against the local file; a failed or mismatched upload deletes no older backup, though a mismatch found after the upload has already replaced that day's copy, and the failure says so; a deleting of older copies that doesn't finish after a checked upload still counts as the upload, with the older copies left until a later upload (Epic 13 retro item 91, 2026-11-23). Unchanged library, no upload: the run uploads nothing and reports a skip, so the 3 copies cover the last 3 changes, not the last 3 days. bookvie's folder only: the backup reaches nothing in Dropbox outside bookvie's own folder and deletes nothing there except bookvie's older backups; the sign-in lives in the computer's keychain, never in the library, an export or the repository, and renews itself; an expired sign-in fails with the command that fixes it. Never from development (FR-26). Status on the Backup page: next to "Last export", in words, how the last Dropbox backup went: when the last upload was and how many copies Dropbox keeps, that the last run found nothing new, that it failed (the reason and the fix), or that there hasn't been one yet; on a Development server, that a development library is never uploaded. Uploads aren't exports: a manual export doesn't count as an upload, an upload doesn't change "Last export" (FR-22); the upload status belongs to this computer, isn't exported, and a restore leaves it as it was. Documented: setup, how it works, and a fix for each known failure ship with the feature. Dropbox is the only provider; the folder and the number of copies can't be changed in the UI.
 
@@ -226,6 +230,15 @@ From ARCHITECTURE-SPINE.md and the TEA handoff. Each line names the source decis
 
 **Catalog Publisher filter (Epic 15).** From AD-6 and AD-8 as updated on 2026-11-25; where `catalog-publisher-filter-plan-2026-11-25.md` and the spine differ, the spine wins.
 - AR66 (AD-6, AD-8): The catalog view's `ShelfBook` carries `publisher`, the Book's stored, trimmed value, added in Python first, then `api:gen`. The Publisher chip compares it ignoring case like Language and Tag: each value once, keyed by `toLocaleLowerCase`, labelled with its first spelling in library order. The list is ordered by the value's Book count in the whole catalog view, most first, then collator order, and each value carries that count; the count and the order never depend on the other filters or Search titles. Within Publisher, values combine with OR; with the other groups and Search titles, with AND. `liveFilters` drops checked publishers that no Book has any more. Page state only, like every chip: never stored, never applied to Home's slice or the finished meter.
+
+**Favourite Books (Epic 16).** From AD-3, AD-6, AD-7, AD-8, AD-9, AD-13, AD-18 and AD-21 as updated on 2026-11-25 (`6d86325`); where `favourite-books-plan-2026-11-25.md` and the spine differ, the spine wins (D1's default, D7's optimistic star).
+- AR67 (AD-18, AD-13): Each Book stores `favourite`, a bool required in the store model with no default, like every field; no `check_invariants()` rule. `schemaVersion` goes from 3 to 4 with one migration step that sets `favourite: false` on every Book; `store/migrations` `CURRENT_VERSION` and `domain/model` `SCHEMA_VERSION` both become 4. A version 4 file or archive without `favourite` is refused (`restore_invalid` on restore); a library or backup from before Epic 16 loads and restores with no Book starred.
+- AR68 (AD-3, AD-9, AD-18): `POST /api/intents/set-favourite`, multipart with a JSON `intent` part `{bookId, favourite}`, sets the value it is sent and never toggles. It is the only writer of `favourite`: `add-book` stores `false`; `edit-book` and every other intent keep the stored value. `favourite` is not an Edit form field, so it is never in the `book` view's `editForm` or `edit_book`'s input. Setting the current value is a 200 no-op that commits nothing (`store.UNCHANGED`), checked after `book_not_found` (409).
+- AR69 (AD-6, AD-8): `ShelfBook` carries `favourite` (so the catalog and home views do) and `BookDetailView` carries it, as stored; added in Python first, then `api:gen`. Book detail, Tiles, List, the Bookcase, the Spine popover and Home's slice all read that one field.
+- AR70 (AD-6): The Favourites chip (`lib/catalogFilter.ts`, `components/FilterChips.tsx`) is a lone on/off toggle that keeps only Books whose `ShelfBook.favourite` is true and counts as its own group for the AND rule with every other group and Search titles. `liveFilters` never turns it off: with nothing starred it stays on and the catalog shows its empty state. It counts as a filter for "Clear filters", which turns it off, and for the empty state. Page state only: never stored, reset when Catalog unmounts or a Book is added, never applied to Home's slice or the "X of Y finished" meter. When an unstar with the chip on hides that Book, `pages/CatalogPage` owns what follows, never the star's own flow or `useSpinePopover`'s fallback: once the refetched view renders, it moves focus to the next shown Book in sort order, else the previous, else Search titles, and announces the star line and the match count as one message.
+- AR71 (AD-6): `spineNames` ends a starred Book's name with ", favourite", after the status. Twins are found on the name without it, so starring one Book never renames another. Tiles use the same builder, so the bookcase, Home's slice and Tiles give a Book the same name.
+- AR72 (AD-7): No optimistic star. It changes only once `set-favourite` succeeds and the views have refetched; a failure leaves it as it was, with nothing to roll back.
+- AR73 (AD-21): `get_book`, `list_catalog` and `get_home` carry `favourite` because they return their views as they are. `set-favourite` is never registered as a tool (`AGENT_TOOL_NAMES` doesn't change; the never-registered probes name `set_favourite`). Every tool description stays as Epic 12 fixed it; `find_book` neither returns nor matches `favourite`. Accepted gap: `preview_restore` doesn't report stars a restore would lose (spine Deferred).
 
 **Test harness and quality gates (TEA handoff).**
 - TR1 (TC-1): `LibraryBuilder` fixture and pre-start seeding of a data folder.
@@ -365,6 +378,18 @@ Each line names the UX section that holds the full requirement. D = DESIGN.md, E
 **Catalog Publisher filter (FR-20)**
 - UX-DR94: Publisher ▾ chip: the fifth filter group, after Tag, a `{components.chip}` that opens the same `surface` checkbox list as Language and Tag (rows in `body-sm`/`ink`, at most 320px tall, scrolling beyond); the chip reads "Publisher: N" when N values are checked. Each row shows the publisher's Book count in the whole library after the name, one space apart, in `body-sm`/`ink-tertiary` ("Manning 49"), not a right-aligned column; Language and Tag rows have no count. Rows are ordered by that count, most first, then alphabetically; other chips and Search titles change neither the numbers nor the order. A row's accessible name is its visible text plus the noun: "Manning 49 books", "Apress 1 book". Values that differ only in case are one row (D → Filter chips; E → Component Patterns → Filter chips)
 
+**Favourite Books (FR-31)**
+- UX-DR95: Favourite star control: a `button` with `aria-pressed` (true when starred), the star icon `aria-hidden`, no visible text. Its name is "Favourite" on Book detail and in the Spine popover, "Favourite *Title*" on a Catalog tile and a List view row. e2e finds it by role and exact name (`exact: true`), since "Favourite" is a prefix of "Favourites" and of "Favourite *Title*"; twins' stars share a name (accepted), reached through their tile or row. One SVG star path, filled gold when starred, an outline with no fill when not; no glyph character (E → Favourite star → Control; D → Favourite star).
+- UX-DR96: Book detail star: a plain icon button (`{components.favourite-star.button-size}` target, no border, fill or hover background) holding a `detail-size` star, `{spacing.3}` after the `h1`'s text and centered on its first line, always shown, starred or not; starred `on` (`on-dark` in dark), unstarred `off-stroke` outline; `{components.focus-ring}` on focus (D → Favourite star; E → Book detail → Heading).
+- UX-DR97: Spine popover star: the same plain button with a `popover-size` star, right after the title, named "Favourite", the first control in the popover's DOM. On open, focus goes to the primary action, else the first link, never the star. Shift+Tab from the control focused on open reaches the star; Shift+Tab from the star, or Tab from the last control, closes the popover and returns focus to the spine (E → Spine popover).
+- UX-DR98: Catalog tile star: no disc, the bare `tile-size` star `tile-inset` in from the 2:3 cover box's top and left edges with the paper `tile-halo`; placed on the box, not the visible cover (on a wide cover it sits on the page above the cover). The button is a sibling of the tile's link inside the list item, never inside it; Tab order the tile link, then its star. Starred: filled `tile-on`, always shown. Unstarred: `tile-off` outline drawn only on tile `:hover` or `:focus-within`, instantly; the button stays in the page and Tab order. Same colors and halo in both themes. Never covers the finished ribbon (D → Favourite star → Catalog tile; E → Favourite star → Where, Outline).
+- UX-DR99: List view row star: the same plain button with a `row-size` star, `{spacing.2}` after the title link in the title cell, with a `row-target` target that never makes the row taller; Tab order the title link, then its star; unstarred drawn only on row hover or focus within, instantly (D → Favourite star → List view row).
+- UX-DR100: Spine favourite mark: on a starred Book, a `spine-mark-size` paper square with `spine-mark-radius` corners, centered, `spine-mark-bottom` above the plank, holding a filled `spine-mark-star` in `spine-mark-star-color`; same in both themes; over the fill on a Main book; not a marker dot, so a spine can show both. Not a control: the spine's name says ", favourite". In the Bookcase on Catalog and Home's slice alike. The bookcase legend adds "favourite" (a mini paper square with the gold star), always shown, even when nothing is starred (D → Spine → Favourite mark, Bookcase; E → Bookcase → Markers).
+- UX-DR101: Favourite gold: Story 16.1 moves the pair from `{components.favourite-star}`'s literals (`on` `#9A7120`, `on-dark` `#D2A54E`) into `colors` and `tokens.css` together, so `e2e/app-shell.spec.ts`'s token comparison stays equal to DESIGN.md. Gold fills the star only: never text, borders, backgrounds, messages or a Reading's rating stars (those stay `accent`). On covers and spines the star is `#9A7120` in both themes. Forced colors: every star, the chip's included, uses `forced-color-adjust: none` with a `CanvasText` fill (starred) or stroke (unstarred), on a `Canvas` halo or square on covers and spines. No animation (D → Colors → Favourite gold, Forced colors, Do/Don't).
+- UX-DR102: Star save: the star changes only after the save succeeds and the views have refetched; no optimistic star, no rollback. The save sends a value, not a toggle; a second press before the refetch sends the same value and changes nothing. The button is never disabled. Once it changes, `status` announces "*Dune* is a favourite." or "*Dune* is not a favourite." Couldn't save: the star stays as it was and `alert` says "Couldn't save. Your data wasn't changed.", under the title row on Book detail and in an open Spine popover; on Tiles and List, or when the popover has closed, once under the filter row above the results, without scrolling to it; emptied at the next save attempt or filter change; focus stays where it is (E → Favourite star → Shown once saved, Couldn't save; State Patterns).
+- UX-DR103: Favourites chip: first in the filter row, before Status, a lone toggle button (not in a `role="group"`) with `aria-pressed`, named "Favourites" (its leading star `aria-hidden`), no popup; a normal chip with a leading `row-size` star filled gold on or off, and when on the usual selected chip (`accent-soft` fill, 2px `accent` border) with the check glyph before the star. Shown whenever the catalog has Books, even when none is starred; never hidden or disabled. On, only starred Books show, ANDed with every other group and Search titles, in the bookcase, the list and the tiles; "N books match." is announced. Nothing starred: "No books match these filters." with "Clear filters". "Clear filters" turns every chip off, Favourites included, and moves focus to the Favourites chip. Not remembered between visits; never applies to Home's slice or the library meter (E → Component Patterns → Filter chips; D → Filter chips; E → State rows).
+- UX-DR104: Unstar with the chip on: the Book hides once the refetch renders, as with any filter. Focus moves to the next remaining Book in sort order (its tile link, its row's title link, or its spine), else the previous one, else Search titles, and `status` announces "*Dune* is not a favourite. 11 books match." From the Spine popover the popover closes with its spine and focus follows the same rule (Focus after close row) (E → Favourite star → With the Favourites chip on).
+
 ### FR Coverage Map
 
 FR-1: Epic 1 - Book fields, create/edit/delete, Finished on back-fill, tags field, spine color
@@ -384,7 +409,7 @@ FR-16: Epic 6 - Stats
 FR-17: Epic 5 - Add/edit/delete Card notes; Epic 9 - Keyboard save and Add another
 FR-18: Epic 5 - Card notes pile
 FR-19: Epic 5 - Card notes view and search; Epic 14 - Boxes · List, the Card note boxes and the open box strip, the shelf search, and the search carried into a box and back
-FR-20: Epic 7 - Filter and sort; Epic 10 - Sort direction; Epic 15 - Publisher filter
+FR-20: Epic 7 - Filter and sort; Epic 10 - Sort direction; Epic 15 - Publisher filter; Epic 16 - Favourites chip
 FR-21: Epic 3 - Cover on the main screen
 FR-22: Epic 2 - Export; Epic 3 - Last export on Home
 FR-23: Epic 2 - Restore
@@ -392,9 +417,10 @@ FR-24: Epic 1 - Catalog bookcase (spines, colors, meter, popover, keyboard); Epi
 FR-25: Epic 8 - Tiles view: grid, covers, ribbon, reading bar, typeset covers
 FR-26: Epic 11 - Dev defaults and the real-library refusal, `app-info` mode, the amber favicon, the DEV pill and the `DEV · ` title
 FR-27: Epic 11 - About this copy on Backup, the update notice and the one version
-FR-28: Epic 12 - The agent tools at `/mcp`: read tools and `find_book`, daily-loop write tools, add and edit a Book with a cover URL, `export_backup`, and the two bookvie skills moved onto them; Epic 13 - restore through `restore_backup`, and `export_backup`'s `forUpload`
+FR-28: Epic 12 - The agent tools at `/mcp`: read tools and `find_book`, daily-loop write tools, add and edit a Book with a cover URL, `export_backup`, and the two bookvie skills moved onto them; Epic 13 - restore through `restore_backup`, and `export_backup`'s `forUpload`; Epic 16 - `favourite` in `get_book`, `list_catalog` and `get_home`, with no tool to set it
 FR-29: Epic 13 - The `bookvie-dropbox` server and `upload_backup`, `record_backup_upload` and the upload state, the `bookvie-backup` skill (run by hand), the Dropbox backup line, and the guide
 FR-30: Epic 13 - `list_local_backups`, `preview_restore`, `restore_backup` with its two gates and the safety copy, `list_backups` and `download_backup`, and the `bookvie-restore` skill
+FR-31: Epic 16 - The `favourite` field and its migration, the `set-favourite` intent, the star on Book detail, the Spine popover, tiles and List rows, the spine mark, and the Favourites chip
 
 ## Conventions for every story
 
@@ -3744,3 +3770,161 @@ So that I can look at one publisher's shelf, such as everything from Manning.
 **When** they open Publisher ▾ and move through the rows
 **Then** each row is a checkbox whose accessible name is its visible text plus the noun: "Manning 49 books", "Apress 1 book" (UX-DR94)
 **And** the chip opens, closes on Esc and returns focus exactly as Language ▾ and Tag ▾ do.
+
+## Epic 16: Remember the Books that mattered
+
+Oleg stars a Book to remember that it had an impact on him: a verdict about the Book, not a tag and not a way to find it again, so any Book can have it, read or not (plan D1, D3). He sets it on the Book page next to the title, on a cover in Tiles, in a List row and in the Bookcase's Spine popover; a starred Book's spine carries a small star. One click on the ★ Favourites chip, first in the filter row, shows only the starred Books. Edits never touch the star, a backup carries it, and agents can read it but not set it. Story 16.1 adds the star end to end; Story 16.2 builds the chip on its `ShelfBook.favourite` (plan D12).
+
+**Gate:** per-epic quality gates (TR7), plus the plan's P0 risks green: editing a starred Book on the web and with `edit_book` leaves it starred; a backup from before Epic 16 restores with every Book `favourite: false`, and a star survives an export and restore round trip; starring and unstarring work from Book detail, a tile, a List row and the Spine popover, show in the other views after the refetch, and setting the current value is a no-op success; the Favourites chip shows exactly the starred Books in the bookcase, the list and the tiles and ANDs with Unread, a Tag and a Search title. Existing tests pass unchanged except these leaves, which pin what the epic changes (grepped and opened on 2026-11-25, Epic 15 retro item 104):
+- **Story 16.1, test data and schema version:** `backend/tests/builder.py`'s default Book gains `"favourite": False` (every backend test and e2e seed builds through it), and `tests/helpers.py`'s `EMPTY_LIBRARY` and `STORED_BOOK_KEYS` follow. The version 3 pins move to 4: `test_model.py:12`, `:52`; `test_store.py:33`, `:37` (golden bytes also gain `favourite`), `:216`; `test_store_commits.py:41`; `test_cli.py:669` (`:675`, `:779`); `test_migrations.py:245`, `:265`, `:340`, `:364`, `:377`. The tests that use 4 as "a newer version" use 5: `test_store.py:335`, `:394`, `test_cli.py:687`.
+- **Story 16.1, field and route sets:** `test_model.py:22` (Book field order), `test_add_book.py:63` (the stored Book), `test_views.py:58` (`ShelfBook` dicts), `test_book_view.py:19` (`BookDetailView`), `test_catalog_publisher.py:142` (`ShelfBook`'s schema properties) and `:182`, `test_card_notes_spine_color.py:261` (`STORED_BOOK_KEYS`), `test_intent_routes.py:150` (the intent route set gains `set-favourite`), and the `BookDetailView` literal in `frontend/src/api/views.test.ts:124` (tsc).
+- **Story 16.1, e2e:** `spine-popover.spec.ts:152` (Shift+Tab from "Open book →" now reaches the star; Shift+Tab again closes), `:208` (the button count adds the star), `:416` (the star is the first button in DOM order, before From cover); `catalog-tiles.spec.ts:469` (Tab from a tile lands on its star before the next tile); `book-states.spec.ts:276` (the legend has a sixth item, "favourite").
+- **Story 16.2, e2e:** "Clear filters" focuses Favourites, not Read, in `catalog-filter.spec.ts:231`, `:263`, `:430` and `:471`; `bookcase-details.spec.ts:71`'s toolbar Tab order has Favourites before Read; `catalog-publisher-filter.spec.ts:175`'s row button list starts with Favourites if the chip sits in that row element.
+
+Checked and unchanged: the catalog toolbar Tab leaves in `catalog-sort.spec.ts`, `catalog-sort-direction.spec.ts` and `catalog-publisher-filter.spec.ts:495`; `catalog-list.spec.ts`'s cell text (the star has no text); the tile mark, typeset cover and tile count specs (the star sits outside the link); `bookcase.spec.ts` and `home-slice.spec.ts` legend lookups; `app-shell.spec.ts`'s token comparison, as long as DESIGN.md and `tokens.css` change together (UX-DR101); the agent tool lists (no tool is added); `test_restore*` (they use `CURRENT_VERSION` or `+1`). Plan: `favourite-books-plan-2026-11-25.md`.
+
+**Before Story 16.1:** plan step 0, the spine reconciliation of any unresolved "spine drift" entry in `deferred-work.md` (AGENTS.md → Architecture spine). Epic 15's reconciliation landed in `d75b35e`.
+
+**Mac checks:** none. Epic 16 is web UI in desktop Chrome plus one stored field and one intent; it needs nothing from the Mac itself (no scheduler, system service, Keychain, fixed port, client feature or OS permission), so no story has a Mac check line (Epic 13 retro item 93).
+
+**Out of scope:** a favourites filter on Card notes or the Boxes shelf search (plan D10); an agent tool that sets the star (D11); a Favourites sort, a count of favourites in Stats, and a favourites page; reporting in `preview_restore` the stars a restore would lose (accepted, spine Deferred); an optimistic star with rollback (plan D7, superseded by AD-7); and behavior only Safari or Firefox shows (AGENTS.md → Supported browser).
+
+### Story 16.1: Star a Book
+
+As Oleg,
+I want to star a Book from its page, its cover, its List row or its spine popover,
+So that the Books that had an impact on me stand out wherever I look at my library.
+
+**Requirements:** FR-31, FR-28, FR-22, FR-23, AR67, AR68, AR69, AR71, AR72, AR73, UX-DR95, UX-DR96, UX-DR97, UX-DR98, UX-DR99, UX-DR100, UX-DR101, UX-DR102, TR8
+
+**Acceptance Criteria:**
+
+**Given** a `library.json` at `schemaVersion` 3, at startup or inside a restored backup
+**When** bookvie loads it
+**Then** the migration chain takes it to version 4 with `favourite: false` on every Book, startup keeps `library.v3.bak.json`, and no Book is starred (AR67)
+**And** `store/migrations` `CURRENT_VERSION` and `domain/model` `SCHEMA_VERSION` are both 4, and the chain test still proves it contiguous from 1
+**And** a version 4 `library.json` or archive with a Book missing `favourite` is refused (`restore_invalid` on restore; startup exits non-zero with nothing changed), since the store model gives it no default.
+
+**Given** a Book
+**When** `POST /api/intents/set-favourite` sends `{bookId, favourite: true}`
+**Then** the Book is stored with `favourite: true`, the response is the usual 200, and every view shows it after the refetch
+**And** `{favourite: false}` stores `false`
+**And** sending the value the Book already has is a 200 no-op that writes nothing: `library.json` is byte-identical (AR68)
+**And** a deleted Book is 409 `book_not_found` before the no-op check, and a body missing `favourite` or with a non-boolean value is 422 `invalid_fields` on that field, with nothing changed
+**And** the intent satisfies the standard intent ACs (TR8).
+
+**Given** a starred Book
+**When** it is edited with the Edit book panel's **Save changes**, or with the `edit_book` tool sending `get_book`'s `editForm` unchanged or with a new title
+**Then** it is still starred; the `book` view's `editForm` has no `favourite` key and `edit_book`'s input schema has none either (AR68)
+**And** a Book added with `add-book` or `add_book` is stored with `favourite: false`
+**And** start, page update, pause, finish, Up next, Side read, Purpose, Card note and spine color intents leave `favourite` as it was.
+
+**Given** a library with starred Books
+**When** it is exported and restored
+**Then** every star comes back exactly (FR-22, FR-23).
+
+**Given** the fields added in Python
+**When** `npm --prefix frontend run api:gen` runs
+**Then** `schema.d.ts` gives `ShelfBook` and `BookDetailView` a required `favourite: boolean`, `check:api` passes, and frontend and e2e fixtures carry `favourite` through the shared builders (`backend/tests/builder.py` defaults it to `false`) (AR69)
+**And** the existing tests the Epic 16 gate names for Story 16.1 are updated as it says, and no others change.
+
+**Given** an agent in Claude Code
+**When** it calls `get_book`, `list_catalog` or `get_home`
+**Then** each Book carries `favourite` as stored, and no tool's description or arguments change (AR73)
+**And** the tool list is unchanged: there is no `set_favourite` tool, and calling one by that name is refused like `set_spine_color` (`set_favourite` joins the never-registered names in `test_agent_write.py` `DESTRUCTIVE_TOOL_NAMES`, `test_agent_mount.py:480` and `test_agent_restore.py:675`)
+**And** `find_book`'s results don't carry `favourite`.
+
+**Given** Book detail for an unstarred Book
+**When** it renders
+**Then** a plain icon button named exactly "Favourite" with `aria-pressed="false"` follows the `h1` on its first line, showing an outline star, and the icon is `aria-hidden` (UX-DR95, UX-DR96)
+**When** I press it
+**Then** once the save succeeds and the views have refetched, it shows the gold star with `aria-pressed="true"` and `status` announces "*Dune* is a favourite."; pressing again unstars it and announces "*Dune* is not a favourite." (UX-DR102)
+**And** nothing changes on screen before the save succeeds; there is no optimistic star (AR72)
+**And** the button is never disabled, and a second press before the refetch sends the same value again, which changes nothing.
+
+**Given** the save fails (a routed 503 or bookvie stopped)
+**When** I press the star
+**Then** it stays as it was and `alert` says "Couldn't save. Your data wasn't changed." under the title row on Book detail or in an open Spine popover, or once under the filter row on Tiles and List or when the popover has closed; the line is emptied at the next save attempt or filter change, and focus stays where it was (UX-DR102, TR9).
+
+**Given** the Catalog in Tiles view with one starred and one unstarred Book
+**When** it renders
+**Then** the starred tile shows a gold star with its paper halo at the 2:3 cover box's top left, never over the finished ribbon, and the unstarred tile shows no star (UX-DR98)
+**When** the pointer is over the unstarred tile, or focus is inside it
+**Then** its outline star is drawn at once, and it hides again when both leave
+**And** each star is a button named exactly "Favourite *Title*", a sibling after the tile's link in the list item, so Tab goes tile link, then its star, then the next tile's link; Enter or Space on it stars or unstars as on Book detail.
+
+**Given** the Catalog in List view
+**When** it renders
+**Then** each row's title cell holds the title link, then the star button named "Favourite *Title*", with the same starred and hover-or-focus rules as tiles, and the row is no taller than before (UX-DR99).
+
+**Given** the Bookcase on Catalog and Home's slice
+**When** a Book is starred
+**Then** its spine shows the paper square with the gold star at its foot, also over a Main book's fill and next to any marker dot; the mark is not a control; the spine's accessible name and the tile's name end with ", favourite" after the status (UX-DR100, AR71)
+**And** twins are told apart on the name without ", favourite", so starring one twin changes no other Book's name
+**And** the bookcase legend always shows a "favourite" item, a mini paper square with the gold star, even when nothing is starred.
+
+**Given** a spine's popover
+**When** it opens
+**Then** a button named exactly "Favourite" sits right after the title, first in the popover's DOM; focus on open still goes to the primary action, else the first link, never the star; Shift+Tab from that control reaches the star, and Shift+Tab from the star closes the popover and returns focus to the spine (UX-DR97)
+**And** pressing the star stars or unstars the Book, and the spine mark shows or hides after the refetch.
+
+**Given** DESIGN.md's gold
+**When** this story lands
+**Then** `favourite` (`#9A7120`) and `favourite-dark` (`#D2A54E`) move from `{components.favourite-star}`'s literals into DESIGN.md's `colors` and `tokens.css` in the same change, and `e2e/app-shell.spec.ts`'s token comparison passes (UX-DR101)
+**And** gold fills only the star; a Reading's rating stars stay sage
+**And** under forced colors every star uses `forced-color-adjust: none` with a `CanvasText` fill (starred) or stroke (unstarred), on a `Canvas` halo or square on covers and spines.
+
+**Given** a starred Book
+**When** I look at Home's slice and the "X of Y finished" meter
+**Then** only the spine mark is new; the slice's choice of rows and the meter's numbers don't change.
+
+### Story 16.2: Show only my favourites
+
+As Oleg,
+I want one click to show only the Books I starred,
+So that the Catalog becomes the shelf of Books that mattered, in any view.
+
+**Requirements:** FR-31, FR-20, AR70, UX-DR103, UX-DR104
+
+**Acceptance Criteria:**
+
+**Given** a non-empty Catalog
+**When** it renders
+**Then** the filter row starts with the Favourites chip, before Status: a lone toggle button named exactly "Favourites" with `aria-pressed="false"`, not inside a `role="group"`, with no popup, showing a leading gold star that is `aria-hidden` (UX-DR103)
+**And** it shows even when no Book is starred, and is never hidden or disabled.
+
+**Given** three starred Books among many
+**When** I press Favourites
+**Then** it reads `aria-pressed="true"` with the selected chip style and the check glyph before the star, only the three starred Books show in the bookcase, the list and the tiles (the others are hidden, not dimmed, and the shelf closes up), and `status` announces "3 books match." (AR70)
+**And** with Favourites plus Unread, only the starred unread Books show; with Favourites plus a Tag and a Search title, only the Books that match all three show (AND)
+**And** pressing it again turns it off and shows every Book.
+
+**Given** Favourites on and no Book starred
+**When** the Catalog renders
+**Then** it shows "No books match these filters." with "Clear filters", and the chip stays on: a refetch never turns it off (`liveFilters` leaves it alone) (AR70).
+
+**Given** Favourites on, alone or with other chips
+**When** I press "Clear filters"
+**Then** every chip is off, Favourites included, and focus goes to the Favourites chip (UX-DR103).
+
+**Given** Favourites on
+**When** I reload the page, leave Catalog and come back, or add a Book
+**Then** Favourites is off again, as every chip is: it is never stored and never in an export
+**And** it never changes Home's bookcase slice or the "X of Y finished" meter (AR70).
+
+**Given** Favourites on in Tiles or List view
+**When** I unstar a Book from its tile or its row
+**Then** once the refetched view renders, the Book is hidden, focus moves to the next remaining Book in sort order (its tile link or its row's title link), else the previous one, else Search titles, and `status` announces "*Dune* is not a favourite. 11 books match." as one message (UX-DR104)
+**And** `pages/CatalogPage` decides that focus and that message; the star's own announcement doesn't also speak (AR70).
+
+**Given** Favourites on in Bookcase view
+**When** I unstar a Book from its Spine popover
+**Then** once the refetched view renders, the popover closes with its spine, focus moves to the next remaining spine in sort order, else the previous, else Search titles, and the same single message is announced (UX-DR104).
+
+**Given** a failed unstar with Favourites on
+**When** the save fails
+**Then** the Book stays shown and starred, and the couldn't-save line shows as Story 16.1 places it (UX-DR102).
+
+**Given** the existing catalog filter e2e specs
+**When** they run with Favourites off
+**Then** they pass, except the leaves the Epic 16 gate names for Story 16.2 ("Clear filters" focuses Favourites; the toolbar Tab order and the row's button list start with Favourites), which are updated as it says.
