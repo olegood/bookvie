@@ -6,7 +6,7 @@
 // only, and the rows' accessible names and keyboard behavior.
 
 import AxeBuilder from '@axe-core/playwright'
-import type { Page } from '@playwright/test'
+import type { Browser, Page } from '@playwright/test'
 import { bookcase, bookRows, finished, search, viewToggle } from './bookcase.ts'
 import {
   addSwingTime,
@@ -26,7 +26,7 @@ import {
   storageKeys,
   tagChip,
 } from './catalog-filter.ts'
-import { expect, test } from './fixtures.ts'
+import { expect, type Server, test } from './fixtures.ts'
 import { ADD_BOOK, editBook } from './intents.ts'
 import { bookId, designColor, rgbOf } from './library.ts'
 import { tileNames } from './tiles.ts'
@@ -646,5 +646,98 @@ test.describe('Story 15.2 Filter the catalog by publisher (automate)', () => {
       publisherChip(page).boundingBox(),
     ])
     expect(popup!.width).toBeGreaterThan(chipBox!.width)
+  })
+})
+
+// Epic 15 retro item 105 (E15-R1): a check that liveFilters dropped is
+// forgotten, so a Book edited back to the value in the same Catalog visit
+// doesn't bring the filter back on its own. Spec:
+// _bmad-output/implementation-artifacts/spec-epic-15-retro-item-105-prune-rawfilters-when-livefilters-drops-a-key.md
+test.describe('Epic 15 retro item 105 Forget a dropped filter check (ATDD)', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 })
+  })
+
+  /** Another context (a second tab, or the agent) sets each Book's publisher. */
+  async function movePublisher(
+    browser: Browser,
+    server: Server,
+    ids: readonly string[],
+    publisher: string,
+  ): Promise<void> {
+    const otherContext = await browser.newContext()
+    try {
+      for (const id of ids) await editBook(otherContext.request, server, id, { publisher })
+    } finally {
+      await otherContext.close()
+    }
+  }
+
+  /** This context regains focus, and the catalog view refetches with `status`. */
+  async function refetchCatalog(page: Page, status: number): Promise<void> {
+    const response = page.waitForResponse((r) => r.url().endsWith('/api/views/catalog') && r.status() === status)
+    await page.bringToFront()
+    await page.evaluate(() => window.dispatchEvent(new Event('focus')))
+    await response
+  }
+
+  // Red phase: rawFilters still holds Manning after liveFilters dropped it, so
+  // the edit back brings the chip back as "Publisher: 1" and hides 6 Books.
+  test.skip('[P1] AC-1 a dropped Manning check stays off when a Book is edited back to Manning in the same visit', async ({
+    page,
+    browser,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: PUBLISHER_SHELF })
+    await page.goto(`${server.url}/catalog`)
+    await checkPublisher(page, PUBLISHER_ROWS, 'Manning')
+    await expect.poll(() => spineNames(bookcase(page))).toEqual(MANNING_BOOKS)
+
+    // Every Manning Book leaves Manning: the check is dropped (Story 15.2 AC-6, shipped).
+    await movePublisher(browser, server, [bookId(1), bookId(7), bookId(2)], 'No Starch Press')
+    await refetchCatalog(page, 200)
+    await expect(publisherChip(page)).toHaveText(/^Publisher\s*▾$/)
+
+    // Grokking comes back to Manning in the same visit.
+    await movePublisher(browser, server, [bookId(2)], 'Manning')
+    await refetchCatalog(page, 200)
+    // The refetched view has rendered: Manning is listed again with its one Book.
+    await expect
+      .poll(() => listNames(page, 'Publisher'))
+      .toEqual(
+        startsOf([
+          ['No Starch Press', 2],
+          ["O'Reilly Media", 2],
+          ['Addison-Wesley Professional', 1],
+          ['Apress', 1],
+          ['Manning', 1],
+        ]),
+      )
+    await expect(publisherChip(page)).toHaveText(/^Publisher\s*▾$/)
+    await expect(listPopup(page, 'Publisher').getByRole('checkbox', { name: /^Manning 1/ })).not.toBeChecked()
+    await page.keyboard.press('Escape')
+    await expect.poll(() => spineNames(bookcase(page))).toEqual(BY_AUTHOR)
+    await expect(clearFilters(page)).toHaveCount(0)
+  })
+
+  // Red phase: none. This guard passes today and must keep passing: a refetch
+  // that fails keeps the loaded view, so the prune must not clear the check.
+  test.skip('[P2] AC-2 a catalog refetch that fails keeps the Manning check, and the next good refetch still shows only Manning', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: PUBLISHER_SHELF })
+    await page.goto(`${server.url}/catalog`)
+    await checkPublisher(page, PUBLISHER_ROWS, 'Manning')
+    await expect.poll(() => spineNames(bookcase(page))).toEqual(MANNING_BOOKS)
+
+    await page.route('**/api/views/catalog', (route) => route.fulfill({ status: 500, body: '' }), { times: 1 })
+    await refetchCatalog(page, 500)
+    await expect(publisherChip(page)).toHaveText(/^Publisher: 1/)
+    await expect.poll(() => spineNames(bookcase(page))).toEqual(MANNING_BOOKS)
+
+    await refetchCatalog(page, 200)
+    await expect(publisherChip(page)).toHaveText(/^Publisher: 1/)
+    await expect.poll(() => spineNames(bookcase(page))).toEqual(MANNING_BOOKS)
   })
 })
