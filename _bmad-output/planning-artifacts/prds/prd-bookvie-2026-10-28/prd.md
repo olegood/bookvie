@@ -9,6 +9,7 @@ inputs:
   - _bmad-output/planning-artifacts/mcp-server-plan-2026-11-19.md
   - _bmad-output/planning-artifacts/dropbox-backup-plan-2026-11-21.md
   - _bmad-output/planning-artifacts/card-note-boxes-plan-2026-11-23.md
+  - _bmad-output/planning-artifacts/favourite-books-plan-2026-11-25.md
 assumptions: all confirmed by the user on 2026-10-28
 ---
 
@@ -72,6 +73,7 @@ Anyone other than the single user.
 - **Ownership**: *owned*, or *donated* once Donation ships (see addendum).
 - **Development server**: bookvie started in development mode, for building and testing bookvie. It keeps its own library and is marked "DEV" (FR-26). Anything else is the real app.
 - **Agent tools**: bookvie's MCP tools, through which an AI agent in Claude Code reads and updates the library (FR-28).
+- **Favourite**: a star the user puts on a Book to remember that it had an impact on them. It is the user's verdict about the Book, not a tag, and any Book can have it, read or not (FR-31).
 - **Card note**: a piece of text (a quote or a note) plus the page or page range where the user found it, attached to a Book. It has one side only; it isn't a flash card.
 
 ## 4. Features
@@ -242,7 +244,7 @@ The user can filter and sort the catalog.
 - **Consequences:**
   - **Sort:** Author (default), Title, Date added, or Pages. The bookcase (FR-24) reorders its spines and the tiles (FR-25) reorder to match.
   - **Sort direction:** each sort has a natural direction (Author and Title A–Z, Date added newest first, Pages fewest first), and the user can reverse it. The catalog shows which order is in effect. Books that tie keep the same order either way. The direction is remembered on this computer with the sort and isn't part of an export; choosing another sort goes back to that sort's natural direction. Home's bookcase slice follows the same order.
-  - **Filter chips:** Read / Unread, Type, Language, Tag, and Publisher. Books that don't match are hidden and the bookcase or the tiles close up; they aren't dimmed.
+  - **Filter chips:** Favourites (FR-31), Read / Unread, Type, Language, Tag, and Publisher. Books that don't match are hidden and the bookcase or the tiles close up; they aren't dimmed.
   - **Publisher:** the user can pick one or more publishers to see only their Books, such as everything from Manning. The publishers are listed by how many Books each has, most first, with that count across the whole library, so the list keeps its order while other filters change.
 
 #### FR-25: Catalog tiles
@@ -254,6 +256,17 @@ The user can see the catalog as tiles: one tile per Book with its cover, title, 
   - **No cover:** a Book without a cover shows a typeset cover with its title and author: on its spine color if read, outlined if unread.
   - Search by title (FR-4), sort, and filters (FR-20) apply to tiles as they do to the bookcase. Opening a tile opens the Book.
   - **Speed:** with 500 Books that have covers, the first screen of tiles appears in about 1 second, and the grid doesn't jump while covers load.
+
+#### FR-31: Favourite Books
+The user can star a Book to remember that it had an impact on them, and the catalog can show only the starred Books.
+- **Consequences:**
+  - **Any Book:** unread, being read, paused, a Side read or finished. Starring and unstarring are one action each, from the Book's page and from the catalog in every view.
+  - **Seen everywhere in the catalog:** a starred Book shows its star in the bookcase, the list and the tiles, and on its page. In the list and the tiles an unstarred Book shows an empty star only while the user points at it or reaches it with the keyboard, so 500 empty stars never crowd the catalog. The star never depends on color alone.
+  - **Only favourites:** one filter chip, Favourites, shows only starred Books. It combines with search (FR-4) and every other filter (FR-20), and like them it isn't remembered between visits. It never changes Home's bookcase slice or the "X of Y finished" count.
+  - **Edits keep the star:** editing a Book, in the UI or through the agent tools, never stars or unstars it. Only the star action does.
+  - **Agents can read it, not set it:** an agent sees whether a Book is starred (FR-28) but can't star or unstar it: the verdict stays the user's.
+  - **Backups:** the star is part of an export and comes back with a restore (FR-22, FR-23). A backup from before favourites restores with no Book starred.
+  - **Not included:** no favourites filter on Card notes, no sort by favourite, no count of favourites in Stats, and no separate favourites page.
 
 #### FR-21: Cover on the main screen
 The main screen shows the Main book's uploaded cover, or the placeholder.
@@ -328,7 +341,7 @@ An AI agent in Claude Code can read the library and record the user's reading th
   - **Same rules as the UI:** a write through the agent tools follows the same rules as the same action in the UI, and is refused with the same reason and the same fields. Adding a likely duplicate (FR-3) is refused until the agent confirms it explicitly.
   - **Find, never guess:** an agent finds a Book with a free-text search (an abbreviation, an author, part of a title). The search returns every likely match with its edition and type, and an empty list when nothing matches. Every other tool names the Book by its id, so a page is never logged on the wrong edition.
   - **What agents can do:** read the catalog, a Book, Home, Card notes and Stats for any period; start, update, pause and finish a Reading, choose Up next and edit a Purpose; add and edit Card notes; mark and unmark Side reads; add and edit Books; export a backup; upload it to Dropbox (FR-29); restore a backup, with two confirmations (FR-30).
-  - **What agents can't do:** delete a Book or a Card note. That stays in the UI, behind its confirmation.
+  - **What agents can't do:** delete a Book or a Card note, which stays in the UI behind its confirmation, or star and unstar a Book (FR-31). An agent can see whether a Book is starred.
   - **Covers by address:** adding or editing a Book can take the web address of its cover, and bookvie downloads it. Only an image from a public address is accepted. A failed download leaves the new Book unsaved, or the edited Book unchanged, with a clear error.
   - **Backup to a folder:** an agent's export writes a dated backup file to a fixed backups folder (a separate one for a Development server) and says where it is. A second export on the same day replaces that day's file. It counts as the last export (FR-22), except the backup run's export, which never moves it (FR-29).
   - **Descriptions are the interface:** each tool's description says what it does and how to use it, for example that the Book's id comes from the search. A refusal gives the same reason and fields the UI would.
