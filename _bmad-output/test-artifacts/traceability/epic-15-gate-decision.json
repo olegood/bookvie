@@ -1,0 +1,24 @@
+{
+  "schema_version": "0.1.0",
+  "evaluated_at": "2026-11-25T15:40:00.000000+01:00",
+  "repo": "bookvie",
+  "target": {
+    "type": "epic",
+    "id": "15",
+    "label": "Epic 15: See one publisher's shelf"
+  },
+  "collection_status": "COLLECTED",
+  "gate_basis": "priority_thresholds",
+  "gate_status": "PASS",
+  "rationale": "Trace at 5ec06d4, which includes retro item 105's fix, review and automate; backend/ and frontend/src are identical to aae8050, where this session's full npm run check exited 0 (425 unit, 2515 pytest with the coverage gate, 892 e2e, smoke). P0 coverage is 100% (5/5), P1 100% (7/7; TR7 requires 95%), overall 100% (12/12) of the Story 15.1 and 15.2 ACs. Workflow rule 4 gives PASS. Every gate P0 risk is green: Publisher filters the bookcase, List and Tiles with OR within and AND across (catalog-publisher-filter.spec.ts:328), the list is ordered by library count with ties by collator (:224), counts and order hold under other filters and the search (:309), and the existing catalog-filter specs changed only in the two Tab leaves item 102 named. This trace re-ran 56 e2e (catalog-publisher-filter, catalog-filter, bookcase-details), 39 pytest and 26 unit, all green, and check:api exit 0. Epic 15 adds no error code. The retro's E15-R1 (a dropped check coming back) is fixed by item 105 and pinned by six leaves. One open item outside the counted ACs: the AD-6 spine-drift entry from item 105, which AGENTS.md requires reconciled before Epic 16's first story.",
+  "p0_status": "MET",
+  "p1_status": "MET",
+  "overall_status": "MET",
+  "critical_open": 0,
+  "links": {
+    "trace_report_path": "_bmad-output/test-artifacts/traceability/epic-15-traceability-matrix.md",
+    "trace_report_url": "",
+    "artifact_url": "",
+    "journey_evidence_url": ""
+  }
+}
