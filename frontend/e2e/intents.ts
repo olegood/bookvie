@@ -1,8 +1,9 @@
 // Shared by the specs that drive or inspect intents: the intent paths, the
 // requests a page sends, the JSON `intent` part of a multipart request, and
-// a cover attached through edit-book as setup.
+// two edit-book setups: a cover attached, and a Book's fields changed.
 
-import type { Page, Request } from '@playwright/test'
+import type { APIRequestContext, Page, Request } from '@playwright/test'
+import type { components } from '../src/api/generated/schema.d.ts'
 import { expect, type Server } from './fixtures.ts'
 
 export const ADD_BOOK = '/api/intents/add-book'
@@ -66,6 +67,26 @@ export async function attachCover(
       intent: JSON.stringify(form),
       cover: { name: 'cover.png', mimeType: 'image/png', buffer: cover },
     },
+  })
+  expect(response.status()).toBe(200)
+}
+
+/**
+ * Setup: edits Book `bookId` through edit-book the way another tab or the agent
+ * would, changing only `changes`. edit-book is a whole edit, so the rest of the
+ * form is the Book's own `editForm` from its detail view.
+ */
+export async function editBook(
+  api: APIRequestContext,
+  server: Server,
+  bookId: string,
+  changes: Record<string, string>,
+): Promise<void> {
+  const view = await api.get(`${server.url}/api/views/book?id=${encodeURIComponent(bookId)}`)
+  expect(view.status()).toBe(200)
+  const { editForm } = (await view.json()) as components['schemas']['BookDetailView']
+  const response = await api.post(`${server.url}${EDIT_BOOK}`, {
+    multipart: { intent: JSON.stringify({ bookId, ...editForm, ...changes }) },
   })
   expect(response.status()).toBe(200)
 }
