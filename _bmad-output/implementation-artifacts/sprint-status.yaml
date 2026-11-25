@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-29-2026 17:21
-last_updated: 11-25-2026 14:00
+last_updated: 11-25-2026 14:02
 project: bookvie
 project_key: NOKEY
 tracking_system: file-system
@@ -141,7 +141,7 @@ development_status:
   13-8-restore-with-one-skill-from-this-computer-or-dropbox: done
   epic-13-retrospective: done
 
-  epic-14: backlog
+  epic-14: done
   14-1-carry-each-book-s-spine-color-in-the-card-notes-view: done
   14-2-see-my-card-notes-as-boxes: done
   14-3-see-the-open-box-in-its-book-s-color: done
@@ -149,7 +149,7 @@ development_status:
   14-5-keep-the-search-when-i-open-a-box-and-come-back: done
   epic-14-retrospective: done
 
-  epic-15: backlog
+  epic-15: done
   15-1-carry-the-publisher-in-the-catalog-view: done
   15-2-filter-the-catalog-by-publisher: done
   epic-15-retrospective: done
@@ -1307,7 +1307,7 @@ action_items:
       `_bmad/custom/bmad-retrospective.toml`, `_bmad-output/implementation-artifacts/deferred-work.md`.
       Due: now, before Epic 16."
     owner: "Oleg"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-15-retro-2026-11-25.md"
   - id: "epic-15-retro-item-104-make-pass-unchanged-gates-checkable-at-planning"
     epic: 15

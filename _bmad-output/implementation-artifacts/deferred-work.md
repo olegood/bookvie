@@ -1846,6 +1846,7 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-15-1-carry-the-publisher-in-the-catalog-view.md`
   summary: No pipeline step moves an epic's status out of `backlog`. `sprint-status.yaml`'s header says an epic moves to `in-progress` when its first story starts (via the build's sprint sync), but `epic-15` reads `backlog` while Story 15.1 is in review, and `epic-14` still reads `backlog` with every story and `epic-14-retrospective` done (Epics 12 and 13 read `done`). Either the build's sprint sync and the retrospective should set the epic's status, or the header should drop the rule. Pre-existing, not caused by Story 15.1. Low.
   evidence: Acceptance Auditor, code review of Story 15.1; `_bmad-output/implementation-artifacts/sprint-status.yaml` lines 26, 144 and 152; no epic-status write in `.claude/skills/bmad-build-auto`.
+  resolved: 2026-11-25, Epic 15 retro item 103. `epic-14` and `epic-15` read `done` in `sprint-status.yaml`. `bmad-build-auto`'s spec-status fact (`_bmad/custom/bmad-build-auto.toml`) now moves a `backlog` parent epic to `in-progress` when it sets a story to `review`, since the story skips `in-progress`, which is where `bmad-build`'s sync does it. `bmad-retrospective` gains a persistent fact (`_bmad/custom/bmad-retrospective.toml`): Phase 5 sets `epic-{N}: done` when no story is pending, in the retro's commit. The header's rule stays as written, now true.
 
 ## Deferred from: code review of spec-15-2-filter-the-catalog-by-publisher.md (2026-11-25)
 
