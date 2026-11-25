@@ -165,12 +165,12 @@ export default function CatalogPage() {
     () => liveFilters(rawFilters, languages, tags, publishers),
     [rawFilters, languages, tags, publishers],
   )
-  // A dropped key is also removed from rawFilters, during render so nothing
-  // commits in between, so a Book that gets the value back later in this
-  // visit doesn't bring the check back on its own. Only from a ready view:
-  // before the first load there are no Books and every check would drop (a
-  // failed refetch stays ready with the last Books). liveFilters returns a new
-  // object only when it dropped a key, so this settles in one extra render.
+  // A dropped key is also removed from rawFilters, so a Book that gets the
+  // value back later in this visit doesn't bring the check back on its own.
+  // It happens during render, so nothing commits in between. The ready check
+  // is defence only: no chip shows before the first load, and a failed
+  // refetch stays ready with the last Books. liveFilters returns a new object
+  // only when it dropped a key, so this settles in one extra render.
   const ready = view.status === 'ready'
   if (ready && filters !== rawFilters) setFilters(filters)
   const shown = useMemo(() => shownIds(sorted, query, filters), [sorted, query, filters])

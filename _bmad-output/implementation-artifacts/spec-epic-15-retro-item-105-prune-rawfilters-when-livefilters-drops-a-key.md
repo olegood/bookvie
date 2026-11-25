@@ -2,7 +2,7 @@
 title: 'Forget a dropped filter check, so it never comes back on its own'
 type: 'bugfix'
 created: '2026-11-25'
-status: 'in-review'
+status: 'done'
 baseline_revision: 'd5fbced9153d6773fe9c6c845462bb67ffb21aad'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -77,6 +77,31 @@ deferred:
 - Given a checked key that the catalog view drops, when a Book gets that value back in the same Catalog visit, then the row is listed unchecked, its chip shows no count for it, and no Book is filtered by it.
 - Given a checked key and a refetch that is loading or fails, when the view comes back unchanged, then the check is still on.
 - Given `npm run check`, when it runs, then it passes, and every existing catalog-filter, catalog-publisher-filter and bookcase-details leaf passes unchanged.
+
+### Review Findings
+
+Code review, 2026-11-25 (new session; layers: Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor, Spine Check). Edge Case Hunter returned an empty list and is counted as a failed layer. Verification Gap re-ran the mutation probe: with the prune line commented out, the three AC-1 leaves fail and AC-2 passes; the edit was reverted by hand and the tree left clean.
+
+- [x] [Review][Patch] The prune comment gives a reason that can't happen: "before the first load there are no Books and every check would drop". Catalog renders no chips until the view is ready (`if (view.status === 'loading') return null`), so `rawFilters` is still `NO_FILTERS` then and there is no check to drop. Say the guard is defence only [frontend/src/pages/CatalogPage.tsx:168]
+- [x] [Review][Patch] The prune comment's first sentence chains two "so" clauses ("…during render so nothing commits in between, so a Book…") and is hard to parse; split it [frontend/src/pages/CatalogPage.tsx:168]
+- [x] [Review][Patch] The AD-6 spine-drift entry in `deferred-work.md` paraphrases the spine as "filters reset only when Catalog unmounts or a Book is added"; the spine has no "only". Drop the word so the reconciliation works from the spine's text [_bmad-output/implementation-artifacts/deferred-work.md]
+- [x] [Review][Defer] AD-6's filter-chips bullet doesn't say a dropped key is now forgotten from page state [ARCHITECTURE-SPINE.md:114] — deferred: spine drift, reconciled before the next epic; already recorded in `deferred-work.md` by the build ("Deferred from: build-auto review of spec-epic-15-retro-item-105-…"), so no second entry.
+
+- 2026-11-25: full `npm run check` after the patches, exit 0 (check:api with 425 unit tests, check:py 2515 passed, check:e2e 892 passed, check:smoke passed).
+
+**Rejected:**
+- `low` (acceptance-auditor) The `ready` guard has no test that fails without it — a mounted Catalog never leaves `ready` once loaded and no check exists before then, so the state is unreachable from the UI; a test would need a harness for a state the app can't reach. The guard stays as defence (see the first patch).
+- `false` (acceptance-auditor) The Publisher AC-1 leaf doesn't assert every Book shows right after the first refetch — that state is Story 15.2's AC-6 leaf, which asserts `BY_AUTHOR` after the same drop; the new leaf asserts the final state, which is what this fix changes.
+- `low` (acceptance-auditor, blind-hunter) Language has no away-and-back leaf — the task allows "a Language or Tag key"; Language goes through the same `liveFilters` call and prune line, and `liveFilters` dropping a language is unit-tested (`catalogFilter.test.ts:182-190`).
+- `low` (blind-hunter) The spec's Boundaries, I/O matrix row and AC-2 still say a failed view has no Books — the fix edits the spec under review.
+- `low` (blind-hunter) The Intent's Source line quotes the 15.2 heading with `.md` — the fix edits the spec under review.
+- `low` (blind-hunter) The Auto Run Result says AC-2 passed with the prune off "as a guard should" — the fix edits the spec under review.
+- `low` (blind-hunter) No test covers a case-only spelling fix (manning → Manning) — keys are `toLocaleLowerCase`, so the key is unchanged and nothing drops; this change doesn't touch keying, and a test would guard a future change that isn't planned.
+- `false` (blind-hunter) No test shows a pruned key can be checked again, and the prune might fight user input — once re-checked, the key is live, `liveFilters` returns the same object, and the prune doesn't fire; it compares against the current render's lists, never stale ones.
+- `low` (blind-hunter) The Tag leaf doesn't open the Tag list while "ops" is dropped — it asserts "Tag ▾" and all seven Books, which already fails for a prune or drop that didn't happen; the list check adds no failure mode.
+- `low` (blind-hunter) `editElsewhere` isn't reused by the AC-6 leaf's inline copy — the helper is local to the item 105 describe; reusing it means hoisting it to module scope and rewriting a shipped leaf's body for a few lines of duplication.
+- `false` (blind-hunter) The two `deferred-work.md` entries are written inconsistently (severity, backticks) — the file carries no severity convention, and the retro's sweep matches the "spine drift" text, which both copies carry.
+- `false` (blind-hunter) The `resolved:` line implies all three chips are pinned — it says the code forgets a dropped check "for all three list chips", which is true, and lists the leaves that pin it (Publisher, Tag, partly dropped, failed refetch), without claiming a Language leaf.
 
 ## Spec Change Log
 

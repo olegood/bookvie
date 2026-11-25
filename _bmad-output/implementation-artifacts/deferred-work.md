@@ -1858,5 +1858,5 @@
 ## Deferred from: build-auto review of spec-epic-15-retro-item-105-prune-rawfilters-when-livefilters-drops-a-key (2026-11-25)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-epic-15-retro-item-105-prune-rawfilters-when-livefilters-drops-a-key.md`
-  summary: Spine drift (AD-6), reconciled before the next epic: the filter-chips item says checked values no Book has any more after a refetch are ignored (`liveFilters`) and that filters reset only when Catalog unmounts or a Book is added; a dropped key is now also forgotten from page state once the view is ready, so it doesn't come back when a Book gets the value again.
+  summary: Spine drift (AD-6), reconciled before the next epic: the filter-chips item says checked values no Book has any more after a refetch are ignored (`liveFilters`) and that filters reset when Catalog unmounts or a Book is added; a dropped key is now also forgotten from page state once the view is ready, so it doesn't come back when a Book gets the value again.
   evidence: Spine Check, build-auto review of item 105; `ARCHITECTURE-SPINE.md` AD-6, the catalog filter chips bullet; `frontend/src/pages/CatalogPage.tsx`, the render-time prune after the `filters` memo.
