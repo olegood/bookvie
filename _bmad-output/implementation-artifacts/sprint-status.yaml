@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-29-2026 17:21
-last_updated: 11-24-2026 16:42
+last_updated: 11-25-2026 12:12
 project: bookvie
 project_key: NOKEY
 tracking_system: file-system
@@ -148,6 +148,11 @@ development_status:
   14-4-search-the-boxes: done
   14-5-keep-the-search-when-i-open-a-box-and-come-back: done
   epic-14-retrospective: done
+
+  epic-15: backlog
+  15-1-carry-the-publisher-in-the-catalog-view: backlog
+  15-2-filter-the-catalog-by-publisher: backlog
+  epic-15-retrospective: optional
 action_items:
   - id: "epic-1-retro-item-1-run-an-epic-1-trace-and-gate-against-tr7"
     epic: 1
@@ -1199,7 +1204,7 @@ action_items:
       `_bmad-output/test-artifacts/traceability/epic-14-gate-decision.json`. Due:
       before Epic 15."
     owner: "Murat (TEA)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-14-retro-2026-11-24.md"
   - id: "epic-14-retro-item-97-reconcile-the-spine-with-epic-14"
     epic: 14
@@ -1220,7 +1225,7 @@ action_items:
       `_bmad-output/planning-artifacts/ux-designs/ux-bookvie-2026-10-28/DESIGN.md`.
       Due: before Epic 15."
     owner: "Winston (architect)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-14-retro-2026-11-24.md"
   - id: "epic-14-retro-item-98-fresh-carried-search-and-faded-box-name"
     epic: 14
@@ -1240,7 +1245,7 @@ action_items:
       `_bmad-output/planning-artifacts/epics.md`, `_bmad-output/implementation-artifacts/deferred-work.md`.
       Due: before Epic 15."
     owner: "Amelia (dev)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-14-retro-2026-11-24.md"
   - id: "epic-14-retro-item-99-spine-rule-announce-from-fresh-data"
     epic: 14
@@ -1249,7 +1254,7 @@ action_items:
       the client presentation list. Changes: `_bmad-output/planning-artifacts/architecture/architecture-bookvie-2026-10-29/ARCHITECTURE-SPINE.md`.
       Due: with item 98, before Epic 15."
     owner: "Winston (architect)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-14-retro-2026-11-24.md"
   - id: "epic-14-retro-item-100-helper-reuse-in-build-and-automate"
     epic: 14
@@ -1266,7 +1271,7 @@ action_items:
       `frontend/e2e/search-boxes-automate.spec.ts`, `frontend/e2e/search-boxes-view-switch.spec.ts`,
       `frontend/e2e/carried-search-automate.spec.ts`. Due: before Epic 15."
     owner: "Murat (TEA)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-14-retro-2026-11-24.md"
   - id: "epic-14-retro-item-101-automate-never-fixes-production-code"
     epic: 14
@@ -1277,5 +1282,5 @@ action_items:
       (test-support files are fine). Changes: `_bmad/custom/bmad-testarch-automate.toml`.
       Due: before Epic 15's first automate step."
     owner: "Murat (TEA)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-14-retro-2026-11-24.md"
