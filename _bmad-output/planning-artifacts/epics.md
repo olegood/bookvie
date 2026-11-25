@@ -16,13 +16,14 @@ inputDocuments:
   - _bmad-output/planning-artifacts/mcp-server-plan-2026-11-19.md
   - _bmad-output/planning-artifacts/dropbox-backup-plan-2026-11-21.md
   - _bmad-output/planning-artifacts/card-note-boxes-plan-2026-11-23.md
+  - _bmad-output/planning-artifacts/catalog-publisher-filter-plan-2026-11-25.md
 ---
 
 # bookvie - Epic Breakdown
 
 ## Overview
 
-This document breaks bookvie's PRD, UX design (DESIGN.md, EXPERIENCE.md) and architecture spine into fourteen epics of implementable stories. Each story names the requirement IDs it satisfies and lists Given/When/Then acceptance criteria.
+This document breaks bookvie's PRD, UX design (DESIGN.md, EXPERIENCE.md) and architecture spine into fifteen epics of implementable stories. Each story names the requirement IDs it satisfies and lists Given/When/Then acceptance criteria.
 
 **How to read it.** The Epic List gives the build order and what each epic delivers. Each epic section starts with its gate. Every story follows the conventions in "Conventions for every story", just before Epic 1. The Requirements Inventory is a lookup table; the source documents stay authoritative.
 
@@ -54,6 +55,7 @@ Gates are in each epic's section.
 | 12. Talk to bookvie from Claude Code | Claude Code connects to the running bookvie at `/mcp` (its own entry for the real app and for a development server). An agent finds a Book without guessing; reads the catalog, a Book, Home, Card notes and Stats; logs pages, starts, pauses and finishes Readings, chooses Up next, edits Purposes, and adds and edits Card notes and Side reads; adds and edits Books, with a cover fetched from its web address; and writes a dated backup to disk. It can't delete or restore anything. The two bookvie skills move onto the tools. | FR-28 |
 | 13. Back up to Dropbox, and restore through an agent | An agent restores a local or Dropbox backup only after showing what will be lost and passing two confirmations it can't skip, with a safety copy first (built first, to prove the riskiest part). When Oleg runs the backup skill, the library goes to bookvie's own Dropbox folder: 3 copies, the oldest deleted only after a checked upload, an unchanged library skipped, a development library never uploaded. The Backup page says in words how the last Dropbox backup went. Setup and a fix for each failure ship in `docs/dropbox-backup.md`. (The 09:00 launchd job was dropped on 2026-11-23: the Mac's administration policy doesn't allow it; see `sprint-change-proposal-2026-11-23.md`.) | FR-29, FR-30, FR-28 (restore lifted from the ban, the backup run's export not counted as Last export) |
 | 14. See card notes as boxes | The Card notes page shows one box per Book, in its spine color with a pile of cards that grows with its notes; a remembered Boxes · List toggle keeps today's page as List. Opening a box opens that Book's notes under a strip in its spine color. A search on the shelf fades the boxes without a match and shows "3 of 12" on those with matches, and the search text goes into the box and back out. | FR-19 (Boxes · List, the boxes, the shelf search, the carried search) |
+| 15. See one publisher's shelf | A Publisher ▾ filter chip after Tag shows only the Books from the publishers picked, such as everything from Manning, in the bookcase, the list and the tiles. Its list puts the biggest publishers first, each with its Book count in the whole library, so the list keeps its order while other filters change. | FR-20 (Publisher filter) |
 
 ## Requirements Inventory
 
@@ -95,7 +97,7 @@ FR-18 [Must]: Review a Book's Card notes as a pile, one at a time: page order or
 
 FR-19 [Must]: Card notes view and quick search. A separate Card notes view shows all Card notes grouped by Book, either as a list or as one box per Book, with a quick search that finds notes containing the typed text. Boxes or list: across all Books the view shows the Books as boxes (default) or as the list of Card notes grouped by Book; the last choice is remembered on this computer and isn't part of an export; the view scoped to one Book has no choice. Boxes: each Book that has Card notes gets one box in its spine color, read or not, with its title, how many Card notes it holds and a pile of cards that grows with that number, in the same Book order as the list; opening a box opens the view scoped to that Book, which shows the Book's spine color too. Search across all Books keeps the list's results grouped by Book; in boxes, each Book with a match shows how many of its Card notes match ("3 of 12") and the other boxes fall back but can still be opened, and which Books match never depends on color or fading alone. Opening a box during a search keeps the search text, so the Book's view shows only its matches; going back to the boxes keeps the text as it was when the user left; switching between boxes and the list keeps it too; every other way into the view starts with an empty search. The view scoped to one Book searches only that Book's notes; the pile itself has no search. Results update while typing, case-insensitive; each result shows the page or range and the matching text highlighted (plus the Book title in all-Books search). Opening a result shows that note in its Book's pile.
 
-FR-20 [Should]: Filter and sort. Sort: Author (default), Title, Date added, Pages; the bookcase reorders to match. Each sort has a natural direction (Author and Title A–Z, Date added newest first, Pages fewest first) that the user can reverse; the catalog shows which order is in effect, ties keep their order either way, the direction is remembered on this computer with the sort and not exported, choosing another sort goes back to its natural direction, and Home's bookcase slice follows the same order. Filter chips: Read / Unread, Type, Language, Tag; non-matching Books are hidden and the bookcase closes up (not dimmed).
+FR-20 [Should]: Filter and sort. Sort: Author (default), Title, Date added, Pages; the bookcase reorders to match. Each sort has a natural direction (Author and Title A–Z, Date added newest first, Pages fewest first) that the user can reverse; the catalog shows which order is in effect, ties keep their order either way, the direction is remembered on this computer with the sort and not exported, choosing another sort goes back to its natural direction, and Home's bookcase slice follows the same order. Filter chips: Read / Unread, Type, Language, Tag, Publisher; non-matching Books are hidden and the bookcase closes up (not dimmed). Publisher lets the user pick one or more publishers; the publishers are listed by how many Books each has, most first, with that count across the whole library, so the list keeps its order while other filters change.
 
 FR-21 [Should]: Cover on the main screen. The main screen shows the Main book's uploaded cover, or the placeholder.
 
@@ -221,6 +223,9 @@ From ARCHITECTURE-SPINE.md and the TEA handoff. Each line names the source decis
 - AR63 (AD-6): The Card notes page's Boxes and List render the view's groups in the view's order (title key, then Book id) and neither sorts. A Card note box's front and the open box strip use `spineColor` exactly, read or unread, never the `spine-unread-*` colors. One matcher in `lib/cardNotes.ts` decides what matches for the List's filter, the open box, each box's "M of N" and the shelf sentence's totals. The pile's height step, the count line's totals (a sum over the loaded groups), each box's accessible name and the match counts are computed in `lib/cardNotes.ts`, not in the page. One Book's box is `components/CardNoteBox`.
 - AR64 (AD-15): The Card notes view is a UI preference in `localStorage` as `bookvie.cardNotesView`, `"boxes"` or `"list"`, read and written by `lib/cardNotesView.ts` inside try/catch like `lib/catalogView.ts`. A missing or junk value, or a read that throws, means Boxes; a failed write keeps the choice for the visit. It is never exported, and a restore neither brings nor replaces it.
 - AR65 (AD-7): Carried Card notes search. The text lives only in React state of the route component `CardNotesPage`: never in the URL, in storage or in `history.state`. The page's body is keyed by `location.key` (a fresh view query without placeholder data, fresh pile, panels, pending count and focus maps), and each `location.key` change scrolls to the top (`behavior: 'auto'`) before the `h1` takes focus. Router state, built by the page, carries only a carry marker and, on a box link's push, `openedFrom` (the shelf entry's `location.key`, `"default"` included); the "In *X*" chip's push carries the marker; the marker is ignored on mount. The text is kept on a `location.key` change in two cases only: a PUSH carrying the marker, and a POP that lands on the `openedFrom` of the entry just left. Everything else starts empty (nav REPLACE, other links, Forward, other POPs, a reload, an arrival from another route); a bfcache restore keeps the page as left; while the view has no groups the text is dropped; switching Boxes ⇄ List is no navigation and keeps the text. The page decides during render (never in an effect, never by writing a ref in render), keeping the last handled `{ key, state }` in React state updated with the text in the same render (`HomePage`'s hand-off pattern); a unit test runs the decision under `<StrictMode>`. A carried search is announced once, from the new entry's view once it is `ready` and after the `h1` has focus, by an effect that cancels on cleanup.
+
+**Catalog Publisher filter (Epic 15).** From AD-6 and AD-8 as updated on 2026-11-25; where `catalog-publisher-filter-plan-2026-11-25.md` and the spine differ, the spine wins.
+- AR66 (AD-6, AD-8): The catalog view's `ShelfBook` carries `publisher`, the Book's stored, trimmed value, added in Python first, then `api:gen`. The Publisher chip compares it ignoring case like Language and Tag: each value once, keyed by `toLocaleLowerCase`, labelled with its first spelling in library order. The list is ordered by the value's Book count in the whole catalog view, most first, then collator order, and each value carries that count; the count and the order never depend on the other filters or Search titles. Within Publisher, values combine with OR; with the other groups and Search titles, with AND. `liveFilters` drops checked publishers that no Book has any more. Page state only, like every chip: never stored, never applied to Home's slice or the finished meter.
 
 **Test harness and quality gates (TEA handoff).**
 - TR1 (TC-1): `LibraryBuilder` fixture and pre-start seeding of a data folder.
@@ -357,6 +362,9 @@ Each line names the UX section that holds the full requirement. D = DESIGN.md, E
 - UX-DR92 [Retired 2026-11-24, Epic 14 retro item 97: Story 14.4 removed the staging from the code and from EXPERIENCE.md]: Staging (temporary, until the Epic 14 retro): Story 14.2 ships both views without the shelf search; until Story 14.4 (EXPERIENCE.md still says 14.3, from the plan's three-story cut), Boxes view with non-blank text shows exactly the List view's results and announcements ("N notes match."), hides the count line, and shows the boxes again once the field is blank (E → Card notes shelf → Temporary)
 - UX-DR93: Faded boxes, documented deviation from SC 1.4.3 (forced colors included): what still holds is a link and a Tab stop, a never-faded focus ring (`accent` vs `page` 4.96 light, 7.68 dark), "no match" in the accessible name, the matching box's pill and lift as well as opacity, and the count line's totals in text; the unfaded pairs meet their targets (title 12.97, count 5.78, pill text 11.30, count line 5.08 / 6.35) (D → Colors → Contrast; E → Accessibility Floor)
 
+**Catalog Publisher filter (FR-20)**
+- UX-DR94: Publisher ▾ chip: the fifth filter group, after Tag, a `{components.chip}` that opens the same `surface` checkbox list as Language and Tag (rows in `body-sm`/`ink`, at most 320px tall, scrolling beyond); the chip reads "Publisher: N" when N values are checked. Each row shows the publisher's Book count in the whole library after the name, one space apart, in `body-sm`/`ink-tertiary` ("Manning 49"), not a right-aligned column; Language and Tag rows have no count. Rows are ordered by that count, most first, then alphabetically; other chips and Search titles change neither the numbers nor the order. A row's accessible name is its visible text plus the noun: "Manning 49 books", "Apress 1 book". Values that differ only in case are one row (D → Filter chips; E → Component Patterns → Filter chips)
+
 ### FR Coverage Map
 
 FR-1: Epic 1 - Book fields, create/edit/delete, Finished on back-fill, tags field, spine color
@@ -376,7 +384,7 @@ FR-16: Epic 6 - Stats
 FR-17: Epic 5 - Add/edit/delete Card notes; Epic 9 - Keyboard save and Add another
 FR-18: Epic 5 - Card notes pile
 FR-19: Epic 5 - Card notes view and search; Epic 14 - Boxes · List, the Card note boxes and the open box strip, the shelf search, and the search carried into a box and back
-FR-20: Epic 7 - Filter and sort; Epic 10 - Sort direction
+FR-20: Epic 7 - Filter and sort; Epic 10 - Sort direction; Epic 15 - Publisher filter
 FR-21: Epic 3 - Cover on the main screen
 FR-22: Epic 2 - Export; Epic 3 - Last export on Home
 FR-23: Epic 2 - Restore
@@ -3650,3 +3658,89 @@ So that I can move from box to box without retyping a word.
 **Given** a carried search arriving on the shelf (by Back or the chip)
 **When** the boxes render
 **Then** they are in their search state at once, with no lift or fade animation (UX-DR90).
+
+## Epic 15: See one publisher's shelf
+
+A Publisher ▾ filter chip after Tag shows only the Books from the publishers Oleg picks, so he can see one publisher's shelf, such as everything from Manning, in the bookcase, the list or the tiles. The chip's list puts the biggest publishers first, each with its Book count in the whole library, and keeps that order while other filters change. Issue #4 asked for grouping by author, publisher or year; the plan narrowed it to this filter and closed author and year grouping (plan D1, D2). Story 15.1 adds the publisher to the catalog view first, with no visible change; Story 15.2 builds the chip on it.
+
+**Gate:** per-epic quality gates (TR7), plus the plan's P0 risks green: Publisher filters the bookcase, the list and the tiles, ORs within the chip and ANDs with the other chips and Search titles; the list is ordered by library count with ties A–Z, and neither the counts nor the order move when other filters or the search change. The existing catalog-filter e2e specs pass unchanged with Publisher untouched. Plan: `catalog-publisher-filter-plan-2026-11-25.md`.
+
+**Before Story 15.1:** plan step 0, the spine reconciliation of any unresolved "spine drift" entry in `deferred-work.md` (AGENTS.md → Architecture spine). None was open on 2026-11-25.
+
+**Mac checks:** none. Epic 15 is web UI in desktop Chrome and one field on an existing view; it needs nothing from the Mac itself (no scheduler, system service, Keychain, fixed port, client feature or OS permission), so no story has a Mac check line (Epic 13 retro item 93).
+
+**Out of scope:** grouping the catalog under headings, by author, publisher or year (plan D1, D2); the publisher on Book detail as a link to the filtered Catalog, which needs filters in the URL; a Publisher filter on the MCP `list_catalog` tool; a search field inside the chip popups; and behavior only Safari or Firefox shows (AGENTS.md → Supported browser).
+
+### Story 15.1: Carry the publisher in the catalog view
+
+As Oleg,
+I want the catalog to know each Book's publisher,
+So that the Catalog can filter by it in Story 15.2.
+
+**Requirements:** FR-20, AR66
+
+**Acceptance Criteria:**
+
+**Given** Books stored with publishers such as "Manning" and "O'Reilly Media"
+**When** the client fetches the catalog view
+**Then** every `ShelfBook` carries `publisher`, a string equal to the Book's stored, trimmed publisher (AR66)
+**And** a Book edited to another publisher shows the new value on the next fetch.
+
+**Given** the field added in Python
+**When** `npm --prefix frontend run api:gen` runs
+**Then** `schema.d.ts` gives `ShelfBook` a required `publisher: string`, and `check:api` compares it byte for byte and passes
+**And** every `ShelfBook` fixture in the frontend unit tests and the e2e helpers carries `publisher`, built through the shared helpers rather than new copies.
+
+**Given** the MCP `list_catalog` tool, which returns the same catalog view
+**When** an agent calls it
+**Then** each Book in the result carries `publisher` too, and the tool's description and arguments don't change.
+
+**Given** the Catalog, Home and Card notes pages
+**When** they render after this story
+**Then** nothing visible changes, and the existing catalog, home-slice and catalog-filter e2e specs pass unchanged.
+
+### Story 15.2: Filter the catalog by publisher
+
+As Oleg,
+I want to pick a publisher and see only its Books,
+So that I can look at one publisher's shelf, such as everything from Manning.
+
+**Requirements:** FR-20, AR66, UX-DR94
+
+**Acceptance Criteria:**
+
+**Given** a non-empty Catalog
+**When** it renders
+**Then** the filter row shows Status, Type, Language ▾, Tag ▾, then Publisher ▾, and Publisher ▾ opens the same checkbox list as Language and Tag: rows in `body-sm`/`ink`, at most 320px tall, scrolling beyond that (UX-DR94).
+
+**Given** publishers with 84, 49, 49 and 1 Books
+**When** I open Publisher ▾
+**Then** the rows are ordered by Book count, most first, the two with 49 in alphabetical order with the Catalog's collator
+**And** each row shows its count after the name, one space apart, in `body-sm`/`ink-tertiary` ("Manning 49"), and Language and Tag rows still show no count.
+
+**Given** Unread and a Tag checked, or text in Search titles
+**When** I open Publisher ▾
+**Then** every count is still the publisher's Books in the whole library, and the order is the same as with no filters (AR66).
+
+**Given** Manning checked
+**When** the Catalog renders in the bookcase, the list and the tiles
+**Then** only Manning's Books show, the others are hidden (not dimmed) and the shelf closes up, the chip reads "Publisher: 1", and the `status` region announces "N books match."
+**And** with Manning and O'Reilly Media checked, the Books of both show (OR)
+**And** with Manning checked plus Unread and a Search title, only the Books that match all three show (AND).
+
+**Given** Books stored with "Manning" and "manning"
+**When** I open Publisher ▾
+**Then** they are one row labelled with the first spelling in library order, its count covers both, and checking it shows both.
+
+**Given** Manning checked and the last Manning Book edited to another publisher
+**When** the catalog view is fetched again
+**Then** the stale check is dropped (`liveFilters`), Manning is no longer in the list, and the Catalog isn't left empty by it.
+
+**Given** a publisher filter on
+**When** I press "Clear filters", reload the page, or add a Book
+**Then** Publisher is off again, as every chip is: it is never stored, never in an export, and never applied to Home's slice or the "X of Y finished" meter.
+
+**Given** a screen reader or keyboard user
+**When** they open Publisher ▾ and move through the rows
+**Then** each row is a checkbox whose accessible name is its visible text plus the noun: "Manning 49 books", "Apress 1 book" (UX-DR94)
+**And** the chip opens, closes on Esc and returns focus exactly as Language ▾ and Tag ▾ do.
