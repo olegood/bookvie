@@ -2,71 +2,58 @@
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03-generate-tests', 'step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
 lastSaved: '2026-11-25'
-storyId: '15.2'
-storyKey: '15-2-filter-the-catalog-by-publisher'
+storyId: 'epic-15-retro-item-105-prune-rawfilters-when-livefilters-drops-a-key'
+storyKey: 'epic-15-retro-item-105-prune-rawfilters-when-livefilters-drops-a-key'
 inputDocuments:
-  - _bmad-output/implementation-artifacts/spec-15-2-filter-the-catalog-by-publisher.md (ACs, I/O matrix, Review Findings)
-  - _bmad-output/test-artifacts/atdd-checklist-15-2-filter-the-catalog-by-publisher.md (Green-phase follow-ups)
-  - _bmad-output/implementation-artifacts/epic-15-context.md
+  - _bmad-output/implementation-artifacts/spec-epic-15-retro-item-105-prune-rawfilters-when-livefilters-drops-a-key.md (ACs, I/O matrix, Review Findings)
+  - _bmad-output/test-artifacts/atdd-checklist-epic-15-retro-item-105-prune-rawfilters-when-livefilters-drops-a-key.md (Green-phase follow-ups)
   - _bmad/tea/config.yaml
-  - frontend/src/lib/catalogFilter.ts, frontend/src/components/FilterChips.tsx, FilterChips.module.css, frontend/src/pages/CatalogPage.tsx
-  - frontend/src/lib/catalogFilter.test.ts
-  - frontend/e2e/catalog-publisher-filter.spec.ts, catalog-filter.spec.ts, catalog-filter.ts, library.ts, bookcase.ts, fixtures.ts
+  - frontend/src/pages/CatalogPage.tsx, frontend/src/lib/catalogFilter.ts, frontend/src/lib/catalogFilter.test.ts
+  - frontend/e2e/catalog-publisher-filter.spec.ts, catalog-filter.ts, intents.ts (editBook), library.ts, fixtures.ts
 ---
 
-# Automation Summary: Story 15.2 Filter the catalog by publisher
+# Automation Summary: Epic 15 retro item 105, forget a dropped filter check
 
 ## Preflight
 
-- **Done at HEAD.** `git show HEAD:…/sprint-status.yaml` reads `15-2-filter-the-catalog-by-publisher: done` (review commit `2a14a4d`), and the working tree was clean.
-- **Stack:** `fullstack` (auto). The story is client-only: `catalogFilter.ts`, `FilterChips.tsx`/`.module.css` and `CatalogPage.tsx`, with no server change. So every target is an e2e leaf or a `node --test` unit test. No pytest target.
-- **Mode:** BMad-Integrated. The inputs were the ATDD checklist's 9 open green-phase follow-ups, the spec's ACs and I/O matrix, and the review's findings (`2a14a4d`).
-- **Config:** `tea_use_playwright_utils: false` (Traditional Patterns), no Pact, `tea_browser_automation: auto`. No browser exploration session was opened: the chip reuses the shipped `ValueList`, and the ATDD run's probes already mapped its structure.
-- **Execution mode:** sequential, in this session. Five small leaves in one spec, plus the reuse rule, which needs one author to compare helpers.
+- **Done at HEAD.** A standalone spec with no `development_status` key, so its own frontmatter is the record: `git show HEAD:…/spec-epic-15-retro-item-105-….md` reads `status: 'done'` (review commit `aae8050`), and the working tree was clean.
+- **Stack:** `fullstack` (auto). The fix is client-only (`CatalogPage.tsx:175`, a render-time prune), so every target is an e2e leaf. No pytest target.
+- **Mode:** BMad-Integrated. Inputs: the ATDD checklist's 3 open green-phase follow-ups, the spec's ACs and I/O matrix, and the review's findings (`aae8050`).
+- **Config:** `tea_use_playwright_utils: false` (Traditional Patterns), no Pact, `tea_browser_automation: auto`. No browser exploration: every locator ships and is used by the item's existing leaves.
+- **Execution mode:** sequential, in this session. Two leaves in one describe block, one author for the reuse rule.
 
 ## Coverage plan
 
-| Follow-up (ATDD checklist) | Level | Priority | Result |
+| Target | Level | Priority | Result |
 |---|---|---|---|
-| `publisherValues()` order, numeric ties, case merge and count, blank, no mutation | Unit | P1 | Already written by the build: `catalogFilter.test.ts:117–161` |
-| `matchesFilters` OR/AND/case for publishers; `filtersOn` | Unit | P1 | Already written: `catalogFilter.test.ts:75`, `:79`, `:168` |
-| `liveFilters` drops a gone publisher; same object when live | Unit | P1 | Already written: `catalogFilter.test.ts:196`, `:202` |
-| AC-1 axe with the Publisher list open, light and dark | E2E | P2 | **New** leaf `catalog-publisher-filter.spec.ts:543` |
-| AC-2 dark: count `ink-tertiary-dark`, name `ink-dark` | E2E | P2 | **New**, the same leaf (`:543`) |
-| AC-4 zero matches → "No books match these filters." + Clear filters | E2E | P2 | **New** leaf `:572` |
-| AC-4 each Publisher change re-announces, even word for word | E2E | P2 | **New** leaf `:595` |
-| AC-1/AC-2 a long name with an apostrophe stays on one line | E2E | P2 | **New** leaf `:621` |
-| AC-8 Esc after focusless clicks | E2E | — | **Retired**: macOS Safari behavior (AGENTS.md → Supported browser) |
+| ATDD follow-up: Language or Tag away-and-back | E2E | P1 | Tag already written by the build (`catalog-publisher-filter.spec.ts:749`); **new** Language leaf `:812` |
+| ATDD follow-up: partly dropped | E2E | P1 | Already written by the build: `:781` |
+| ATDD follow-up: unit "Nothing dropped" | Unit | — | **Retired**: the prune stayed in `CatalogPage.tsx`, no helper; `liveFilters` identity is pinned at `catalogFilter.test.ts:202` |
+| The prune doesn't fight the user: re-check a forgotten Manning, it filters, announces "1 book matches." and holds across a no-change refetch | E2E | P2 | **New** leaf `:846` |
 
-Scope is selective: the 8 ATDD leaves already cover every AC's main path, and the review's patch added the one-space check to AC-2. This run covers the secondary branches the ATDD run listed, and adds nothing that repeats a unit test at the e2e level.
+Why these two: the spec's I/O matrix row "Language and Tag" named both chips, and the spec's Residual risks listed Language as having no leaf of its own. The re-check leaf pins the other side of a render-time `setFilters`: once the user checks the value again it is live, so the prune must not clear it on the next render or refetch.
 
-## Files created or updated
+## Files
 
-- `frontend/e2e/catalog-publisher-filter.spec.ts`: a new `Story 15.2 Filter the catalog by publisher (automate)` describe block with 4 leaves (P2), placed in the same file so they reuse its seeds and helpers (`PUBLISHER_SHELF`, `PUBLISHER_ROWS`, `checkPublisher`, `startsOf`, `fullName`, `escapeRegExp`). `catalog-sort.spec.ts` and others mix ATDD and automate describes in the same way.
-- `frontend/e2e/catalog-filter.ts`: gains `recordStatus`, moved unchanged from `catalog-filter.spec.ts`.
-- `frontend/e2e/catalog-filter.spec.ts`: imports `recordStatus` from the shared module and drops its local copy and the now-unused `Page` import. No leaf or assertion changed.
-- `_bmad-output/test-artifacts/atdd-checklist-15-2-filter-the-catalog-by-publisher.md`: 8 follow-ups ticked with their evidence, 1 retired. Remaining `[ ]`: **0** (`grep -cF '[ ]'`).
+- `frontend/e2e/catalog-publisher-filter.spec.ts`: two leaves at the end of the "Epic 15 retro item 105 Forget a dropped filter check" block, and a describe-local constant `MANNING_BACK_ROWS` (the Publisher rows once Grokking is back at Manning). The build's AC-1 and partly-dropped leaves listed those rows inline; both now use the constant. Their assertions are unchanged.
+- `_bmad-output/test-artifacts/atdd-checklist-epic-15-retro-item-105-….md`: two follow-ups ticked, one retired. Remaining `[ ]`: **0**.
+- This summary.
 
-## Helpers
-
-- **Added:** none.
-- **Moved:** `recordStatus`, from `catalog-filter.spec.ts` to `e2e/catalog-filter.ts`, so the new re-announce leaf imports it instead of copying it. Found by `grep -n '^export' frontend/e2e/*.ts` (no exported status recorder) and a spec-local `grep -nE 'statusTexts|MutationObserver' frontend/e2e/*.spec.ts`, which found only the 7.2 copy.
-- **Reused:** `countLook`, `listNames`, `listPopup`, `publisherChip`, `chip`, `main`, `spineNames` (catalog-filter.ts); `designColor`, `rgbOf`, `bookId` (library.ts); `bookcase` (bookcase.ts); the spec's own seeds and `checkPublisher`.
+**Helpers:** none added. Reused `editElsewhere`, `movePublisher`, `refetchCatalog`, `checkPublisher`, `PUBLISHER_SHELF`, `PUBLISHER_ROWS`, `BY_AUTHOR`, `MANNING_BOOKS`, `startsOf` (spec-local) and `languageChip`, `publisherChip`, `listPopup`, `checkboxNames`, `clearFilters`, `spineNames` (`catalog-filter.ts`). `MANNING_BACK_ROWS` is a data constant replacing two inline copies, not a helper.
 
 ## Validation
 
-- `TZ=Europe/Madrid npx playwright test e2e/catalog-publisher-filter.spec.ts e2e/catalog-filter.spec.ts`: **37 passed** (8 ATDD + 4 automate for 15.2, 25 for 7.2), none skipped.
-- **Mutation check:** with `white-space: nowrap` removed from `.option`, the long-name leaf failed (4 distinct row heights, expected 1). The CSS edit was reverted by hand, and `git status` then showed only the three e2e files.
-- `npm run check:api` (prettier check, oxlint, `tsc -b`, the unit tests): exit 0, 425 unit tests passed. The oxlint warnings it prints are in files this run didn't touch.
-- No production file was changed: `git diff --name-only` lists only `frontend/e2e/` files and this step's records.
-- No CLI browser session was opened, and no temp artifact was left outside `test-results/`.
+- The six item-105 leaves: 6 passed.
+- **Mutation probe** (prune line commented out by hand in `CatalogPage.tsx:175`, then restored by hand; `git status` showed only the spec file modified): the new Language leaf fails (`Polish` row checked), as do the build's Publisher, Tag and partly-dropped leaves; the new re-check leaf fails at its setup; AC-2 passes, as a guard should.
+- `TZ=Europe/Madrid npx playwright test e2e/catalog-publisher-filter.spec.ts e2e/catalog-filter.spec.ts e2e/bookcase-details.spec.ts`: 56 passed.
+- `npm run check:api`: exit 0 (Prettier, oxlint, `tsc -b`, 425 unit tests).
+- No production file changed; no CLI session opened; no temp artifact left.
 
 ## Assumptions and risks
 
-- The dark-theme colors are read from DESIGN.md through `designColor('ink-dark')` and `designColor('ink-tertiary-dark')`, so a token change in DESIGN.md moves the expectation with it.
-- The long-name leaf checks one line by comparing row heights in the list. A future row design with deliberately different heights would need a different check.
-- The review's deferred item (a dropped key in `rawFilters` can come back after an edit back in the same visit) is in `deferred-work.md` and isn't tested here, because it describes current behavior that a fix would change.
+- The re-check leaf's distinct value (no fight with the user) shows only when the prune exists; with the prune removed it fails earlier, at its own setup. Its guard is the passing run: a prune that compared against stale lists would clear Manning after the check or after the refetch.
+- The `ready` guard stays untestable from the UI (no chip before the first load; a failed refetch stays `ready`), as the spec's Residual risks and review record.
 
 ## Next
 
-Story 15.2 closes Epic 15. Next: the Epic 15 retrospective (`bmad-retrospective`), then the before-next-epic items: the trace and gate (`bmad-testarch-trace`) and the spine reconciliation (AGENTS.md → Architecture spine).
+The spec's pipeline is complete. Item 105's sprint action item (`epic-15-retro-item-105-…` in `sprint-status.yaml`) still reads `status: open`. Remaining before Epic 16: item 106, the Epic 15 trace and gate (`bmad-testarch-trace`).

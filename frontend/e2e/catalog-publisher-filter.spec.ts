@@ -678,6 +678,15 @@ test.describe('Epic 15 retro item 105 Forget a dropped filter check (ATDD)', () 
     return editElsewhere(browser, server, ids, { publisher })
   }
 
+  /** The Publisher rows once Grokking is back at Manning and the other two Manning Books are at No Starch Press. */
+  const MANNING_BACK_ROWS: readonly [string, number][] = [
+    ['No Starch Press', 2],
+    ["O'Reilly Media", 2],
+    ['Addison-Wesley Professional', 1],
+    ['Apress', 1],
+    ['Manning', 1],
+  ]
+
   /** This context regains focus, and the catalog view refetches with `status`. */
   async function refetchCatalog(page: Page, status: number): Promise<void> {
     const response = page.waitForResponse((r) => r.url().endsWith('/api/views/catalog') && r.status() === status)
@@ -707,17 +716,7 @@ test.describe('Epic 15 retro item 105 Forget a dropped filter check (ATDD)', () 
     await movePublisher(browser, server, [bookId(2)], 'Manning')
     await refetchCatalog(page, 200)
     // The refetched view has rendered: Manning is listed again with its one Book.
-    await expect
-      .poll(() => listNames(page, 'Publisher'))
-      .toEqual(
-        startsOf([
-          ['No Starch Press', 2],
-          ["O'Reilly Media", 2],
-          ['Addison-Wesley Professional', 1],
-          ['Apress', 1],
-          ['Manning', 1],
-        ]),
-      )
+    await expect.poll(() => listNames(page, 'Publisher')).toEqual(startsOf(MANNING_BACK_ROWS))
     await expect(publisherChip(page)).toHaveText(/^Publisher\s*▾$/)
     await expect(listPopup(page, 'Publisher').getByRole('checkbox', { name: /^Manning 1/ })).not.toBeChecked()
     await page.keyboard.press('Escape')
@@ -800,22 +799,77 @@ test.describe('Epic 15 retro item 105 Forget a dropped filter check (ATDD)', () 
     // Grokking comes back to Manning in the same visit.
     await movePublisher(browser, server, [bookId(2)], 'Manning')
     await refetchCatalog(page, 200)
-    await expect
-      .poll(() => listNames(page, 'Publisher'))
-      .toEqual(
-        startsOf([
-          ['No Starch Press', 2],
-          ["O'Reilly Media", 2],
-          ['Addison-Wesley Professional', 1],
-          ['Apress', 1],
-          ['Manning', 1],
-        ]),
-      )
+    await expect.poll(() => listNames(page, 'Publisher')).toEqual(startsOf(MANNING_BACK_ROWS))
     const popup = listPopup(page, 'Publisher')
     await expect(popup.getByRole('checkbox', { name: /^Manning 1/ })).not.toBeChecked()
     await expect(popup.getByRole('checkbox', { name: /^O'Reilly Media 2/ })).toBeChecked()
     await page.keyboard.press('Escape')
     await expect(publisherChip(page)).toHaveText(/^Publisher: 1/)
     await expect.poll(() => spineNames(bookcase(page))).toEqual([LEARNING_GO, DDIA])
+  })
+
+  // Automate: the Language half of the I/O matrix's "Language and Tag" row.
+  test('[P2] AC-1 a dropped Polish check stays off when a Book is set back to Polish in the same visit', async ({
+    page,
+    browser,
+    seededServer,
+  }) => {
+    const shelf = PUBLISHER_SHELF.map((book) => (book.id === bookId(5) ? { ...book, language: 'Polish' } : book))
+    const server = await seededServer({ books: shelf })
+    await page.goto(`${server.url}/catalog`)
+    await languageChip(page).click()
+    await listPopup(page, 'Language').getByRole('checkbox', { name: 'Polish', exact: true }).check()
+    await page.keyboard.press('Escape')
+    await expect(languageChip(page)).toHaveText(/^Language: 1/)
+    await expect.poll(() => spineNames(bookcase(page))).toEqual([PRO_GIT])
+
+    // Pro Git, the only Polish Book, is set to English: the check is dropped.
+    await editElsewhere(browser, server, [bookId(5)], { language: 'English' })
+    await refetchCatalog(page, 200)
+    await expect(languageChip(page)).toHaveText(/^Language\s*▾$/)
+    await expect.poll(() => spineNames(bookcase(page))).toEqual(BY_AUTHOR)
+
+    // Pro Git is Polish again in the same visit.
+    await editElsewhere(browser, server, [bookId(5)], { language: 'Polish' })
+    await refetchCatalog(page, 200)
+    await languageChip(page).click()
+    // The refetched view has rendered: Polish is listed again, unchecked.
+    await expect.poll(() => checkboxNames(page)).toEqual(['English', 'Polish'])
+    await expect(listPopup(page, 'Language').getByRole('checkbox', { name: 'Polish', exact: true })).not.toBeChecked()
+    await page.keyboard.press('Escape')
+    await expect(languageChip(page)).toHaveText(/^Language\s*▾$/)
+    await expect.poll(() => spineNames(bookcase(page))).toEqual(BY_AUTHOR)
+    await expect(clearFilters(page)).toHaveCount(0)
+  })
+
+  // Automate: the render-time prune must not fight a user who checks the value again.
+  test('[P2] AC-1 after a dropped Manning check comes back unchecked, checking Manning again filters and holds across the next refetch', async ({
+    page,
+    browser,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: PUBLISHER_SHELF })
+    await page.goto(`${server.url}/catalog`)
+    await checkPublisher(page, PUBLISHER_ROWS, 'Manning')
+    await expect.poll(() => spineNames(bookcase(page))).toEqual(MANNING_BOOKS)
+
+    // Dropped, then Grokking comes back to Manning: the check is forgotten.
+    await movePublisher(browser, server, [bookId(1), bookId(7), bookId(2)], 'No Starch Press')
+    await refetchCatalog(page, 200)
+    await expect(publisherChip(page)).toHaveText(/^Publisher\s*▾$/)
+    await movePublisher(browser, server, [bookId(2)], 'Manning')
+    await refetchCatalog(page, 200)
+
+    // Checked again by hand, Manning filters at once.
+    await checkPublisher(page, MANNING_BACK_ROWS, 'Manning')
+    await expect(publisherChip(page)).toHaveText(/^Publisher: 1/)
+    await expect.poll(() => spineNames(bookcase(page))).toEqual([GROKKING])
+    await expect(page.getByRole('status')).toHaveText('1 book matches.')
+
+    // A refetch with nothing changed keeps it.
+    await refetchCatalog(page, 200)
+    await expect(publisherChip(page)).toHaveText(/^Publisher: 1/)
+    await expect.poll(() => spineNames(bookcase(page))).toEqual([GROKKING])
+    await expect(clearFilters(page)).toHaveCount(1)
   })
 })

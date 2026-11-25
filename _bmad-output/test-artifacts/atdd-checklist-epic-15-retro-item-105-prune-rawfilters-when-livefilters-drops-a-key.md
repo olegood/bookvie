@@ -62,9 +62,9 @@ Both leaves are in `frontend/e2e/catalog-publisher-filter.spec.ts`, in a new des
 
 ## Green-phase follow-ups (secondary branches, not red leaves)
 
-- [ ] **E2E, AC-1, Language or Tag (the spec's third Execution task):** the same away-and-back for a Language or Tag key. 7.2's deleted-Polish leaf in `catalog-filter.spec.ts` (~:720) is the model: drop the key, give a Book the value back, refetch, and the chip shows no count for it. The build adds it, since the spec names it.
-- [ ] **E2E, AC-1, partly dropped:** Manning and O'Reilly Media checked; every Manning Book leaves Manning. The chip reads "Publisher: 1" with O'Reilly Media's Books shown, and Manning stays unchecked when it comes back.
-- [ ] **Unit, "Nothing dropped":** if the build moves the prune decision into a pure helper in `catalogFilter.ts`, `catalogFilter.test.ts` pins that it returns the same object when nothing is dropped (`liveFilters` already has that test at :202).
+- [x] **E2E, AC-1, Language or Tag (the spec's third Execution task):** the same away-and-back for a Language or Tag key. 7.2's deleted-Polish leaf in `catalog-filter.spec.ts` (~:720) is the model: drop the key, give a Book the value back, refetch, and the chip shows no count for it. The build adds it, since the spec names it. (done: `frontend/e2e/catalog-publisher-filter.spec.ts:749` Tag, by the build; `:812` Language, by automate)
+- [x] **E2E, AC-1, partly dropped:** Manning and O'Reilly Media checked; every Manning Book leaves Manning. The chip reads "Publisher: 1" with O'Reilly Media's Books shown, and Manning stays unchecked when it comes back. (done: `frontend/e2e/catalog-publisher-filter.spec.ts:781`, by the build)
+- ~~**Unit, "Nothing dropped":** if the build moves the prune decision into a pure helper in `catalogFilter.ts`, `catalogFilter.test.ts` pins that it returns the same object when nothing is dropped (`liveFilters` already has that test at :202).~~ **Retired:** the build kept the prune in `CatalogPage.tsx:175` and added no helper; the identity it relies on is `liveFilters`'s, pinned at `frontend/src/lib/catalogFilter.test.ts:202`.
 
 ## Helper probes
 
