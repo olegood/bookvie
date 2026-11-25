@@ -91,8 +91,18 @@ test.describe('Story 1.10 Bookcase view details (automate)', () => {
     await expect(toggle.getByRole('button', { name: 'Tiles', exact: true })).toBeFocused()
     await page.keyboard.press('Tab')
     await expect(page.getByRole('button', { name: 'New book', exact: true })).toBeFocused()
-    // Toolbar row 2: the filter chips (Story 7.2, Publisher since 15.2), none on, so no Clear filters.
-    for (const name of ['Read', 'Unread', 'Paperback', 'Hardcover', 'Ebook', 'Language', 'Tag', 'Publisher']) {
+    // Toolbar row 2: the filter chips (Story 7.2, Publisher 15.2, Favourites 16.2), none on, so no Clear filters.
+    for (const name of [
+      'Favourites',
+      'Read',
+      'Unread',
+      'Paperback',
+      'Hardcover',
+      'Ebook',
+      'Language',
+      'Tag',
+      'Publisher',
+    ]) {
       await page.keyboard.press('Tab')
       await expect(page.getByRole('main').getByRole('button', { name, exact: true })).toBeFocused()
     }

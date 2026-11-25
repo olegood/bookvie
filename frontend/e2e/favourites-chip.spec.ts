@@ -27,6 +27,7 @@ import {
   SWING,
   tagChip,
 } from './catalog-filter.ts'
+import { systemColor } from './dev-mode.ts'
 import { COULDNT_SAVE, favouriteStar, routeCouldntSave, starShape } from './favourite.ts'
 import { expect, test } from './fixtures.ts'
 import { slice } from './home.ts'
@@ -37,10 +38,12 @@ import {
   designColor,
   designComponentValue,
   FAVOURITE,
+  FAVOURITE_DARK,
   isFocused,
   pressOnceThen,
   rgbOf,
 } from './library.ts'
+import { afterAnnounceDelay } from './stats.ts'
 import { storeTiles, tile, tileLinks, tileNames, tiles } from './tiles.ts'
 
 /**
@@ -87,6 +90,18 @@ async function spoken(announced: () => Promise<string[]>): Promise<string[]> {
   return (await announced()).filter((text) => text !== '')
 }
 
+/**
+ * `read` once the chip's count has been set (`afterAnnounceDelay`), as a
+ * person would hear it before the next press: a press sooner empties the
+ * regions and cancels it, as every save does.
+ */
+function afterCount<T>(page: Page, read: () => Promise<T>): () => Promise<T> {
+  return async () => {
+    await afterAnnounceDelay(page)
+    return read()
+  }
+}
+
 /** A List row's title link, found by the row's title. */
 function rowTitleLink(page: Page, title: string): Locator {
   return bookRows(page)
@@ -100,8 +115,7 @@ test.describe('Story 16.2 Show only my favourites (ATDD)', () => {
     await page.emulateMedia({ colorScheme: 'light' })
   })
 
-  // Red phase: there is no Favourites chip.
-  test.skip('[P1] AC-1 the filter row starts with a lone "Favourites" toggle with a leading gold aria-hidden star, before Status, in no group and with no popup, shown even when nothing is starred', async ({
+  test('[P1] AC-1 the filter row starts with a lone "Favourites" toggle with a leading gold aria-hidden star, before Status, in no group and with no popup, shown even when nothing is starred', async ({
     page,
     seededServer,
   }) => {
@@ -147,10 +161,23 @@ test.describe('Story 16.2 Show only my favourites (ATDD)', () => {
     await expect(favouritesChip(page)).toBeVisible()
     await expect(favouritesChip(page)).toBeEnabled()
     await expect(favouritesChip(page)).toHaveAttribute('aria-pressed', 'false')
+
+    // Dark: the chip's star is filled favourite-dark.
+    await page.emulateMedia({ colorScheme: 'dark' })
+    await page.reload()
+    await expect(favouritesChip(page)).toBeVisible()
+    await expect(starShape(favouritesChip(page))).toHaveCSS('fill', FAVOURITE_DARK)
+
+    // Forced colors: forced-color-adjust none and a CanvasText fill (as 16.1's AC-13).
+    await page.emulateMedia({ colorScheme: 'light', forcedColors: 'active' })
+    await page.reload()
+    await expect(favouritesChip(page)).toBeVisible()
+    const canvasText = await systemColor(page, 'CanvasText')
+    await expect(favouritesChip(page).locator('svg').first()).toHaveCSS('forced-color-adjust', 'none')
+    await expect(starShape(favouritesChip(page))).toHaveCSS('fill', canvasText)
   })
 
-  // Red phase: there is no Favourites chip to press.
-  test.skip('[P0] AC-2 Favourites on shows only the starred Books in the bookcase, the list and the tiles, announces "3 books match.", ANDs with Unread and with a Tag and Search titles, and turns off again', async ({
+  test('[P0] AC-2 Favourites on shows only the starred Books in the bookcase, the list and the tiles, announces "3 books match.", ANDs with Unread and with a Tag and Search titles, and turns off again', async ({
     page,
     seededServer,
   }) => {
@@ -220,8 +247,7 @@ test.describe('Story 16.2 Show only my favourites (ATDD)', () => {
     await expect.poll(() => spineNames(bookcase(page))).toEqual(BY_AUTHOR)
   })
 
-  // Red phase: there is no Favourites chip to press.
-  test.skip('[P1] AC-3 Favourites on with nothing starred shows "No books match these filters." with "Clear filters", and a refetch never turns it off', async ({
+  test('[P1] AC-3 Favourites on with nothing starred shows "No books match these filters." with "Clear filters", and a refetch never turns it off', async ({
     page,
     seededServer,
   }) => {
@@ -257,8 +283,7 @@ test.describe('Story 16.2 Show only my favourites (ATDD)', () => {
     await expect(noMatch).toHaveCount(0)
   })
 
-  // Red phase: there is no Favourites chip, so Clear filters focuses Read.
-  test.skip('[P1] AC-4 "Clear filters" turns every chip off, Favourites included, and focuses the Favourites chip', async ({
+  test('[P1] AC-4 "Clear filters" turns every chip off, Favourites included, and focuses the Favourites chip', async ({
     page,
     seededServer,
   }) => {
@@ -304,8 +329,7 @@ test.describe('Story 16.2 Show only my favourites (ATDD)', () => {
     await expect(chip(page, 'Type', 'Ebook')).toHaveAttribute('aria-pressed', 'false')
   })
 
-  // Red phase: there is no Favourites chip to press.
-  test.skip('[P1] AC-5 Favourites is off after leaving Catalog and coming back, a reload or an add, is never stored, and never changes Home’s slice or the meter', async ({
+  test('[P1] AC-5 Favourites is off after leaving Catalog and coming back, a reload or an add, is never stored, and never changes Home’s slice or the meter', async ({
     page,
     seededServer,
   }) => {
@@ -364,8 +388,7 @@ test.describe('Story 16.2 Show only my favourites (ATDD)', () => {
     await expect(spines(page)).toHaveCount(7)
   })
 
-  // Red phase: there is no Favourites chip, so nothing hides the unstarred Book.
-  test.skip('[P0] AC-6 unstarring a tile or a row with Favourites on hides it and CatalogPage moves focus to the next shown Book, else the previous, else Search titles, with one "*Title* is not a favourite. N books match." line', async ({
+  test('[P0] AC-6 unstarring a tile or a row with Favourites on hides it and CatalogPage moves focus to the next shown Book, else the previous, else Search titles, with one "*Title* is not a favourite. N books match." line', async ({
     page,
     seededServer,
   }) => {
@@ -383,10 +406,13 @@ test.describe('Story 16.2 Show only my favourites (ATDD)', () => {
       .poll(
         pressOnceThen(
           favourites,
-          pressOnceThen(emmaStar, async () => ({
-            focused: await isFocused(tile(page, AUSTERLITZ)),
-            said: await spoken(announced),
-          })),
+          afterCount(
+            page,
+            pressOnceThen(emmaStar, async () => ({
+              focused: await isFocused(tile(page, AUSTERLITZ)),
+              said: await spoken(announced),
+            })),
+          ),
         ),
       )
       .toEqual({ focused: true, said: ['3 books match.', 'Emma is not a favourite. 2 books match.'] })
@@ -412,8 +438,7 @@ test.describe('Story 16.2 Show only my favourites (ATDD)', () => {
     await expect(favourites).toHaveAttribute('aria-pressed', 'true')
   })
 
-  // Red phase: there is no Favourites chip, so the unstarred spine stays and the popover stays open.
-  test.skip('[P0] AC-7 unstarring from the Spine popover with Favourites on closes the popover with its spine and focuses the next shown spine, with the same one message', async ({
+  test('[P0] AC-7 unstarring from the Spine popover with Favourites on closes the popover with its spine and focuses the next shown spine, with the same one message', async ({
     page,
     seededServer,
   }) => {
@@ -430,13 +455,16 @@ test.describe('Story 16.2 Show only my favourites (ATDD)', () => {
       .poll(
         pressOnceThen(
           favourites,
-          pressOnceThen(
-            spine(page, EMMA),
-            pressOnceThen(favouriteStar(card), async () => ({
-              open: await card.count(),
-              focused: await isFocused(spine(page, AUSTERLITZ)),
-              said: await spoken(announced),
-            })),
+          afterCount(
+            page,
+            pressOnceThen(
+              spine(page, EMMA),
+              pressOnceThen(favouriteStar(card), async () => ({
+                open: await card.count(),
+                focused: await isFocused(spine(page, AUSTERLITZ)),
+                said: await spoken(announced),
+              })),
+            ),
           ),
         ),
       )
@@ -447,8 +475,7 @@ test.describe('Story 16.2 Show only my favourites (ATDD)', () => {
     await expect(anySpine(page, 'Emma by Jane Austen, not read yet')).toBeHidden()
   })
 
-  // Red phase: there is no Favourites chip to press.
-  test.skip('[P1] AC-8 a failed unstar with Favourites on leaves the Book shown and starred, with the couldn’t-save line where Story 16.1 puts it', async ({
+  test('[P1] AC-8 a failed unstar with Favourites on leaves the Book shown and starred, with the couldn’t-save line where Story 16.1 puts it', async ({
     page,
     seededServer,
   }) => {
@@ -467,7 +494,10 @@ test.describe('Story 16.2 Show only my favourites (ATDD)', () => {
       .poll(
         pressOnceThen(
           favourites,
-          pressOnceThen(emmaStar, async () => (await alert.textContent())?.trim()),
+          afterCount(
+            page,
+            pressOnceThen(emmaStar, async () => (await alert.textContent())?.trim()),
+          ),
         ),
       )
       .toBe(COULDNT_SAVE)
@@ -499,8 +529,7 @@ test.describe('Story 16.2 Show only my favourites (ATDD)', () => {
     await expect.poll(() => spineNames(bookcase(page))).toEqual(STARRED)
   })
 
-  // Red phase: Tab from New book lands on Read, since there is no Favourites chip.
-  test.skip('[P1] AC-9 with Favourites off the toolbar’s Tab order runs New book, Favourites, then Read, and the other chips filter as before, starred Books included', async ({
+  test('[P1] AC-9 with Favourites off the toolbar’s Tab order runs New book, Favourites, then Read, and the other chips filter as before, starred Books included', async ({
     page,
     seededServer,
   }) => {

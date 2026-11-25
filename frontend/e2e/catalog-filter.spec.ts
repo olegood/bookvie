@@ -23,6 +23,7 @@ import {
   chip,
   chipGroup,
   clearFilters,
+  favouritesChip,
   languageChip,
   main,
   publisherChip,
@@ -240,8 +241,8 @@ test.describe('Story 7.2 Filter my catalog (ATDD)', () => {
     await search(page).fill('e')
     await clearFilters(page).click()
 
-    // Focus goes to Read (the clicked link is gone); the count is the search's alone.
-    await expect(chip(page, 'Status', 'Read')).toBeFocused()
+    // Focus goes to Favourites (the clicked link is gone); the count is the search's alone.
+    await expect(favouritesChip(page)).toBeFocused()
     await expect(search(page)).toHaveValue('e')
     await expect(page.getByRole('status')).toHaveText('5 books match.')
     await expect.poll(() => spineNames(bookcase(page))).toEqual([BLEAK_HOUSE, DUBLINERS, EMMA, CANDIDE, AUSTERLITZ])
@@ -277,8 +278,8 @@ test.describe('Story 7.2 Filter my catalog (ATDD)', () => {
     // The row's link and the shelf area's link; the shelf area's comes later.
     await expect(clearFilters(page)).toHaveCount(2)
     await clearFilters(page).last().click()
-    // The clicked link goes away, so focus moves to Read.
-    await expect(chip(page, 'Status', 'Read')).toBeFocused()
+    // The clicked link goes away, so focus moves to Favourites.
+    await expect(favouritesChip(page)).toBeFocused()
     await expect.poll(() => spineNames(bookcase(page))).toEqual(BY_AUTHOR)
     await expect(main(page).getByText('No books match these filters.', { exact: true })).toHaveCount(0)
   })
@@ -442,7 +443,7 @@ test.describe('Story 7.2 Filter my catalog (ATDD)', () => {
     await expect(main(page).getByText('No books match these filters.', { exact: true })).toBeVisible()
     await expect(clearFilters(page)).toHaveCount(2)
     await clearFilters(page).last().click()
-    await expect(chip(page, 'Status', 'Read')).toBeFocused()
+    await expect(favouritesChip(page)).toBeFocused()
     await expect(bookRows(page)).toHaveCount(6)
     await expect(main(page).getByText('No books match these filters.', { exact: true })).toHaveCount(0)
   })
@@ -497,7 +498,7 @@ test.describe('Story 7.2 Filter my catalog (ATDD)', () => {
     await expect(page.getByRole('status')).toHaveText('0 books match.')
 
     await clearFilters(page).last().click()
-    await expect(chip(page, 'Status', 'Read')).toBeFocused()
+    await expect(favouritesChip(page)).toBeFocused()
     await tabIntoBookcase(page)
     await expect(spine(page, EMMA)).toBeFocused()
   })

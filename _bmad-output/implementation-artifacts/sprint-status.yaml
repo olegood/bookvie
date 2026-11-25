@@ -156,7 +156,7 @@ development_status:
 
   epic-16: in-progress
   16-1-star-a-book: done
-  16-2-show-only-my-favourites: backlog
+  16-2-show-only-my-favourites: review
   epic-16-retrospective: optional
 action_items:
   - id: "epic-1-retro-item-1-run-an-epic-1-trace-and-gate-against-tr7"

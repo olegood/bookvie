@@ -7,6 +7,7 @@ import {
   type FilterValue,
   type PublisherValue,
 } from '../lib/catalogFilter.ts'
+import { StarIcon } from './FavouriteStar.tsx'
 import styles from './FilterChips.module.css'
 
 const STATUSES: readonly [FilterStatus, string][] = [
@@ -35,8 +36,8 @@ type Props = {
   onClear: () => void
   /** Whether any filter is on (Clear filters shows only then). */
   on: boolean
-  /** The Read chip, which takes focus after Clear filters. */
-  readRef: Ref<HTMLButtonElement>
+  /** The Favourites chip, which takes focus after Clear filters. */
+  favouritesRef: Ref<HTMLButtonElement>
 }
 
 /**
@@ -157,11 +158,21 @@ function ValueList({
 }
 
 /**
- * Catalog's toolbar row 2 (DESIGN.md → Filter chips): the Status and Type
+ * Catalog's toolbar row 2 (DESIGN.md → Filter chips): the lone Favourites
+ * toggle (a leading gold star, in no group, no popup), the Status and Type
  * chip groups, Language ▾, Tag ▾ and Publisher ▾, then "Clear filters" while
  * any filter is on. Every chip is a toggle button with `aria-pressed`.
  */
-export default function FilterChips({ filters, languages, tags, publishers, onChange, onClear, on, readRef }: Props) {
+export default function FilterChips({
+  filters,
+  languages,
+  tags,
+  publishers,
+  onChange,
+  onClear,
+  on,
+  favouritesRef,
+}: Props) {
   const statusId = useId()
   const typeId = useId()
   const [openList, setOpenList] = useState<ListField | null>(null)
@@ -179,6 +190,16 @@ export default function FilterChips({ filters, languages, tags, publishers, onCh
 
   return (
     <div className={styles.row}>
+      <button
+        ref={favouritesRef}
+        type="button"
+        className={styles.chip}
+        aria-pressed={filters.favourites}
+        onClick={() => onChange({ ...filters, favourites: !filters.favourites })}
+      >
+        <StarIcon className={styles.star} />
+        Favourites
+      </button>
       <div role="group" aria-labelledby={statusId} className={styles.group}>
         <span id={statusId} className={styles.groupName}>
           Status
@@ -186,7 +207,6 @@ export default function FilterChips({ filters, languages, tags, publishers, onCh
         {STATUSES.map(([value, label]) => (
           <button
             key={value}
-            ref={value === 'read' ? readRef : undefined}
             type="button"
             className={styles.chip}
             aria-pressed={filters.status.includes(value)}

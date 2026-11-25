@@ -182,6 +182,7 @@ test.describe('Story 15.2 Filter the catalog by publisher (ATDD)', () => {
     const row = chipGroup(page, 'Status').locator('xpath=..')
 
     await expect(row.getByRole('button')).toHaveText([
+      'Favourites',
       'Read',
       'Unread',
       'Paperback',

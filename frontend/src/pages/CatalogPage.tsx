@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useLocation } from 'react-router'
 import { useCatalogView, type LibraryMeter, type ShelfBook } from '../api/index.ts'
 import BackToTop from '../components/BackToTop.tsx'
@@ -32,7 +32,7 @@ import { CATALOG_VIEWS, readCatalogView, writeCatalogView, type CatalogViewChoic
 import { COULDNT_LOAD } from '../lib/copy.ts'
 import { prefersReducedMotion } from '../lib/motion.ts'
 import { usePageTitle } from '../lib/page.ts'
-import { useFavourite } from '../lib/useFavourite.ts'
+import { favouriteStatus, useFavourite, type FavouriteBook } from '../lib/useFavourite.ts'
 // The count is announced once typing pauses, after the same pause as Search card notes.
 import { SEARCH_PAUSE_MS } from '../lib/useSearchCount.ts'
 import Bookcase, { MeterBar } from './Bookcase.tsx'
@@ -182,21 +182,33 @@ export default function CatalogPage() {
   const focusTargets = useRef(new Map<string, HTMLElement>())
   const searchRef = useRef<HTMLInputElement | null>(null)
   const newBookRef = useRef<HTMLButtonElement | null>(null)
-  const readChipRef = useRef<HTMLButtonElement | null>(null)
+  const favouritesChipRef = useRef<HTMLButtonElement | null>(null)
   const deleted = deletedTitle(location.state)
   // The location key whose delete hand-off this mount has handled; across
   // remounts and reloads, sessionStorage remembers (deleteHandled).
   const handledDelete = useRef<string | null>(null)
   const countTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
-  // One star flow for all three views: a failure's line shows under the filter
-  // row (Tiles, List, a popover that has closed) or in the open popover.
-  const favourite = useFavourite()
-  const { rowSlot: favouriteRowSlot, rowFailed: favouriteRowFailed } = favourite
   // What the pending count reads when it fires.
   const latest = useRef({ sorted, query, filters })
-  useEffect(() => {
+  useLayoutEffect(() => {
     latest.current = { sorted, query, filters }
   })
+  // An unstar the Favourites chip will hide (EXPERIENCE.md → Favourite star,
+  // With the Favourites chip on): this page, not the star's flow, moves focus
+  // and speaks one line once the refetched view no longer shows the Book.
+  const pendingUnstar = useRef<FavouriteBook | null>(null)
+  const [unstarSaved, setUnstarSaved] = useState(0)
+  // One star flow for all three views: a failure's line shows under the filter
+  // row (Tiles, List, a popover that has closed) or in the open popover.
+  const favourite = useFavourite({
+    onSaved: (book, starred) => {
+      if (starred || !latest.current.filters.favourites) return false
+      pendingUnstar.current = book
+      setUnstarSaved((count) => count + 1)
+      return true
+    },
+  })
+  const { rowSlot: favouriteRowSlot, rowFailed: favouriteRowFailed } = favourite
 
   const cancelCount = () => {
     clearTimeout(countTimer.current)
@@ -245,6 +257,36 @@ export default function CatalogPage() {
     announce('status', `Deleted ${deleted}.`)
   }, [deleted, ready, location.key])
 
+  // The unstarred Book has gone from the shown set: focus the next shown Book
+  // in sort order (its spine, title link or tile link), else the previous,
+  // else Search titles, then announce "Dune is not a favourite. N books
+  // match.". A layout effect, so it runs after Bookcase's and before
+  // useSpinePopover's passive fallback, which then finds focus off `body`. If
+  // the chip went off first, the star's plain line is spoken instead.
+  const favouritesOn = filters.favourites
+  useLayoutEffect(() => {
+    const book = pendingUnstar.current
+    if (book === null) return
+    if (!favouritesOn) {
+      pendingUnstar.current = null
+      announce('status', favouriteStatus(book.title, false))
+      return
+    }
+    if (shown.has(book.id)) return // the refetched view hasn't rendered yet
+    pendingUnstar.current = null
+    const index = sorted.findIndex((entry) => entry.id === book.id)
+    const next =
+      index === -1
+        ? undefined
+        : (sorted.slice(index + 1).find((entry) => shown.has(entry.id)) ??
+          sorted.slice(0, index).findLast((entry) => shown.has(entry.id)))
+    const target = (next === undefined ? undefined : focusTargets.current.get(next.id)) ?? searchRef.current
+    target?.focus()
+    // A Search titles count still waiting would replace this line.
+    cancelCount()
+    announce('status', `${favouriteStatus(book.title, false)} ${matchCountCopy(shown.size)}`)
+  }, [unstarSaved, favouritesOn, sorted, shown])
+
   useEffect(() => {
     if (highlightId === null) return
     const timer = setTimeout(() => setHighlightId(null), HIGHLIGHT_MS)
@@ -292,10 +334,10 @@ export default function CatalogPage() {
     announce('status', matchCountCopy(shownIds(sorted, query, liveFilters(next, languages, tags, publishers)).size))
   }
 
-  // Either Clear filters: every chip off, the search kept, focus to Read (the link goes away).
+  // Either Clear filters: every chip off, the search kept, focus to Favourites (the link goes away).
   const clearFilters = () => {
     changeFilters(NO_FILTERS)
-    readChipRef.current?.focus()
+    favouritesChipRef.current?.focus()
   }
 
   const openPanel = () => {
@@ -371,7 +413,7 @@ export default function CatalogPage() {
           onChange={changeFilters}
           onClear={clearFilters}
           on={filtering}
-          readRef={readChipRef}
+          favouritesRef={favouritesChipRef}
         />
       )}
       {/* Under the filter row: a star's couldn't-save line from Tiles, List or a closed popover. */}

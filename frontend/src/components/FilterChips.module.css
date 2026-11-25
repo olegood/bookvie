@@ -56,6 +56,22 @@
   font-size: 11px;
 }
 
+/* The Favourites chip's leading star (DESIGN.md → Filter chips): `row-size`,
+   filled gold on or off; it overrides FavouriteStar's unfilled outline. On,
+   the check sits before it. */
+.star {
+  display: block;
+  flex: none;
+  width: var(--favourite-star-row-size);
+  height: var(--favourite-star-row-size);
+  overflow: visible;
+}
+
+.star path {
+  fill: var(--color-favourite);
+  stroke: var(--color-favourite);
+}
+
 /* Language ▾, Tag ▾ and Publisher ▾: the popup sits below its chip. */
 .wrap {
   position: relative;
@@ -117,5 +133,14 @@
 
   .chip[aria-pressed='true']::before {
     color: CanvasText;
+  }
+
+  .star {
+    forced-color-adjust: none;
+  }
+
+  .star path {
+    fill: CanvasText;
+    stroke: CanvasText;
   }
 }

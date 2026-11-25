@@ -1,8 +1,9 @@
-// Catalog's filter chips (FR-20, UX-DR20, UX-DR94): Status, Type, Language,
-// Tag and Publisher. Pure rules over the catalog view's Books: chips in a group
-// combine with OR, groups with each other (and with Search titles) with AND,
-// and an empty group is no constraint. Filters live in CatalogPage state only,
-// never in storage.
+// Catalog's filter chips (FR-20, FR-31, UX-DR20, UX-DR94, UX-DR103):
+// Favourites, Status, Type, Language, Tag and Publisher. Favourites is a lone
+// on/off toggle, its own group for the AND rule. Pure rules over the catalog
+// view's Books: chips in a group combine with OR, groups with each other (and
+// with Search titles) with AND, and an empty group is no constraint. Filters
+// live in CatalogPage state only, never in storage.
 
 import type { ShelfBook } from '../api/index.ts'
 import { collator } from './catalog.ts'
@@ -13,6 +14,8 @@ export type BookType = ShelfBook['type']
 
 /** The chips that are on. `languages`, `tags` and `publishers` hold case keys (`filterKey`). */
 export interface CatalogFilters {
+  /** The Favourites chip: only starred Books pass while it is on. */
+  favourites: boolean
   status: readonly FilterStatus[]
   types: readonly BookType[]
   languages: readonly string[]
@@ -20,7 +23,14 @@ export interface CatalogFilters {
   publishers: readonly string[]
 }
 
-export const NO_FILTERS: CatalogFilters = { status: [], types: [], languages: [], tags: [], publishers: [] }
+export const NO_FILTERS: CatalogFilters = {
+  favourites: false,
+  status: [],
+  types: [],
+  languages: [],
+  tags: [],
+  publishers: [],
+}
 
 /** A Language, Tag or Publisher value as the chip's list shows it. */
 export interface FilterValue {
@@ -32,6 +42,7 @@ export interface FilterValue {
 
 /** The fields of a catalog Book the filters read (all from the server). */
 export interface FilterableBook {
+  favourite: boolean
   finished: boolean
   type: BookType
   language: string
@@ -84,13 +95,14 @@ export function publisherValues(values: Iterable<string>): PublisherValue[] {
 }
 
 /**
- * Whether `book` passes every group: Read is `finished` (a re-read finished
- * Book is Read), Unread is not; Type matches `type`; Language, Tag and
- * Publisher match ignoring case, and a Book with no tags never matches a Tag
- * filter.
+ * Whether `book` passes every group: Favourites on keeps only starred
+ * Books; Read is `finished` (a re-read finished Book is Read), Unread is not;
+ * Type matches `type`; Language, Tag and Publisher match ignoring case, and a
+ * Book with no tags never matches a Tag filter.
  */
 export function matchesFilters(book: FilterableBook, filters: CatalogFilters): boolean {
-  const { status, types, languages, tags, publishers } = filters
+  const { favourites, status, types, languages, tags, publishers } = filters
+  if (favourites && !book.favourite) return false
   if (status.length > 0 && !status.includes(book.finished ? 'read' : 'unread')) return false
   if (types.length > 0 && !types.includes(book.type)) return false
   if (languages.length > 0 && !languages.includes(filterKey(book.language))) return false
@@ -101,8 +113,8 @@ export function matchesFilters(book: FilterableBook, filters: CatalogFilters): b
 
 /** Whether any chip or checked value is on. */
 export function filtersOn(filters: CatalogFilters): boolean {
-  const { status, types, languages, tags, publishers } = filters
-  return status.length + types.length + languages.length + tags.length + publishers.length > 0
+  const { favourites, status, types, languages, tags, publishers } = filters
+  return favourites || status.length + types.length + languages.length + tags.length + publishers.length > 0
 }
 
 /** `list` with `value` added, or removed if it was there; a new array. */
@@ -113,7 +125,8 @@ export function toggleValue<T>(list: readonly T[], value: T): T[] {
 /**
  * `filters` without the checked Language, Tag and Publisher keys that no Book
  * has any more (after a refetch), so matching and the chip count ignore them.
- * The same object when every checked key is live.
+ * The same object when every checked key is live. Favourites is never
+ * changed: with nothing starred it stays on and the empty state shows.
  */
 export function liveFilters(
   filters: CatalogFilters,

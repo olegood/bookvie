@@ -13,6 +13,10 @@
 // row for good once its slot goes (the popover closed); a slot rendered later
 // never takes it. The line goes at the next save attempt and on `clear()` (a
 // filter change).
+//
+// A caller may pass `onSaved`, called on `ok` before the line is announced;
+// when it returns true the caller owns the announcement (Catalog's unstar
+// with the Favourites chip on) and the hook says nothing.
 
 import { useCallback, useLayoutEffect, useRef, useState, type RefCallback } from 'react'
 import { useSetFavourite } from '../api/index.ts'
@@ -43,7 +47,12 @@ export type FavouriteFlow = {
   clear: () => void
 }
 
-export function useFavourite(): FavouriteFlow {
+export type FavouriteOptions = {
+  /** Called once a save succeeds; return true to take over its `status` line. */
+  onSaved?: (book: FavouriteBook, favourite: boolean) => boolean
+}
+
+export function useFavourite({ onSaved }: FavouriteOptions = {}): FavouriteFlow {
   const sendFavourite = useSetFavourite()
   const { run } = useIntentRequest()
   // Where the last failure's line belongs: the inline slot rendered when it
@@ -53,6 +62,11 @@ export function useFavourite(): FavouriteFlow {
   const [row, setRow] = useState<HTMLDivElement | null>(null)
   // The inline slot now, read when a result lands (state would be the press's render).
   const inlineNow = useRef<HTMLDivElement | null>(null)
+  // The latest `onSaved`, read when a result lands (the press's render may be stale).
+  const savedNow = useRef(onSaved)
+  useLayoutEffect(() => {
+    savedNow.current = onSaved
+  })
   const inlineSlot = useCallback((slot: HTMLDivElement | null) => {
     inlineNow.current = slot
     setInline(slot)
@@ -78,6 +92,7 @@ export function useFavourite(): FavouriteFlow {
     )
     if (result === null) return // unmounted: run already announced a failure
     if (result.kind === 'ok') {
+      if (savedNow.current?.(book, favourite) === true) return
       announce('status', favouriteStatus(book.title, favourite))
       return
     }

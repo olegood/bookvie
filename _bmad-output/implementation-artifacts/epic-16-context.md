@@ -4,7 +4,7 @@
 
 ## Goal
 
-Let Oleg star a Book to record that it had an impact on him. The star is a verdict about the Book, not a tag or a way to find it again, so any Book can have it, read or not. He sets it on Book detail next to the title, on a cover in Tiles, in a List row and in the Bookcase's Spine popover. A starred Book's spine carries a small star mark. One click on the ★ Favourites chip, first in the Catalog's filter row, shows only the starred Books. Edits never touch the star, a backup carries it, and agents can read it but not set it. Story 16.1 adds the star end to end (FR-31). Story 16.2 builds the chip on `ShelfBook.favourite`.
+Oleg stars a Book to record that it had an impact on him. The star is his verdict about the Book. It is not a tag and not a way to find the Book again, so any Book can carry it, read or not. He sets it on Book detail next to the title, on a Catalog tile, in a List row and in the Bookcase's Spine popover. A starred Book's spine carries a small star mark. One click on the Favourites chip, first in the Catalog filter row, shows only the starred Books. Edits never touch the star, backups carry it, and agents can read it but never set it.
 
 ## Stories
 
@@ -13,58 +13,43 @@ Let Oleg star a Book to record that it had an impact on him. The star is a verdi
 
 ## Requirements & Constraints
 
-- **Stored field.** Each Book has `favourite: bool`. It is required in the store model with no default: a version 4 file or archive without it is refused (`restore_invalid` on restore; startup exits non-zero with nothing changed). `add-book`/`add_book` store `false`. It adds no invariant rule.
-- **One writer.** Only `POST /api/intents/set-favourite` `{bookId, favourite}` changes it. It sets the value it is sent and never toggles. Sending the current value is a 200 no-op that writes nothing, so `library.json` stays byte-identical. A deleted Book is 409 `book_not_found`, checked before the no-op. A missing or non-boolean `favourite` is 422 `invalid_fields`. It meets the standard intent ACs.
-- **Edits keep the star.** `edit-book`, the Edit panel, `edit_book` and every other intent (start, page, pause, finish, Up next, Side read, Purpose, Card notes, spine color) leave `favourite` as it was. `favourite` is never in `editForm` or in `edit_book`'s input schema.
-- **Backups.** A pre-Epic 16 library or backup migrates to version 4 with every Book `false`, and startup keeps `library.v3.bak.json`. Stars survive an export and restore round trip.
-- **Agents** (read only): `get_book`, `list_catalog` and `get_home` carry `favourite` as stored, and no tool's description or arguments change. There is no `set_favourite` tool: it joins the never-registered names in the agent tests. `find_book` neither returns nor matches it.
-- **Filter (16.2).** Favourites is its own group, ANDed with every other group and with Search titles. Books that don't match are hidden, not dimmed. "N books match." is announced. It is page state only: never stored or exported, reset on reload, on leaving the Catalog and when a Book is added, and never applied to Home's slice or the "X of Y finished" meter. `liveFilters` never turns it off. With nothing starred, the Catalog shows "No books match these filters." with "Clear filters", which turns every chip off.
-- **Gate.** The per-epic quality gates, plus green P0 risks:
-  - Edits on the web and with `edit_book` keep the star.
-  - An old backup restores with no stars, and the star round-trips.
-  - Starring and unstarring work from all four places, show in the other views after the refetch, and a no-op succeeds.
-  - The chip shows exactly the starred Books in all three views and ANDs with Unread, a Tag and a Search title.
-- **Existing tests.** Only the leaves the epic's gate lists may change. Examples: the schema-version pins move from 3 to 4, and "newer version" pins become 5. The field and route sets gain `favourite` or `set-favourite`. Some e2e Tab, button-count and legend leaves change. For 16.2, "Clear filters" focuses Favourites, and the toolbar Tab order starts with it. Every other existing test passes unchanged.
-- **Out of scope:**
-  - a favourites filter on Card notes or the Boxes shelf search
-  - an agent tool that sets the star
-  - a Favourites sort, a Stats count or a favourites page
-  - reporting in `preview_restore` the stars a restore would lose
-  - an optimistic star with rollback
-  - behavior that only Safari or Firefox shows
-  - Mac checks: this epic needs none
+- Any Book can be starred, whatever its reading state. The Book page holds the main control, and tiles, List rows and the Spine popover are shortcuts to it.
+- Edits keep the star (P0). Editing a starred Book on the web or with `edit_book` leaves it starred.
+- Backups (P0): a library or backup from before Epic 16 loads and restores with no Book starred, and a star survives an export and restore round trip.
+- Star and unstar (P0) work from all four places and show in the other views after the refetch. Setting the current value is a successful no-op.
+- Filter (P0): the chip shows exactly the starred Books in the bookcase, the list and the tiles. It ANDs with Unread, a Tag and Search titles.
+- P1: the couldn't-save failure, the hover-only outline on tiles and rows, stable accessible names with `aria-pressed`, the chip not being remembered (a reload resets it, and Home and the meter ignore it), agents reading `favourite` with no tool to set it, and the existing filter specs passing with the chip off.
+- Standard intent ACs apply to `set-favourite`. An injected write, fsync or rename failure leaves `library.json` byte-identical and returns 503 `couldnt_save`. Invariants hold after every success. A Book that is gone gets 409 `book_not_found`, and every new error code has an API test. Every save surface shows "Couldn't save. Your data wasn't changed." on a 503.
+- Per-epic gates: P0 100%, P1 at least 95%, `check:api` clean, coverage at least 90% on `domain/` and at least 80% on `intents/` and `store/`.
+- Existing tests stay unchanged except the leaves the epic's gate names in `epics.md`: version pins from 3 to 4 ("newer version" from 4 to 5), field and route sets, spine-popover, tile and legend e2e leaves for 16.1, and the "Clear filters" focus and toolbar Tab order leaves for 16.2. Open the gate list before you change any other test.
+- Out of scope: favourites on Card notes or the Boxes shelf search, an agent tool that sets the star, a Favourites sort, a favourites count in Stats, a favourites page, `preview_restore` reporting the stars a restore would lose, an optimistic star, Safari- or Firefox-only behavior, and Mac checks (there are none).
 
 ## Technical Decisions
 
-- **Migration (AD-13/AD-14).** Version 4 adds `favourite: false` to every Book. `store/migrations` `CURRENT_VERSION` and `domain/model` `SCHEMA_VERSION` both become 4. The chain test must still prove it contiguous from 1.
-- **Intent (AD-3).** The intent is a new module `intents/set_favourite`, routed in `http/api`. Its body is `multipart/form-data` with a JSON `intent` part, like every intent, even with no file. The `book_not_found` check runs inside the commit.
-- **The contract starts in Python (AD-8).** Add `favourite` to `ShelfBook` and `BookDetailView` in `views/models.py`, fill them in `views/shelf`, then run `npm --prefix frontend run api:gen`. Never edit or format `schema.d.ts` by hand.
-- **Fixtures.** `backend/tests/builder.py`'s default Book gets `"favourite": False`, and `tests/helpers.py`'s `EMPTY_LIBRARY` and `STORED_BOOK_KEYS` follow. Frontend and e2e fixtures add it through the shared builders.
-- **No optimistic UI (AD-7).** The star changes only after the save succeeds and the views refetch. A failure leaves it as it was, so there is nothing to roll back.
-- **Spine names (`lib/catalog` `spineNames`).** A starred Book's name ends with ", favourite" after the status. Twins are found on the name without it, so starring one Book never renames another.
-- **Filter rules (AD-6, `lib/catalogFilter.ts`).** Add `CatalogFilters.favourites: boolean`, its entry in `NO_FILTERS`, `FilterableBook.favourite` and the match in `matchesFilters`. `liveFilters` leaves Favourites alone.
-- **Chip.** The chip lives in `components/FilterChips.tsx`, and `pages/CatalogPage.tsx` wires it.
-- **Unstar with the chip on.** `pages/CatalogPage` owns the focus move and the combined message, never the star's own flow or `useSpinePopover`'s fallback.
-- **Gold tokens (UX-DR101).** `favourite` `#9A7120` and `favourite-dark` `#D2A54E` move from `{components.favourite-star}`'s literals into DESIGN.md's `colors` and `tokens.css` in the same change. `tokens.css` copies DESIGN.md character for character, and never run a formatter on it.
-- **The spine already covers this epic.** It was updated before the epic: AD-18 (the field), AD-13 (version 4), AD-3 (`set-favourite`), AD-6 (the Favourites group), AD-21 (read only) and the FR-31 capability-map row.
+- **Stored field:** every Book has `favourite: bool`. It is required in the store model with no default, and it adds no invariant rule. The schema goes from version 3 to 4 (`CURRENT_VERSION` and `SCHEMA_VERSION` both become 4) with one migration step that sets `false` on every Book. Startup keeps `library.v3.bak.json`. A version 4 file or archive without `favourite` is refused (`restore_invalid` on restore).
+- **The only writer:** `POST /api/intents/set-favourite`. It is multipart with a JSON `intent` part `{bookId, favourite}`, and it sets the value it is sent, never toggling. `add-book` stores `false`. `edit-book` and every other intent keep the stored value. `favourite` is never an Edit form field, so it never appears in `editForm` or in `edit_book`'s input. Setting the current value returns 200 and commits nothing (`store.UNCHANGED`), and that check runs after `book_not_found`.
+- **Views:** `ShelfBook` (in the catalog and home views) and `BookDetailView` carry `favourite` as stored. Add it in Python first, then run `api:gen`. Every surface reads that one field. The test builders default it to `false`.
+- **No optimistic UI:** the star changes only after `set-favourite` succeeds and the views refetch. A failure leaves it as it was, so there is nothing to roll back.
+- **Spine names:** a starred Book's name ends with ", favourite" after the status. Twins are matched on the name without that suffix, so starring one Book never renames another. Tiles use the same builder.
+- **Favourites filter** (`lib/catalogFilter.ts`, `components/FilterChips.tsx`): a lone on/off toggle that keeps Books whose `ShelfBook.favourite` is true. It is its own group for the AND rule. `liveFilters` never turns it off, so with nothing starred it stays on and the empty state shows. It counts as a filter for "Clear filters" and the empty state. It is page state only: reset when Catalog unmounts or a Book is added, and never applied to Home's slice or the "X of Y finished" meter.
+- **Unstar with the chip on:** `pages/CatalogPage` owns focus and the announcement, not the star's own flow and not `useSpinePopover`'s fallback.
+- **Agents:** `get_book`, `list_catalog` and `get_home` show `favourite` because they return their views unchanged. `set_favourite` is never registered (`AGENT_TOOL_NAMES` stays the same, and the never-registered probes name it). Tool descriptions don't change, and `find_book` neither returns nor matches `favourite`.
+- **Gold tokens:** `favourite` `#9A7120` and `favourite-dark` `#D2A54E` live in DESIGN.md's `colors` and in `tokens.css`. They change together, because `app-shell.spec.ts` compares the two files, and nobody runs a formatter on `tokens.css`.
 
 ## UX & Interaction Patterns
 
-- **Star control.** A `button` with `aria-pressed`, holding one SVG star path with no glyph character. The icon is `aria-hidden` and the button has no visible text. It is filled gold when starred and an outline when not. It is never disabled.
-  - **Names.** It is "Favourite" on Book detail and in the Spine popover, and "Favourite *Title*" on a tile or List row. e2e matches with `exact: true`.
-  - **Messages.** After the change, `status` announces "*Dune* is a favourite." or "*Dune* is not a favourite."
-  - **Couldn't save.** The star stays as it was, and `alert` says "Couldn't save. Your data wasn't changed." The line sits under the title row on Book detail and in an open popover. On Tiles and List, or once the popover has closed, it shows once under the filter row. It is emptied at the next save or filter change, and focus doesn't move.
-- **Book detail.** A plain icon button `{spacing.3}` after the `h1`, centered on its first line, always shown.
-- **Tiles.** The star is a bare star with a paper halo at the 2:3 cover box's top left, never over the finished ribbon. Starred is always shown. Unstarred is drawn only on hover or focus-within, at once. The button is a sibling after the tile's link, so Tab goes link, star, next tile.
-- **List.** The star sits `{spacing.2}` after the title link in the title cell. The row is no taller. Hover and focus follow the tile rules.
-- **Spine popover.** The button comes right after the title and is first in the DOM. On open, focus goes to the primary action, never the star. Shift+Tab from there reaches the star, and Shift+Tab from the star closes the popover and returns focus to the spine.
-- **Spine mark.** A small paper square with a gold star at the spine's foot. It also shows over a Main book's fill and next to a marker dot. It is not a control. It appears on the Catalog's bookcase and on Home's slice. The legend always shows a "favourite" item.
-- **Forced colors.** Every star uses `forced-color-adjust: none`: a `CanvasText` fill (starred) or stroke (unstarred), on a `Canvas` halo or square. Gold fills only stars, and a Reading's rating stars stay sage. No animation.
-- **Favourites chip.** It is first in the row, before Status: a lone toggle (not in a `role="group"`) named "Favourites", with no popup and a leading `aria-hidden` gold star. When on, it uses the selected chip style with the check glyph before the star. It shows whenever the Catalog has Books.
-- **Unstar with the chip on.** Once the refetch renders, focus goes to the next remaining Book in sort order: its tile link, its row's title link or its spine. Else it goes to the previous Book, else to Search titles. One message is announced: "*Dune* is not a favourite. 11 books match." From the popover, the popover closes with its spine first.
+- **Star control:** a `button` with `aria-pressed`, an `aria-hidden` SVG star (one path, never a glyph character) and no visible text. Starred is filled gold and unstarred is an outline. Its name is "Favourite" on Book detail and in the Spine popover, and "Favourite *Title*" on tiles and List rows. e2e finds it with `exact: true`, since "Favourite" is a prefix of "Favourites". The button is never disabled. A second press before the refetch sends the same value.
+- **Book detail:** a plain icon button `{spacing.3}` after the `h1` text, centered on its first line, always shown, with the focus ring.
+- **Spine popover:** the star sits right after the title and comes first in the popover's DOM. On open, focus goes to the primary action (else the first link), never the star. Shift+Tab from that control reaches the star. Shift+Tab from the star closes the popover and returns focus to the spine.
+- **Tile:** a bare star with a paper halo at the 2:3 cover box's top left, inset on the box rather than the visible cover, and never over the finished ribbon. It is a sibling of the tile link inside the list item, so Tab reaches the link, then its star. Starred stars always show. Unstarred stars are drawn only on `:hover` or `:focus-within`, instantly, and stay in the Tab order.
+- **List row:** the star comes `{spacing.2}` after the title link and never makes the row taller. It follows the same hover and focus rules as tiles.
+- **Spine mark:** a small paper square with a gold star near the spine's foot, also drawn over a Main book's fill and alongside a marker dot. It is not a control. The legend always lists "favourite".
+- **Announcements:** `status` says "*Dune* is a favourite." or "*Dune* is not a favourite." On failure, `alert` says "Couldn't save. Your data wasn't changed.", under the title row on Book detail or in an open popover. On Tiles, on List, or after the popover has closed, the line shows once under the filter row, without scrolling to it. It empties at the next save or filter change, and focus stays where it is.
+- **Gold:** fills the star only, never text, borders, backgrounds or rating stars. On covers and spines it is `#9A7120` in both themes. In forced colors every star uses `forced-color-adjust: none` with a `CanvasText` fill or stroke, on a `Canvas` halo or square. Nothing animates.
+- **Favourites chip:** first in the filter row, before Status. It is a lone toggle with `aria-pressed`, named "Favourites", outside any `role="group"`, with no popup. It shows a leading gold star in both states. When on, it uses the selected chip style with the check glyph before the star. It shows whenever the catalog has Books, and it is never hidden or disabled. When on, it announces "N books match."; with nothing starred, the empty state reads "No books match these filters." "Clear filters" turns every chip off and focuses the Favourites chip.
+- **Unstar with the chip on:** the Book hides once the refetch renders. Focus moves to the next remaining Book in sort order (its tile link, its row's title link or its spine), else the previous one, else Search titles. One `status` message says "*Dune* is not a favourite. 11 books match." From the popover, the popover closes with its spine, and focus follows the same rule.
 
 ## Cross-Story Dependencies
 
-- Before Story 16.1, resolve any unresolved "spine drift" entries in `deferred-work.md` (Epic 15's reconciliation landed in `d75b35e`).
-- Story 16.2 depends on 16.1's `ShelfBook.favourite`. It also depends on the star's save and announcement flow, which the unstar-with-chip-on path reuses.
-- Story 16.2 closes the epic. After it come test automation, the Epic 16 retrospective and its before-next-epic items. Don't start the next epic first.
+- Story 16.2 builds on 16.1's `ShelfBook.favourite`, the star's save flow and its couldn't-save placement. 16.1 added the shared star button (`components/FavouriteStar`) and its save hook (`lib/useFavourite`). An open spine drift entry records that the spine doesn't name them yet.
+- Story 16.2 closes the epic. Afterwards come automate, then the retrospective with the trace and gate and the spine reconciliation, before any Epic 17 story.

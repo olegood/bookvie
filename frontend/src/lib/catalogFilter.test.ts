@@ -16,16 +16,24 @@ import {
 type Book = FilterableBook & { title: string }
 
 function book(fields: Partial<Book> & { title: string }): Book {
-  return { finished: false, type: 'paperback', language: 'English', tags: [], publisher: 'Penguin', ...fields }
+  return {
+    favourite: false,
+    finished: false,
+    type: 'paperback',
+    language: 'English',
+    tags: [],
+    publisher: 'Penguin',
+    ...fields,
+  }
 }
 
 const SHELF: readonly Book[] = [
-  book({ title: 'Bleak House', type: 'hardcover', tags: ['novel', 'classic'], publisher: 'Manning' }),
+  book({ title: 'Bleak House', type: 'hardcover', tags: ['novel', 'classic'], publisher: 'Manning', favourite: true }),
   book({ title: 'Dubliners', tags: ['stories'], publisher: "O'Reilly Media" }),
-  book({ title: 'Emma', type: 'ebook', tags: ['novel', 'Classic'], publisher: 'manning' }),
+  book({ title: 'Emma', type: 'ebook', tags: ['novel', 'Classic'], publisher: 'manning', favourite: true }),
   book({ title: 'Flights', type: 'hardcover', language: 'Polish', finished: true, publisher: 'Manning' }),
   book({ title: 'Candide', type: 'ebook', language: 'French', tags: ['classic'], finished: true }),
-  book({ title: 'Austerlitz', language: 'German', tags: ['novel'], finished: true }),
+  book({ title: 'Austerlitz', language: 'German', tags: ['novel'], finished: true, favourite: true }),
 ]
 
 function shown(filters: Partial<CatalogFilters>): string[] {
@@ -84,6 +92,20 @@ describe('matchesFilters', () => {
       'Flights',
     ])
     assert.deepEqual(shown({ publishers: ['manning'], status: ['unread'], tags: ['novel'] }), ['Bleak House', 'Emma'])
+  })
+
+  it('keeps only starred Books with Favourites on', () => {
+    assert.deepEqual(shown({ favourites: true }), ['Bleak House', 'Emma', 'Austerlitz'])
+  })
+
+  it('combines Favourites with every other group with AND', () => {
+    assert.deepEqual(shown({ favourites: true, status: ['unread'] }), ['Bleak House', 'Emma'])
+    assert.deepEqual(shown({ favourites: true, status: ['read'] }), ['Austerlitz'])
+    assert.deepEqual(shown({ favourites: true, types: ['ebook', 'hardcover'] }), ['Bleak House', 'Emma'])
+    assert.deepEqual(shown({ favourites: true, languages: ['german'] }), ['Austerlitz'])
+    assert.deepEqual(shown({ favourites: true, tags: ['classic'] }), ['Bleak House', 'Emma'])
+    assert.deepEqual(shown({ favourites: true, publishers: ['penguin'] }), ['Austerlitz'])
+    assert.deepEqual(shown({ favourites: true, languages: ['polish'] }), [])
   })
 })
 
@@ -166,6 +188,11 @@ describe('filtersOn', () => {
     assert.equal(filtersOn({ ...NO_FILTERS, status: ['read'] }), true)
     assert.equal(filtersOn({ ...NO_FILTERS, tags: ['novel'] }), true)
     assert.equal(filtersOn({ ...NO_FILTERS, publishers: ['manning'] }), true)
+    assert.equal(filtersOn({ ...NO_FILTERS, favourites: true }), true)
+  })
+
+  it('has Favourites off in NO_FILTERS', () => {
+    assert.equal(NO_FILTERS.favourites, false)
   })
 })
 
@@ -202,6 +229,13 @@ describe('liveFilters', () => {
   it('returns the same filters when every checked value is live', () => {
     const filters: CatalogFilters = { ...NO_FILTERS, status: ['read'], languages: ['english'], publishers: ['apress'] }
     assert.equal(liveFilters(filters, languages, tags, publishers), filters)
+  })
+
+  it('never turns Favourites off, so it stays on with nothing starred', () => {
+    const filters: CatalogFilters = { ...NO_FILTERS, favourites: true }
+    assert.equal(liveFilters(filters, [], [], []), filters)
+    const dropped = liveFilters({ ...filters, tags: ['gone'] }, languages, tags, publishers)
+    assert.deepEqual(dropped, { ...NO_FILTERS, favourites: true, tags: [] })
   })
 
   it('does not mutate its input', () => {

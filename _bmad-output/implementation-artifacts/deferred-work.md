@@ -1867,3 +1867,12 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-16-1-star-a-book.md`
   summary: Spine drift (Capability → Architecture Map FR-31 row, Structural Seed; AD-6, AD-7), reconciled before the next epic: the FR-31 row's "Lives in" names the pages that host the star but not `components/FavouriteStar` (the shared star button) or `lib/useFavourite` (the star's save flow, with its inline and row alert slots), and the Seed's `lib/` and `components/` lines omit both.
   evidence: Spine Check, build-auto review of Story 16.1; `frontend/src/components/FavouriteStar.tsx`, `frontend/src/lib/useFavourite.ts`; `ARCHITECTURE-SPINE.md` FR-31 row and Structural Seed.
+
+## Deferred from: build-auto review of spec-16-2-show-only-my-favourites (2026-11-25)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-16-2-show-only-my-favourites.md`
+  summary: Spine drift (AD-6, AD-7; Capability → Architecture Map FR-31 row, Structural Seed `lib/` line), reconciled before the next epic: `lib/useFavourite` now takes an `onSaved` option that lets `pages/CatalogPage` take over the star's success line (the unstar with the Favourites chip on), and the spine names neither the module nor the hand-off. Reconcile it with the Story 16.1 entry above.
+  evidence: Spine Check, build-auto review of Story 16.2; `frontend/src/lib/useFavourite.ts` (`FavouriteOptions.onSaved`), `frontend/src/pages/CatalogPage.tsx` (the unstar layout effect); `ARCHITECTURE-SPINE.md` FR-31 row and Structural Seed. The code follows AD-6 and AD-7.
+- source_spec: `_bmad-output/implementation-artifacts/spec-16-2-show-only-my-favourites.md`
+  summary: No test covers CatalogPage's branch for the Favourites chip going off before the refetched view drops an unstarred Book, which speaks the plain "*Title* is not a favourite." line instead of the combined one.
+  evidence: Verification-gap layer, build-auto review of Story 16.2. `favourites-chip.spec.ts` AC-6 to AC-8 keep the chip on throughout; `favourite-star.spec.ts` unstars with the chip off from the start, so `onSaved` returns false and the branch never runs. Needs a held catalog-view refetch (a route hold and release, as `favourite-star.spec.ts` AC-7 does); for `bmad-testarch-automate`.
