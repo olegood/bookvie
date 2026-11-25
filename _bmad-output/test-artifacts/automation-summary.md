@@ -1,104 +1,98 @@
 ---
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03-generate-tests', 'step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
-lastSaved: '2026-11-24'
-storyId: '14.5'
-storyKey: '14-5-keep-the-search-when-i-open-a-box-and-come-back'
+lastSaved: '2026-11-25'
+storyId: '15.1'
+storyKey: '15-1-carry-the-publisher-in-the-catalog-view'
 inputDocuments:
-  - _bmad-output/implementation-artifacts/spec-14-5-keep-the-search-when-i-open-a-box-and-come-back.md (I/O matrix, Review Findings, Auto Run Result)
-  - _bmad-output/test-artifacts/atdd-checklist-14-5-keep-the-search-when-i-open-a-box-and-come-back.md (Green-phase follow-ups)
+  - _bmad-output/implementation-artifacts/spec-15-1-carry-the-publisher-in-the-catalog-view.md (I/O matrix, Review Findings, Auto Run Result)
+  - _bmad-output/test-artifacts/atdd-checklist-15-1-carry-the-publisher-in-the-catalog-view.md (Green-phase follow-ups, Implementation checklist)
+  - _bmad-output/implementation-artifacts/epic-15-context.md
   - _bmad/tea/config.yaml
-  - frontend/src/lib/carriedSearch.ts, carriedSearch.test.ts, useSearchCount.ts; frontend/src/pages/CardNotesPage.tsx; frontend/src/api/queryClient.ts, views.ts
-  - frontend/e2e/carried-search.spec.ts, search-boxes-automate.spec.ts (openPaused, axe), card-note-boxes.ts, card-note-add-another.ts, back-to-top.ts, home.ts, pile.ts, dev-mode.ts, stats.ts, card-notes.spec.ts
+  - backend/bookvie/views/models.py, backend/bookvie/views/shelf.py
+  - backend/tests/test_catalog_publisher.py, test_card_notes_spine_color_follow_ups.py (export, restore), test_add_book.py (`_add`), test_agent_book_write.py (edit_book flow), helpers.py, agent_client.py, builder.py, conftest.py (`connect_mcp`)
   - knowledge/test-levels-framework.md
   - knowledge/test-priorities-matrix.md
   - knowledge/data-factories.md
-  - knowledge/selective-testing.md
-  - knowledge/ci-burn-in.md
   - knowledge/test-quality.md
-  - knowledge/fixture-architecture.md
-  - knowledge/network-first.md
-  - knowledge/playwright-cli.md
 ---
 
-# Automation Summary: Story 14.5 Keep the search when I open a box and come back
+# Automation Summary: Story 15.1 Carry the publisher in the catalog view
 
 ## Preflight
 
-- **Done at HEAD:** `git show HEAD:…/sprint-status.yaml` reads `14-5-keep-the-search-when-i-open-a-box-and-come-back: done` (review commit `d311fea`). The working tree was clean.
-- **Stack:** `fullstack` (auto). The story is frontend only: the search carried between Card notes entries. No server or API change, so no backend or API target.
-- **Mode:** BMad-Integrated. The spec, the ATDD checklist's 12 green-phase follow-ups and the review's one deferral ("Keying the body by `location.key` is not verified by any test") are the inputs.
-- **Framework:** Playwright (Chromium only), `node --test` for unit leaves. `tea_use_playwright_utils: false` → Traditional Patterns. No Pact. `tea_browser_automation: auto` → `playwright-cli.md`.
+- **Done at HEAD.** `git show HEAD:…/sprint-status.yaml` reads `15-1-carry-the-publisher-in-the-catalog-view: done` (review commit `1455ecb`), and the working tree was clean.
+- **Stack:** `fullstack` (auto). The story changes two backend view files and the generated `schema.d.ts`, and it changes no page.
+  - Every target is a pytest leaf.
+  - No browser session was opened.
+  - The Playwright fragments (`fixture-architecture`, `network-first`, `playwright-cli`) weren't loaded.
+- **Mode:** BMad-Integrated. The inputs were:
+  - the ATDD checklist's 3 open green-phase follow-ups and its 6 implementation lines
+  - the spec's I/O matrix and Review Findings, which hold 0 patches and 1 deferral about epic status in `sprint-status.yaml`. That deferral has nothing to test.
+- **Generation:** sequential, in this session. The config's `auto` would resolve to subagents. But there are 3 leaves in one file, and they reuse the ATDD module's seed and constants, so a worker would need this session's reading anyway. Story 14.1's automate run made the same choice.
+- **Knowledge:** I read the core fragments' principles: test levels, priorities, data factories and test quality. `selective-testing` and `ci-burn-in` weren't needed, because no CI or selection change is made. `tea_use_playwright_utils` and `tea_use_pactjs_utils` are off, and there is no Pact artifact.
 
-## Coverage Plan
+## Coverage plan
 
-Existing coverage: `carried-search.spec.ts` (6 leaves: AC-1 to AC-4, AC-6, and the review's `noGroups` leaf) and `carriedSearch.test.ts` (1 unit leaf, AC-5). New leaves go in `frontend/e2e/carried-search-automate.spec.ts`, plus one unit leaf in `carriedSearch.test.ts`. Selective scope: the checklist's follow-ups and the review's deferral, nothing the ATDD leaves already prove.
+The 4 ATDD leaves cover AC-1 to AC-4. The review found no gap: Edge Case Hunter and Verification Gap reported nothing. This run adds one leaf for each follow-up, all in `backend/tests/test_catalog_publisher_follow_ups.py`:
 
-| # | Target | Level | Priority | Source |
-|---|---|---|---|---|
-| 1 | A box opened by Enter carries the text; Walden announces the singular "1 note matches." | E2E | P1 | follow-ups AC-1 singular, AC-1 keyboard |
-| 2 | Back with a text that matches nothing: every box faded, "No card notes contain “…”." announced once | E2E | P1 | AC-2 no match |
-| 3 | List view: the chip carries "habit" into the List's grouped results, "17 notes match." once with the `h1` focused | E2E | P1 | AC-2 List view |
-| 4 | The chip carries the text when the open box was entered by a box, and by Home's "See card notes" | E2E | P1 | AC-3 other ways in |
-| 5 | Empty: a box opened with an empty field, Home's "See card notes" and Book detail's "See all card notes" after text was typed on the shelf, the nav link from the open box | E2E | P1 | AC-4 remaining ways |
-| 6 | Fresh body on the nav-link REPLACE: scroll to the top, a pending count never announced, the view refetched | E2E | P0 | AC-5 fresh body; review deferral (body keyed by `location.key`) |
-| 7 | Fresh body on a same-scope POP (`history.go(-2)` between two shelf entries): an open pile is gone | E2E | P1 | AC-5 fresh body |
-| 8 | The chip draws every box in its search state from its first frame | E2E | P1 | AC-6 by the chip |
-| 9 | A carried arrival under reduced motion and in dark is drawn the same, from the first frame | E2E | P2 | reduced motion and dark |
-| 10 | The open box arriving with a carried search passes axe, light and dark | E2E | P2 | axe |
-| 11 | A coalesced `navigate(-2)` counts from the handled location | Unit | P1 | AC-5 coalesced moves |
-
-Not automated: **AC-4 bfcache** ("a bfcache restore keeps the page as left"). The e2e server sends no headers that make the page bfcache-eligible on demand and Playwright can't force a bfcache restore, so this is retired in the checklist.
-
-## Generation
-
-Run in sequence in this session, as for 14.1 to 14.4: no worker subagent was launched, and the server doesn't change, so there's no API or backend target.
-
-**Files:**
-- `frontend/e2e/carried-search-automate.spec.ts` (new): 10 leaves, targets 1 to 10 above.
-- `frontend/e2e/carried-search.ts` (new): the helpers and constants `carried-search.spec.ts` kept locally (`LIFT`, `FADE`, `HABIT_LINE`, `HABITS_LINE`, `H1`, `searchedState`, `HABIT_STATE`, `HABITS_STATE`, `AT_REST`, `chip`, `notes`, `announced`, `searchTheShelf`). They moved here unchanged, so the second spec imports them and doesn't keep a copy.
-- `frontend/e2e/carried-search.spec.ts`: imports from `carried-search.ts` instead of its local copies. The leaves are unchanged.
-- `frontend/src/lib/carriedSearch.test.ts`: one unit leaf (target 11), in its own `describe`, reusing the file's `mount` harness.
-
-| Leaf | Level | Priority | What it proves |
+| Source | Priority | Level | Leaf |
 |---|---|---|---|
-| `carried-search-automate.spec.ts:77` | E2E | P1 | Enter on Walden's focused box: field "habit", 1 note, 1 `<mark>`, "1 note matches." once with the `h1` focused |
-| `:98` | E2E | P1 | "zqx" on the open box, then Back: every box faded, "No card notes contain “zqx”." shown and announced once with the `h1` focused |
-| `:122` | E2E | P1 | The chip after a box-entered open box carries "habits" (`HABITS_STATE`, announced once); Back from there to the box starts empty. The chip after Home's "See card notes" carries "habit" (`HABIT_STATE`, announced once with the `h1` focused) |
-| `:166` | E2E | P1 | Empty with nothing announced: a box opened with an empty field; Home's "See card notes" and Book detail's "See all card notes" after "habit" was typed on the shelf; the nav link from an open box carrying "habit" |
-| `:225` | E2E | P0 | Fresh body on the nav link's REPLACE under a paused clock: with "habit" typed 400ms earlier, the click sends the shelf view's GET again, the field is empty, `scrollY` is 0, the `h1` is focused, and after 1s nothing is announced |
-| `:255` | E2E | P1 | The chip draws the shelf in its search state from its first frame: Refactoring at 0.38 and Atomic Habits at −6 in every sampled frame |
-| `:279` | E2E | P2 | The same through Back, under `reducedMotion: 'reduce'` and in dark |
-| `:299` | E2E | P2 | The open box with a carried "habit" passes axe (`AXE_TAGS`) in light and dark, with no rule disabled |
-| `:321` | E2E | P1 | List view: the chip carries "habit": 4 groups, 17 notes, List pressed, "17 notes match." once with the `h1` focused |
-| `:350` | E2E | P1 | Fresh body on a POP within the same scope: shelf, Home, shelf again, pile opened, `history.go(-2)`. The pile is gone and the `h1` is focused |
-| `carriedSearch.test.ts:195` | Unit | P1 | `navigate(-2)` from the chip's shelf to the first shelf, skipping a box whose `openedFrom` names it, starts empty; `navigate(2)` also starts empty; the same trip one step at a time brings "habits" out |
+| Follow-up "a Book added through `add-book`" (AC-1's branch) | P2 | API | `test_a_book_added_with_a_padded_publisher_shows_it_trimmed_on_the_next_read`: `add-book` with `"  No Starch Press  "` stores the trimmed value. The next catalog read carries it for the new Book, and the seeded Books keep theirs ("manning" included). |
+| Follow-up "a restored library" (AC-1's branch) | P2 | API | `test_after_a_restore_the_catalog_carries_the_restored_books_publishers`: a target library is read first with another publisher. After restoring the seed's real export, `library.json` matches the source byte for byte, and the next read carries the 4 restored publishers in library order. |
+| Follow-up "the agent `edit_book` tool" (AC-3's branch) | P2 | API (MCP) | `test_an_agent_publisher_edit_shows_in_the_next_list_catalog`: `get_book`'s edit form, then `edit_book` with `"  Ace Books  "`. The value is stored trimmed. The next `list_catalog` shows it for Dune only, and it still equals the HTTP catalog view. |
 
-**Mutation checks** (each was an edit reverted the same way, with no git command; afterwards `git diff --stat src/pages/` was empty):
-- Body keyed by `bookId ?? ''` in place of `location.key`: `:225` failed at the refetch wait, and `:350` failed with the pile still open.
-- The same mutation with `:225`'s refetch wait skipped for that run only: the leaf still failed, on "nothing announced" (`:251`, the waiting count of "habit" was announced). So the pending-count check catches the mutation on its own as well.
-- The `scrollY` 0 check in `:225` did **not** fail under the mutation. Focusing the `h1` (`PageHeading`) already scrolls the shelf to the top, so the layout effect's scroll can't be told apart from it on a REPLACE. The check stays as a true statement of the behavior, but it isn't evidence for the layout effect. AC-2 and AC-3's Back leaves are where that scroll is tested.
+**Not added:**
+- **An e2e leaf.** No page reads the field until 15.2, and the existing catalog, home-slice and catalog-filter specs pass unchanged (AC-4).
+- **A blank or missing stored publisher.** `store.py:211` refuses one on load, and `test_invariants.py:364` already pins that (`book_publisher_required`).
+
+## Files
+
+- **Created:** `backend/tests/test_catalog_publisher_follow_ups.py`, with 3 leaves.
+- **Updated:** the ATDD checklist.
+  - The 3 green-phase follow-ups and the 6 implementation-checklist lines are ticked with their evidence.
+  - The docstring line notes that "(Story 15.2)" was dropped, as the review recorded.
+  - Remaining `[ ]`: **0** (`grep -cF '[ ]'`).
+
+## Helper probes
+
+- **Helpers reused:**
+  - `_seed`, `_get`, `PUBLISHERS` and `CATALOG_VIEW` (`tests/test_catalog_publisher.py`)
+  - `_add` (`tests/test_add_book.py`)
+  - `EXPORT` and `EXPORT_HEADERS` (`tests/test_card_notes_spine_color_follow_ups.py`)
+  - `api_client`, `library_bytes`, `post_restore` and `stored_book` (`tests/helpers.py`)
+  - `LibraryBuilder` (`tests/builder.py`)
+  - `McpClient`, `structured_of` and `text_of` (`tests/agent_client.py`)
+  - `connect_mcp` (`conftest.py`)
+- **Helpers added:** none. The new module defines no helper, constant or fixture.
 
 ## Validation
 
-- `node --test src/lib/carriedSearch.test.ts`: 2 passed.
-- `TZ=Europe/Madrid npx playwright test e2e/carried-search-automate.spec.ts e2e/carried-search.spec.ts`: 16 passed on the first run (10 new, plus the 6 ATDD leaves after the helper move).
-- `npm run check:api` (Prettier, oxlint, `tsc -b`, unit): exit 0, unit 416 passed.
-- `npm run check`: exit 0. check:api passed (unit 416), check:py passed (2508), check:e2e passed (872, up from 862 by the 10 new leaves, none flaky), check:smoke passed.
+- **Each new leaf can fail.** I made two hand edits of `backend/bookvie/views/shelf.py`'s `publisher=` line, one at a time. Each was reverted from a scratchpad copy, and `git status` afterwards showed only the new test file.
 
-Checklist (`checklist.md`): framework ready, every target mapped to a leaf, priorities tagged in the titles, no hard waits (the paused clock's `runFor` advances fake time only), selectors by role and text. The one CSS selector comes from the shared `boxOfBook` helper. No CLI browser session was opened, so none was left behind. Probes and backups went to the session scratchpad, not the repo.
+  | Hand edit | Result |
+  |---|---|
+  | `publisher=book.publisher.lower()` | 3 of 3 failed |
+  | `publisher="Publisher"` (a constant) | 3 of 3 failed |
 
-## ATDD checklist
-
-`atdd-checklist-14-5-keep-the-search-when-i-open-a-box-and-come-back.md`: 11 green-phase follow-ups ticked with the leaf that proves each. "AC-4 bfcache" is retired: Playwright can't force a bfcache restore. The stale line 83 ("covered by AC-4's nav-link branch", the review's deferral) now points at the fresh-body leaves. `grep -cF '[ ]'` → **0**.
+- **Story module:** `uv run pytest -q tests/test_catalog_publisher_follow_ups.py` gave 3 passed. ruff format and ruff check were clean.
+- **Suite:**
+  - `npm run check:py` gave **2515 passed**: the review-time 2512, plus 3. Every coverage gate was OK.
+  - `npm run check:api` exited 0, with 416 unit tests passing.
+  - `check:e2e` wasn't re-run, because no frontend or source file changed. The build's full `npm run check` had e2e at 876 passed.
+- **Quality checklist:**
+  - No hard waits or conditionals.
+  - Every assert compares exact values, lists or dicts.
+  - Each leaf builds its own library under `tmp_path`, so the leaves are parallel-safe.
+  - One subject per leaf.
+  - No skips or focus.
+- **No browser sessions** were opened, and no temp files are left in the repo. The mutation backup is in the session scratchpad.
 
 ## Assumptions and risks
 
-- `:225` pauses the clock only after `scrollToY`, which waits on animation frames, which the paused clock would also stop.
-- `:350` uses `history.go(-2)` from the page, standing in for Back's long-press menu, since Playwright has no two-step Back. It waits for `history.state.idx` 0 before asserting.
-- The "no placeholder data" part of AC-5 is shown only indirectly, by the refetch on mount. `useCardNotesView` sets no `placeholderData` (`views.ts`), so there is no previous-key data to show.
-- Residual risk from the build stands: a stale cached scoped view with no groups drops a carried search before the refetch (rejected as rare in the review).
+- The new module imports private helpers from other test modules: `_seed` and `_get` from the ATDD module, and `_add` from `test_add_book.py`. A change to those helpers changes this file too. Earlier follow-up modules import from their story's module the same way (`test_card_notes_spine_color_follow_ups.py`).
+- `EXPORT` and `EXPORT_HEADERS` exist in two test modules (`test_card_notes_spine_color_follow_ups.py` and `test_agent_backup.py`), and several others inline the literal. This run imports one copy and adds none.
 
 ## Next
 
-Story 14.5 is Epic 14's last story. Next: the Epic 14 retrospective (`bmad-retrospective`), then its before-next-epic items: the trace and gate (`bmad-testarch-trace`) and the spine reconciliation of Epic 14's "spine drift" entries (AGENTS.md → Epic boundaries).
+Story 15.2 (`filter-the-catalog-by-publisher`) is the next story of Epic 15, and it closes the epic. Start it with `bmad-testarch-atdd`.

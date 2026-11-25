@@ -89,9 +89,9 @@ The simulated build below found exactly these two. AC-4's "pass unchanged" is ab
 
 ## Green-phase follow-ups (secondary branches, not red leaves)
 
-- [ ] **A Book added through `add-book`** (with a padded publisher) shows its trimmed publisher in the next catalog fetch. AC-1 covers `edit-book`.
-- [ ] **A restored library:** after a restore, the catalog carries the restored Books' publishers. A restore writes `library.json`, which the view reads, so no new code is needed. One leaf would pin it.
-- [ ] **The agent `edit_book` tool** changing the publisher shows in the next `list_catalog` call.
+- [x] **A Book added through `add-book`** (with a padded publisher) shows its trimmed publisher in the next catalog fetch. AC-1 covers `edit-book`. (done: backend/tests/test_catalog_publisher_follow_ups.py::test_a_book_added_with_a_padded_publisher_shows_it_trimmed_on_the_next_read)
+- [x] **A restored library:** after a restore, the catalog carries the restored Books' publishers. A restore writes `library.json`, which the view reads, so no new code is needed. One leaf would pin it. (done: backend/tests/test_catalog_publisher_follow_ups.py::test_after_a_restore_the_catalog_carries_the_restored_books_publishers)
+- [x] **The agent `edit_book` tool** changing the publisher shows in the next `list_catalog` call. (done: backend/tests/test_catalog_publisher_follow_ups.py::test_an_agent_publisher_edit_shows_in_the_next_list_catalog)
 
 ## Helper probes
 
@@ -136,12 +136,12 @@ There are 4 skipped leaves in `backend/tests/test_catalog_publisher.py`, each `@
 
 ## Implementation checklist (for `bmad-build-auto`)
 
-- [ ] `ShelfBook.publisher: str` (`views/models.py`), with a docstring line: the Book's publisher as stored (trimmed by the book fields); read by Catalog's Publisher filter (Story 15.2).
-- [ ] `views/shelf.py` `_shelf_book`: `publisher=book.publisher`. Don't merge case or otherwise normalize it ("manning" stays "manning").
-- [ ] `npm --prefix frontend run api:gen`, then `npm --prefix frontend run check:api`. Only `frontend/src/api/generated/schema.d.ts` changes among generated files, and no other file is reformatted (`git status`). If `tsc -b` names a `ShelfBook` fixture, add `publisher` to it through its shared helper.
-- [ ] Update `test_views.py:59`'s expected Books with `"publisher": "Publisher"` (above).
-- [ ] Un-skip the 4 leaves, remove `RED_15_1` and the `pytest` import if it's then unused, and run `npm run check` (the e2e suite included, for AC-4).
-- [ ] Nothing else: no domain, store, backup, intent, agent-tool, page or component change. `list_catalog`'s description and arguments stay as they are.
+- [x] `ShelfBook.publisher: str` (`views/models.py`), with a docstring line: the Book's publisher as stored (trimmed by the book fields); read by Catalog's Publisher filter (Story 15.2). (done: backend/bookvie/views/models.py:61-62, commit 2276696; the docstring leaves out "(Story 15.2)", which the 15.1 review rejected as low)
+- [x] `views/shelf.py` `_shelf_book`: `publisher=book.publisher`. Don't merge case or otherwise normalize it ("manning" stays "manning"). (done: backend/bookvie/views/shelf.py:80; test_catalog_publisher.py AC-1 pins "manning", and this run's mutations `.lower()` and a constant fail all 3 follow-ups)
+- [x] `npm --prefix frontend run api:gen`, then `npm --prefix frontend run check:api`. Only `frontend/src/api/generated/schema.d.ts` changes among generated files, and no other file is reformatted (`git status`). If `tsc -b` names a `ShelfBook` fixture, add `publisher` to it through its shared helper. (done: schema.d.ts +2 lines in commit 2276696, no frontend fixture changed; `npm run check:api` exit 0 in this run)
+- [x] Update `test_views.py:59`'s expected Books with `"publisher": "Publisher"` (above). (done: backend/tests/test_views.py, 3 expected Books; passed in this run's `check:py`)
+- [x] Un-skip the 4 leaves, remove `RED_15_1` and the `pytest` import if it's then unused, and run `npm run check` (the e2e suite included, for AC-4). (done: no skip or `RED_15_1` left in test_catalog_publisher.py; `check:py` 2515 passed in this run; the full `npm run check` with e2e 876 passed ran in the build, spec Auto Run Result)
+- [x] Nothing else: no domain, store, backup, intent, agent-tool, page or component change. `list_catalog`'s description and arguments stay as they are. (done: the branch diff touches only views/models.py and views/shelf.py under backend/bookvie, per the 15.1 review; test_catalog_publisher.py AC-3 pins the description and inputSchema)
 
 ## Suite
 
