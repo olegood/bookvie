@@ -70,6 +70,8 @@ export function useFavourite(): FavouriteFlow {
   }, [failure, inline, row])
 
   const send = async (book: FavouriteBook, favourite: boolean): Promise<void> => {
+    // The inline slot the press came from: only it may take this press's failure.
+    const slotAtPress = inlineNow.current
     const result = await run(
       () => setFailure(null),
       () => sendFavourite(book.id, favourite),
@@ -79,7 +81,7 @@ export function useFavourite(): FavouriteFlow {
       announce('status', favouriteStatus(book.title, favourite))
       return
     }
-    setFailure(inlineNow.current === null ? 'row' : 'inline')
+    setFailure(slotAtPress !== null && inlineNow.current === slotAtPress ? 'inline' : 'row')
     announce('alert', result.message)
   }
 

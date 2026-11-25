@@ -65,11 +65,11 @@ def as_v3(library_json: bytes) -> bytes:
 
 
 def as_v2(library_json: bytes) -> bytes:
-    """Current ``library.json`` bytes as schemaVersion 2 wrote them: no ``earlierSegments``.
+    """Current ``library.json`` bytes as schemaVersion 2 wrote them: no ``earlierSegments`` or ``favourite``.
 
     Only for libraries whose Readings have no earlier segments, which v2 can't hold.
     """
-    doc = json.loads(library_json)
+    doc = json.loads(as_v3(library_json))
     doc["schemaVersion"] = 2
     for book in doc["books"]:
         for reading in book["readings"]:

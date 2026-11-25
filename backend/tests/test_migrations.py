@@ -70,7 +70,20 @@ def test_step_that_forgets_the_version_raises(monkeypatch: pytest.MonkeyPatch) -
 def _seed_v1(data_dir: Path) -> bytes:
     builder = LibraryBuilder()
     builder.book(title="Dune", tags=["sf"])
-    return _write_v1(builder, data_dir)
+    return _write_stand_in_v1(builder, data_dir)
+
+
+def _write_stand_in_v1(builder: LibraryBuilder, data_dir: Path) -> bytes:
+    """The current shape stamped schemaVersion 1, for the stand-in chain's tests.
+
+    The stand-in step only tags Books, so its result must already fit the model.
+    """
+    path = builder.write(data_dir)
+    doc = json.loads(path.read_bytes())
+    doc["schemaVersion"] = 1
+    original = json.dumps(doc).encode()
+    path.write_bytes(original)
+    return original
 
 
 def _write_v1(builder: LibraryBuilder, data_dir: Path) -> bytes:
@@ -198,7 +211,7 @@ def test_a_migration_sweeps_covers_against_the_migrated_library(
 ) -> None:
     builder = LibraryBuilder()
     builder.book(title="Dune", cover_file="covers/x.jpg")
-    _write_v1(builder, tmp_path)
+    _write_stand_in_v1(builder, tmp_path)
     (tmp_path / "covers").mkdir()
     (tmp_path / "covers" / "x.jpg").write_bytes(b"jpeg")
     (tmp_path / "covers" / "stray.jpg").write_bytes(b"jpeg")

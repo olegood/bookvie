@@ -2,7 +2,7 @@
 title: 'Story 16.1: Star a Book'
 type: 'feature'
 created: '2026-11-25'
-status: 'in-review'
+status: 'done'
 baseline_revision: '769fa6398e8484b34ff54cb020febb7fad5c4ecc'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -170,3 +170,38 @@ Status: in-review
 - The ATDD checklist's green-phase follow-ups (bookvie stopped, the List view's line, dark details) are left to `bmad-testarch-automate`.
 
 Next: run `bmad-code-review` in a new session (AGENTS.md "Story pipeline").
+
+### Review Findings
+
+Code review 2026-11-25 (bmad-code-review, new session). Layers: Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor, Spine Check. 23 findings: 0 decision-needed, 2 patch, 1 defer, 19 rejected (one patch merges two findings). Verification Gap: none. Spine Check: one drift (the FR-31 row and the Structural Seed), already deferred by the build. AD-3, AD-6, AD-7, AD-8, AD-9, AD-13, AD-14, AD-17, AD-18 and AD-21 hold.
+
+- [x] [Review][Patch] A failure picks its slot when the result lands, not when the star was pressed. Say the user presses Dune's popover star, closes the popover and opens Emma's before a slow failure returns. Dune's "Couldn't save." line then shows under Emma's title. The same happens when a tile or row press fails after a popover opens. This contradicts the hook's own header ("a slot rendered later never takes it"). The fix: note the inline slot at press time, and use `'inline'` only if that same slot is still rendered [frontend/src/lib/useFavourite.ts:82]
+- [x] [Review][Patch] `as_v2` doesn't go through `as_v3`, so the v1 and v2 fixtures still carry `favourite`, a key no v1 or v2 file has. The v1 and v2 restore and migration tests therefore never run the 3→4 step on a document without it [backend/tests/builder.py:67]
+- [x] [Review][Defer] Spine drift (AD-6, AD-7; Capability map FR-31 row, Structural Seed): `components/FavouriteStar` and `lib/useFavourite` aren't named [ARCHITECTURE-SPINE.md] — deferred: already in `deferred-work.md` from the build-auto review, reconciled before the next epic. No duplicate entry added.
+
+Patches applied 2026-11-25:
+- `useFavourite.send` notes the inline slot when the star is pressed. A failure goes inline only if that same slot is still rendered, else to the row.
+- `as_v2` now goes through `as_v3`, so the v1 and v2 fixtures carry no `favourite`, and the real 1→4 and 2→4 chain tests run the 3→4 step. The stand-in chain's tests (the five that seed with `_seed_v1`, plus the cover sweep) had relied on `as_v1` leaving `favourite` in place, because the stand-in step can't add it, and four of them failed after the change. They now seed with `_write_stand_in_v1`, the current shape stamped `schemaVersion: 1`, and their intent is unchanged.
+
+Full check after the last patch, 2026-11-25: `npm run check` exit 0. pytest 2533 passed, unit 428 passed, e2e 902 passed (none skipped), smoke ok.
+
+**Rejected:**
+- (blind) `low` The star's failure state isn't cleared when another flow on the same page fails next (Up next, Pause), so its slot keeps `data-show-alert` with empty regions. It is the same pattern `useAlertSlot` already has for Up next and Pause on Book detail, two failures in a row are rare, and a fix would add cross-flow state. `releaseRegions(slot)` releases by `lastIndexOf`, so the claim that it pulls the regions out of the other flow's slot is `false`.
+- (blind) `low` Twins get the same star name, "Favourite *Title*". The spec's Always names the star "Favourite *Title*" on a tile or row, so changing it means editing the spec. Twins with the same title are rare in this library.
+- (edge) `low` Twin star labels in List (`CatalogList.tsx:74`). Same as the item above.
+- (edge) `low` Twin star labels in Tiles (`CatalogTiles.tsx:202`). Same as the item above.
+- (blind) `low` `NamedSpine.favourite` is optional. Both `spineNames` callers pass a `ShelfBook`, which always has it. Making it required also means changing the test literals, which is more than a direct correction.
+- (blind) `low` The gold is written twice (`tile-on` is a literal) and the spine mark uses a tile token. The spec chose `--favourite-star-*` component literals, the tile star keeps the light gold in dark mode (so it can't use the themed token), and `favourite-star.spec.ts` pins both values.
+- (blind) `low` `FAVOURITE_GOLD` is exempt in every CSS file. It mirrors the existing `DEV_AMBER` exception, and today the gold appears only in `tokens.css`. A pin check would be a new test, not a correction.
+- (acceptance) `low` `copy.test.mjs` changed although it isn't on the gate's list. AC-13 needs it: `#9A7120` has a hue of 39.8°, under the guard's 40° red limit, so `npm run check` fails without the exception. The build flagged it, and the fix would edit the spec.
+- (blind) `low` A 422 on `favourite` names the raw key "favourite", not a label. The UI always sends a boolean and no agent tool calls the intent, so no user sees this message. Adding a key to `LABELS` affects the form label map.
+- (blind) `low` `Bookcase` runs its own `useFavourite` even on Catalog. It is one unused hook, and splitting the component is a refactor.
+- (blind) `low` No unit tests for the slot rules in `useFavourite`. The AC-8 e2e covers them, and Verification Gap found no gap. More tests are `bmad-testarch-automate`'s job.
+- (blind) `low` `_add_favourite` adds the key only after `spineColor`, and keeps a stray `favourite`. Both need a hand-edited v3 file. The first is refused loudly by model validation, and the second can't reach the app through a normal write.
+- (edge) `low` A v3 Book without `spineColor` gets no `favourite`. Same as the item above: refused loudly, and no normal write produces it.
+- (edge) `false` A line on Home vanishes once the popover closes. The spec's Design Notes accept this explicitly ("On Home there is no filter row … That is accepted").
+- (acceptance) `false` On Home, a failed press shows no visible line after the popover closes. Same as the item above.
+- (acceptance) `low` Three migration tests were renamed, not only re-pinned. `test_migrations.py` is on the gate's list, and the new names fit the current version. Reverting them is churn.
+- (acceptance) `low` `useFavourite`'s slot rule differs from the Design Note's snippet. It is stricter and fits the intent (the build's stale-line patch). Fixing it means editing the spec.
+- (acceptance) `false` The Code Map's `test_card_notes_spine_color.py:261` was left unchanged. That file reads `STORED_BOOK_KEYS` from `helpers.py`, which was updated, so leaving it alone is correct.
+- (blind) `false` The Code Map lists a file the diff doesn't touch. Same as the item above.
