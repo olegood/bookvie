@@ -23,7 +23,7 @@ Let Oleg see one publisher's shelf, such as everything from Manning, in the Cata
 - **Gate.** The per-epic quality gates, plus green P0 risks:
   - Publisher filters the bookcase, the list and the tiles, with OR inside the chip and AND with the other chips and Search titles.
   - The order is by library count with ties A–Z, and it holds while other filters change.
-  - The existing catalog, home-slice and catalog-filter e2e specs pass unchanged while Publisher is left untouched.
+  - The existing catalog, home-slice and catalog-filter e2e specs pass unchanged while Publisher is left untouched, with one exception: Publisher ▾ is the row's new last chip, so the two leaves that Tab along the row include it (`catalog-filter.spec.ts` AC-4's Clear filters stop and `bookcase-details.spec.ts`'s toolbar Tab sequence). Every other assertion is unchanged; the Story 7.2 helpers moved to `e2e/catalog-filter.ts`.
 - **Out of scope:**
   - grouping under headings
   - the publisher on Book detail as a link to the filtered Catalog, which would need filters in the URL
