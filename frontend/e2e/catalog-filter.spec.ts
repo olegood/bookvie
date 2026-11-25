@@ -26,6 +26,7 @@ import {
   clearFilters,
   languageChip,
   main,
+  publisherChip,
   spineNames,
   storageKeys,
   SWING,
@@ -269,9 +270,9 @@ test.describe('Story 7.2 Filter my catalog (ATDD)', () => {
     // Shown only while a filter is on.
     await expect(clearFilters(page)).toHaveCount(0)
 
-    // At the row's end: the next Tab stop after Tag ▾.
+    // At the row's end: the next Tab stop after the last list chip, Publisher ▾ since Story 15.2.
     await chip(page, 'Status', 'Unread').click()
-    await tagChip(page).focus()
+    await publisherChip(page).focus()
     await page.keyboard.press('Tab')
     await expect(clearFilters(page)).toBeFocused()
   })

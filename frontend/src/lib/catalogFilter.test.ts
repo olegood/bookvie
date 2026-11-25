@@ -7,6 +7,7 @@ import {
   liveFilters,
   matchesFilters,
   NO_FILTERS,
+  publisherValues,
   toggleValue,
   type CatalogFilters,
   type FilterableBook,
@@ -15,14 +16,14 @@ import {
 type Book = FilterableBook & { title: string }
 
 function book(fields: Partial<Book> & { title: string }): Book {
-  return { finished: false, type: 'paperback', language: 'English', tags: [], ...fields }
+  return { finished: false, type: 'paperback', language: 'English', tags: [], publisher: 'Penguin', ...fields }
 }
 
 const SHELF: readonly Book[] = [
-  book({ title: 'Bleak House', type: 'hardcover', tags: ['novel', 'classic'] }),
-  book({ title: 'Dubliners', tags: ['stories'] }),
-  book({ title: 'Emma', type: 'ebook', tags: ['novel', 'Classic'] }),
-  book({ title: 'Flights', type: 'hardcover', language: 'Polish', finished: true }),
+  book({ title: 'Bleak House', type: 'hardcover', tags: ['novel', 'classic'], publisher: 'Manning' }),
+  book({ title: 'Dubliners', tags: ['stories'], publisher: "O'Reilly Media" }),
+  book({ title: 'Emma', type: 'ebook', tags: ['novel', 'Classic'], publisher: 'manning' }),
+  book({ title: 'Flights', type: 'hardcover', language: 'Polish', finished: true, publisher: 'Manning' }),
   book({ title: 'Candide', type: 'ebook', language: 'French', tags: ['classic'], finished: true }),
   book({ title: 'Austerlitz', language: 'German', tags: ['novel'], finished: true }),
 ]
@@ -68,7 +69,21 @@ describe('matchesFilters', () => {
   })
 
   it('treats an empty group as no constraint', () => {
-    assert.deepEqual(shown({ status: [], types: [], languages: ['polish'], tags: [] }), ['Flights'])
+    assert.deepEqual(shown({ status: [], types: [], languages: ['polish'], tags: [], publishers: [] }), ['Flights'])
+  })
+
+  it('matches Publisher ignoring case', () => {
+    assert.deepEqual(shown({ publishers: [filterKey('Manning')] }), ['Bleak House', 'Emma', 'Flights'])
+  })
+
+  it('combines publishers with OR and with other groups with AND', () => {
+    assert.deepEqual(shown({ publishers: ['manning', "o'reilly media"] }), [
+      'Bleak House',
+      'Dubliners',
+      'Emma',
+      'Flights',
+    ])
+    assert.deepEqual(shown({ publishers: ['manning'], status: ['unread'], tags: ['novel'] }), ['Bleak House', 'Emma'])
   })
 })
 
@@ -99,11 +114,58 @@ describe('filterValues', () => {
   })
 })
 
+describe('publisherValues', () => {
+  it('orders by Book count, most first, then with the collator, counting each Book', () => {
+    const values = [
+      'Apress',
+      ...Array<string>(2).fill('Pragmatic'),
+      ...Array<string>(3).fill("O'Reilly"),
+      ...Array<string>(2).fill('Manning'),
+    ]
+    assert.deepEqual(publisherValues(values), [
+      { key: "o'reilly", label: "O'Reilly", count: 3 },
+      { key: 'manning', label: 'Manning', count: 2 },
+      { key: 'pragmatic', label: 'Pragmatic', count: 2 },
+      { key: 'apress', label: 'Apress', count: 1 },
+    ])
+  })
+
+  it('breaks ties by number value', () => {
+    assert.deepEqual(
+      publisherValues(['Press 10', 'Press 2']).map((value) => value.label),
+      ['Press 2', 'Press 10'],
+    )
+  })
+
+  it('merges spellings that differ only in case, keeping the first and counting both', () => {
+    assert.deepEqual(publisherValues(['Manning', 'manning']), [{ key: 'manning', label: 'Manning', count: 2 }])
+  })
+
+  it('sorts a merged case group against a tie, keeping the first spelling in library order', () => {
+    assert.deepEqual(publisherValues(['manning', 'Apress', 'Manning', 'Apress', 'Zed']), [
+      { key: 'apress', label: 'Apress', count: 2 },
+      { key: 'manning', label: 'manning', count: 2 },
+      { key: 'zed', label: 'Zed', count: 1 },
+    ])
+  })
+
+  it('skips a blank value', () => {
+    assert.deepEqual(publisherValues(['', 'Apress', '  ']), [{ key: 'apress', label: 'Apress', count: 1 }])
+  })
+
+  it('does not mutate its input', () => {
+    const values = ['b', 'a', 'b']
+    publisherValues(values)
+    assert.deepEqual(values, ['b', 'a', 'b'])
+  })
+})
+
 describe('filtersOn', () => {
   it('is false with nothing on and true with any chip or value', () => {
     assert.equal(filtersOn(NO_FILTERS), false)
     assert.equal(filtersOn({ ...NO_FILTERS, status: ['read'] }), true)
     assert.equal(filtersOn({ ...NO_FILTERS, tags: ['novel'] }), true)
+    assert.equal(filtersOn({ ...NO_FILTERS, publishers: ['manning'] }), true)
   })
 })
 
@@ -119,21 +181,33 @@ describe('toggleValue', () => {
 describe('liveFilters', () => {
   const languages = filterValues(['English', 'French'])
   const tags = filterValues(['novel'])
+  const publishers = publisherValues(['Manning', 'Apress'])
 
   it('drops checked values no Book has any more', () => {
     const filters: CatalogFilters = { ...NO_FILTERS, languages: ['polish', 'french'], tags: ['gone'] }
-    assert.deepEqual(liveFilters(filters, languages, tags), { ...NO_FILTERS, languages: ['french'], tags: [] })
-    assert.equal(filtersOn(liveFilters({ ...NO_FILTERS, languages: ['polish'] }, languages, tags)), false)
+    assert.deepEqual(liveFilters(filters, languages, tags, publishers), {
+      ...NO_FILTERS,
+      languages: ['french'],
+      tags: [],
+    })
+    assert.equal(filtersOn(liveFilters({ ...NO_FILTERS, languages: ['polish'] }, languages, tags, publishers)), false)
+  })
+
+  it('drops a checked publisher no Book has any more', () => {
+    const filters: CatalogFilters = { ...NO_FILTERS, publishers: ['manning', "o'reilly media"] }
+    assert.deepEqual(liveFilters(filters, languages, tags, publishers), { ...NO_FILTERS, publishers: ['manning'] })
+    assert.equal(filtersOn(liveFilters({ ...NO_FILTERS, publishers: ['gone'] }, languages, tags, publishers)), false)
   })
 
   it('returns the same filters when every checked value is live', () => {
-    const filters: CatalogFilters = { ...NO_FILTERS, status: ['read'], languages: ['english'] }
-    assert.equal(liveFilters(filters, languages, tags), filters)
+    const filters: CatalogFilters = { ...NO_FILTERS, status: ['read'], languages: ['english'], publishers: ['apress'] }
+    assert.equal(liveFilters(filters, languages, tags, publishers), filters)
   })
 
   it('does not mutate its input', () => {
-    const filters: CatalogFilters = { ...NO_FILTERS, languages: ['polish'] }
-    liveFilters(filters, languages, tags)
+    const filters: CatalogFilters = { ...NO_FILTERS, languages: ['polish'], publishers: ['gone'] }
+    liveFilters(filters, languages, tags, publishers)
     assert.deepEqual(filters.languages, ['polish'])
+    assert.deepEqual(filters.publishers, ['gone'])
   })
 })

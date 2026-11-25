@@ -5,6 +5,7 @@ import {
   type CatalogFilters,
   type FilterStatus,
   type FilterValue,
+  type PublisherValue,
 } from '../lib/catalogFilter.ts'
 import styles from './FilterChips.module.css'
 
@@ -19,7 +20,7 @@ const TYPES: readonly [BookType, string][] = [
   ['ebook', 'Ebook'],
 ]
 
-type ListField = 'languages' | 'tags'
+type ListField = 'languages' | 'tags' | 'publishers'
 
 type Props = {
   /** The live filters (stale checked values already dropped). */
@@ -27,6 +28,8 @@ type Props = {
   /** The Language and Tag values in the catalog view, in collator order. */
   languages: readonly FilterValue[]
   tags: readonly FilterValue[]
+  /** The publishers with their Book counts in the whole library, most first. */
+  publishers: readonly PublisherValue[]
   onChange: (next: CatalogFilters) => void
   /** Clear filters: every chip and checked value off. */
   onClear: () => void
@@ -37,10 +40,12 @@ type Props = {
 }
 
 /**
- * Language ▾ or Tag ▾: a chip that opens a small `surface` list of native
- * checkboxes, one per value. The popup closes on Esc (focus back to the
- * chip), on a pointer press outside the chip and the popup, and when focus
- * moves to another element outside them (Tab away).
+ * Language ▾, Tag ▾ or Publisher ▾: a chip that opens a small `surface` list
+ * of native checkboxes, one per value. A value with a `count` (Publisher)
+ * shows it after the name in `ink-tertiary`, and its checkbox's name adds the
+ * noun in a visually hidden span ("Manning 49 books"). The popup closes on
+ * Esc (focus back to the chip), on a pointer press outside the chip and the
+ * popup, and when focus moves to another element outside them (Tab away).
  */
 function ValueList({
   label,
@@ -51,7 +56,7 @@ function ValueList({
   onToggle,
 }: {
   label: string
-  values: readonly FilterValue[]
+  values: readonly (FilterValue & { count?: number })[]
   checked: readonly string[]
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -60,7 +65,7 @@ function ValueList({
   const popupId = useId()
   const chipRef = useRef<HTMLButtonElement>(null)
   const wrapRef = useRef<HTMLSpanElement>(null)
-  const count = checked.length
+  const checkedCount = checked.length
 
   // A press outside closes it; a press on a label's text blurs with no
   // `relatedTarget`, so blur alone can't tell it from an outside click.
@@ -93,7 +98,7 @@ function ValueList({
         ref={chipRef}
         type="button"
         className={styles.chip}
-        aria-pressed={count > 0}
+        aria-pressed={checkedCount > 0}
         aria-expanded={open}
         aria-controls={open ? popupId : undefined}
         // macOS Safari doesn't focus a clicked button; without focus inside the
@@ -103,8 +108,8 @@ function ValueList({
           onOpenChange(!open)
         }}
       >
-        {count > 0 ? (
-          `${label}: ${count}`
+        {checkedCount > 0 ? (
+          `${label}: ${checkedCount}`
         ) : (
           <>
             {label} <span aria-hidden="true">▾</span>
@@ -132,7 +137,17 @@ function ValueList({
                 // As the chip: keep focus in the popup after a Safari click, so Esc closes it.
                 onClick={(event) => event.currentTarget.focus()}
               />
-              {value.label}
+              {/* One flex item, so the count sits one space after the name. */}
+              <span>
+                {value.label}
+                {value.count !== undefined && (
+                  <>
+                    {' '}
+                    <span className={styles.count}>{value.count}</span>
+                    <span className="visuallyHidden">{value.count === 1 ? ' book' : ' books'}</span>
+                  </>
+                )}
+              </span>
             </label>
           ))}
         </div>
@@ -143,15 +158,15 @@ function ValueList({
 
 /**
  * Catalog's toolbar row 2 (DESIGN.md → Filter chips): the Status and Type
- * chip groups, Language ▾ and Tag ▾, then "Clear filters" while any filter
+ * chip groups, Language ▾, Tag ▾ and Publisher ▾, then "Clear filters" while any filter
  * is on. Every chip is a toggle button with `aria-pressed`.
  */
-export default function FilterChips({ filters, languages, tags, onChange, onClear, on, readRef }: Props) {
+export default function FilterChips({ filters, languages, tags, publishers, onChange, onClear, on, readRef }: Props) {
   const statusId = useId()
   const typeId = useId()
   const [openList, setOpenList] = useState<ListField | null>(null)
 
-  const list = (field: ListField, label: string, values: readonly FilterValue[]) => (
+  const list = (field: ListField, label: string, values: readonly (FilterValue & { count?: number })[]) => (
     <ValueList
       label={label}
       values={values}
@@ -200,6 +215,7 @@ export default function FilterChips({ filters, languages, tags, onChange, onClea
       <div className={styles.group}>
         {list('languages', 'Language', languages)}
         {list('tags', 'Tag', tags)}
+        {list('publishers', 'Publisher', publishers)}
       </div>
       {on && (
         <button type="button" className={`linkButton ${styles.clear}`} onClick={onClear}>

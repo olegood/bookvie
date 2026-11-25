@@ -171,8 +171,7 @@ test.describe('Story 15.2 Filter the catalog by publisher (ATDD)', () => {
     await page.setViewportSize({ width: 1280, height: 900 })
   })
 
-  // Red phase: there is no Publisher ▾ chip yet, so the row ends at Tag ▾.
-  test.skip('[P1] AC-1 the filter row shows Status, Type, Language ▾, Tag ▾, then Publisher ▾, whose list is the same checkbox list as Language’s: body-sm/ink rows, at most 320px tall, scrolling beyond that', async ({
+  test('[P1] AC-1 the filter row shows Status, Type, Language ▾, Tag ▾, then Publisher ▾, whose list is the same checkbox list as Language’s: body-sm/ink rows, at most 320px tall, scrolling beyond that', async ({
     page,
     seededServer,
   }) => {
@@ -220,8 +219,7 @@ test.describe('Story 15.2 Filter the catalog by publisher (ATDD)', () => {
     expect(publisherRow).toMatchObject({ color: rgbOf(designColor('ink')), fontSize: '14px', lineHeight: '21px' })
   })
 
-  // Red phase: there is no Publisher ▾ chip, so its list reads empty.
-  test.skip('[P0] AC-2 Publisher ▾ lists publishers by Book count, most first, ties A–Z, each with its count after the name in body-sm/ink-tertiary, and Language and Tag rows show no count', async ({
+  test('[P0] AC-2 Publisher ▾ lists publishers by Book count, most first, ties A–Z, each with its count after the name in body-sm/ink-tertiary, and Language and Tag rows show no count', async ({
     page,
     seededServer,
   }) => {
@@ -245,6 +243,26 @@ test.describe('Story 15.2 Filter the catalog by publisher (ATDD)', () => {
       })
       expect(look.count?.fontFamily).toBe(look.row.fontFamily)
       expect(look.row.color).toBe(rgbOf(designColor('ink')))
+      // The noun is in the name only: the element holding it draws no larger than 1×1.
+      const noun = count === '1' ? ' book' : ' books'
+      const nounBox = await listPopup(page, 'Publisher')
+        .getByRole('checkbox', { name: rowStart(name, Number(count)) })
+        .evaluate((input, wanted) => {
+          const row = (input as HTMLInputElement).labels?.[0] ?? input.closest('label')!
+          const holder = Array.from(row.querySelectorAll('*')).find(
+            (element) =>
+              Array.from(element.childNodes)
+                .filter((node) => node.nodeType === Node.TEXT_NODE)
+                .map((node) => node.textContent ?? '')
+                .join('') === wanted,
+          )
+          if (!holder) return null
+          const rect = holder.getBoundingClientRect()
+          return { width: rect.width, height: rect.height }
+        }, noun)
+      expect(nounBox).not.toBeNull()
+      expect(nounBox!.width).toBeLessThanOrEqual(1)
+      expect(nounBox!.height).toBeLessThanOrEqual(1)
     }
     await page.keyboard.press('Escape')
 
@@ -256,8 +274,7 @@ test.describe('Story 15.2 Filter the catalog by publisher (ATDD)', () => {
     await expect.poll(() => checkboxNames(page)).toEqual(['ops'])
   })
 
-  // Red phase: there is no Publisher ▾ chip, so its list reads empty.
-  test.skip('[P0] AC-3 with Unread, a Tag and Search titles on, Publisher ▾ still counts the whole library in the same order', async ({
+  test('[P0] AC-3 with Unread, a Tag and Search titles on, Publisher ▾ still counts the whole library in the same order', async ({
     page,
     seededServer,
   }) => {
@@ -276,8 +293,7 @@ test.describe('Story 15.2 Filter the catalog by publisher (ATDD)', () => {
     await expect.poll(() => listNames(page, 'Publisher')).toEqual(startsOf(COUNT_ROWS))
   })
 
-  // Red phase: there is no Publisher ▾ chip to check Manning in.
-  test.skip('[P0] AC-4 Manning checked shows only its Books in the bookcase, the List and the Tiles, ORs with O’Reilly Media and ANDs with Unread and Search titles', async ({
+  test('[P0] AC-4 Manning checked shows only its Books in the bookcase, the List and the Tiles, ORs with O’Reilly Media and ANDs with Unread and Search titles', async ({
     page,
     seededServer,
   }) => {
@@ -320,8 +336,7 @@ test.describe('Story 15.2 Filter the catalog by publisher (ATDD)', () => {
     await expect.poll(() => tileNames(page)).toEqual([expect.stringContaining('Grokking Algorithms')])
   })
 
-  // Red phase: there is no Publisher ▾ chip, so its list reads empty.
-  test.skip('[P1] AC-5 publishers that differ only in case are one row labelled with the first spelling in library order, counting and matching both', async ({
+  test('[P1] AC-5 publishers that differ only in case are one row labelled with the first spelling in library order, counting and matching both', async ({
     page,
     seededServer,
   }) => {
@@ -353,8 +368,7 @@ test.describe('Story 15.2 Filter the catalog by publisher (ATDD)', () => {
     await expect(page.getByRole('status')).toHaveText('2 books match.')
   })
 
-  // Red phase: there is no Publisher ▾ chip to check Manning in.
-  test.skip('[P1] AC-6 when the last Manning Book is edited to another publisher, the stale check is dropped and the Catalog is not left empty', async ({
+  test('[P1] AC-6 when the last Manning Book is edited to another publisher, the stale check is dropped and the Catalog is not left empty', async ({
     page,
     browser,
     seededServer,
@@ -394,8 +408,7 @@ test.describe('Story 15.2 Filter the catalog by publisher (ATDD)', () => {
       )
   })
 
-  // Red phase: there is no Publisher ▾ chip to turn on.
-  test.skip('[P1] AC-7 Clear filters, a reload, leaving Catalog and an add each turn Publisher off; it is never stored or sent, and never applies to the meter or Home’s slice', async ({
+  test('[P1] AC-7 Clear filters, a reload, leaving Catalog and an add each turn Publisher off; it is never stored or sent, and never applies to the meter or Home’s slice', async ({
     page,
     seededServer,
   }) => {
@@ -448,8 +461,7 @@ test.describe('Story 15.2 Filter the catalog by publisher (ATDD)', () => {
     expect(sent).toEqual([ADD_BOOK])
   })
 
-  // Red phase: there is no Publisher ▾ chip, so Tab from Tag ▾ leaves the row.
-  test.skip('[P1] AC-8 each row is a checkbox named by its text plus the noun, and the chip opens, closes on Esc and returns focus as Language ▾ and Tag ▾ do', async ({
+  test('[P1] AC-8 each row is a checkbox named by its text plus the noun, and the chip opens, closes on Esc and returns focus as Language ▾ and Tag ▾ do', async ({
     page,
     seededServer,
   }) => {

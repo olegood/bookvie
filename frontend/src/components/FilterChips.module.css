@@ -56,13 +56,15 @@
   font-size: 11px;
 }
 
-/* Language ▾ and Tag ▾: the popup sits below its chip. */
+/* Language ▾, Tag ▾ and Publisher ▾: the popup sits below its chip. */
 .wrap {
   position: relative;
   display: inline-flex;
 }
 
+/* Border-box, so the 320px cap includes the padding and border. */
 .popup {
+  box-sizing: border-box;
   position: absolute;
   top: calc(100% + var(--space-1));
   left: 0;
@@ -90,6 +92,11 @@
   color: var(--color-ink);
   white-space: nowrap;
   cursor: pointer;
+}
+
+/* Publisher's Book count after the name; the row's body-sm, tertiary ink. */
+.count {
+  color: var(--color-ink-tertiary);
 }
 
 .option input {

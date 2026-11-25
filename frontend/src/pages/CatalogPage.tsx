@@ -18,6 +18,7 @@ import {
   liveFilters,
   matchesFilters,
   NO_FILTERS,
+  publisherValues,
   type CatalogFilters,
 } from '../lib/catalogFilter.ts'
 import {
@@ -157,8 +158,13 @@ export default function CatalogPage() {
   // The values in this view, each once ignoring case, in collator order.
   const languages = useMemo(() => filterValues(books.map((book) => book.language)), [books])
   const tags = useMemo(() => filterValues(books.flatMap((book) => book.tags)), [books])
+  // Counted over every Book in the view, never the filtered set, so the order holds.
+  const publishers = useMemo(() => publisherValues(books.map((book) => book.publisher)), [books])
   // A checked value no Book has any more is ignored by matching and the chip count.
-  const filters = useMemo(() => liveFilters(rawFilters, languages, tags), [rawFilters, languages, tags])
+  const filters = useMemo(
+    () => liveFilters(rawFilters, languages, tags, publishers),
+    [rawFilters, languages, tags, publishers],
+  )
   const shown = useMemo(() => shownIds(sorted, query, filters), [sorted, query, filters])
   const [catalogView, setCatalogView] = useState<CatalogViewChoice>(readCatalogView)
   const [added, setAdded] = useState<{ id: string; title: string } | null>(null)
@@ -269,7 +275,7 @@ export default function CatalogPage() {
   const changeFilters = (next: CatalogFilters) => {
     cancelCount()
     setFilters(next)
-    announce('status', matchCountCopy(shownIds(sorted, query, liveFilters(next, languages, tags)).size))
+    announce('status', matchCountCopy(shownIds(sorted, query, liveFilters(next, languages, tags, publishers)).size))
   }
 
   // Either Clear filters: every chip off, the search kept, focus to Read (the link goes away).
@@ -347,6 +353,7 @@ export default function CatalogPage() {
           filters={filters}
           languages={languages}
           tags={tags}
+          publishers={publishers}
           onChange={changeFilters}
           onClear={clearFilters}
           on={filtering}

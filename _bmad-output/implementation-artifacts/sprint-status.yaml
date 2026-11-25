@@ -151,7 +151,7 @@ development_status:
 
   epic-15: backlog
   15-1-carry-the-publisher-in-the-catalog-view: done
-  15-2-filter-the-catalog-by-publisher: backlog
+  15-2-filter-the-catalog-by-publisher: review
   epic-15-retrospective: optional
 action_items:
   - id: "epic-1-retro-item-1-run-an-epic-1-trace-and-gate-against-tr7"
