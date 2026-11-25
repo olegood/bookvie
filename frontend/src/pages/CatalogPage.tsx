@@ -165,6 +165,14 @@ export default function CatalogPage() {
     () => liveFilters(rawFilters, languages, tags, publishers),
     [rawFilters, languages, tags, publishers],
   )
+  // A dropped key is also removed from rawFilters, during render so nothing
+  // commits in between, so a Book that gets the value back later in this
+  // visit doesn't bring the check back on its own. Only from a ready view:
+  // before the first load there are no Books and every check would drop (a
+  // failed refetch stays ready with the last Books). liveFilters returns a new
+  // object only when it dropped a key, so this settles in one extra render.
+  const ready = view.status === 'ready'
+  if (ready && filters !== rawFilters) setFilters(filters)
   const shown = useMemo(() => shownIds(sorted, query, filters), [sorted, query, filters])
   const [catalogView, setCatalogView] = useState<CatalogViewChoice>(readCatalogView)
   const [added, setAdded] = useState<{ id: string; title: string } | null>(null)
@@ -221,7 +229,6 @@ export default function CatalogPage() {
   // After a delete on Book detail: focus Search titles (the empty state's New
   // book when no Book is left), then announce. This runs after PageHeading's
   // own focus effect, so it wins over the `h1`.
-  const ready = view.status === 'ready'
   useEffect(() => {
     if (deleted === null || !ready || handledDelete.current === location.key) return
     handledDelete.current = location.key

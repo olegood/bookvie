@@ -1848,6 +1848,15 @@
   evidence: Acceptance Auditor, code review of Story 15.1; `_bmad-output/implementation-artifacts/sprint-status.yaml` lines 26, 144 and 152; no epic-status write in `.claude/skills/bmad-build-auto`.
   resolved: 2026-11-25, Epic 15 retro item 103. `epic-14` and `epic-15` read `done` in `sprint-status.yaml`. `bmad-build-auto`'s spec-status fact (`_bmad/custom/bmad-build-auto.toml`) now moves a `backlog` parent epic to `in-progress` when it sets a story to `review`, since the story skips `in-progress`, which is where `bmad-build`'s sync does it. `bmad-retrospective` gains a persistent fact (`_bmad/custom/bmad-retrospective.toml`): Phase 5 sets `epic-{N}: done` when no story is pending, in the retro's commit. The header's rule stays as written, now true.
 
-## Deferred from: code review of spec-15-2-filter-the-catalog-by-publisher.md (2026-11-25)
+## Deferred from: code review of spec-15-2-filter-the-catalog-by-publisher (2026-11-25)
 
-- `rawFilters` in `CatalogPage.tsx` keeps a checked Language, Tag or Publisher key after `liveFilters` drops it as gone, so the filter comes back if a Book is edited back to that value within the same Catalog visit (the chip then reads "Publisher: 1" again). Pre-existing since Story 7.2; Story 15.2 extends it to Publisher, the field most likely to be fixed by an edit. Fix: prune `rawFilters` when `liveFilters` drops a key.
+- source_spec: `_bmad-output/implementation-artifacts/spec-15-2-filter-the-catalog-by-publisher.md`
+  summary: `rawFilters` in `CatalogPage.tsx` keeps a checked Language, Tag or Publisher key after `liveFilters` drops it as gone, so the filter comes back if a Book is edited back to that value within the same Catalog visit (the chip then reads "Publisher: 1" again). Pre-existing since Story 7.2; Story 15.2 extends it to Publisher, the field most likely to be fixed by an edit. Fix: prune `rawFilters` when `liveFilters` drops a key. Low.
+  evidence: code review of Story 15.2; `frontend/src/pages/CatalogPage.tsx` (`rawFilters`, the `filters` memo), `frontend/src/lib/catalogFilter.ts` (`liveFilters`).
+  resolved: 2026-11-25, Epic 15 retro item 105 (`_bmad-output/implementation-artifacts/spec-epic-15-retro-item-105-prune-rawfilters-when-livefilters-drops-a-key.md`). `CatalogPage.tsx` sets its filter state to `liveFilters`'s result during render when the view is `ready` and a key was dropped, so a dropped check is forgotten for the rest of the visit, for all three list chips. Pinned by the "Epic 15 retro item 105 Forget a dropped filter check" leaves in `frontend/e2e/catalog-publisher-filter.spec.ts` (Publisher, Tag, partly dropped, and a failed refetch, which keeps the last Books and so the check).
+
+## Deferred from: build-auto review of spec-epic-15-retro-item-105-prune-rawfilters-when-livefilters-drops-a-key (2026-11-25)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-epic-15-retro-item-105-prune-rawfilters-when-livefilters-drops-a-key.md`
+  summary: Spine drift (AD-6), reconciled before the next epic: the filter-chips item says checked values no Book has any more after a refetch are ignored (`liveFilters`) and that filters reset only when Catalog unmounts or a Book is added; a dropped key is now also forgotten from page state once the view is ready, so it doesn't come back when a Book gets the value again.
+  evidence: Spine Check, build-auto review of item 105; `ARCHITECTURE-SPINE.md` AD-6, the catalog filter chips bullet; `frontend/src/pages/CatalogPage.tsx`, the render-time prune after the `filters` memo.

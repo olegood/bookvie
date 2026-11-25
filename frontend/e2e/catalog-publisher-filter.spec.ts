@@ -658,19 +658,24 @@ test.describe('Epic 15 retro item 105 Forget a dropped filter check (ATDD)', () 
     await page.setViewportSize({ width: 1280, height: 900 })
   })
 
-  /** Another context (a second tab, or the agent) sets each Book's publisher. */
-  async function movePublisher(
+  /** Another context (a second tab, or the agent) makes the same `changes` to each Book. */
+  async function editElsewhere(
     browser: Browser,
     server: Server,
     ids: readonly string[],
-    publisher: string,
+    changes: Record<string, string>,
   ): Promise<void> {
     const otherContext = await browser.newContext()
     try {
-      for (const id of ids) await editBook(otherContext.request, server, id, { publisher })
+      for (const id of ids) await editBook(otherContext.request, server, id, changes)
     } finally {
       await otherContext.close()
     }
+  }
+
+  /** Another context sets each Book's publisher. */
+  function movePublisher(browser: Browser, server: Server, ids: readonly string[], publisher: string): Promise<void> {
+    return editElsewhere(browser, server, ids, { publisher })
   }
 
   /** This context regains focus, and the catalog view refetches with `status`. */
@@ -681,9 +686,9 @@ test.describe('Epic 15 retro item 105 Forget a dropped filter check (ATDD)', () 
     await response
   }
 
-  // Red phase: rawFilters still holds Manning after liveFilters dropped it, so
-  // the edit back brings the chip back as "Publisher: 1" and hides 6 Books.
-  test.skip('[P1] AC-1 a dropped Manning check stays off when a Book is edited back to Manning in the same visit', async ({
+  // Before the fix, rawFilters still held Manning after liveFilters dropped it,
+  // so the edit back brought the chip back as "Publisher: 1" and hid 6 Books.
+  test('[P1] AC-1 a dropped Manning check stays off when a Book is edited back to Manning in the same visit', async ({
     page,
     browser,
     seededServer,
@@ -720,9 +725,10 @@ test.describe('Epic 15 retro item 105 Forget a dropped filter check (ATDD)', () 
     await expect(clearFilters(page)).toHaveCount(0)
   })
 
-  // Red phase: none. This guard passes today and must keep passing: a refetch
-  // that fails keeps the loaded view, so the prune must not clear the check.
-  test.skip('[P2] AC-2 a catalog refetch that fails keeps the Manning check, and the next good refetch still shows only Manning', async ({
+  // Passed before the fix too: a failed refetch keeps the last loaded Books,
+  // so no key drops and the check stays. The leaf pins that outcome, not the
+  // `ready` guard itself.
+  test('[P2] AC-2 a catalog refetch that fails keeps the Manning check, and the next good refetch still shows only Manning', async ({
     page,
     seededServer,
   }) => {
@@ -739,5 +745,77 @@ test.describe('Epic 15 retro item 105 Forget a dropped filter check (ATDD)', () 
     await refetchCatalog(page, 200)
     await expect(publisherChip(page)).toHaveText(/^Publisher: 1/)
     await expect.poll(() => spineNames(bookcase(page))).toEqual(MANNING_BOOKS)
+  })
+
+  test('[P1] AC-1 a dropped Tag check stays off when a Book gets the tag back in the same visit', async ({
+    page,
+    browser,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: PUBLISHER_SHELF })
+    await page.goto(`${server.url}/catalog`)
+    await tagChip(page).click()
+    await listPopup(page, 'Tag').getByRole('checkbox', { name: 'ops', exact: true }).check()
+    await page.keyboard.press('Escape')
+    await expect(tagChip(page)).toHaveText(/^Tag: 1/)
+    await expect.poll(() => spineNames(bookcase(page))).toEqual([KUBERNETES])
+
+    // Kubernetes, the only "ops" Book, is retagged: the check is dropped.
+    await editElsewhere(browser, server, [bookId(1)], { tags: 'devops' })
+    await refetchCatalog(page, 200)
+    await expect(tagChip(page)).toHaveText(/^Tag\s*▾$/)
+    await expect.poll(() => spineNames(bookcase(page))).toEqual(BY_AUTHOR)
+
+    // Kubernetes gets "ops" back in the same visit.
+    await editElsewhere(browser, server, [bookId(1)], { tags: 'ops' })
+    await refetchCatalog(page, 200)
+    await tagChip(page).click()
+    // The refetched view has rendered: "ops" is listed again, unchecked.
+    await expect.poll(() => checkboxNames(page)).toEqual(['ops'])
+    await expect(listPopup(page, 'Tag').getByRole('checkbox', { name: 'ops', exact: true })).not.toBeChecked()
+    await page.keyboard.press('Escape')
+    await expect(tagChip(page)).toHaveText(/^Tag\s*▾$/)
+    await expect.poll(() => spineNames(bookcase(page))).toEqual(BY_AUTHOR)
+    await expect(clearFilters(page)).toHaveCount(0)
+  })
+
+  test("[P1] AC-1 with Manning and O'Reilly Media checked, a dropped Manning stays off when it comes back, and O'Reilly Media keeps filtering", async ({
+    page,
+    browser,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: PUBLISHER_SHELF })
+    await page.goto(`${server.url}/catalog`)
+    await checkPublisher(page, PUBLISHER_ROWS, 'Manning')
+    await checkPublisher(page, PUBLISHER_ROWS, "O'Reilly Media")
+    await expect(publisherChip(page)).toHaveText(/^Publisher: 2/)
+    await expect.poll(() => spineNames(bookcase(page))).toEqual([GROKKING, LEARNING_GO, KUBERNETES, DDIA, JOY])
+
+    // Every Manning Book leaves Manning: only O'Reilly Media stays checked.
+    await movePublisher(browser, server, [bookId(1), bookId(7), bookId(2)], 'No Starch Press')
+    await refetchCatalog(page, 200)
+    await expect(publisherChip(page)).toHaveText(/^Publisher: 1/)
+    await expect.poll(() => spineNames(bookcase(page))).toEqual([LEARNING_GO, DDIA])
+
+    // Grokking comes back to Manning in the same visit.
+    await movePublisher(browser, server, [bookId(2)], 'Manning')
+    await refetchCatalog(page, 200)
+    await expect
+      .poll(() => listNames(page, 'Publisher'))
+      .toEqual(
+        startsOf([
+          ['No Starch Press', 2],
+          ["O'Reilly Media", 2],
+          ['Addison-Wesley Professional', 1],
+          ['Apress', 1],
+          ['Manning', 1],
+        ]),
+      )
+    const popup = listPopup(page, 'Publisher')
+    await expect(popup.getByRole('checkbox', { name: /^Manning 1/ })).not.toBeChecked()
+    await expect(popup.getByRole('checkbox', { name: /^O'Reilly Media 2/ })).toBeChecked()
+    await page.keyboard.press('Escape')
+    await expect(publisherChip(page)).toHaveText(/^Publisher: 1/)
+    await expect.poll(() => spineNames(bookcase(page))).toEqual([LEARNING_GO, DDIA])
   })
 })

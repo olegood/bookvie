@@ -2,14 +2,22 @@
 title: 'Forget a dropped filter check, so it never comes back on its own'
 type: 'bugfix'
 created: '2026-11-25'
-status: 'ready-for-dev'
+status: 'in-review'
+baseline_revision: 'd5fbced9153d6773fe9c6c845462bb67ffb21aad'
 review_loop_iteration: 0
 followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-15-retro-2026-11-25.md'
   - '{project-root}/AGENTS.md'
 warnings: []
-deferred: []
+deferred:
+  - summary: >-
+      Spine drift (AD-6), reconciled before the next epic: the filter-chips item says checked values no Book has any more after a refetch are ignored (`liveFilters`) and that filters reset only when Catalog unmounts or a Book is added; a dropped key is now also forgotten from page state once the view is ready, so it doesn't come back when a Book gets the value again.
+    evidence: |-
+      Spine Check, build-auto review of item 105; ARCHITECTURE-SPINE.md AD-6, the catalog filter chips bullet; CatalogPage.tsx, the render-time prune after the `filters` memo.
+    location: >-
+      _bmad-output/planning-artifacts/architecture/architecture-bookvie-2026-10-29/ARCHITECTURE-SPINE.md
+    severity: low
 ---
 
 <intent-contract>
@@ -74,6 +82,27 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-11-25 — Review pass
+- verdicts: 17 findings — high 0, medium 0, low 12, false 5, maybe-false 0
+- findings:
+  - `[low]` `[defer]` (spine-check) AD-6's filter-chips item doesn't mention that a dropped key is now forgotten from page state — spine drift; the code follows the spec and breaks no decision. Deferred to the spec's `deferred` list and `deferred-work.md`.
+  - `[low]` `[patch]` (intent-alignment a) The `ready` guard is unreachable while checks exist: `toViewState` keeps a failed or in-flight refetch `ready` with the last Books, so the AC-2 leaf pins the outcome, not the guard — grouped with the blind hunter's first two findings. Patched the wording: the code comment, the AC-2 leaf comment and the `resolved:` line now say a failed refetch stays ready with the last Books, and the leaf pins the outcome. The guard stays as defence for the first load.
+  - `[low]` `[reject]` (intent-alignment b) Language has no away-and-back leaf — the spec's task allows "a Language or Tag key"; Language goes through the same `liveFilters` and the same prune line, and the verification-gap layer showed the Tag and Publisher leaves fail without the prune. A further leaf adds no coverage of a separate path.
+  - `[low]` `[reject]` (intent-alignment c) "Nothing dropped" has no direct test — a render loop would throw React's too-many-re-renders error in every filtered Catalog leaf, and `liveFilters`'s identity is unit-tested (`catalogFilter.test.ts`, "returns the same filters when every checked value is live"). A page-level identity test would add a harness for a failure the suite already catches.
+  - `[false]` `[reject]` (intent-alignment d) Silence and no focus move rest on existing tests — the diff adds no `announce` or focus call, so nothing could make the prune announce or move focus.
+  - `[false]` `[reject]` (intent-alignment e) The ATDD leaves were edited — the auditor itself found titles and assertions unchanged; un-skipping and the helper generalisation are what the build is for.
+  - `[false]` `[reject]` (intent-alignment f) `deferred-work.md` changed outside the intent — the spec's Execution task asks for exactly this rewrite (E15-P1).
+  - `[low]` `[reject]` (edge-case) Dropping `.md` from the 15.2 entry's heading leaves the spec's Source quote matching no heading — the fix would edit this build's spec.
+  - `[low]` `[patch]` (blind 1) No test covers the `ready &&` guard though the comments and `resolved:` line read as if one does — same root cause as intent-alignment a; patched with it.
+  - `[low]` `[patch]` (blind 2) The prune comment says a failed view has no Books — same root cause; patched with it.
+  - `[low]` `[patch]` (blind 3) The prune comment opened "And forgotten, …", half a sentence — rewritten as a self-contained comment.
+  - `[low]` `[reject]` (blind 4) Language has no leaf — same as intent-alignment b.
+  - `[low]` `[reject]` (blind 5) Name the page's dependency on `liveFilters`'s identity in its unit test — a loop already fails the e2e suite loudly, and `liveFilters` is unchanged here; a comment in an untouched file is unlikely to matter in everyday work.
+  - `[false]` `[reject]` (blind 6) The Tag leaf doesn't show the drop, and passes tags as a string — after the first refetch it asserts "Tag ▾" and all seven Books, which is the drop; `editBook` spreads the Book's own `editForm`, where tags are one string, and the leaf passes against the real server.
+  - `[low]` `[reject]` (blind 7) The partly-dropped leaf skips Clear filters and the Manning row's absence after the drop — "Publisher: 1" with only Learning Go and DDIA already fails for a prune that clears the whole group; the extra asserts add no new failure mode.
+  - `[low]` `[reject]` (blind 8) The rewritten `evidence:` line names symbols, not line numbers — symbol names stay valid as lines move; cosmetic.
+  - `[false]` `[reject]` (blind 9) The spec reached `in-review` with no record of the build — the triage log and Auto Run Result are written in this step, before the commit.
+
 ## Design Notes
 
 - **Pipeline:** ATDD → `bmad-build-auto` → `bmad-code-review` → `bmad-testarch-automate` (AGENTS.md "Story pipeline").
@@ -85,3 +114,25 @@ deferred: []
 **Commands:**
 - `cd frontend && TZ=Europe/Madrid npx playwright test e2e/catalog-publisher-filter.spec.ts e2e/catalog-filter.spec.ts e2e/bookcase-details.spec.ts` -- expected: pass
 - `npm run check` -- expected: exit 0
+
+## Auto Run Result
+
+Status: in-review
+
+**Change.** When the loaded catalog view drops a checked Language, Tag or Publisher key, `CatalogPage.tsx` now removes it from its filter state too, during render, so a Book that gets the value back later in the same visit shows unfiltered under an unchecked row. It prunes only from a `ready` view, and sets state only when `liveFilters` returned a new object (one extra render, no loop). Nothing else that shows changes; no announcement, no focus move.
+
+**Files changed:**
+- `frontend/src/pages/CatalogPage.tsx` — the render-time prune after the `filters` memo; the existing `ready` constant moved up to it.
+- `frontend/e2e/catalog-publisher-filter.spec.ts` — the two ATDD leaves un-skipped; two leaves added (Tag away and back, partly dropped Manning with O'Reilly Media); the ATDD's local `movePublisher` became a wrapper over a new local `editElsewhere(browser, server, ids, changes)`, because the Tag leaf edits `tags`, which `movePublisher` couldn't. `editBook` from `intents.ts` stays the shared core; no module-level helper was added.
+- `_bmad-output/implementation-artifacts/deferred-work.md` — the 15.2 deferral rewritten in the `source_spec`/`summary`/`evidence` shape, its heading without `.md`, with a `resolved:` line (E15-P1); a new spine-drift entry for AD-6.
+
+**Review.** 17 findings: 4 patched (all low, one root cause plus one cosmetic: the comments and the `resolved:` line said a failed view has no Books, or read as if the `ready` guard were tested; the code comment was half a sentence), 1 deferred (spine drift, AD-6), 12 rejected with the reasons in the Review Triage Log. Follow-up review recommended: false (patched: high 0, medium 0, low 4).
+
+**Verification.**
+- With the prune disabled by hand, the three AC-1 leaves fail (Manning "Publisher: 1"; Tag and partly dropped "checked") and AC-2 passes, as a guard should (implementation run, and again by the verification-gap layer).
+- `npm run check`: exit 0 after the build and again after the review patches (check:api, check:py, check:e2e 892 passed, check:smoke). It includes the three named spec files; every existing catalog-filter, catalog-publisher-filter and bookcase-details leaf passes unchanged.
+- Matrix audit: Edited away and back (Publisher AC-1 leaf), Language and Tag (Tag leaf), Partly dropped (its leaf), Refetch failed (AC-2 leaf) all ran and passed. "Refetch in flight" can't be reached from the UI (`toViewState` keeps the view `ready` with the last Books). "Nothing dropped" has no visible signal; a render loop would throw in every filtered Catalog leaf, and `liveFilters`'s identity is unit-tested.
+
+**Residual risks.** The `ready` guard is defence only: no test can fail without it, because a mounted Catalog never leaves `ready` once loaded. Language has no away-and-back leaf of its own; it shares the code path the Tag and Publisher leaves cover.
+
+Next: run `bmad-code-review` in a new session (AGENTS.md "Story pipeline").
