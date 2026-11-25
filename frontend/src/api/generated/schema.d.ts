@@ -256,6 +256,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/intents/set-favourite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Set Favourite Intent
+         * @description Star or unstar a Book (FR-31); the value it already has writes nothing.
+         */
+        post: operations["set_favourite_intent_api_intents_set_favourite_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/intents/start-reading": {
         parameters: {
             query?: never;
@@ -643,6 +663,14 @@ export interface components {
              */
             intent?: string | null;
         };
+        /** Body_set_favourite_intent_api_intents_set_favourite_post */
+        Body_set_favourite_intent_api_intents_set_favourite_post: {
+            /**
+             * Intent
+             * @description JSON object {"bookId": ..., "favourite": true | false}: the value to store.
+             */
+            intent?: string | null;
+        };
         /** Body_set_spine_color_intent_api_intents_set_spine_color_post */
         Body_set_spine_color_intent_api_intents_set_spine_color_post: {
             /**
@@ -746,6 +774,8 @@ export interface components {
             hasCover: boolean;
             /** Finished */
             finished: boolean;
+            /** Favourite */
+            favourite: boolean;
             /** Latestfinishdate */
             latestFinishDate: string | null;
             editForm: components["schemas"]["BookEditForm"];
@@ -1140,6 +1170,8 @@ export interface components {
             tags: string[];
             /** Publisher */
             publisher: string;
+            /** Favourite */
+            favourite: boolean;
         };
         /**
          * StatsBucket
@@ -1884,6 +1916,66 @@ export interface operations {
         requestBody?: {
             content: {
                 "multipart/form-data": components["schemas"]["Body_set_spine_color_intent_api_intents_set_spine_color_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OkResponse"];
+                };
+            };
+            /** @description Refused by a library rule */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Invalid fields */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Couldn't save */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Couldn't save */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    set_favourite_intent_api_intents_set_favourite_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_set_favourite_intent_api_intents_set_favourite_post"];
             };
         };
         responses: {

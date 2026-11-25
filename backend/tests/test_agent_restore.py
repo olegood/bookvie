@@ -672,7 +672,7 @@ def test_the_tool_list_adds_the_three_restore_tools_and_still_bans_the_destructi
         assert schema["properties"]["path"]["type"] == "string", (name, schema)
         assert schema["required"] == ["path"], (name, schema)
         assert schema.get("additionalProperties") is False, (name, schema)
-    for name in ("delete_book", "delete_card_note", "set_spine_color", "restore"):
+    for name in ("delete_book", "delete_card_note", "set_spine_color", "set_favourite", "restore"):
         body = mcp_client.rpc("tools/call", {"name": name, "arguments": {}})
         assert "result" not in body and body["error"]["code"] == -32602, (name, body)
         assert name in body["error"]["message"], body

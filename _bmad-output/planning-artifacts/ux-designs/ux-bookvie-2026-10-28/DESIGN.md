@@ -20,6 +20,8 @@ colors:
   marker-up-next: '#5A7D98'
   marker-waiting: '#8C7B5C'
   marker-ring: '#FDFCF9'
+  # Fills the favourite star and nothing else (Colors -> Favourite gold).
+  favourite: '#9A7120'
   shelf-wall: '#EFEAE0'
   shelf-wall-line: '#E2DBCD'
   birch-plank: '#E9DCC3'
@@ -42,6 +44,7 @@ colors:
   marker-up-next-dark: '#8EADC6'
   marker-waiting-dark: '#A8987A'
   marker-ring-dark: '#191B18'
+  favourite-dark: '#D2A54E'
   shelf-wall-dark: '#1E201C'
   shelf-wall-line-dark: '#2E312B'
   birch-plank-dark: '#6E604B'
@@ -520,9 +523,8 @@ components:
     height: 8px
   favourite-star:
     # One SVG star path, filled when starred, outlined when not.
-    # Gold is a literal here, not a colors primitive, until Story 16.1 moves it into colors and tokens.css together (Colors -> Favourite gold).
-    on: '#9A7120'
-    on-dark: '#D2A54E'
+    on: '{colors.favourite}'
+    on-dark: '{colors.favourite-dark}'
     off-stroke: '{colors.ink-secondary}'
     stroke-width: 1.8px
     button-size: 34px
@@ -695,7 +697,7 @@ Card note box pairs. The label, cards and pill are the same in both themes, so t
 
 ### Favourite gold
 
-Gold fills the favourite star and nothing else: not text, borders, backgrounds, messages or a Reading's rating stars (those stay `accent`). The star is a graphic, so its target is 3:1, and its state never rests on color alone: starred is filled, unstarred is an outline, and `aria-pressed` and the names say it. On covers and spines the star is `#9A7120` in both themes: the paper halo or square, not the cover or the theme, is what it's read against, as with the ribbon. Like dev amber, gold is a literal in `{components.favourite-star}` (`on` `#9A7120`, `on-dark` `#D2A54E`) until Story 16.1 moves it into `colors` and `tokens.css` together.
+Gold fills the favourite star and nothing else: not text, borders, backgrounds, messages or a Reading's rating stars (those stay `accent`). The star is a graphic, so its target is 3:1, and its state never rests on color alone: starred is filled, unstarred is an outline, and `aria-pressed` and the names say it. On covers and spines the star is `#9A7120` in both themes: the paper halo or square, not the cover or the theme, is what it's read against, as with the ribbon. Gold is the `colors` primitive `favourite` (`#9A7120`, `favourite-dark` `#D2A54E`), which `{components.favourite-star}`'s `on` and `on-dark` name, mirrored in `tokens.css` as `--color-favourite`.
 
 | Pair | Light | Dark | Target |
 |---|---|---|---|

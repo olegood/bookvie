@@ -14,9 +14,11 @@ import { announce } from '../lib/announce.ts'
 import { popoverOffersSetUpNext, REPLACES_UP_NEXT, SETTING_UP_NEXT, upNextStatus } from '../lib/setUpNext.ts'
 import { placePopover, type Placement } from '../lib/spineColor.ts'
 import { popoverStart } from '../lib/startReading.ts'
+import type { FavouriteFlow } from '../lib/useFavourite.ts'
 import { useOneClickFlow } from '../lib/useOneClickFlow.ts'
 import Button from './Button.tsx'
 import ChangeColor from './ChangeColor.tsx'
+import FavouriteStar from './FavouriteStar.tsx'
 import styles from './SpinePopover.module.css'
 
 type Props = {
@@ -31,6 +33,8 @@ type Props = {
   onStart: () => void
   /** Another Book is Up next: Set as Up next carries the hint "Replaces the current Up next.". */
   hasUpNext: boolean
+  /** The star's flow: the Catalog's own (shared with Tiles and List), or the Bookcase's on Home. */
+  favourite: FavouriteFlow
 }
 
 function pagesLine(pages: number, year: number | null): string {
@@ -55,9 +59,15 @@ function pagesLine(pages: number, year: number | null): string {
  * focus back on its spine, then `status` reads "*X* is Up next.". A failure
  * shows its line directly below the button, keeps focus there and leaves the
  * popover open.
+ *
+ * The favourite star ("Favourite") comes right after the title and is first
+ * in tab order, but never takes focus on open: Shift+Tab from the control
+ * that has it reaches the star. Its couldn't-save line shows under the
+ * title row while the popover is open.
  */
-export default function SpinePopover({ book, anchor, shelf, onClose, onStart, hasUpNext }: Props) {
+export default function SpinePopover({ book, anchor, shelf, onClose, onStart, hasUpNext, favourite }: Props) {
   const titleId = useId()
+  const { press: pressFavourite, inlineSlot: favouriteSlot, inlineFailed: favouriteFailed } = favourite
   const card = useRef<HTMLDivElement>(null)
   const link = useRef<HTMLAnchorElement>(null)
   const start = useRef<HTMLButtonElement>(null)
@@ -186,9 +196,20 @@ export default function SpinePopover({ book, anchor, shelf, onClose, onStart, ha
     >
       <span className={styles.pointer} aria-hidden="true" />
       <div className={styles.details}>
-        <p id={titleId} className={styles.title}>
-          {book.title}
-        </p>
+        <div className={styles.titleRow}>
+          <p id={titleId} className={styles.title}>
+            {book.title}
+          </p>
+          <FavouriteStar
+            favourite={book.favourite}
+            label="Favourite"
+            variant="popover"
+            className={styles.favourite}
+            onPress={() => pressFavourite({ id: book.id, title: book.title }, !book.favourite)}
+          />
+        </div>
+        {/* Under the title row: the star's couldn't-save line. */}
+        <div ref={favouriteSlot} className={styles.regions} data-show-alert={favouriteFailed ? 'true' : undefined} />
         {book.subtitle && <p className={styles.subtitle}>{book.subtitle}</p>}
         <p className={styles.authors}>{book.authors.join('; ')}</p>
         <p className={styles.meta}>{pagesLine(book.pages, book.year)}</p>

@@ -140,6 +140,7 @@ const dune: BookDetailView = {
   spineColorFromCover: null,
   hasCover: false,
   finished: false,
+  favourite: false,
   latestFinishDate: null,
   editForm: {
     title: 'Dune',

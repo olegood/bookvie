@@ -78,6 +78,7 @@ def _shelf_book(library: Library, book: Book) -> ShelfBook:
         language=book.language,
         tags=list(book.tags),
         publisher=book.publisher,
+        favourite=book.favourite,
     )
 
 
@@ -340,6 +341,7 @@ def book_detail(library: Library, book_id: str) -> BookDetailView | None:
         spine_color_from_cover=book.spine_color_from_cover,
         has_cover=_has_cover(book),
         finished=_finished(book),
+        favourite=book.favourite,
         latest_finish_date=latest.finish_date if latest else None,
         edit_form=_edit_form(book, latest.finish_date if latest else None),
         readings=[

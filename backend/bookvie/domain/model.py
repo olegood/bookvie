@@ -16,7 +16,7 @@ from typing import Annotated, Literal
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 
 BookType = Literal["paperback", "hardcover", "ebook"]
 PurposeFulfilled = Literal["yes", "partly", "notYet"]
@@ -92,6 +92,7 @@ class Book(_Model):
     spine_color_from_cover: str | None
     spine_color_curated: str
     spine_color: str
+    favourite: bool
     readings: list[Reading]
     card_notes: list[CardNote]
 

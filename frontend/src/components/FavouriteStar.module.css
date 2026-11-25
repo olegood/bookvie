@@ -1,0 +1,140 @@
+/*
+ * DESIGN.md → Favourite star, `{components.favourite-star}`: a plain icon
+ * button, no border, no fill and no hover background. Starred is filled with
+ * gold, unstarred is an `ink-secondary` outline. On a cover tile the colors
+ * and the paper halo are fixed in both themes, like the ribbon's. No
+ * animation.
+ */
+.star {
+  box-sizing: border-box;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  appearance: none;
+}
+
+.star:focus-visible {
+  outline: var(--focus-ring-width) solid var(--color-accent);
+  outline-offset: var(--focus-ring-offset);
+}
+
+.icon {
+  display: block;
+  flex: none;
+  overflow: visible;
+}
+
+.shape {
+  fill: none;
+  stroke: var(--color-ink-secondary);
+  stroke-width: var(--favourite-star-stroke-width);
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.star[aria-pressed='true'] .shape {
+  fill: var(--color-favourite);
+  stroke: var(--color-favourite);
+}
+
+/* Book detail: a 34px target after the h1, holding an 18px star. */
+.detail {
+  width: var(--favourite-star-button-size);
+  height: var(--favourite-star-button-size);
+}
+
+.detail .icon {
+  width: var(--favourite-star-detail-size);
+  height: var(--favourite-star-detail-size);
+}
+
+/* The Spine popover: the same button with a 16px star. */
+.popover {
+  width: var(--favourite-star-button-size);
+  height: var(--favourite-star-button-size);
+}
+
+.popover .icon {
+  width: var(--favourite-star-popover-size);
+  height: var(--favourite-star-popover-size);
+}
+
+/* A List row: a 24px target with a 15px star. */
+.row {
+  width: var(--favourite-star-row-target);
+  height: var(--favourite-star-row-target);
+}
+
+.row .icon {
+  width: var(--favourite-star-row-size);
+  height: var(--favourite-star-row-size);
+}
+
+/* A cover tile: a 32px target around a bare 22px star on a paper halo. */
+.tile {
+  width: var(--favourite-star-tile-target);
+  height: var(--favourite-star-tile-target);
+}
+
+.tile .icon {
+  width: var(--favourite-star-tile-size);
+  height: var(--favourite-star-tile-size);
+  filter: drop-shadow(0 0 var(--favourite-star-tile-halo) var(--color-spine-label-strip));
+}
+
+.tile .shape {
+  stroke: var(--favourite-star-tile-off);
+}
+
+.tile[aria-pressed='true'] .shape {
+  fill: var(--favourite-star-tile-on);
+  stroke: var(--favourite-star-tile-on);
+}
+
+/* Straddles the star's edge, 1.5px wider each side than its stroke: the paper outside it. */
+.halo {
+  fill: var(--color-spine-label-strip);
+  stroke: var(--color-spine-label-strip);
+  stroke-width: calc(var(--favourite-star-stroke-width) + 2 * var(--favourite-star-tile-halo));
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+@media (forced-colors: active) {
+  .icon {
+    forced-color-adjust: none;
+  }
+
+  .tile .icon {
+    filter: none;
+  }
+
+  .shape,
+  .tile .shape {
+    stroke: CanvasText;
+  }
+
+  .star[aria-pressed='true'] .shape,
+  .tile[aria-pressed='true'] .shape {
+    fill: CanvasText;
+    stroke: CanvasText;
+  }
+
+  .halo {
+    fill: Canvas;
+    stroke: Canvas;
+  }
+
+  .star:focus-visible {
+    outline-color: Highlight;
+  }
+}

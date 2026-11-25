@@ -477,7 +477,9 @@ def test_the_readme_says_how_to_add_bookvie_and_bookvie_dev_to_claude_code() -> 
 # --- The spec's I/O matrix: an unknown tool -------------------------------------
 
 
-@pytest.mark.parametrize("name", ["delete_book", "restore", "delete_card_note", "nope"])
+@pytest.mark.parametrize(
+    "name", ["delete_book", "restore", "delete_card_note", "set_favourite", "nope"]
+)
 def test_an_unknown_tool_is_a_json_rpc_error_and_changes_nothing(
     mcp_client: McpClient, name: str
 ) -> None:

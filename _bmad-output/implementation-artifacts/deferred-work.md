@@ -1861,3 +1861,9 @@
   summary: Spine drift (AD-6), reconciled before the next epic: the filter-chips item says checked values no Book has any more after a refetch are ignored (`liveFilters`) and that filters reset when Catalog unmounts or a Book is added; a dropped key is now also forgotten from page state once the view is ready, so it doesn't come back when a Book gets the value again.
   evidence: Spine Check, build-auto review of item 105; `ARCHITECTURE-SPINE.md` AD-6, the catalog filter chips bullet; `frontend/src/pages/CatalogPage.tsx`, the render-time prune after the `filters` memo.
   resolved: 2026-11-25, spine reconciliation before Epic 16. AD-6's catalog filter chips bullet now says a checked value that no Book has any more is also removed from the page's filter state once the view is loaded, so it doesn't come back when a Book gets the value again in the same visit (`ARCHITECTURE-SPINE.md`).
+
+## Deferred from: build-auto review of spec-16-1-star-a-book (2026-11-25)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-16-1-star-a-book.md`
+  summary: Spine drift (Capability → Architecture Map FR-31 row, Structural Seed; AD-6, AD-7), reconciled before the next epic: the FR-31 row's "Lives in" names the pages that host the star but not `components/FavouriteStar` (the shared star button) or `lib/useFavourite` (the star's save flow, with its inline and row alert slots), and the Seed's `lib/` and `components/` lines omit both.
+  evidence: Spine Check, build-auto review of Story 16.1; `frontend/src/components/FavouriteStar.tsx`, `frontend/src/lib/useFavourite.ts`; `ARCHITECTURE-SPINE.md` FR-31 row and Structural Seed.

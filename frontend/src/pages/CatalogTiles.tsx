@@ -1,8 +1,10 @@
 import { useCallback, useMemo, useState, type CSSProperties, type ReactNode, type RefObject } from 'react'
 import { Link } from 'react-router'
 import type { ShelfBook } from '../api/index.ts'
+import FavouriteStar from '../components/FavouriteStar.tsx'
 import { coverSrc } from '../lib/bookDetail.ts'
 import { spineNames, tilesName } from '../lib/catalog.ts'
+import type { FavouriteFlow } from '../lib/useFavourite.ts'
 import styles from './CatalogTiles.module.css'
 
 type Props = {
@@ -16,6 +18,8 @@ type Props = {
   highlightId: string | null
   /** What gets focus after an add, by Book id: here, the tile links. */
   focusTargets: RefObject<Map<string, HTMLElement>>
+  /** The favourite star's flow, the Catalog's (shared with List and the Bookcase). */
+  favourite: FavouriteFlow
 }
 
 type CoverState = 'loading' | 'loaded' | 'failed'
@@ -149,8 +153,13 @@ function ReadingBar({ percent }: { percent: number }) {
  * and a Book with a `percent` a reading bar; both are `aria-hidden`, since
  * the link's name already says the status. A Book without a cover, or whose
  * cover fails to load, gets a typeset cover instead.
+ *
+ * Each tile's favourite star ("Favourite *Title*") is a sibling after its
+ * link, placed at the cover box's top left: Tab goes link, star, next tile.
+ * Starred, it always shows; unstarred, it is drawn only while the pointer is
+ * over the tile or focus is inside it.
  */
-export default function CatalogTiles({ books, shown, noMatch, highlightId, focusTargets }: Props) {
+export default function CatalogTiles({ books, shown, noMatch, highlightId, focusTargets, favourite }: Props) {
   // Named over every Book, shown or not, so a twin's name never changes with a search or a filter.
   const names = useMemo(() => spineNames(books), [books])
   const none = !books.some((book) => shown.has(book.id))
@@ -159,7 +168,7 @@ export default function CatalogTiles({ books, shown, noMatch, highlightId, focus
       {none && <p className={styles.noMatch}>{noMatch}</p>}
       <ul role="list" aria-label={tilesName(books.length)} className={styles.grid} hidden={none}>
         {books.map((book) => (
-          <li key={book.id} hidden={!shown.has(book.id)}>
+          <li key={book.id} className={styles.item} hidden={!shown.has(book.id)}>
             <Link
               to={`/book/${encodeURIComponent(book.id)}`}
               aria-label={names.get(book.id)}
@@ -188,6 +197,13 @@ export default function CatalogTiles({ books, shown, noMatch, highlightId, focus
                 <span className={styles.author}>{book.firstAuthor}</span>
               </div>
             </Link>
+            <FavouriteStar
+              favourite={book.favourite}
+              label={`Favourite ${book.title}`}
+              variant="tile"
+              className={styles.star}
+              onPress={() => favourite.press({ id: book.id, title: book.title }, !book.favourite)}
+            />
           </li>
         ))}
       </ul>

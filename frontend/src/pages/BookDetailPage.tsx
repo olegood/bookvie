@@ -13,6 +13,7 @@ import ChangeColor from '../components/ChangeColor.tsx'
 import Cover from '../components/Cover.tsx'
 import EditPurpose from '../components/EditPurpose.tsx'
 import FailureMessage from '../components/FailureMessage.tsx'
+import FavouriteStar from '../components/FavouriteStar.tsx'
 import FinishDialog from '../components/FinishDialog.tsx'
 import Gauge from '../components/Gauge.tsx'
 import PaceCalculator from '../components/PaceCalculator.tsx'
@@ -39,6 +40,7 @@ import { useDeleteFlow, type DeleteBook } from '../lib/useDeleteFlow.tsx'
 import { useDetailPause } from '../lib/useDetailPause.ts'
 import { useDetailSetUpNext } from '../lib/useDetailSetUpNext.ts'
 import { useDetailSideRead } from '../lib/useDetailSideRead.ts'
+import { useFavourite } from '../lib/useFavourite.ts'
 import { usePileFlow } from '../lib/usePileFlow.tsx'
 import { PAUSING } from '../lib/usePauseFlow.tsx'
 import { useSearchCount } from '../lib/useSearchCount.ts'
@@ -200,6 +202,9 @@ function BookDetail({ book, onDelete, onFinish, finishButton }: BookDetailProps)
     dialog: pauseDialog,
   } = useDetailPause({ book, primary, resume: startButton })
 
+  // The star after the title: no optimistic change, the refetch sets it (Story 16.1).
+  const { press: pressFavourite, inlineSlot: favouriteSlot, inlineFailed: favouriteFailed } = useFavourite()
+
   const onSaved = (_id: string, title: string) => {
     // SidePanel returns focus to Edit as it unmounts.
     setEditing(false)
@@ -272,7 +277,18 @@ function BookDetail({ book, onDelete, onFinish, finishButton }: BookDetailProps)
           </div>
         </div>
         <div className={styles.info}>
-          <PageHeading className={styles.title}>{book.title}</PageHeading>
+          <div className={styles.titleRow}>
+            <PageHeading className={styles.title}>{book.title}</PageHeading>
+            <FavouriteStar
+              favourite={book.favourite}
+              label="Favourite"
+              variant="detail"
+              className={styles.favourite}
+              onPress={() => pressFavourite({ id: book.id, title: book.title }, !book.favourite)}
+            />
+          </div>
+          {/* Under the title row: the star's couldn't-save line. */}
+          <div ref={favouriteSlot} className={styles.regions} data-show-alert={favouriteFailed ? 'true' : undefined} />
           {book.subtitle && <p className={styles.subtitle}>{book.subtitle}</p>}
           <p className={styles.authors}>{book.authors.join('; ')}</p>
           <dl className={styles.metadata}>

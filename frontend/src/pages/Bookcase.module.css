@@ -258,6 +258,40 @@
   background: var(--color-marker-waiting);
 }
 
+/*
+ * DESIGN.md → Spine → Favourite mark: a 16px paper square, centered, 6px
+ * above the plank, holding a 12px gold star. The same in both themes, like
+ * the label strip; over a Main book's fill, and beside a marker dot.
+ */
+.starred {
+  position: relative;
+}
+
+.favouriteMark {
+  position: absolute;
+  z-index: 2;
+  bottom: var(--favourite-star-spine-mark-bottom);
+  left: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--favourite-star-spine-mark-size);
+  height: var(--favourite-star-spine-mark-size);
+  margin-left: calc(var(--favourite-star-spine-mark-size) / -2);
+  border-radius: var(--favourite-star-spine-mark-radius);
+  background: var(--color-spine-label-strip);
+}
+
+.favouriteMark .favouriteStar {
+  width: var(--favourite-star-spine-mark-star);
+  height: var(--favourite-star-spine-mark-star);
+}
+
+.favouriteStar path {
+  fill: var(--favourite-star-tile-on);
+  stroke: none;
+}
+
 /* The label strip: 16px wide, label + 4px at each end, at most 96px. */
 .strip {
   box-sizing: border-box;
@@ -372,6 +406,23 @@
   width: 11px;
   height: 15px;
   border-radius: 2px 2px 0 0;
+}
+
+/* The legend's favourite swatch: the spine's mark in mini, a paper square with the gold star. */
+.swatchFavourite {
+  display: inline-flex;
+  align-self: center;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 12px;
+  border-radius: var(--favourite-star-spine-mark-radius);
+  background: var(--color-spine-label-strip);
+}
+
+.swatchFavourite .favouriteStar {
+  width: 9px;
+  height: 9px;
 }
 
 /* The legend's marker swatch: the spine's dot, in its ring. */
@@ -494,6 +545,18 @@
     forced-color-adjust: none;
     background: Canvas;
     box-shadow: 0 0 0 1.5px CanvasText;
+  }
+
+  /* Every star: a CanvasText star on a Canvas square. */
+  .favouriteMark,
+  .swatchFavourite {
+    forced-color-adjust: none;
+    background: Canvas;
+    box-shadow: 0 0 0 var(--hairline) CanvasText;
+  }
+
+  .favouriteStar path {
+    fill: CanvasText;
   }
 
   .spine:focus-visible,

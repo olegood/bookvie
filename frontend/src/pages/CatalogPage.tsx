@@ -32,6 +32,7 @@ import { CATALOG_VIEWS, readCatalogView, writeCatalogView, type CatalogViewChoic
 import { COULDNT_LOAD } from '../lib/copy.ts'
 import { prefersReducedMotion } from '../lib/motion.ts'
 import { usePageTitle } from '../lib/page.ts'
+import { useFavourite } from '../lib/useFavourite.ts'
 // The count is announced once typing pauses, after the same pause as Search card notes.
 import { SEARCH_PAUSE_MS } from '../lib/useSearchCount.ts'
 import Bookcase, { MeterBar } from './Bookcase.tsx'
@@ -187,6 +188,10 @@ export default function CatalogPage() {
   // remounts and reloads, sessionStorage remembers (deleteHandled).
   const handledDelete = useRef<string | null>(null)
   const countTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  // One star flow for all three views: a failure's line shows under the filter
+  // row (Tiles, List, a popover that has closed) or in the open popover.
+  const favourite = useFavourite()
+  const { rowSlot: favouriteRowSlot, rowFailed: favouriteRowFailed } = favourite
   // What the pending count reads when it fires.
   const latest = useRef({ sorted, query, filters })
   useEffect(() => {
@@ -281,6 +286,8 @@ export default function CatalogPage() {
   // A filter change announces the count at once (search AND filters).
   const changeFilters = (next: CatalogFilters) => {
     cancelCount()
+    // A star's couldn't-save line goes with a filter change.
+    favourite.clear()
     setFilters(next)
     announce('status', matchCountCopy(shownIds(sorted, query, liveFilters(next, languages, tags, publishers)).size))
   }
@@ -367,6 +374,14 @@ export default function CatalogPage() {
           readRef={readChipRef}
         />
       )}
+      {/* Under the filter row: a star's couldn't-save line from Tiles, List or a closed popover. */}
+      {!empty && (
+        <div
+          ref={favouriteRowSlot}
+          className={styles.regions}
+          data-show-alert={favouriteRowFailed ? 'true' : undefined}
+        />
+      )}
       {!empty && (
         <LibraryPace meter={view.data.meter} pagesLeft={view.data.pagesLeft} measuredPace={view.data.measuredPace} />
       )}
@@ -380,6 +395,7 @@ export default function CatalogPage() {
           highlightId={highlightId}
           focusTargets={focusTargets}
           searchRef={searchRef}
+          favourite={favourite}
         />
       ) : catalogView === 'list' ? (
         <CatalogList
@@ -388,6 +404,7 @@ export default function CatalogPage() {
           noMatch={noMatch}
           highlightId={highlightId}
           focusTargets={focusTargets}
+          favourite={favourite}
         />
       ) : (
         <CatalogTiles
@@ -396,6 +413,7 @@ export default function CatalogPage() {
           noMatch={noMatch}
           highlightId={highlightId}
           focusTargets={focusTargets}
+          favourite={favourite}
         />
       )}
       {panelOpen && <NewBookPanel tags={view.data.tags} onClose={() => setPanelOpen(false)} onSaved={onSaved} />}

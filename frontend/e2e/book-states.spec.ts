@@ -306,6 +306,8 @@ test.describe('Story 4.6 See each book’s state on the shelf and its page', () 
       'Main book, filled to its %',
       'up next',
       'waiting for you',
+      // Story 16.1's sixth item, always shown.
+      'favourite',
     ])
     // The two new items' swatches are the spine dots in their colors.
     for (const [text, color] of [

@@ -49,6 +49,21 @@
   text-decoration-line: underline;
 }
 
+/*
+ * DESIGN.md → Favourite star → List view row: {spacing.2} after the title
+ * link, its 24px target held inside the line so the row is no taller.
+ * Unstarred, it is drawn only on row hover or focus within, at once.
+ */
+.star {
+  margin: calc((var(--favourite-star-row-size) - var(--favourite-star-row-target)) / 2) 0
+    calc((var(--favourite-star-row-size) - var(--favourite-star-row-target)) / 2) var(--space-2);
+  vertical-align: middle;
+}
+
+.table tr:not(:hover, :focus-within) .star[aria-pressed='false'] svg {
+  visibility: hidden;
+}
+
 /* DESIGN.md → Highlight ring, on a newly added row: on at once, fading off. */
 .table tr:not(.highlight) {
   transition: box-shadow 600ms ease-out;

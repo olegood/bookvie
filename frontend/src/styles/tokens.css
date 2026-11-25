@@ -26,6 +26,7 @@
   --color-marker-up-next: #5A7D98;
   --color-marker-waiting: #8C7B5C;
   --color-marker-ring: #FDFCF9;
+  --color-favourite: #9A7120;
   --color-shelf-wall: #EFEAE0;
   --color-shelf-wall-line: #E2DBCD;
   --color-birch-plank: #E9DCC3;
@@ -219,6 +220,23 @@
   --card-note-box-fade: 0.38;
   --card-note-box-transition: 150ms ease-out;
   --open-box-strip-height: 8px;
+  /* The favourite star's literals; on covers and spines they are the same in both themes, like the ribbon. */
+  --favourite-star-stroke-width: 1.8px;
+  --favourite-star-button-size: 34px;
+  --favourite-star-row-target: 24px;
+  --favourite-star-tile-target: 32px;
+  --favourite-star-detail-size: 18px;
+  --favourite-star-popover-size: 16px;
+  --favourite-star-row-size: 15px;
+  --favourite-star-tile-size: 22px;
+  --favourite-star-tile-inset: 8px;
+  --favourite-star-tile-on: #9A7120;
+  --favourite-star-tile-off: #5F635C;
+  --favourite-star-tile-halo: 1.5px;
+  --favourite-star-spine-mark-size: 16px;
+  --favourite-star-spine-mark-star: 12px;
+  --favourite-star-spine-mark-radius: 2px;
+  --favourite-star-spine-mark-bottom: 6px;
 }
 
 :root[data-theme="dark"] {
@@ -238,6 +256,7 @@
   --color-marker-up-next: #8EADC6;
   --color-marker-waiting: #A8987A;
   --color-marker-ring: #191B18;
+  --color-favourite: #D2A54E;
   --color-shelf-wall: #1E201C;
   --color-shelf-wall-line: #2E312B;
   --color-birch-plank: #6E604B;
@@ -271,6 +290,7 @@
     --color-marker-up-next: #8EADC6;
     --color-marker-waiting: #A8987A;
     --color-marker-ring: #191B18;
+    --color-favourite: #D2A54E;
     --color-shelf-wall: #1E201C;
     --color-shelf-wall-line: #2E312B;
     --color-birch-plank: #6E604B;

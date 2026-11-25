@@ -46,8 +46,9 @@
   width: 100%;
 }
 
-/* The live regions' slots below Set as Up next and Pause: no grid row until a
-   failed press puts its alert line there, one calm line in ink. */
+/* The live regions' slots below Set as Up next, Pause and the title row (the
+   favourite star): no box until a failed press puts its alert line there, one
+   calm line in ink. */
 .regions:not([data-show-alert='true']) {
   display: contents;
 }
@@ -79,7 +80,22 @@
   min-width: 0;
 }
 
+/* The h1, then the favourite star {spacing.3} after it, centered on its first line. */
+.titleRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.favourite {
+  /* Centers the 34px target on the h1's first line box. */
+  margin-top: calc(
+    (var(--font-book-title-lg-size) * var(--font-book-title-lg-line-height) - var(--favourite-star-button-size)) / 2
+  );
+}
+
 .title {
+  min-width: 0;
   margin: 0;
   font-family: var(--font-book-title-lg-family);
   font-size: var(--font-book-title-lg-size);

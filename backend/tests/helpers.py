@@ -403,7 +403,7 @@ class RecordingFs(OsFileSystem):
 
 
 EMPTY_LIBRARY = (
-    b'{\n  "schemaVersion": 3,\n  "mainBookId": null,\n  "upNextBookId": null,\n'
+    b'{\n  "schemaVersion": 4,\n  "mainBookId": null,\n  "upNextBookId": null,\n'
     b'  "sideReadBookIds": [],\n  "books": []\n}\n'
 )
 
@@ -698,8 +698,9 @@ STORED_BOOK_KEYS = frozenset(
         "spineColorFromCover",
         "spineColorCurated",
         "spineColor",
+        "favourite",
         "readings",
         "cardNotes",
     }
 )
-"""A stored Book's 21 keys in ``library.json`` (a backup carries the file as is)."""
+"""A stored Book's 22 keys in ``library.json`` (a backup carries the file as is)."""

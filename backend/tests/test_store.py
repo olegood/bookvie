@@ -61,7 +61,7 @@ def test_serialize_book_golden_bytes(library_builder: LibraryBuilder) -> None:
     )  # fmt: skip
     library_builder.main(book)
     expected = """{
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "mainBookId": "b1",
   "upNextBookId": null,
   "sideReadBookIds": [],
@@ -90,6 +90,7 @@ def test_serialize_book_golden_bytes(library_builder: LibraryBuilder) -> None:
       "spineColorFromCover": null,
       "spineColorCurated": "#749076",
       "spineColor": "#749076",
+      "favourite": false,
       "readings": [
         {
           "id": "r1",
@@ -185,6 +186,7 @@ _books = _model(
     spine_color_from_cover=_opt(_text),
     spine_color_curated=_text,
     spine_color=_text,
+    favourite=st.booleans(),
     readings=st.lists(_readings, max_size=2),
     card_notes=st.lists(_notes, max_size=2),
 )
@@ -334,7 +336,7 @@ def _valid_doc() -> dict:
 
 def test_newer_file_is_refused(tmp_path: Path) -> None:
     doc = _valid_doc()
-    doc["schemaVersion"] = 4
+    doc["schemaVersion"] = 5
     _refused(tmp_path, json.dumps(doc).encode(), "newer than this bookvie supports")
 
 
@@ -359,7 +361,7 @@ def test_invalid_file_is_refused(tmp_path: Path, raw: bytes, reason: str) -> Non
 
 def _newer() -> bytes:
     doc = _valid_doc()
-    doc["schemaVersion"] = 4
+    doc["schemaVersion"] = 5
     return json.dumps(doc).encode()
 
 
@@ -380,7 +382,7 @@ def _broken_rule() -> bytes:
         (lambda: b'{"schemaVersion": 0}', "has an unknown schemaVersion 0"),
         (
             _newer,
-            "has schemaVersion 4, which is newer than this bookvie supports (3); update bookvie",
+            "has schemaVersion 5, which is newer than this bookvie supports (4); update bookvie",
         ),
         (
             _broken_rule,

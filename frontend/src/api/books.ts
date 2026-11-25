@@ -205,6 +205,26 @@ export function useSetSpineColor(): (bookId: string, spineColor: string | null) 
   return (bookId, spineColor) => setSpineColor(client, bookId, spineColor)
 }
 
+export function setFavouriteForm(bookId: string, favourite: boolean): FormData {
+  const form = new FormData()
+  form.set('intent', JSON.stringify({ bookId, favourite }))
+  return form
+}
+
+/**
+ * Sends `set-favourite` with the value to store, never a toggle (the value
+ * the Book already has is a no-op); resolves after the views have refetched.
+ */
+export function setFavourite(client: QueryClient, bookId: string, favourite: boolean): Promise<IntentResult> {
+  return sendIntent(client, 'set-favourite', setFavouriteForm(bookId, favourite))
+}
+
+/** `setFavourite` bound to the app's QueryClient. */
+export function useSetFavourite(): (bookId: string, favourite: boolean) => Promise<IntentResult> {
+  const client = useQueryClient()
+  return (bookId, favourite) => setFavourite(client, bookId, favourite)
+}
+
 // `start-reading` and `edit-purpose` share one intent part, `{ bookId, purpose }`:
 // the Purpose as typed (the server trims it, and stores `null` when nothing is left).
 // `start-reading` adds `page`, the "Which page?" a Side read asks for, only when given.

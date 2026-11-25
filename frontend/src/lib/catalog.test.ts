@@ -438,6 +438,21 @@ describe('spineNames', () => {
       'Dune, not read yet, on the side',
     ])
   })
+
+  it('ends a starred name with ", favourite" after the status and twins it never renames', () => {
+    assert.deepEqual(named([twin('a', { favourite: true }), twin('b', { edition: 2 })]), [
+      'Dune by Frank Herbert, edition 1, not read yet, favourite',
+      'Dune by Frank Herbert, edition 2, not read yet',
+    ])
+    // Starring one of two equal twins tells nobody apart and qualifies nobody.
+    assert.deepEqual(named([twin('a', { favourite: true }), twin('b')]), [
+      'Dune by Frank Herbert, not read yet, favourite',
+      'Dune by Frank Herbert, not read yet',
+    ])
+    assert.deepEqual(named([twin('a', { sideRead: true, favourite: true, title: 'Emma' })]), [
+      'Emma by Frank Herbert, not read yet, on the side, favourite',
+    ])
+  })
 })
 
 describe('spineMarker', () => {

@@ -50,3 +50,23 @@
   align-items: flex-start;
   gap: var(--space-3);
 }
+
+/* The live regions' slot under the filter row: no flex item until a star's
+   failed press puts its alert line there, one calm line in ink. */
+.regions:not([data-show-alert='true']) {
+  display: contents;
+}
+
+.regions[data-show-alert='true'] [role='alert'] {
+  position: static;
+  width: auto;
+  height: auto;
+  margin: 0;
+  overflow: visible;
+  clip-path: none;
+  white-space: normal;
+  font-family: var(--font-body-sm-family);
+  font-size: var(--font-body-sm-size);
+  line-height: var(--font-body-sm-line-height);
+  color: var(--color-ink);
+}

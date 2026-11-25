@@ -83,6 +83,10 @@ const greetingsOrPraise = (copy) => copy.filter(({ text }) => GREETING_OR_PRAISE
 // server only, not a warning. dev-mode-production.spec.ts AC-10 pins where it lives.
 const DEV_AMBER = new Set(['#8c5e0e', '#ebc27a'])
 
+// Favourite gold (DESIGN.md Colors → Favourite gold, Story 16.1): it fills the
+// favourite star and nothing else, never a warning or a message.
+const FAVOURITE_GOLD = new Set(['#9a7120', '#d2a54e'])
+
 /** Red or warning colors in CSS: named, or a saturated hex with a red-orange hue. */
 const redColors = (css) =>
   css.flatMap(({ file, source }) => [
@@ -90,6 +94,7 @@ const redColors = (css) =>
     ...[...source.matchAll(/#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3}\b/g)]
       .filter((m) => {
         if (DEV_AMBER.has(m[0].toLowerCase())) return false
+        if (FAVOURITE_GOLD.has(m[0].toLowerCase())) return false
         const { hue, saturation } = hexHueSaturation(m[0])
         return saturation > 0.55 && (hue < 40 || hue > 345)
       })

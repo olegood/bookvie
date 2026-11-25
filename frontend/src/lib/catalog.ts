@@ -65,6 +65,8 @@ export interface NamedSpine extends ListedBook {
   waitingPage: number | null
   /** A Side read: ", on the side" after the status (no marker of its own). */
   sideRead: boolean
+  /** Starred: `spineNames` ends the name with ", favourite", after the twin rounds. */
+  favourite?: boolean
 }
 
 /** The fields of a catalog Book that tell twin spines apart (`spineNames`). */
@@ -143,8 +145,10 @@ const TIE_BREAKERS: { value: (book: TwinSpine) => number | null; words: (book: T
  * rounds, edition, then year, then pages: each group still equal whose
  * members don't all share that field gets it appended ("Dune by Frank
  * Herbert, edition 1, 1965, not read yet"). A spine with no twin keeps
- * `spineName`'s name; twins equal in all three keep the same name. Pass the
- * whole bookcase, so a name never depends on a search, a filter or a slice.
+ * `spineName`'s name; twins equal in all three keep the same name. A starred
+ * Book's name then ends with ", favourite" (AR71). The rounds run on names
+ * without it, so starring one twin never renames another. Pass the whole
+ * bookcase, so a name never depends on a search, a filter or a slice.
  */
 export function spineNames(books: readonly TwinSpine[]): Map<string, string> {
   const qualifiers = new Map<string, string[]>(books.map((book) => [book.id, []]))
@@ -162,7 +166,7 @@ export function spineNames(books: readonly TwinSpine[]): Map<string, string> {
       if (values.size > 1) for (const book of group) qualifiers.get(book.id)!.push(field.words(book))
     }
   }
-  return new Map(books.map((book) => [book.id, name(book)]))
+  return new Map(books.map((book) => [book.id, book.favourite ? `${name(book)}, favourite` : name(book)]))
 }
 
 /**

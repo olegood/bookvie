@@ -80,6 +80,7 @@ from bookvie.intents import (
     parse_mark_side_read_intent,
     parse_pause_intent,
     parse_restore_intent,
+    parse_set_favourite_intent,
     parse_set_spine_color_intent,
     parse_set_up_next_intent,
     parse_start_reading_intent,
@@ -90,6 +91,7 @@ from bookvie.intents import (
     record_export,
     restore,
     restore_unsafe,
+    set_favourite,
     set_spine_color,
     set_up_next,
     start_reading,
@@ -483,6 +485,29 @@ def set_spine_color_intent(
     """Set or clear a Book's own spine color and re-resolve its spine color (FR-24)."""
     parsed = parse_set_spine_color_intent(intent)
     set_spine_color(request.app.state.store, parsed)
+    return OkResponse(ok=True)
+
+
+@router.post(
+    "/intents/set-favourite",
+    response_model=OkResponse,
+    response_model_exclude_none=True,
+)
+def set_favourite_intent(
+    request: Request,
+    intent: Annotated[
+        str | None,
+        Form(
+            media_type="multipart/form-data",
+            description=(
+                'JSON object {"bookId": ..., "favourite": true | false}: the value to store.'
+            ),
+        ),
+    ] = None,
+) -> OkResponse:
+    """Star or unstar a Book (FR-31); the value it already has writes nothing."""
+    parsed = parse_set_favourite_intent(intent)
+    set_favourite(request.app.state.store, parsed)
     return OkResponse(ok=True)
 
 

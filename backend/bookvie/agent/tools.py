@@ -5,7 +5,8 @@ the read tools in ``read_tools``, the write tools in ``write_tools``, the book
 tools in ``book_tools``, and the backup and restore tools in ``backup_tools``.
 
 The destructive intents (``delete_book``,
-``delete_card_note``, ``restore``, ``set_spine_color``) are never tools.
+``delete_card_note``, ``restore``, ``set_spine_color``) are never tools, and
+neither is ``set_favourite``: an agent reads the star but never sets it.
 """
 
 from .backup_tools import (

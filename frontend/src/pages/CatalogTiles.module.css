@@ -14,6 +14,31 @@
   display: none;
 }
 
+/* The tile: its link, then the favourite star placed over the cover box. */
+.item {
+  position: relative;
+}
+
+/*
+ * DESIGN.md → Favourite star → Catalog tile: the 22px star 8px in from the
+ * cover box's top and left edges, at the centre of its 32px target. An
+ * unstarred star is drawn only on tile hover or focus within, at once.
+ */
+.star {
+  position: absolute;
+  z-index: 1;
+  top: calc(
+    var(--favourite-star-tile-inset) - (var(--favourite-star-tile-target) - var(--favourite-star-tile-size)) / 2
+  );
+  left: calc(
+    var(--favourite-star-tile-inset) - (var(--favourite-star-tile-target) - var(--favourite-star-tile-size)) / 2
+  );
+}
+
+.item:not(:hover, :focus-within) .star[aria-pressed='false'] svg {
+  visibility: hidden;
+}
+
 /* The whole tile is one link; its focus ring goes on the cover box instead. */
 .link,
 .link:focus-visible {

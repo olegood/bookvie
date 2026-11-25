@@ -168,9 +168,12 @@ test.describe('Story 1.14 Change a book’s color from the shelf (ATDD)', () => 
     await expect(dune).toBeFocused()
     await expect(dune).toHaveAttribute('aria-expanded', 'false')
 
-    // Shift+Tab from the first control (focus starts there).
+    // Shift+Tab from the control focus starts on reaches the favourite star,
+    // the first control (Story 16.1); Shift+Tab from the star closes it.
     await page.keyboard.press('Enter')
     await expect(openBook).toBeFocused()
+    await page.keyboard.press('Shift+Tab')
+    await expect(card.getByRole('button', { name: 'Favourite', exact: true })).toBeFocused()
     await page.keyboard.press('Shift+Tab')
     await expect(card).toBeHidden()
     await expect(dune).toBeFocused()
@@ -220,9 +223,10 @@ test.describe('Story 1.14 Change a book’s color from the shelf (ATDD)', () => 
       await expect(card.getByText(line, { exact: true })).toBeVisible()
     }
     // A finished Book with no Reading in progress has no start action (Story
-    // 3.2; its re-read starts from Book detail): the only buttons are × and
-    // the eight swatches (no cover, so no "From cover").
-    await expect(card.getByRole('button')).toHaveCount(1 + SWATCH_NAMES.length)
+    // 3.2; its re-read starts from Book detail): the only buttons are the
+    // favourite star (Story 16.1), × and the eight swatches (no cover, so no
+    // "From cover").
+    await expect(card.getByRole('button')).toHaveCount(2 + SWATCH_NAMES.length)
     await expect(card.getByRole('button', { name: 'Close', exact: true })).toBeVisible()
     for (const name of SWATCH_NAMES) {
       await expect(swatch(card, name)).toHaveAttribute('aria-pressed', name === 'Sage' ? 'true' : 'false')
@@ -431,7 +435,8 @@ test.describe('Story 1.14 Change a book’s color from the shelf (follow-ups)', 
     const names = await card
       .getByRole('button')
       .evaluateAll((all) => all.map((el) => el.textContent || el.getAttribute('aria-label')))
-    expect(names.slice(0, 2)).toEqual(['From cover', 'Sage'])
+    // The favourite star (Story 16.1) is first in DOM order, after the title.
+    expect(names.slice(0, 3)).toEqual(['Favourite', 'From cover', 'Sage'])
     // rgb(200, 60, 40) is nearest to Clay.
     await expect(card.getByText('Color: Clay, from cover', { exact: true })).toBeVisible()
     const coverFill = await dune.evaluate((el) => getComputedStyle(el).backgroundColor)

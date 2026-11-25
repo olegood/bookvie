@@ -11,10 +11,12 @@ import {
 } from 'react'
 import { Link } from 'react-router'
 import type { LibraryMeter, ShelfBook } from '../api/index.ts'
+import { StarIcon } from '../components/FavouriteStar.tsx'
 import SpinePopover from '../components/SpinePopover.tsx'
 import StartDialog from '../components/StartDialog.tsx'
 import { bookcaseName, finishLine, sliceName, spineMarker, spineNames, type SpineMarker } from '../lib/catalog.ts'
 import { nearestVisible, spineHeight } from '../lib/spine.ts'
+import { useFavourite, type FavouriteFlow } from '../lib/useFavourite.ts'
 import { useFinishMoment, type FinishMoment } from '../lib/useFinishMoment.ts'
 import { useSliceRows } from '../lib/useSliceRows.ts'
 import { useSpinePopover } from '../lib/useSpinePopover.ts'
@@ -25,6 +27,12 @@ export type { FinishMoment }
 type Shared = {
   /** Already in display order (the bookcase order). */
   books: readonly ShelfBook[]
+  /**
+   * The Spine popover star's flow. Catalog passes its own, shared with Tiles
+   * and List, so a failure's line can move under the filter row once the
+   * popover closes; without it the Bookcase keeps its own (Home).
+   */
+  favourite?: FavouriteFlow
 }
 
 /** Catalog's full bookcase: every Book, hidden by Search titles and the filter chips. */
@@ -126,6 +134,10 @@ export function MeterBar({ meter }: { meter: LibraryMeter }) {
  * on resize, never filters and never scrolls, and the keys follow the rows as
  * displayed.
  *
+ * A starred Book's spine carries the favourite mark at its foot, a paper
+ * square with the gold star (not a control), and its name ends with
+ * ", favourite"; the legend always shows the "favourite" item.
+ *
  * With `finishing` (Home, after this tab's finish), the slice plays the
  * finish moment once (see `useFinishMoment`), and the header shows
  * "Finished *X*." ("Finished *X* again." for a re-read) while `finishing` is
@@ -148,6 +160,8 @@ export default function Bookcase(props: Props) {
   const [measured, setMeasured] = useState<Measured>({})
   const [stopId, setStopId] = useState<string | null>(null)
   const shelfRef = useRef<HTMLUListElement>(null)
+  const ownFavourite = useFavourite()
+  const favourite = props.favourite ?? ownFavourite
 
   const { rows, ids, byId } = useSliceRows({ books, priority, sliceMode, shelfRef })
   const visibleIds = useMemo(
@@ -244,6 +258,7 @@ export default function Bookcase(props: Props) {
     const filling = (main && !book.finished) || momentFill
     const classes = [styles.spine, filling ? styles.main : book.finished ? styles.read : styles.unread]
     if (marker !== null) classes.push(styles.marked)
+    if (book.favourite) classes.push(styles.starred)
     if (momentFill) classes.push(styles.finishing)
     if (book.id === highlightId || moment.ring) classes.push(styles.highlight)
     if (book.id === openId) classes.push(styles.open)
@@ -312,6 +327,11 @@ export default function Bookcase(props: Props) {
             <span className={styles.fill} />
           </span>
         )}
+        {book.favourite && (
+          <span aria-hidden="true" className={styles.favouriteMark}>
+            <StarIcon className={styles.favouriteStar} />
+          </span>
+        )}
       </button>
     )
   }
@@ -371,6 +391,7 @@ export default function Bookcase(props: Props) {
             onClose={closePopover}
             onStart={openStart}
             hasUpNext={books.some((book) => book.role === 'upNext')}
+            favourite={favourite}
           />
         </div>
       )}
@@ -395,6 +416,12 @@ export default function Bookcase(props: Props) {
         <span className={styles.legendItem}>
           <span aria-hidden="true" className={`${styles.swatchDot} ${styles.markerWaiting}`} />
           waiting for you
+        </span>
+        <span className={styles.legendItem}>
+          <span aria-hidden="true" className={styles.swatchFavourite}>
+            <StarIcon className={styles.favouriteStar} />
+          </span>
+          favourite
         </span>
       </div>
     </section>

@@ -150,8 +150,9 @@ def test_ac2_p0_the_client_types_give_shelf_book_a_required_publisher(tmp_path: 
     shelf_book = schemas["ShelfBook"]
     assert shelf_book["properties"]["publisher"]["type"] == "string", shelf_book
     assert "publisher" in shelf_book["required"], shelf_book
-    assert set(shelf_book["properties"]) == SHELF_BOOK_FIELDS_BEFORE | {"publisher"}
-    assert set(shelf_book["required"]) == SHELF_BOOK_FIELDS_BEFORE | {"publisher"}
+    # Story 16.1 later adds favourite to ShelfBook.
+    assert set(shelf_book["properties"]) == SHELF_BOOK_FIELDS_BEFORE | {"publisher", "favourite"}
+    assert set(shelf_book["required"]) == SHELF_BOOK_FIELDS_BEFORE | {"publisher", "favourite"}
 
 
 # --- AC-3: list_catalog carries it too, with its description and arguments --------

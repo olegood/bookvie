@@ -84,7 +84,13 @@ WRITE_TOOLS: dict[str, tuple[type, set[str], set[str]]] = {
     "mark_side_read": (MarkSideReadIntent, {"bookId"}, {"bookId"}),
     "unmark_side_read": (UnmarkSideReadIntent, {"bookId"}, {"bookId"}),
 }
-DESTRUCTIVE_TOOL_NAMES = ["delete_book", "delete_card_note", "restore", "set_spine_color"]
+DESTRUCTIVE_TOOL_NAMES = [
+    "delete_book",
+    "delete_card_note",
+    "restore",
+    "set_spine_color",
+    "set_favourite",
+]
 
 # The seeded Books, by role. Fixed ids, so a case names its Book.
 MAIN = "a0000000-0000-4000-8000-000000000001"  # the Main book, at page 120 of 616, a Purpose

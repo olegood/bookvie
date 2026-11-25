@@ -71,7 +71,20 @@
   overflow-wrap: anywhere;
 }
 
+/* The title, then the favourite star; the star's target never makes the row taller. */
+.titleRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-1);
+}
+
+.favourite {
+  --line: calc(var(--font-book-title-md-size) * var(--font-book-title-md-line-height));
+  margin-block: calc((var(--line) - var(--favourite-star-button-size)) / 2);
+}
+
 .title {
+  min-width: 0;
   padding-right: var(--space-2);
   font-family: var(--font-book-title-md-family);
   font-size: var(--font-book-title-md-size);
@@ -166,8 +179,8 @@
   color: var(--color-ink-secondary);
 }
 
-/* The live regions' slot below Set as Up next: no grid row until a failed
-   press puts its alert line there, one calm line in ink. */
+/* The live regions' slots below Set as Up next and the title row: no grid row
+   until a failed press puts its alert line there, one calm line in ink. */
 .regions:not([data-show-alert='true']) {
   display: contents;
 }

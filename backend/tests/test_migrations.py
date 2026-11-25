@@ -246,7 +246,7 @@ def test_a_real_v1_file_is_backed_up_and_upgraded_at_startup(tmp_path: Path) -> 
 
     assert (tmp_path / "library.v1.bak.json").read_bytes() == original
     on_disk = json.loads((tmp_path / "library.json").read_bytes())
-    assert on_disk["schemaVersion"] == 3
+    assert on_disk["schemaVersion"] == 4
     assert (tmp_path / "library.json").read_bytes() == serialize(store.library)
     before = json.loads(original)
     assert [[r["id"] for r in b["readings"]] for b in on_disk["books"]] == [
@@ -259,7 +259,7 @@ def test_a_real_v1_file_is_backed_up_and_upgraded_at_startup(tmp_path: Path) -> 
     ]  # fmt: skip
 
 
-def test_a_v1_export_restores_at_v3_with_the_same_pace(tmp_path: Path) -> None:
+def test_a_v1_export_restores_at_the_current_version_with_the_same_pace(tmp_path: Path) -> None:
     builder = _library_with_readings()
     pace_before = measured_pace(builder.build())
     assert pace_before == Fraction(800, 20)
@@ -271,7 +271,7 @@ def test_a_v1_export_restores_at_v3_with_the_same_pace(tmp_path: Path) -> None:
     response = post_restore(api_client(target), archive)
 
     assert response.status_code == 200
-    assert json.loads(library_bytes(target))["schemaVersion"] == 3
+    assert json.loads(library_bytes(target))["schemaVersion"] == 4
     assert measured_pace(Store.open(target).library) == pace_before
     assert not (target / "library.v1.bak.json").exists()
 
@@ -352,7 +352,7 @@ def test_a_real_v2_file_is_backed_up_and_upgraded_at_startup_with_the_same_pace(
 
     assert (tmp_path / "library.v2.bak.json").read_bytes() == original
     on_disk = json.loads((tmp_path / "library.json").read_bytes())
-    assert on_disk["schemaVersion"] == 3
+    assert on_disk["schemaVersion"] == 4
     assert (tmp_path / "library.json").read_bytes() == serialize(store.library)
     before = json.loads(original)
     assert [[r["id"] for r in b["readings"]] for b in on_disk["books"]] == [
@@ -363,20 +363,22 @@ def test_a_real_v2_file_is_backed_up_and_upgraded_at_startup_with_the_same_pace(
     assert _days_left(store.library) == days_left_before
 
 
-def test_a_real_v1_file_reaches_v3_with_the_same_pace(tmp_path: Path) -> None:
+def test_a_real_v1_file_reaches_the_current_version_with_the_same_pace(tmp_path: Path) -> None:
     builder = _library_with_readings()
     pace_before = measured_pace(builder.build())
     _write_v1(builder, tmp_path)
 
     store = Store.open(tmp_path)
 
-    assert store.library.schema_version == 3
+    assert store.library.schema_version == 4
     assert measured_pace(store.library) == pace_before
     assert not (tmp_path / "library.v2.bak.json").exists()
 
 
 @pytest.mark.parametrize("as_older", [as_v1, as_v2], ids=["v1", "v2"])
-def test_an_older_export_restores_at_v3_with_the_same_pace(tmp_path: Path, as_older) -> None:
+def test_an_older_export_restores_at_the_current_version_with_the_same_pace(
+    tmp_path: Path, as_older
+) -> None:
     builder = _library_with_readings() if as_older is as_v1 else _library_from_page()
     pace_before = measured_pace(builder.build())
     archive = zip_archive({"library.json": as_older(serialize(builder.build())), "covers/": None})
@@ -387,7 +389,7 @@ def test_an_older_export_restores_at_v3_with_the_same_pace(tmp_path: Path, as_ol
 
     assert response.status_code == 200
     restored = json.loads(library_bytes(target))
-    assert restored["schemaVersion"] == 3
+    assert restored["schemaVersion"] == 4
     assert all(r["earlierSegments"] == [] for b in restored["books"] for r in b["readings"])
     assert measured_pace(Store.open(target).library) == pace_before
 

@@ -6,9 +6,8 @@
 // set-favourite does to the library (no-op, 409, 422, migration, edits keep the
 // star, backup) is proven at API level in backend/tests/test_favourite.py.
 //
-// Red phase (ATDD): every leaf is `test.skip` until the build. Nothing stores
-// `favourite` yet and the seed refuses unknown keys, so each leaf stars its
-// Books with `starBook` (set-favourite, its answer unread) after seeding them.
+// Each leaf stars its Books with `starBook` (set-favourite, its answer
+// unread) after seeding them.
 
 import type { Locator, Page } from '@playwright/test'
 import { bookcase, bookRows, finished, search, shelfOf, spine, spines, viewToggle } from './bookcase.ts'
@@ -80,8 +79,7 @@ test.describe('Story 16.1 Star a Book (ATDD)', () => {
     await page.emulateMedia({ colorScheme: 'light' })
   })
 
-  // Red phase: Book detail has no favourite star yet.
-  test.skip('[P0] AC-7 Book detail: a "Favourite" toggle after the h1 stars and unstars once the save succeeds, never optimistically, and a second press before the refetch sends the same value', async ({
+  test('[P0] AC-7 Book detail: a "Favourite" toggle after the h1 stars and unstars once the save succeeds, never optimistically, and a second press before the refetch sends the same value', async ({
     page,
     seededServer,
   }) => {
@@ -152,8 +150,7 @@ test.describe('Story 16.1 Star a Book (ATDD)', () => {
     expect(intentOf(sent[2]!)).toEqual({ bookId: DUNE_ID, favourite: false })
   })
 
-  // Red phase: there is no star to press, so no couldn't-save line.
-  test.skip("[P1] AC-8 a star press that couldn't be saved leaves the star as it was and shows the line under the title row, once under the filter row on Tiles, and in an open popover", async ({
+  test("[P1] AC-8 a star press that couldn't be saved leaves the star as it was and shows the line under the title row, once under the filter row on Tiles, and in an open popover", async ({
     page,
     seededServer,
   }) => {
@@ -224,10 +221,35 @@ test.describe('Story 16.1 Star a Book (ATDD)', () => {
     await expect(card).toBeVisible()
     await expect(cardStar).toHaveAttribute('aria-pressed', 'true')
     await expect(cardStar).toBeFocused()
+
+    // Once the popover closes, the line moves once under the filter row, above the bookcase.
+    await page.keyboard.press('Escape')
+    await expect(card).toBeHidden()
+    const closedLine = main.getByText(COULDNT_SAVE, { exact: true })
+    await expect(closedLine).toHaveCount(1)
+    await expect(closedLine).toBeVisible()
+    const closedRowBox = (await chipGroup(page, 'Status').locator('xpath=..').boundingBox())!
+    const closedLineBox = (await closedLine.boundingBox())!
+    const shelfBox = (await bookcase(page).boundingBox())!
+    expect(closedLineBox.y).toBeGreaterThanOrEqual(closedRowBox.y + closedRowBox.height - 1)
+    expect(closedLineBox.y + closedLineBox.height).toBeLessThanOrEqual(shelfBox.y + 1)
+    // Another spine's popover never takes the old line.
+    await bookcase(page)
+      .getByRole('button', { name: /^Emma by Jane Austen, / })
+      .click()
+    const emmaCard = popover(page, 'Emma')
+    await expect(emmaCard).toBeVisible()
+    await expect(emmaCard.getByText(COULDNT_SAVE, { exact: true })).toHaveCount(0)
+    await expect(main.getByText(COULDNT_SAVE, { exact: true })).toHaveCount(1)
+    await page.keyboard.press('Escape')
+    await expect(emmaCard).toBeHidden()
+    // A filter change empties it.
+    await chip(page, 'Status', 'Unread').click()
+    await expect(alert).toHaveText('')
+    await chip(page, 'Status', 'Unread').click()
   })
 
-  // Red phase: tiles have no star.
-  test.skip('[P0] AC-9 Tiles: a starred tile shows its gold star at the cover box’s top left, clear of the ribbon; an unstarred one draws its outline only on hover or focus; each star follows its link in Tab order', async ({
+  test('[P0] AC-9 Tiles: a starred tile shows its gold star at the cover box’s top left, clear of the ribbon; an unstarred one draws its outline only on hover or focus; each star follows its link in Tab order', async ({
     page,
     seededServer,
   }) => {
@@ -302,8 +324,7 @@ test.describe('Story 16.1 Star a Book (ATDD)', () => {
     await expect(page.getByRole('status')).toHaveText('Dune is not a favourite.')
   })
 
-  // Red phase: List rows have no star.
-  test.skip('[P1] AC-10 List: the title cell holds the title link, then "Favourite Title", with the tiles’ starred and hover-or-focus rules, and the row is no taller than without it', async ({
+  test('[P1] AC-10 List: the title cell holds the title link, then "Favourite Title", with the tiles’ starred and hover-or-focus rules, and the row is no taller than without it', async ({
     page,
     seededServer,
   }) => {
@@ -351,8 +372,7 @@ test.describe('Story 16.1 Star a Book (ATDD)', () => {
     await expect(page.getByRole('status')).toHaveText('Dune is a favourite.')
   })
 
-  // Red phase: spines don't know about favourites.
-  test.skip('[P0] AC-11 a starred Book’s spine shows the paper square with the gold star at its foot and its name ends with ", favourite"; twins keep their names; the legend always shows "favourite"', async ({
+  test('[P0] AC-11 a starred Book’s spine shows the paper square with the gold star at its foot and its name ends with ", favourite"; twins keep their names; the legend always shows "favourite"', async ({
     page,
     seededServer,
   }) => {
@@ -427,8 +447,7 @@ test.describe('Story 16.1 Star a Book (ATDD)', () => {
     await expect(legend(page).locator(':scope > span', { hasText: /^favourite$/ })).toBeVisible()
   })
 
-  // Red phase: the popover has no star.
-  test.skip('[P0] AC-12 the Spine popover holds "Favourite" right after the title, first in its DOM; focus opens on the primary action or first link, Shift+Tab reaches the star, then closes; pressing it shows or hides the spine mark', async ({
+  test('[P0] AC-12 the Spine popover holds "Favourite" right after the title, first in its DOM; focus opens on the primary action or first link, Shift+Tab reaches the star, then closes; pressing it shows or hides the spine mark', async ({
     page,
     seededServer,
   }) => {
@@ -497,8 +516,7 @@ test.describe('Story 16.1 Star a Book (ATDD)', () => {
     await expect.poll(() => spineMark(dune)).toBeNull()
   })
 
-  // Red phase: DESIGN.md's colors have no favourite yet.
-  test.skip('[P1] AC-13 favourite and favourite-dark are DESIGN.md colors and tokens; gold fills only the star (rating stars stay sage); under forced colors every star is CanvasText with forced-color-adjust none', async ({
+  test('[P1] AC-13 favourite and favourite-dark are DESIGN.md colors and tokens; gold fills only the star (rating stars stay sage); under forced colors every star is CanvasText with forced-color-adjust none', async ({
     page,
     seededServer,
   }) => {
@@ -564,10 +582,16 @@ test.describe('Story 16.1 Star a Book (ATDD)', () => {
     const emmaTile = tileItemStarting(page, 'Emma by Jane Austen, ')
     await emmaTile.getByRole('link').hover()
     await expect(starShape(favouriteStar(emmaTile, 'Favourite Emma'))).toHaveCSS('stroke', INK_SECONDARY)
+    // The spine mark in dark: the gold star on its paper square, as in light.
+    await viewToggle(page).getByRole('button', { name: 'Bookcase', exact: true }).click()
+    await expect(spines(page)).toHaveCount(2)
+    const darkMark = await spineMark(bookcase(page).getByRole('button', { name: /^Dune by Frank Herbert, / }))
+    expect(darkMark).not.toBeNull()
+    expect(darkMark!.starFill).toBe(FAVOURITE)
+    expect(darkMark!.background).toBe(SPINE_LABEL_STRIP)
   })
 
-  // Red phase: no spine carries ", favourite" yet.
-  test.skip('[P2] AC-14 starring Books leaves Home’s slice rows and the "X of Y finished" meter as they were; only the spine mark and name are new', async ({
+  test('[P2] AC-14 starring Books leaves Home’s slice rows and the "X of Y finished" meter as they were; only the spine mark and name are new', async ({
     page,
     seededServer,
   }) => {

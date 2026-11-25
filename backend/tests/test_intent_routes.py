@@ -43,6 +43,7 @@ INTENT_ROUTES = {
     "edit-book": {**VALID_FORM, "bookId": DUNE_ID},
     "delete-book": {"bookId": DUNE_ID},
     "set-spine-color": {"bookId": DUNE_ID, "spineColor": "#749076"},
+    "set-favourite": {"bookId": DUNE_ID, "favourite": True},
     "start-reading": {"bookId": DUNE_ID, "purpose": None},
     "edit-purpose": {"bookId": DUNE_ID, "purpose": None},
     "update-page": {"bookId": DUNE_ID, "page": 1},

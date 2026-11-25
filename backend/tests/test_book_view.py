@@ -62,6 +62,7 @@ def test_book_view_returns_the_book_and_its_latest_finish(
         "spineColorFromCover": None,
         "hasCover": False,
         "finished": True,
+        "favourite": False,
         "latestFinishDate": "2024-02-10",
         # Story 12.4: the Edit book panel's prefill, as strings (the latest finish date).
         "editForm": {

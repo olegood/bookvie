@@ -60,6 +60,8 @@ class ShelfBook(_View):
     """The Book's tags as stored; read by Catalog's Tag filter."""
     publisher: str
     """The Book's publisher as stored (trimmed by the book fields); read by Catalog's Publisher filter."""
+    favourite: bool
+    """Whether the Book is starred, as stored (FR-31): the star, the spine mark and ", favourite"."""
 
 
 class HomeMainBook(_View):
@@ -296,6 +298,8 @@ class BookDetailView(_View):
     reads. ``cover_file`` is only the path the page renders the image from."""
     finished: bool
     """Whether any Reading is finished, as ``ShelfBook`` says (the "shown once read" note)."""
+    favourite: bool
+    """Whether the Book is starred, as stored (FR-31): Book detail's star."""
     latest_finish_date: date | None
     """The most recent finish date: what the Edit book panel prefills in Finished on."""
     edit_form: BookEditForm

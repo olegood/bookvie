@@ -95,6 +95,11 @@ from .restore_file import (
     prepare_restore,
     preview_restore,
 )
+from .set_favourite import (
+    SetFavouriteIntent,
+    parse_set_favourite_intent,
+    set_favourite,
+)
 from .set_spine_color import (
     SetSpineColorIntent,
     parse_set_spine_color_intent,
@@ -157,6 +162,7 @@ __all__ = [
     "RestorePreview",
     "RestoredBackup",
     "Sealed",
+    "SetFavouriteIntent",
     "SetSpineColorIntent",
     "SetUpNextIntent",
     "StagedRestore",
@@ -213,6 +219,7 @@ __all__ = [
     "parse_mark_side_read_intent",
     "parse_pause_intent",
     "parse_restore_intent",
+    "parse_set_favourite_intent",
     "parse_set_spine_color_intent",
     "parse_set_up_next_intent",
     "parse_start_reading_intent",
@@ -234,6 +241,7 @@ __all__ = [
     "restore_outside_backups",
     "restore_unsafe",
     "safety_copy_failed",
+    "set_favourite",
     "set_spine_color",
     "set_up_next",
     "side_reads_full",

@@ -476,9 +476,14 @@ test.describe('Story 8.1 See my catalog as covers (ATDD)', () => {
     // The Tab stop before the grid is "How long until…?", as for the bookcase.
     await tabIntoBookcase(page)
 
+    // Each tile's favourite star (Story 16.1) follows its link in Tab order.
     await expect(tile(page, BLEAK_HOUSE)).toBeFocused()
     await page.keyboard.press('Tab')
+    await expect(page.getByRole('button', { name: 'Favourite Bleak House', exact: true })).toBeFocused()
+    await page.keyboard.press('Tab')
     await expect(tile(page, TUFTE_NAME)).toBeFocused()
+    await page.keyboard.press('Tab')
+    await expect(page.getByRole('button', { name: `Favourite ${TUFTE}`, exact: true })).toBeFocused()
     await page.keyboard.press('Tab')
     const dune = tile(page, DUNE_1)
     await expect(dune).toBeFocused()

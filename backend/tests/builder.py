@@ -137,6 +137,7 @@ class LibraryBuilder:
             "spineColorFromCover": None,
             "spineColorCurated": curated,
             "spineColor": None,
+            "favourite": False,
             "readings": [],
             "cardNotes": [],
         }

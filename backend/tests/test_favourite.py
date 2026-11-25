@@ -56,8 +56,6 @@ from tests.helpers import (
 )
 from tests.test_intent_routes import INTENT_ROUTES
 
-RED_16_1 = "Story 16.1 red phase: favourite and set-favourite are not built yet"
-
 GONE_ID = "00000000-0000-4000-8000-000000000000"
 NEUROMANCER_ID = "1b6e2c4a-3d5f-4e7a-9b8c-0d1e2f3a4b5c"
 PIRANESI_ID = "9e4f0a2b-5c7d-4e9f-b1a2-3c4d5e6f7a8b"
@@ -98,7 +96,6 @@ def _view_favourites(client: Any, path: str) -> dict[str, Any]:
 # --- AC-1: version 4 and its migration -------------------------------------------
 
 
-@pytest.mark.skip(reason=RED_16_1)
 def test_ac1_p0_a_version_3_library_loads_at_version_4_with_no_book_starred(
     tmp_path: Path,
 ) -> None:
@@ -158,7 +155,6 @@ def test_ac1_p0_a_version_3_library_loads_at_version_4_with_no_book_starred(
 # --- AC-2: the set-favourite intent ---------------------------------------------
 
 
-@pytest.mark.skip(reason=RED_16_1)
 def test_ac2_p0_set_favourite_stores_the_value_it_is_sent(tmp_path: Path) -> None:
     # [P0] AC-2. A Book is starred with favourite: true; the usual 200.
     data_dir = tmp_path / "ok"
@@ -236,7 +232,6 @@ def test_ac2_p0_set_favourite_stores_the_value_it_is_sent(tmp_path: Path) -> Non
 # --- AC-3: nothing else writes favourite -------------------------------------------
 
 
-@pytest.mark.skip(reason=RED_16_1)
 def test_ac3_p0_an_edit_and_every_other_intent_keep_the_star(
     connect_mcp: Callable[..., McpClient], tmp_path: Path
 ) -> None:
@@ -299,7 +294,6 @@ def test_ac3_p0_an_edit_and_every_other_intent_keep_the_star(
 # --- AC-4: export and restore ------------------------------------------------------
 
 
-@pytest.mark.skip(reason=RED_16_1)
 def test_ac4_p0_every_star_survives_an_export_and_restore(tmp_path: Path) -> None:
     # [P0] AC-4. Two of three Books starred; export, restore into another folder.
     source = tmp_path / "source"
@@ -321,7 +315,6 @@ def test_ac4_p0_every_star_survives_an_export_and_restore(tmp_path: Path) -> Non
 # --- AC-5: the generated client types -----------------------------------------------
 
 
-@pytest.mark.skip(reason=RED_16_1)
 def test_ac5_p1_the_client_types_give_both_views_a_required_favourite(tmp_path: Path) -> None:
     # [P1] AC-5. api:gen gives ShelfBook and BookDetailView a required favourite: boolean.
     assert "            favourite: boolean;\n" in schema_block("ShelfBook")
@@ -342,7 +335,6 @@ def test_ac5_p1_the_client_types_give_both_views_a_required_favourite(tmp_path: 
 # --- AC-6: agents read it and can't set it -------------------------------------------
 
 
-@pytest.mark.skip(reason=RED_16_1)
 def test_ac6_p1_agents_read_the_star_and_have_no_tool_to_set_it(
     connect_mcp: Callable[..., McpClient], tmp_path: Path
 ) -> None:

@@ -92,6 +92,7 @@ def test_ac1_p0_valid_add_book_saves_the_book_and_returns_its_id(data_dir: Path)
         "spineColorFromCover": None,
         "spineColorCurated": CURATED[0],
         "spineColor": CURATED[0],
+        "favourite": False,
         "readings": [],
         "cardNotes": [],
     }

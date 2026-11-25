@@ -90,6 +90,7 @@ def add_book(
                 spine_color_from_cover=from_cover,
                 spine_color_curated=curated,
                 spine_color=resolve_spine_color(fields.spine_color, from_cover, curated),
+                favourite=False,
                 readings=readings,
                 card_notes=[],
             )

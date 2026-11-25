@@ -91,6 +91,7 @@ def test_seeded_library(tmp_path: Path, library_builder: LibraryBuilder, view: s
             "language": "English",
             "tags": [],
             "publisher": "Publisher",
+            "favourite": False,
         },
         {
             "id": ids["omens"],
@@ -118,6 +119,7 @@ def test_seeded_library(tmp_path: Path, library_builder: LibraryBuilder, view: s
             "language": "English",
             "tags": ["Fantasy", "humor"],
             "publisher": "Publisher",
+            "favourite": False,
         },
         {
             "id": ids["emma"],
@@ -146,6 +148,7 @@ def test_seeded_library(tmp_path: Path, library_builder: LibraryBuilder, view: s
             "language": "English",
             "tags": ["fantasy", "Classics"],
             "publisher": "Publisher",
+            "favourite": False,
         },
     ]
     if view == "catalog":

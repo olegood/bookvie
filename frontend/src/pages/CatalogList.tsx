@@ -1,7 +1,9 @@
 import type { ReactNode, RefObject } from 'react'
 import { Link } from 'react-router'
 import type { ShelfBook } from '../api/index.ts'
+import FavouriteStar from '../components/FavouriteStar.tsx'
 import { formatDateAdded } from '../lib/catalog.ts'
+import type { FavouriteFlow } from '../lib/useFavourite.ts'
 import styles from './CatalogList.module.css'
 
 type Props = {
@@ -15,6 +17,8 @@ type Props = {
   highlightId: string | null
   /** What gets focus after an add, by Book id: here, the title links. */
   focusTargets: RefObject<Map<string, HTMLElement>>
+  /** The favourite star's flow, the Catalog's (shared with Tiles and the Bookcase). */
+  favourite: FavouriteFlow
 }
 
 const pages = new Intl.NumberFormat('en-GB')
@@ -22,9 +26,11 @@ const pages = new Intl.NumberFormat('en-GB')
 /**
  * The List view (DESIGN.md → List view): Title, Author, Pages, Status, Date
  * added, in that fixed order. Rows of Books that Search titles or the filter
- * chips leave out are `hidden`. Each title is a link to its Book detail.
+ * chips leave out are `hidden`. Each title is a link to its Book detail,
+ * followed by its favourite star ("Favourite *Title*"): starred, it always
+ * shows; unstarred, only on row hover or focus within. The row is no taller.
  */
-export default function CatalogList({ books, shown, noMatch, highlightId, focusTargets }: Props) {
+export default function CatalogList({ books, shown, noMatch, highlightId, focusTargets, favourite }: Props) {
   const none = !books.some((book) => shown.has(book.id))
   return (
     <>
@@ -63,6 +69,13 @@ export default function CatalogList({ books, shown, noMatch, highlightId, focusT
                 >
                   {book.title}
                 </Link>
+                <FavouriteStar
+                  favourite={book.favourite}
+                  label={`Favourite ${book.title}`}
+                  variant="row"
+                  className={styles.star}
+                  onPress={() => favourite.press({ id: book.id, title: book.title }, !book.favourite)}
+                />
               </td>
               <td>{book.authors.join('; ')}</td>
               <td className={styles.number}>{pages.format(book.pages)}</td>
