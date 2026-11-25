@@ -2,7 +2,7 @@
 title: 'Story 15.1: Carry the publisher in the catalog view'
 type: 'feature'
 created: '2026-11-25'
-status: 'in-review'
+status: 'done'
 baseline_revision: '36b71f9978416250d961735622e633c5f586f897'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -120,3 +120,27 @@ Status: in-review
 **Residual risks:** none known. Home's view payload also gains `publisher` (it serves `ShelfBook`); nothing renders it.
 
 Next: run `bmad-code-review` in a new session (AGENTS.md "Story pipeline").
+
+## Code Review
+
+### Review Findings
+
+Code review, 2026-11-25, in a new session (`bmad-code-review`). Diff: `master...HEAD` (`36b71f9` ATDD, `2276696` build). Layers: Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor, Spine Check. Edge Case Hunter and Verification Gap reported no findings. Spine Check had no findings (AD-6, AD-8, AD-11, AD-15, AD-18, AD-21). 0 decision-needed, 0 patch, 1 defer, 13 rejected. No patch was applied, so the full `npm run check` re-run wasn't required. No AC needs a manual run: AC-4 names the existing e2e specs as its check.
+
+- [x] [Review][Defer] No pipeline step moves an epic's status out of `backlog` [`_bmad-output/implementation-artifacts/sprint-status.yaml:152`] — deferred: pre-existing. `epic-15` reads `backlog` while 15.1 is in review, and `epic-14` still reads `backlog` with every story and its retro `done`, although the file's header says an epic moves to `in-progress` when its first story starts. The fix is in the skills' sprint sync, not this story. Low.
+
+**Rejected:**
+
+- `[low]` (blind) The `publisher` docstring names Catalog's Publisher filter, which arrives in Story 15.2. The spec's Tasks prescribe this exact docstring, the next story makes it true, and pydantic doesn't emit field docstrings into the OpenAPI document (`schema.d.ts` carries only `/** Publisher */`).
+- `[false]` (blind) "(trimmed by the book fields)" credits the wrong guarantee. The stored value is trimmed, as the docstring says. `book_fields.py` trims input and `invariants.py:114` refuses anything else on every write and load.
+- `[low]` (blind) AC-2's exact `ShelfBook` field set makes a later story that adds a field edit this leaf. `test_views.py::test_seeded_library` already pins every `ShelfBook` field, so such a story edits tests anyway, and the failure names the extra field.
+- `[false]` (blind) `book.get("publisher")` hides a missing key. The list is compared with `PUBLISHERS`, so a missing key fails with `None` shown in the message. The AC-4 catalog witness is redundant but harmless.
+- `[low]` (blind) `_get` takes no `params`, so AC-4 reads the book view by hand. That read asserts 200 (the build review's patch), so the outcome is the same. This is a style change only.
+- `[low]` (blind) Spec and ATDD checklist text is stale (Code Map's `RED_15_1`, unticked checklist boxes, the empty Spec Change Log, "Files changed" leaving out the ATDD commit's helper move). The fix would edit the spec or a planning record, and the triage rules reject that. The Auto Run Result records the current state.
+- `[false]` (blind) The ATDD checklist's green-phase follow-ups have no owner. They sit under "Green-phase follow-ups" in the checklist, which `bmad-testarch-automate` (step 4) reads after this review.
+- `[false]` (blind) Nothing tests a stored Book with a blank or missing publisher. `store.py:211` runs `check_invariants` on every load, and `test_invariants.py:364` pins `book_publisher_required` for `""`, `" "` and `"\n"`.
+- `[low]` (blind) `epic-15-context.md`'s fixture guidance names `ShelfBook` fixtures that don't exist. It does no harm (`tsc -b` names none), and the fix is a context-doc edit.
+- `[false]` (blind) `status: 'in-review'` doesn't match `review`. `in-review` is the spec-side value that Epic 12 retro item 85 prescribes for build-auto. The `in-review` value and the sprint-status `review` value stand for the same state.
+- `[low]` (blind) The shared `schema_block` depends on `schema.d.ts`'s 8-space indent. It was moved unchanged, and a generator layout change fails with "no X in schema.d.ts", which names the type.
+- `[false]` (blind) `STORED_BOOK_KEYS`'s "21 keys" will drift. The count is right today, and a story that adds a stored key edits the set two lines above it.
+- `[false]` (acceptance) `helpers.py` and `test_card_notes_spine_color.py` are outside the Code Map. They are the ATDD step's helper move (commit `36b71f9`, listed in the checklist's `generatedTestFiles`), with the same bodies and the same 21 keys.
