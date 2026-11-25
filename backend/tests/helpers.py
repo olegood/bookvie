@@ -19,6 +19,8 @@
 - Backups (Epic 13): :class:`SetClock`, :func:`files_under`,
   :func:`dropbox_content_hash`, :func:`backup_zip`, :func:`short_when`,
   :func:`confirmation_text`, :func:`failing_reasons` and :func:`restore_outcomes`.
+- The generated client types and the stored Book's shape: :data:`SCHEMA_D_TS`,
+  :func:`schema_block` and :data:`STORED_BOOK_KEYS`.
 """
 
 import hashlib
@@ -651,3 +653,43 @@ def restore_outcomes() -> dict[str, list[str]]:
             break
         outcomes[row.group(1)] = re.findall(r'"([^"]+)"', row.group(2))
     return outcomes
+
+
+SCHEMA_D_TS = Path(__file__).resolve().parents[2] / "frontend/src/api/generated/schema.d.ts"
+"""The client types ``npm --prefix frontend run api:gen`` writes from the OpenAPI document."""
+
+
+def schema_block(name: str) -> str:
+    """The body of ``schema.d.ts``'s ``<name>: { … };`` under ``components.schemas``."""
+    text = SCHEMA_D_TS.read_text(encoding="utf-8")
+    match = re.search(rf"^ {{8}}{re.escape(name)}: \{{\n(.*?)^ {{8}}\}};$", text, re.M | re.S)
+    assert match is not None, f"no {name} in schema.d.ts"
+    return match.group(1)
+
+
+STORED_BOOK_KEYS = frozenset(
+    {
+        "id",
+        "createdAt",
+        "ownership",
+        "title",
+        "subtitle",
+        "authors",
+        "pages",
+        "edition",
+        "language",
+        "publisher",
+        "type",
+        "isbn",
+        "year",
+        "tags",
+        "coverFile",
+        "spineColorUser",
+        "spineColorFromCover",
+        "spineColorCurated",
+        "spineColor",
+        "readings",
+        "cardNotes",
+    }
+)
+"""A stored Book's 21 keys in ``library.json`` (a backup carries the file as is)."""

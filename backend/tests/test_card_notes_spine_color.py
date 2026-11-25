@@ -10,7 +10,6 @@ The page that renders the view is unchanged by this story, so there is no e2e
 leaf: the existing Card notes, Book detail and Home specs stay as they are.
 """
 
-import re
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -22,17 +21,18 @@ from tests.builder import CURATED, LibraryBuilder
 from tests.helpers import (
     DUNE,
     DUNE_FORM,
+    STORED_BOOK_KEYS,
     api_client,
     library_bytes,
     post_edit_book,
     post_set_spine_color,
+    schema_block,
     stored_book,
     stored_books,
 )
 
 CARD_NOTES_VIEW = "/api/views/card-notes"
 UNKNOWN_ID = "00000000-0000-4000-8000-000000000000"
-SCHEMA_D_TS = Path(__file__).resolve().parents[2] / "frontend/src/api/generated/schema.d.ts"
 
 USER = "#4B7C7B"
 """A swatch the user picked (one of the curated colors, as the popover offers)."""
@@ -40,31 +40,6 @@ FROM_COVER = "#A85A4A"
 """A cover's color, as ``seed_dune_with_cover`` stores it."""
 AS_STORED = "#123456"
 """A stored ``spineColor`` that re-resolving would not give: the view must not re-resolve."""
-
-BOOK_KEYS = {
-    "id",
-    "createdAt",
-    "ownership",
-    "title",
-    "subtitle",
-    "authors",
-    "pages",
-    "edition",
-    "language",
-    "publisher",
-    "type",
-    "isbn",
-    "year",
-    "tags",
-    "coverFile",
-    "spineColorUser",
-    "spineColorFromCover",
-    "spineColorCurated",
-    "spineColor",
-    "readings",
-    "cardNotes",
-}
-"""A stored Book's keys before this story; it adds none."""
 
 
 def _seed(folder: Path) -> dict[str, str]:
@@ -108,14 +83,6 @@ def _get(client: TestClient, book: str | None = None) -> Any:
     response = client.get(CARD_NOTES_VIEW, params=params)
     assert response.status_code == 200, (book, response.status_code, response.text[:300])
     return response.json()
-
-
-def _schema_block(name: str) -> str:
-    """The body of ``schema.d.ts``'s ``<name>: { … };`` under ``components.schemas``."""
-    text = SCHEMA_D_TS.read_text(encoding="utf-8")
-    match = re.search(rf"^ {{8}}{re.escape(name)}: \{{\n(.*?)^ {{8}}\}};$", text, re.M | re.S)
-    assert match is not None, f"no {name} in schema.d.ts"
-    return match.group(1)
 
 
 # --- AC-1: every group carries its Book's stored resolved color ------------------
@@ -241,8 +208,8 @@ def test_ac5_p0_the_client_types_carry_spine_color_on_group_and_scope(tmp_path: 
     # [P0] AC-5 after api:gen, schema.d.ts has spineColor: string on CardNotesGroup and
     # CardNotesScope; OpenAPI marks it required on both.
     # The criterion: the regenerated file carries the field on both types.
-    assert "spineColor: string;" in _schema_block("CardNotesGroup")
-    assert "spineColor: string;" in _schema_block("CardNotesScope")
+    assert "spineColor: string;" in schema_block("CardNotesGroup")
+    assert "spineColor: string;" in schema_block("CardNotesScope")
 
     schemas = api_client(tmp_path).get("/openapi.json").json()["components"]["schemas"]
     for name in ("CardNotesGroup", "CardNotesScope"):
@@ -307,4 +274,4 @@ def test_ac7_p1_the_color_is_read_only_and_no_stored_data_changes(tmp_path: Path
 
     # A read writes nothing, and a stored Book (which backups carry as is) gains no key.
     assert library_bytes(tmp_path) == before
-    assert all(set(book) == BOOK_KEYS for book in stored_books(tmp_path))
+    assert all(set(book) == STORED_BOOK_KEYS for book in stored_books(tmp_path))
