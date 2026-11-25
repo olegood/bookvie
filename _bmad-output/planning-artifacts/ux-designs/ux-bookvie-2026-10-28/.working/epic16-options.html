@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Epic 16 — favourite star options</title>
+<style>
+  :root {
+    --page:#F6F4EF; --surface:#FFFFFF; --surface-inset:#FAF9F6; --line:#E4DFD5; --input-border:#8A8273;
+    --ink:#2B2E2A; --ink2:#5F635C; --ink3:#666961; --accent:#557059; --accent-soft:#E3EBE2;
+    --wall:#EFEAE0; --plank:#E9DCC3; --plank-edge:#D5C3A2; --edge:#5E584D;
+    --unread-fill:#FDFCF9; --unread-outline:#8A8273; --unread-text:#77716A;
+    --strip:#FBF8F1; --label:#2B2E2A; --gold:#9A7120;
+  }
+  .dark {
+    --page:#191B18; --surface:#222520; --surface-inset:#1D201B; --line:#343831; --input-border:#767A6F;
+    --ink:#ECEAE3; --ink2:#B3B7AD; --ink3:#9A9E94; --accent:#93B597; --accent-soft:#2C3A2E;
+    --wall:#1E201C; --plank:#6E604B; --plank-edge:#4E4433; --edge:#858A7F;
+    --unread-fill:#252822; --unread-outline:#70766A; --unread-text:#A39E92; --gold:#D2A54E;
+  }
+  body { margin:0; font:14px/1.45 system-ui,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif; background:#ddd; color:#2B2E2A; }
+  h1 { font-size:22px; margin:24px 32px 4px; }
+  p.lead { margin:0 32px 16px; color:#5F635C; max-width:900px; }
+  section { margin:0 32px 28px; }
+  h2 { font-size:16px; margin:0 0 8px; }
+  .theme { background:var(--page); color:var(--ink); padding:18px 20px; border-radius:8px; margin-bottom:10px; }
+  .theme > .tag { font-size:12px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--ink3); margin-bottom:10px; }
+  .row { display:flex; gap:28px; flex-wrap:wrap; align-items:flex-start; }
+  .opt { min-width:0; }
+  .opt > .name { font-size:12px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--ink3); margin-bottom:8px; }
+  .tiles { display:flex; gap:20px; }
+  .tile { width:140px; }
+  .cover { position:relative; width:140px; height:210px; border-radius:3px; border:1px solid var(--line); overflow:hidden; box-sizing:border-box; }
+  .cover .art { position:absolute; inset:0; display:flex; flex-direction:column; justify-content:flex-end; padding:12px; color:#fff; font:600 15px/1.2 Georgia,serif; }
+  .cap { margin-top:19px; font:600 14px/1.3 Georgia,serif; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .cap small { display:block; font:13px system-ui; color:var(--ink2); }
+  .ribbon { position:absolute; top:0; right:10px; width:16px; height:24px; clip-path:polygon(0 0,100% 0,100% 100%,50% 75%,0 100%); outline:none; }
+  .ribbon::before { content:""; position:absolute; inset:-1.5px; }
+  .star-btn { position:absolute; top:8px; left:8px; width:26px; height:26px; border-radius:50%; display:grid; place-items:center; background:#FBF8F1; box-shadow:0 0 0 1px #5E584D; }
+  .star-btn svg { width:16px; height:16px; }
+  .star-bare { position:absolute; top:8px; left:8px; width:22px; height:22px; filter:drop-shadow(0 0 1.5px #FBF8F1) drop-shadow(0 0 1px #FBF8F1); }
+  .hover-note { font-size:11px; color:var(--ink3); margin-top:2px; }
+  /* spines */
+  .shelf { display:flex; align-items:flex-end; gap:4px; padding:12px 14px 0; background:var(--wall); border-radius:4px 4px 0 0; }
+  .plank { height:10px; background:var(--plank); border-top:1px solid var(--plank-edge); border-radius:0 0 4px 4px; }
+  .spine { position:relative; width:28px; box-sizing:border-box; border-radius:2px 2px 0 0; }
+  .spine.read { border:1px solid var(--edge); border-bottom:none; }
+  .spine.unread { background:var(--unread-fill); border:1.5px solid var(--unread-outline); border-bottom:none; }
+  .spine .strip { position:absolute; left:50%; transform:translateX(-50%); top:14px; width:16px; height:80px; background:#FBF8F1; border-radius:2px; writing-mode:vertical-rl; font:11px Georgia,serif; color:#2B2E2A; display:flex; align-items:center; justify-content:flex-start; padding:4px 0; box-sizing:border-box; overflow:hidden; }
+  .spine.marked .strip { top:24px; }
+  .spine.unread .strip { background:none; color:var(--unread-text); }
+  .dot { position:absolute; top:7px; left:50%; transform:translateX(-50%); width:7px; height:7px; border-radius:50%; box-shadow:0 0 0 1.5px #FDFCF9; }
+  .smark { position:absolute; left:50%; transform:translateX(-50%); width:16px; height:16px; border-radius:2px; background:#FBF8F1; display:grid; place-items:center; }
+  .smark svg { width:12px; height:12px; }
+  .smark.foot { bottom:6px; }
+  .smark.under { top:auto; }
+  /* chips */
+  .chips { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .chip { font-size:12.5px; padding:4px 11px; border-radius:999px; background:var(--surface-inset); border:1px solid var(--input-border); color:var(--ink); display:inline-flex; gap:5px; align-items:center; }
+  .chip.on { background:var(--accent-soft); border:2px solid var(--accent); padding:3px 10px; }
+  .chip svg { width:12px; height:12px; }
+  .grp { font-size:12.5px; color:var(--ink3); margin-left:6px; }
+  /* book detail */
+  .bd-title { display:flex; align-items:center; gap:12px; font:600 28px/1.2 Georgia,serif; }
+  .icon-btn { width:34px; height:34px; border-radius:6px; border:1px solid var(--input-border); background:var(--surface); display:grid; place-items:center; }
+  .icon-btn svg { width:18px; height:18px; }
+  .icon-btn.plain { border:none; background:none; }
+  /* list */
+  table { border-collapse:collapse; background:var(--surface); width:640px; font-size:13px; color:var(--ink); }
+  th { text-align:left; font-weight:600; color:var(--ink3); font-size:12px; padding:6px 10px; border-bottom:1px solid var(--line); }
+  td { padding:7px 10px; border-bottom:1px solid var(--line); }
+  td.t { font:600 14px Georgia,serif; }
+  td svg { width:15px; height:15px; vertical-align:-2px; }
+  .k { font-size:12px; color:#5F635C; margin:6px 0 0; }
+</style>
+</head>
+<body>
+<h1>Epic 16 — favourite star: options</h1>
+<p class="lead">Stand-in covers, real tokens. Each block shows the same thing in light and dark. Pick one per block (or "other"). Starred = filled star. "On hover/focus" = the outline star an unstarred Book shows only then (plan D5).</p>
+
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <path id="star" d="M12 2.6l2.9 6 6.6.8-4.9 4.5 1.3 6.5L12 17.2l-5.9 3.2 1.3-6.5L2.5 9.4l6.6-.8z"/>
+  </defs>
+</svg>
+
+<template id="tiles-tpl"></template>
+
+<!-- 1. STAR COLOUR -->
+<section>
+  <h2>1 · Star colour (everywhere: cover, spine, Book detail, chip)</h2>
+  <div class="theme" id="colour-light"><div class="tag">Light</div><div class="row" data-colour></div></div>
+  <div class="theme dark" id="colour-dark"><div class="tag">Dark</div><div class="row" data-colour></div></div>
+  <p class="k">A sage = existing accent ("your action, your selection"), no new token. B ink = neutral chrome, no new token. C gold = one new token pair (`favourite` #9A7120 light / #D2A54E dark), a second chrome colour after dev amber.</p>
+</section>
+
+<!-- 2. COVER BADGE -->
+<section>
+  <h2>2 · The star on a cover (Tiles), top left, opposite the ribbon</h2>
+  <div class="theme"><div class="tag">Light</div><div class="row" data-badge></div></div>
+  <div class="theme dark"><div class="tag">Dark</div><div class="row" data-badge></div></div>
+  <p class="k">P paper disc: the star sits on the spine label strip's paper (#FBF8F1) with the spine-edge hairline, like the ribbon's halo, so it reads on any cover. H halo only: the bare star with a light glow, no disc. In each pair the right tile is unstarred, shown as it looks on hover or focus; without hover it shows nothing.</p>
+</section>
+
+<!-- 3. SPINE MARK -->
+<section>
+  <h2>3 · The star on a spine (Bookcase, not clickable)</h2>
+  <div class="theme"><div class="tag">Light</div><div class="row" data-spine></div></div>
+  <div class="theme dark"><div class="tag">Dark</div><div class="row" data-spine></div></div>
+  <p class="k">F foot: a 16px paper square at the bottom of the spine, just above the plank, clear of the marker dot and the label strip; on a Main book it sits over the fill. U under the strip: the same square right below the label strip.</p>
+</section>
+
+<!-- 4. LIST VIEW -->
+<section>
+  <h2>4 · List view (a table, no covers today)</h2>
+  <div class="theme"><div class="tag">Light</div><div class="row" data-list></div></div>
+  <p class="k">L1 its own first column, header "Favourite" (visually hidden, the column is narrow). L2 the star after the title, in the title cell.</p>
+</section>
+
+<!-- 5. BOOK DETAIL + CHIP -->
+<section>
+  <h2>5 · Book detail title row and the ★ Favourites chip (shown in the colour picked in 1; sage here)</h2>
+  <div class="theme"><div class="tag">Light</div>
+    <div class="bd-title">Thinking in Systems <span class="icon-btn" title="Favourite"><svg viewBox="0 0 24 24"><use href="#star" fill="var(--accent)"/></svg></span>
+      <span style="font:13px system-ui;color:var(--ink3)">bordered icon button, pressed</span></div>
+    <div class="bd-title" style="margin-top:10px">Thinking in Systems <span class="icon-btn"><svg viewBox="0 0 24 24"><use href="#star" fill="none" stroke="var(--ink2)" stroke-width="1.6"/></svg></span>
+      <span style="font:13px system-ui;color:var(--ink3)">not pressed (always visible on Book detail)</span></div>
+    <div class="chips" style="margin-top:16px">
+      <span class="chip on"><svg viewBox="0 0 24 24"><use href="#star" fill="var(--accent)"/></svg>Favourites</span>
+      <span class="grp">Status</span><span class="chip">Read</span><span class="chip">Unread</span>
+      <span class="grp">Type</span><span class="chip">Paperback</span><span class="chip">…</span>
+    </div>
+    <div class="chips" style="margin-top:8px">
+      <span class="chip"><svg viewBox="0 0 24 24"><use href="#star" fill="none" stroke="var(--ink2)" stroke-width="2"/></svg>Favourites</span>
+      <span class="grp">chip off; on = the usual selected chip, the star replaces the check glyph</span>
+    </div>
+  </div>
+</section>
+
+<script>
+const STAR = (fill, stroke) => `<svg viewBox="0 0 24 24"><use href="#star" fill="${fill}" ${stroke ? `stroke="${stroke}" stroke-width="1.8"` : ''}/></svg>`
+const colours = { A:['Sage','var(--accent)'], B:['Ink','var(--ink)'], C:['Gold','var(--gold)'] }
+const covers = [
+  ['#24323F','The Pragmatic Programmer', true],
+  ['#F2EEE4','Thinking in Systems', false, '#2B2E2A'],
+  ['#9B6753','Dune', true],
+]
+function cover([bg, t, ribbon, fg], starHtml) {
+  return `<div class="tile"><div class="cover" style="background:${bg}"><div class="art" style="color:${fg||'#fff'}">${t}</div>
+    ${ribbon ? `<div class="ribbon" style="background:${bg==='#24323F'?'#5B7590':bg};box-shadow:inset 0 0 0 1px #5E584D"></div>` : ''}
+    ${starHtml}</div><div class="cap">${t}<small>Author</small></div></div>`
+}
+document.querySelectorAll('[data-colour]').forEach(el => {
+  el.innerHTML = Object.entries(colours).map(([k,[n,c]]) => `<div class="opt"><div class="name">${k} · ${n}</div><div class="tiles">
+    ${cover(covers[0], `<div class="star-btn">${STAR(c)}</div>`)}
+    ${cover(covers[1], `<div class="star-btn">${STAR('none', c)}</div>`)}
+  </div><div class="hover-note">left: starred · right: unstarred, on hover/focus</div></div>`).join('')
+})
+document.querySelectorAll('[data-badge]').forEach(el => {
+  const c = 'var(--accent)'
+  el.innerHTML = `<div class="opt"><div class="name">P · paper disc</div><div class="tiles">
+      ${cover(covers[2], `<div class="star-btn">${STAR(c)}</div>`)}${cover(covers[1], `<div class="star-btn">${STAR('none','var(--ink2)')}</div>`)}</div></div>
+    <div class="opt"><div class="name">H · halo only</div><div class="tiles">
+      ${cover(covers[2], `<svg class="star-bare" viewBox="0 0 24 24"><use href="#star" fill="#557059" stroke="#FBF8F1" stroke-width="1.5"/></svg>`)}${cover(covers[1], `<svg class="star-bare" viewBox="0 0 24 24"><use href="#star" fill="none" stroke="#5F635C" stroke-width="1.8"/></svg>`)}</div></div>`
+})
+function spine(kind, h, bg, title, opts={}) {
+  const cls = ['spine', kind, opts.dot ? 'marked':''].join(' ')
+  const style = kind==='read' ? `height:${h}px;background:${bg}` : `height:${h}px`
+  const fill = opts.fill ? `<div style="position:absolute;left:0;right:0;bottom:0;height:${opts.fill}%;background:${bg};border-top:2px solid var(--edge)"></div>` : ''
+  const dot = opts.dot ? `<div class="dot" style="background:${opts.dot}"></div>` : ''
+  const stripTop = opts.dot ? 24 : 14
+  const mark = opts.mark==='F' ? `<div class="smark foot">${STAR('var(--accent)')}</div>`
+             : opts.mark==='U' ? `<div class="smark" style="top:${stripTop+86}px">${STAR('var(--accent)')}</div>` : ''
+  return `<div class="${cls}" style="${style}">${fill}${dot}<div class="strip">${title}</div>${mark}</div>`
+}
+document.querySelectorAll('[data-spine]').forEach(el => {
+  el.innerHTML = ['F','U'].map(m => `<div class="opt"><div class="name">${m==='F'?'F · foot':'U · under the strip'}</div>
+    <div class="shelf">
+      ${spine('read',184,'#749076','Dune',{mark:m})}
+      ${spine('read',168,'#5B7590','Refactoring')}
+      ${spine('unread',176,'','Atomic Habits',{mark:m})}
+      ${spine('unread',192,'#9B6753','Thinking in Systems',{mark:m, dot:'#77716A', fill:40})}
+      ${spine('read',160,'#B48A45','Sapiens',{mark:m, dot:'#5A7D98'})}
+      ${spine('unread',152,'','Clean Code')}
+    </div><div class="plank"></div></div>`).join('')
+})
+document.querySelectorAll('[data-list]').forEach(el => {
+  const on = STAR('var(--accent)'), off = ''
+  const rows = [['Dune','Frank Herbert','finished',true],['Refactoring','Martin Fowler','not read yet',false],['Thinking in Systems','Donella Meadows','Main book, 40%',true]]
+  el.innerHTML = `<div class="opt"><div class="name">L1 · first column</div><table><thead><tr><th style="width:22px"></th><th>Title</th><th>Author</th><th>Status</th></tr></thead><tbody>
+    ${rows.map(r=>`<tr><td>${r[3]?on:''}</td><td class="t">${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join('')}</tbody></table></div>
+    <div class="opt"><div class="name">L2 · after the title</div><table><thead><tr><th>Title</th><th>Author</th><th>Status</th></tr></thead><tbody>
+    ${rows.map(r=>`<tr><td class="t">${r[0]} ${r[3]?on:''}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join('')}</tbody></table></div>`
+})
+</script>
+</body>
+</html>

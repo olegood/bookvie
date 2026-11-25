@@ -518,6 +518,31 @@ components:
     focus-offset: 4px
   open-box-strip:
     height: 8px
+  favourite-star:
+    # One SVG star path, filled when starred, outlined when not.
+    # Gold is a literal here, not a colors primitive, until Story 16.1 moves it into colors and tokens.css together (Colors -> Favourite gold).
+    on: '#9A7120'
+    on-dark: '#D2A54E'
+    off-stroke: '{colors.ink-secondary}'
+    stroke-width: 1.8px
+    button-size: 34px
+    row-target: 24px
+    tile-target: 32px
+    detail-size: 18px
+    popover-size: 16px
+    row-size: 15px
+    tile-size: 22px
+    tile-inset: 8px
+    # On covers and spines the background is a book's, so these are fixed, like the ribbon's halo.
+    tile-on: '#9A7120'
+    tile-off: '#5F635C'
+    tile-halo: '1.5px {colors.spine-label-strip} outside the star edge, glow 0 0 1.5px {colors.spine-label-strip}'
+    spine-mark-size: 16px
+    spine-mark-star: 12px
+    spine-mark-background: '{colors.spine-label-strip}'
+    spine-mark-radius: 2px
+    spine-mark-bottom: 6px
+    spine-mark-star-color: '{components.favourite-star.tile-on}'
 ---
 
 # bookvie — Design Spine
@@ -537,7 +562,7 @@ Style rules in one line each:
 
 - Flat surfaces separated by hairlines and tone, not shadows.
 - Sans-serif for everything the app says; serif only for book titles, which belong to the books.
-- One accent, sage, meaning "your action" and "your progress". A development server adds one more color, dev amber, and only to say "this is not your real library" (Colors → Dev amber). Production never shows it.
+- One accent, sage, meaning "your action" and "your progress". A development server adds one more color, dev amber, and only to say "this is not your real library" (Colors → Dev amber). Production never shows it. A filled favourite star is gold (Colors → Favourite gold); gold is never text, a border, a background or a message.
 - Color on the shelf belongs to the books. Chrome stays neutral so the spines carry the color.
 - Light and dark themes share one layout. Dark is the same room in the evening: the birch plank becomes walnut, read spines keep their exact colors.
 
@@ -668,6 +693,21 @@ Card note box pairs. The label, cards and pill are the same in both themes, so t
 | Count line (`ink-tertiary`) on `page` | 5.08 | 6.35 | 4.5 |
 | Box focus ring (`accent`) vs `page`, never faded | 4.96 | 7.68 | 3.0 |
 
+### Favourite gold
+
+Gold fills the favourite star and nothing else: not text, borders, backgrounds, messages or a Reading's rating stars (those stay `accent`). The star is a graphic, so its target is 3:1, and its state never rests on color alone: starred is filled, unstarred is an outline, and `aria-pressed` and the names say it. On covers and spines the star is `#9A7120` in both themes: the paper halo or square, not the cover or the theme, is what it's read against, as with the ribbon. Like dev amber, gold is a literal in `{components.favourite-star}` (`on` `#9A7120`, `on-dark` `#D2A54E`) until Story 16.1 moves it into `colors` and `tokens.css` together.
+
+| Pair | Light | Dark | Target |
+|---|---|---|---|
+| Gold star on `surface` (Book detail, popover) | 4.41 | 6.82 | 3.0 |
+| Gold star on `page` (List row) | 4.02 | 7.62 | 3.0 |
+| Gold star on `accent-soft` (Favourites chip on) | 3.63 | 5.27 | 3.0 |
+| Gold star on `surface-inset` (Favourites chip off) | 4.19 | 7.24 | 3.0 |
+| Outline (`ink-secondary`) on `surface` | 6.13 | 7.61 | 3.0 |
+| Outline (`ink-secondary`) on `page` (List row) | 5.58 | 8.50 | 3.0 |
+| Cover and spine star (`#9A7120`) on its paper halo or square (`#FBF8F1`) | 4.16 | 4.16 | 3.0 |
+| Cover outline (`#5F635C`) on its paper halo | 5.78 | 5.78 | 3.0 |
+
 ### Dev amber
 
 Only a server started with `--dev` shows dev amber, and only on two things: the dev favicon and the DEV pill. Dev amber is a literal in `{components.favicon}` and `{components.dev-pill}`, not a `colors` primitive, so the DESIGN.md/`tokens.css` comparison in `e2e/app-shell.spec.ts` doesn't change until a story ships it.
@@ -702,6 +742,7 @@ Under `forced-colors: active`:
 - The Back to top button is a native button: it takes the system button colors (`ButtonFace`, `ButtonText`) and keeps its border.
 - The favicon is outside the page and isn't affected.
 - Card note boxes: the front uses `forced-color-adjust: none` with a `CanvasText` fill, like a read spine. The label becomes `Canvas` with `CanvasText` text. Each card becomes `Canvas` with a 1px `CanvasText` border. The pill becomes `Canvas` with `CanvasText` text, a 1px `CanvasText` border and a `CanvasText` dot, like the DEV pill. The fade's opacity and the lift still apply, so the contrast deviation covers forced colors too. The box's focus ring takes the system color. The open box strip uses `forced-color-adjust: none` with `CanvasText`.
+- Favourite star: every star, the chip's included, uses `forced-color-adjust: none` with a `CanvasText` fill (starred) or stroke (unstarred); on covers and spines it sits on a `Canvas` halo or square. The shape, filled or outline, carries the state. The Favourites chip is a chip and keeps its border indicator.
 - Catalog tiles: the finished ribbon and the reading bar's fill use `forced-color-adjust: none` with `CanvasText`, the bar's track becomes `Canvas` with a `CanvasText` outline, the typeset cover becomes `Canvas` with a `CanvasText` border, its text `CanvasText`, and the cover hairline and the loading box's border become `CanvasText`.
 
 Read and unread stay distinct.
@@ -800,7 +841,7 @@ Visual specs. Behavior lives in EXPERIENCE.md → Component Patterns, under the 
 | **Re-entry line** | `{components.re-entry-line}`. Short facts separated by 6px `ink-tertiary` dots: "Last updated N days ago", "~N days left", "Last export: N days ago". Muted, never colored. |
 | **Section pane** | `{components.section-pane}`. Used for Up next, Waiting for you (N), On the side. Each row: line 1, the serif title as a `link` in `ink` (2-line clamp); line 2, the content for that pane and one compact `button-secondary` (30px) right-aligned. Up next row: 44×64 cover thumbnail (or placeholder) at left, author, button **Start reading** or **Resume**. Waiting-for-you row: 60×5 mini bar (`accent-soft` track, `accent` fill), "p.N of M" in tabular figures, button **Resume**. On-the-side row: author, button **Start reading**. |
 | **Library meter** | `{components.library-meter}`: thin continuous bar plus "X of Y finished" in `meta`/`ink-secondary`. One bar at any library size, never one dot per book. |
-| **Bookcase** | `{components.bookcase}`. `shelf-wall` card; each row is spines standing on a birch plank (face, 4px front edge, and plank shadow). Header: "BOOKCASE" heading; on Home also the library meter right and a "See all in Catalog" `link`. On Catalog the library meter sits in its own row above the bookcase or list (see Catalog). Header line "Finished *X*." in `body-sm`/`ink-secondary` after a finish. Footer legend: finished · not read yet · Main book, filled to its % · up next · waiting for you, each with a mini swatch. Visual reference: [key-home](mockups/key-home.html) (slice), [key-catalog](mockups/key-catalog.html) (full). |
+| **Bookcase** | `{components.bookcase}`. `shelf-wall` card; each row is spines standing on a birch plank (face, 4px front edge, and plank shadow). Header: "BOOKCASE" heading; on Home also the library meter right and a "See all in Catalog" `link`. On Catalog the library meter sits in its own row above the bookcase or list (see Catalog). Header line "Finished *X*." in `body-sm`/`ink-secondary` after a finish. Footer legend: finished · not read yet · Main book, filled to its % · up next · waiting for you · favourite (a mini paper square with the gold star), each with a mini swatch. Every item is always shown. Visual reference: [key-home](mockups/key-home.html) (slice), [key-catalog](mockups/key-catalog.html) (full). |
 | **Sort select** | Native `select` styled as Text field, label "Sort" to its left in `body-sm`/`ink-secondary`. Options: Author · Title · Date added · Pages. The Sort direction toggle is joined to its right edge, so the select's right corners are square. |
 | **Sort direction toggle** | `{components.sort-direction-toggle}`. Joined to the Sort select as one compound field: the same height and border, the shared edge drawn once (the toggle has no left border of its own), the outer right corners `rounded.md`. `surface-inset` fill, so the toggle reads as a button and the select as a field. Content: an arrow glyph in `ink-secondary` (↑ natural, ↓ reversed), then the order's text in `body-sm`/`ink` ("A–Z", "Newest first"). Its minimum width fits the wider of the current key's two labels, so pressing it never moves the controls to its right; only a key change may change its width. No hover change, like `button-secondary`. Focus: the shared edge is the select's right border and turns `accent` when the select has focus; the toggle gets `{components.focus-ring}`. Whichever half has focus is raised above the other (`position: relative; z-index: 1`), so its ring or halo paints over the neighbor. Light and dark come from the tokens; no extra state colors. |
 | **Filter chips** | See [Filter chips](#filter-chips) below. |
@@ -811,7 +852,8 @@ Visual specs. Behavior lives in EXPERIENCE.md → Component Patterns, under the 
 | **Card notes count line** | `{components.card-notes-count-line}`. One line at the end of the toolbar, Boxes view only. Its text swaps in place, so nothing below it moves. Wording: EXPERIENCE.md → Card notes shelf. |
 | **Card note box** | See [Card note box](#card-note-box) below. |
 | **Open box strip** | `{components.open-box-strip}`. An 8px band, full width, in the Book's exact spine color, under the app shell, on the open box only (Layout & Spacing → Card notes). No edge, no label, no shadow. Same in both themes. A spine close to the page color (near-white on the light page, near-black on the dark one) makes the strip faint; that is accepted, since the strip is decoration (`aria-hidden`) and the "In *X*" chip names the box (Epic 14 retro, 2026-11-24). |
-| **List view** | Compact table: Title (`book-title-sm`), Author, Pages, Status, Date added. `{components.list-view-row}`; header in `section-label`. Status shown as text plus a mini spine glyph (colored or outlined). |
+| **List view** | Compact table: Title (`book-title-sm`), Author, Pages, Status, Date added. `{components.list-view-row}`; header in `section-label`. Status shown as text plus a mini spine glyph (colored or outlined). The favourite star follows the title in its cell (Favourite star). |
+| **Favourite star** | See [Favourite star](#favourite-star) below. |
 | **Catalog tile** | See [Catalog tile](#catalog-tile) below. |
 | **Search field** | Text field with a leading magnifier glyph and a visible label in `body-sm`/`ink-secondary` to its left: "Search titles" (Catalog) or "Search card notes" (Card notes). No placeholder text. |
 | **Back to top button** | `{components.back-to-top}`. A `button-secondary` (42px tall, `body-sm`, `0 {spacing.4}` padding): an up arrow "↑" (`aria-hidden`), then `{spacing.2}`, then the visible text "Back to top". Not an icon-only circle. On Catalog and Card notes only, fixed in the viewport's bottom-right corner, `{spacing.6}` above its bottom edge and `{spacing.page-x}` from its right edge, above the page's content (`z-index: 10`); the spine popover and the More actions menu (`z-index: 20`) open above it, and so do modal panels and dialogs. Shown only once the page is scrolled more than one window height (EXPERIENCE.md → Back to top). Flat: no shadow; its `input-border` border separates it from the content scrolling under it. The page ends with an empty block of the button's height, so at the very bottom it covers no Book, row, tile, card note or control. Focus: `{components.focus-ring}`. Light and dark come from the tokens. |
@@ -859,6 +901,7 @@ Visual specs. Behavior lives in EXPERIENCE.md → Component Patterns, under the 
 
 `{components.chip}` toggle chips in labelled groups.
 
+- **Favourites chip:** first in the row, before the first group name, with no group name of its own. A normal chip reading "Favourites" with a leading `{components.favourite-star.row-size}` star, filled with `{components.favourite-star.on}` (`on-dark` in dark) whether on or off. When on, it is the usual selected chip: `accent-soft` fill and 2px `accent` border, and the check glyph sits before the star. Gold marks what the chip is about; the selected style says it's on.
 - **Groups:** names in `meta`/`ink-tertiary`: Status (Read · Unread), Type (Paperback · Hardcover · Ebook), Language ▾, Tag ▾, Publisher ▾.
 - **Selected chip:** `accent-soft` fill, 2px `accent` border, and a leading check glyph.
 - **Language ▾, Tag ▾ and Publisher ▾:** open a small `surface` list of checkboxes, each row in `body-sm`/`ink`, at most 320px tall and scrolling beyond that. When values are selected, the chip reads "Language: 2".
@@ -875,6 +918,7 @@ Visual specs. Behavior lives in EXPERIENCE.md → Component Patterns, under the 
 - **Unread:** `spine-unread-fill` body, 1.5px `spine-unread-outline` on the top and sides (no bottom border), `spine-unread-text` label, no strip.
 - **Main book, never finished:** unread body and outline. Its exact color fills the open part of the spine below the label strip, from the plank up to its reading percentage (0% at the plank, 100% at the strip's lower end), topped by `{components.spine.main-fill-line}` (2px `spine-edge`, full width) at the fill level. The fill line therefore never hides behind the strip and is always visible. On finish, the fill completes to the whole spine (Finish fill).
 - **Main book, re-read:** like any read spine, plus the Main-book marker.
+- **Favourite mark:** on a starred Book, a `{components.favourite-star.spine-mark-size}` `{components.favourite-star.spine-mark-background}` square with `{components.favourite-star.spine-mark-radius}` corners, centered, `{components.favourite-star.spine-mark-bottom}` above the plank, holding a `{components.favourite-star.spine-mark-star}` filled star in `{components.favourite-star.spine-mark-star-color}`. The same in both themes, like the label strip. On a Main book it sits over the fill. It isn't a marker dot, so a spine can show both.
 - **Markers:** one 7px dot centered near the top with a 1.5px `marker-ring`: `spine-unread-text` (Main book), `marker-up-next` (Up next), `marker-waiting` (Waiting for you). Never two dots.
 - **Focused or open:** `{components.spine.focus-ring}` — a two-tone ring (2px `page` band, then 2px `accent`), so it shows against neighboring spines, the shelf wall, and the walnut plank.
 
@@ -883,10 +927,21 @@ Visual specs. Behavior lives in EXPERIENCE.md → Component Patterns, under the 
 `{components.spine-popover}`. Visual reference: [key-home](mockups/key-home.html) (Alternate 2).
 
 - **Position:** anchored above the spine with a 14px rotated-square pointer; flips below the spine when there is no room above (top shelf row) and shifts inward at the viewport edges.
-- **Left column:** title (`book-title-md`), subtitle (`meta`, `ink-secondary`), authors, "N pages · year", status line with a mini spine glyph, color line ("Color: Teal, from cover" in `meta`/`ink-secondary`).
+- **Left column:** title (`book-title-md`) followed by the favourite star (Favourite star), subtitle (`meta`, `ink-secondary`), authors, "N pages · year", status line with a mini spine glyph, color line ("Color: Teal, from cover" in `meta`/`ink-secondary`).
 - **Right column**, separated by a hairline: at most one `button-primary` (compact, 34px) with an optional hint line in `meta`/`ink-tertiary`; then `link`s ("Start reading" where applicable, "Open book →"); then the "Change color" block.
 - **Change color block:** a "From cover" chip with the derived color dot, and the eight curated swatches (16px circles, each with its name as accessible name). Selected swatch or chip: 2px `accent` border plus `focus-halo` and a check glyph. On an unread book the block heading adds "· shown once read" in `ink-tertiary`.
 - **Close:** "×" at the top right in `ink-tertiary`.
+
+### Favourite star
+
+`{components.favourite-star}`. One SVG star path, so it draws the same in every font: filled with gold when starred, a `{components.favourite-star.stroke-width}` outline with no fill when not. No glyph character. Mock: [epic16-options](mockups/epic16-options.html) (blocks 2–5). Where the mock and the spines differ, the spines win.
+
+- **Book detail:** a plain icon button, `{components.favourite-star.button-size}` square target with no border, no fill and no hover background, holding a `{components.favourite-star.detail-size}` star, `{spacing.3}` after the `h1`'s text and centered on its first line. Starred: `{components.favourite-star.on}` (`on-dark` in dark). Unstarred: `{components.favourite-star.off-stroke}` outline. Focus: `{components.focus-ring}`.
+- **Spine popover:** the same plain button with a `{components.favourite-star.popover-size}` star, after the title.
+- **List view row:** the same plain button with a `{components.favourite-star.row-size}` star, `{spacing.2}` after the title link, with a `{components.favourite-star.row-target}` target that never makes the row taller. Unstarred, it is drawn only on row hover or focus within (EXPERIENCE.md → Favourite star); the reveal is instant, no fade.
+- **Catalog tile:** no disc. The bare `{components.favourite-star.tile-size}` star, `{components.favourite-star.tile-inset}` in from the 2:3 cover box's top and left edges, with a paper halo: `{components.favourite-star.tile-halo}`. It is placed on the box, not the visible cover, so stars line up across a row; on a wide cover (covers sit at the box's bottom) it sits on the page just above the cover, where the halo still carries it (Oleg). An outline star draws a paper stroke 2 × 1.5px wider than its gray stroke, under it. Starred: filled `{components.favourite-star.tile-on}`. Unstarred: `{components.favourite-star.tile-off}` outline, drawn only on tile hover or focus within, instantly. The halo and colors are the same in both themes, like the ribbon's halo: the cover, not the theme, is behind them. The button's target is `{components.favourite-star.tile-target}` around the star; its focus ring is `{components.focus-ring}` around that target.
+- **Spine:** see Spine → Favourite mark.
+- **No motion.** The star fills or empties at once; no pop, no sparkle, no animation (Brand & Style: no other reward).
 
 ### Catalog tile
 
@@ -899,6 +954,7 @@ Visual specs. Behavior lives in EXPERIENCE.md → Component Patterns, under the 
 - **Unread:** no mark.
 - **Typeset cover, read:** fills the whole box. The Book's exact spine color, `{components.catalog-tile.typeset-edge}` all round, `{components.catalog-tile.cover-radius}` corners. A `{components.catalog-tile.typeset-plate}` plate inset `{components.catalog-tile.typeset-plate-inset}` from the sides, starting `{components.catalog-tile.typeset-plate-top}` from the top so it clears the ribbon, with `{components.catalog-tile.typeset-plate-radius}` corners, holds the title (`book-title-sm` at its own weight 400, up to 4 lines, `{components.catalog-tile.typeset-text}`) and the first author (`meta`, 1 line). Like a spine's label strip, the plate keeps the text legible on any color.
 - **Typeset cover, unread:** `{components.catalog-tile.typeset-unread-fill}` with `{components.catalog-tile.typeset-unread-outline}`, the title and author in `{components.catalog-tile.typeset-unread-text}`, no plate. It reads as an unread spine seen from the front.
+- **Favourite star:** see Favourite star. It sits at the cover box's top left and never covers the ribbon at the top right.
 - **Focus and highlight:** the whole tile is one link; the `{components.focus-ring}` (and the `{components.highlight-ring}` after an add) goes around the cover box, not the visible cover, so every ring in the grid has the same size.
 - **Dark theme:** same layout. Ribbon fills, the ribbon halo, read typeset fills and the plate are the same in both themes; `spine-edge`, the chrome colors and the unread typeset cover's `spine-unread-*` colors take their dark twins, as on unread spines.
 
@@ -922,7 +978,7 @@ Visual specs. Behavior lives in EXPERIENCE.md → Component Patterns, under the 
 Accepted layout; mock [key-book-detail](mockups/key-book-detail.html). Mirrors the Main book card.
 
 - **Left column (200px):** cover or no-cover placeholder; under it the action stack: one state-aware `button-primary`, then `button-secondary` actions in this order: Set as Up next, Pause, Mark finished, Mark as Side read or Remove from side, Add card note, Edit, Delete. Edit Purpose is not in the stack; it is the `link` in the Current reading block.
-- **Right column, top:** title in `book-title-lg` (the page `h1`), subtitle, author in `author`, metadata grid in `body-sm`/`ink-secondary` (Pages, Edition when it isn't 1, Language, Publisher, Type, ISBN, Year), Tags as plain `chip`s.
+- **Right column, top:** title in `book-title-lg` (the page `h1`) with the favourite star after it on the first line (Favourite star), subtitle, author in `author`, metadata grid in `body-sm`/`ink-secondary` (Pages, Edition when it isn't 1, Language, Publisher, Type, ISBN, Year), Tags as plain `chip`s.
 - **Right column, blocks:** separated by hairlines, each under a `section-label` heading:
   - **Current reading:** status, gauge when active or paused, Purpose with an "Edit Purpose" `link`.
   - **Card notes (N):** Search card notes field, then up to the first three notes as `card-note`s in a three-column grid, each with an Edit `button-secondary`; below them the `link`s "Go through as a pile" and "See all card notes".
@@ -934,7 +990,8 @@ Accepted layout; mock [key-book-detail](mockups/key-book-detail.html). Mirrors t
 
 | Do | Don't |
 |---|---|
-| Keep color for the books; chrome stays neutral | Color chrome, headings, or status badges (except the DEV pill: Colors → Dev amber); the Dropbox backup line is words only |
+| Keep color for the books; chrome stays neutral | Color chrome, headings, or status badges (except the DEV pill, see Colors → Dev amber, and the filled favourite star, see Colors → Favourite gold); the Dropbox backup line is words only |
+| Use gold only to fill the favourite star | Gold text, borders, backgrounds, badges, gold rating stars or a gold outline for an unstarred Book; animate the star |
 | Use sage only for actions, progress, focus, selection and search matches | Use sage decoratively or as a warning |
 | Serif for book titles only | Serif for UI text or numbers |
 | Same 28px width for every spine; height in 8px steps within 120–200px | Variable widths, page-count-based widths, heights outside the range |
