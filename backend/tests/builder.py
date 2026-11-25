@@ -51,6 +51,19 @@ def _dumps(doc: dict[str, Any]) -> bytes:
     return (json.dumps(doc, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
 
 
+def as_v3(library_json: bytes) -> bytes:
+    """Current ``library.json`` bytes as schemaVersion 3 wrote them: no Book ``favourite``.
+
+    Only for libraries with no starred Book, which v3 can't hold (Epic 16).
+    """
+    doc = json.loads(library_json)
+    doc["schemaVersion"] = 3
+    for book in doc["books"]:
+        if book.pop("favourite", False):
+            raise ValueError(f"Book {book['id']} is starred; v3 has no favourite")
+    return _dumps(doc)
+
+
 def as_v2(library_json: bytes) -> bytes:
     """Current ``library.json`` bytes as schemaVersion 2 wrote them: no ``earlierSegments``.
 

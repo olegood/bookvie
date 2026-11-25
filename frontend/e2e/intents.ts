@@ -1,6 +1,7 @@
 // Shared by the specs that drive or inspect intents: the intent paths, the
-// requests a page sends, the JSON `intent` part of a multipart request, and
-// two edit-book setups: a cover attached, and a Book's fields changed.
+// requests a page sends, the JSON `intent` part of a multipart request, two
+// edit-book setups (a cover attached, and a Book's fields changed), and a
+// set-favourite setup (a Book starred or unstarred).
 
 import type { APIRequestContext, Page, Request } from '@playwright/test'
 import type { components } from '../src/api/generated/schema.d.ts'
@@ -21,6 +22,7 @@ export const UNMARK_SIDE_READ = '/api/intents/unmark-side-read'
 export const ADD_CARD_NOTE = '/api/intents/add-card-note'
 export const EDIT_CARD_NOTE = '/api/intents/edit-card-note'
 export const DELETE_CARD_NOTE = '/api/intents/delete-card-note'
+export const SET_FAVOURITE = '/api/intents/set-favourite'
 
 // A 40×60 solid red-orange PNG (rgb 200, 60, 40): a colored cover.
 export const COVER_PNG = Buffer.from(
@@ -89,4 +91,19 @@ export async function editBook(
     multipart: { intent: JSON.stringify({ bookId, ...editForm, ...changes }) },
   })
   expect(response.status()).toBe(200)
+}
+
+/**
+ * Setup: stars (or with `favourite: false` unstars) Book `bookId` through
+ * set-favourite, as another tab would. Its answer is not read: Story 16.1's
+ * red-phase leaves call it before the intent exists (a 404), so the leaf's
+ * own first assertion is the one that fails.
+ */
+export async function starBook(
+  api: APIRequestContext,
+  server: Server,
+  bookId: string,
+  favourite = true,
+): Promise<void> {
+  await api.post(`${server.url}${SET_FAVOURITE}`, { multipart: { intent: JSON.stringify({ bookId, favourite }) } })
 }

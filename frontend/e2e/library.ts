@@ -1,7 +1,9 @@
 // Shared by the specs that work with Books: the seeded ids, the catalog as the
 // API returns it, the New book and Edit book panels, computed colors, DESIGN.md's
 // frontmatter, the `app-info` view a test answers in place of the server, and
-// `openPaused` (a page opened under Playwright's clock, paused once it shows).
+// `openPaused` (a page opened under Playwright's clock, paused once it shows),
+// and three measures: an element's first line box, a row's height without one
+// of its parts, and a press made inside a poll.
 
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
@@ -94,6 +96,10 @@ export const SURFACE_INSET_DARK = rgbOf('#1D201B')
 export const SPINE_LABEL_STRIP = rgbOf('#FBF8F1')
 /** DESIGN.md spine-unread-text, light theme. */
 export const SPINE_UNREAD_TEXT = rgbOf('#77716A')
+/** DESIGN.md favourite gold, light theme; also the cover and spine star in both themes (`components.favourite-star.tile-on`). */
+export const FAVOURITE = rgbOf('#9A7120')
+/** DESIGN.md favourite gold, dark theme (Book detail and the Spine popover). */
+export const FAVOURITE_DARK = rgbOf('#D2A54E')
 
 export const DESIGN_MD = fileURLToPath(
   new URL('../../_bmad-output/planning-artifacts/ux-designs/ux-bookvie-2026-10-28/DESIGN.md', import.meta.url),
@@ -300,4 +306,60 @@ export async function openPaused(
   await beforePause?.()
   // A minute on: always ahead of the running clock, and still the same day.
   await page.clock.pauseAt(new Date(start.getTime() + 60_000))
+}
+
+/** A box in viewport pixels, as `getBoundingClientRect` reports it. */
+export type Box = { x: number; y: number; width: number; height: number }
+
+/**
+ * The first line box of `element`'s text: the first client rect of a Range
+ * over its contents, so a title that wraps gives only its first line.
+ */
+export function firstLineRect(element: Locator): Promise<Box> {
+  return element.evaluate((node) => {
+    const range = document.createRange()
+    range.selectNodeContents(node)
+    const first = Array.from(range.getClientRects()).find((rect) => rect.width > 0 && rect.height > 0)
+    if (first === undefined) throw new Error('firstLineRect: the element has no rendered text')
+    return { x: first.x, y: first.y, width: first.width, height: first.height }
+  })
+}
+
+/**
+ * The height of the table row (or list item) holding `part`, as rendered and
+ * with `part` taken out of the layout (`display: none`), which is put back
+ * before it returns: "the row is no taller than before" in one leaf.
+ */
+export function rowHeightWithout(part: Locator): Promise<{ with: number; without: number }> {
+  return part.evaluate((element) => {
+    const row = element.closest('tr, li')
+    if (row === null) throw new Error('rowHeightWithout: no enclosing tr or li')
+    const style = (element as HTMLElement | SVGElement).style
+    const before = style.getPropertyValue('display')
+    const priority = style.getPropertyPriority('display')
+    const withPart = row.getBoundingClientRect().height
+    style.setProperty('display', 'none', 'important')
+    const withoutPart = row.getBoundingClientRect().height
+    if (before === '') style.removeProperty('display')
+    else style.setProperty('display', before, priority)
+    return { with: withPart, without: withoutPart }
+  })
+}
+
+/**
+ * A reader for `expect.poll` that clicks `control` once, as soon as it is in
+ * the page, and from then on returns what `read` returns; it returns null
+ * while `control` is absent. So a leaf whose criterion is "after a press, X"
+ * fails on that assertion, not on a click that waits for a missing control.
+ */
+export function pressOnceThen<T>(control: Locator, read: () => Promise<T>): () => Promise<T | null> {
+  let pressed = false
+  return async () => {
+    if (!pressed) {
+      if ((await control.count()) !== 1) return null
+      await control.click()
+      pressed = true
+    }
+    return read()
+  }
 }

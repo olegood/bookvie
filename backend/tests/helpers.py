@@ -55,6 +55,7 @@ ADD_BOOK = "/api/intents/add-book"
 EDIT_BOOK = "/api/intents/edit-book"
 DELETE_BOOK = "/api/intents/delete-book"
 SET_SPINE_COLOR = "/api/intents/set-spine-color"
+SET_FAVOURITE = "/api/intents/set-favourite"
 START_READING = "/api/intents/start-reading"
 EDIT_PURPOSE = "/api/intents/edit-purpose"
 UPDATE_PAGE = "/api/intents/update-page"
@@ -289,6 +290,15 @@ def post_set_spine_color(client: TestClient, book_id: str, color: str | None) ->
     intent = {"bookId": book_id, "spineColor": color}
     return client.post(
         SET_SPINE_COLOR,
+        files={"intent": (None, json.dumps(intent), "application/json")},
+    )
+
+
+def post_set_favourite(client: TestClient, book_id: str, favourite: Any) -> httpx.Response:
+    """``set-favourite`` as the star sends it: the value to store, never a toggle (Epic 16)."""
+    intent = {"bookId": book_id, "favourite": favourite}
+    return client.post(
+        SET_FAVOURITE,
         files={"intent": (None, json.dumps(intent), "application/json")},
     )
 
