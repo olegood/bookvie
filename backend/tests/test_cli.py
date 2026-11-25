@@ -14,6 +14,7 @@ from fastapi.testclient import TestClient
 from bookvie import cli, instance
 from bookvie.domain.clock import FakeClock, SystemClock
 from bookvie.instance import LOCK_NAME
+from tests.builder import LibraryBuilder
 from tests.servers import wait_for_health
 
 REAL_BIND = instance.bind_socket
@@ -721,6 +722,33 @@ def test_invalid_library_exits_1_and_releases_the_lock(
     assert (data_dir / "library.json").read_bytes() == b"{oops"
     assert not (data_dir / LOCK_NAME).exists()
     assert fake_server.instances == []
+
+
+def test_a_v4_library_missing_favourite_exits_1_without_serving(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    fake_server: type[FakeServer],
+    opened: list[str],
+) -> None:
+    """Story 16.1 AC-1: a v4 Book without ``favourite`` is refused, nothing changed."""
+    data_dir = tmp_path / "d"
+    builder = LibraryBuilder()
+    builder.book(title="Dune")
+    path = builder.write(data_dir)
+    doc = json.loads(path.read_bytes())
+    del doc["books"][0]["favourite"]
+    raw = json.dumps(doc).encode()
+    path.write_bytes(raw)
+
+    assert cli.main(["--data-dir", str(data_dir), "--no-browser"]) == 1
+
+    (line,) = capsys.readouterr().err.strip().splitlines()
+    assert line.startswith(f"bookvie: {path}: is not a valid library: ")
+    assert "favourite" in line
+    assert path.read_bytes() == raw
+    assert not (data_dir / LOCK_NAME).exists()
+    assert fake_server.instances == []
+    assert opened == []
 
 
 def test_unwritable_data_dir_exits_1_before_the_lock(

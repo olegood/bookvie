@@ -28,11 +28,12 @@ import {
   FAVOURITE_DARK,
   firstLineRect,
   INK_SECONDARY,
+  INK_SECONDARY_DARK,
   pressOnceThen,
   rowHeightWithout,
   SPINE_LABEL_STRIP,
 } from './library.ts'
-import { coverBox, storeTiles, tileLinks, tiles } from './tiles.ts'
+import { coverBox, storeTiles, tileLinks, tileNames, tiles } from './tiles.ts'
 
 const COULDNT_SAVE = "Couldn't save. Your data wasn't changed."
 const COULDNT_SAVE_BODY = JSON.stringify({
@@ -632,5 +633,306 @@ test.describe('Story 16.1 Star a Book (ATDD)', () => {
     expect(
       await spineMark(slice(page).getByRole('button', { name: `${mainName}, favourite`, exact: true })),
     ).not.toBeNull()
+  })
+})
+
+/** A `--space-*` token as the page resolves it, in px. */
+function spaceToken(page: Page, name: string): Promise<number> {
+  return page.evaluate(
+    (name) => Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue(name)),
+    name,
+  )
+}
+
+test.describe('Story 16.1 Star a Book (automate)', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 })
+    await page.emulateMedia({ colorScheme: 'light' })
+  })
+
+  test("[P1] AC-8 List: with bookvie stopped, a row star's couldn't-save line shows once under the filter row, focus and the star stay, and the page doesn't jump to it", async ({
+    page,
+    seededServer,
+  }) => {
+    await page.addInitScript(() => window.localStorage.setItem('bookvie.catalogView', 'list'))
+    const server = await seededServer({ books: shelfOf(60).map((book, n) => ({ id: bookId(n + 1), ...book })) })
+    // bookvie stopped: the request never reaches a server.
+    await page.route(`**${SET_FAVOURITE}`, (route) => route.abort('connectionrefused'))
+    await page.goto(`${server.url}/catalog`)
+    await expect(bookRows(page)).toHaveCount(60)
+    const main = page.getByRole('main')
+    const star = favouriteStar(page, 'Favourite Book 055')
+    await star.scrollIntoViewIfNeeded()
+    await star.focus()
+    const before = (await star.boundingBox())!
+
+    await page.keyboard.press('Enter')
+    await expect(page.getByRole('alert')).toHaveText(COULDNT_SAVE)
+
+    const line = main.getByText(COULDNT_SAVE, { exact: true })
+    await expect(line).toHaveCount(1)
+    await expect(star).toBeFocused()
+    await expect(star).toHaveAttribute('aria-pressed', 'false')
+    await expect(page.getByRole('status')).toHaveText('')
+    // Under the filter row, above the table.
+    const rowBox = (await chipGroup(page, 'Status').locator('xpath=..').boundingBox())!
+    const lineBox = (await line.boundingBox())!
+    const tableBox = (await page.getByRole('table').boundingBox())!
+    expect(lineBox.y).toBeGreaterThanOrEqual(rowBox.y + rowBox.height - 1)
+    expect(lineBox.y + lineBox.height).toBeLessThanOrEqual(tableBox.y + 1)
+    // The page doesn't jump to the line: the pressed star stays where it was on screen.
+    const after = (await star.boundingBox())!
+    expect(Math.abs(after.y - before.y)).toBeLessThanOrEqual(1)
+    // A filter change empties it.
+    await chip(page, 'Status', 'Unread').click()
+    await expect(page.getByRole('alert')).toHaveText('')
+  })
+
+  test('[P1] AC-8 a failure that lands after its popover closed stays under the filter row, even when another spine’s popover is open by then', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: [DUNE, EMMA] })
+    const sent = requestsTo(page, SET_FAVOURITE)
+    // The save is held until `release()`, then couldn't be saved.
+    let release!: () => void
+    const held = new Promise<void>((resolve) => (release = resolve))
+    await page.route(`**${SET_FAVOURITE}`, async (route) => {
+      await held
+      await route.fulfill({ status: 503, contentType: 'application/json', body: COULDNT_SAVE_BODY })
+    })
+    await page.goto(`${server.url}/catalog`)
+    await expect(spines(page)).toHaveCount(2)
+    const main = page.getByRole('main')
+
+    // Press Dune's star in its popover, close it, open Emma's, then let the failure land.
+    await bookcase(page)
+      .getByRole('button', { name: /^Dune by Frank Herbert, / })
+      .click()
+    const duneCard = popover(page, 'Dune')
+    await favouriteStar(duneCard).click()
+    await expect.poll(() => sent.length).toBe(1)
+    await page.keyboard.press('Escape')
+    await expect(duneCard).toBeHidden()
+    await bookcase(page)
+      .getByRole('button', { name: /^Emma by Jane Austen, / })
+      .click()
+    const emmaCard = popover(page, 'Emma')
+    await expect(emmaCard).toBeVisible()
+    release()
+    await expect(page.getByRole('alert')).toHaveText(COULDNT_SAVE)
+
+    // Not in Emma's popover: once, under the filter row, above the bookcase.
+    await expect(emmaCard.getByText(COULDNT_SAVE, { exact: true })).toHaveCount(0)
+    const line = main.getByText(COULDNT_SAVE, { exact: true })
+    await expect(line).toHaveCount(1)
+    await expect(line).toBeVisible()
+    const rowBox = (await chipGroup(page, 'Status').locator('xpath=..').boundingBox())!
+    const lineBox = (await line.boundingBox())!
+    const shelfBox = (await bookcase(page).boundingBox())!
+    expect(lineBox.y).toBeGreaterThanOrEqual(rowBox.y + rowBox.height - 1)
+    expect(lineBox.y + lineBox.height).toBeLessThanOrEqual(shelfBox.y + 1)
+    await expect(favouriteStar(emmaCard)).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  test('[P2] AC-7, AC-9, AC-10 every star has its DESIGN.md target and size, Book detail’s sits {spacing.3} after the h1 text and the row’s {spacing.2} after the title link, the focus ring is the accent ring, and the reveal has no transition', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: [DUNE, EMMA] })
+    const sizeOf = async (star: Locator) => ({
+      button: (await star.boundingBox())!,
+      icon: (await star.locator('svg').first().boundingBox())!,
+    })
+    const near = (actual: number, expected: number) => expect(Math.abs(actual - expected)).toBeLessThanOrEqual(0.5)
+    const ring = async (star: Locator) => {
+      await expect(star).toBeFocused()
+      await expect(star).toHaveCSS('outline', `${ACCENT} solid 2px`)
+      await expect(star).toHaveCSS('outline-offset', '2px')
+    }
+    const noTransition = (star: Locator) =>
+      star.evaluate((button) =>
+        [button, button.querySelector('svg')!].map((node) => getComputedStyle(node).transitionDuration),
+      )
+
+    // Book detail: a button-size target holding a detail-size star, spacing.3 after the h1's text.
+    await page.goto(`${server.url}/book/${DUNE_ID}`)
+    const heading = page.getByRole('heading', { level: 1, name: 'Dune', exact: true })
+    await expect(heading).toBeVisible()
+    const detail = favouriteStar(page.getByRole('main'))
+    const detailSize = await sizeOf(detail)
+    near(detailSize.button.width, starSize('button-size'))
+    near(detailSize.button.height, starSize('button-size'))
+    near(detailSize.icon.width, starSize('detail-size'))
+    const line = await firstLineRect(heading)
+    expect(
+      Math.abs(detailSize.button.x - (line.x + line.width) - (await spaceToken(page, '--space-3'))),
+    ).toBeLessThanOrEqual(1)
+    await detail.focus()
+    await ring(detail)
+
+    // The Spine popover: the same target with a popover-size star.
+    await page.goto(`${server.url}/catalog`)
+    await expect(spines(page)).toHaveCount(2)
+    await bookcase(page)
+      .getByRole('button', { name: /^Dune by Frank Herbert, / })
+      .click()
+    const popoverSize = await sizeOf(favouriteStar(popover(page, 'Dune')))
+    near(popoverSize.button.width, starSize('button-size'))
+    near(popoverSize.icon.width, starSize('popover-size'))
+    await page.keyboard.press('Escape')
+
+    // A List row: a row-target with a row-size star, spacing.2 after the title link; no transition.
+    await viewToggle(page).getByRole('button', { name: 'List', exact: true }).click()
+    await expect(bookRows(page)).toHaveCount(2)
+    const duneRow = bookRows(page).filter({ has: page.getByRole('link', { name: 'Dune', exact: true }) })
+    const rowStar = favouriteStar(duneRow, 'Favourite Dune')
+    const rowSize = await sizeOf(rowStar)
+    near(rowSize.button.width, starSize('row-target'))
+    near(rowSize.button.height, starSize('row-target'))
+    near(rowSize.icon.width, starSize('row-size'))
+    const titleBox = (await duneRow.getByRole('link', { name: 'Dune', exact: true }).boundingBox())!
+    expect(
+      Math.abs(rowSize.button.x - (titleBox.x + titleBox.width) - (await spaceToken(page, '--space-2'))),
+    ).toBeLessThanOrEqual(1)
+    expect(await noTransition(rowStar)).toEqual(['0s', '0s'])
+    // Reached from the title link by Tab, as a keyboard user does (the toggle was clicked).
+    await duneRow.getByRole('link', { name: 'Dune', exact: true }).focus()
+    await page.keyboard.press('Tab')
+    await ring(rowStar)
+
+    // A tile: a tile-target around a tile-size star, centred; its ring is around the target; no transition.
+    await viewToggle(page).getByRole('button', { name: 'Tiles', exact: true }).click()
+    await expect(tileLinks(page)).toHaveCount(2)
+    const tileStar = favouriteStar(tileItemStarting(page, 'Dune by Frank Herbert, '), 'Favourite Dune')
+    const tileSize = await sizeOf(tileStar)
+    near(tileSize.button.width, starSize('tile-target'))
+    near(tileSize.button.height, starSize('tile-target'))
+    near(tileSize.icon.width, starSize('tile-size'))
+    near(tileSize.icon.x + tileSize.icon.width / 2, tileSize.button.x + tileSize.button.width / 2)
+    near(tileSize.icon.y + tileSize.icon.height / 2, tileSize.button.y + tileSize.button.height / 2)
+    expect(await noTransition(tileStar)).toEqual(['0s', '0s'])
+    await tileItemStarting(page, 'Dune by Frank Herbert, ').getByRole('link').focus()
+    await page.keyboard.press('Tab')
+    await ring(tileStar)
+  })
+
+  test('[P2] AC-9, AC-10, AC-12, AC-13 in dark the row and popover stars use favourite-dark and the dark outline, the tile keeps its paper halo, and under forced colors in dark the halo is Canvas', async ({
+    page,
+    seededServer,
+  }) => {
+    await page.emulateMedia({ colorScheme: 'dark' })
+    await page.addInitScript(() => window.localStorage.setItem('bookvie.catalogView', 'list'))
+    const server = await seededServer({ books: [DUNE, EMMA] })
+    await starBook(page.request, server, DUNE_ID)
+    await page.goto(`${server.url}/catalog`)
+    await expect(bookRows(page)).toHaveCount(2)
+
+    // List: the starred row in favourite-dark, the unstarred outline in dark ink-secondary.
+    const duneRowStar = favouriteStar(bookRows(page), 'Favourite Dune')
+    await expect(duneRowStar).toHaveAttribute('aria-pressed', 'true')
+    await expect(starShape(duneRowStar)).toHaveCSS('fill', FAVOURITE_DARK)
+    const emmaRow = bookRows(page).filter({ has: page.getByRole('link', { name: 'Emma', exact: true }) })
+    await emmaRow.hover()
+    await expect(starShape(favouriteStar(emmaRow, 'Favourite Emma'))).toHaveCSS('stroke', INK_SECONDARY_DARK)
+
+    // The Spine popover's star in favourite-dark.
+    await viewToggle(page).getByRole('button', { name: 'Bookcase', exact: true }).click()
+    await expect(spines(page)).toHaveCount(2)
+    await bookcase(page)
+      .getByRole('button', { name: /^Dune by Frank Herbert, / })
+      .click()
+    const cardStar = favouriteStar(popover(page, 'Dune'))
+    await expect(cardStar).toHaveAttribute('aria-pressed', 'true')
+    await expect(starShape(cardStar)).toHaveCSS('fill', FAVOURITE_DARK)
+    await page.keyboard.press('Escape')
+
+    // A tile in dark: the paper halo path and its glow stay spine-label-strip.
+    await viewToggle(page).getByRole('button', { name: 'Tiles', exact: true }).click()
+    await expect(tileLinks(page)).toHaveCount(2)
+    const tileStar = favouriteStar(tiles(page), 'Favourite Dune')
+    const halo = tileStar.locator('svg path').first()
+    await expect(tileStar.locator('svg path')).toHaveCount(2)
+    await expect(halo).toHaveCSS('fill', SPINE_LABEL_STRIP)
+    await expect(halo).toHaveCSS('stroke', SPINE_LABEL_STRIP)
+    await expect(tileStar.locator('svg').first()).toHaveCSS('filter', `drop-shadow(${SPINE_LABEL_STRIP} 0px 0px 1.5px)`)
+    await expect(starShape(tileStar)).toHaveCSS('fill', FAVOURITE)
+
+    // Forced colors in dark: the halo is Canvas with no glow, the star CanvasText.
+    await page.emulateMedia({ colorScheme: 'dark', forcedColors: 'active' })
+    const canvas = await systemColor(page, 'Canvas')
+    const canvasText = await systemColor(page, 'CanvasText')
+    await expect(halo).toHaveCSS('fill', canvas)
+    await expect(tileStar.locator('svg').first()).toHaveCSS('filter', 'none')
+    await expect(starShape(tileStar)).toHaveCSS('fill', canvasText)
+    await page.goto(`${server.url}/book/${DUNE_ID}`)
+    await expect(page.getByRole('heading', { level: 1, name: 'Dune', exact: true })).toBeVisible()
+    await expect(starShape(favouriteStar(page.getByRole('main')))).toHaveCSS('fill', canvasText)
+  })
+
+  test('[P2] AC-9, AC-11 twins: starring one Dune from its tile stars only that Book; the other keeps its star unpressed and its name', async ({
+    page,
+    seededServer,
+  }) => {
+    const duneFirst = { id: bookId(4), title: 'Dune', authors: ['Frank Herbert'], pages: 412, edition: 1 }
+    const duneSecond = { id: bookId(5), title: 'Dune', authors: ['Frank Herbert'], pages: 412, edition: 2 }
+    await storeTiles(page)
+    const server = await seededServer({ books: [duneFirst, duneSecond] })
+    await page.goto(`${server.url}/catalog`)
+    await expect(tileLinks(page)).toHaveCount(2)
+    const firstStar = favouriteStar(tileItemStarting(page, 'Dune by Frank Herbert, edition 1, '), 'Favourite Dune')
+    const secondStar = favouriteStar(tileItemStarting(page, 'Dune by Frank Herbert, edition 2, '), 'Favourite Dune')
+
+    await firstStar.focus()
+    await page.keyboard.press('Enter')
+    await expect(firstStar).toHaveAttribute('aria-pressed', 'true')
+
+    await expect(page.getByRole('status')).toHaveText('Dune is a favourite.')
+    await expect(secondStar).toHaveAttribute('aria-pressed', 'false')
+    expect(await tileNames(page)).toEqual([
+      'Dune by Frank Herbert, edition 1, not read yet, favourite',
+      'Dune by Frank Herbert, edition 2, not read yet',
+    ])
+  })
+
+  test('[P2] AC-11, AC-14 starring leaves the Catalog meter as it was; the Main book’s mark and marker dot don’t overlap; the legend’s favourite swatch is a mini square', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer(mainAt(165, { others: [DUNE, EMMA] }))
+    await page.goto(`${server.url}/catalog`)
+    await expect(spines(page)).toHaveCount(3)
+    const meter = page.getByRole('main').getByRole('progressbar', { name: 'Books finished', exact: true })
+    await expect(meter).toHaveAttribute('aria-valuetext', /^\d+ of \d+ finished$/)
+    const meterOf = () =>
+      meter.evaluate((bar) => ['aria-valuetext', 'aria-valuenow', 'aria-valuemax'].map((a) => bar.getAttribute(a)))
+    const meterBefore = await meterOf()
+
+    await starBook(page.request, server, LEFT_HAND_ID)
+    await starBook(page.request, server, EMMA.id)
+    await page.reload()
+    const mainSpine = bookcase(page).getByRole('button', { name: /^The Left Hand of Darkness by .*, favourite$/ })
+    await expect(mainSpine).toBeVisible()
+
+    // The Catalog's meter is unchanged.
+    await expect(meter).toHaveAttribute('aria-valuetext', meterBefore[0]!)
+    expect(await meterOf()).toEqual(meterBefore)
+
+    // The mark at the foot and the marker dot never overlap.
+    const mark = (await spineMark(mainSpine))!
+    expect(mark).not.toBeNull()
+    const spineBox = (await mainSpine.boundingBox())!
+    const markTop = spineBox.y + spineBox.height - mark.bottomGap - mark.height
+    const dot = (await mainSpine.locator('[data-marker]').boundingBox())!
+    expect(dot.y + dot.height).toBeLessThanOrEqual(markTop)
+
+    // The legend's swatch: a square smaller than the spine's mark, no taller than a spine swatch.
+    const swatchOf = (label: RegExp) =>
+      legend(page).locator(':scope > span', { hasText: label }).locator('[aria-hidden="true"]').first().boundingBox()
+    const favouriteSwatch = (await swatchOf(/^favourite$/))!
+    const finishedSwatch = (await swatchOf(/^finished$/))!
+    expect(Math.abs(favouriteSwatch.width - favouriteSwatch.height)).toBeLessThanOrEqual(0.5)
+    expect(favouriteSwatch.width).toBeLessThan(starSize('spine-mark-size'))
+    expect(favouriteSwatch.height).toBeLessThanOrEqual(finishedSwatch.height)
   })
 })

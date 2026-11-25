@@ -121,15 +121,15 @@ e2e (from the gate, confirmed by the e2e worker's grep, not run against a build)
 
 ## Green-phase follow-ups (secondary branches, not red leaves)
 
-- [ ] AC-1: `bookvie` itself exits 1 on a v4 file missing `favourite` (the leaf checks `Store.open`; `test_cli.py:709`'s pattern).
-- [ ] AC-7: the `{spacing.3}` gap after the h1, the 34px target, the focus ring.
-- [ ] AC-8: bookvie stopped (not a routed 503); the line after the popover has closed; the List view's line; the page doesn't scroll to it.
-- [ ] AC-9: no fade on the reveal; the paper halo; the 32px target and its ring; a wide cover; halo and outline in dark; twins' stars.
-- [ ] AC-10: the `{spacing.2}` gap, the 24px target, dark mode.
-- [ ] AC-11: the mark doesn't overlap the marker dot; the legend swatch's mini size.
-- [ ] AC-12: Tab from the last control still closes the popover; dark mode.
-- [ ] AC-13: the Canvas halo on tile stars under forced colors (pixel sampling); forced colors in dark.
-- [ ] AC-14: Catalog's meter as well as Home's.
+- [x] AC-1: `bookvie` itself exits 1 on a v4 file missing `favourite` (the leaf checks `Store.open`; `test_cli.py:709`'s pattern). (done: backend/tests/test_cli.py:727 `test_a_v4_library_missing_favourite_exits_1_without_serving`)
+- [x] AC-7: the `{spacing.3}` gap after the h1, the 34px target, the focus ring. (done: frontend/e2e/favourite-star.spec.ts:738)
+- [x] AC-8: bookvie stopped (not a routed 503); the line after the popover has closed; the List view's line; the page doesn't scroll to it. (done: frontend/e2e/favourite-star.spec.ts:653 for bookvie stopped, the List line and no jump, which is asserted as the pressed star keeping its place on screen, since Chromium's scroll anchoring moves `scrollY` by the line's height; frontend/e2e/favourite-star.spec.ts:226 (build) and :691 for the line after the popover closed, including one that lands after another popover opens)
+- [x] AC-9: no fade on the reveal; the paper halo; the 32px target and its ring; ~~a wide cover~~; halo and outline in dark; twins' stars. (done: frontend/e2e/favourite-star.spec.ts:738 for no transition, the 32px target and its ring; :820 for the paper halo in light and dark, as computed fill, stroke and glow; :585 (ATDD) for the outline in dark; :873 for twins.) **Retired:** a wide cover. The star is an absolutely placed sibling of the link, positioned on the 2:3 box, and AC-9's leaf (:253) already asserts its place against `coverBox`; a wide cover changes only the image inside the link.
+- [x] AC-10: the `{spacing.2}` gap, the 24px target, dark mode. (done: frontend/e2e/favourite-star.spec.ts:738 for the gap and target; :820 for dark)
+- [x] AC-11: the mark doesn't overlap the marker dot; the legend swatch's mini size. (done: frontend/e2e/favourite-star.spec.ts:898; "mini" has no number in DESIGN.md, so the leaf asserts a square smaller than `spine-mark-size` and no taller than a spine swatch, measured 12px against 16px and 15px)
+- [x] AC-12: Tab from the last control still closes the popover; dark mode. (done: frontend/e2e/spine-popover.spec.ts:181, updated by the gate for the star, for Tab from the last control; frontend/e2e/favourite-star.spec.ts:820 for dark)
+- [x] AC-13: the Canvas halo on tile stars under forced colors (pixel sampling); forced colors in dark. (done: frontend/e2e/favourite-star.spec.ts:820 asserts the halo path's computed fill is Canvas and its glow `none` under forced colors in dark, instead of sampling pixels; the computed style is what forced colors paint)
+- [x] AC-14: Catalog's meter as well as Home's. (done: frontend/e2e/favourite-star.spec.ts:898)
 
 ## Helper probes
 
@@ -194,14 +194,14 @@ e2e (from the gate, confirmed by the e2e worker's grep, not run against a build)
 
 ## Implementation checklist (for `bmad-build-auto`)
 
-- [ ] `Book.favourite: bool` (no default), `SCHEMA_VERSION = 4`; `store/migrations` step 3→4 setting `false`, `CURRENT_VERSION = 4`.
-- [ ] `intents/set_favourite.py` and `POST /api/intents/set-favourite` (value, not toggle; 409 before the `UNCHANGED` no-op; 422 on `favourite`); `INTENT_ROUTES` gains it.
-- [ ] `add-book` stores `false`; `edit-book` and every other intent keep it; not in `editForm` or `edit_book`'s input.
-- [ ] `ShelfBook.favourite`, `BookDetailView.favourite`; `npm --prefix frontend run api:gen`.
-- [ ] `tests/builder.py` default `"favourite": False`; `helpers.py` `EMPTY_LIBRARY` and `STORED_BOOK_KEYS`; the gate's existing tests plus the two above; `set_favourite` in the never-registered names.
-- [ ] Book detail star, Spine popover star, Tiles and List stars, spine mark, ", favourite" in `spineNames`, legend item; status and couldn't-save lines.
-- [ ] `favourite` / `favourite-dark` into DESIGN.md `colors` and `tokens.css` together; forced colors.
-- [ ] Un-skip the 14 leaves, remove `RED_16_1`, run `npm run check`.
+- [x] `Book.favourite: bool` (no default), `SCHEMA_VERSION = 4`; `store/migrations` step 3→4 setting `false`, `CURRENT_VERSION = 4`. (done: backend/tests/test_favourite.py:99)
+- [x] `intents/set_favourite.py` and `POST /api/intents/set-favourite` (value, not toggle; 409 before the `UNCHANGED` no-op; 422 on `favourite`); `INTENT_ROUTES` gains it. (done: backend/tests/test_favourite.py:158)
+- [x] `add-book` stores `false`; `edit-book` and every other intent keep it; not in `editForm` or `edit_book`'s input. (done: backend/tests/test_favourite.py:235)
+- [x] `ShelfBook.favourite`, `BookDetailView.favourite`; `npm --prefix frontend run api:gen`. (done: backend/tests/test_favourite.py:318)
+- [x] `tests/builder.py` default `"favourite": False`; `helpers.py` `EMPTY_LIBRARY` and `STORED_BOOK_KEYS`; the gate's existing tests plus the two above; `set_favourite` in the never-registered names. (done: `npm run check` exit 0 in the review, 2026-11-25 (pytest 2533))
+- [x] Book detail star, Spine popover star, Tiles and List stars, spine mark, ", favourite" in `spineNames`, legend item; status and couldn't-save lines. (done: frontend/e2e/favourite-star.spec.ts:83 to :595)
+- [x] `favourite` / `favourite-dark` into DESIGN.md `colors` and `tokens.css` together; forced colors. (done: frontend/e2e/favourite-star.spec.ts:520)
+- [x] Un-skip the 14 leaves, remove `RED_16_1`, run `npm run check`. (done: 0 skipped in `npm run check`, review 2026-11-25)
 
 ## Suite
 
