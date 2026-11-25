@@ -52,6 +52,11 @@ export function spine(page: Page, name: string): Locator {
   return bookcase(page).getByRole('listitem').getByRole('button', { name, exact: true })
 }
 
+/** The Spine popover: a non-modal `dialog` named by the Book's title (moved from favourite-star.spec.ts in Story 16.2). */
+export function popover(page: Page, title: string): Locator {
+  return page.getByRole('dialog', { name: title, exact: true })
+}
+
 export function viewToggle(page: Page): Locator {
   return page.getByRole('group', { name: 'Catalog view', exact: true })
 }

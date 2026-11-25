@@ -2,7 +2,8 @@
 // chips and checkbox lists found by role and name, the spine names in a list,
 // the keys in storage, an add from the New book panel, and a recorder of the
 // `status` region's texts. Story 15.2 moved them here from
-// catalog-filter.spec.ts and added the list chips' readers.
+// catalog-filter.spec.ts and added the list chips' readers; Story 16.2 added
+// the Favourites chip.
 
 import type { Locator, Page } from '@playwright/test'
 import { bookcase, SWING_TIME } from './bookcase.ts'
@@ -18,6 +19,14 @@ export function chipGroup(page: Page, name: 'Status' | 'Type'): Locator {
 
 export function chip(page: Page, group: 'Status' | 'Type', name: string): Locator {
   return chipGroup(page, group).getByRole('button', { name, exact: true })
+}
+
+/**
+ * The Favourites chip (Story 16.2): a lone toggle, in no group, found by its
+ * exact name, since "Favourites" must not match a star's "Favourite *Title*".
+ */
+export function favouritesChip(page: Page): Locator {
+  return main(page).getByRole('button', { name: 'Favourites', exact: true })
 }
 
 /** A list chip (Language ▾, Tag ▾, Publisher ▾); its name becomes "Language: 2" with two values checked. */

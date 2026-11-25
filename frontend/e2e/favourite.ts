@@ -2,9 +2,23 @@
 // name, the shape drawn on top in its SVG, whether that SVG is painted at all
 // (an unstarred tile or List row hides its outline until hover or focus), and
 // the favourite mark at a spine's foot, found by what it looks like so no class
-// name is pinned.
+// name is pinned. Story 16.2 moved the couldn't-save route here from
+// favourite-star.spec.ts, for the Favourites chip spec.
 
 import type { Locator, Page } from '@playwright/test'
+import { SET_FAVOURITE } from './intents.ts'
+
+export const COULDNT_SAVE = "Couldn't save. Your data wasn't changed."
+export const COULDNT_SAVE_BODY = JSON.stringify({
+  error: { kind: 'couldnt_save', code: 'couldnt_save', message: COULDNT_SAVE },
+})
+
+/** Every set-favourite request answers 503 couldn't-save. */
+export async function routeCouldntSave(page: Page): Promise<void> {
+  await page.route(`**${SET_FAVOURITE}`, (route) =>
+    route.fulfill({ status: 503, contentType: 'application/json', body: COULDNT_SAVE_BODY }),
+  )
+}
 
 /**
  * The star button inside `scope`, by its exact name: "Favourite" on Book

@@ -10,10 +10,18 @@
 // unread) after seeding them.
 
 import type { Locator, Page } from '@playwright/test'
-import { bookcase, bookRows, finished, search, shelfOf, spine, spines, viewToggle } from './bookcase.ts'
+import { bookcase, bookRows, finished, popover, search, shelfOf, spine, spines, viewToggle } from './bookcase.ts'
 import { chip, chipGroup, spineNames } from './catalog-filter.ts'
 import { systemColor } from './dev-mode.ts'
-import { favouriteStar, spineMark, starDrawn, starShape } from './favourite.ts'
+import {
+  COULDNT_SAVE,
+  COULDNT_SAVE_BODY,
+  favouriteStar,
+  routeCouldntSave,
+  spineMark,
+  starDrawn,
+  starShape,
+} from './favourite.ts'
 import { expect, test } from './fixtures.ts'
 import { LEFT_HAND_ID, mainAt, slice, sliceRows, sliceSpines } from './home.ts'
 import { intentOf, requestsTo, SET_FAVOURITE, starBook } from './intents.ts'
@@ -35,11 +43,6 @@ import {
 } from './library.ts'
 import { coverBox, storeTiles, tileLinks, tileNames, tiles } from './tiles.ts'
 
-const COULDNT_SAVE = "Couldn't save. Your data wasn't changed."
-const COULDNT_SAVE_BODY = JSON.stringify({
-  error: { kind: 'couldnt_save', code: 'couldnt_save', message: COULDNT_SAVE },
-})
-
 /** Unread. The default Author sort (the author string, collated) puts it before Emma. */
 const DUNE = { id: DUNE_ID, title: 'Dune', subtitle: 'Book One', authors: ['Frank Herbert'], pages: 412, year: 1965 }
 /** Finished, so its tile has the ribbon and its spine is filled. */
@@ -50,23 +53,11 @@ function starSize(key: string): number {
   return Number.parseFloat(designComponentValue('favourite-star', key))
 }
 
-/** Every set-favourite request answers 503 couldn't-save. */
-async function routeCouldntSave(page: Page): Promise<void> {
-  await page.route(`**${SET_FAVOURITE}`, (route) =>
-    route.fulfill({ status: 503, contentType: 'application/json', body: COULDNT_SAVE_BODY }),
-  )
-}
-
 /** The tile's list item whose link name starts with `prefix` ("Emma by Jane Austen, "), starred or not. */
 function tileItemStarting(page: Page, prefix: string): Locator {
   return tiles(page)
     .getByRole('listitem')
     .filter({ has: page.getByRole('link', { name: new RegExp(`^${prefix}`) }) })
-}
-
-/** The Spine popover: a non-modal `dialog` named by the Book's title. */
-function popover(page: Page, title: string): Locator {
-  return page.getByRole('dialog', { name: title, exact: true })
 }
 
 /** The bookcase legend: the parent of its "Main book, filled to its %" item. */

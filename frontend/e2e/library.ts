@@ -363,3 +363,11 @@ export function pressOnceThen<T>(control: Locator, read: () => Promise<T>): () =
     return read()
   }
 }
+
+/**
+ * Whether `element` has focus now: a one-shot reader for `expect.poll`, where
+ * `toBeFocused` can't sit (it is an assertion of its own).
+ */
+export function isFocused(element: Locator): Promise<boolean> {
+  return element.evaluate((node) => node === document.activeElement)
+}
