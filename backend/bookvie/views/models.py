@@ -58,6 +58,8 @@ class ShelfBook(_View):
     """The Book's language as stored; read by Catalog's Language filter."""
     tags: list[str]
     """The Book's tags as stored; read by Catalog's Tag filter."""
+    publisher: str
+    """The Book's publisher as stored (trimmed by the book fields); read by Catalog's Publisher filter."""
 
 
 class HomeMainBook(_View):

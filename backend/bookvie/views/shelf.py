@@ -77,6 +77,7 @@ def _shelf_book(library: Library, book: Book) -> ShelfBook:
         type=book.type,
         language=book.language,
         tags=list(book.tags),
+        publisher=book.publisher,
     )
 
 

@@ -150,7 +150,7 @@ development_status:
   epic-14-retrospective: done
 
   epic-15: backlog
-  15-1-carry-the-publisher-in-the-catalog-view: backlog
+  15-1-carry-the-publisher-in-the-catalog-view: review
   15-2-filter-the-catalog-by-publisher: backlog
   epic-15-retrospective: optional
 action_items:

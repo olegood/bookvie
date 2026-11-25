@@ -90,6 +90,7 @@ def test_seeded_library(tmp_path: Path, library_builder: LibraryBuilder, view: s
             "type": "paperback",
             "language": "English",
             "tags": [],
+            "publisher": "Publisher",
         },
         {
             "id": ids["omens"],
@@ -116,6 +117,7 @@ def test_seeded_library(tmp_path: Path, library_builder: LibraryBuilder, view: s
             "type": "paperback",
             "language": "English",
             "tags": ["Fantasy", "humor"],
+            "publisher": "Publisher",
         },
         {
             "id": ids["emma"],
@@ -143,6 +145,7 @@ def test_seeded_library(tmp_path: Path, library_builder: LibraryBuilder, view: s
             "type": "paperback",
             "language": "English",
             "tags": ["fantasy", "Classics"],
+            "publisher": "Publisher",
         },
     ]
     if view == "catalog":

@@ -1138,6 +1138,8 @@ export interface components {
             language: string;
             /** Tags */
             tags: string[];
+            /** Publisher */
+            publisher: string;
         };
         /**
          * StatsBucket

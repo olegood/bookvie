@@ -16,7 +16,6 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-import pytest
 from fastapi.testclient import TestClient
 
 from bookvie.agent import NoArguments, input_schema
@@ -34,7 +33,6 @@ from tests.helpers import (
     stored_books,
 )
 
-RED_15_1 = "Story 15.1 red phase: ShelfBook has no publisher yet"
 CATALOG_VIEW = "/api/views/catalog"
 HOME_VIEW = "/api/views/home"
 
@@ -109,7 +107,6 @@ def _get(client: TestClient, path: str = CATALOG_VIEW) -> Any:
 # --- AC-1: every ShelfBook carries its stored, trimmed publisher -------------------
 
 
-@pytest.mark.skip(reason=RED_15_1)
 def test_ac1_p0_every_shelf_book_carries_its_stored_publisher(tmp_path: Path) -> None:
     # [P0] AC-1 every ShelfBook in the catalog view carries publisher, the Book's stored,
     # trimmed publisher; a Book edited to another publisher shows the new value next fetch.
@@ -142,7 +139,6 @@ def test_ac1_p0_every_shelf_book_carries_its_stored_publisher(tmp_path: Path) ->
 # --- AC-2: the client types carry a required publisher -----------------------------
 
 
-@pytest.mark.skip(reason=RED_15_1)
 def test_ac2_p0_the_client_types_give_shelf_book_a_required_publisher(tmp_path: Path) -> None:
     # [P0] AC-2 after api:gen, schema.d.ts gives ShelfBook a required publisher: string, and
     # OpenAPI marks it a required string; ShelfBook gains no other field.
@@ -161,7 +157,6 @@ def test_ac2_p0_the_client_types_give_shelf_book_a_required_publisher(tmp_path: 
 # --- AC-3: list_catalog carries it too, with its description and arguments --------
 
 
-@pytest.mark.skip(reason=RED_15_1)
 def test_ac3_p1_list_catalog_carries_the_publisher_with_its_description_and_arguments(
     connect_mcp: Callable[..., McpClient], tmp_path: Path
 ) -> None:
@@ -184,7 +179,6 @@ def test_ac3_p1_list_catalog_carries_the_publisher_with_its_description_and_argu
 # --- AC-4: nothing visible or stored changes ---------------------------------------
 
 
-@pytest.mark.skip(reason=RED_15_1)
 def test_ac4_p1_the_publisher_is_read_only_and_no_stored_data_changes(tmp_path: Path) -> None:
     # [P1] AC-4 nothing visible changes: the field is read-only. Reading the catalog, home,
     # card-notes and book views writes nothing, and a stored Book gains no key.
@@ -197,7 +191,7 @@ def test_ac4_p1_the_publisher_is_read_only_and_no_stored_data_changes(tmp_path: 
     assert _get(client)["books"][0].get("publisher") == "Manning"
     assert [book["publisher"] for book in _get(client, HOME_VIEW)["books"]] == PUBLISHERS
     _get(client, "/api/views/card-notes")
-    client.get("/api/views/book", params={"id": ids["dune"]})
+    assert client.get("/api/views/book", params={"id": ids["dune"]}).status_code == 200
 
     # A read writes nothing, and a stored Book (which backups carry as is) gains no key.
     assert library_bytes(tmp_path) == before
