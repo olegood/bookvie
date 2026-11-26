@@ -6,6 +6,10 @@ All notable changes to bookvie are recorded here. The format follows
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [2.3.0] - 2026-11-26
+
 ### Added
 
 - Filter the catalog by publisher: a Publisher ▾ chip after Tag ▾ lists each publisher with its number of Books, most first, and filters like the other chips. Publishers that differ only in letter case are one row (Epic 15).
@@ -163,7 +167,8 @@ The first complete version: all seven v1 epics (41 stories) are done.
 - The Change color refusal is still announced after its popover closes.
 - The pace calculator agrees with Home's days-left figure.
 
-[Unreleased]: https://github.com/olegood/bookvie/compare/v2.2.0...HEAD
+[Unreleased]: https://github.com/olegood/bookvie/compare/v2.3.0...HEAD
+[2.3.0]: https://github.com/olegood/bookvie/compare/v2.2.0...v2.3.0
 [2.2.0]: https://github.com/olegood/bookvie/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/olegood/bookvie/compare/v2.0.1...v2.1.0
 [2.0.1]: https://github.com/olegood/bookvie/compare/v2.0.0...v2.0.1
