@@ -72,11 +72,11 @@ All five leaves are in a new file, `frontend/e2e/favourites-chip-stuck-unstar.sp
 
 ## Green-phase follow-ups (secondary branches, not red leaves)
 
-- [ ] **E2E, AC-2, New book save while waiting:** save a New book with the unstar pending. Only "Added *Title*." is spoken, focus goes to the new Book as today, and nothing more after a refetch.
-- [ ] **E2E, AC-2, Clear filters while waiting:** the same as the chip-off leaf, through the Clear filters link (focus goes to Favourites).
-- [ ] **E2E, AC-3, the same star again:** while Emma waits, press her star again (it still shows starred), then the refetch renders. The result is a normal 16.2 AC-6 unstar of Emma.
-- [ ] **E2E, the popover path:** Catalog bookcase, Emma's unstar pending from her Spine popover, then type in Search titles. Focus stays in the box (covers the wrapped `press` reaching Bookcase).
-- [ ] **E2E, List view:** the AC-1 flow in List (title links as focus targets).
+- [x] **E2E, AC-2, New book save while waiting:** save a New book with the unstar pending. Only "Added *Title*." is spoken, focus goes to the new Book as today, and nothing more after a refetch. (done: frontend/e2e/favourites-chip-stuck-unstar.spec.ts:297, "a New book save while an unstar waits…")
+- [x] **E2E, AC-2, Clear filters while waiting:** the same as the chip-off leaf, through the Clear filters link (focus goes to Favourites). (done: frontend/e2e/favourites-chip-stuck-unstar.spec.ts:272, "Clear filters while an unstar waits…")
+- [x] **E2E, AC-3, the same star again:** while Emma waits, press her star again (it still shows starred), then the refetch renders. The result is a normal 16.2 AC-6 unstar of Emma. (done: frontend/e2e/favourites-chip-stuck-unstar.spec.ts:186, "pressing the waiting Book’s star again…", added by the build)
+- [x] **E2E, the popover path:** Catalog bookcase, Emma's unstar pending from her Spine popover, then type in Search titles. Focus stays in the box (covers the wrapped `press` reaching Bookcase). (done: frontend/e2e/favourites-chip-stuck-unstar.spec.ts:342, "Bookcase: typing in Search titles…"; the unstar goes through the popover's star, so the flow Bookcase gets is CatalogPage's)
+- [x] **E2E, List view:** the AC-1 flow in List (title links as focus targets). (done: frontend/e2e/favourites-chip-stuck-unstar.spec.ts:319, "List: typing in Search titles…")
 
 ## Helper probes
 

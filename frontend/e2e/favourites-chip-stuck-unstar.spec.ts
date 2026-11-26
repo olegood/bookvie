@@ -7,10 +7,10 @@
 // favourites-chip.spec.ts, which would pass 1000 lines with these leaves.
 
 import type { Page } from '@playwright/test'
-import { search } from './bookcase.ts'
-import { chip, favouritesChip, recordStatus } from './catalog-filter.ts'
+import { bookcase, bookRows, popover, search, spine, spines, viewToggle } from './bookcase.ts'
+import { addSwingTime, chip, clearFilters, favouritesChip, recordStatus, spineNames, SWING } from './catalog-filter.ts'
 import { favouriteStar, routeCouldntSave } from './favourite.ts'
-import { AUSTERLITZ, BLEAK_HOUSE, FAVOURITES_SHELF, spoken, STARRED } from './favourites-shelf.ts'
+import { AUSTERLITZ, BLEAK_HOUSE, EMMA, FAVOURITES_SHELF, spoken, STARRED } from './favourites-shelf.ts'
 import { expect, test } from './fixtures.ts'
 import { SET_FAVOURITE } from './intents.ts'
 import { sortSelect } from './library.ts'
@@ -25,33 +25,52 @@ test.describe('Epic 16 retro item 107 Clear a stuck pending unstar (ATDD)', () =
   })
 
   /**
-   * Tiles, Favourites on, Emma unstarred from her tile, and the catalog
-   * refetch after that save answered 503 once: the save committed, the view
-   * still shows Emma starred with focus on her star, nothing more was said,
-   * and her unstar is pending. Returns the status recorder.
+   * Favourites on, Emma unstarred from her tile (or her List row, or her
+   * Spine popover in the bookcase), and the catalog refetch after that save
+   * answered 503 once: the save committed, the view still shows Emma starred
+   * with focus on her star, nothing more was said, and her unstar is pending.
+   * Returns the status recorder.
    */
-  async function stuckUnstarOfEmma(page: Page, url: string): Promise<() => Promise<string[]>> {
-    await storeTiles(page)
+  async function stuckUnstarOfEmma(
+    page: Page,
+    url: string,
+    view: 'Tiles' | 'List' | 'Bookcase' = 'Tiles',
+  ): Promise<() => Promise<string[]>> {
+    if (view === 'Tiles') await storeTiles(page)
     await page.goto(`${url}/catalog`)
-    await expect(tileLinks(page)).toHaveCount(6)
+    await expect(spines(page).or(tileLinks(page))).toHaveCount(6)
+    if (view === 'List') {
+      await viewToggle(page).getByRole('button', { name: 'List', exact: true }).click()
+      await expect(bookRows(page)).toHaveCount(6)
+    }
     const announced = await recordStatus(page)
     await favouritesChip(page).click()
-    await expect(tileLinks(page)).toHaveCount(3)
     await expect(page.getByRole('status')).toHaveText('3 books match.')
+    await expectStarredShown(page, view)
+    if (view === 'Bookcase') await spine(page, EMMA).click()
+    const scope = { Tiles: tiles(page), List: bookRows(page), Bookcase: popover(page, 'Emma') }[view]
     const saved = page.waitForResponse((response) => new URL(response.url()).pathname === SET_FAVOURITE)
     await page.route('**/api/views/catalog', (route) => route.fulfill({ status: 503, body: '' }), { times: 1 })
     const refetchFailed = page.waitForResponse(
       (response) => new URL(response.url()).pathname === '/api/views/catalog' && response.status() === 503,
     )
-    const emmaStar = favouriteStar(tiles(page), 'Favourite Emma')
+    // The popover's star is named for its card, not the Book.
+    const emmaStar = favouriteStar(scope, view === 'Bookcase' ? 'Favourite' : 'Favourite Emma')
     await emmaStar.click()
     expect((await saved).status()).toBe(200)
     await refetchFailed
     await afterAnnounceDelay(page)
-    expect(await tileNames(page)).toEqual(STARRED)
+    await expectStarredShown(page, view)
     await expect(emmaStar).toBeFocused()
     expect(await spoken(announced)).toEqual(['3 books match.'])
     return announced
+  }
+
+  /** The three starred Books, and only they, show in `view`, in Author A–Z order. */
+  async function expectStarredShown(page: Page, view: 'Tiles' | 'List' | 'Bookcase'): Promise<void> {
+    if (view === 'Tiles') await expect.poll(() => tileNames(page)).toEqual(STARRED)
+    if (view === 'Bookcase') await expect.poll(() => spineNames(bookcase(page))).toEqual(STARRED)
+    if (view === 'List') await expect(bookRows(page)).toHaveText([/^Bleak House/, /^Emma/, /^Austerlitz/])
   }
 
   /** The window regains focus and the catalog view refetches with a 200. */
@@ -246,5 +265,98 @@ test.describe('Epic 16 retro item 107 Clear a stuck pending unstar (ATDD)', () =
     await afterAnnounceDelay(page)
     expect(await unstarLines(announced)).toEqual([])
     await expect(bleakStar).toBeFocused()
+  })
+
+  // Automate. Clear filters goes through changeFilters, as the chip does;
+  // this pins the link's own path (focus to Favourites, Story 16.2 AC-4).
+  test('[P2] AC-2 Clear filters while an unstar waits speaks only its count, focuses the Favourites chip, and the next refetch says nothing more', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: FAVOURITES_SHELF })
+    const announced = await stuckUnstarOfEmma(page, server.url)
+    const before = (await spoken(announced)).length
+    const favourites = favouritesChip(page)
+
+    await clearFilters(page).click()
+    await expect(favourites).toHaveAttribute('aria-pressed', 'false')
+    await expect(tileLinks(page)).toHaveCount(6)
+    await expect(favourites).toBeFocused()
+    await expect(page.getByRole('status')).toHaveText('6 books match.')
+
+    await refetchCatalog(page)
+    await expect(favouriteStar(tiles(page), 'Favourite Emma')).toHaveAttribute('aria-pressed', 'false')
+    await afterAnnounceDelay(page)
+    expect((await spoken(announced)).slice(before)).toEqual(['6 books match.'])
+    await expect(favourites).toBeFocused()
+  })
+
+  // Automate. The save clears the filters, so Emma shows again and the
+  // pending unstar could not fire here even without the drop: this pins that
+  // the save speaks only its own line and keeps focus on the new Book.
+  test('[P2] AC-2 a New book save while an unstar waits speaks only "Added …", focuses the new Book, and the next refetch says nothing more', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: FAVOURITES_SHELF })
+    const announced = await stuckUnstarOfEmma(page, server.url)
+    const before = (await spoken(announced)).length
+
+    await addSwingTime(page)
+    await expect(favouritesChip(page)).toHaveAttribute('aria-pressed', 'false')
+    await expect(tileLinks(page)).toHaveCount(7)
+    await expect(tile(page, SWING)).toBeFocused()
+    await expect(page.getByRole('status')).toHaveText('Added Swing Time.')
+
+    await refetchCatalog(page)
+    await afterAnnounceDelay(page)
+    expect((await spoken(announced)).slice(before)).toEqual(['Added Swing Time.'])
+    await expect(tile(page, SWING)).toBeFocused()
+  })
+
+  // Automate. The AC-1 flow from a List row's star: rows have their own
+  // focus targets (title links), which the old effect would have focused.
+  test('[P1] AC-1 List: typing in Search titles while a row’s unstar waits keeps every character and focus in the box, and the unstar never speaks', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: FAVOURITES_SHELF })
+    const announced = await stuckUnstarOfEmma(page, server.url, 'List')
+
+    await search(page).click()
+    await search(page).pressSequentially('Bl')
+    await expect(search(page)).toHaveValue('Bl')
+    await expect(search(page)).toBeFocused()
+    await expect(bookRows(page)).toHaveText([/^Bleak House/])
+    await expect(page.getByRole('status')).toHaveText('1 book matches.')
+
+    await refetchCatalog(page)
+    await afterAnnounceDelay(page)
+    expect(await unstarLines(announced)).toEqual([])
+    await expect(search(page)).toBeFocused()
+    await expect(search(page)).toHaveValue('Bl')
+  })
+
+  // Automate. The AC-1 flow from the Catalog bookcase's Spine popover, whose
+  // star goes through the same wrapped flow (Bookcase gets CatalogPage's).
+  test('[P1] AC-1 Bookcase: typing in Search titles while a Spine popover’s unstar waits keeps every character and focus in the box, and the unstar never speaks', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: FAVOURITES_SHELF })
+    const announced = await stuckUnstarOfEmma(page, server.url, 'Bookcase')
+
+    await search(page).click()
+    await search(page).pressSequentially('Bl')
+    await expect(search(page)).toHaveValue('Bl')
+    await expect(search(page)).toBeFocused()
+    await expect.poll(() => spineNames(bookcase(page))).toEqual([BLEAK_HOUSE])
+    await expect(page.getByRole('status')).toHaveText('1 book matches.')
+
+    await refetchCatalog(page)
+    await afterAnnounceDelay(page)
+    expect(await unstarLines(announced)).toEqual([])
+    await expect(search(page)).toBeFocused()
+    await expect(search(page)).toHaveValue('Bl')
   })
 })

@@ -2,73 +2,77 @@
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03-generate-tests', 'step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
 lastSaved: '2026-11-26'
-storyId: '16.2'
-storyKey: '16-2-show-only-my-favourites'
+storyId: 'epic-16-retro-item-107'
+storyKey: 'epic-16-retro-item-107-clear-a-stuck-pending-unstar'
 inputDocuments:
-  - _bmad-output/implementation-artifacts/spec-16-2-show-only-my-favourites.md (ACs, I/O matrix, Auto Run Result, Review Findings)
-  - _bmad-output/test-artifacts/atdd-checklist-16-2-show-only-my-favourites.md (Green-phase follow-ups, implementation checklist)
-  - _bmad-output/implementation-artifacts/deferred-work.md (the build review's untested chip-off branch)
+  - _bmad-output/implementation-artifacts/spec-epic-16-retro-item-107-clear-a-stuck-pending-unstar.md (ACs, I/O matrix, Auto Run Result, Review Findings)
+  - _bmad-output/test-artifacts/atdd-checklist-epic-16-retro-item-107-clear-a-stuck-pending-unstar.md (Green-phase follow-ups)
   - _bmad/tea/config.yaml
-  - frontend/src/pages/CatalogPage.tsx, frontend/src/lib/useFavourite.ts, frontend/src/components/FilterChips.tsx and .module.css, frontend/src/api/intents.ts, frontend/src/api/views.ts
-  - frontend/e2e/favourites-chip.spec.ts, favourite-star.spec.ts, catalog-filter.ts, catalog-filter.spec.ts (axe pattern), bookcase.ts, favourite.ts, library.ts, intents.ts, sort-direction.ts, stats.ts, tiles.ts, spine-popover.spec.ts
-  - resources/knowledge: test-quality.md (the core fragments; Traditional Patterns, no Playwright Utils)
+  - frontend/src/pages/CatalogPage.tsx, frontend/src/pages/Bookcase.tsx
+  - frontend/e2e/favourites-chip-stuck-unstar.spec.ts, favourites-chip.spec.ts, catalog-filter.ts, catalog-filter.spec.ts, bookcase.ts, favourite.ts, favourites-shelf.ts, library.ts, tiles.ts
+  - resources/knowledge: test-levels-framework.md, test-priorities-matrix.md, data-factories.md, selective-testing.md, ci-burn-in.md, test-quality.md, fixture-architecture.md, network-first.md, playwright-cli.md (core and Traditional Patterns; no Playwright Utils)
 ---
 
-# Automation Summary: Story 16.2, show only my favourites
+# Automation Summary: Epic 16 retro item 107, clear a stuck pending unstar
 
 ## Preflight
 
-- **Done at HEAD.** `git show HEAD:…/sprint-status.yaml` reads `16-2-show-only-my-favourites: done` (review commit `f6e8920`), and the working tree was clean.
-- **Stack:** `fullstack` (auto). Playwright (Chromium only) and pytest are in place. The story is frontend only, so no pytest target.
-- **Mode:** BMad-Integrated. Inputs: the ATDD checklist's 7 green-phase follow-ups, and the build review's deferred test for the "chip went off before the refetched view rendered" branch.
-- **Config:** `tea_use_playwright_utils: false` (Traditional Patterns), no Pact, `tea_browser_automation: auto`. I didn't explore with `playwright-cli`: every locator already ships and is used by the story's leaves.
-- **Execution mode:** sequential in this session (7 leaves in one file, so one author keeps the helper-reuse rule simple), as in 16.1's run.
+- **Done at HEAD.** Item 107 is a retro action item, not a `development_status` story. At HEAD (`0d29524`, the review's commit), the spec's frontmatter reads `status: 'done'` and the action item in `sprint-status.yaml` reads `status: done`. The working tree was clean.
+- **Stack:** `fullstack` (auto). Playwright (Chromium only) and pytest are in place. The change is frontend only, so there's no pytest target.
+- **Mode:** BMad-Integrated. Inputs: the ATDD checklist's five green-phase follow-ups, and the residual gaps the build and the review named (Clear filters, a New book save, the List-row and popover star paths).
+- **Config:** `tea_use_playwright_utils: false` (Traditional Patterns), no Pact, `tea_browser_automation: auto`. I didn't explore with `playwright-cli`, because every locator already ships and the 16.2 leaves use them.
+- **Execution mode:** sequential in this session. All four leaves go in one file, and they share one setup helper.
 
 ## Coverage plan
 
 | Target | Level | Priority | Result |
 |---|---|---|---|
-| The chip-off branch: an unstar whose refetch fails waits; Favourites off then speaks the plain line, focus kept (deferred by the build review) | E2E | P1 | **New** `favourites-chip.spec.ts:791` |
-| AC-1 axe off and on, light and dark; ✓ before the star in dark; forced colors on: Highlight border at 2px, CanvasText check and star | E2E | P2 | **New** `:572` |
-| AC-2 Title A–Z and Z–A in List and Tiles | E2E | P2 | **New** `:627` |
-| AC-3 empty state in List and Tiles | E2E | P2 | **New** `:652` |
-| AC-6 Tiles previous and Search titles; List next | E2E | P2 | **New** `:674` |
-| AC-7 popover previous and Search titles; Esc and Tab-out with the chip on | E2E | P2 | **New** `:713` |
-| AC-8 bookvie stopped (`connectionrefused`); the next filter change empties the line, chip stays on | E2E | P2 | **New** `:761` |
-| Unit follow-up (`matchesFilters`, `filtersOn`, `liveFilters`, `NO_FILTERS`) | Unit | — | Already written by the build: `catalogFilter.test.ts:97`, `:101`, `:186`, `:194`, `:234` |
+| AC-1 in List: type "Bl" while a row's unstar waits | E2E | P1 | `favourites-chip-stuck-unstar.spec.ts:319` |
+| AC-1 in the Bookcase: type "Bl" while a Spine popover's unstar waits | E2E | P1 | `favourites-chip-stuck-unstar.spec.ts:342` |
+| AC-2 Clear filters while an unstar waits | E2E | P2 | `favourites-chip-stuck-unstar.spec.ts:272` |
+| AC-2 a New book save while an unstar waits | E2E | P2 | `favourites-chip-stuck-unstar.spec.ts:297` |
+| AC-3 the same star again | E2E | P1 | Already covered by the build's leaf at `:186`; nothing added |
 
-The coverage is selective: each target is a follow-up the ATDD checklist named or the deferred branch.
+**Scope is selective.** All the behavior lives in `CatalogPage`'s refs and a layout effect across three views, so E2E is the only level that sees it. There's no unit or API surface.
 
-**How the chip-off branch is reached.** A held refetch can't reach it: `sendIntent` resolves only after the refetch, so `onSaved` runs when the refetched view is already in the cache, and the next render has the Book gone. The branch runs only when the refetch after a committed save fails (react-query keeps the last data, `retry: false`). The leaf answers that one refetch with a 503 (`page.route(…, { times: 1 })`). It is also the "stuck pending unstar" path the review rejected as rare. The leaf pins what the code does there: nothing is said while it waits, and turning the chip off speaks "Emma is not a favourite." once, without moving focus. The next successful refetch then says nothing more.
+**Not added: List-row or popover star presses while an unstar waits** (the drop in the wrapped `press`). All three views get the same wrapped `favourite` object, and `:249` (Tiles) already pins that drop. The review rejected per-view leaves as repeats, and this run agrees.
 
-## Files
+## Files changed
 
-- `frontend/e2e/favourites-chip.spec.ts`: a new describe block, "Story 16.2 Show only my favourites (automate)", with 7 leaves. New imports: `AxeBuilder`, `ACCENT_DARK` and `sortSelect` (`library.ts`), `sortToggle` (`sort-direction.ts`), `SET_FAVOURITE` (`intents.ts`). The 9 ATDD leaves are unchanged.
-- `_bmad-output/test-artifacts/atdd-checklist-16-2-show-only-my-favourites.md`: the 7 follow-ups and the 6 implementation-checklist lines are ticked with their evidence. Remaining `[ ]`: **0**.
-- `_bmad-output/implementation-artifacts/deferred-work.md`: a `resolved:` line on the build review's chip-off test entry. The spine-drift entry stays open for the reconciliation before Epic 17.
-- This summary.
+- `frontend/e2e/favourites-chip-stuck-unstar.spec.ts`:
+  - **Four new leaves.**
+  - **`stuckUnstarOfEmma` takes an optional `view`** (`'Tiles'` by default; also `'List'` or `'Bookcase'`). It reaches the stuck unstar from a List row's star or from Emma's Spine popover. The popover's star is named "Favourite", like 16.2 AC-7's `favouriteStar(card)`.
+  - **New spec-local `expectStarredShown(page, view)`.** It checks that the three starred Books show in that view.
+- `_bmad-output/test-artifacts/atdd-checklist-epic-16-retro-item-107-clear-a-stuck-pending-unstar.md`: the five follow-ups are ticked. There are 0 `[ ]` left (`grep -cF '[ ]'`).
 
-**Helpers:**
-- Reused (spec-local): `FAVOURITES_SHELF`, `UNSTARRED_SHELF`, the spine-name constants, `STARRED`, `NO_MATCH`, `spoken`, `rowTitleLink`.
-- Reused (modules): `favouritesChip`, `chip`, `clearFilters`, `main`, `recordStatus`, `spineNames` (`catalog-filter.ts`); `bookcase`, `bookRows`, `popover`, `search`, `spine`, `spines`, `viewToggle` (`bookcase.ts`); `favouriteStar`, `starShape`, `COULDNT_SAVE` (`favourite.ts`); `storeTiles`, `tile`, `tileLinks`, `tileNames`, `tiles` (`tiles.ts`); `sortSelect`, `ACCENT_DARK`, `FAVOURITE_DARK` (`library.ts`); `sortToggle` (`sort-direction.ts`); `systemColor` (`dev-mode.ts`); `afterAnnounceDelay` (`stats.ts`); `SET_FAVOURITE` (`intents.ts`).
-- Added: none. The one-shot 503 on `/api/views/catalog` and the `connectionrefused` route are inline, as in `favourite-star.spec.ts:651`.
+## Helpers
+
+- **No new module helper.** `addSwingTime`, `clearFilters`, `spineNames`, `SWING` (`catalog-filter.ts`), `bookRows`, `popover`, `spine`, `spines` and `viewToggle` (`bookcase.ts`), and `EMMA` (`favourites-shelf.ts`) are imported as they are.
+- **`stuckUnstarOfEmma` was extended with an optional parameter, not copied** (the reuse rule).
+- **`expectStarredShown` is new and spec-local.** It holds the per-view "starred Books shown" check that the helper runs twice (before and after the failed refetch), and the 16.2 spec has no export for it.
+- **`rowTitleLink` is not used.** It's spec-local to `favourites-chip.spec.ts`, and the List leaf checks focus in Search titles, not on a row.
 
 ## Validation
 
-- `favourites-chip.spec.ts`: 16 passed (9 ATDD, 7 new). With `favourite-star.spec.ts`, `--repeat-each=3`: 90 passed, none flaky.
-- **Mutation probes** (each a hand edit to `frontend/src/pages/CatalogPage.tsx`, restored from a scratch copy, then rebuilt; `git status` afterwards showed only the test files modified):
-  - The `!favouritesOn` block removed: only `:791` fails (the status never reads "Emma is not a favourite.").
-  - The "else the previous" fallback removed: `:674`, `:713` and the ATDD AC-6 leaf fail, on focus.
-- One fix during generation: `:791` first pressed the star before the chip's "3 books match." was spoken, so the save emptied it, the same timing the ATDD leaves handle with `afterCount`. It now waits for the count first. That isn't a product defect.
-- `npm run check:api`: exit 0 (tsc, oxlint, Prettier, 432 unit tests).
-- No production file changed. No CLI session opened, and no temp artifact was left (the probe's backup sat in the session scratchpad).
+- **`favourites-chip-stuck-unstar.spec.ts`, `favourites-chip.spec.ts` and `favourite-star.spec.ts` with `--repeat-each=3`:** 123 passed. The build was from HEAD's source.
+- **Mutation probe for the search drop.** With `dropPendingUnstar()` deleted from `search`, and the app rebuilt, both new AC-1 leaves (List `:319`, Bookcase `:342`) failed at `expect(await unstarLines(announced)).toEqual([])`. The source was then restored and rebuilt, and `git diff -- frontend/src` was empty. They fail on the spoken line, not on focus, because the focus guard keeps focus in the box either way.
+- **What the AC-2 leaves can and can't catch.** The Clear filters and New book save leaves can't catch a missing drop:
+  - Both actions turn Favourites off, so Emma shows again.
+  - With the `!favouritesOn` branch gone, a leftover pending unstar can't fire.
+  - So these two leaves pin what each action itself does (its line, focus, and silence after a refetch), not the drop. The same holds for the build's chip-off leaf at `:116`.
+- **Prettier:** `format:check` clean.
+- **Full `npm run check`** from the repo root, 2026-11-26: exit 0. pytest 2534 passed, unit 432 passed, e2e 935 passed (931 before plus these 4), smoke ok.
 
 ## Assumptions and risks
 
-- "Another sort" is read as Title, with its reversed direction. The other sort keys share the same `sorted` list the chip filters, so one more key adds no branch.
-- The `:791` leaf pins today's choice for the stuck case: the plain star line replaces the chip's own count. Blind Hunter raised this in the code review and it was rejected as rare. If the retro reopens it, this leaf is the one to change.
-- The ✓-before-the-star check in dark measures geometry: the star starts past the chip's padding, and its right edge comes before the text. The light case's DOM-order check is in the ATDD AC-2 leaf.
+- **A residual the review rejected.** In the Bookcase view, focus can sit on the waiting Book's spine when a late refetch hides it. Bookcase then moves focus to the nearest spine before the focus guard runs. No leaf covers this. The review called it low and not worth a pre-render focus record.
+- **The `:191` render-time `setFilters` path.** No leaf changes language, tag or publisher keys while an unstar waits. That path never touches `favourites` (`liveFilters`), so it can't turn the chip off.
+
+## Production defects found
+
+None. No production code was changed; the mutation probe's edit was reverted.
 
 ## Next
 
-Story 16.2's pipeline is complete, and it closes Epic 16. Next is the Epic 16 retrospective (`bmad-retrospective`). After it come the epic's trace and gate, and the spine reconciliation for the open spine-drift entries, all before Epic 17's first story.
+- **`bmad-testarch-trace` is optional for a retro item.** Epic 16's trace and gate, if any, follow the retro's own items.
+- **Item 108 is due before Epic 17's first story.** It reconciles the spine with Epic 16: the AD-6 and AD-7 drift entries, including item 107's.
