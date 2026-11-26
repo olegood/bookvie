@@ -5,6 +5,48 @@
 
 A personal, local-first web app for organizing my home library and tracking my reading. It replaces a paper reading diary as the single source of truth for reading progress. The diary can stay on the nightstand for quick notes; I catch up in the app on my next visit by entering the page I reached.
 
+## Screenshots
+
+**Home**: the Main book with its gauge and page field, Up next, Waiting for you, On the side, and the bookcase slice.
+
+![Home: the Main book, Up next, Waiting for you, On the side and the bookcase](docs/screenshots/home.png)
+
+**The Catalog in three views**: Bookcase, List and Tiles.
+
+<table>
+  <tr>
+    <td><img src="docs/screenshots/catalog-bookcase.png" alt="Catalog as a bookcase of spines"></td>
+    <td><img src="docs/screenshots/catalog-list.png" alt="Catalog as a list"></td>
+    <td><img src="docs/screenshots/catalog-tiles.png" alt="Catalog as tiles of covers"></td>
+  </tr>
+  <tr>
+    <td align="center">Bookcase</td>
+    <td align="center">List</td>
+    <td align="center">Tiles</td>
+  </tr>
+</table>
+
+**Filters**: Favourites, Status and Type chips, and Language, Tag and Publisher lists, which combine.
+
+<table>
+  <tr>
+    <td><img src="docs/screenshots/catalog-filter-read.png" alt="Catalog filtered to finished books, with their ribbons"></td>
+    <td><img src="docs/screenshots/catalog-filter-publisher.png" alt="Catalog filtered to Manning paperbacks, with the Publisher list open"></td>
+  </tr>
+  <tr>
+    <td align="center">Status: Read</td>
+    <td align="center">Type: Paperback + Publisher: Manning</td>
+  </tr>
+</table>
+
+**Book detail**: progress, Purpose, card notes and the pace calculator.
+
+![Book detail: progress, Purpose, card notes and the pace calculator](docs/screenshots/book-detail.png)
+
+**The dark theme**: the same room in the evening.
+
+![Home in the dark theme](docs/screenshots/home-dark.png)
+
 ## Why
 
 I read almost every day, but my pace depends on work. The pattern that keeps breaking my reading is the **urgency chain**: an urgent work book interrupts the one I'm reading, I lose its context, re-reading feels like no progress, and the paused book never gets picked up again.
