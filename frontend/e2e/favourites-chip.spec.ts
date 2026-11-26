@@ -11,6 +11,7 @@
 // makes that press inside its first `expect.poll` with `pressOnceThen`, so the
 // missing chip fails the criterion's assertion, not a click.
 
+import AxeBuilder from '@axe-core/playwright'
 import type { Locator, Page } from '@playwright/test'
 import { bookcase, bookRows, finished, popover, search, spine, spines, viewToggle } from './bookcase.ts'
 import {
@@ -31,9 +32,10 @@ import { systemColor } from './dev-mode.ts'
 import { COULDNT_SAVE, favouriteStar, routeCouldntSave, starShape } from './favourite.ts'
 import { expect, test } from './fixtures.ts'
 import { slice } from './home.ts'
-import { starBook } from './intents.ts'
+import { SET_FAVOURITE, starBook } from './intents.ts'
 import {
   ACCENT,
+  ACCENT_DARK,
   bookId,
   designColor,
   designComponentValue,
@@ -42,7 +44,9 @@ import {
   isFocused,
   pressOnceThen,
   rgbOf,
+  sortSelect,
 } from './library.ts'
+import { sortToggle } from './sort-direction.ts'
 import { afterAnnounceDelay } from './stats.ts'
 import { storeTiles, tile, tileLinks, tileNames, tiles } from './tiles.ts'
 
@@ -510,6 +514,8 @@ test.describe('Story 16.2 Show only my favourites (ATDD)', () => {
     expect(await tileNames(page)).toEqual(STARRED)
     await expect(emmaStar).toHaveAttribute('aria-pressed', 'true')
     await expect(emmaStar).toBeFocused()
+    // Nothing said for the save yet: the press emptied the region and the combined line waits.
+    await expect(page.getByRole('status')).toHaveText('')
     expect(await spoken(announced)).toEqual(['3 books match.'])
     // Once, under the filter row and above the grid (Story 16.1's Tiles place).
     const line = main(page).getByText(COULDNT_SAVE, { exact: true })
@@ -554,5 +560,280 @@ test.describe('Story 16.2 Show only my favourites (ATDD)', () => {
     await chip(page, 'Status', 'Unread').click()
     await expect.poll(() => spineNames(bookcase(page))).toEqual([BLEAK_HOUSE, DUBLINERS, EMMA])
     await expect(page.getByRole('status')).toHaveText('3 books match.')
+  })
+})
+
+test.describe('Story 16.2 Show only my favourites (automate)', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 })
+    await page.emulateMedia({ colorScheme: 'light' })
+  })
+
+  test('[P2] AC-1 the chip passes axe off and on in both themes, its check sits before the star in dark, and under forced colors the pressed chip keeps its Highlight border and a CanvasText check and star', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: FAVOURITES_SHELF })
+    const favourites = favouritesChip(page)
+    for (const colorScheme of ['light', 'dark'] as const) {
+      await page.emulateMedia({ colorScheme })
+      await page.goto(`${server.url}/catalog`)
+      await expect(spines(page)).toHaveCount(6)
+      for (const pressed of ['false', 'true']) {
+        if (pressed === 'true') await favourites.click()
+        await expect(favourites).toHaveAttribute('aria-pressed', pressed)
+        const { violations } = await new AxeBuilder({ page })
+          .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
+          .analyze()
+        expect(violations.map(({ id, nodes }) => `${colorScheme} ${pressed}: ${id} (${nodes.length})`)).toEqual([])
+      }
+    }
+
+    // Dark, on: the check comes first, in accent-dark, then the star in favourite-dark.
+    await expect(favourites).toHaveCSS('border-top-color', ACCENT_DARK)
+    expect(await favourites.evaluate((button) => getComputedStyle(button, '::before').content)).toContain('✓')
+    const checkColor = await favourites.evaluate((button) => getComputedStyle(button, '::before').color)
+    expect(checkColor).toBe(ACCENT_DARK)
+    await expect(starShape(favourites)).toHaveCSS('fill', FAVOURITE_DARK)
+    const textLeft = await favourites.evaluate((button) => {
+      const range = document.createRange()
+      range.selectNodeContents(button.lastChild!)
+      return range.getBoundingClientRect().left
+    })
+    const starBox = (await favourites.locator('svg').first().boundingBox())!
+    const chipBox = (await favourites.boundingBox())!
+    // The ::before check takes the room between the chip's start and the star.
+    expect(starBox.x - chipBox.x).toBeGreaterThan(
+      Number.parseFloat(await favourites.evaluate((b) => getComputedStyle(b).paddingLeft)) + 1,
+    )
+    expect(starBox.x + starBox.width).toBeLessThanOrEqual(textLeft)
+
+    // Forced colors, on: the Highlight border at the indicator width, the check and the star in CanvasText.
+    await page.emulateMedia({ colorScheme: 'light', forcedColors: 'active' })
+    await page.reload()
+    await expect(spines(page)).toHaveCount(6)
+    await favourites.click()
+    await expect(favourites).toHaveAttribute('aria-pressed', 'true')
+    const highlight = await systemColor(page, 'Highlight')
+    const canvasText = await systemColor(page, 'CanvasText')
+    for (const side of ['top', 'right', 'bottom', 'left']) {
+      await expect(favourites).toHaveCSS(`border-${side}-width`, '2px')
+      await expect(favourites).toHaveCSS(`border-${side}-color`, highlight)
+    }
+    expect(await favourites.evaluate((button) => getComputedStyle(button, '::before').color)).toBe(canvasText)
+    await expect(starShape(favourites)).toHaveCSS('fill', canvasText)
+  })
+
+  test('[P2] AC-2 Favourites keeps the sort: Title A–Z and Z–A order the starred Books the same in the list and the tiles', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: FAVOURITES_SHELF })
+    await page.goto(`${server.url}/catalog`)
+    await expect(spines(page)).toHaveCount(6)
+    await favouritesChip(page).click()
+    await sortSelect(page).selectOption('title')
+    await expect.poll(() => spineNames(bookcase(page))).toEqual([AUSTERLITZ, BLEAK_HOUSE, EMMA])
+
+    await viewToggle(page).getByRole('button', { name: 'List', exact: true }).click()
+    await expect(bookRows(page)).toHaveText([/^Austerlitz/, /^Bleak House/, /^Emma/])
+    await viewToggle(page).getByRole('button', { name: 'Tiles', exact: true }).click()
+    await expect(tileLinks(page)).toHaveCount(3)
+    expect(await tileNames(page)).toEqual([AUSTERLITZ, BLEAK_HOUSE, EMMA])
+
+    // Reversed: Z–A in the tiles and the list, still only the starred Books.
+    await sortToggle(page).click()
+    await expect.poll(() => tileNames(page)).toEqual([EMMA, BLEAK_HOUSE, AUSTERLITZ])
+    await viewToggle(page).getByRole('button', { name: 'List', exact: true }).click()
+    await expect(bookRows(page)).toHaveText([/^Emma/, /^Bleak House/, /^Austerlitz/])
+    await expect(favouritesChip(page)).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  test('[P2] AC-3 with nothing starred, Favourites on shows the empty state in the list and the tiles too', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: UNSTARRED_SHELF })
+    await page.goto(`${server.url}/catalog`)
+    await expect(spines(page)).toHaveCount(6)
+    await favouritesChip(page).click()
+    const noMatch = main(page).getByText(NO_MATCH, { exact: true })
+
+    await viewToggle(page).getByRole('button', { name: 'List', exact: true }).click()
+    await expect(noMatch).toBeVisible()
+    await expect(page.getByRole('table')).toHaveCount(0)
+    await expect(clearFilters(page)).toHaveCount(2)
+
+    await viewToggle(page).getByRole('button', { name: 'Tiles', exact: true }).click()
+    await expect(noMatch).toBeVisible()
+    await expect(tileLinks(page)).toHaveCount(0)
+    await expect(clearFilters(page)).toHaveCount(2)
+    await expect(favouritesChip(page)).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  test('[P2] AC-6 Tiles: the last shown tile moves focus to the previous tile, the only one to Search titles; List: the first row moves it to the next row', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: FAVOURITES_SHELF })
+    await storeTiles(page)
+    await page.goto(`${server.url}/catalog`)
+    await expect(tileLinks(page)).toHaveCount(6)
+    const announced = await recordStatus(page)
+    await favouritesChip(page).click()
+    await expect(tileLinks(page)).toHaveCount(3)
+
+    // List first: Bleak House's row (first shown) moves focus to Emma's title link.
+    await viewToggle(page).getByRole('button', { name: 'List', exact: true }).click()
+    await expect(bookRows(page)).toHaveText([/^Bleak House/, /^Emma/, /^Austerlitz/])
+    await favouriteStar(bookRows(page), 'Favourite Bleak House').click()
+    await expect(bookRows(page)).toHaveText([/^Emma/, /^Austerlitz/])
+    await expect(rowTitleLink(page, 'Emma')).toBeFocused()
+    await expect.poll(() => spoken(announced)).toContain('Bleak House is not a favourite. 2 books match.')
+
+    // Tiles: Austerlitz (last shown) moves focus to Emma's tile, the one before it.
+    await viewToggle(page).getByRole('button', { name: 'Tiles', exact: true }).click()
+    await expect(tileLinks(page)).toHaveCount(2)
+    await favouriteStar(tiles(page), 'Favourite Austerlitz').click()
+    await expect(tileLinks(page)).toHaveCount(1)
+    await expect(tile(page, EMMA)).toBeFocused()
+    await expect.poll(() => spoken(announced)).toContain('Austerlitz is not a favourite. 1 book matches.')
+
+    // The only shown tile: focus to Search titles, the empty state shows.
+    await favouriteStar(tiles(page), 'Favourite Emma').click()
+    await expect(main(page).getByText(NO_MATCH, { exact: true })).toBeVisible()
+    await expect(search(page)).toBeFocused()
+    await expect.poll(() => spoken(announced)).toContain('Emma is not a favourite. 0 books match.')
+    // The star flow's own line was never spoken for these three.
+    for (const title of ['Bleak House', 'Austerlitz', 'Emma']) {
+      expect(await spoken(announced)).not.toContain(`${title} is not a favourite.`)
+    }
+  })
+
+  test('[P2] AC-7 with Favourites on, Esc and Tab out of a Spine popover still close it, and an unstar from the last spine’s popover focuses the previous spine, from the only one Search titles', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: FAVOURITES_SHELF })
+    await page.goto(`${server.url}/catalog`)
+    await expect(spines(page)).toHaveCount(6)
+    const announced = await recordStatus(page)
+    await favouritesChip(page).click()
+    await expect.poll(() => spineNames(bookcase(page))).toEqual(STARRED)
+
+    // Esc and Tab from the last control close it, focus back on the spine.
+    const emma = spine(page, EMMA)
+    const emmaCard = popover(page, 'Emma')
+    await emma.click()
+    await expect(emmaCard).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(emmaCard).toBeHidden()
+    await expect(emma).toBeFocused()
+    await page.keyboard.press('Enter')
+    const close = emmaCard.getByRole('button', { name: 'Close', exact: true })
+    await close.focus()
+    await page.keyboard.press('Tab')
+    await expect(emmaCard).toBeHidden()
+    await expect(emma).toBeFocused()
+
+    // The last shown spine, Austerlitz: focus to Emma's spine, the previous one.
+    await spine(page, AUSTERLITZ).click()
+    const austerlitzCard = popover(page, 'Austerlitz')
+    await favouriteStar(austerlitzCard).click()
+    await expect(austerlitzCard).toHaveCount(0)
+    await expect.poll(() => spineNames(bookcase(page))).toEqual([BLEAK_HOUSE, EMMA])
+    await expect(emma).toBeFocused()
+    await expect.poll(() => spoken(announced)).toContain('Austerlitz is not a favourite. 2 books match.')
+
+    // Down to one, then the only shown spine: focus to Search titles.
+    await emma.click()
+    await favouriteStar(emmaCard).click()
+    await expect.poll(() => spineNames(bookcase(page))).toEqual([BLEAK_HOUSE])
+    await spine(page, BLEAK_HOUSE).click()
+    const bleakCard = popover(page, 'Bleak House')
+    await favouriteStar(bleakCard).click()
+    await expect(bleakCard).toHaveCount(0)
+    await expect(main(page).getByText(NO_MATCH, { exact: true })).toBeVisible()
+    await expect(search(page)).toBeFocused()
+    await expect.poll(() => spoken(announced)).toContain('Bleak House is not a favourite. 0 books match.')
+  })
+
+  test('[P2] AC-8 with bookvie stopped, an unstar with Favourites on keeps the tile shown, starred and focused, and the next filter change empties the couldn’t-save line while the chip stays on', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: FAVOURITES_SHELF })
+    // bookvie stopped: the request never reaches a server.
+    await page.route(`**${SET_FAVOURITE}`, (route) => route.abort('connectionrefused'))
+    await storeTiles(page)
+    await page.goto(`${server.url}/catalog`)
+    await expect(tileLinks(page)).toHaveCount(6)
+    const favourites = favouritesChip(page)
+    await favourites.click()
+    await expect(tileLinks(page)).toHaveCount(3)
+    const emmaStar = favouriteStar(tiles(page), 'Favourite Emma')
+
+    await emmaStar.click()
+    await expect(page.getByRole('alert')).toHaveText(COULDNT_SAVE)
+    await expect(main(page).getByText(COULDNT_SAVE, { exact: true })).toHaveCount(1)
+    expect(await tileNames(page)).toEqual(STARRED)
+    await expect(emmaStar).toHaveAttribute('aria-pressed', 'true')
+    await expect(emmaStar).toBeFocused()
+
+    // The next filter change (Unread) empties it; Favourites stays on.
+    await chip(page, 'Status', 'Unread').click()
+    await expect(page.getByRole('alert')).toHaveText('')
+    await expect(main(page).getByText(COULDNT_SAVE, { exact: true })).toHaveCount(0)
+    await expect(favourites).toHaveAttribute('aria-pressed', 'true')
+    await expect.poll(() => tileNames(page)).toEqual([BLEAK_HOUSE, EMMA])
+  })
+
+  test('[P1] an unstar saved while the refetch fails waits, and turning Favourites off then speaks the plain star line without moving focus', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: FAVOURITES_SHELF })
+    await storeTiles(page)
+    await page.goto(`${server.url}/catalog`)
+    await expect(tileLinks(page)).toHaveCount(6)
+    const announced = await recordStatus(page)
+    const favourites = favouritesChip(page)
+    await favourites.click()
+    await expect(tileLinks(page)).toHaveCount(3)
+    await expect(page.getByRole('status')).toHaveText('3 books match.')
+    const emmaStar = favouriteStar(tiles(page), 'Favourite Emma')
+
+    // The save commits; the catalog refetch after it fails once, so the view keeps Emma starred.
+    const saved = page.waitForResponse((response) => new URL(response.url()).pathname === SET_FAVOURITE)
+    await page.route('**/api/views/catalog', (route) => route.fulfill({ status: 503, body: '' }), { times: 1 })
+    const refetchFailed = page.waitForResponse(
+      (response) => new URL(response.url()).pathname === '/api/views/catalog' && response.status() === 503,
+    )
+    await emmaStar.click()
+    expect((await saved).status()).toBe(200)
+    await refetchFailed
+    await afterAnnounceDelay(page)
+    expect(await tileNames(page)).toEqual(STARRED)
+    await expect(emmaStar).toBeFocused()
+    expect(await spoken(announced)).toEqual(['3 books match.'])
+
+    // Chip off before any refetch shows Emma gone: the star's own line, focus kept on the chip.
+    await favourites.click()
+    await expect(favourites).toHaveAttribute('aria-pressed', 'false')
+    await expect(page.getByRole('status')).toHaveText('Emma is not a favourite.')
+    await expect(favourites).toBeFocused()
+    await expect(tileLinks(page)).toHaveCount(6)
+
+    // The next refetch shows Emma unstarred and says nothing more, focus still on the chip.
+    const before = (await spoken(announced)).length
+    const refetched = page.waitForResponse(
+      (response) => new URL(response.url()).pathname === '/api/views/catalog' && response.status() === 200,
+    )
+    await page.evaluate(() => window.dispatchEvent(new Event('focus')))
+    await refetched
+    await expect(favouriteStar(tiles(page), 'Favourite Emma')).toHaveAttribute('aria-pressed', 'false')
+    await afterAnnounceDelay(page)
+    expect((await spoken(announced)).length).toBe(before)
+    await expect(favourites).toBeFocused()
   })
 })

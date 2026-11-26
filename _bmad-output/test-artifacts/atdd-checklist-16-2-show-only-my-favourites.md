@@ -108,13 +108,13 @@ Not changed by this run: the leaves above would fail today if updated, so the bu
 
 ## Green-phase follow-ups (secondary branches, not red leaves)
 
-- [ ] AC-1: the chip's star in dark (`FAVOURITE_DARK`) and under forced colors (`forced-color-adjust: none`, CanvasText fill, the chip keeps its border indicator); the ✓ placement in dark; axe on the row with the chip on and off, in both themes.
-- [ ] AC-2: the Tiles and List orders under another sort and under the reversed direction.
-- [ ] AC-3: the empty state in List and Tiles with Favourites on.
-- [ ] AC-6: Tiles "else the previous" and "else Search titles"; List "next" (the leaf covers previous and Search titles there).
-- [ ] AC-7: "else the previous" and "else Search titles" from the popover; Esc and Tab-out of the popover still work with the chip on.
-- [ ] AC-8: bookvie stopped instead of a routed 503; the line emptied by the next filter change with the chip on.
-- [ ] Unit (`src/lib/catalogFilter.test.ts`): `matchesFilters` with favourites on keeps only `favourite: true` and ANDs with every group; `filtersOn` is true with only favourites; `liveFilters` returns the same object with favourites on and nothing starred; `NO_FILTERS` has it off.
+- [x] AC-1: the chip's star in dark (`FAVOURITE_DARK`) and under forced colors (`forced-color-adjust: none`, CanvasText fill, the chip keeps its border indicator); the ✓ placement in dark; axe on the row with the chip on and off, in both themes. (done: frontend/e2e/favourites-chip.spec.ts:122 dark and forced-colors off; frontend/e2e/favourites-chip.spec.ts:572 axe off and on in both themes, ✓ before the star in dark, forced-colors Highlight border, CanvasText check and star)
+- [x] AC-2: the Tiles and List orders under another sort and under the reversed direction. (done: frontend/e2e/favourites-chip.spec.ts:627, Title A–Z and Z–A in List and Tiles)
+- [x] AC-3: the empty state in List and Tiles with Favourites on. (done: frontend/e2e/favourites-chip.spec.ts:652)
+- [x] AC-6: Tiles "else the previous" and "else Search titles"; List "next" (the leaf covers previous and Search titles there). (done: frontend/e2e/favourites-chip.spec.ts:674, Tiles previous and Search titles, List next)
+- [x] AC-7: "else the previous" and "else Search titles" from the popover; Esc and Tab-out of the popover still work with the chip on. (done: frontend/e2e/favourites-chip.spec.ts:713, popover previous and Search titles, Esc and Tab out with the chip on)
+- [x] AC-8: bookvie stopped instead of a routed 503; the line emptied by the next filter change with the chip on. (done: frontend/e2e/favourites-chip.spec.ts:761, `connectionrefused` and the Unread change emptying the line)
+- [x] Unit (`src/lib/catalogFilter.test.ts`): `matchesFilters` with favourites on keeps only `favourite: true` and ANDs with every group; `filtersOn` is true with only favourites; `liveFilters` returns the same object with favourites on and nothing starred; `NO_FILTERS` has it off. (done: frontend/src/lib/catalogFilter.test.ts:97, :101, :186, :194, :234)
 
 ## Helper probes
 
@@ -161,12 +161,12 @@ Not changed by this run: the leaves above would fail today if updated, so the bu
 
 ## Implementation checklist (for `bmad-build-auto`)
 
-- [ ] `CatalogFilters` gains the favourites toggle (off in `NO_FILTERS`); `matchesFilters` keeps only `favourite: true` when on; `filtersOn` counts it; `liveFilters` leaves it alone.
-- [ ] `FilterChips`: the Favourites chip first in the row, a lone `aria-pressed` button with a leading `aria-hidden` SVG star (`row-size`, `favourite` / `favourite-dark`), the usual selected style; forced colors.
-- [ ] `CatalogPage`: "Clear filters" focuses the Favourites chip; the chip is page state (reset on unmount, reload and add).
-- [ ] `CatalogPage` owns an unstar that the chip hides: once the refetched view renders, focus to the next shown Book (tile link, row title link, spine), else previous, else Search titles, and one `status` message "*Title* is not a favourite. N books match."; the star's own line doesn't also speak; from the popover it closes with its spine.
-- [ ] The gate's existing leaves above.
-- [ ] Un-skip the 9 leaves, run `npm run check`.
+- [x] `CatalogFilters` gains the favourites toggle (off in `NO_FILTERS`); `matchesFilters` keeps only `favourite: true` when on; `filtersOn` counts it; `liveFilters` leaves it alone. (done: frontend/src/lib/catalogFilter.test.ts:97–108, :186–196, :234; review commit f6e8920)
+- [x] `FilterChips`: the Favourites chip first in the row, a lone `aria-pressed` button with a leading `aria-hidden` SVG star (`row-size`, `favourite` / `favourite-dark`), the usual selected style; forced colors. (done: frontend/e2e/favourites-chip.spec.ts:122, :184, :572)
+- [x] `CatalogPage`: "Clear filters" focuses the Favourites chip; the chip is page state (reset on unmount, reload and add). (done: frontend/e2e/favourites-chip.spec.ts:293, :339)
+- [x] `CatalogPage` owns an unstar that the chip hides: once the refetched view renders, focus to the next shown Book (tile link, row title link, spine), else previous, else Search titles, and one `status` message "*Title* is not a favourite. N books match."; the star's own line doesn't also speak; from the popover it closes with its spine. (done: frontend/e2e/favourites-chip.spec.ts:398, :448, :674, :713, :791)
+- [x] The gate's existing leaves above. (done: frontend/e2e/catalog-filter.spec.ts:244, :281; bookcase-details.spec.ts:94; catalog-publisher-filter.spec.ts:185; build commit 44f1ecf)
+- [x] Un-skip the 9 leaves, run `npm run check`. (done: frontend/e2e/favourites-chip.spec.ts:122–541, none skipped; `npm run check` exit 0 in the review, 2026-11-26)
 
 ## Suite
 

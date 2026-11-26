@@ -1,87 +1,74 @@
 ---
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03-generate-tests', 'step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
-lastSaved: '2026-11-25'
-storyId: '16.1'
-storyKey: '16-1-star-a-book'
+lastSaved: '2026-11-26'
+storyId: '16.2'
+storyKey: '16-2-show-only-my-favourites'
 inputDocuments:
-  - _bmad-output/implementation-artifacts/spec-16-1-star-a-book.md (ACs, I/O matrix, Auto Run Result, Review Findings)
-  - _bmad-output/test-artifacts/atdd-checklist-16-1-star-a-book.md (acceptanceCriteria registry, Green-phase follow-ups)
-  - _bmad-output/planning-artifacts/ux-designs/ux-bookvie-2026-10-28/DESIGN.md (components.favourite-star, Favourite star, Spine → Favourite mark, Bookcase legend)
+  - _bmad-output/implementation-artifacts/spec-16-2-show-only-my-favourites.md (ACs, I/O matrix, Auto Run Result, Review Findings)
+  - _bmad-output/test-artifacts/atdd-checklist-16-2-show-only-my-favourites.md (Green-phase follow-ups, implementation checklist)
+  - _bmad-output/implementation-artifacts/deferred-work.md (the build review's untested chip-off branch)
   - _bmad/tea/config.yaml
-  - frontend/src/components/FavouriteStar.tsx and .module.css, frontend/src/lib/useFavourite.ts, frontend/src/pages/Bookcase.module.css, frontend/src/styles/tokens.css
-  - frontend/e2e/favourite-star.spec.ts, favourite.ts, library.ts, intents.ts, bookcase.ts, tiles.ts, catalog-filter.ts, home.ts, dev-mode.ts, spine-popover.spec.ts, catalog-empty.spec.ts (connectionrefused pattern)
-  - backend/tests/test_cli.py, builder.py, test_favourite.py
+  - frontend/src/pages/CatalogPage.tsx, frontend/src/lib/useFavourite.ts, frontend/src/components/FilterChips.tsx and .module.css, frontend/src/api/intents.ts, frontend/src/api/views.ts
+  - frontend/e2e/favourites-chip.spec.ts, favourite-star.spec.ts, catalog-filter.ts, catalog-filter.spec.ts (axe pattern), bookcase.ts, favourite.ts, library.ts, intents.ts, sort-direction.ts, stats.ts, tiles.ts, spine-popover.spec.ts
+  - resources/knowledge: test-quality.md (the core fragments; Traditional Patterns, no Playwright Utils)
 ---
 
-# Automation Summary: Story 16.1, star a Book
+# Automation Summary: Story 16.2, show only my favourites
 
 ## Preflight
 
-- **Done at HEAD.** `git show HEAD:…/sprint-status.yaml` reads `16-1-star-a-book: done` (review commit `5071012`), and the working tree was clean.
-- **Stack:** `fullstack` (auto). Playwright (Chromium only) and pytest are in place.
-- **Mode:** BMad-Integrated. Inputs: the ATDD checklist's 9 green-phase follow-ups, the spec's ACs, and the review's findings. One of those findings was the stale-popover patch in `useFavourite.ts`, which no test pinned.
-- **Config:** `tea_use_playwright_utils: false` (Traditional Patterns), no Pact, `tea_browser_automation: auto`. I didn't explore with `playwright-cli`. Every locator already ships and is used by the story's leaves; numbers were measured with a probe spec (below).
-- **Execution mode:** auto resolved to subagent, but I ran sequentially in this session. The plan is 7 leaves in two files, and one author keeps the helper-reuse rule simple. This follows the item-105 run.
+- **Done at HEAD.** `git show HEAD:…/sprint-status.yaml` reads `16-2-show-only-my-favourites: done` (review commit `f6e8920`), and the working tree was clean.
+- **Stack:** `fullstack` (auto). Playwright (Chromium only) and pytest are in place. The story is frontend only, so no pytest target.
+- **Mode:** BMad-Integrated. Inputs: the ATDD checklist's 7 green-phase follow-ups, and the build review's deferred test for the "chip went off before the refetched view rendered" branch.
+- **Config:** `tea_use_playwright_utils: false` (Traditional Patterns), no Pact, `tea_browser_automation: auto`. I didn't explore with `playwright-cli`: every locator already ships and is used by the story's leaves.
+- **Execution mode:** sequential in this session (7 leaves in one file, so one author keeps the helper-reuse rule simple), as in 16.1's run.
 
 ## Coverage plan
 
 | Target | Level | Priority | Result |
 |---|---|---|---|
-| AC-8 List view's line, bookvie stopped, no jump | E2E | P1 | **New** `favourite-star.spec.ts:653` |
-| AC-8 a failure landing after its popover closed while another popover is open (the review's patch) | E2E | P1 | **New** `:691` |
-| AC-7/9/10 targets, sizes, `{spacing.3}`/`{spacing.2}` gaps, focus ring, no transition | E2E | P2 | **New** `:738` (popover size too) |
-| AC-9/10/12/13 dark row and popover stars, tile halo in dark, forced colors in dark | E2E | P2 | **New** `:820` |
-| AC-9/11 twins' stars | E2E | P2 | **New** `:873` |
-| AC-11 mark and marker dot don't overlap; mini legend swatch; AC-14 Catalog meter | E2E | P2 | **New** `:898` |
-| AC-1 `bookvie` exits 1 on a v4 Book without `favourite` | CLI (pytest) | P2 | **New** `backend/tests/test_cli.py:727` |
-| AC-8 line after the popover closed | E2E | — | Already written by the build (`:226`); `:691` adds the cross-popover case |
-| AC-12 Tab from the last control closes | E2E | — | Already covered: `spine-popover.spec.ts:181` (gate-updated for the star) |
-| AC-9 wide cover | — | P3 | **Retired:** the star is positioned on the 2:3 box, which the AC-9 leaf already measures with `coverBox`; a wide cover only changes the image inside the link |
-| AC-13 Canvas halo by pixel sampling | E2E | — | Covered by computed style instead (`:820`: halo fill Canvas, glow `none`) |
+| The chip-off branch: an unstar whose refetch fails waits; Favourites off then speaks the plain line, focus kept (deferred by the build review) | E2E | P1 | **New** `favourites-chip.spec.ts:791` |
+| AC-1 axe off and on, light and dark; ✓ before the star in dark; forced colors on: Highlight border at 2px, CanvasText check and star | E2E | P2 | **New** `:572` |
+| AC-2 Title A–Z and Z–A in List and Tiles | E2E | P2 | **New** `:627` |
+| AC-3 empty state in List and Tiles | E2E | P2 | **New** `:652` |
+| AC-6 Tiles previous and Search titles; List next | E2E | P2 | **New** `:674` |
+| AC-7 popover previous and Search titles; Esc and Tab-out with the chip on | E2E | P2 | **New** `:713` |
+| AC-8 bookvie stopped (`connectionrefused`); the next filter change empties the line, chip stays on | E2E | P2 | **New** `:761` |
+| Unit follow-up (`matchesFilters`, `filtersOn`, `liveFilters`, `NO_FILTERS`) | Unit | — | Already written by the build: `catalogFilter.test.ts:97`, `:101`, `:186`, `:194`, `:234` |
 
-The coverage is selective: each target is either a follow-up the ATDD checklist named or a regression guard for the review's patch.
+The coverage is selective: each target is a follow-up the ATDD checklist named or the deferred branch.
+
+**How the chip-off branch is reached.** A held refetch can't reach it: `sendIntent` resolves only after the refetch, so `onSaved` runs when the refetched view is already in the cache, and the next render has the Book gone. The branch runs only when the refetch after a committed save fails (react-query keeps the last data, `retry: false`). The leaf answers that one refetch with a 503 (`page.route(…, { times: 1 })`). It is also the "stuck pending unstar" path the review rejected as rare. The leaf pins what the code does there: nothing is said while it waits, and turning the chip off speaks "Emma is not a favourite." once, without moving focus. The next successful refetch then says nothing more.
 
 ## Files
 
-- `frontend/e2e/favourite-star.spec.ts`: a new describe block, "Story 16.1 Star a Book (automate)", with 6 leaves, plus the spec-local `spaceToken`. It imports `INK_SECONDARY_DARK` (`library.ts`) and `tileNames` (`tiles.ts`). The 8 ATDD leaves are unchanged.
-- `backend/tests/test_cli.py`: one leaf, plus an import of `LibraryBuilder`.
-- `_bmad-output/test-artifacts/atdd-checklist-16-1-star-a-book.md`: the 9 follow-ups are ticked (a wide cover retired within the AC-9 line), and the 8 implementation-checklist lines are ticked with their evidence. Remaining `[ ]`: **0**.
+- `frontend/e2e/favourites-chip.spec.ts`: a new describe block, "Story 16.2 Show only my favourites (automate)", with 7 leaves. New imports: `AxeBuilder`, `ACCENT_DARK` and `sortSelect` (`library.ts`), `sortToggle` (`sort-direction.ts`), `SET_FAVOURITE` (`intents.ts`). The 9 ATDD leaves are unchanged.
+- `_bmad-output/test-artifacts/atdd-checklist-16-2-show-only-my-favourites.md`: the 7 follow-ups and the 6 implementation-checklist lines are ticked with their evidence. Remaining `[ ]`: **0**.
+- `_bmad-output/implementation-artifacts/deferred-work.md`: a `resolved:` line on the build review's chip-off test entry. The spine-drift entry stays open for the reconciliation before Epic 17.
 - This summary.
 
 **Helpers:**
-- Reused (spec-local): `routeCouldntSave`, `popover`, `legend`, `tileItemStarting`, `starSize`, `COULDNT_SAVE`, `COULDNT_SAVE_BODY`, `DUNE`, `EMMA`.
-- Reused (`favourite.ts`): `favouriteStar`, `starShape`, `spineMark`.
-- Reused (`library.ts`): `firstLineRect`, `bookId`, `DUNE_ID`, `ACCENT`, `FAVOURITE`, `FAVOURITE_DARK`, `INK_SECONDARY_DARK`, `SPINE_LABEL_STRIP`.
-- Reused from other modules: `requestsTo`, `starBook`, `SET_FAVOURITE` (`intents.ts`); `bookRows`, `bookcase`, `spines`, `viewToggle`, `shelfOf` (`bookcase.ts`); `tiles`, `tileLinks`, `tileNames`, `storeTiles` (`tiles.ts`); `chip`, `chipGroup` (`catalog-filter.ts`); `mainAt`, `LEFT_HAND_ID` (`home.ts`); `systemColor` (`dev-mode.ts`); `LibraryBuilder` (pytest).
-- Added: `spaceToken` (spec-local). No helper read a `--space-*` token; the AC-13 leaf reads `--color-favourite` inline the same way. The held-then-503 route in `:691` is inline. It differs from `routeCouldntSave` on purpose: it holds the answer until the second popover is open.
-
-**Shipped numbers** (probe `e2e/favourite-auto.probe.spec.ts`, Chromium 1280×900, light; removed with `rm`):
-- Detail: 34×34 target, 18px star, 12px after the h1's first line (`--space-3` 12px).
-- Popover: 34px target, 16px star.
-- Row: 24px target, 15px star, 8px after the title link (`--space-2` 8px).
-- Tile: 32px target, 22px star, centred.
-- Transitions: `0s` on the star, its svg, cell and tile. The row's `TR` has an unrelated 0.6s `box-shadow` transition.
-- Legend swatches: favourite 12×12, spine swatches 11×15.
-- The marker dot ends at y 391.5; the mark starts at 521.5.
-- A stopped server (`connectionrefused`) shows "Couldn't save. Your data wasn't changed.".
-- The pressed star keeps its place on screen: `scrollY` moved 1874 → 1915 by scroll anchoring.
-- All asserted as measured, via tokens or DESIGN.md values.
+- Reused (spec-local): `FAVOURITES_SHELF`, `UNSTARRED_SHELF`, the spine-name constants, `STARRED`, `NO_MATCH`, `spoken`, `rowTitleLink`.
+- Reused (modules): `favouritesChip`, `chip`, `clearFilters`, `main`, `recordStatus`, `spineNames` (`catalog-filter.ts`); `bookcase`, `bookRows`, `popover`, `search`, `spine`, `spines`, `viewToggle` (`bookcase.ts`); `favouriteStar`, `starShape`, `COULDNT_SAVE` (`favourite.ts`); `storeTiles`, `tile`, `tileLinks`, `tileNames`, `tiles` (`tiles.ts`); `sortSelect`, `ACCENT_DARK`, `FAVOURITE_DARK` (`library.ts`); `sortToggle` (`sort-direction.ts`); `systemColor` (`dev-mode.ts`); `afterAnnounceDelay` (`stats.ts`); `SET_FAVOURITE` (`intents.ts`).
+- Added: none. The one-shot 503 on `/api/views/catalog` and the `connectionrefused` route are inline, as in `favourite-star.spec.ts:651`.
 
 ## Validation
 
-- `favourite-star.spec.ts`: 14 passed (8 ATDD, 6 new). With `spine-popover`, `catalog-tiles` and `book-states`: 57 passed.
-- **Mutation probe** (the review's line in `useFavourite.ts:84` reverted by hand to `inlineNow.current === null ? 'row' : 'inline'`, then restored by hand; `git status` afterwards showed only the two test files modified): `:691` fails at "Expected: 0, Received: 1", because Emma's popover took Dune's line. The other two AC-8 leaves pass, as they should.
-- One fix during generation: the row and tile focus-ring checks first used `focus()` after a mouse click on the view toggle, which Chromium doesn't show as `:focus-visible`. They now reach the star with Tab. That isn't a product defect.
-- `npm run check:api`: exit 0, 428 unit tests. `npm run check:py`: 2534 passed (the review's 2533 plus the new CLI leaf).
-- No production file changed. No CLI session opened, and no temp artifact was left.
+- `favourites-chip.spec.ts`: 16 passed (9 ATDD, 7 new). With `favourite-star.spec.ts`, `--repeat-each=3`: 90 passed, none flaky.
+- **Mutation probes** (each a hand edit to `frontend/src/pages/CatalogPage.tsx`, restored from a scratch copy, then rebuilt; `git status` afterwards showed only the test files modified):
+  - The `!favouritesOn` block removed: only `:791` fails (the status never reads "Emma is not a favourite.").
+  - The "else the previous" fallback removed: `:674`, `:713` and the ATDD AC-6 leaf fail, on focus.
+- One fix during generation: `:791` first pressed the star before the chip's "3 books match." was spoken, so the save emptied it, the same timing the ATDD leaves handle with `afterCount`. It now waits for the count first. That isn't a product defect.
+- `npm run check:api`: exit 0 (tsc, oxlint, Prettier, 432 unit tests).
+- No production file changed. No CLI session opened, and no temp artifact was left (the probe's backup sat in the session scratchpad).
 
 ## Assumptions and risks
 
-- "Doesn't scroll to it" is read as "the view doesn't jump to the line". The leaf asserts that the pressed star keeps its place on screen. A raw `scrollY` check would fail on Chromium's scroll anchoring, which is the behaviour that keeps the star in place.
-- The legend's "mini" swatch has no number in DESIGN.md. The leaf asserts relations: square, smaller than the spine mark, no taller than a spine swatch.
-- On Home a failed popover save shows no visible line once the popover closes. The spec accepts this, so no leaf pins it.
+- "Another sort" is read as Title, with its reversed direction. The other sort keys share the same `sorted` list the chip filters, so one more key adds no branch.
+- The `:791` leaf pins today's choice for the stuck case: the plain star line replaces the chip's own count. Blind Hunter raised this in the code review and it was rejected as rare. If the retro reopens it, this leaf is the one to change.
+- The ✓-before-the-star check in dark measures geometry: the star starts past the chip's padding, and its right edge comes before the text. The light case's DOM-order check is in the ATDD AC-2 leaf.
 
 ## Next
 
-Story 16.1's pipeline is complete. Story 16.2 (`16-2-show-only-my-favourites`, backlog) starts with `bmad-testarch-atdd`.
+Story 16.2's pipeline is complete, and it closes Epic 16. Next is the Epic 16 retrospective (`bmad-retrospective`). After it come the epic's trace and gate, and the spine reconciliation for the open spine-drift entries, all before Epic 17's first story.
