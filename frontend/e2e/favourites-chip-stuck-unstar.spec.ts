@@ -1,15 +1,15 @@
 // Epic 16 retro item 107 (E16-R1): an unstar whose catalog refetch failed
 // stays pending in CatalogPage. The fix drops it when the person acts (Search
 // titles, a filter, the next star press, a New book save) and moves focus only
-// when the refetched render took it away. The leaf in favourites-chip.spec.ts
-// "an unstar saved while the refetch fails waits…" pins today's chip-off line;
-// the build replaces it with the AC-2 chip-off leaf below. Split out of
+// when the refetched render took it away. The AC-2 chip-off leaf below
+// replaces favourites-chip.spec.ts's "an unstar saved while the refetch fails
+// waits…" leaf, which pinned the old chip-off line. Split out of
 // favourites-chip.spec.ts, which would pass 1000 lines with these leaves.
 
 import type { Page } from '@playwright/test'
 import { search } from './bookcase.ts'
 import { chip, favouritesChip, recordStatus } from './catalog-filter.ts'
-import { favouriteStar } from './favourite.ts'
+import { favouriteStar, routeCouldntSave } from './favourite.ts'
 import { AUSTERLITZ, BLEAK_HOUSE, FAVOURITES_SHELF, spoken, STARRED } from './favourites-shelf.ts'
 import { expect, test } from './fixtures.ts'
 import { SET_FAVOURITE } from './intents.ts'
@@ -68,9 +68,9 @@ test.describe('Epic 16 retro item 107 Clear a stuck pending unstar (ATDD)', () =
     return (await spoken(announced)).slice(from).filter((text) => text.includes('is not a favourite.'))
   }
 
-  // Red phase: today the first key hides Emma, so CatalogPage's unstar effect
-  // focuses the Bleak House tile and the "l" lands on its link: the box holds "B".
-  test.skip('[P0] AC-1 typing in Search titles while an unstar waits keeps every character and focus in the box, and the unstar never speaks, then or after the next refetch', async ({
+  // Before the fix the first key hid Emma, CatalogPage's unstar effect focused
+  // the Bleak House tile and the "l" landed on its link: the box held "B".
+  test('[P0] AC-1 typing in Search titles while an unstar waits keeps every character and focus in the box, and the unstar never speaks, then or after the next refetch', async ({
     page,
     seededServer,
   }) => {
@@ -92,9 +92,9 @@ test.describe('Epic 16 retro item 107 Clear a stuck pending unstar (ATDD)', () =
     await expect(search(page)).toHaveValue('Bl')
   })
 
-  // Red phase: today the chip-off press speaks the waiting unstar's plain line
-  // ("Emma is not a favourite.") over the chip's own count (the :791 leaf pins that).
-  test.skip('[P1] AC-2 turning Favourites off while an unstar waits speaks only the chip’s count, keeps focus on the chip, and the next refetch says nothing more', async ({
+  // Before the fix the chip-off press spoke the waiting unstar's plain line
+  // ("Emma is not a favourite.") over the chip's own count.
+  test('[P1] AC-2 turning Favourites off while an unstar waits speaks only the chip’s count, keeps focus on the chip, and the next refetch says nothing more', async ({
     page,
     seededServer,
   }) => {
@@ -116,9 +116,9 @@ test.describe('Epic 16 retro item 107 Clear a stuck pending unstar (ATDD)', () =
     await expect(favourites).toBeFocused()
   })
 
-  // Red phase: today Read hides Emma, so the unstar effect moves focus to the
-  // Austerlitz tile and speaks "Emma is not a favourite. 1 book matches.".
-  test.skip('[P1] AC-2 pressing another chip while an unstar waits speaks only its count and leaves focus on that chip, then and after the next refetch', async ({
+  // Before the fix Read hid Emma, so the unstar effect moved focus to the
+  // Austerlitz tile and spoke "Emma is not a favourite. 1 book matches.".
+  test('[P1] AC-2 pressing another chip while an unstar waits speaks only its count and leaves focus on that chip, then and after the next refetch', async ({
     page,
     seededServer,
   }) => {
@@ -140,10 +140,10 @@ test.describe('Epic 16 retro item 107 Clear a stuck pending unstar (ATDD)', () =
     await expect(read).toBeFocused()
   })
 
-  // Red phase: passes today, by design. onSaved already overwrites the
-  // pending unstar with the newer one; this guards that dropping it at the
-  // press keeps Story 16.2's AC-6 for the new press.
-  test.skip('[P1] AC-3 unstarring another Book while one waits makes it the only pending unstar: once its refetch renders, focus goes to the next shown Book and one line names it', async ({
+  // Passed before the fix too, by design: onSaved overwrote the pending unstar
+  // with the newer one. This guards that dropping it at the press keeps Story
+  // 16.2's AC-6 for the new press.
+  test('[P1] AC-3 unstarring another Book while one waits makes it the only pending unstar: once its refetch renders, focus goes to the next shown Book and one line names it', async ({
     page,
     seededServer,
   }) => {
@@ -162,9 +162,30 @@ test.describe('Epic 16 retro item 107 Clear a stuck pending unstar (ATDD)', () =
     expect((await spoken(announced)).slice(before)).toEqual(['Bleak House is not a favourite. 1 book matches.'])
   })
 
-  // Red phase: today the late refetch's render runs the unstar effect, which
-  // focuses the next shown Book (the Austerlitz tile) although focus was on Sort.
-  test.skip('[P1] AC-4 a late refetch that hides the waiting Book while focus is on another control leaves focus there and speaks the combined line once', async ({
+  // The waiting Book still shows starred, so its star can be pressed again:
+  // that press replaces the waiting one and behaves as a normal unstar.
+  test('[P1] AC-3 pressing the waiting Book’s star again makes it a normal unstar: once its refetch renders, focus goes to the next shown Book and one line names it', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: FAVOURITES_SHELF })
+    const announced = await stuckUnstarOfEmma(page, server.url)
+    const before = (await spoken(announced)).length
+    const refetched = page.waitForResponse(
+      (response) => new URL(response.url()).pathname === '/api/views/catalog' && response.status() === 200,
+    )
+
+    await favouriteStar(tiles(page), 'Favourite Emma').click()
+    await refetched
+    await expect.poll(() => tileNames(page)).toEqual([BLEAK_HOUSE, AUSTERLITZ])
+    await expect(tile(page, AUSTERLITZ)).toBeFocused()
+    await afterAnnounceDelay(page)
+    expect((await spoken(announced)).slice(before)).toEqual(['Emma is not a favourite. 2 books match.'])
+  })
+
+  // Before the fix the late refetch's render ran the unstar effect, which
+  // focused the next shown Book (the Austerlitz tile) although focus was on Sort.
+  test('[P1] AC-4 a late refetch that hides the waiting Book while focus is on another control leaves focus there and speaks the combined line once', async ({
     page,
     seededServer,
   }) => {
@@ -179,5 +200,29 @@ test.describe('Epic 16 retro item 107 Clear a stuck pending unstar (ATDD)', () =
     await afterAnnounceDelay(page)
     await expect(sortSelect(page)).toBeFocused()
     expect((await spoken(announced)).slice(before)).toEqual(['Emma is not a favourite. 2 books match.'])
+  })
+
+  // Guards the drop in the wrapped press: a press whose save fails never
+  // reaches onSaved, so without the drop Emma's unstar would still wait and
+  // the next refetch would speak her line and move focus.
+  test('[P1] AC-3 a star press whose save fails while an unstar waits drops it: the next refetch says nothing about the waiting Book and leaves focus on the pressed star', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: FAVOURITES_SHELF })
+    const announced = await stuckUnstarOfEmma(page, server.url)
+    await routeCouldntSave(page)
+    const failed = page.waitForResponse(
+      (response) => new URL(response.url()).pathname === SET_FAVOURITE && response.status() === 503,
+    )
+    const bleakStar = favouriteStar(tiles(page), 'Favourite Bleak House')
+
+    await bleakStar.click()
+    await failed
+    await refetchCatalog(page)
+    await expect.poll(() => tileNames(page)).toEqual([BLEAK_HOUSE, AUSTERLITZ])
+    await afterAnnounceDelay(page)
+    expect(await unstarLines(announced)).toEqual([])
+    await expect(bleakStar).toBeFocused()
   })
 })

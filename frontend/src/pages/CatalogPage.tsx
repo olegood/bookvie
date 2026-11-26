@@ -32,7 +32,7 @@ import { CATALOG_VIEWS, readCatalogView, writeCatalogView, type CatalogViewChoic
 import { COULDNT_LOAD } from '../lib/copy.ts'
 import { prefersReducedMotion } from '../lib/motion.ts'
 import { usePageTitle } from '../lib/page.ts'
-import { favouriteStatus, useFavourite, type FavouriteBook } from '../lib/useFavourite.ts'
+import { favouriteStatus, useFavourite, type FavouriteBook, type FavouriteFlow } from '../lib/useFavourite.ts'
 // The count is announced once typing pauses, after the same pause as Search card notes.
 import { SEARCH_PAUSE_MS } from '../lib/useSearchCount.ts'
 import Bookcase, { MeterBar } from './Bookcase.tsx'
@@ -89,6 +89,21 @@ export function EmptyShelf() {
         ))}
       </div>
     </section>
+  )
+}
+
+/**
+ * Focus is on `body` (or nowhere), on `main` (where a closed Spine popover's
+ * fallback puts it, sometimes before the unstar effect runs), or on an
+ * element the last render hid.
+ */
+function focusTakenAway(): boolean {
+  const active = document.activeElement
+  return (
+    active === null ||
+    active === document.body ||
+    active === document.getElementById('main') ||
+    !active.checkVisibility()
   )
 }
 
@@ -200,7 +215,7 @@ export default function CatalogPage() {
   const [unstarSaved, setUnstarSaved] = useState(0)
   // One star flow for all three views: a failure's line shows under the filter
   // row (Tiles, List, a popover that has closed) or in the open popover.
-  const favourite = useFavourite({
+  const starFlow = useFavourite({
     onSaved: (book, starred) => {
       if (starred || !latest.current.filters.favourites) return false
       pendingUnstar.current = book
@@ -208,7 +223,21 @@ export default function CatalogPage() {
       return true
     },
   })
-  const { rowSlot: favouriteRowSlot, rowFailed: favouriteRowFailed } = favourite
+  // A pending unstar belongs to its press only until the person acts on the
+  // Catalog again (Epic 16 retro item 107): a search, a filter change, the
+  // next star press or a New book save drops it, silently, so an unstar whose
+  // refetch failed never moves focus or speaks later. The action speaks its own line.
+  const dropPendingUnstar = () => {
+    pendingUnstar.current = null
+  }
+  const favourite: FavouriteFlow = {
+    ...starFlow,
+    press: (book, starred) => {
+      dropPendingUnstar()
+      starFlow.press(book, starred)
+    },
+  }
+  const { rowSlot: favouriteRowSlot, rowFailed: favouriteRowFailed } = starFlow
 
   const cancelCount = () => {
     clearTimeout(countTimer.current)
@@ -260,18 +289,16 @@ export default function CatalogPage() {
   // The unstarred Book has gone from the shown set: focus the next shown Book
   // in sort order (its spine, title link or tile link), else the previous,
   // else Search titles, then announce "Dune is not a favourite. N books
-  // match.". A layout effect, so it runs after Bookcase's and before
-  // useSpinePopover's passive fallback, which then finds focus off `body`. If
-  // the chip went off first, the star's plain line is spoken instead.
-  const favouritesOn = filters.favourites
+  // match.". A layout effect, so it runs after Bookcase's; useSpinePopover's
+  // passive fallback may still have moved focus to `main` first, which
+  // focusTakenAway counts as taken away. Every path that turns the chip off
+  // drops the pending unstar first. Focus moves only when the render took it
+  // away (the pressed star hid, or a closed popover left it on `body` or
+  // `main`); a late refetch nobody pressed for, such
+  // as a window-focus one, leaves it on the control the person is on.
   useLayoutEffect(() => {
     const book = pendingUnstar.current
     if (book === null) return
-    if (!favouritesOn) {
-      pendingUnstar.current = null
-      announce('status', favouriteStatus(book.title, false))
-      return
-    }
     if (shown.has(book.id)) return // the refetched view hasn't rendered yet
     pendingUnstar.current = null
     const index = sorted.findIndex((entry) => entry.id === book.id)
@@ -281,11 +308,11 @@ export default function CatalogPage() {
         : (sorted.slice(index + 1).find((entry) => shown.has(entry.id)) ??
           sorted.slice(0, index).findLast((entry) => shown.has(entry.id)))
     const target = (next === undefined ? undefined : focusTargets.current.get(next.id)) ?? searchRef.current
-    target?.focus()
+    if (focusTakenAway()) target?.focus()
     // A Search titles count still waiting would replace this line.
     cancelCount()
     announce('status', `${favouriteStatus(book.title, false)} ${matchCountCopy(shown.size)}`)
-  }, [unstarSaved, favouritesOn, sorted, shown])
+  }, [unstarSaved, sorted, shown])
 
   useEffect(() => {
     if (highlightId === null) return
@@ -315,6 +342,7 @@ export default function CatalogPage() {
   }
 
   const search = (value: string) => {
+    dropPendingUnstar()
     setQuery(value)
     cancelCount()
     if (value.trim() === '') return
@@ -327,6 +355,7 @@ export default function CatalogPage() {
 
   // A filter change announces the count at once (search AND filters).
   const changeFilters = (next: CatalogFilters) => {
+    dropPendingUnstar()
     cancelCount()
     // A star's couldn't-save line goes with a filter change.
     favourite.clear()
@@ -348,6 +377,7 @@ export default function CatalogPage() {
 
   const onSaved = (id: string, title: string) => {
     // Clear a search or filters that could hide the new Book, then close the panel.
+    dropPendingUnstar()
     cancelCount()
     setQuery('')
     setFilters(NO_FILTERS)
