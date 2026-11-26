@@ -13,7 +13,7 @@
 
 import AxeBuilder from '@axe-core/playwright'
 import type { Locator, Page } from '@playwright/test'
-import { bookcase, bookRows, finished, popover, search, spine, spines, viewToggle } from './bookcase.ts'
+import { bookcase, bookRows, popover, search, spine, spines, viewToggle } from './bookcase.ts'
 import {
   addSwingTime,
   anySpine,
@@ -47,52 +47,24 @@ import {
   sortSelect,
 } from './library.ts'
 import { sortToggle } from './sort-direction.ts'
+import {
+  AUSTERLITZ,
+  BLEAK_HOUSE,
+  BY_AUTHOR,
+  DUBLINERS,
+  EMMA,
+  FAVOURITES_SHELF,
+  FLIGHTS,
+  spoken,
+  STARRED,
+} from './favourites-shelf.ts'
 import { afterAnnounceDelay } from './stats.ts'
 import { storeTiles, tile, tileLinks, tileNames, tiles } from './tiles.ts'
-
-/**
- * Six Books, three starred: two unread (Bleak House, Emma) and one finished
- * (Austerlitz). Under the default Author sort they stand Bleak House,
- * Dubliners, Emma, Flights, Candide, Austerlitz, so the starred ones are not
- * neighbours. "novel" is on three starred Books and Flights; "l" is in Bleak
- * House, Flights and Austerlitz, not in Emma.
- */
-const FAVOURITES_SHELF = [
-  {
-    id: bookId(1),
-    title: 'Austerlitz',
-    authors: ['W. G. Sebald'],
-    tags: ['novel'],
-    readings: finished(),
-    favourite: true,
-  },
-  { id: bookId(2), title: 'Candide', authors: ['Voltaire'], tags: ['classic'], readings: finished() },
-  { id: bookId(3), title: 'Flights', authors: ['Olga Tokarczuk'], tags: ['novel'], readings: finished() },
-  { id: bookId(4), title: 'Bleak House', authors: ['Charles Dickens'], tags: ['novel', 'classic'], favourite: true },
-  { id: bookId(5), title: 'Dubliners', authors: ['James Joyce'], tags: ['stories'] },
-  { id: bookId(6), title: 'Emma', authors: ['Jane Austen'], tags: ['novel', 'classic'], favourite: true },
-]
 
 /** The same six Books with nothing starred. */
 const UNSTARRED_SHELF = FAVOURITES_SHELF.map((book) => ({ ...book, favourite: false }))
 
-// Spine and tile names (AR71: a starred Book's name ends with ", favourite").
-const AUSTERLITZ = 'Austerlitz by W. G. Sebald, finished, favourite'
-const CANDIDE = 'Candide by Voltaire, finished'
-const FLIGHTS = 'Flights by Olga Tokarczuk, finished'
-const BLEAK_HOUSE = 'Bleak House by Charles Dickens, not read yet, favourite'
-const DUBLINERS = 'Dubliners by James Joyce, not read yet'
-const EMMA = 'Emma by Jane Austen, not read yet, favourite'
-
-const BY_AUTHOR = [BLEAK_HOUSE, DUBLINERS, EMMA, FLIGHTS, CANDIDE, AUSTERLITZ]
-const STARRED = [BLEAK_HOUSE, EMMA, AUSTERLITZ]
-
 const NO_MATCH = 'No books match these filters.'
-
-/** The status texts recorded so far, without the empty ones each announcement starts with. */
-async function spoken(announced: () => Promise<string[]>): Promise<string[]> {
-  return (await announced()).filter((text) => text !== '')
-}
 
 /**
  * `read` once the chip's count has been set (`afterAnnounceDelay`), as a
