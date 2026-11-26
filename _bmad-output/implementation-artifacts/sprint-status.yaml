@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-29-2026 17:21
-last_updated: 11-25-2026 19:22
+last_updated: 11-26-2026 10:50
 project: bookvie
 project_key: NOKEY
 tracking_system: file-system
@@ -156,7 +156,7 @@ development_status:
 
   epic-16: in-progress
   16-1-star-a-book: done
-  16-2-show-only-my-favourites: review
+  16-2-show-only-my-favourites: done
   epic-16-retrospective: optional
 action_items:
   - id: "epic-1-retro-item-1-run-an-epic-1-trace-and-gate-against-tr7"

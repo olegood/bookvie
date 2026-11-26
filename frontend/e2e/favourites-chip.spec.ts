@@ -211,6 +211,9 @@ test.describe('Story 16.2 Show only my favourites (ATDD)', () => {
       }),
     ).toBe(true)
     await expect(favourites).toHaveText('Favourites')
+    // On, the star stays filled gold (on or off, DESIGN.md → Filter chips).
+    await expect(starShape(favourites)).toHaveCSS('fill', FAVOURITE)
+    await expect(starShape(favourites)).toHaveCSS('stroke', FAVOURITE)
 
     // Only the starred Books, the others hidden (the shelf closes up), and the count.
     await expect.poll(() => spineNames(bookcase(page))).toEqual(STARRED)

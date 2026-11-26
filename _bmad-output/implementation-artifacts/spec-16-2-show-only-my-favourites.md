@@ -2,7 +2,7 @@
 title: 'Story 16.2: Show only my favourites'
 type: 'feature'
 created: '2026-11-25'
-status: 'in-review'
+status: 'done'
 baseline_revision: 'a149a1e60fc7d72c96be373d941a6adda7d0a1f8'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -165,3 +165,34 @@ Status: in-review
 **Residual risks.** If the refetch after a successful unstar fails, the pending unstar waits, so the success goes unspoken and a later refetch moves focus and speaks the line late (rejected above as rare). The ATDD checklist's green-phase follow-ups (more fallback branches per view, axe on the chip row, empty states in List and Tiles) are for `bmad-testarch-automate`.
 
 Next: run `bmad-code-review` in a new session (AGENTS.md "Story pipeline").
+
+### Review Findings
+
+Code review 2026-11-26 (bmad-code-review, new session). Layers: Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor, Spine Check. 20 findings: 0 decision-needed, 1 patch (two findings merged), 2 defer, 16 rejected. Acceptance Auditor: AC-1 to AC-9 met, no constraint broken. Spine Check: one drift, already deferred by the build. AD-3, AD-6, AD-7, AD-8, AD-9, AD-13, AD-15, AD-17, AD-18 and AD-21 hold. No AC needs a manual run: each is proven by its e2e leaf.
+
+- [x] [Review][Patch] The Favourites chip's star is never checked while the chip is on. AC-1 checks the gold fill, and its dark and forced-colors steps, only with the chip off. AC-2 checks the selected chip's background, borders and check glyph, but not the star. A pressed-state rule such as `.chip[aria-pressed='true'] .star path { fill: currentColor }`, or `FavouriteStar.module.css`'s `.shape { fill: none }` winning, would draw the pressed chip's star accent or hollow, and no test would fail (Verification Gap gap 2, Blind 8) [frontend/e2e/favourites-chip.spec.ts:213]
+- [x] [Review][Defer] Spine drift (AD-6, AD-7; Capability map FR-31 row, Structural Seed `lib/` line): `lib/useFavourite`'s `onSaved` hand-off isn't named [ARCHITECTURE-SPINE.md] — deferred: already in `deferred-work.md` from the build-auto review, reconciled before the next epic. No duplicate entry added.
+- [x] [Review][Defer] No test covers the effect's "chip went off before the refetched view rendered" branch [frontend/src/pages/CatalogPage.tsx:270] — deferred: already in `deferred-work.md` from the build-auto review, for `bmad-testarch-automate` (it needs a held catalog-view refetch). No duplicate entry added.
+
+Patches applied 2026-11-26:
+- AC-2 in `favourites-chip.spec.ts` now checks that the star's `fill` and `stroke` are `FAVOURITE` while the chip is on, right after the selected-style checks. Mutation probe: a temporary `.chip[aria-pressed='true'] .star path { fill: none }` made AC-2 fail (expected `rgb(154, 113, 32)`, received `none`). The rule was then removed and the build rerun.
+
+Full check after the last patch, 2026-11-26: `npm run check` exit 0. pytest 2534 passed, unit 432 passed, e2e 917 passed (none skipped), smoke ok.
+
+**Rejected:**
+- (blind, edge, acceptance) `low` A pending unstar gets stuck when the refetch after a successful save fails. `sendIntent` resolves `ok` and `invalidateQueries` doesn't throw, so the Book stays in `shown`. Then a later refetch moves focus, possibly out of Search titles while typing (Edge 2, Blind 2), cancels the count and speaks a stale line. If the chip goes off instead, the plain star line replaces the chip's count (Edge 3, Blind 1). Blind 3 suggests clearing `pendingUnstar` in `changeFilters`, `search` and the next press. That adds state resets in three handlers to guard a refetch failure against the local server in the milliseconds after a committed write. That is not a direct correction, and the build's triage rejected the same root cause (Edge 1, Blind 1–2). The residual risk is named under Auto Run Result.
+- (blind) `low` The chip-off branch talks over the chip's count. Without a stuck refetch, `onSaved` runs after the refetch has landed, so the next render already hides the Book and there is no time to press the chip in between. It is otherwise the stuck case above.
+- (blind) `low` The effect focuses without checking `document.activeElement`. Normally it runs in the render right after the save resolves, so focus can't have moved. Otherwise it is the stuck case above.
+- (edge) `low` A double click on a star sends two unstars, because `useFavourite.press` doesn't check `isInFlight` and the star is never disabled (16.1). The second result runs `onSaved` again, and the effect re-announces the same combined line and focuses the same neighbour (`sorted` still holds the Book). The only cost is a repeated line. 16.1 repeats its own line on a double click in the same way, and the proposed guard adds a branch.
+- (blind) `low` `pendingUnstar` holds one Book, so if two different Books' unstars resolve before the refetched render, the first line is lost. That needs two stars pressed on two Books within one round trip. The spoken count is still right, and a queue adds state.
+- (blind) `false` The Code Map's effect deps are out of date. The fix edits this spec.
+- (blind) `false` The triage log says "added to the open entry", while `deferred-work.md` has a new entry that points to it. The fix edits this spec, and the entry does say "Reconcile it with the Story 16.1 entry above".
+- (blind) `false` The `epic-16-context.md` rewrite dropped 16.1's facts (422 `invalid_fields`, the byte-identical no-op, fixtures, the ADs the spine already covers). `bmad-build-auto` recompiles this file for the next story. Those facts are 16.1's and live in `epics.md` (for example `epics.md:3813`) and `spec-16-1-star-a-book.md`, which the retro and trace read.
+- (blind) `false` `onSaved` has no unit test, so the stale-closure fix (Blind 5) is unproven. AC-6 and AC-7 prove the true branch, and `favourite-star.spec.ts:316` proves the false branch. The callback reads `latest.current`, a ref, so even a stale closure reads current filters. The harm named doesn't happen.
+- (blind) `false` The chip star's contrast on `accent-soft` is unchecked. The star is `aria-hidden` and decorative, since the chip's text names it, so 1.4.11's non-text contrast doesn't apply. The colours are DESIGN.md's.
+- (acceptance) `false` The AC-6 to AC-8 leaves were edited (`afterCount`), not only un-skipped. No assertion changed. Every save empties pending announcements (16.1, `useIntentRequest.run`), so a star pressed under 100ms after the chip cancels the chip's count, which no person does. The edit is recorded under Auto Run Result, and accepted.
+- (acceptance) `false` AC-1 gained dark and forced-colors steps. They make the leaf stricter and cover a checklist follow-up.
+- (acceptance) `false` Edited files outside the Code Map (`epic-16-context.md`, `deferred-work.md`). They are the build's step-1 recompile and the deferral record, and the Never list forbids neither.
+- (acceptance) `low` The stuck pending unstar bends "once the refetched view renders". Same as the first rejected item.
+- (edge) `low` A stuck pending unstar plus Search typing pulls focus out of Search titles. Same as the first rejected item.
+- (edge) `low` Chip off while an unstar is pending. Same as the first rejected item.
