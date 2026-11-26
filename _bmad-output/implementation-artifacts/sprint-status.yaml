@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-29-2026 17:21
-last_updated: 11-26-2026 10:50
+last_updated: 11-26-2026 11:36
 project: bookvie
 project_key: NOKEY
 tracking_system: file-system
@@ -154,10 +154,10 @@ development_status:
   15-2-filter-the-catalog-by-publisher: done
   epic-15-retrospective: done
 
-  epic-16: in-progress
+  epic-16: done
   16-1-star-a-book: done
   16-2-show-only-my-favourites: done
-  epic-16-retrospective: optional
+  epic-16-retrospective: done
 action_items:
   - id: "epic-1-retro-item-1-run-an-epic-1-trace-and-gate-against-tr7"
     epic: 1
@@ -1352,3 +1352,65 @@ action_items:
     owner: "Murat (TEA)"
     status: done
     ref: "_bmad-output/implementation-artifacts/epic-15-retro-2026-11-25.md"
+  - id: "epic-16-retro-item-107-clear-a-stuck-pending-unstar"
+    epic: 16
+    action: "Clear a stuck pending unstar (E16-R1): in pages/CatalogPage, drop pendingUnstar
+      when the person acts before the refetched view hides the Book (a Search titles
+      change, any filter change, or the next star press), so a pending unstar never
+      moves focus or speaks a line later. Rewrite the favourites-chip.spec.ts:791
+      leaf to the new rule, and add leaves for typing in Search titles (focus and
+      every character kept) and a second unstar. A standalone spec through the story
+      pipeline; Epic 16 counts as accepted only once this lands. Changes: `frontend/src/pages/CatalogPage.tsx`,
+      `frontend/e2e/favourites-chip.spec.ts`. Due: before Epic 17."
+    owner: "Amelia (Dev)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-16-retro-2026-11-26.md"
+  - id: "epic-16-retro-item-108-reconcile-the-spine-with-epic-16"
+    epic: 16
+    action: "Reconcile the spine with Epic 16: close the two unresolved spine drift
+      entries (AD-6, AD-7) at deferred-work.md:1867 (the FR-31 row and Structural
+      Seed don't name components/FavouriteStar or lib/useFavourite) and :1873 (useFavourite's
+      onSaved hand-off to pages/CatalogPage), each with a resolved: line. Changes:
+      `_bmad-output/planning-artifacts/architecture/architecture-bookvie-2026-10-29/ARCHITECTURE-SPINE.md`,
+      `_bmad-output/implementation-artifacts/deferred-work.md`. Due: before Epic 17."
+    owner: "Winston (Architect)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-16-retro-2026-11-26.md"
+  - id: "epic-16-retro-item-109-trace-and-gate-epic-16"
+    epic: 16
+    action: "Trace and gate Epic 16: run bmad-testarch-trace against TR7 and the gate's
+      P0 risks (epics.md Epic 16 Gate): edits keep the star on the web and with edit_book;
+      a pre-epic backup restores with every Book unstarred and a star survives a round
+      trip; starring works from all four places and the current value is a no-op;
+      the chip shows exactly the starred Books in all three views and ANDs with Unread,
+      a Tag and Search titles. Changes: `_bmad-output/test-artifacts/traceability/epic-16-traceability-matrix.md`,
+      `_bmad-output/test-artifacts/traceability/epic-16-gate-decision.json`. Due:
+      before Epic 17."
+    owner: "Murat (TEA)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-16-retro-2026-11-26.md"
+  - id: "epic-16-retro-item-110-name-non-e2e-guards-in-unchanged-gates"
+    epic: 16
+    action: "Name non-e2e guards in 'unchanged' gates (E16-S1): amend Epic 16's gate
+      in epics.md to name copy.test.mjs's FAVOURITE_GOLD exception, test_store.py:203
+      and test_store_commits.py:201; extend Epic 15 item 104's persistent fact so
+      that when an epic adds a color, token, copy string or stored field, planning
+      also runs or greps the repo-wide guards (copy.test.mjs red-hue and copy rules,
+      e2e/app-shell.spec.ts token comparison, backend golden bytes and version pins)
+      and names each guard leaf that needs an exception. Changes: `_bmad-output/planning-artifacts/epics.md`,
+      `_bmad/custom/bmad-create-epics-and-stories.toml`. Due: before Epic 17 planning."
+    owner: "John (PM)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-16-retro-2026-11-26.md"
+  - id: "epic-16-retro-item-111-have-the-atdd-commit-its-red-phase-tests"
+    epic: 16
+    action: "Have the ATDD commit its red-phase tests (E16-P1): add a bmad-testarch-atdd
+      persistent fact that, after showing the red run, it offers to commit only the
+      files it created or changed as 'test: add red-phase acceptance tests for ...
+      (story X.Y)' and commits on a yes; have bmad-build-auto's dirty-tree halt name
+      that commit. Story 16.1's build halted twice without it (session 97b38a3a L77-148).
+      Changes: `_bmad/custom/bmad-testarch-atdd.toml`, `_bmad/custom/bmad-build-auto.toml`.
+      Due: before Epic 17's first ATDD."
+    owner: "Murat (TEA)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-16-retro-2026-11-26.md"
