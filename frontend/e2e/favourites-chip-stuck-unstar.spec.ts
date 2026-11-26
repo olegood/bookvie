@@ -202,9 +202,31 @@ test.describe('Epic 16 retro item 107 Clear a stuck pending unstar (ATDD)', () =
     expect((await spoken(announced)).slice(before)).toEqual(['Emma is not a favourite. 2 books match.'])
   })
 
+  // Pins focusTakenAway's `main` clause: a closed Spine popover's fallback
+  // sometimes puts focus on `main` before the unstar effect runs (16.2 AC-7,
+  // favourites-chip.spec.ts:685), and the effect must still move focus on.
+  test('[P1] AC-4 a refetch that hides the waiting Book while focus is on main moves focus to the next shown Book and speaks the combined line once', async ({
+    page,
+    seededServer,
+  }) => {
+    const server = await seededServer({ books: FAVOURITES_SHELF })
+    const announced = await stuckUnstarOfEmma(page, server.url)
+    const before = (await spoken(announced)).length
+    const main = page.locator('#main')
+    await main.focus()
+    await expect(main).toBeFocused()
+
+    await refetchCatalog(page)
+    await expect.poll(() => tileNames(page)).toEqual([BLEAK_HOUSE, AUSTERLITZ])
+    await expect(tile(page, AUSTERLITZ)).toBeFocused()
+    await afterAnnounceDelay(page)
+    expect((await spoken(announced)).slice(before)).toEqual(['Emma is not a favourite. 2 books match.'])
+  })
+
   // Guards the drop in the wrapped press: a press whose save fails never
   // reaches onSaved, so without the drop Emma's unstar would still wait and
-  // the next refetch would speak her line and move focus.
+  // the next refetch would speak her line. Only the unstarLines check catches
+  // that: focus would stay on the visible Bleak House star either way.
   test('[P1] AC-3 a star press whose save fails while an unstar waits drops it: the next refetch says nothing about the waiting Book and leaves focus on the pressed star', async ({
     page,
     seededServer,

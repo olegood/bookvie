@@ -2,7 +2,7 @@
 title: 'Clear a stuck pending unstar, so it never moves focus or speaks later'
 type: 'bugfix'
 created: '2026-11-26'
-status: 'in-review'
+status: 'done'
 baseline_revision: 'f18834625115130afd589da247547fb976823071'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -189,3 +189,29 @@ Status: in-review
 - `bmad-testarch-automate` can cover these.
 
 Next: run `bmad-code-review` in a new session (AGENTS.md "Story pipeline").
+
+### Review Findings
+
+Code review, 2026-11-26, a new session (Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor, Spine Check). 15 entries after grouping repeats: medium 1, low 9, false 5.
+
+- [x] [Review][Patch] The `#main` clause of `focusTakenAway` has no deterministic leaf: only `favourites-chip.spec.ts:685` (AC-7) reaches it, when useSpinePopover's fallback wins a race (1 run in 15 by the build's record), so deleting the clause would pass the checks most runs and ship an intermittent AC-7 focus regression. Add a leaf: a stuck unstar of Emma, focus on `#main`, a refetch hides her, focus goes to the Austerlitz tile and the combined line is spoken once (Verification Gap, pre-verified; Blind Hunter) [frontend/e2e/favourites-chip-stuck-unstar.spec.ts:245]
+- [x] [Review][Patch] The failed-press leaf's comment says that without the drop the next refetch would "move focus". It wouldn't: focus is on the visible Bleak House star, so `focusTakenAway()` is false. Only the `unstarLines` assertion guards the drop; say so (Edge Case Hunter, Blind Hunter) [frontend/e2e/favourites-chip-stuck-unstar.spec.ts:245]
+- [x] [Review][Patch] The item 107 entry in `deferred-work.md` doesn't say that the Story 16.2 entry's `resolved:` line above it now cites a deleted leaf (`favourites-chip.spec.ts:791`) and a deleted branch (`!favouritesOn`); and its "with no conditions" overstates the spine, which does condition the move on the unstar hiding the Book (Blind Hunter, Acceptance Auditor, Spine Check) [_bmad-output/implementation-artifacts/deferred-work.md:1886]
+- [x] [Review][Defer] Spine drift (AD-6), reconciled before the next epic: the catalog filter chips item names no focus guard and no drop rule [frontend/src/pages/CatalogPage.tsx] — deferred: already recorded by the build at `deferred-work.md:1886` and in this spec's `deferred`; not duplicated (Spine Check)
+
+**Rejected:**
+- `false` Blind: the Auto Run Result contradicts itself ("low 3, medium 2, in 2 groups" vs "one medium entry and one low entry"). Both count the same two groups: Blind 8 + Verification 1 (medium) and Blind 1 + Blind 2 + Verification "Other" 1 (low).
+- `false` Blind: the failed-press leaf would pass if the wrapped `press` dropped the pending unstar and then swallowed the press. It awaits the `set-favourite` 503 response, which a swallowed press never sends.
+- `false` Blind: the `!favouritesOn` branch removed outright leaves a stale pending unstar on a future chip-off path. No path turns the chip off without `changeFilters` today: the render-time `setFilters` (`CatalogPage.tsx:191`) only prunes language, tag and publisher keys, and the New book save drops first. The Code Map allowed removal.
+- `false` Blind: the describe block's "(ATDD)" label is out of date. Every ATDD-born spec keeps it after the build (`bookcase.spec.ts:39`, `card-note-boxes.spec.ts:70` and others).
+- `false` Auditor/Blind: the Spec Change Log should record the `#main`/`null` guard and the `:791` move. Real gaps between text and code, but the only fix edits the spec under review (rejected by rule); the Auto Run Result's "Deviation" note and the build's triage log already record both.
+- `low` Blind: `document.getElementById('main')` duplicates useSpinePopover's fallback id. A rename would also break the new `#main` leaf's locator, so it wouldn't go unseen; a shared constant adds surface for little.
+- `low` Blind/Auditor: no leaf for Clear filters or a New book save while an unstar waits. Clear filters is `changeFilters(NO_FILTERS)` (`CatalogPage.tsx:367`), whose drop the other-chip leaf pins; the New book drop has nothing observable. Left to `bmad-testarch-automate`.
+- `low` Blind/Auditor: a search or filter change made while the unstar's save is still in flight finds nothing to drop. After that trigger: the effect speaks "Emma is not a favourite. N books match." where N is the search's own count, focus stays in the box (the guard), and nothing is left pending. Needs an action within a localhost round trip; a fix needs a sequence guard.
+- `low` Auditor: the star-press drop is tested only from a tile. All three views get the one wrapped `favourite` object.
+- `low` Edge: Bookcase view, focus on the waiting Book's spine (popover closed), then a late refetch hides it. Bookcase's hidden-spine effect (`Bookcase.tsx:194-201`) moves focus to the nearest visible spine (previous on a tie) first, so the guard keeps it there rather than on the next shown Book. After the trigger, focus is on a neighbouring spine by Bookcase's own rule, one line is spoken and nothing stays pending. It needs a failed refetch, the spine focused and an unprompted refetch; a fix needs a pre-render record of focus.
+- `low` Edge: the commit message says a stuck unstar "never steals focus or speaks later", but AC-4 speaks it after a late refetch. The commit can't change, and the spec's AC-4 states the actual rule.
+
+**Patches applied (2026-11-26):** the `#main` leaf (`favourites-chip-stuck-unstar.spec.ts`, "AC-4 … while focus is on main"; a probe that deleted the clause made it fail at its `toBeFocused`, and with the clause back it passed 5 of 5), the failed-press leaf's comment, and the item 107 entry in `deferred-work.md`.
+
+**Full check after the last patch:** 2026-11-26, `npm run check` from the repo root, exit 0: pytest 2534 passed, unit 432 passed, e2e 931 passed, smoke ok.
