@@ -1,0 +1,24 @@
+{
+  "schema_version": "0.1.0",
+  "evaluated_at": "2026-11-26T14:30:00.000000+01:00",
+  "repo": "bookvie",
+  "target": {
+    "type": "epic",
+    "id": "16",
+    "label": "Epic 16: Remember the Books that mattered"
+  },
+  "collection_status": "COLLECTED",
+  "gate_basis": "priority_thresholds",
+  "gate_status": "PASS",
+  "rationale": "Trace at a4c405c, which includes retro item 107's fix, review and automate and item 108's spine reconciliation; this session's full npm run check on a clean tree exited 0 (432 unit, 2534 pytest with the coverage gate: domain 100.00%, intents+store 97.40%; 935 e2e, none flaky or skipped; smoke). P0 coverage is 100% (11/11), P1 100% (11/11; TR7 requires 95%), P2 1/1, overall 100% (23/23) of the Story 16.1 and 16.2 ACs. Workflow rule 4 gives PASS. Every gate P0 risk is green: edits on the web and with edit_book keep the star (test_favourite.py:235); a v3 backup restores at version 4 with no star and a star survives an export and restore (test_favourite.py:99, :297); starring works from Book detail, a tile, a List row and the Spine popover (favourite-star.spec.ts:74, :244, :319, :442) and the current value is a 200 no-op (test_favourite.py:158); the Favourites chip filters all three views and ANDs with Unread, a Tag and Search titles (favourites-chip.spec.ts:156). Epic 16 adds no error code. The retro's E16-R1 is fixed by item 107 and pinned by 12 leaves, all green. Open outside the counted ACs: item 110 (the gate doesn't yet name three non-e2e guard edits, E16-S1) and EXPERIENCE.md's unstar bullet lagging item 107 (deferred-work.md).",
+  "p0_status": "MET",
+  "p1_status": "MET",
+  "overall_status": "MET",
+  "critical_open": 0,
+  "links": {
+    "trace_report_path": "_bmad-output/test-artifacts/traceability/epic-16-traceability-matrix.md",
+    "trace_report_url": "",
+    "artifact_url": "",
+    "journey_evidence_url": ""
+  }
+}
