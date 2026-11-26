@@ -6,7 +6,16 @@ All notable changes to bookvie are recorded here. The format follows
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+
+- Filter the catalog by publisher: a Publisher ▾ chip after Tag ▾ lists each publisher with its number of Books, most first, and filters like the other chips. Publishers that differ only in letter case are one row (Epic 15).
+- Star the Books that mattered to you: a Favourite star on the Book page, Catalog tiles, List rows and the spine popover. Starred spines carry a gold mark (Epic 16).
+- Show only your favourites with the Favourites chip, first in the Catalog's filter row (Epic 16).
+- The catalog view carries each Book's publisher, so the `list_catalog` agent tool returns it too (Epic 15).
+
+### Changed
+
+- bookvie upgrades the library to store the favourite star the first time it starts. A backup made by this version can't be restored by an older bookvie, which refuses it and changes nothing.
 
 ## [2.2.0] - 2026-11-24
 
