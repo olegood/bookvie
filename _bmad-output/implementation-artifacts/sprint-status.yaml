@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-29-2026 17:21
-last_updated: 11-27-2026 23:04
+last_updated: 11-27-2026 23:47
 project: bookvie
 project_key: NOKEY
 tracking_system: file-system
@@ -159,10 +159,10 @@ development_status:
   16-2-show-only-my-favourites: done
   epic-16-retrospective: done
 
-  epic-17: in-progress
+  epic-17: done
   17-1-see-the-books-finished-in-a-range: done
   17-2-choose-a-month-or-year-by-its-bar: done
-  epic-17-retrospective: optional
+  epic-17-retrospective: done
 action_items:
   - id: "epic-1-retro-item-1-run-an-epic-1-trace-and-gate-against-tr7"
     epic: 1
@@ -1419,3 +1419,84 @@ action_items:
     owner: "Murat (TEA)"
     status: done
     ref: "_bmad-output/implementation-artifacts/epic-16-retro-2026-11-26.md"
+  - id: "epic-17-retro-item-112-rescue-focus-from-any-removed-stats-control"
+    epic: 17
+    action: "Rescue focus from any Stats control a dropped period removes, and pin
+      the held-view paths (E17-R1, V1-V3, R2): when the settled drop releases a bar
+      with focus on Show the whole range or a narrowed row, move it to the chart's
+      Tab stop, else the h1; clear the status region on a drop that follows a shown
+      period; add e2e leaves for both focus cases, a bar focused through the midnight
+      hold, a bar focused when the new-day fetch fails, and the nav link from an address
+      with period; extract arrivalSearch into lib/stats with unit cases; run as a
+      standalone spec through the story pipeline and clear spec-17-2's followup_review_recommended.
+      Changes: `frontend/src/pages/StatsPage.tsx`, `frontend/src/components/StatsFinishedList.tsx`,
+      `frontend/src/lib/stats.ts`, `frontend/src/lib/stats.test.ts`, `frontend/e2e/stats-bars-select.spec.ts`.
+      Due: before Epic 18."
+    owner: "Amelia (Dev)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-17-retro-2026-11-27.md"
+  - id: "epic-17-retro-item-113-reconcile-epic-17-gate-and-name-docs"
+    epic: 17
+    action: "Reconcile Epic 17's gate and the accessible-name docs (E17-P2, A4): name
+      stats.spec.ts:299, stats-finished.spec.ts:526 and :531-535 in Epic 17's gate;
+      reword the item 104 fact so 'existing tests' means tests that exist before the
+      epic (a later story names earlier stories' leaves in its spec; a mid-story decision
+      records widened leaves in the Spec Change Log); add the WCAG 2.5.3 exclusion
+      for the bar buttons to UX-DR109 and EXPERIENCE.md Names, and resolve that deferred-work.md
+      entry. Changes: `_bmad-output/planning-artifacts/epics.md`, `_bmad/custom/bmad-create-epics-and-stories.toml`,
+      `_bmad-output/planning-artifacts/ux-designs/ux-bookvie-2026-10-28/EXPERIENCE.md`,
+      `_bmad-output/implementation-artifacts/deferred-work.md`. Due: before Epic 18
+      planning."
+    owner: "John (PM)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-17-retro-2026-11-27.md"
+  - id: "epic-17-retro-item-114-reconcile-the-spine-with-epic-17"
+    epic: 17
+    action: "Reconcile the spine with Epic 17: close the five unresolved spine drift
+      entries (AD-6, AD-7) at deferred-work.md:1898, :1901, :1904, :1913 and :1919,
+      and add a resolved: line to each. Changes: `_bmad-output/planning-artifacts/architecture/architecture-bookvie-2026-10-29/ARCHITECTURE-SPINE.md`,
+      `_bmad-output/implementation-artifacts/deferred-work.md`. Due: before Epic 18."
+    owner: "Winston (Architect)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-17-retro-2026-11-27.md"
+  - id: "epic-17-retro-item-115-trace-and-gate-epic-17"
+    epic: 17
+    action: "Trace and gate Epic 17: run bmad-testarch-trace against TR7 and the gate's
+      P0 risks (the list adds up; Back restores it; the bars are buttons). Changes:
+      `_bmad-output/test-artifacts/traceability/epic-17-traceability-matrix.md`, `_bmad-output/test-artifacts/traceability/epic-17-gate-decision.json`.
+      Due: before Epic 18."
+    owner: "Murat (TEA)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-17-retro-2026-11-27.md"
+  - id: "epic-17-retro-item-116-check-accessible-names-against-axe-at-planning"
+    epic: 17
+    action: "Check accessible names against axe at planning (E17-P1): add a bmad-create-epics-and-stories
+      persistent fact that, when a story names a control or link with text that differs
+      from its visible label, planning probes axe label-content-name-mismatch (WCAG
+      2.5.3) on a sketch of that markup in Chromium, or records the decision (show
+      the words, or exclude the rule for those elements), before the ACs are written.
+      Changes: `_bmad/custom/bmad-create-epics-and-stories.toml`. Due: before Epic
+      18 planning."
+    owner: "John (PM)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-17-retro-2026-11-27.md"
+  - id: "epic-17-retro-item-117-let-e2e-count-tolerate-atdd-skips"
+    epic: 17
+    action: "Settle red CI on red-phase commits (E17-P3, Epic 2 PL-4), Oleg's option
+      (a): scripts/e2e-count.mjs counts the ATDD's test.skip leaves as expected skips,
+      so a pushed red-phase commit stays green, while any other skip still fails the
+      count. Changes: `scripts/e2e-count.mjs`. Due: before Epic 18's first ATDD."
+    owner: "Murat (TEA)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-17-retro-2026-11-27.md"
+  - id: "epic-17-retro-item-118-make-a-followup-risk-a-probe"
+    epic: 17
+    action: "Make a follow-up risk a probe, not a reasoned rejection (E17-P4): add
+      a bmad-code-review persistent fact that, when the spec has followup_review_recommended:
+      true, the review tests or probes the risk the build named (no rejection without
+      a probe) and sets the flag to false only when a leaf or probe covers it, otherwise
+      leaving it with a deferred-work.md entry. Changes: `_bmad/custom/bmad-code-review.toml`.
+      Due: before Epic 18's first review."
+    owner: "Amelia (Dev)"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-17-retro-2026-11-27.md"
