@@ -131,14 +131,14 @@ Not changed by this run: each of these would fail today if updated, so the build
 
 ## Green-phase follow-ups (secondary branches, not red leaves)
 
-- [ ] AC-6: `lib/stats.test.ts` cases for the heading (each preset, the four Custom forms) and the row name (rated, unrated, one author, "and 1 other", "and N others", no author, "1 page", "1 star").
-- [ ] AC-7: the stars' size (14px), gap (2px), `accent` fill and `input-border` outline, never `favourite`; `cover` corners and the hairline on a cover; hover and `:focus-visible` underline the title only; the focus ring around the whole row; the same in dark; forced colors: the typeset cover `Canvas` with a `CanvasText` border.
-- [ ] AC-8: All time with nothing finished: no `h2`, no list, "No books finished yet.".
-- [ ] AC-9: the bars render from the shown view too while the next one loads.
-- [ ] AC-11: a `lib/page` unit case for the same-page marker (REPLACE with it is same-page; REPLACE without it, PUSH and POP are route changes; a marker restored from `history.state` is ignored).
-- [ ] AC-12: Forward after Back; a reload of the Custom address opens the same list, the `h1` unfocused (a direct load).
-- [ ] AC-14: `range=thisYear` opened at fake today 2027-01-01 asks for 2027-01-01 to 2027-01-01 (`NEW_YEAR`, `NEW_YEAR_NOW`).
-- [ ] AC-15: arriving by Back and by the nav announces nothing (AC-12 and AC-13 check `status` only for Back).
+- [x] AC-6: `lib/stats.test.ts` cases for the heading (each preset, the four Custom forms) and the row name (rated, unrated, one author, "and 1 other", "and N others", no author, "1 page", "1 star"). (done: frontend/src/lib/stats.test.ts:245 `finishedHeading` and :261 `finishRowName and finishMeta`)
+- [x] AC-7: the stars' size (14px), gap (2px), `accent` fill and `input-border` outline, never `favourite`; `cover` corners and the hairline on a cover; hover and `:focus-visible` underline the title only; the focus ring around the whole row; the same in dark; forced colors: the typeset cover `Canvas` with a `CanvasText` border. (done: frontend/e2e/stats-finished-automate.spec.ts:115 AC-7, light, dark and forced colors)
+- [x] AC-8: All time with nothing finished: no `h2`, no list, "No books finished yet.". (done: frontend/e2e/stats-finished-automate.spec.ts:179 AC-8)
+- [x] AC-9: the bars render from the shown view too while the next one loads. (done: frontend/e2e/stats-finished-automate.spec.ts:197 AC-9)
+- [x] AC-11: a `lib/page` unit case for the same-page marker (REPLACE with it is same-page; REPLACE without it, PUSH and POP are route changes; a marker restored from `history.state` is ignored). (done: frontend/src/lib/samePage.test.ts:5 `a same-page replace (AD-7)`)
+- [x] AC-12: Forward after Back; a reload of the Custom address opens the same list, the `h1` unfocused (a direct load). (done: frontend/e2e/stats-finished-automate.spec.ts:234 AC-12)
+- [x] AC-14: `range=thisYear` opened at fake today 2027-01-01 asks for 2027-01-01 to 2027-01-01 (`NEW_YEAR`, `NEW_YEAR_NOW`). (done: frontend/e2e/stats-finished-automate.spec.ts:281 AC-14)
+- [x] AC-15: arriving by Back and by the nav announces nothing (AC-12 and AC-13 check `status` only for Back). (done: frontend/e2e/stats-finished-automate.spec.ts:316 AC-15)
 
 ## Helper probes
 
@@ -190,16 +190,16 @@ Not changed by this run: each of these would fail today if updated, so the build
 
 ## Implementation checklist (for `bmad-build-auto`)
 
-- [ ] `views/models.py`: `StatsFinish` with the ten fields; `StatsView.finishes: list[StatsFinish]`. `views/stats.py`: one entry per counted Reading, `finishedPages` null as 0, ordered `finishDate` desc, `title_key`, Book id, stored order. (AC-1, AC-2)
-- [ ] `npm --prefix frontend run api:gen`; the gate's leaves above. (AC-3)
-- [ ] `_parse_descriptions` reads Story 17.1's `get_stats` line. (AC-4)
-- [ ] `lib/stats`: the address parse and build (`range`, `from`, `to`; the quiet fallbacks), the list heading, the row name; unit cases. (AC-6, AC-10, AC-14)
-- [ ] `lib/page`: the same-page marker and the one function that decides it; `PageHeading`, `main.tsx` and scroll use it. (AC-11)
-- [ ] `StatsPage`: the range from and to the address with `useSearchParams`, replace with the marker; the Custom text as page state seeded from the address; announce only after the person's press; the heading and list from the one shown view. (AC-9, AC-10, AC-11, AC-12, AC-15)
-- [ ] `components/StatsFinishedList`: the `h2`, the `ol`, the row link with its `aria-label`, the thumbnail or read typeset cover, the type, the stars, the link states. (AC-5, AC-7, AC-8)
-- [ ] `AppShell`: the Stats `NavLink` replaces while the path is `/stats`. (AC-13)
-- [ ] `useStatsView` reports `fetching` (the spine; used by 17.2's period check).
-- [ ] Un-skip the 16 leaves and run `npm run check`.
+- [x] `views/models.py`: `StatsFinish` with the ten fields; `StatsView.finishes: list[StatsFinish]`. `views/stats.py`: one entry per counted Reading, `finishedPages` null as 0, ordered `finishDate` desc, `title_key`, Book id, stored order. (AC-1, AC-2) (done: backend/tests/test_stats_finishes.py:162 AC-1 and :226 AC-2)
+- [x] `npm --prefix frontend run api:gen`; the gate's leaves above. (AC-3) (done: backend/tests/test_stats_finishes.py:288 AC-3; `check:api` compares `schema.d.ts`)
+- [x] `_parse_descriptions` reads Story 17.1's `get_stats` line. (AC-4) (done: backend/tests/test_stats_finishes.py:313 AC-4)
+- [x] `lib/stats`: the address parse and build (`range`, `from`, `to`; the quiet fallbacks), the list heading, the row name; unit cases. (AC-6, AC-10, AC-14) (done: frontend/src/lib/stats.test.ts:154-309; frontend/e2e/stats-finished.spec.ts AC-6, AC-10, AC-14)
+- [x] `lib/page`: the same-page marker and the one function that decides it; `PageHeading`, `main.tsx` and scroll use it. (AC-11) (done: frontend/src/lib/samePage.test.ts; frontend/e2e/stats-finished.spec.ts AC-11 to AC-14. Only main.tsx calls `isSamePageReplace`, and PageHeading and the scroll read the page key: spine drift (AD-7) in deferred-work.md)
+- [x] `StatsPage`: the range from and to the address with `useSearchParams`, replace with the marker; the Custom text as page state seeded from the address; announce only after the person's press; the heading and list from the one shown view. (AC-9, AC-10, AC-11, AC-12, AC-15) (done: frontend/e2e/stats-finished.spec.ts AC-9 to AC-12 and AC-15; frontend/e2e/stats-finished-automate.spec.ts:197, :234, :316)
+- [x] `components/StatsFinishedList`: the `h2`, the `ol`, the row link with its `aria-label`, the thumbnail or read typeset cover, the type, the stars, the link states. (AC-5, AC-7, AC-8) (done: frontend/e2e/stats-finished.spec.ts AC-5, AC-7, AC-8; frontend/e2e/stats-finished-automate.spec.ts:115, :179)
+- [x] `AppShell`: the Stats `NavLink` replaces while the path is `/stats`. (AC-13) (done: frontend/e2e/stats-finished.spec.ts:418 AC-13; frontend/e2e/stats-finished-automate.spec.ts:316)
+- [x] `useStatsView` reports `fetching` (the spine; used by 17.2's period check). (done: frontend/src/api/views.ts `useStatsView`; no reader until Story 17.2)
+- [x] Un-skip the 16 leaves and run `npm run check`. (done: frontend/e2e/stats-finished.spec.ts and backend/tests/test_stats_finishes.py run unskipped; `npm run check` exit 0 in the code review, 2026-11-27)
 
 ## Suite
 
