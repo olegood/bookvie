@@ -1,7 +1,10 @@
 // Shared by the Stats specs: stats.spec.ts (Story 6.3, the range picker and the
-// two numbers) and stats-bars.spec.ts (Story 6.4, the bars and their table).
+// two numbers), stats-bars.spec.ts (Story 6.4, the bars and their table) and
+// stats-finished.spec.ts (Story 17.1, the finished list and the Stats address).
 import type { Locator, Page, Request } from '@playwright/test'
 import { ANNOUNCE_DELAY_MS } from '../src/lib/announce.ts'
+import { COVER_PNG } from './intents.ts'
+import { bookId } from './library.ts'
 
 export const STATS_API = '/api/views/stats'
 export const COULDNT_LOAD = "Couldn't load. Is bookvie still running?"
@@ -163,4 +166,225 @@ export async function afterAnnounceDelay(page: Page): Promise<void> {
 /** A request's query as a plain object, to compare the whole query at once. */
 export function queryOf(request: Request): Record<string, string> {
   return Object.fromEntries(new URL(request.url()).searchParams)
+}
+
+// --- Story 17.1 See the Books finished in a range (stats-finished.spec.ts) --------
+
+/** The spine color Dune's typeset cover is drawn in (`spineColorUser`). */
+export const DUNE_SPINE = '#4A6FA5'
+/** The spine color Piranesi's typeset cover is drawn in when its cover fails to load. */
+export const PIRANESI_SPINE = '#8C5A3C'
+export const DDIA_COVER = 'covers/ddia.png'
+export const PIRANESI_COVER = 'covers/piranesi.png'
+
+const done = (startDate: string | null, finishDate: string, finishedPages: number | null, rating: number | null) => ({
+  startDate,
+  finishDate,
+  finishedPages,
+  currentPage: finishedPages ?? 1,
+  rating,
+})
+
+/**
+ * The finished list's library at fake today 2026-10-28, Book ids `bookId(1)` to
+ * `bookId(9)`. This year holds 9 finishes and 2,489 pages:
+ * - Extreme Notes (Kent Beck and 2 others), 12 Oct 2026, 1 page, 1 star.
+ * - Beloved, finished twice on 20 Sep 2026, 324 pages, 3 stars then 5 stars.
+ * - Piranesi, 8 Aug 2026, 245 pages, 2 stars; its cover file isn't an image.
+ * - Dune, back-filled, 1 Jun 2026, 412 pages, unrated, no cover (spine `DUNE_SPINE`).
+ * - Emma, 5 May 2026, `finishedPages` null (0 pages), unrated.
+ * - Kindred, 20 Apr and 10 Feb 2026, 286 pages each, unrated.
+ * - Designing Data-Intensive Applications, 14 Mar 2026, 611 pages, 4 stars, a cover.
+ * Plus Solaris, 5 Dec 2025, 204 pages (Last year), and Hyperion, a side read in
+ * progress, never finished. This month is Extreme Notes alone (1 book, 1 page);
+ * Custom 1 February – 15 April 2026 is Kindred (10 Feb) and DDIA (2 books, 897 pages).
+ */
+export const FINISHED = {
+  books: [
+    {
+      id: bookId(1),
+      title: 'Designing Data-Intensive Applications',
+      authors: ['Martin Kleppmann'],
+      pages: 616,
+      coverFile: DDIA_COVER,
+      readings: [done('2026-02-20', '2026-03-14', 611, 4)],
+    },
+    {
+      id: bookId(2),
+      title: 'Dune',
+      authors: ['Frank Herbert'],
+      pages: 412,
+      spineColorUser: DUNE_SPINE,
+      readings: [done(null, '2026-06-01', 412, null)],
+    },
+    {
+      id: bookId(3),
+      title: 'Kindred',
+      authors: ['Octavia E. Butler'],
+      pages: 286,
+      readings: [done('2026-02-01', '2026-02-10', 286, null), done('2026-04-01', '2026-04-20', 286, null)],
+    },
+    {
+      id: bookId(4),
+      title: 'Beloved',
+      authors: ['Toni Morrison'],
+      pages: 324,
+      readings: [done(null, '2026-09-20', 324, 3), done(null, '2026-09-20', 324, 5)],
+    },
+    {
+      id: bookId(5),
+      title: 'Emma',
+      authors: ['Jane Austen'],
+      pages: 400,
+      readings: [done('2026-04-25', '2026-05-05', null, null)],
+    },
+    {
+      id: bookId(6),
+      title: 'Extreme Notes',
+      authors: ['Kent Beck', 'Ward Cunningham', 'Ron Jeffries'],
+      pages: 1,
+      readings: [done('2026-10-11', '2026-10-12', 1, 1)],
+    },
+    {
+      id: bookId(7),
+      title: 'Solaris',
+      authors: ['Stanisław Lem'],
+      pages: 204,
+      readings: [done('2025-11-20', '2025-12-05', 204, null)],
+    },
+    {
+      id: bookId(8),
+      title: 'Hyperion',
+      authors: ['Dan Simmons'],
+      pages: 482,
+      readings: [{ startDate: '2026-10-01', currentPage: 210 }],
+    },
+    {
+      id: bookId(9),
+      title: 'Piranesi',
+      authors: ['Susanna Clarke'],
+      pages: 245,
+      coverFile: PIRANESI_COVER,
+      spineColorFromCover: PIRANESI_SPINE,
+      readings: [done('2026-08-01', '2026-08-08', 245, 2)],
+    },
+  ],
+  sideReadBookIds: [bookId(8)],
+}
+
+/** `FINISHED`'s cover files: DDIA's a real PNG, Piranesi's not an image. */
+export const FINISHED_FILES = { [DDIA_COVER]: COVER_PNG, [PIRANESI_COVER]: 'not an image' }
+
+/** This year's rows' names at fake today 2026-10-28, in the view's order (UX-DR106). */
+export const THIS_YEAR_ROWS = [
+  'Extreme Notes, Kent Beck and 2 others, finished 12 Oct 2026, 1 page, 1 star',
+  'Beloved, Toni Morrison, finished 20 Sep 2026, 324 pages, 3 stars',
+  'Beloved, Toni Morrison, finished 20 Sep 2026, 324 pages, 5 stars',
+  'Piranesi, Susanna Clarke, finished 8 Aug 2026, 245 pages, 2 stars',
+  'Dune, Frank Herbert, finished 1 Jun 2026, 412 pages',
+  'Emma, Jane Austen, finished 5 May 2026, 0 pages',
+  'Kindred, Octavia E. Butler, finished 20 Apr 2026, 286 pages',
+  'Designing Data-Intensive Applications, Martin Kleppmann, finished 14 Mar 2026, 611 pages, 4 stars',
+  'Kindred, Octavia E. Butler, finished 10 Feb 2026, 286 pages',
+]
+
+/** The finished list's heading: the one `h2` in `main` ("Finished this year"). */
+export function finishedHeading(page: Page): Locator {
+  return page.getByRole('main').getByRole('heading', { level: 2 })
+}
+
+/** The finished list: the `ol` under the chart, the only list in Stats' `main`. */
+export function finishedList(page: Page): Locator {
+  return page.getByRole('main').getByRole('list')
+}
+
+/** The finished list's row links, one per finish, in the page's order. */
+export function finishedLinks(page: Page): Locator {
+  return finishedList(page).getByRole('listitem').getByRole('link')
+}
+
+/** The row link whose name starts with `start` (a title, then ", "). */
+export function finishedLink(page: Page, start: string): Locator {
+  return finishedLinks(page).and(page.locator(`[aria-label^="${start}, "]`))
+}
+
+/** Each of `links`' `aria-label`s, in order: a one-shot read, after a web-first wait on the count. */
+export function labelsOf(links: Locator): Promise<(string | null)[]> {
+  return links.evaluateAll((elements) => elements.map((element) => element.getAttribute('aria-label')))
+}
+
+/** The session history's length, which a replace leaves alone and a push grows. */
+export function historyLength(page: Page): Promise<number> {
+  return page.evaluate(() => history.length)
+}
+
+/** The address as the page shows it: path and search, no origin. */
+export function address(page: Page): string {
+  const url = new URL(page.url())
+  return `${url.pathname}${url.search}`
+}
+
+export type ThumbnailLook = {
+  width: number
+  height: number
+  /** The box's top edge in the viewport, to line it up with the row's text. */
+  y: number
+  /** The 44 × 64 box's fill, edge and whether an `img` shows inside it. */
+  background: string
+  borderWidth: string
+  borderStyle: string
+  borderColor: string
+  image: boolean
+  /** The plate inside a typeset cover, relative to the box, or null. */
+  plate: { left: number; right: number; top: number; height: number; background: string; text: string } | null
+}
+
+/**
+ * A finished row's thumbnail, found by its geometry (the outermost element
+ * inside `link` that is 44 × 64 to within half a pixel and is an image or has a fill,
+ * else the outermost of that size), so no class name is pinned. For a typeset cover, its plate is the first
+ * element inside it that is narrower than the box and has a fill of its own.
+ */
+export function thumbnailLook(link: Locator): Promise<ThumbnailLook> {
+  return link.evaluate((element) => {
+    const fits = (node: Element) => {
+      const r = node.getBoundingClientRect()
+      return Math.abs(r.width - 44) <= 0.5 && Math.abs(r.height - 64) <= 0.5
+    }
+    const boxes = Array.from(element.querySelectorAll('*')).filter(fits)
+    const filled = (node: Element) =>
+      node.tagName === 'IMG' || getComputedStyle(node).backgroundColor !== 'rgba(0, 0, 0, 0)'
+    const box = boxes.find(filled) ?? boxes[0]
+    if (!box) throw new Error('no 44 × 64 thumbnail in the row')
+    const r = box.getBoundingClientRect()
+    const style = getComputedStyle(box)
+    const image = box.tagName === 'IMG' || Array.from(box.querySelectorAll('img')).some(fits)
+    const plateNode = Array.from(box.querySelectorAll('*')).find((node) => {
+      const n = node.getBoundingClientRect()
+      const fill = getComputedStyle(node).backgroundColor
+      return n.width < r.width - 2 && n.height > 0 && fill !== 'rgba(0, 0, 0, 0)'
+    })
+    const p = plateNode?.getBoundingClientRect()
+    return {
+      width: r.width,
+      height: r.height,
+      y: r.top,
+      background: style.backgroundColor,
+      borderWidth: style.borderTopWidth,
+      borderStyle: style.borderTopStyle,
+      borderColor: style.borderTopColor,
+      image,
+      plate:
+        plateNode && p
+          ? {
+              left: p.left - r.left,
+              right: r.right - p.right,
+              top: p.top - r.top,
+              height: p.height,
+              background: getComputedStyle(plateNode).backgroundColor,
+              text: (plateNode.textContent ?? '').trim(),
+            }
+          : null,
+    }
+  })
 }
