@@ -1448,7 +1448,7 @@ action_items:
       `_bmad-output/implementation-artifacts/deferred-work.md`. Due: before Epic 18
       planning."
     owner: "John (PM)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-17-retro-2026-11-27.md"
   - id: "epic-17-retro-item-114-reconcile-the-spine-with-epic-17"
     epic: 17
