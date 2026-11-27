@@ -1498,5 +1498,5 @@ action_items:
       leaving it with a deferred-work.md entry. Changes: `_bmad/custom/bmad-code-review.toml`.
       Due: before Epic 18's first review."
     owner: "Amelia (Dev)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-17-retro-2026-11-27.md"
