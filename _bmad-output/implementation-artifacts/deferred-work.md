@@ -1907,3 +1907,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-17-1-see-the-books-finished-in-a-range.md`
   summary: Typing a Custom date in Chromium commits each complete segment state (a year passes through 0002, 0020, 0202), so each one fetches and, once current, may announce the range line: a screen-reader user can hear several lines while typing one date.
   evidence: Blind Hunter, build-auto review of Story 17.1; frontend/src/pages/StatsPage.tsx (changeFrom, changeTo, the announce effect). Pre-existing since Story 6.3, whose range was orderedRange(customFrom, customTo) on every change with the same announce rule; Story 17.1 adds only the address replace, which adds no history. Settling it means committing or announcing on leaving a field, a UX decision.
+
+## Deferred from: code review of spec-17-1-see-the-books-finished-in-a-range (2026-11-27)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-17-1-see-the-books-finished-in-a-range.md`
+  summary: Spine drift (AD-7; Capability Map FR-16 row), reconciled before the next epic: the row names only lib/page and components/PageHeading for the same-page marker, not components/AppShell (StatsNavLink, which replaces while the path is /stats) or the main.tsx router subscription, which is where isSamePageReplace is actually called. PageHeading's change in Story 17.1 is a docstring only.
+  evidence: Spine Check, code review of Story 17.1; frontend/src/components/AppShell.tsx (StatsNavLink), frontend/src/main.tsx (router.subscribe). AD-7's rule agrees with the code; only the FR-16 row's file list is stale. Reconcile it with the build-auto review's AD-7 entry above.

@@ -2,7 +2,7 @@
 title: 'Story 17.1: See the Books finished in a range'
 type: 'feature'
 created: '2026-11-27'
-status: 'in-review'
+status: 'done'
 baseline_revision: 'e40f646979814f8dc814b828706345c689843428'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -234,3 +234,37 @@ Status: in-review
 - The page key relies on `main.tsx` subscribing before RouterProvider mounts. That order is fixed by module load, and it is commented.
 
 Next: run `bmad-code-review` in a new session (AGENTS.md "Story pipeline").
+
+### Review Findings
+
+Code review 2026-11-27 (bmad-code-review, new session). Layers: Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor, Spine Check. 26 findings: 0 decision-needed, 1 patch, 4 defer (3 already in `deferred-work.md` from the build-auto review, 1 new), 21 rejected. Verification Gap: one gap (the title-key tie-break). Spine Check: four drifts, three already deferred, one new (the FR-16 row). AD-3, AD-6, AD-7, AD-8, AD-11, AD-15 and AD-21 hold.
+
+- [x] [Review][Patch] The AC-2 order test can't tell `title_key` from a raw title compare. Its same-day pair is "emile" (id `0a…`) and "Émile" (id `0b…`), and code-point order gives the same answer as the key then the Book id ("Beloved" < "emile" < "Émile"). So replacing `title_key(item[0].title)` with `item[0].title` in `stats.py` passes every test. The fix: give "Émile" the lower id and make the other title "EMILE". The key and then the id put "Émile" first, while a raw compare, casefold alone or accent-stripping alone each put "EMILE" first [backend/tests/test_stats_finishes.py:232]
+- [x] [Review][Defer] Spine drift (AD-7; Capability Map FR-16 row): the row names only `lib/page` and `components/PageHeading` for the same-page marker, not `components/AppShell` (`StatsNavLink`, the replace on `/stats`) or the `main.tsx` subscription, where the same-page decision is actually made [ARCHITECTURE-SPINE.md] — deferred: spine drift, reconciled before the next epic; new `deferred-work.md` entry.
+- [x] [Review][Defer] Spine drift (AD-7 same-page wording; AD-6 RatingStars and authorPart in the Seed and FR-16 row; AD-6 the parse shape) [ARCHITECTURE-SPINE.md] — deferred: already in `deferred-work.md` from the build-auto review, reconciled before the next epic. No duplicate entry added.
+
+Patches applied 2026-11-27:
+- `test_ac2_p0_…` now gives "Émile" the lower id (`EMILE_A`) and names the other Book "EMILE". The expected order is unchanged: by the title key and then the Book id, "Émile" comes first. A probe that replaced `title_key(item[0].title)` in `stats.py` with the raw title failed AC-2, and so did one with `.casefold()` alone. The probe was reverted, and `stats.py` is unchanged.
+
+Full check after the last patch, 2026-11-27: `npm run check` exit 0. pytest 2538 passed, unit 452 passed, e2e 947 passed (none skipped), smoke ok.
+
+**Rejected:**
+- (edge) `false` The arrival fallback and the writes drop other keys such as `period`. The intent says every write "replaces the whole search (never a merge)", and the Design Notes say other keys are dropped only when the fallback fires. `addressNeedsFallback` looks only at the range keys, so it doesn't trigger a replace for them, which is consistent.
+- (acceptance) `low` A Custom edit that resolves to the committed range still replaces the address when a hand-typed extra key is present (`write` compares with `location.search`). The replace carries the marker, so nothing visible happens. 17.1 reads no other key, and the whole-search rule drops it anyway.
+- (edge) `false` Custom after All time shows Custom with blank fields while the heading and list show All time. This is Story 6.3's rule ("Custom after All time starts empty and sends nothing"), and the intent renders everything under the picker from the shown view's selection.
+- (edge) `false` A half-edited Custom field leaves the list on the old range. The matrix row "Custom typing" requires exactly this: "else keep last committed range in address, view and list".
+- (edge, verification-gap) `low` `StatsViewState.fetching` has no reader. The Code Map adds it for Story 17.2 (the spine's settled-view rule), and it does no harm now.
+- (edge) `false` `get_stats` returns every finish with no paging. The intent's Never list forbids paging, and AC-2 asserts All time is unpaged.
+- (edge, blind) `low` The `get_stats` description doesn't name `readingId`, `authorCount`, `coverFile` or `spineColor`, a null rating or a 0 page count. The text is Story 17.1's line in `epics.md`, which AC-4 pins character for character, so the fix would edit planning docs. The JSON names every field.
+- (acceptance) `low` The visible word "Finished" is written in `StatsFinishedList.tsx`, not in `lib/stats`. The intent's list names only the heading and the row `aria-label`, and the word came with Oleg's option A. axe `label-content-name-mismatch` and AC-5's visible-text assertion catch any drift between the two.
+- (acceptance) `low` Pressing a range and then the mounted one again, before the first loads, announces nothing. Story 6.3 has the same `announced` rule, so it isn't new, and the double press while loading is rare.
+- (blind) `low` (`maybe-false`) `useNavigatedHere` reads a module-level `pageKey` during render, which can tear if an urgent re-render of the outgoing page lands inside a pending router transition. Settling it needs a reproduction under React Router 8.5's `startTransition` updates. If it is real, the outgoing page's body remounts once just before it unmounts, which is negligible. No route here suspends, so the transition commits at once.
+- (blind) `low` `isSamePageReplace` doesn't check that the path stayed the same. Only Stats sends the marker, always to its own path. A path guard would protect against a caller that doesn't exist.
+- (blind) `low` The page-key bookkeeping in `main.tsx` has no unit test. e2e AC-11, AC-12, AC-13 and AC-14 cover it through the real router, and extracting a function to test is a refactor.
+- (blind) `low` `samePage.test.ts`'s "fresh marker" case asserts object identity, which nothing depends on. It's harmless, and the predicate cases around it cover the rule.
+- (blind) `low` The heading's `shownSelection` and the numbers' `shown` are two sources. Both update only when `stats.current`, so they agree today. The named harm, divergence in Story 17.2, is speculative.
+- (blind) `false` No decision covers a finish with unknown pages. The matrix row "Finishes" says "null pages → 0", and AC-1 and AC-5 pin it.
+- (blind) `low` The loading thumbnail has no forced-colors edge, unlike `CatalogTiles`' `.loading`. The build review rejected this too: DESIGN.md defines no loading look for the row, the slot is decorative, and with forced colors on, an image still loading from the local server is gone within milliseconds of coming into view. A border would also change the 44 × 64 box that AC-7 measures.
+- (blind) `false` The `Thumbnail` ref callback misses a cover that has already failed. React attaches `onError` when it creates the `img`, before the browser can fire `error`, so the event isn't missed. The pattern is `CatalogTiles.tsx:103` word for word.
+- (blind) `low` No `finishRowName` case has more than 999 pages. It uses the same `pagesWords` as `finishMeta`, whose "1,204 pages" case covers the grouping.
+- (blind) `low` `addressNeedsFallback` has no cases for a bad Custom date, a doubled key or a lone `to`. It parses with `parseStatsAddress`, whose tests cover the bad dates, and AC-14 covers the fallback end to end.

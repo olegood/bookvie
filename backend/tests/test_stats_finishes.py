@@ -229,13 +229,14 @@ def test_ac2_p0_finishes_are_newest_first_then_title_key_book_id_and_stored_orde
     """[P0] AC-2 the order, stable between fetches; All time unpaged; [] when empty."""
     b = library_builder
     ids = _seed(b)
-    # Two Books whose titles share a title key ("Émile" and "emile"), finished on
-    # Beloved's day: after Beloved by the key, then by Book id.
-    emile_b = b.book(id=EMILE_B, title="Émile", authors=["Jean-Jacques Rousseau"], pages=500)
+    # Two Books whose titles share a title key ("Émile" and "EMILE"), finished on
+    # Beloved's day: after Beloved by the key, then by Book id. A raw compare, a
+    # casefold alone or accent stripping alone would each put "EMILE" first.
+    emile_b = b.book(id=EMILE_B, title="EMILE", authors=["Jean-Jacques Rousseau"], pages=500)
     ids["emile_b"] = b.reading(
         emile_b, start_date=None, finish_date="2026-09-20", finished_pages=500, current_page=500
     )
-    emile_a = b.book(id=EMILE_A, title="emile", authors=["Jean-Jacques Rousseau"], pages=480)
+    emile_a = b.book(id=EMILE_A, title="Émile", authors=["Jean-Jacques Rousseau"], pages=480)
     ids["emile_a"] = b.reading(
         emile_a, start_date=None, finish_date="2026-09-20", finished_pages=480, current_page=480
     )
