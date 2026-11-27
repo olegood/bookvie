@@ -18,13 +18,14 @@ inputDocuments:
   - _bmad-output/planning-artifacts/card-note-boxes-plan-2026-11-23.md
   - _bmad-output/planning-artifacts/catalog-publisher-filter-plan-2026-11-25.md
   - _bmad-output/planning-artifacts/favourite-books-plan-2026-11-25.md
+  - _bmad-output/planning-artifacts/stats-finished-books-plan-2026-11-27.md
 ---
 
 # bookvie - Epic Breakdown
 
 ## Overview
 
-This document breaks bookvie's PRD, UX design (DESIGN.md, EXPERIENCE.md) and architecture spine into sixteen epics of implementable stories. Each story names the requirement IDs it satisfies and lists Given/When/Then acceptance criteria.
+This document breaks bookvie's PRD, UX design (DESIGN.md, EXPERIENCE.md) and architecture spine into seventeen epics of implementable stories. Each story names the requirement IDs it satisfies and lists Given/When/Then acceptance criteria.
 
 **How to read it.** The Epic List gives the build order and what each epic delivers. Each epic section starts with its gate. Every story follows the conventions in "Conventions for every story", just before Epic 1. The Requirements Inventory is a lookup table; the source documents stay authoritative.
 
@@ -58,6 +59,7 @@ Gates are in each epic's section.
 | 14. See card notes as boxes | The Card notes page shows one box per Book, in its spine color with a pile of cards that grows with its notes; a remembered Boxes · List toggle keeps today's page as List. Opening a box opens that Book's notes under a strip in its spine color. A search on the shelf fades the boxes without a match and shows "3 of 12" on those with matches, and the search text goes into the box and back out. | FR-19 (Boxes · List, the boxes, the shelf search, the carried search) |
 | 15. See one publisher's shelf | A Publisher ▾ filter chip after Tag shows only the Books from the publishers picked, such as everything from Manning, in the bookcase, the list and the tiles. Its list puts the biggest publishers first, each with its Book count in the whole library, so the list keeps its order while other filters change. | FR-20 (Publisher filter) |
 | 16. Remember the Books that mattered | Star any Book, read or not, to remember that it had an impact: on its page, on its cover in Tiles, in its List row, and in the Bookcase's spine popover. A starred Book shows its star everywhere, with a small mark on its spine. A one-click ★ Favourites chip, first in the filter row, shows only the starred Books, with the search and every other chip. Edits never touch the star, a backup carries it, and agents can see it but not set it. | FR-31, FR-20 (Favourites chip), FR-28 (read-only star) |
+| 17. See the Books behind the numbers | Under the Stats chart, a list of every finish in the chosen range, Custom included: one row per finish, newest first, with its cover, title, author, date, pages and rating, each opening its Book. A month's or year's bar narrows the list to that period, and Show the whole range widens it. The range and the bar are in the address, so Back from a Book returns to the same list; agents get the same finishes from `get_stats`. | FR-16 (the Books behind the numbers), FR-28 (`finishes` in `get_stats`) |
 
 ## Requirements Inventory
 
@@ -91,7 +93,7 @@ FR-14 [Must; prompts Should]: Finish a Reading. When the current page reaches th
 
 FR-15 [Must]: Pace to finish date. On a Book or in the catalog, the user types a positive pages/day value and sees the estimated finish date and duration, updating as they type. Book scope: pages left in its current Reading, or all its pages if never started. Library scope: all pages of owned never-started Books plus pages left in every active or paused Reading, including re-reads; donated Books and finished Books without an active Reading excluded. Zero, negative or non-numeric input: no result and no error. The field starts filled with Measured pace when there is one, else empty.
 
-FR-16 [Must]: Stats for any period. The user chooses any date range and sees the number of Books finished and pages finished; UX presets This month, This year, Last year, All time, plus custom, with a bar per month. All of a Reading's pages count in the period it finished in; a finish counts by its local date; a back-filled Reading counts in the period of its Finished on date. "All time" starts at the earliest finished Reading. Re-reads count again; Side reads never count.
+FR-16 [Must]: Stats for any period. The user chooses any date range and sees the number of Books finished and pages finished; UX presets This month, This year, Last year, All time, plus custom, with a bar per month. All of a Reading's pages count in the period it finished in; a finish counts by its local date; a back-filled Reading counts in the period of its Finished on date. "All time" starts at the earliest finished Reading. Re-reads count again; Side reads never count. The Books behind the numbers: under the chart, a list shows every finish in the range, one row per finish, so a Book finished twice in the range has two rows and the rows always add up to the books count; Side reads aren't listed. The newest finish comes first; finishes on the same day are sorted by title. Each row shows the Book's cover, title and author, the finish date, the pages that finish added, and the Reading's rating when it has one, and opens its Book. A range with no finishes shows no list. One month or year at a time: choosing a bar that has finishes narrows the list to that bar's period; choosing it again, or **Show the whole range**, widens it back. The two numbers keep showing the whole range, and changing the range clears the chosen bar. Back returns to the same list: the range and the chosen bar are part of the page's address, so Back from a Book returns to the same range, bar and list, and Back from Stats leaves Stats in one step. Nothing is remembered between visits: Stats opened from the nav starts on This year with no bar. A broken or outdated address opens quietly, falling back to This year or dropping the bar, with no message. Agents that read Stats get the same list of finishes (FR-28). Not included: the favourite star or "purpose fulfilled" on a row, new presets, paging, sorting, filtering or exporting the list, and a popup on a bar. (Amended 2026-11-27: the Books behind the numbers, Epic 17.)
 
 FR-17 [Must]: Add Card notes to any Book. The user can add, edit and delete a Card note on any Book at any time. A Card note needs text and a page or page range (p.42 or pp.42–45), shown below the text. A page or range outside the Book's page count is refused. A keyboard shortcut saves a note from its text. The user can add several notes in a row without closing the note form: after each save it stays open for the next note, keeping the page; whether it stays open is the user's choice, remembered on this computer and not exported. Leaving the form keeps every note already saved; only an unsaved note is dropped.
 
@@ -115,7 +117,7 @@ FR-26 [Must]: Development and production stay apart. A Development server (bookv
 
 FR-27 [Must]: The version is visible. The Backup page shows the version and the library's folder in About this copy; on a Development server it also says so and shows the exact build (the source commit); the real app shows no build. When the running app's version differs from the version an open tab was loaded with (a rollback counts too), the tab shows a quiet notice that bookvie was updated, with a Reload button; if the app can't be reached, for example while it restarts, there's no notice. The notice is announced once, never on every check; it's never a dialog and blocks nothing: the old tab keeps working until the user reloads it.
 
-FR-28 [Should]: Agents read and update the library through MCP. An AI agent in Claude Code can read the library and record reading through bookvie's agent tools, under the same rules as the UI and with no way to delete a Book or a Card note (uses: "I'm on page X of Y", the bookvie skills, reading lists, time-boxed plans, reading order). The tools are on whenever bookvie runs, with nothing extra to start; a Development server offers its own against its own library, so an agent trying something out never writes to the real library. Claude Code is the only supported client; the README gives the setup. A request from another site or host is refused. A write follows the same rules as the same action in the UI and is refused with the same reason and fields; adding a likely duplicate is refused until the agent confirms it. A free-text search (abbreviation, author, part of a title) returns every likely match with edition and type, or an empty list; every other tool names the Book by id, so a page is never logged on the wrong edition. Agents can read the catalog, a Book, Home, Card notes and Stats; start, update, pause and finish a Reading, choose Up next, edit a Purpose; add and edit Card notes; mark and unmark Side reads; add and edit Books; export a backup; upload it to Dropbox (FR-29); restore a backup, with two confirmations (FR-30). They can't delete a Book or a Card note, or star or unstar a Book (FR-31), though they can see whether it is starred. Adding or editing a Book can take a cover's web address, which bookvie downloads; only an image from a public address is accepted, and a failed download saves nothing. An agent's export writes a dated backup file to a fixed folder (separate for a Development server), says where, replaces a same-day file, and counts as the last export, except the daily backup run's export, which never moves it (FR-29). Each tool's description says what it does and how to use it; a refusal gives the same reason and fields as the UI. There are no planning tools: the agent answers from titles, tags, Purposes, Card notes, pages left and measured pace. (Amended 2026-11-21: restore is no longer banned. Amended 2026-11-25: agents can't set the favourite star.)
+FR-28 [Should]: Agents read and update the library through MCP. An AI agent in Claude Code can read the library and record reading through bookvie's agent tools, under the same rules as the UI and with no way to delete a Book or a Card note (uses: "I'm on page X of Y", the bookvie skills, reading lists, time-boxed plans, reading order). The tools are on whenever bookvie runs, with nothing extra to start; a Development server offers its own against its own library, so an agent trying something out never writes to the real library. Claude Code is the only supported client; the README gives the setup. A request from another site or host is refused. A write follows the same rules as the same action in the UI and is refused with the same reason and fields; adding a likely duplicate is refused until the agent confirms it. A free-text search (abbreviation, author, part of a title) returns every likely match with edition and type, or an empty list; every other tool names the Book by id, so a page is never logged on the wrong edition. Agents can read the catalog, a Book, Home, Card notes and Stats, with the finishes behind the numbers; start, update, pause and finish a Reading, choose Up next, edit a Purpose; add and edit Card notes; mark and unmark Side reads; add and edit Books; export a backup; upload it to Dropbox (FR-29); restore a backup, with two confirmations (FR-30). They can't delete a Book or a Card note, or star or unstar a Book (FR-31), though they can see whether it is starred. Adding or editing a Book can take a cover's web address, which bookvie downloads; only an image from a public address is accepted, and a failed download saves nothing. An agent's export writes a dated backup file to a fixed folder (separate for a Development server), says where, replaces a same-day file, and counts as the last export, except the daily backup run's export, which never moves it (FR-29). Each tool's description says what it does and how to use it; a refusal gives the same reason and fields as the UI. There are no planning tools: the agent answers from titles, tags, Purposes, Card notes, pages left and measured pace. (Amended 2026-11-21: restore is no longer banned. Amended 2026-11-25: agents can't set the favourite star. Amended 2026-11-27: Stats carries its finishes.)
 
 FR-31 [Should]: Favourite Books. The user can star a Book to remember that it had an impact on them, and the catalog can show only the starred Books. Any Book can be starred: unread, being read, paused, a Side read or finished. Starring and unstarring are one action each, from the Book's page and from the catalog in every view. A starred Book shows its star in the bookcase, the list and the tiles, and on its page; in the list and the tiles an unstarred Book shows an empty star only while the user points at it or reaches it with the keyboard. The star never depends on color alone. One filter chip, Favourites, shows only starred Books; it combines with search (FR-4) and every other filter (FR-20), isn't remembered between visits, and never changes Home's bookcase slice or the "X of Y finished" count. Editing a Book, in the UI or through the agent tools, never stars or unstars it. An agent sees whether a Book is starred (FR-28) but can't star or unstar it. The star is part of an export and comes back with a restore (FR-22, FR-23); a backup from before favourites restores with no Book starred. Not included: a favourites filter on Card notes, sort by favourite, a count of favourites in Stats, a separate favourites page.
 
@@ -239,6 +241,14 @@ From ARCHITECTURE-SPINE.md and the TEA handoff. Each line names the source decis
 - AR71 (AD-6): `spineNames` ends a starred Book's name with ", favourite", after the status. Twins are found on the name without it, so starring one Book never renames another. Tiles use the same builder, so the bookcase, Home's slice and Tiles give a Book the same name.
 - AR72 (AD-7): No optimistic star. It changes only once `set-favourite` succeeds and the views have refetched; a failure leaves it as it was, with nothing to roll back.
 - AR73 (AD-21): `get_book`, `list_catalog` and `get_home` carry `favourite` because they return their views as they are. `set-favourite` is never registered as a tool (`AGENT_TOOL_NAMES` doesn't change; the never-registered probes name `set_favourite`). Every tool description stays as Epic 12 fixed it; `find_book` neither returns nor matches `favourite`. Accepted gap: `preview_restore` doesn't report stars a restore would lose (spine Deferred).
+
+**Stats finished books (Epic 17).** From AD-6, AD-7, AD-8, AD-11 and AD-21 as updated on 2026-11-27 (`bbf1789`); where `stats-finished-books-plan-2026-11-27.md` and the spine differ, the spine wins.
+- AR74 (AD-6, AD-8, AD-11): `StatsView.finishes`: one `StatsFinish` per finished Reading the books count counts, so the rows always add up to `books`: `{ readingId, bookId, title, firstAuthor, authorCount, coverFile, spineColor, finishDate, finishedPages, rating }`, read as stored (`rating` null when unrated, `coverFile` null without a cover). `readingId` is the row's key, since one Book can finish twice on one day. `finishedPages` is a whole number: a stored null is sent as 0, as the counts already do, so a bar's rows add up to its pages. Side read marks are never in it. Order: `finishDate` newest first, then the server title key, then Book id, then the Readings' stored order. No paging: All time sends every finish; with no finishes it is `[]`. Added in Python first, then `api:gen`.
+- AR75 (AD-6): The Stats finished list (`components/StatsFinishedList.tsx`, `lib/stats.ts`) renders the view's `finishes` in the view's order and never sorts or counts them. Everything under the range picker (numbers, bars, heading, list) renders from the one shown view and the range it was fetched for, never the address's range: while `keepPreviousData` shows the previous range's view, no bar is a button and the list isn't narrowed. A `period` is valid only when it equals the `period` of a bucket in the shown view with at least one book; only then does the list narrow, to the finishes whose `finishDate` starts with it; the heading's and the announcement's count is that bucket's `books`, never a count of rows. The heading, the row's `aria-label` and the announcements are built in `lib/stats`; the author line is the catalog's (`firstAuthor`, "and N others"), the stars are Book detail's (`lib/bookDetail` `starsLabel`), and a missing or failed cover gets the read typeset cover with no text. The image is the stored cover, loaded lazily. With no finishes there is no list.
+- AR76 (AD-6): The Stats address. The committed range and the selected bar live only in the URL's search (`range`, `from`, `to`, `period`), never in storage; AD-15 is unchanged. `lib/stats` parses the address into `{ range, from, to, period }` and builds the whole search; `pages/StatsPage` reads it with `useSearchParams`, and every write replaces the whole search (never a merge) with AD-7's same-page marker, built once per user action. A plain `/stats` is This year with no bar and isn't rewritten until the first change. Custom's From and To text is page state seeded from the address; the address is written only for a complete range in order (after the silent swap) with dates the server accepts (`views/stats` `IsoDate`); until then the address, view and list keep the last committed range, and pressing Custom with empty fields writes nothing. Arrival (mount and every non-marker location change) gets the fallback: an unknown `range` or a Custom without two valid dates is This year with no `period`, a reversed Custom is put in order, and the address is replaced with what the page shows. The `period` is checked only against a settled view (`useStatsView` reports `fetching`; a failed refetch's kept copy counts as settled); whenever no bucket with books matches it, the bar is released, the list widens and the address is replaced, with no message, and if that took focus away, focus moves to the chart's Tab stop, else the `h1`. The `period` is never sent to the server. Changing the range (a preset or a committed Custom range, by the person) clears `period`; a preset's dates moving to a new local day doesn't. Stats announces only after the person's own press; `StatsPage` owns every announcement, `StatsBars` and `StatsFinishedList` none.
+- AR77 (AD-7): Same-page address replace. A page that keeps its state in the address replaces it with a router-state marker from `lib/page`; only Stats does. A change is a same-page replace only when its navigation type is REPLACE and it carries the marker (ignored on mount, PUSH and POP); one `lib/page` function decides it, and `PageHeading`, `StatsPage`'s page key and scroll all call it. For a same-page replace `PageHeading` doesn't take focus and the page doesn't scroll; the `main.tsx` subscription stays subscribed and calls `markNavigated` only on a change that isn't one. Every other change is a route change: `StatsPage`'s body gets a new key (fresh roving Tab stop, no announcement) and scrolls to the top (`behavior: 'auto'`) before the `h1` takes focus, Back from a Book included. The Stats nav link (`components/AppShell.tsx`) replaces while the path is `/stats`, so from any Stats address it resets to a plain `/stats` without adding a history entry.
+- AR78 (AD-6): Stats bars from story 17.2 (`components/StatsBars.tsx`). The chart is a `group` named "Finished by month" or "Finished by year", no longer `aria-hidden`; each bucket with at least one book is a toggle button with `aria-pressed`, named from the bucket in `lib/stats` ("March 2026, 3 books, 912 pages"), and the chart is one roving Tab stop. An empty bucket is drawn but isn't a button. At most one bar is selected; changing the range releases it and forgets the last focused bar. The visually hidden table (Period, Books, Pages) stays, with every bucket.
+- AR79 (AD-21): `get_stats` returns the stats view as is, `finishes` included. Epic 17 changes only `get_stats`'s description, whose text is then Epic 17's in this file (Story 17.1); `backend/tests/agent_client.py` `_parse_descriptions` learns to read it there, as Story 13.3's `export_backup` replaced its Epic 12 line. `AGENT_TOOL_NAMES` doesn't change; no tool is added.
 
 **Test harness and quality gates (TEA handoff).**
 - TR1 (TC-1): `LibraryBuilder` fixture and pre-start seeding of a data folder.
@@ -390,6 +400,18 @@ Each line names the UX section that holds the full requirement. D = DESIGN.md, E
 - UX-DR103: Favourites chip: first in the filter row, before Status, a lone toggle button (not in a `role="group"`) with `aria-pressed`, named "Favourites" (its leading star `aria-hidden`), no popup; a normal chip with a leading `row-size` star filled gold on or off, and when on the usual selected chip (`accent-soft` fill, 2px `accent` border) with the check glyph before the star. Shown whenever the catalog has Books, even when none is starred; never hidden or disabled. On, only starred Books show, ANDed with every other group and Search titles, in the bookcase, the list and the tiles; "N books match." is announced. Nothing starred: "No books match these filters." with "Clear filters". "Clear filters" turns every chip off, Favourites included, and moves focus to the Favourites chip. Not remembered between visits; never applies to Home's slice or the library meter (E → Component Patterns → Filter chips; D → Filter chips; E → State rows).
 - UX-DR104: Unstar with the chip on: the Book hides once the refetch renders, as with any filter. Focus moves to the next remaining Book in sort order (its tile link, its row's title link, or its spine), else the previous one, else Search titles, and `status` announces "*Dune* is not a favourite. 11 books match." From the Spine popover the popover closes with its spine and focus follows the same rule (Focus after close row) (E → Favourite star → With the Favourites chip on).
 
+**Stats finished list (FR-16)**
+- UX-DR105: What's listed: finished Readings only, one row per finish (a Book finished twice in the range has two rows), so the row count always equals the books count, the range's or the selected bar's. Back-filled finishes are listed; side read marks are not. Newest first, same-day finishes by title, in the server's order; the page neither sorts nor counts (E → Stats → What's listed).
+- UX-DR106: Finished list row: one `li` in an `ol` with no markers, holding one link to the Book's page. Left to right, `{components.stats-finished-row.gap}` apart: a `thumbnail-width` × `thumbnail-height` (44 × 64) thumbnail with `thumbnail-radius` corners, the cover `object-fit: contain` at the bottom with a `thumbnail-edge` hairline, `alt=""`; a text column with the title (`book-title-sm`, 600, `ink`) and the author as the catalog writes it ("Kent Beck and 2 others"; `body-sm`, `ink-secondary`), each one line cut with an ellipsis; a right-aligned end column with "14 Mar 2026 · 611 pages" ("1 page") in `meta`, `ink-secondary`, tabular figures, and the rating as Book detail's five stars, one image named "4 stars" ("1 star"), `star-size` 14px `star-gap` 2px apart, filled `accent`, the rest outlined `input-border`, never gold. An unrated row shows no stars and no "No rating" text but keeps the line's height. With no author the author line is left out and the title is vertically centered. Rows are divided by `divider` with `padding-y` above and below. Name, by `aria-label`: "*Designing Data-Intensive Applications*, Martin Kleppmann, finished 14 Mar 2026, 611 pages, 4 stars", ending at the pages when unrated and without the author part when there is none. Hover and `:focus-visible` underline the title only (with a focus twin for the copy test); focus draws `{components.focus-ring}` around the whole row. Same layout in dark (D → Stats finished list → Row; E → Stats → The row).
+- UX-DR107: Finished list typeset cover: a missing or failed cover gets the read typeset cover at thumbnail size: the Book's exact spine color, `{components.stats-finished-row.typeset-edge}` all round, and a `typeset-plate` plate `typeset-plate-inset` (5px) in from the sides, `typeset-plate-top` (19px) from the top and `typeset-plate-height` (18px) tall with `{components.catalog-tile.typeset-plate-radius}` corners, holding no text; the same in both themes. Forced colors: `Canvas` with a `CanvasText` border, as on a tile; the stars follow Book detail's Readings (D → Stats finished list → Typeset cover; D → forced colors).
+- UX-DR108: Finished list heading: an `h2` in `panel-heading`, `ink`, directly above the list: "Finished this month", "Finished this year", "Finished last year", "Finished, all time"; Custom "Finished 1 February – 15 April 2026", "Finished 1 December 2025 – 15 January 2026" across a year end, "Finished 3 – 17 March 2026" inside one month, "Finished 14 March 2026" for a single day; with a bar selected "Finished in March 2026" or "Finished in 2024". An empty range has no heading and no list, only today's "No books finished in this range." or "No books finished yet." (E → Stats → Heading, Empty; State Patterns).
+- UX-DR109: Bars as toggle buttons (story 17.2): each bar with at least one finish is a `button` with `aria-pressed`, named "March 2026, 3 books, 912 pages" ("2024, 1 book, 304 pages"; numbers grouped, "1,204 pages"), an accepted exception to "the name starts with the label"; the whole column, value to period label, is the target. A bar with no finishes is drawn as before, isn't a button, can't be focused, and its value and period text are `aria-hidden`. The chart is a `group` named "Finished by month" or "Finished by year". One Tab stop (roving `tabindex`): Tab lands on the last focused bar if it is still in the chart, else the selected bar, else the latest bar with finishes; a range change forgets the last focused bar. Left and Right move to the previous and next bar with finishes, skipping empty ones, without wrapping; Home and End go to the first and last; Up and Down do nothing; Enter and Space press. Pressing selects the bar and narrows the list, releasing any other; pressing the selected bar widens the list; focus stays on the bar. The two big numbers keep the whole range (E → Stats → Choosing a bar; E → Accessibility → Keyboard, Names).
+- UX-DR110: Bar states: the selected bar's track gets `{components.monthly-bar.selected-ring}` and its value and period labels turn `selected-label` (`ink`) at weight 600; the other bars with finishes keep `ink-secondary` labels at full contrast and only their fill drops to `dimmed-fill-opacity` (0.35); with no bar selected every bar is drawn as before. Focus: `{components.focus-ring}` around the track, moved out to `selected-focus-offset` (6px) on the selected bar so ring and focus both show. Hover: pointer cursor only. No motion. Forced colors: the dimming is dropped, the selected ring becomes a 2px `Highlight` outline at offset 0, and focus takes the system color at the 6px offset (D → Monthly bars; D → forced colors; D → Do/Don't).
+- UX-DR111: **Show the whole range**: a `button` styled as a link, in `meta`, `{spacing.4}` after the heading's text on its baseline, a sibling of the `h2` (so the heading's name stays the period), shown only while a bar is selected. Pressing it widens the list to the range and moves focus to the bar that was selected, now unpressed and the chart's Tab stop (E → Stats → Show the whole range; D → Stats finished list → Heading).
+- UX-DR112: Stats announcements, in the polite `status` region: selecting a bar announces "Finished in March 2026: 3 books." ("Finished in 2024: 1 book."), the count being the bar's books; widening, by the bar or by Show the whole range, announces the range line ("12 books, 4,310 pages."), as a range change does. Opening Stats (the nav, a reload, Back, a link with a range and bar), a fallback, and a release after a refetch announce nothing (E → Stats → Announcements; Microcopy).
+- UX-DR113: Stats address: `/stats?range=thisMonth|thisYear|lastYear|allTime|custom`, Custom adding `from` and `to` (`YYYY-MM-DD`, in order), a selected bar adding `period=YYYY-MM` or `YYYY`; a preset kept by name. Every change replaces the history entry and never adds one: Back from Stats leaves Stats in one step; Back from a Book returns to the same range, bar and list. Nothing in `localStorage`. A replace on Stats doesn't move focus to the `h1` or scroll; arriving on Stats, Back from a Book included, focuses the `h1` and opens at the top. A plain `/stats` opens on This year with no bar and isn't rewritten until the first change; the Stats nav link opens a plain `/stats`, even from Stats. A bad address (an unknown `range`, a Custom without two valid dates, a `period` that isn't a bar with finishes in the shown range or is the wrong kind) falls back quietly with no message, and the address is replaced with what the page shows (E → Stats → Address; State Patterns → Stats, bad address).
+- UX-DR114: Stats layout: one left-aligned column, `{spacing.5}` between blocks: `h1` "Stats"; the range picker (From and To under it for Custom); the two big numbers; the monthly bars at full width; the finished list's `h2` with Show the whole range; the list at full width. Mock `epic17-options.html`, row R2 and bar B2; where the mock and the spines differ, the spines win (D → Layout & Spacing → Stats).
+
 ### FR Coverage Map
 
 FR-1: Epic 1 - Book fields, create/edit/delete, Finished on back-fill, tags field, spine color
@@ -405,7 +427,7 @@ FR-10: Epic 3 - Quick page update
 FR-11: Epic 3 - Re-entry info and days left
 FR-14: Epic 3 - Finishing the Main book, prompts, finish moment, re-read; Epic 4 - marking any non-Main Reading finished from Book detail
 FR-15: Epic 6 - Quick pace calculator
-FR-16: Epic 6 - Stats
+FR-16: Epic 6 - Stats; Epic 17 - The finished list (`StatsView.finishes`), the bars as buttons, and the range and bar in the address
 FR-17: Epic 5 - Add/edit/delete Card notes; Epic 9 - Keyboard save and Add another
 FR-18: Epic 5 - Card notes pile
 FR-19: Epic 5 - Card notes view and search; Epic 14 - Boxes · List, the Card note boxes and the open box strip, the shelf search, and the search carried into a box and back
@@ -417,7 +439,7 @@ FR-24: Epic 1 - Catalog bookcase (spines, colors, meter, popover, keyboard); Epi
 FR-25: Epic 8 - Tiles view: grid, covers, ribbon, reading bar, typeset covers
 FR-26: Epic 11 - Dev defaults and the real-library refusal, `app-info` mode, the amber favicon, the DEV pill and the `DEV · ` title
 FR-27: Epic 11 - About this copy on Backup, the update notice and the one version
-FR-28: Epic 12 - The agent tools at `/mcp`: read tools and `find_book`, daily-loop write tools, add and edit a Book with a cover URL, `export_backup`, and the two bookvie skills moved onto them; Epic 13 - restore through `restore_backup`, and `export_backup`'s `forUpload`; Epic 16 - `favourite` in `get_book`, `list_catalog` and `get_home`, with no tool to set it
+FR-28: Epic 12 - The agent tools at `/mcp`: read tools and `find_book`, daily-loop write tools, add and edit a Book with a cover URL, `export_backup`, and the two bookvie skills moved onto them; Epic 13 - restore through `restore_backup`, and `export_backup`'s `forUpload`; Epic 16 - `favourite` in `get_book`, `list_catalog` and `get_home`, with no tool to set it; Epic 17 - `finishes` in `get_stats`, with its new description
 FR-29: Epic 13 - The `bookvie-dropbox` server and `upload_backup`, `record_backup_upload` and the upload state, the `bookvie-backup` skill (run by hand), the Dropbox backup line, and the guide
 FR-30: Epic 13 - `list_local_backups`, `preview_restore`, `restore_backup` with its two gates and the safety copy, `list_backups` and `download_backup`, and the `bookvie-restore` skill
 FR-31: Epic 16 - The `favourite` field and its migration, the `set-favourite` intent, the star on Book detail, the Spine popover, tiles and List rows, the spine mark, and the Favourites chip
@@ -3929,3 +3951,194 @@ So that the Catalog becomes the shelf of Books that mattered, in any view.
 **Given** the existing catalog filter e2e specs
 **When** they run with Favourites off
 **Then** they pass, except the leaves the Epic 16 gate names for Story 16.2 ("Clear filters" focuses Favourites; the toolbar Tab order and the row's button list start with Favourites), which are updated as it says.
+
+## Epic 17: See the Books behind the numbers
+
+Oleg sees which Books he finished in any range, not only how many: "I would like to see the exact books I read in any period (custom period as well)" (issue #8). Under the chart, a list shows one row per finish, newest first, with its cover, title, author, date, pages and rating, and each row opens its Book. Choosing a month's or year's bar narrows the list to that period; choosing it again, or **Show the whole range**, widens it. The range and the bar are in the address, so Back from a Book returns to the same list, and agents get the same finishes from `get_stats`. Story 17.1 lists the finishes for the range, with the range in the address; Story 17.2 makes the bars buttons, with the bar in the address (plan D17).
+
+**Gate:** per-epic quality gates (TR7), plus the plan's P0 risks green: the list adds up (for every preset and a Custom range starting mid-month, the rows equal the books count, and with a bar selected they equal that bar's books; a Book finished twice in the range has two rows, a back-filled finish is listed and a side read isn't); Back restores it (Custom 1 February – 15 April 2026, March selected, a Book opened, then Back: the same range, bar and list; Back again leaves Stats in one step); and the bars are buttons (names such as "March 2026, 3 books, 912 pages", `aria-pressed`, one Tab stop, arrows that skip bars with no finishes, Home and End, and widening by the bar or by Show the whole range). Existing tests pass unchanged except these leaves, which pin what the epic changes (grepped and opened on 2026-11-27, Epic 15 retro item 104 and Epic 16 retro item 110):
+- **Story 17.1, the view's shape:** `backend/tests/test_stats.py:253` (the empty view gains `"finishes": []`); `frontend/e2e/stats.spec.ts:119` (the response's key set gains `finishes`) and `:208` (the empty All time body gains `finishes: []`); `frontend/src/api/generated/schema.d.ts` is regenerated, never edited.
+- **Story 17.1, the agent description:** `backend/tests/test_agent_read.py:390` (`DESCRIPTIONS["get_stats"]`) reads Story 17.1's text, and `backend/tests/agent_client.py` `_parse_descriptions` (`:151`) learns to read an Epic 17 line that replaces Epic 12's, as Epic 13's `export_backup` does. `AGENT_TOOL_NAMES` is unchanged.
+- **Story 17.1, code the spine names (not tests):** `components/PageHeading.tsx`, `lib/page.ts`, the `main.tsx` subscription, the `components/AppShell.tsx` Stats `NavLink`, and `api/views.ts` `useStatsView` reporting `fetching`. `lib/page.test.ts` is unchanged (it tests only the title).
+- **Story 17.2, e2e:** `frontend/e2e/stats-bars.spec.ts:77–81` (the `bars` helper finds the columns under `[aria-hidden="true"]`), `:182` (the "900" value under `aria-hidden`) and `:236` (no `aria-hidden` element in `main` with nothing finished): they find the chart through `[aria-hidden="true"]`, which 17.2 removes.
+
+Checked and unchanged: in `stats.spec.ts`, `figure` (inside the Totals group) and `caption` (exact text), so a row's "611 pages" never matches; the h1 focus from the nav (`:59`) and none on a direct load (`:287`); every status line; `:426`'s mocked refetch, which overrides `books` but keeps the real `finishes` and asserts only silence. In `stats-bars.spec.ts`, the table leaves (`:48`, `:117`, `:260`, `:281`): the list is an `ol`, so the table stays the only one in `main`. The nav order leaves (`app-shell.spec.ts:70`, `home.spec.ts:55`, `card-notes.spec.ts:113`), `back-to-top.spec.ts:290` (Stats still has no Back to top), `update-notice.spec.ts:190`, and `lib/stats.test.ts`, which only gains cases. Guards: no stored field, schema version, golden bytes or Hypothesis strategy changes (the stats tests have none); `app-shell.spec.ts`'s token comparison reads only `colors`, `typography`, `rounded` and `spacing`, and Epic 17 adds only `components` entries, so `tokens.css` doesn't change; `frontend/scripts/copy.test.mjs` needs no exception (no new color; no "!", greeting or praise in the new strings; the row's `:hover` underline has its `:focus-visible` twin in the same selector list; the bar keys are handled on the chart, not `window`, by name such as `ArrowLeft`), and it runs in each story. Plan: `stats-finished-books-plan-2026-11-27.md`.
+
+**Before Story 17.1:** plan step 0, the spine reconciliation of any unresolved "spine drift" entry in `deferred-work.md` (AGENTS.md → Architecture spine). Epic 16's landed with retro item 108 (resolved 2026-11-26), and none was open on 2026-11-27.
+
+**Mac checks:** none. Epic 17 is web UI in desktop Chrome, one field on an existing view and one changed tool description; it needs nothing from the Mac itself (no scheduler, system service, Keychain, fixed port, client feature or OS permission), so no story has a Mac check line (Epic 13 retro item 93; Oleg, 2026-11-27).
+
+**Out of scope:** side reads in the list (plan D1); the favourite star or "purpose fulfilled" on a row; new presets such as Last month; paging, sorting, filtering or exporting the list; a tooltip or popover on a bar; remembering the range between visits (D13); and behavior only Safari or Firefox shows (AGENTS.md → Supported browser).
+
+### Story 17.1: See the Books finished in a range
+
+As Oleg,
+I want to see under the Stats chart every Book I finished in the range I chose, Custom included,
+So that I can answer "what did I read then?" and get back to the same list after opening one of them.
+
+**Requirements:** FR-16, FR-28, AR74, AR75, AR76, AR77, AR79, UX-DR105, UX-DR106, UX-DR107, UX-DR108, UX-DR112, UX-DR113, UX-DR114
+
+**Acceptance Criteria:**
+
+**Given** a library with finished Readings in 2026: a back-filled finish (no start date), a Book finished in February and again in April, a Book finished twice on the same day, a finish stored with `finishedPages` null, and a Book marked as a side read but never finished
+**When** `GET /api/views/stats` is asked for a range
+**Then** `finishes` holds one `StatsFinish` per finished Reading whose `finishDate` falls in the range, with `{ readingId, bookId, title, firstAuthor, authorCount, coverFile, spineColor, finishDate, finishedPages, rating }` read as stored (AR74)
+**And** its length equals `books` and the sum of its `finishedPages` equals `pages`, for every preset's dates and for a Custom range starting mid-month
+**And** the back-filled finish is in it, the Book finished twice has two entries with their two dates, the side read isn't in it, and the null `finishedPages` is sent as 0
+**And** `rating` is null for an unrated finish and `coverFile` null for a Book without a cover.
+
+**Given** the same library
+**When** the view is fetched twice
+**Then** `finishes` is ordered by `finishDate` newest first, then the server title key, then Book id, then the Readings' stored order, the same both times, so the two same-day finishes of one Book never swap (AR74)
+**And** All time sends every finish with no paging, and a range with no finishes, or All time in an empty library, sends `"finishes": []`.
+
+**Given** `StatsFinish` and `StatsView.finishes` added in Python
+**When** `npm --prefix frontend run api:gen` runs
+**Then** `schema.d.ts` gives `StatsView` a required `finishes: StatsFinish[]`, `check:api` passes, and the frontend and e2e fixtures carry `finishes`
+**And** the existing tests the Epic 17 gate names for Story 17.1 are updated as it says, and no others change.
+
+**Given** an agent in Claude Code
+**When** it calls `get_stats` with no range or with `from` and `to`
+**Then** it returns the stats view as the route does for the same range, `finishes` included, and the refusals are unchanged (AR79)
+**And** the tool list is unchanged, and `get_stats`'s description equals the text below, which `backend/tests/agent_client.py` `_parse_descriptions` reads from this story in place of Story 12.2's.
+**Description:** (replaces Story 12.2's, and the description test reads this one) "Books and pages finished, overall or for a period given as from and to dates (YYYY-MM-DD, both or neither), with every finish behind them, newest first: the Book's id, title and first author, the finish date, the pages that finish added, and its rating."
+
+**Given** Stats on This year with finishes
+**When** it renders
+**Then** under the chart an `h2` reads "Finished this year", followed by an `ol` with one `li` per finish in the view's order, and the row count equals the books figure (UX-DR105, UX-DR108, UX-DR114)
+**And** each row is one link to `/book/<bookId>`, showing the cover thumbnail (`alt=""`), the title, the author as the catalog writes it ("Kent Beck and 2 others"), "14 Mar 2026 · 611 pages" ("1 page"), and the rating as Book detail's five stars, one image named "4 stars" ("1 star") (UX-DR106)
+**And** the link's name is "*Designing Data-Intensive Applications*, Martin Kleppmann, finished 14 Mar 2026, 611 pages, 4 stars"; unrated it ends at the pages, and with no author the author part is left out
+**And** the page neither sorts nor counts the rows: the list renders the view's `finishes` as sent (AR75).
+
+**Given** the presets and Custom ranges
+**When** each is chosen with finishes in it
+**Then** the heading reads "Finished this month", "Finished this year", "Finished last year" or "Finished, all time"; for Custom "Finished 1 February – 15 April 2026", "Finished 1 December 2025 – 15 January 2026" across a year end, "Finished 3 – 17 March 2026" inside one month and "Finished 14 March 2026" for a single day (UX-DR108)
+**And** `lib/stats` builds the heading and the row name, and its unit tests cover each form.
+
+**Given** a row for an unrated finish, a Book with no author, and a Book with no cover or whose cover fails to load
+**When** the list renders
+**Then** the unrated row shows no stars and no "No rating" text but keeps the line's height; the author-less row holds the title alone, vertically centered; and the coverless row shows the read typeset cover: the Book's exact spine color, the typeset edge, and a plate 5px in from the sides, 19px from the top and 18px tall, with no text (UX-DR106, UX-DR107)
+**And** the row follows `{components.stats-finished-row}`: a 44 × 64 thumbnail with `cover` corners and a hairline, the title in `book-title-sm` 600 `ink` and the author in `body-sm` `ink-secondary` each cut to one line with an ellipsis, the date and pages in `meta` with tabular figures, and 14px stars 2px apart filled `accent` and outlined `input-border`, never gold
+**And** hover and `:focus-visible` underline the title only, focus draws the focus ring around the whole row, and the same holds in the dark theme; under forced colors the typeset cover is `Canvas` with a `CanvasText` border.
+
+**Given** a range with no finishes, or All time with nothing finished
+**When** Stats renders
+**Then** there is no `h2` and no list, only "No books finished in this range." or "No books finished yet." as today (UX-DR108).
+
+**Given** a range change whose new view is still loading
+**When** `keepPreviousData` shows the previous range's view
+**Then** the numbers, the bars, the heading and the list all render from that one shown view and the range it was fetched for, never the address's range, until the new view arrives (AR75).
+
+**Given** Stats opened from the nav
+**When** I choose Last year, then Custom from 1 February 2026 to 15 April 2026
+**Then** the address reads `/stats?range=lastYear`, then `/stats?range=custom&from=2026-02-01&to=2026-04-15`, each replacing the history entry (the history length doesn't grow) (AR76, UX-DR113)
+**And** a reversed Custom is written in order after the silent swap, a Custom with an empty or half-typed field writes nothing and keeps the last committed range in the address, the view and the list, and pressing Custom with empty fields writes nothing
+**And** a plain `/stats` opens on This year and isn't rewritten until the first change, and nothing is written to `localStorage`.
+
+**Given** a range change on Stats, including one right after a direct load of `/stats`
+**When** the address is replaced
+**Then** focus stays on the control I used, the `h1` doesn't take focus and the page doesn't scroll, because the replace carries `lib/page`'s same-page marker and is a REPLACE (AR77)
+**And** the `main.tsx` subscription stays subscribed through it, so the first later route change (opening a Book, the nav) still focuses that page's `h1`
+**And** a REPLACE without the marker, a PUSH or a POP is a route change, and the marker coming back from `history.state` on Back, Forward or a reload is ignored.
+
+**Given** Custom from 1 February 2026 to 15 April 2026, scrolled down the list
+**When** I open a row's Book and press Back
+**Then** Stats comes back on the same range with the same list, opened at the top with the `h1` focused, announcing nothing (UX-DR112, UX-DR113)
+**And** pressing Back once more leaves Stats for the page I opened it from.
+
+**Given** Stats at `/stats?range=lastYear`
+**When** I press the Stats nav link
+**Then** it opens a plain `/stats` on This year without adding a history entry, as a route change (AR77).
+
+**Given** an address typed or pasted by hand
+**When** Stats opens on `/stats?range=nextWeek`, `/stats?range=custom&from=2026-02-01` with no `to`, a Custom with a date that isn't one or that the server would refuse (such as `0000-01-01`), or a reversed Custom
+**Then** the first three open This year and the reversed one opens in order, with no message and no announcement, and the address is replaced with what the page shows (AR76, UX-DR113)
+**And** an address with `range=thisYear` opened in a later year shows that later year, since a preset is kept by name.
+
+**Given** a range change by my own press
+**When** the new view shows
+**Then** `status` announces the range line as today ("2 books, 610 pages."), and arriving on Stats, by the nav, a reload, Back or a link with a range in it, announces nothing (UX-DR112).
+
+**Given** Story 17.1
+**When** it is built
+**Then** it neither reads nor writes `period`, which Story 17.2 adds; the chart is unchanged
+**And** `copy.test.mjs` and the axe checks on Stats pass with the list shown, in both themes.
+
+### Story 17.2: Choose a month or year by its bar
+
+As Oleg,
+I want to press a month's or year's bar to see only the Books I finished then,
+So that a tall bar tells me which Books made it tall, and Back brings me to the same bar.
+
+**Requirements:** FR-16, AR75, AR76, AR78, UX-DR108, UX-DR109, UX-DR110, UX-DR111, UX-DR112, UX-DR113
+
+**Acceptance Criteria:**
+
+**Given** Custom from 1 February 2026 to 15 April 2026, with finishes in February, March and April and none in a month between
+**When** the chart renders
+**Then** it is a `group` named "Finished by month", no longer `aria-hidden`; each bar with at least one finish is a toggle `button` with `aria-pressed="false"`, named from its bucket ("March 2026, 3 books, 912 pages", numbers grouped as "1,204 pages") (AR78, UX-DR109)
+**And** a bar with no finishes is drawn as before, isn't a button, can't be focused, and its value and period text are `aria-hidden`
+**And** the visually hidden table still lists every period, empty ones included
+**And** on a range over 24 months the group is "Finished by year" and a bar is named "2024, 1 book, 304 pages".
+
+**Given** that chart and nothing focused in it yet
+**When** I Tab into it
+**Then** focus lands on the latest bar with finishes, and the chart is one Tab stop (roving `tabindex`) (UX-DR109)
+**And** Left and Right move to the previous and next bar with finishes, skipping empty ones, without wrapping; Home and End go to the first and last; Up and Down do nothing
+**And** Tab out and back lands on the last focused bar while it is still in the chart, else the selected bar, else the latest bar with finishes.
+
+**Given** no bar selected
+**When** I press the March bar with Enter, Space or a click anywhere in its column, from value to period label
+**Then** it reads `aria-pressed="true"`, the heading reads "Finished in March 2026", and the list holds only the finishes whose `finishDate` starts with `2026-03`, as many as the bar's books (AR75, UX-DR108)
+**And** the two big numbers still show the whole range, focus stays on the bar, and `status` announces "Finished in March 2026: 3 books." ("Finished in 2024: 1 book."), the count being the bucket's `books`, not a count of rows (UX-DR112)
+**And** the address gains `period=2026-03` (`period=2024` for a year bar) by a same-page replace, so focus and scroll don't move (AR76).
+
+**Given** March selected
+**When** I press April
+**Then** April is selected and March released, the list shows April's finishes, and at most one bar is ever pressed
+**When** I press the selected bar again
+**Then** it is released, the list widens to the range under the range's heading, focus stays on the bar, `status` announces the range line ("9 books, 2,410 pages."), and `period` leaves the address.
+
+**Given** a bar selected
+**When** the list renders
+**Then** **Show the whole range** shows as a link-styled `button` in `meta`, `{spacing.4}` after the heading's text, as a sibling of the `h2` (whose name stays "Finished in March 2026"), and it isn't there while no bar is selected (UX-DR111)
+**When** I press it
+**Then** the list widens, focus moves to the bar that was selected, now unpressed and the chart's Tab stop, `status` announces the range line, and `period` leaves the address.
+
+**Given** March selected
+**When** the chart renders, in light and dark
+**Then** March's track has the highlight ring and its value and period labels are `ink` at weight 600; the other bars with finishes keep `ink-secondary` labels at full contrast and only their fill drops to 0.35 opacity; with no bar selected every bar is drawn as before Epic 17 (UX-DR110)
+**And** the focus ring on the selected bar sits 6px out, outside the highlight ring; hover changes only the cursor; selecting and dimming have no transition
+**And** under forced colors the dimming is dropped and the selected bar shows a 2px `Highlight` outline at offset 0.
+
+**Given** a bar selected
+**When** I choose another preset or commit another Custom range, including one that turns a month chart into a year chart
+**Then** the bar is released, `period` leaves the address, the last focused bar is forgotten, the list shows the new range, and `status` announces the range line (AR76, AR78).
+
+**Given** Custom from 1 February 2026 to 15 April 2026 with March selected
+**When** I open a row's Book and press Back
+**Then** Stats comes back with the same range, March selected and the same three rows, the `h1` focused, announcing nothing; Tab into the chart lands on March
+**And** pressing Back once more leaves Stats in one step (UX-DR113).
+
+**Given** an address with a `period` that isn't a bar with finishes in the shown range: a month outside it, a month with no finishes, `period=2026` on a month chart, `period=2026-03` on a year chart, or text that isn't a period
+**When** Stats opens on it
+**Then** no bar is selected, the list shows the whole range, there is no message and no announcement, and the address is replaced without `period` (AR76, UX-DR113)
+**And** the `period` is never sent to the server, which sees only `from` and `to`.
+
+**Given** a range change whose new view is still loading
+**When** `keepPreviousData` shows the previous range's view
+**Then** no bar is a button and the list isn't narrowed until the new view has settled (AR75).
+
+**Given** March selected, with the only finish in March, and focus on the March bar
+**When** another context removes that finish and Stats regains focus and refetches (or a refetch fails and keeps its copy, which counts as settled)
+**Then** once the settled view has no bucket with books for `2026-03`, the bar is released, the list widens and the address is replaced, with no message and no announcement
+**And** focus, which the released bar held, moves to the chart's Tab stop, else the `h1` (AR76).
+
+**Given** This month with a bar selected and a tab left open past midnight into the next day of the same month
+**When** the preset's dates move to the new local day
+**Then** that isn't a range change: the bar stays selected while it is still a bar with finishes (AR76).
+
+**Given** the existing Stats e2e specs
+**When** they run
+**Then** they pass, except the `stats-bars.spec.ts` leaves the Epic 17 gate names for Story 17.2, which find the chart by another locator and keep what they assert
+**And** `copy.test.mjs` and the axe checks on Stats pass with a bar selected, in both themes.
