@@ -47,6 +47,7 @@ import {
   labelsOf,
   MARCH_ROWS,
   nav,
+  NOTHING_FINISHED,
   preset,
   recordStatsRequests,
   STATS_API,
@@ -126,6 +127,25 @@ test.describe('Story 17.2 Choose a month or year by its bar (ATDD)', () => {
     }
   })
 
+  test('[P2] AC-1 a range with months but no finishes keeps its chart aria-hidden, with no group and no bars', async ({
+    page,
+  }) => {
+    const server = await serverAtFakeToday(page, 'stats-bars-no-finishes', NOTHING_FINISHED)
+    try {
+      await page.goto(`${server.url}/stats`)
+      // This year with nothing finished: ten empty months, and the hidden table still lists them.
+      await expect(page.getByRole('main').getByText('No books finished in this range.', { exact: true })).toBeVisible()
+      await expect(page.getByRole('main').getByRole('table')).toHaveCount(1)
+
+      // The criterion: no bar has finishes, so the chart is decoration, not an empty named group.
+      await expect(page.getByRole('main').getByRole('group', { name: /^Finished by (month|year)$/ })).toHaveCount(0)
+      await expect(page.getByRole('main').locator('div:has(+ table)')).toHaveAttribute('aria-hidden', 'true')
+      await expect(page.getByRole('main').locator('div:has(+ table) button')).toHaveCount(0)
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+
   test('[P0] AC-2 the chart is one Tab stop on the latest bar, and the arrows skip empty bars without wrapping', async ({
     page,
   }) => {
@@ -163,6 +183,10 @@ test.describe('Story 17.2 Choose a month or year by its bar (ATDD)', () => {
       // Up and Down do nothing, and moving presses nothing.
       await page.keyboard.press('ArrowUp')
       await page.keyboard.press('ArrowDown')
+      await expect(bar(page, 'March 2026')).toBeFocused()
+      // Modified keys are the browser's (Cmd+Left is Back): the chart doesn't move on them.
+      await page.keyboard.press('Shift+ArrowLeft')
+      await page.keyboard.press('Shift+End')
       await expect(bar(page, 'March 2026')).toBeFocused()
       await expect(chartBars(page).and(page.locator('[aria-pressed="true"]'))).toHaveCount(0)
 
@@ -704,10 +728,11 @@ test.describe('Story 17.2 Choose a month or year by its bar (ATDD)', () => {
       // This month holds one finish, Extreme Notes on 12 October: October is the only bar with finishes.
       await page.goto(`${server.url}/stats?range=thisMonth&period=2026-10`)
       await expect(finishedLinks(page)).toHaveCount(1)
-      // Setup, unasserted: focus on the October bar (from Show the whole range, back into the chart).
+      // Setup: focus on the October bar (from Show the whole range, back into the chart).
       await finishedLinks(page).first().focus()
       await page.keyboard.press('Shift+Tab')
       await page.keyboard.press('Shift+Tab')
+      await expect(bar(page, 'October 2026')).toBeFocused()
 
       // Another context removed that finish: the refetch has no books at all.
       await page.route('**/api/views/stats**', async (route) => {

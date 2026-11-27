@@ -2,7 +2,7 @@
 title: 'Story 17.2: Choose a month or year by its bar'
 type: 'feature'
 created: '2026-11-27'
-status: 'in-review'
+status: 'done'
 baseline_revision: '50de623ecc24fb51664cd7270632130e51f2315c'
 review_loop_iteration: 0
 followup_review_recommended: true
@@ -89,6 +89,35 @@ deferred:
 **Acceptance Criteria:** AC-1 to AC-13 of epics.md Story 17.2, numbered as the ATDD checklist's registry, each pinned by its leaf in `stats-bars-select.spec.ts`. Among them:
 - Given Custom 1 February – 15 April 2026, when the chart renders, then it is the `group` "Finished by month" with three toggle buttons named "February 2026, 1 book, 286 pages", "March 2026, 3 books, 1,335 pages" and "April 2026, 2 books, 531 pages".
 - Given March selected, when axe runs on Stats in light and dark, then it finds no violation, with `label-content-name-mismatch` excluded for the chart's bar buttons only (AC-13; option A, Spec Change Log).
+
+### Review Findings
+
+Code review, 2026-11-27 (new session; layers: Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor, Spine Check; none failed). 0 decision-needed, 4 patch, 2 defer, 14 rejected.
+
+- [x] [Review][Patch] The modifier-key pass-through on the chart (Edge Case 3's fix) is unasserted: removing the guard would swallow Cmd+Left (Back) again and every test would pass [frontend/e2e/stats-bars-select.spec.ts:149] — fixed: the AC-2 leaf presses Shift+ArrowLeft and Shift+End and focus stays on March; mutation probe (guard removed) fails it
+- [x] [Review][Patch] A range with buckets but no books keeps its chart `aria-hidden` with no group (Blind (2)'s fix), unasserted: `stats-bars.spec.ts:242` checks only All time with no buckets, where `StatsBars` returns null [frontend/e2e/stats-bars-select.spec.ts:130] — fixed: new leaf "AC-1 a range with months but no finishes keeps its chart aria-hidden, with no group and no bars" (NOTHING_FINISHED); mutation probe (group always) fails it
+- [x] [Review][Patch] The rewritten 17.1 leaf is still titled "Story 17.1 leaves period alone" while it now asserts that `period=2026-03` narrows the list [frontend/e2e/stats-finished.spec.ts:512] — fixed: retitled "AC-16 axe finds nothing with the list shown, in both themes, and a range press drops period"
+- [x] [Review][Patch] The AC-11 `h1` leaf never checks its setup (two Shift+Tab presses onto the October bar), so a change in focus order would fail at the `h1` assertion and blame the focus move [frontend/e2e/stats-bars-select.spec.ts:731] — fixed: asserts the October bar is focused before the route is installed
+- [x] [Review][Defer] The axe exclusion cites UX-DR109's exception, which covers "the name starts with the label", not WCAG 2.5.3's visible-label-in-name rule that axe checks [epics.md:4144] — deferred: a planning-doc wording fix outside this story; Oleg's option A stands
+- [x] [Review][Defer] Existing tests changed outside the gate's list (`stats.spec.ts:299`, `stats-finished.spec.ts:526`, `:531–535`), while epics.md's existing-specs criterion and the epic context's Guards still forbid it [frontend/e2e/stats.spec.ts:299] — deferred: for the Epic 17 retro (Epic 15 item 104, Epic 16 item 110); the changes follow from option A and are recorded in the Spec Change Log
+
+- 2026-11-27, after the last patch: `npm run check` exit 0 — pytest 2538 passed, unit 457 passed (0 skipped), e2e 971 passed, smoke ok.
+
+**Rejected:**
+- `low` Edge Case 1 / Blind: a held view of another range renders a labelled group whose columns are all `aria-hidden`. — The I/O matrix's "Held view" row asks for exactly that ("the held chart is the group with no buttons"), and AC-10's leaf asserts it; the fix would edit this spec.
+- `false` Edge Case 2: pressing Custom after All time leaves the bar selected and the list narrowed under a Custom picker. — epic-17-context: "pressing Custom with empty fields writes nothing… the address, view and list keep the last committed range"; the bar is part of that committed address.
+- `low` Edge Case 3 / Acceptance Auditor 3 / Blind: `/stats?period=2026-03` with no `range` keeps March and isn't rewritten as `range=thisYear&period=…`. — Only a hand-typed address does that, March is a valid bar of the This year it shows, and the next write replaces the whole search; the fix adds an arrival branch.
+- `low` Edge Case 4: `stats-bars.spec.ts:242` no longer counts every `aria-hidden` element on an empty All time. — The Code Map prescribes that rewrite (":236 no aria-hidden element → no chart group"); the zero-books chart's `aria-hidden` is now pinned by the second patch above.
+- `low` Acceptance Auditor 2: under forced colors a selected bar with keyboard focus shows the 6px focus ring in place of its offset-0 selection outline. — Forced colors don't occur in Oleg's desktop Chrome on macOS outside DevTools emulation, `aria-pressed` still carries the state, and two outlines on one track need another drawing technique, not a direct correction.
+- `false` Blind: forced colors move the focus ring to 6px on every focused bar, against DESIGN.md. — The Code Map specifies "the focus ring in the system color at 6px" under forced colors, and DESIGN.md's 6px-on-selected rule is for the normal look.
+- `low` Blind: the `lostBar` focus effect could pull focus to the chart on a later settled render. — `lostBar` is set only when a focused bar's button is removed, cleared on the first settled render, and acts only when focus sits on `body`, which is the lost-focus case it exists for; no reachable path was shown where focus falls to `body` for another reason in between.
+- `low` Blind: `chartColumns`' `div:has(+ table) > *` locator is structural. — It reads the one chart Stats renders today, in both its forms; the harm needs a future wrapper or a second table.
+- `low` Acceptance Auditor 1: two axe calls changed outside the Always list. — They follow from Oleg's option A (Spec Change Log); recorded for the retro in the second defer above.
+- `low` Blind: the triage tally "low 17, false 13" doesn't match its rows. — The fix edits this spec's build record.
+- `low` Blind: Auto Run Result's "Files changed" omits `deferred-work.md` and `sprint-status.yaml`. — The fix edits this spec's build record.
+- `false` Spine Check: AD-6 parse shape. — Spine drift, already open in deferred-work.md (Story 17.1 entry); no new entry.
+- `false` Spine Check: AD-6 heading count. — Spine drift, already deferred by the build-auto review; no new entry.
+- `false` Acceptance Auditor note: a selection shows on an unsettled view. — The auditor itself discounts it: Design Notes, AC-8 and AC-12 call for it; only the drop waits for a settled view.
 
 ## Spec Change Log
 

@@ -509,7 +509,7 @@ test.describe('Story 17.1 See the Books finished in a range (ATDD)', () => {
     }
   })
 
-  test('[P2] AC-16 Story 17.1 leaves period alone, and axe finds nothing with the list shown, in both themes', async ({
+  test('[P2] AC-16 axe finds nothing with the list shown, in both themes, and a range press drops period', async ({
     page,
   }) => {
     const server = await serverAtFakeToday(page, 'stats-finished-axe', FINISHED, FINISHED_FILES)
