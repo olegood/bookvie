@@ -109,6 +109,17 @@ export function spineMarker(book: Pick<NamedSpine, 'role'>): SpineMarker | null 
 }
 
 /**
+ * The author part as the catalog writes it: "Frank Herbert", "Kent Beck and 1
+ * other", "Kent Beck and 2 others"; `''` for a Book with no author.
+ */
+export function authorPart(firstAuthor: string, authorCount: number): string {
+  if (firstAuthor === '') return ''
+  const others = authorCount - 1
+  const more = others === 1 ? ' and 1 other' : others > 1 ? ` and ${others} others` : ''
+  return `${firstAuthor}${more}`
+}
+
+/**
  * A spine's accessible name (UX-DR25): "Title by First author, <status>",
  * "… and 1 other, …" or "… and N others, …", always with the full title.
  * The status is "finished" or "not read yet", or for the Main book "Main
@@ -122,9 +133,8 @@ export function spineMarker(book: Pick<NamedSpine, 'role'>): SpineMarker | null 
  * part and the status; without one the name is exactly as above.
  */
 export function spineName(book: NamedSpine, qualifier = ''): string {
-  const others = book.authorCount - 1
-  const more = others === 1 ? ' and 1 other' : others > 1 ? ` and ${others} others` : ''
-  const by = book.firstAuthor === '' ? '' : ` by ${book.firstAuthor}${more}`
+  const author = authorPart(book.firstAuthor, book.authorCount)
+  const by = author === '' ? '' : ` by ${author}`
   const told = qualifier === '' ? '' : `, ${qualifier}`
   const side = book.sideRead ? ', on the side' : ''
   return `${book.title}${by}${told}, ${spineStatus(book)}${side}`

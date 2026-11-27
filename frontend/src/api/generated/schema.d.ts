@@ -1186,6 +1186,38 @@ export interface components {
             pages: number;
         };
         /**
+         * StatsFinish
+         * @description One finished Reading in the range: one row of the Stats finished list (AD-6, AR74).
+         *
+         *     Read as stored. ``readingId`` is the row key, since one Book can finish twice on
+         *     one day.
+         */
+        StatsFinish: {
+            /** Readingid */
+            readingId: string;
+            /** Bookid */
+            bookId: string;
+            /** Title */
+            title: string;
+            /** Firstauthor */
+            firstAuthor: string;
+            /** Authorcount */
+            authorCount: number;
+            /** Coverfile */
+            coverFile: string | null;
+            /** Spinecolor */
+            spineColor: string;
+            /**
+             * Finishdate
+             * Format: date
+             */
+            finishDate: string;
+            /** Finishedpages */
+            finishedPages: number;
+            /** Rating */
+            rating: number | null;
+        };
+        /**
          * StatsView
          * @description What the Stats page shows for a range (FR-16, AD-6).
          */
@@ -1201,6 +1233,8 @@ export interface components {
             bucket: "month" | "year";
             /** Buckets */
             buckets: components["schemas"]["StatsBucket"][];
+            /** Finishes */
+            finishes: components["schemas"]["StatsFinish"][];
         };
     };
     responses: never;

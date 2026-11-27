@@ -16,10 +16,10 @@ from typing import Annotated
 
 from pydantic import BeforeValidator
 
-from bookvie.domain import Library
+from bookvie.domain import Book, Library, Reading, title_key
 from bookvie.intents.contract import FieldError, invalid_fields
 
-from .models import StatsBucket, StatsView
+from .models import StatsBucket, StatsFinish, StatsView
 
 MONTH_BUCKET_LIMIT = 24
 """Ranges spanning more calendar months than this are bucketed by year (AD-6)."""
@@ -68,15 +68,39 @@ def _periods(start: date, end: date, by_year: bool) -> list[str]:
     return [f"{index // 12:04d}-{index % 12 + 1:02d}" for index in range(first, last + 1)]
 
 
+def _finish(book: Book, reading: Reading, finish_date: date) -> StatsFinish:
+    """One row of the finished list, read as stored; a null ``finishedPages`` is 0."""
+    return StatsFinish(
+        reading_id=reading.id,
+        book_id=book.id,
+        title=book.title,
+        first_author=book.authors[0] if book.authors else "",
+        author_count=len(book.authors),
+        cover_file=book.cover_file,
+        spine_color=book.spine_color,
+        finish_date=finish_date,
+        finished_pages=reading.finished_pages or 0,
+        rating=reading.rating,
+    )
+
+
 def stats(library: Library, start: date | None, end: date | None) -> StatsView:
-    """The totals for ``start..end`` (both inclusive); All time when both are ``None``."""
-    finishes = [
-        reading
+    """The totals for ``start..end`` (both inclusive); All time when both are ``None``.
+
+    ``finishes`` lists the same Readings the totals count, newest ``finishDate``
+    first, then :func:`title_key`, then Book id, then the Readings' stored order.
+    """
+    found = [
+        (book, index, reading)
         for book in library.books
-        for reading in book.readings
+        for index, reading in enumerate(book.readings)
         if reading.finish_date is not None
         and (start is None or end is None or start <= reading.finish_date <= end)
     ]
+    finishes = [reading for _, _, reading in found]
+    # Newest first: sort ascending by the tie-breaks, then stably by date descending.
+    found.sort(key=lambda item: (title_key(item[0].title), item[0].id, item[1]))
+    found.sort(key=lambda item: item[2].finish_date or date.min, reverse=True)
     dates = [r.finish_date for r in finishes if r.finish_date is not None]
     if start is None or end is None:
         first, last = (min(dates), max(dates)) if dates else (None, None)
@@ -96,4 +120,9 @@ def stats(library: Library, start: date | None, end: date | None) -> StatsView:
         pages=sum(r.finished_pages or 0 for r in finishes),
         bucket="year" if by_year else "month",
         buckets=[StatsBucket(period=period, books=b, pages=p) for period, (b, p) in totals.items()],
+        finishes=[
+            _finish(book, reading, reading.finish_date)
+            for book, _, reading in found
+            if reading.finish_date is not None
+        ],
     )

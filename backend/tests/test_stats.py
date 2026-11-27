@@ -250,7 +250,13 @@ def test_ac5_p1_all_time_with_nothing_finished_is_zero_month_and_no_buckets(
     b.write(tmp_path)
     client = api_client(tmp_path, raise_server_exceptions=True)
 
-    assert _stats(client) == {"books": 0, "pages": 0, "bucket": "month", "buckets": []}
+    assert _stats(client) == {
+        "books": 0,
+        "pages": 0,
+        "bucket": "month",
+        "buckets": [],
+        "finishes": [],
+    }
 
 
 # --- The bucket choice (AD-6): more than 24 calendar months is "year" -----------------

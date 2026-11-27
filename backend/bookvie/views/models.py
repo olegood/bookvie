@@ -382,6 +382,28 @@ class StatsBucket(_View):
     pages: int
 
 
+class StatsFinish(_View):
+    """One finished Reading in the range: one row of the Stats finished list (AD-6, AR74).
+
+    Read as stored. ``readingId`` is the row key, since one Book can finish twice on
+    one day."""
+
+    reading_id: str
+    book_id: str
+    title: str
+    first_author: str
+    """The Book's first author; ``""`` when it has none."""
+    author_count: int
+    cover_file: str | None
+    """``None`` when the Book has no cover."""
+    spine_color: str
+    finish_date: date
+    finished_pages: int
+    """The stored ``finishedPages``; a stored ``None`` is sent as 0 (AD-11)."""
+    rating: int | None
+    """``None`` when the Reading is unrated."""
+
+
 class StatsView(_View):
     """What the Stats page shows for a range (FR-16, AD-6)."""
 
@@ -396,6 +418,10 @@ class StatsView(_View):
     """The bars' buckets, oldest first: one for every calendar month (or year) from the
     range's start to its end, empty ones included as 0 books and 0 pages. All time runs
     from the earliest finish's period to the latest's, and is ``[]`` with no finishes."""
+    finishes: list[StatsFinish]
+    """One entry per finished Reading counted in ``books``, newest ``finishDate`` first,
+    then the server title key, then Book id, then the Readings' stored order. No
+    paging: All time sends every finish; ``[]`` with none."""
 
 
 class BookCandidate(_View):

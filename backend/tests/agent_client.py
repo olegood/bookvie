@@ -139,6 +139,9 @@ _EPIC_13_STORY_OF = {
     DOWNLOAD_BACKUP: "13.7",
 }
 _EPIC_13_DESCRIBED = list(_EPIC_13_STORY_OF)
+# Epic 17's described tools, each with its story: Story 17.1's get_stats line replaces
+# Story 12.2's.
+_EPIC_17_STORY_OF = {"get_stats": "17.1"}
 _STORY_HEADING = re.compile(r"^### Story (\d+\.\d+):", re.M)
 
 
@@ -156,7 +159,9 @@ def _parse_descriptions() -> dict[str, str]:
     ends both book tools' descriptions. Every Epic 12 line is a bookvie tool's.
     Epic 13 also quotes the ``bookvie-dropbox`` server's tools, and stories not
     built yet, so only the lines in the stories that added a listed tool count.
-    An Epic 13 line for an Epic 12 tool (Story 13.3's ``export_backup``) replaces it.
+    An Epic 13 line for an Epic 12 tool (Story 13.3's ``export_backup``) replaces it,
+    and so does an Epic 17 line (Story 17.1's ``get_stats``): exactly one per tool in
+    its story.
     """
     epic = _epic(12)
     found = list(_DESCRIPTION.finditer(epic))
@@ -175,6 +180,19 @@ def _parse_descriptions() -> dict[str, str]:
         f"{EPICS_MD} Epic 13 Stories {sorted(stories_13)} have {len(found_13)} Description lines, "
         f"expected {len(_EPIC_13_DESCRIBED)}: {[m.group(1) or m.group(2)[:40] for m in found_13]}"
     )
+    epic_17 = _epic(17)
+    found_17 = []
+    for tool, story in _EPIC_17_STORY_OF.items():
+        in_story = [
+            match
+            for match in _DESCRIPTION.finditer(epic_17)
+            if _story_at(epic_17, match.start()) == story
+        ]
+        assert len(in_story) == 1, (
+            f"{EPICS_MD} Epic 17 Story {story} has {len(in_story)} Description lines, expected 1: "
+            f"{[m.group(1) or m.group(2)[:40] for m in in_story]}"
+        )
+        found_17.append((tool, in_story[0]))
     descriptions: dict[str, str] = {}
     pairs = [
         *(
@@ -185,6 +203,7 @@ def _parse_descriptions() -> dict[str, str]:
             (tool, match, epic_13, _EPIC_13_STORY_OF)
             for tool, match in zip(_EPIC_13_DESCRIBED, found_13, strict=True)
         ),
+        *((tool, match, epic_17, _EPIC_17_STORY_OF) for tool, match in found_17),
     ]
     for tool, match, section, story_of in pairs:
         named, text = match.group(1), match.group(2)
@@ -223,8 +242,9 @@ class _Descriptions(Mapping[str, str]):
 
 DESCRIPTIONS: Mapping[str, str] = _Descriptions()
 """Every tool's description, character for character (``epics.md``, "Tool descriptions"
-in Epics 12 and 13), with Story 12.5's sentence ending ``add_book``'s and ``edit_book``'s,
-and ``export_backup``'s from Story 13.3, which replaces Story 12.6's."""
+in Epics 12, 13 and 17), with Story 12.5's sentence ending ``add_book``'s and ``edit_book``'s,
+``export_backup``'s from Story 13.3, which replaces Story 12.6's, and ``get_stats``'s
+from Story 17.1, which replaces Story 12.2's."""
 
 
 class McpClient:

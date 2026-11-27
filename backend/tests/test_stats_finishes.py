@@ -17,15 +17,12 @@ The criteria the server decides (AR74, AR79):
 
 The list, its rows and the Stats address are read in the browser
 (``frontend/e2e/stats-finished.spec.ts``).
-
-Red phase: every leaf is skipped until the build adds ``finishes``.
 """
 
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-import pytest
 from fastapi.testclient import TestClient
 
 from bookvie.http.app import create_app
@@ -162,7 +159,6 @@ def _seed(b: LibraryBuilder) -> dict[str, str]:
     return ids
 
 
-@pytest.mark.skip(reason="Red phase: StatsView.finishes doesn't exist yet (Story 17.1)")
 def test_ac1_p0_finishes_hold_one_entry_per_finished_reading_in_the_range_read_as_stored(
     tmp_path: Path, library_builder: LibraryBuilder
 ) -> None:
@@ -227,7 +223,6 @@ def test_ac1_p0_finishes_hold_one_entry_per_finished_reading_in_the_range_read_a
         assert sum(f["finishedPages"] for f in view["finishes"]) == view["pages"], (start, end)
 
 
-@pytest.mark.skip(reason="Red phase: StatsView.finishes doesn't exist yet (Story 17.1)")
 def test_ac2_p0_finishes_are_newest_first_then_title_key_book_id_and_stored_order(
     tmp_path: Path, library_builder: LibraryBuilder
 ) -> None:
@@ -289,7 +284,6 @@ def test_ac2_p0_finishes_are_newest_first_then_title_key_book_id_and_stored_orde
     }
 
 
-@pytest.mark.skip(reason="Red phase: StatsFinish isn't in the OpenAPI schema yet (Story 17.1)")
 def test_ac3_p1_the_openapi_schema_gives_stats_view_a_required_list_of_stats_finish() -> None:
     """[P1] AC-3 what api:gen reads: StatsView.finishes, required, of StatsFinish."""
     schemas = create_app().openapi()["components"]["schemas"]
@@ -315,7 +309,6 @@ def _story_17_1_description() -> str:
     return found[0].group(2)
 
 
-@pytest.mark.skip(reason="Red phase: get_stats doesn't return finishes yet (Story 17.1)")
 def test_ac4_p1_get_stats_returns_the_routes_finishes_and_story_17_1s_description(
     connect_mcp: Callable[..., McpClient], tmp_path: Path
 ) -> None:

@@ -1,11 +1,30 @@
 import { useRef, type MouseEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { NavLink, Outlet } from 'react-router'
+import { NavLink, Outlet, useLocation } from 'react-router'
 import { useAppInfo } from '../api/views.ts'
 import { regionHost, registerRegion } from '../lib/announce.ts'
 import ThemeToggle from './ThemeToggle.tsx'
 import UpdateNotice from './UpdateNotice.tsx'
 import styles from './AppShell.module.css'
+
+// Stable ref callbacks: an inline one is detached and attached again on every render of the shell, and
+// while it is detached a page's mount effect can't clear the region (`clearAnnouncements`).
+const statusRef = (element: HTMLDivElement | null) => registerRegion('status', element)
+const alertRef = (element: HTMLDivElement | null) => registerRegion('alert', element)
+
+/**
+ * The nav's Stats link. On Stats it resets to a plain /stats in place of the entry: a route change (no
+ * marker), with no history entry added (AD-7). Its own component, so only it re-renders on a location
+ * change, not the shell.
+ */
+function StatsNavLink() {
+  const onStats = useLocation().pathname === '/stats'
+  return (
+    <NavLink to="/stats" replace={onStats} className={styles.link}>
+      Stats
+    </NavLink>
+  )
+}
 
 /**
  * The frame every page renders in: header (the top bar with skip link,
@@ -58,9 +77,7 @@ export default function AppShell({ children }: { children?: ReactNode }) {
                 </NavLink>
               </li>
               <li className={styles.item}>
-                <NavLink to="/stats" className={styles.link}>
-                  Stats
-                </NavLink>
+                <StatsNavLink />
               </li>
               <li className={styles.item}>
                 <NavLink to="/card-notes" className={styles.link}>
@@ -85,13 +102,8 @@ export default function AppShell({ children }: { children?: ReactNode }) {
       </main>
       {createPortal(
         <>
-          <div
-            role="status"
-            aria-live="polite"
-            className="visuallyHidden"
-            ref={(element) => registerRegion('status', element)}
-          />
-          <div role="alert" className="visuallyHidden" ref={(element) => registerRegion('alert', element)} />
+          <div role="status" aria-live="polite" className="visuallyHidden" ref={statusRef} />
+          <div role="alert" className="visuallyHidden" ref={alertRef} />
         </>,
         regionHost(),
       )}

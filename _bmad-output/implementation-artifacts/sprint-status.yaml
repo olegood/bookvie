@@ -159,8 +159,8 @@ development_status:
   16-2-show-only-my-favourites: done
   epic-16-retrospective: done
 
-  epic-17: backlog
-  17-1-see-the-books-finished-in-a-range: backlog
+  epic-17: in-progress
+  17-1-see-the-books-finished-in-a-range: review
   17-2-choose-a-month-or-year-by-its-bar: backlog
   epic-17-retrospective: optional
 action_items:

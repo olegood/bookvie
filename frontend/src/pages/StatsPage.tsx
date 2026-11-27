@@ -1,60 +1,124 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
-import { useStatsView, type StatsRange } from '../api/index.ts'
+import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react'
+import { useLocation, useNavigate, useNavigationType, useSearchParams } from 'react-router'
+import { useStatsView } from '../api/index.ts'
 import Button from '../components/Button.tsx'
 import FailureMessage from '../components/FailureMessage.tsx'
 import PageHeading from '../components/PageHeading.tsx'
 import RangePicker from '../components/RangePicker.tsx'
 import StatsBars from '../components/StatsBars.tsx'
+import StatsFinishedList from '../components/StatsFinishedList.tsx'
 import TextField from '../components/TextField.tsx'
 import { announce, clearAnnouncements } from '../lib/announce.ts'
 import { COULDNT_LOAD } from '../lib/copy.ts'
-import { usePageTitle } from '../lib/page.ts'
+import { samePageState, useNavigatedHere, usePageTitle } from '../lib/page.ts'
 import { useNow } from '../lib/relativeDay.ts'
 import {
+  addressNeedsFallback,
   DEFAULT_PRESET,
+  finishedHeading,
   formatCount,
   isIsoDate,
   NO_BOOKS_IN_RANGE,
   NO_BOOKS_YET,
   orderedRange,
-  presetRange,
+  parseStatsAddress,
+  selectionKey,
+  selectionRange,
   statsLine,
+  statsSearch,
   type RangePreset,
+  type StatsSelection,
 } from '../lib/stats.ts'
 import styles from './StatsPage.module.css'
 
 /**
- * What the user chose, independent of today: a preset, or Custom's ordered
- * range. The announcement follows a change of this, never a refetch or a new day.
+ * Stats (FR-16, AD-6, Story 17.1). The range lives in the address
+ * (`?range=…`, Custom with `from` and `to`): a plain `/stats` is This year.
+ * Each route change (the nav link, a link, Back, Forward) gets a fresh body,
+ * keyed by `lib/page`'s page key, which re-reads the address; the person's own
+ * range changes replace the address with the same-page marker, so the body,
+ * focus and scroll stay.
  */
-function selectionKey(preset: RangePreset, range: StatsRange | null): string {
-  if (preset !== 'custom') return preset
-  return range === null || range === 'all' ? 'custom' : `custom:${range.from}:${range.to}`
-}
-
 export default function StatsPage() {
   usePageTitle('Stats')
-  const now = useNow()
-  // Not persisted: every visit starts on This year.
-  const [preset, setPreset] = useState<RangePreset>(DEFAULT_PRESET)
-  const [customFrom, setCustomFrom] = useState('')
-  const [customTo, setCustomTo] = useState('')
+  const { key } = useNavigatedHere()
+  return <StatsBody key={key} />
+}
 
-  const range: StatsRange | null = preset === 'custom' ? orderedRange(customFrom, customTo) : presetRange(preset, now)
-  const stats = useStatsView(range)
-  const selection = selectionKey(preset, range)
+function StatsBody() {
+  const now = useNow()
+  const [params] = useSearchParams()
+  const location = useLocation()
+  const navigate = useNavigate()
+  // The committed selection: what the address names, every render. It alone drives the view.
+  const committed = parseStatsAddress(params)
+  const committedKey = selectionKey(committed)
+  const stats = useStatsView(selectionRange(committed, now))
   const failed = stats.status === 'failed'
 
-  // The selection whose result was last announced; the default's own result never is.
-  const announced = useRef(selection)
-  const ready = stats.status === 'ready' && stats.current
-  const view = stats.status === 'ready' ? stats.data.view : null
+  // The picker and Custom's fields are page state, seeded from the address on mount.
+  const [preset, setPreset] = useState<RangePreset>(committed.preset)
+  const [customFrom, setCustomFrom] = useState(committed.preset === 'custom' ? committed.range.from : '')
+  const [customTo, setCustomTo] = useState(committed.preset === 'custom' ? committed.range.to : '')
+
+  // The selection whose view is shown: while `keepPreviousData` holds the previous range's view, the
+  // heading and the list stay that view's, like its numbers and bars.
+  // Adjusted during render, React's pattern for state derived from a change.
+  const [shownSelection, setShownSelection] = useState<StatsSelection>(committed)
+  if (stats.current && selectionKey(shownSelection) !== committedKey) setShownSelection(committed)
+
+  /** Replaces the whole search with `selection`'s, carrying the same-page marker. */
+  const write = (selection: StatsSelection) => {
+    const search = `?${statsSearch(selection)}`
+    if (search === location.search) return
+    void navigate({ pathname: location.pathname, search }, { replace: true, state: samePageState() })
+  }
+
+  // Arrival: a bad, reversed or half address is replaced, quietly, with what the page shows.
+  const [arrival] = useState(() => (addressNeedsFallback(params) ? statsSearch(committed) : null))
   useEffect(() => {
-    if (!ready || view === null) return
-    if (announced.current === selection) return
-    announced.current = selection
-    announce('status', statsLine(view.books, view.pages))
-  }, [ready, selection, view])
+    if (arrival === null) return
+    void navigate({ pathname: location.pathname, search: `?${arrival}` }, { replace: true, state: samePageState() })
+    // `arrival` and the path are fixed for the body: a route change remounts it.
+  }, [arrival, location.pathname, navigate])
+
+  // Each entry starts at the top, before `PageHeading`'s passive effect focuses the `h1`, with nothing
+  // left in the regions from the page before.
+  const { navigated } = useNavigatedHere()
+  useLayoutEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'auto' })
+    if (navigated) clearAnnouncements()
+    // `navigated` is fixed for the body: it changes only with a route change, which remounts it.
+  }, [navigated])
+  // On a client-side Back or Forward, the browser restores the entry's old scroll position right after the
+  // router has rendered it, so scroll again when the view is ready and once more on the next frame, before
+  // it paints (as Card notes does). Only then: on a first load a queued frame could undo a later scroll.
+  const navigationType = useNavigationType()
+  const [restored] = useState(() => navigated && navigationType === 'POP')
+  const ready = stats.status === 'ready'
+  const scrolledReady = useRef(false)
+  useLayoutEffect(() => {
+    if (!restored || !ready || scrolledReady.current) return
+    window.scrollTo({ top: 0, behavior: 'auto' })
+    // Marked done only when the frame runs, so a StrictMode re-run schedules it again.
+    const frame = requestAnimationFrame(() => {
+      scrolledReady.current = true
+      window.scrollTo({ top: 0, behavior: 'auto' })
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [restored, ready])
+
+  // The selection whose result was last announced: the mounted one never is, so arrival (the nav, a
+  // reload, Back, a link with a range) and the fallback say nothing; only the person's change speaks.
+  const announced = useRef(committedKey)
+  const view = stats.status === 'ready' ? stats.data.view : null
+  const currentView = stats.current ? view : null
+  useEffect(() => {
+    if (currentView === null) return
+    if (announced.current === committedKey) return
+    announced.current = committedKey
+    announce('status', statsLine(currentView.books, currentView.pages))
+  }, [currentView, committedKey])
 
   // The couldn't-load line is shown in `main` and set in the shell's alert.
   useEffect(() => {
@@ -63,20 +127,41 @@ export default function StatsPage() {
     return clearAnnouncements
   }, [failed])
 
+  /** Writes Custom's range once both fields hold a complete, valid range, in order. */
+  const commitCustom = (from: string, to: string) => {
+    const range = orderedRange(from, to)
+    if (range !== null) write({ preset: 'custom', range })
+  }
+
   const choose = (next: RangePreset) => {
     if (next === preset) return
-    if (next === 'custom') {
-      // Custom starts at the range of the preset pressed before it; empty after All time.
-      const start = presetRange(preset === 'custom' ? DEFAULT_PRESET : preset, now)
-      setCustomFrom(start === 'all' ? '' : start.from)
-      setCustomTo(start === 'all' ? '' : start.to)
-    }
     setPreset(next)
+    if (next !== 'custom') {
+      write({ preset: next })
+      return
+    }
+    // Custom starts at the range of the preset pressed before it; empty after All time.
+    const start = selectionRange({ preset: preset === 'custom' ? DEFAULT_PRESET : preset }, now)
+    const from = start === 'all' ? '' : start.from
+    const to = start === 'all' ? '' : start.to
+    setCustomFrom(from)
+    setCustomTo(to)
+    commitCustom(from, to)
+  }
+
+  const changeFrom = (value: string) => {
+    setCustomFrom(value)
+    commitCustom(value, customTo)
+  }
+  const changeTo = (value: string) => {
+    setCustomTo(value)
+    commitCustom(customFrom, value)
   }
 
   // To before From: the two swap silently once focus leaves either field. Chromium
   // keeps focus inside a date input on Tab (it moves to the next segment), so a Tab
-  // counts as leaving too; a change alone doesn't, since it fires per segment.
+  // counts as leaving too; a change alone doesn't, since it fires per segment. The
+  // address already holds the range in order.
   const swapOnTab = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Tab') swapIfReversed()
   }
@@ -105,7 +190,7 @@ export default function StatsPage() {
             label="From"
             type="date"
             value={customFrom}
-            onChange={(event) => setCustomFrom(event.target.value)}
+            onChange={(event) => changeFrom(event.target.value)}
             onBlur={swapIfReversed}
             onKeyDown={swapOnTab}
           />
@@ -113,7 +198,7 @@ export default function StatsPage() {
             label="To"
             type="date"
             value={customTo}
-            onChange={(event) => setCustomTo(event.target.value)}
+            onChange={(event) => changeTo(event.target.value)}
             onBlur={swapIfReversed}
             onKeyDown={swapOnTab}
           />
@@ -141,6 +226,7 @@ export default function StatsPage() {
             <p className={styles.empty}>{shown.range === 'all' ? NO_BOOKS_YET : NO_BOOKS_IN_RANGE}</p>
           )}
           <StatsBars bucket={shown.view.bucket} buckets={shown.view.buckets} />
+          <StatsFinishedList heading={finishedHeading(shownSelection)} finishes={shown.view.finishes} />
         </>
       )}
     </div>

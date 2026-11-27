@@ -93,6 +93,7 @@ export {
   type ShelfBook,
   type ShownStats,
   type StatsBucket,
+  type StatsFinish,
   type StatsRange,
   type StatsView,
   type StatsViewState,

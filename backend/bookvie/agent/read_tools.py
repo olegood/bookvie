@@ -147,7 +147,9 @@ GET_STATS = AgentTool(
     name="get_stats",
     description=(
         "Books and pages finished, overall or for a period given as from and to dates "
-        "(YYYY-MM-DD, both or neither)."
+        "(YYYY-MM-DD, both or neither), with every finish behind them, newest first: the "
+        "Book's id, title and first author, the finish date, the pages that finish added, "
+        "and its rating."
     ),
     model=StatsArguments,
     run=_get_stats,

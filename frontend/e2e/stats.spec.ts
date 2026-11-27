@@ -116,7 +116,7 @@ test.describe('Story 6.3 See what I finished in any period (ATDD)', () => {
       const response = await (await thisYear).response()
       expect(response?.status()).toBe(200)
       const body = (await response?.json()) as Record<string, unknown>
-      expect(Object.keys(body).sort()).toEqual(['books', 'bucket', 'buckets', 'pages'])
+      expect(Object.keys(body).sort()).toEqual(['books', 'bucket', 'buckets', 'finishes', 'pages'])
       expect(['month', 'year']).toContain(body.bucket)
       expect(Array.isArray(body.buckets)).toBe(true)
 
@@ -205,7 +205,7 @@ test.describe('Story 6.3 See what I finished in any period (ATDD)', () => {
       const allTime = statsRequest(page)
       await preset(page, 'All time').click()
       const response = await (await allTime).response()
-      expect(await response?.json()).toEqual({ books: 0, pages: 0, bucket: 'month', buckets: [] })
+      expect(await response?.json()).toEqual({ books: 0, pages: 0, bucket: 'month', buckets: [], finishes: [] })
 
       await expect(page.getByRole('main').getByText('No books finished yet.', { exact: true })).toBeVisible()
       await expect(page.getByRole('main').getByText('No books finished in this range.', { exact: true })).toHaveCount(0)

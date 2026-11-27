@@ -3,7 +3,8 @@ import { useNavigatedHere } from '../lib/page.ts'
 
 /**
  * The page's one `h1`. It takes focus when it mounts after a client-side
- * navigation, including when it arrives with late data; not on first load.
+ * navigation, including when it arrives with late data, and when the page key
+ * changes; not on first load, and not on a same-page replace (`lib/page`).
  */
 export default function PageHeading(props: HTMLAttributes<HTMLHeadingElement>) {
   const ref = useRef<HTMLHeadingElement>(null)

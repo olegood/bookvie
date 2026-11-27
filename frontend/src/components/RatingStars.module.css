@@ -1,0 +1,25 @@
+/* DESIGN.md → Book detail Readings and Stats finished list: five 14px stars, 2px apart. */
+.stars {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.star {
+  width: 14px;
+  height: 14px;
+  color: var(--color-input-border);
+}
+
+.star[data-filled='true'] {
+  color: var(--color-accent);
+}
+
+@media (forced-colors: active) {
+  .star {
+    color: CanvasText;
+  }
+
+  .star[data-filled='true'] {
+    color: Highlight;
+  }
+}

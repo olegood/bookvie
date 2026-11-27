@@ -4,7 +4,7 @@ import { createRoot } from 'react-dom/client'
 import { createBrowserRouter, RouterProvider } from 'react-router'
 import { createQueryClient } from './api/index.ts'
 import AppShell from './components/AppShell.tsx'
-import { markNavigated } from './lib/page.ts'
+import { isSamePageReplace, markNavigated } from './lib/page.ts'
 import { applyTheme, readTheme } from './lib/theme.ts'
 import BackupPage from './pages/BackupPage.tsx'
 import BookDetailPage from './pages/BookDetailPage.tsx'
@@ -45,13 +45,16 @@ const router = createBrowserRouter([
     ],
   },
 ])
-// Once the location changes (link, Back, Forward), every later page's h1 takes focus.
-const initialLocation = router.state.location
-const unsubscribe = router.subscribe((state) => {
-  if (state.location !== initialLocation) {
-    markNavigated()
-    unsubscribe()
-  }
+// Once the location changes (link, Back, Forward), every later page's h1 takes focus. A same-page
+// replace (Stats writing its range) isn't a route change: it keeps the page key and focus, and the
+// subscription stays, so the next route change still counts. It subscribes before RouterProvider
+// mounts, so it runs before the router re-renders the tree, and `useNavigatedHere` reads the new page key.
+let lastLocation = router.state.location
+router.subscribe((state) => {
+  if (state.location === lastLocation) return
+  lastLocation = state.location
+  if (isSamePageReplace(state.historyAction, state.location.state)) return
+  markNavigated(state.location.key)
 })
 
 createRoot(document.getElementById('root')!).render(

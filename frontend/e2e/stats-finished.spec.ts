@@ -9,8 +9,6 @@
 //
 // Dates: `serverAtFakeToday` starts `bookvie --fake-today 2026-10-28` with the
 // browser clock at 10:00 that day in Madrid. `FINISHED` (stats.ts) holds the rows.
-//
-// Red phase: every leaf is `test.skip` until Story 17.1 is built.
 
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test } from './fixtures.ts'
@@ -46,10 +44,9 @@ const CUSTOM_FEB_APR = '/stats?range=custom&from=2026-02-01&to=2026-04-15'
 const FEB_APR_ROWS = [THIS_YEAR_ROWS[7], THIS_YEAR_ROWS[8]]
 
 test.describe('Story 17.1 See the Books finished in a range (ATDD)', () => {
-  test.skip('[P0] AC-5 This year lists every finish under the chart, one row link per finish in the view order', async ({
+  test('[P0] AC-5 This year lists every finish under the chart, one row link per finish in the view order', async ({
     page,
   }) => {
-    // Red phase: Stats has no finished list yet.
     const server = await serverAtFakeToday(page, 'stats-finished-list', FINISHED, FINISHED_FILES)
     try {
       await page.goto(`${server.url}/stats`)
@@ -71,14 +68,14 @@ test.describe('Story 17.1 See the Books finished in a range (ATDD)', () => {
       await expect(ddia).toHaveAttribute('href', `/book/${bookId(1)}`)
       await expect(ddia).toContainText(DDIA)
       await expect(ddia).toContainText('Martin Kleppmann')
-      await expect(ddia).toContainText('14 Mar 2026 · 611 pages')
+      await expect(ddia).toContainText('Finished 14 Mar 2026 · 611 pages')
       await expect(ddia.getByRole('img', { name: '4 stars', exact: true })).toHaveCount(1)
       // The cover thumbnail is decorative.
       await expect(ddia.locator('img[alt=""]')).toHaveCount(1)
 
       const xp = finishedLink(page, 'Extreme Notes')
       await expect(xp).toContainText('Kent Beck and 2 others')
-      await expect(xp).toContainText('12 Oct 2026 · 1 page')
+      await expect(xp).toContainText('Finished 12 Oct 2026 · 1 page')
       await expect(xp.getByRole('img', { name: '1 star', exact: true })).toHaveCount(1)
       // Beloved's two same-day finishes link to the same Book.
       await expect(finishedLink(page, 'Beloved')).toHaveCount(2)
@@ -100,8 +97,7 @@ test.describe('Story 17.1 See the Books finished in a range (ATDD)', () => {
     }
   })
 
-  test.skip('[P1] AC-6 the heading names each preset and each Custom form', async ({ page }) => {
-    // Red phase: Stats has no finished list heading yet.
+  test('[P1] AC-6 the heading names each preset and each Custom form', async ({ page }) => {
     const server = await serverAtFakeToday(page, 'stats-finished-headings', FINISHED, FINISHED_FILES)
     try {
       await page.goto(`${server.url}/stats`)
@@ -138,10 +134,7 @@ test.describe('Story 17.1 See the Books finished in a range (ATDD)', () => {
     }
   })
 
-  test.skip('[P1] AC-7 an unrated row, an author-less row and a coverless row keep the row layout', async ({
-    page,
-  }) => {
-    // Red phase: Stats has no finished rows yet.
+  test('[P1] AC-7 an unrated row, an author-less row and a coverless row keep the row layout', async ({ page }) => {
     // Emma is sent with no author (a stored Book always has one, so the view is
     // edited in flight), to show how the row reads without the author part.
     await page.route('**/api/views/stats**', async (route) => {
@@ -182,6 +175,8 @@ test.describe('Story 17.1 See the Books finished in a range (ATDD)', () => {
       // DDIA's cover shows as an image in the same 44 × 64 box.
       const ddiaThumb = await thumbnailLook(finishedLink(page, DDIA))
       expect([ddiaThumb.width, ddiaThumb.height, ddiaThumb.image]).toEqual([44, 64, true])
+      // The cover loads and is shown, not left hidden behind the loading fill.
+      await expect(finishedLink(page, DDIA).locator('img')).toHaveCSS('visibility', 'visible')
 
       // Unrated: no stars and no "No rating", but the same row height as a rated row.
       const dune = finishedLink(page, 'Dune')
@@ -216,10 +211,7 @@ test.describe('Story 17.1 See the Books finished in a range (ATDD)', () => {
     }
   })
 
-  test.skip('[P1] AC-8 a range with no finishes shows no heading and no list, only the empty line', async ({
-    page,
-  }) => {
-    // Red phase: Stats has no finished list yet, so there is none to take away.
+  test('[P1] AC-8 a range with no finishes shows no heading and no list, only the empty line', async ({ page }) => {
     const server = await serverAtFakeToday(page, 'stats-finished-empty', FINISHED, FINISHED_FILES)
     try {
       await page.goto(`${server.url}/stats`)
@@ -239,8 +231,7 @@ test.describe('Story 17.1 See the Books finished in a range (ATDD)', () => {
     }
   })
 
-  test.skip("[P1] AC-9 while the next range loads, the heading and list stay the shown view's", async ({ page }) => {
-    // Red phase: Stats has no finished list yet.
+  test("[P1] AC-9 while the next range loads, the heading and list stay the shown view's", async ({ page }) => {
     const server = await serverAtFakeToday(page, 'stats-finished-placeholder', FINISHED, FINISHED_FILES)
     try {
       await page.goto(`${server.url}/stats`)
@@ -278,10 +269,9 @@ test.describe('Story 17.1 See the Books finished in a range (ATDD)', () => {
     }
   })
 
-  test.skip('[P0] AC-10 a preset or a committed Custom range replaces the address, never adding history', async ({
+  test('[P0] AC-10 a preset or a committed Custom range replaces the address, never adding history', async ({
     page,
   }) => {
-    // Red phase: the range isn't in the address yet.
     const server = await serverAtFakeToday(page, 'stats-finished-address', FINISHED, FINISHED_FILES)
     try {
       await page.goto(server.url)
@@ -338,10 +328,9 @@ test.describe('Story 17.1 See the Books finished in a range (ATDD)', () => {
     }
   })
 
-  test.skip("[P1] AC-11 a range change keeps focus on the control I used and doesn't scroll, and the next route change still focuses its h1", async ({
+  test("[P1] AC-11 a range change keeps focus on the control I used and doesn't scroll, and the next route change still focuses its h1", async ({
     page,
   }) => {
-    // Red phase: the range isn't in the address yet, so there is no replace to make.
     await page.setViewportSize({ width: 1280, height: 500 })
     const server = await serverAtFakeToday(page, 'stats-finished-focus', FINISHED, FINISHED_FILES)
     try {
@@ -381,10 +370,9 @@ test.describe('Story 17.1 See the Books finished in a range (ATDD)', () => {
     }
   })
 
-  test.skip('[P0] AC-12 Back from a Book returns to the same Custom range and list, at the top with the h1 focused', async ({
+  test('[P0] AC-12 Back from a Book returns to the same Custom range and list, at the top with the h1 focused', async ({
     page,
   }) => {
-    // Red phase: the range isn't in the address yet, and there are no rows to open.
     await page.setViewportSize({ width: 1280, height: 500 })
     const server = await serverAtFakeToday(page, 'stats-finished-back', FINISHED, FINISHED_FILES)
     try {
@@ -427,10 +415,9 @@ test.describe('Story 17.1 See the Books finished in a range (ATDD)', () => {
     }
   })
 
-  test.skip('[P1] AC-13 the Stats nav link on a ranged address opens a plain /stats without adding history', async ({
+  test('[P1] AC-13 the Stats nav link on a ranged address opens a plain /stats without adding history', async ({
     page,
   }) => {
-    // Red phase: the nav link pushes a new entry, and the address isn't read.
     const server = await serverAtFakeToday(page, 'stats-finished-nav', FINISHED, FINISHED_FILES)
     try {
       await page.goto(`${server.url}/stats?range=lastYear`)
@@ -452,10 +439,9 @@ test.describe('Story 17.1 See the Books finished in a range (ATDD)', () => {
     }
   })
 
-  test.skip('[P1] AC-14 a hand-typed address falls back quietly and is replaced with what the page shows', async ({
+  test('[P1] AC-14 a hand-typed address falls back quietly and is replaced with what the page shows', async ({
     page,
   }) => {
-    // Red phase: the address isn't read or replaced yet.
     const server = await serverAtFakeToday(page, 'stats-finished-bad-address', FINISHED, FINISHED_FILES)
     try {
       // A reversed Custom opens in order.
@@ -464,6 +450,8 @@ test.describe('Story 17.1 See the Books finished in a range (ATDD)', () => {
 
       // The criterion: the address is replaced in order, with that range shown.
       await expect.poll(() => address(page)).toBe(CUSTOM_FEB_APR)
+      // The fallback is a same-page replace: a first load doesn't focus the h1.
+      await expect(page.getByRole('main').getByRole('heading', { level: 1 })).not.toBeFocused()
 
       await expect(preset(page, 'Custom')).toHaveAttribute('aria-pressed', 'true')
       await expect(finishedHeading(page)).toHaveText('Finished 1 February – 15 April 2026')
@@ -483,6 +471,7 @@ test.describe('Story 17.1 See the Books finished in a range (ATDD)', () => {
         await expect(finishedHeading(page)).toHaveText('Finished this year')
         // What the page shows: This year, written by name (see the checklist's spec questions).
         await expect.poll(() => address(page), { message: search }).toBe('/stats?range=thisYear')
+        await expect(page.getByRole('main').getByRole('heading', { level: 1 })).not.toBeFocused()
         await afterAnnounceDelay(page)
         await expect(page.getByRole('status')).toHaveText('')
         await expect(page.getByRole('alert')).toHaveText('')
@@ -492,10 +481,9 @@ test.describe('Story 17.1 See the Books finished in a range (ATDD)', () => {
     }
   })
 
-  test.skip('[P1] AC-15 only my own range change is announced; arriving with a range in the link announces nothing', async ({
+  test('[P1] AC-15 only my own range change is announced; arriving with a range in the link announces nothing', async ({
     page,
   }) => {
-    // Red phase: the address isn't read yet.
     const server = await serverAtFakeToday(page, 'stats-finished-announce', FINISHED, FINISHED_FILES)
     try {
       await page.goto(`${server.url}/stats?range=lastYear`)
@@ -522,10 +510,9 @@ test.describe('Story 17.1 See the Books finished in a range (ATDD)', () => {
     }
   })
 
-  test.skip('[P2] AC-16 Story 17.1 leaves period alone, and axe finds nothing with the list shown, in both themes', async ({
+  test('[P2] AC-16 Story 17.1 leaves period alone, and axe finds nothing with the list shown, in both themes', async ({
     page,
   }) => {
-    // Red phase: Stats has no finished list yet.
     const server = await serverAtFakeToday(page, 'stats-finished-axe', FINISHED, FINISHED_FILES)
     try {
       await page.goto(`${server.url}/stats`)

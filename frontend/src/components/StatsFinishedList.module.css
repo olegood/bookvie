@@ -1,0 +1,172 @@
+/*
+ * DESIGN.md → Stats finished list and components.stats-finished-row. The
+ * row's sizes are the component's own literal values (no new tokens).
+ */
+.finished {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  align-self: stretch;
+}
+
+.heading {
+  margin: 0;
+  font-family: var(--font-panel-heading-family);
+  font-size: var(--font-panel-heading-size);
+  font-weight: var(--font-panel-heading-weight);
+  line-height: var(--font-panel-heading-line-height);
+  color: var(--color-ink);
+}
+
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item + .item {
+  border-top: 1px solid var(--color-line);
+}
+
+/* The whole row is one link; its focus ring (the global one) goes around the row. */
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Hover and focus underline the title only. */
+.row:hover .title,
+.row:focus-visible .title {
+  text-decoration-line: underline;
+}
+
+.thumb {
+  position: relative;
+  display: block;
+  flex: none;
+  width: 44px;
+  height: 64px;
+}
+
+/* Until the image arrives: a flat fill. */
+.loading {
+  border-radius: var(--radius-cover);
+  background: var(--color-surface-inset);
+}
+
+/* The cover as is: contained at the bottom of the box, with a hairline. */
+.cover {
+  display: block;
+  box-sizing: border-box;
+  width: 44px;
+  height: 64px;
+  object-fit: contain;
+  object-position: bottom;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-cover);
+  visibility: hidden;
+}
+
+.coverLoaded {
+  visibility: visible;
+}
+
+/*
+ * The read typeset cover: the Book's exact spine color, the typeset edge
+ * (1px `spine-edge`), and a `spine-label-strip` plate 5px in from the sides,
+ * 19px from the top and 18px tall, measured from the box's outer edge, so the
+ * border comes off (absolute children sit inside it). No text.
+ */
+.typeset {
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  border: 1px solid var(--color-spine-edge);
+  border-radius: var(--radius-cover);
+  background: var(--typeset-color);
+}
+
+.plate {
+  position: absolute;
+  top: calc(19px - 1px);
+  left: calc(5px - 1px);
+  right: calc(5px - 1px);
+  height: 18px;
+  border-radius: var(--catalog-tile-typeset-plate-radius);
+  background: var(--color-spine-label-strip);
+}
+
+/* The text column: the title, then the author, each one line cut with an ellipsis; centered as a block. */
+.text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.title,
+.author {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.title {
+  font-family: var(--font-book-title-sm-family);
+  font-size: var(--font-book-title-sm-size);
+  font-weight: 600;
+  line-height: var(--font-book-title-sm-line-height);
+  color: var(--color-ink);
+}
+
+.author {
+  font-family: var(--font-body-sm-family);
+  font-size: var(--font-body-sm-size);
+  font-weight: var(--font-body-sm-weight);
+  line-height: var(--font-body-sm-line-height);
+  color: var(--color-ink-secondary);
+}
+
+/* The end column, right-aligned: the date and pages, then the rating. */
+.end {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-1);
+}
+
+.meta {
+  font-family: var(--font-meta-family);
+  font-size: var(--font-meta-size);
+  font-weight: var(--font-meta-weight);
+  line-height: var(--font-meta-line-height);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-ink-secondary);
+}
+
+/* The stars' line keeps its 14px height when unrated. */
+.rating {
+  display: flex;
+  height: 14px;
+}
+
+@media (forced-colors: active) {
+  .cover {
+    border-color: CanvasText;
+  }
+
+  .typeset {
+    background: Canvas;
+    border-color: CanvasText;
+  }
+
+  .plate {
+    background: Canvas;
+  }
+}

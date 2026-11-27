@@ -25,6 +25,7 @@ export type CardNotesGroup = Schemas['CardNotesGroup']
 export type CardNotesScope = Schemas['CardNotesScope']
 export type StatsView = Schemas['StatsView']
 export type StatsBucket = Schemas['StatsBucket']
+export type StatsFinish = Schemas['StatsFinish']
 export type AppInfoView = Schemas['AppInfoView']
 
 export interface Views {
@@ -280,8 +281,10 @@ export interface ShownStats {
  * The stats view of `range`, or nothing fetched for `null`. While a new range
  * loads (or `range` is `null`), the previous range's result stays, with
  * `current` false; `current` is true once the data is `range`'s own.
+ * `fetching` is true while any fetch of it runs, a background refetch
+ * included; a failed refetch's kept copy is settled (`fetching` false).
  */
-export type StatsViewState = ViewState<ShownStats> & { current: boolean }
+export type StatsViewState = ViewState<ShownStats> & { current: boolean; fetching: boolean }
 
 export function useStatsView(range: StatsRange | null): StatsViewState {
   const query = useQuery({
@@ -294,5 +297,5 @@ export function useStatsView(range: StatsRange | null): StatsViewState {
     placeholderData: keepPreviousData,
   })
   const current = range !== null && query.data !== undefined && !query.isPlaceholderData
-  return { ...toViewState<ShownStats>(query), current }
+  return { ...toViewState<ShownStats>(query), current, fetching: query.isFetching }
 }

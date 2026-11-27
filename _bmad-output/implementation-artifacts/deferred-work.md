@@ -1892,3 +1892,18 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-epic-16-retro-item-108-reconcile-the-spine-with-epic-16.md`
   summary: EXPERIENCE.md → Favourite star, "With the Favourites chip on" (line 260), says focus moves to the next remaining Book after an unstar with no condition, and names no rule for dropping a pending unstar; since Epic 16 retro item 107, focus moves only when the render took it away, and a search, a filter change, a star press or a New book save drops the pending unstar silently.
   evidence: Blind Hunter, review of item 108; `frontend/src/pages/CatalogPage.tsx` (`focusTakenAway`, `dropPendingUnstar`); `ARCHITECTURE-SPINE.md` AD-6 catalog filter chips item now states the rule. A UX-doc update, outside item 108's Changes list.
+
+## Deferred from: build-auto review of spec-17-1-see-the-books-finished-in-a-range (2026-11-27)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-17-1-see-the-books-finished-in-a-range.md`
+  summary: Spine drift (AD-7), reconciled before the next epic: the same-page bullet says PageHeading, StatsPage's page key and scroll all call the one lib/page function, but only main.tsx calls isSamePageReplace; the others read lib/page's module-level page key through useNavigatedHere, whose key is now that page key on every page, not location.key.
+  evidence: Spine Check, build-auto review of Story 17.1; frontend/src/main.tsx (router.subscribe), frontend/src/lib/page.ts (pageKey, markNavigated, useNavigatedHere). The single decision point holds; only the spine's wording is stale.
+- source_spec: `_bmad-output/implementation-artifacts/spec-17-1-see-the-books-finished-in-a-range.md`
+  summary: Spine drift (AD-6; Structural Seed components/ line, Capability Map FR-16 row), reconciled before the next epic: the spine names neither components/RatingStars (Book detail's stars, now shared with the Stats finished list) nor lib/catalog's authorPart.
+  evidence: Spine Check, build-auto review of Story 17.1; frontend/src/components/RatingStars.tsx, frontend/src/lib/catalog.ts (authorPart). AD-6's text agrees with the code.
+- source_spec: `_bmad-output/implementation-artifacts/spec-17-1-see-the-books-finished-in-a-range.md`
+  summary: Spine drift (AD-6, Stats address → Who writes), reconciled before the next epic: the spine says lib/stats parses the address into { range, from, to, period }, but parseStatsAddress returns StatsSelection ({ preset } or Custom's range) and reads no period, which is Story 17.2's.
+  evidence: Spine Check, build-auto review of Story 17.1; frontend/src/lib/stats.ts (parseStatsAddress). Record the shape that ships after Story 17.2.
+- source_spec: `_bmad-output/implementation-artifacts/spec-17-1-see-the-books-finished-in-a-range.md`
+  summary: Typing a Custom date in Chromium commits each complete segment state (a year passes through 0002, 0020, 0202), so each one fetches and, once current, may announce the range line: a screen-reader user can hear several lines while typing one date.
+  evidence: Blind Hunter, build-auto review of Story 17.1; frontend/src/pages/StatsPage.tsx (changeFrom, changeTo, the announce effect). Pre-existing since Story 6.3, whose range was orderedRange(customFrom, customTo) on every change with the same announce rule; Story 17.1 adds only the address replace, which adds no history. Settling it means committing or announcing on leaving a field, a UX decision.
