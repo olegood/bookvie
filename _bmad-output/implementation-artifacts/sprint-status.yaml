@@ -1478,7 +1478,7 @@ action_items:
       Changes: `_bmad/custom/bmad-create-epics-and-stories.toml`. Due: before Epic
       18 planning."
     owner: "John (PM)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-17-retro-2026-11-27.md"
   - id: "epic-17-retro-item-117-let-e2e-count-tolerate-atdd-skips"
     epic: 17
