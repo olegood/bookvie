@@ -9,6 +9,7 @@ import { describe, it } from 'node:test'
 import {
   addressNeedsFallback,
   barLines,
+  barName,
   barShare,
   finishedHeading,
   finishMeta,
@@ -16,13 +17,17 @@ import {
   formatCount,
   isIsoDate,
   orderedRange,
+  parsePeriod,
   parseStatsAddress,
+  periodHeading,
+  periodLine,
   periodName,
   presetRange,
   selectionKey,
   selectionRange,
   statsLine,
   statsSearch,
+  validPeriod,
   type StatsSelection,
 } from './stats.ts'
 
@@ -305,5 +310,61 @@ describe('finishRowName and finishMeta', () => {
     assert.equal(finishMeta({ finishDate: '2026-03-14', finishedPages: 611 }), '14 Mar 2026 · 611 pages')
     assert.equal(finishMeta({ finishDate: '2026-10-12', finishedPages: 1 }), '12 Oct 2026 · 1 page')
     assert.equal(finishMeta({ finishDate: '2026-05-05', finishedPages: 1204 }), '5 May 2026 · 1,204 pages')
+  })
+})
+
+// Story 17.2 Choose a month or year by its bar (AC-1, AC-3, AC-9).
+describe('bar names, the period heading and its status line', () => {
+  it('names a bar from its bucket, numbers grouped, singular for one', () => {
+    assert.equal(barName({ period: '2026-03', books: 3, pages: 1335 }), 'March 2026, 3 books, 1,335 pages')
+    assert.equal(barName({ period: '2024', books: 1, pages: 304 }), '2024, 1 book, 304 pages')
+    assert.equal(barName({ period: '2026-10', books: 1, pages: 1 }), 'October 2026, 1 book, 1 page')
+  })
+
+  it("heads the list and announces the bucket's books for a month or a year", () => {
+    assert.equal(periodHeading('2026-03'), 'Finished in March 2026')
+    assert.equal(periodHeading('2024'), 'Finished in 2024')
+    assert.equal(periodLine({ period: '2026-03', books: 3 }), 'Finished in March 2026: 3 books.')
+    assert.equal(periodLine({ period: '2024', books: 1 }), 'Finished in 2024: 1 book.')
+  })
+})
+
+describe('the address period', () => {
+  const period = (search: string) => parsePeriod(new URLSearchParams(search))
+  const months = {
+    bucket: 'month' as const,
+    buckets: [
+      { period: '2026-02', books: 1, pages: 286 },
+      { period: '2026-03', books: 0, pages: 0 },
+    ],
+  }
+  const years = { bucket: 'year' as const, buckets: [{ period: '2024', books: 1, pages: 304 }] }
+
+  it('reads YYYY-MM or YYYY, and nothing else', () => {
+    assert.equal(period('range=thisYear&period=2026-03'), '2026-03')
+    assert.equal(period('period=2024'), '2024')
+    assert.equal(period('range=thisYear'), null)
+    for (const bad of ['spring', '2026-3', '2026-13', '2026-00', '26', '2026-03-01', '']) {
+      assert.equal(period(`period=${bad}`), null, bad)
+    }
+  })
+
+  it('is valid only as a bucket with books, of the kind the chart draws', () => {
+    assert.equal(validPeriod('2026-02', months), true)
+    assert.equal(validPeriod('2026-03', months), false)
+    assert.equal(validPeriod('2026-06', months), false)
+    assert.equal(validPeriod('2026', months), false)
+    assert.equal(validPeriod('2024', years), true)
+    assert.equal(validPeriod('2024-01', years), false)
+    assert.equal(validPeriod(null, years), false)
+  })
+
+  it('is written last in the whole search', () => {
+    assert.equal(statsSearch({ preset: 'allTime' }, '2024'), 'range=allTime&period=2024')
+    assert.equal(
+      statsSearch({ preset: 'custom', range: { from: '2026-02-01', to: '2026-04-15' } }, '2026-03'),
+      'range=custom&from=2026-02-01&to=2026-04-15&period=2026-03',
+    )
+    assert.equal(statsSearch({ preset: 'thisYear' }, null), 'range=thisYear')
   })
 })

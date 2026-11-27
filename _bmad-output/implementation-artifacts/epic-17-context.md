@@ -50,7 +50,7 @@ Stats tells Oleg how many Books and pages he finished in a range. It doesn't yet
 - No new stored field, schema version, color or token.
 - `tokens.css` is unchanged.
 - New strings must pass `frontend/scripts/copy.test.mjs`: no "!", greeting or praise, and every `:hover` rule needs a `:focus-visible` twin. Bar keys are handled on the chart by key name, not on `window`.
-- Axe passes on Stats in both themes.
+- Axe passes on Stats in both themes. For the bar buttons alone, `label-content-name-mismatch` is excluded: their names spell out the short labels (UX-DR109's exception; Oleg, Story 17.2).
 - Existing tests change only where the epic gate in `epics.md` names them. Read that list before editing any test.
 
 ## Technical Decisions

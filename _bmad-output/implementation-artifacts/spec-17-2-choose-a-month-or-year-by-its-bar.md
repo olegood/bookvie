@@ -2,14 +2,29 @@
 title: 'Story 17.2: Choose a month or year by its bar'
 type: 'feature'
 created: '2026-11-27'
-status: 'blocked'
+status: 'in-review'
+baseline_revision: '50de623ecc24fb51664cd7270632130e51f2315c'
 review_loop_iteration: 0
-followup_review_recommended: false
+followup_review_recommended: true
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-17-context.md'
   - '{project-root}/_bmad-output/test-artifacts/atdd-checklist-17-2-choose-a-month-or-year-by-its-bar.md'
 warnings: ['oversized']
-deferred: []
+deferred:
+  - summary: >-
+      Spine drift (AD-6, Stats address → Who writes), reconciled before the next epic: the spine says lib/stats parses the address into { range, from, to, period }; after Story 17.2, parseStatsAddress returns StatsSelection and parsePeriod reads period separately, and StatsPage combines them.
+    evidence: |-
+      Spine Check, build-auto review of Story 17.2; frontend/src/lib/stats.ts (parseStatsAddress, parsePeriod), frontend/src/pages/StatsPage.tsx. Already open as deferred-work.md's Story 17.1 entry ("Record the shape that ships after Story 17.2"); no duplicate entry added.
+    location: >-
+      frontend/src/lib/stats.ts
+    severity: low
+  - summary: >-
+      Spine drift (AD-6, Stats finished list), reconciled before the next epic: the spine says the heading's and the announcement's count is the bucket's books, but the heading has no count ("Finished in March 2026", as EXPERIENCE.md and the AC say); only the announcement carries the bucket's books.
+    evidence: |-
+      Spine Check, build-auto review of Story 17.2; frontend/src/lib/stats.ts (periodHeading, periodLine). The code follows EXPERIENCE.md and epics.md; only the spine's wording is stale.
+    location: >-
+      frontend/src/lib/stats.ts
+    severity: low
 ---
 
 <intent-contract>
@@ -73,7 +88,52 @@ deferred: []
 
 **Acceptance Criteria:** AC-1 to AC-13 of epics.md Story 17.2, numbered as the ATDD checklist's registry, each pinned by its leaf in `stats-bars-select.spec.ts`. Among them:
 - Given Custom 1 February – 15 April 2026, when the chart renders, then it is the `group` "Finished by month" with three toggle buttons named "February 2026, 1 book, 286 pages", "March 2026, 3 books, 1,335 pages" and "April 2026, 2 books, 531 pages".
-- Given March selected, when axe runs on Stats in light and dark, then it finds no violation (AC-13). **Blocked:** see Auto Run Result.
+- Given March selected, when axe runs on Stats in light and dark, then it finds no violation, with `label-content-name-mismatch` excluded for the chart's bar buttons only (AC-13; option A, Spec Change Log).
+
+## Spec Change Log
+
+- 2026-11-27, Oleg's decision on the step-2 block (option A). The bar names stay as EXPERIENCE.md writes them ("March 2026, 3 books, 1,335 pages"), the labels stay inside the button, and AC-13's axe run excludes `label-content-name-mismatch` for the chart's bar buttons alone (UX-DR109 already calls the name an accepted exception). Changed: DESIGN.md → Monthly bars (Name and labels); epics.md Story 17.2's AC-13; `epic-17-context.md` Guards; the AC-13 leaf in `stats-bars-select.spec.ts`. KEEP: every other axe rule, and every other part of the page, stays in the check.
+- 2026-11-27, step 3 (build). Option A reaches two more axe calls: a bar button exists whenever Stats shows finishes, not only when one is selected, so `stats.spec.ts:299` (Story 6.3) and `stats-finished.spec.ts:526` (Story 17.1 AC-16) failed `label-content-name-mismatch` (8 nodes) too. All three axe calls now go through one helper, `statsAxeViolations` (`frontend/e2e/stats.ts`). It runs every `AXE_TAGS` rule with that one rule disabled, then that rule alone on everything except the bar buttons, as `catalog-pace-calculator.spec.ts:287–296` does. Neither call was in the gate's list, like `stats-finished.spec.ts:531–535`. The review records both.
+
+## Review Triage Log
+
+### 2026-11-27 — Review pass
+- verdicts: 34 findings — high 0, medium 4, low 17, false 13, maybe-false 0
+- findings:
+  - `low` `reject` Intent alignment (A): two existing axe calls outside the Always list changed (`stats.spec.ts:299`, `stats-finished.spec.ts:526`). — They follow from Oleg's option A: a bar button exists whenever Stats shows finishes. Recorded in the Spec Change Log; the fix would edit this spec.
+  - `false` `reject` Intent alignment (B): the axe contract now has an exception. — Oleg's option A (Spec Change Log), written into DESIGN.md, epics.md AC-13 and the epic context.
+  - `low` `reject` Intent alignment (C): a selection shows on a current view while a same-range refetch runs. — Deliberate: AC-8 needs Back to show March at once. The settled rule governs the drop, which waits for the settled view.
+  - `false` `reject` Intent alignment (D): focus moves after a release only when a lost bar held it. — epics.md AC-11 says "focus, which the released bar held, moves…": conditional is the intent's reading.
+  - `false` `reject` Intent alignment (E): the failed-refetch rule is tested only through the UI. — The UI is the outermost surface the intent names; the new leaf covers it.
+  - `low` `patch` Intent alignment (F): the same-range Custom re-commit keeps `period`, untested. — Grouped with Verification Gap 2: see there.
+  - `low` `reject` Intent alignment (G): StatsBars' roving stop and focus loss are tested only by e2e. — e2e AC-2, AC-5, AC-11 and the new leaves cover them at the surface the ACs name.
+  - `medium` `patch` Spine Check (AD-6, arrival): the arrival fallback for an unknown range or a half Custom kept a well-formed `period`, against "This year with no `period`". — Fixed: `period` is kept only when `range` parsed as given (`params.get('range') === committed.preset`); new leaf "AC-9 an arrival that falls back to This year drops period; a reversed Custom keeps it".
+  - `medium` `patch` Spine Check (AD-6, focus after a release): focus moved only when the selected bar held it, not when any bar that stopped being a button did. — Grouped with Edge Case 2: a post-render effect now moves focus to the chart's Tab stop, else the `h1`, whenever a focused bar's button left, once the view is settled, and clears `lostBar`.
+  - `low` `defer` Spine Check (AD-6, Who writes): the spine's `{ range, from, to, period }` parse shape. — Spine drift; already open in deferred-work.md from Story 17.1, noted in `deferred`, no duplicate entry.
+  - `low` `defer` Spine Check (AD-6, finished list): the spine implies the heading carries the bucket's count. — Spine drift; new deferred-work.md entry.
+  - `low` `reject` Blind (1): under forced colors a selected and focused bar shows only the focus outline. — Forced colors exist only on Windows, and bookvie runs in desktop Chrome on Oleg's Mac (AGENTS.md → Supported browser). `aria-pressed` still carries the selection, and the fix needs another drawing technique, not a direct correction.
+  - `low` `patch` Blind (2): an empty range's chart was an empty labelled `group`. — Fixed: with no bucket with books, the chart renders as before Epic 17 (`aria-hidden`, no role). `stats-bars.spec.ts`'s `chartColumns` now finds the element before the hidden table, so it still reads the all-zero chart.
+  - `false` `reject` Blind (3): narrowing by `finishDate` prefix may disagree with the bucket. — The server buckets each finish by that same local date (Story 17.1 AC-1/2), and the epic specifies narrowing by prefix. The quoted comments describe `lib/stats` and the list component, which still neither filter nor count.
+  - `false` `reject` Blind (4): a bar could filter to zero rows. — A bar is a button only when its bucket has books, and the bucket's books equal its finishes with that prefix (17.1's row-count rule).
+  - `low` `reject` Blind (5): the Auto Run Result still reads as blocked. — The fix edits this spec; Finalize rewrites the section.
+  - `low` `reject` Blind (6): the Spec Change Log doesn't list the 17.1 period-assertion rewrite. — The fix edits this spec; the Code Map and the ATDD checklist (spec question 3) record that rewrite.
+  - `low` `reject` Blind (7): the rewritten 17.1 leaf checks only the row count. — Story 17.2's own leaves pin the heading and address (AC-3, AC-9); that leaf's remaining job is the Last year press.
+  - `low` `patch` Blind (8): the added failed-refetch leaf's two `afterAnnounceDelay` calls had no comment. — Commented as `stats.spec.ts` does.
+  - `low` `reject` Blind (9): nothing proves the axe exclusion is narrow. — The second run enables the rule explicitly with `withRules` on everything but the bar buttons, and the selector names the group the component renders.
+  - `false` `reject` Blind (10): screen readers hear the bar numbers and the table. — EXPERIENCE.md keeps the table as the overview of every period, empty ones included.
+  - `false` `reject` Blind (11): design values are literals. — The spec's Always asks for literals in the CSS module, and AC-6 reads 0.35 and 6px from DESIGN.md.
+  - `low` `patch` Blind (12): `statsAxeViolations` was out of order in three import lists. — Moved.
+  - `low` `patch` Verification Gap 1: the "else the `h1`" half of AC-11 had no test. — New leaf "AC-11 a refetch that empties the only bar with finishes moves focus to the h1".
+  - `low` `patch` Verification Gap 2: the `commitCustom` same-range guard was untested. — A leaf was added, but `fill` with an unchanged value fires no `onChange`, so its first half was hollow, and no UI path commits the same ordered range again. The leaf now pins the reachable half: "AC-7 committing another Custom range releases the bar". The guard stays as a defensive no-op.
+  - `low` `patch` Verification Gap 3: keeping `period` through a reversed-Custom fallback was untested. — Covered by the new AC-9 fallback leaf (reversed Custom keeps March).
+  - `low` `reject` Verification Gap (other): the forced-colors focus ring and the track's `box-sizing` are unasserted. — Outside epics.md's forced-colors criterion, and forced colors don't exist on macOS Chrome.
+  - `medium` `patch` Edge Case 1: at midnight on This month, the new query key held the view as a placeholder, so the bars stopped being buttons and March showed unselected until the refetch landed. — Fixed: `interactive` also holds for a held view of the same selection (`selectionKey(shownSelection) === committedKey`); `settled` still needs the committed range's own view with no fetch running.
+  - `medium` `patch` Edge Case 2: a focused bar whose button unmounts without a drop leaves focus on `body` and a stale `lostBar`. — Same fix as the AD-6 focus finding.
+  - `low` `patch` Edge Case 3: Arrow, Home and End with a modifier were swallowed, blocking Cmd+Left (Back). — `onKeyDown` returns early on Alt, Meta, Ctrl or Shift.
+  - `low` `reject` Edge Case 4: forced colors, selected and focused. — Same as Blind (1).
+  - `low` `reject` Edge Case 5: a repeated `period` keeps the first value and leaves the extra in the address. — Only a hand-typed address does that, and the next write replaces the whole search; the fix adds a guard.
+  - `false` `reject` Edge Case 6 (claim): the midnight row holds only after the refetch. — Fixed by Edge Case 1's patch; the claim no longer holds.
+  - `false` `reject` Edge Case 7 (claim): two edited existing tests are missing from the Always list. — Same as Intent alignment (A).
 
 ## Design Notes
 
@@ -90,21 +150,53 @@ deferred: []
 
 ## Auto Run Result
 
-Status: blocked
-Blocking condition: intent gap
+Status: in-review
 
-**What blocks the build.** Three of Story 17.2's criteria can't all hold as the design docs write them:
-- **AC-1** (EXPERIENCE.md → Choosing a bar): a bar's accessible name is exactly "March 2026, 3 books, 1,335 pages".
-- **AC-3 and AC-6** (DESIGN.md → Monthly bars): the whole column is the button, so the visible value "1,335" and the period "Mar" (plus "2026" on the first bar and on each January) sit inside it. The ATDD leaves read them there with `barLook`.
-- **AC-13**: axe passes on Stats with a bar selected. The project's `AXE_TAGS` include `wcag21a`, which runs `label-content-name-mismatch` (WCAG 2.5.3, the rule that blocked Story 17.1). DESIGN.md's own 17.1 rule says "a name must hold the visible text in one run".
+**What was built.** On Stats, each month's or year's bar with finishes is now a toggle button in a group named "Finished by month" or "Finished by year", and the chart is one roving Tab stop (Left, Right, Home and End skip empty bars and don't wrap). Pressing a bar narrows the finished list to that period under "Finished in March 2026", announces "Finished in March 2026: 3 books.", and adds `period` to the address by a same-page replace, so Back from a Book returns to the same bar. Pressing it again, or **Show the whole range** beside the heading, widens the list. A range change releases the bar. A `period` that isn't a bar with finishes in the settled view is dropped quietly, on arrival or after a refetch, and focus moves to the chart's Tab stop, else the `h1`, when a bar that held it disappears.
 
-**Evidence (probe in this run).** I ran axe-core in Chromium, with this project's `AXE_TAGS`, on a `group` holding one bar button: `aria-label="March 2026, 3 books, 1,335 pages"`, with "1,335", a 160px track and "Mar" inside. axe reported `label-content-name-mismatch`, and so did the same button with its inner labels `aria-hidden`. axe compares the text shown on screen, so hiding the labels from assistive tech doesn't change the result. A first bar ("286", "Feb", "2026" against "February 2026, 1 book, 286 pages") fails too. The visible tokens ("1,335 Mar") are not a run in the name, because "Mar" isn't "March" and the value comes first on screen. The probe script lived in the scratchpad and was deleted. No repo file was changed apart from this spec.
+**History of this run.** The first run halted at step 2: the bar names, the labels inside the button and AC-13's axe pass couldn't all hold (axe `label-content-name-mismatch`, probed in Chromium). Oleg chose option A: keep the names and exclude that one rule for the bar buttons only (Spec Change Log). The run resumed at step 3 with a new implementation subagent.
 
-**Question for Oleg: which way should the bar go?**
-- **A. Keep the design and exempt this one check (my recommendation).** The name stays "March 2026, 3 books, 1,335 pages". AC-13's axe run excludes `label-content-name-mismatch` for the chart's buttons only (`.exclude` on the group, or `disableRules` with a comment), and DESIGN.md → Monthly bars records why: the labels are an abbreviated month and a number, the name spells them out, and the hidden table gives the same numbers. Changes: one line in AC-13's leaf, DESIGN.md, and epics.md's AC-13 wording. The cost is that a speech user who says "click Mar" may not match, while "click March" and "click 1,335" do.
-- **B. Make the visible text a run in the name.** For example, name each bar from its labels in screen order, such as "1,335 pages, Mar 2026, 3 books". This would need the year in every name, and the first bar's "286 Feb 2026" breaks the pattern, so the name would have to follow each column's lines exactly. It changes EXPERIENCE.md's name, AC-1, `FEB_APR_BARS` and the AC-1 and AC-3 leaves, and the names read less naturally.
-- **C. Take the labels out of the button.** The button becomes a transparent overlay over the column with only the track inside, and the value and period are `aria-hidden` siblings. axe passes, but AC-3's `barLook` (labels inside the button) and the "whole column" wording change, and the 2.5.3 substance is the same as A without saying so.
+**Files changed:**
+- `frontend/src/lib/stats.ts`: `parsePeriod`, `validPeriod`, `barName`, `periodHeading`, `periodLine`; `statsSearch` writes `period` last.
+- `frontend/src/components/StatsBars.tsx` and `.module.css`: the group, the toggle buttons, the roving Tab stop and keys, the focus-loss report, and the selected, dimmed, focus and forced-colors looks. With no bucket with books, the chart stays `aria-hidden` as before.
+- `frontend/src/components/StatsFinishedList.tsx` and `.module.css`: **Show the whole range** as a sibling of the `h2`.
+- `frontend/src/pages/StatsPage.tsx`: `period` read, written, validated against a settled view and dropped; the press and widen announcements; focus after a release; the arrival fallback drops `period` only when the range fell back.
+- `frontend/src/lib/stats.test.ts`: new cases.
+- `frontend/e2e/stats-bars-select.spec.ts`: the 13 ATDD leaves un-skipped, plus four leaves from this run: a failed refetch keeps the selection (matrix audit), the arrival fallback drops or keeps `period`, committing another Custom range releases the bar, and a refetch emptying the only bar focuses the `h1`.
+- `frontend/e2e/stats.ts`: `statsAxeViolations`, the one place the bar buttons' axe exception lives.
+- `frontend/e2e/stats-bars.spec.ts` (`chartColumns`, `:182`, `:236`), `stats-finished.spec.ts` (`:526` axe, `:531–535` period), `stats.spec.ts` (`:299` axe): the gate's leaves and the option A consequences.
+- Design docs (option A): DESIGN.md → Monthly bars (Name and labels), epics.md AC-13, `epic-17-context.md` Guards.
 
-**To resume:** record the choice in this spec's Spec Change Log and in the design docs it touches, set `status: ready-for-dev`, and run `bmad-build-auto` with this spec's path. The rest of the plan above doesn't depend on the choice, apart from the AC-13 line.
+**Review.** 34 findings: medium 4, low 17, false 13, none high.
+- **Patched (12 rows, 9 fixes):** 4 medium and 8 low (in triage-log rows).
+  - Medium: the midnight hold keeps the bar selected; focus moves on when any focused bar loses its button; the arrival fallback for a bad range drops `period` (AD-6).
+  - Low: modified arrow keys pass through; an empty range's chart stays `aria-hidden`; three new leaves (the `h1` fallback, the fallback `period`, another Custom range); a comment; import order.
+- **Deferred (2):** spine drift, AD-6's parse shape (already open from Story 17.1) and AD-6's heading count wording (new deferred-work.md entry).
+- **Rejected (20):** each with its reason in the Review Triage Log. The main groups:
+  - Oleg's option A and its consequences (the axe exception, two older axe calls changed).
+  - Forced colors only on Windows (the selected-and-focused outline, the unasserted forced-colors focus ring).
+  - Fixes that would edit this spec (the stale block, the change-log wording).
+  - Behaviour per the intent or the design (the selection during a same-range refetch, conditional focus, the hidden table, literal CSS values, prefix narrowing).
+- **Follow-up review recommended: true.** Patched counts by entry verdict: high 0, medium 3 entries (the midnight hold, focus after a lost bar, the arrival fallback), low 6. The unverified risk is the new post-render focus effect in `StatsPage.tsx`: it reads a ref on every render and moves focus whenever a focused bar's button left. It is tested for the release cases (AC-11, its `h1` leaf), but not for a bar that leaves while the view is held at midnight with focus on it.
 
-**Setup done in this run:** this worktree had no `node_modules` or backend venv. I ran `npm ci` (its postinstall ran `npm --prefix frontend ci` and installed Playwright's Chromium) and `uv sync` in `backend/`. Both are git-ignored, and `git status` stayed clean.
+**Verification.**
+- `npm run check` passed after the patches: format, lint and `tsc`; unit 457 passed, 0 skipped; pytest 2538 passed; e2e 970 passed; smoke ok.
+- Before the patches, the same check passed with e2e 966.
+- The Stats specs (`stats`, `stats-bars`, `stats-finished`, `stats-finished-automate`, `stats-bars-select`) all ran in that check, none skipped.
+- Matrix audit, every row covered by a leaf that ran and passed:
+  - press: AC-3; press again and Show the whole range: AC-4 and AC-5;
+  - range change: AC-7 and its Custom leaf;
+  - bad period on arrival: AC-9 and its fallback leaf;
+  - held view: AC-10;
+  - refetch empties the bar: AC-11 and its `h1` leaf; the failed refetch: its new leaf;
+  - midnight: AC-12.
+
+**Helpers:** one added, `statsAxeViolations` (`frontend/e2e/stats.ts`). No existing export runs axe with a per-element rule exception; it follows `catalog-pace-calculator.spec.ts:287–296`'s pattern and is shared by the three Stats axe calls.
+
+**Residual risks:**
+- Forced colors: a selected bar with keyboard focus shows the focus ring in place of its selection outline. That happens only on Windows.
+- The `commitCustom` same-range guard has no reachable UI trigger, so it is untested.
+- Existing tests changed outside the gate's list: `stats.spec.ts:299`, `stats-finished.spec.ts:526` and `:531–535`. The retro should note that the gate's list missed them (Epic 15 retro item 104, Epic 16 retro item 110).
+- Story 17.2 closes Epic 17. After the code review come `bmad-testarch-automate`, the Epic 17 retro and its before-next-epic items, among them the spine reconciliation.
+
+Next: run `bmad-code-review` in a new session (AGENTS.md "Story pipeline").

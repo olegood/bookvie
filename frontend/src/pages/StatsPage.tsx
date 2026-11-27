@@ -5,7 +5,7 @@ import Button from '../components/Button.tsx'
 import FailureMessage from '../components/FailureMessage.tsx'
 import PageHeading from '../components/PageHeading.tsx'
 import RangePicker from '../components/RangePicker.tsx'
-import StatsBars from '../components/StatsBars.tsx'
+import StatsBars, { type StatsBarsHandle } from '../components/StatsBars.tsx'
 import StatsFinishedList from '../components/StatsFinishedList.tsx'
 import TextField from '../components/TextField.tsx'
 import { announce, clearAnnouncements } from '../lib/announce.ts'
@@ -21,19 +21,25 @@ import {
   NO_BOOKS_IN_RANGE,
   NO_BOOKS_YET,
   orderedRange,
+  parsePeriod,
   parseStatsAddress,
+  periodHeading,
+  periodLine,
   selectionKey,
   selectionRange,
   statsLine,
   statsSearch,
+  validPeriod,
   type RangePreset,
   type StatsSelection,
 } from '../lib/stats.ts'
 import styles from './StatsPage.module.css'
 
 /**
- * Stats (FR-16, AD-6, Story 17.1). The range lives in the address
- * (`?range=…`, Custom with `from` and `to`): a plain `/stats` is This year.
+ * Stats (FR-16, AD-6, Stories 17.1 and 17.2). The range lives in the address
+ * (`?range=…`, Custom with `from` and `to`): a plain `/stats` is This year. A
+ * selected bar adds `period` last; it is checked only against a settled view,
+ * and never sent to the server.
  * Each route change (the nav link, a link, Back, Forward) gets a fresh body,
  * keyed by `lib/page`'s page key, which re-reads the address; the person's own
  * range changes replace the address with the same-page marker, so the body,
@@ -53,6 +59,9 @@ function StatsBody() {
   // The committed selection: what the address names, every render. It alone drives the view.
   const committed = parseStatsAddress(params)
   const committedKey = selectionKey(committed)
+  // The address's bar: well formed or `null`. Whether it is a bar with finishes is the shown view's to say.
+  const period = parsePeriod(params)
+  const hasPeriod = params.has('period')
   const stats = useStatsView(selectionRange(committed, now))
   const failed = stats.status === 'failed'
 
@@ -67,15 +76,21 @@ function StatsBody() {
   const [shownSelection, setShownSelection] = useState<StatsSelection>(committed)
   if (stats.current && selectionKey(shownSelection) !== committedKey) setShownSelection(committed)
 
-  /** Replaces the whole search with `selection`'s, carrying the same-page marker. */
-  const write = (selection: StatsSelection) => {
-    const search = `?${statsSearch(selection)}`
+  /** Replaces the whole search with `selection`'s (and the bar's `period`), carrying the same-page marker. */
+  const write = (selection: StatsSelection, bar: string | null = null) => {
+    const search = `?${statsSearch(selection, bar)}`
     if (search === location.search) return
     void navigate({ pathname: location.pathname, search }, { replace: true, state: samePageState() })
   }
 
   // Arrival: a bad, reversed or half address is replaced, quietly, with what the page shows.
-  const [arrival] = useState(() => (addressNeedsFallback(params) ? statsSearch(committed) : null))
+  // A well-formed `period` is kept only when the range parsed as given (a reversed Custom put in order
+  // included): a fallback to This year has no bar. The settled view decides whether a kept one stays.
+  const [arrival] = useState(() =>
+    addressNeedsFallback(params)
+      ? statsSearch(committed, params.get('range') === committed.preset ? period : null)
+      : null,
+  )
   useEffect(() => {
     if (arrival === null) return
     void navigate({ pathname: location.pathname, search: `?${arrival}` }, { replace: true, state: samePageState() })
@@ -127,10 +142,12 @@ function StatsBody() {
     return clearAnnouncements
   }, [failed])
 
-  /** Writes Custom's range once both fields hold a complete, valid range, in order. */
+  /** Writes Custom's range once both fields hold a complete, valid range, in order, and it is a new range. */
   const commitCustom = (from: string, to: string) => {
     const range = orderedRange(from, to)
-    if (range !== null) write({ preset: 'custom', range })
+    if (range === null) return
+    const next: StatsSelection = { preset: 'custom', range }
+    if (selectionKey(next) !== committedKey) write(next)
   }
 
   const choose = (next: RangePreset) => {
@@ -180,8 +197,69 @@ function StatsBody() {
 
   const shown = stats.status === 'ready' ? stats.data : null
 
+  // Story 17.2. While `keepPreviousData` holds another range's view, no bar is a button and the list isn't
+  // narrowed. A held view of the same selection (a preset's dates moving to a new day) stays interactive.
+  // Otherwise the address's period is the selected bar when the shown view has it as a bar with finishes,
+  // even while a refetch runs (so Back shows it at once).
+  const interactive = shown !== null && (stats.current || selectionKey(shownSelection) === committedKey)
+  const selected = interactive && validPeriod(period, shown.view) ? period : null
+  // Settled: the committed range's own view, with no fetch running; a failed refetch's kept copy counts.
+  const settled = shown !== null && stats.current && !stats.fetching
+  const chart = useRef<StatsBarsHandle>(null)
+  const page = useRef<HTMLDivElement>(null)
+  // A bar that held focus when its button left the chart (a refetch emptied it), until the focus move below.
+  const lostBar = useRef<string | null>(null)
+
+  // A `period` that isn't a bar with finishes in the settled view is dropped, quietly: on arrival, or when
+  // a refetch empties the selected bar.
+  const dropPeriod = settled && hasPeriod && selected === null
+  const rangeSearch = statsSearch(committed)
+  useEffect(() => {
+    if (!dropPeriod) return
+    void navigate({ pathname: location.pathname, search: `?${rangeSearch}` }, { replace: true, state: samePageState() })
+  }, [dropPeriod, rangeSearch, location.pathname, navigate])
+
+  // Once the view settles, focus that a bar held when its button left (the released bar, or any bar a
+  // refetch emptied) moves to the chart's Tab stop, else the h1. Checked after every render: `lostBar` is a ref.
+  useEffect(() => {
+    if (!settled || lostBar.current === null) return
+    lostBar.current = null
+    const active = document.activeElement
+    if (active !== null && active !== document.body) return
+    if (!chart.current?.focusStop()) page.current?.querySelector<HTMLElement>('h1')?.focus()
+  })
+
+  /** A press on a bar: select it and announce its books, or, when it is the selected one, widen the list. */
+  const toggle = (bar: string) => {
+    if (shown === null || !interactive) return
+    if (bar === selected) {
+      write(committed)
+      announce('status', statsLine(shown.view.books, shown.view.pages))
+      return
+    }
+    const bucket = shown.view.buckets.find((b) => b.period === bar)
+    if (bucket === undefined || bucket.books === 0) return
+    write(committed, bar)
+    announce('status', periodLine(bucket))
+  }
+
+  /** Show the whole range: widen the list, and focus the bar that was selected, now the chart's Tab stop. */
+  const showWholeRange = () => {
+    if (shown === null || selected === null) return
+    write(committed)
+    announce('status', statsLine(shown.view.books, shown.view.pages))
+    chart.current?.focusBar(selected)
+  }
+
+  const finishes =
+    shown === null
+      ? []
+      : selected === null
+        ? shown.view.finishes
+        : shown.view.finishes.filter((finish) => finish.finishDate.startsWith(selected))
+
   return (
-    <div className={styles.page}>
+    <div ref={page} className={styles.page}>
       <PageHeading className={styles.title}>Stats</PageHeading>
       <RangePicker value={preset} onChange={choose} />
       {preset === 'custom' && (
@@ -225,8 +303,23 @@ function StatsBody() {
           {shown.view.books === 0 && (
             <p className={styles.empty}>{shown.range === 'all' ? NO_BOOKS_YET : NO_BOOKS_IN_RANGE}</p>
           )}
-          <StatsBars bucket={shown.view.bucket} buckets={shown.view.buckets} />
-          <StatsFinishedList heading={finishedHeading(shownSelection)} finishes={shown.view.finishes} />
+          <StatsBars
+            ref={chart}
+            bucket={shown.view.bucket}
+            buckets={shown.view.buckets}
+            selected={selected}
+            interactive={interactive}
+            onToggle={toggle}
+            onFocusLost={(bar) => {
+              lostBar.current = bar
+            }}
+            resetKey={committedKey}
+          />
+          <StatsFinishedList
+            heading={selected === null ? finishedHeading(shownSelection) : periodHeading(selected)}
+            finishes={finishes}
+            onShowWholeRange={selected === null ? undefined : showWholeRange}
+          />
         </>
       )}
     </div>

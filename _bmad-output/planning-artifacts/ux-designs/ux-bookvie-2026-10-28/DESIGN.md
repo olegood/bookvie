@@ -1045,6 +1045,7 @@ The Books behind the Stats numbers (Epic 17). The bar that narrows them: [Monthl
 - **Selected bar:** the selected bar's track gets `{components.monthly-bar.selected-ring}`, and its value and period labels turn `{components.monthly-bar.selected-label}` at weight `{components.monthly-bar.selected-label-weight}`. The other bars with finishes keep their labels in `ink-secondary` at full contrast; only their fill drops to `{components.monthly-bar.dimmed-fill-opacity}` opacity. Bars with no finishes have no fill to dim. With no bar selected, every bar is drawn as before Epic 17.
 - **Bar focus:** `{components.focus-ring}` around the bar's track. On the selected bar it moves out to a `{components.monthly-bar.selected-focus-offset}` offset, outside the highlight ring, so both show. Hover: the pointer cursor only, no other change.
 - **No motion.** Selecting and dimming happen at once.
+- **Name and labels.** A bar's name spells out its labels ("March 2026, 3 books, 1,335 pages" over "1,335" and "Mar"), so the short visible labels are not one run in the name. This is the accepted exception to the name-holds-the-visible-text rule (UX-DR109): axe's `label-content-name-mismatch` is excluded for the chart's bar buttons only, and the visually hidden table gives the same numbers (Oleg, Story 17.2, 2026-11-27).
 
 ## Do's and Don'ts
 

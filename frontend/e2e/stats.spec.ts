@@ -13,13 +13,11 @@
 // AC-7 starts its own server at fake today 2027-01-01, with the browser at
 // 00:30 Madrid, which is still 31 December in UTC (R-07).
 
-import AxeBuilder from '@axe-core/playwright'
 import { expect, startSeededServer, test } from './fixtures.ts'
 import { FAKE_TODAY, serverAtFakeToday, stopAndRemove } from './home.ts'
 import { FINISH_READING } from './intents.ts'
 import {
   afterAnnounceDelay,
-  AXE_TAGS,
   caption,
   COULDNT_LOAD,
   dateField,
@@ -37,6 +35,7 @@ import {
   rangePicker,
   recordStatsRequests,
   STATS_API,
+  statsAxeViolations,
   statsRequest,
   statsRequestFor,
 } from './stats.ts'
@@ -297,14 +296,14 @@ test.describe('Story 6.3 See what I finished in any period (ATDD)', () => {
         await page.emulateMedia({ colorScheme })
         await page.goto(`${server.url}/stats`)
         await expect(figure(page, '1,010')).toBeVisible()
-        let { violations } = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze()
+        let violations = await statsAxeViolations(page)
         expect(violations.map(({ id, nodes }) => `result ${colorScheme}: ${id} (${nodes.length})`)).toEqual([])
 
         await preset(page, 'Last year').click()
         await expect(
           page.getByRole('main').getByText('No books finished in this range.', { exact: true }),
         ).toBeVisible()
-        ;({ violations } = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze())
+        violations = await statsAxeViolations(page)
         expect(violations.map(({ id, nodes }) => `empty ${colorScheme}: ${id} (${nodes.length})`)).toEqual([])
       }
     } finally {

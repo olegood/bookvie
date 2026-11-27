@@ -10,7 +10,6 @@
 // Dates: `serverAtFakeToday` starts `bookvie --fake-today 2026-10-28` with the
 // browser clock at 10:00 that day in Madrid. `FINISHED` (stats.ts) holds the rows.
 
-import AxeBuilder from '@axe-core/playwright'
 import { expect, test } from './fixtures.ts'
 import { SPINE_EDGE } from './bookcase.ts'
 import { serverAtFakeToday, stopAndRemove } from './home.ts'
@@ -19,7 +18,6 @@ import { scrollToY } from './back-to-top.ts'
 import {
   address,
   afterAnnounceDelay,
-  AXE_TAGS,
   dateField,
   DUNE_SPINE,
   figure,
@@ -35,6 +33,7 @@ import {
   PIRANESI_SPINE,
   preset,
   STATS_API,
+  statsAxeViolations,
   THIS_YEAR_ROWS,
   thumbnailLook,
 } from './stats.ts'
@@ -524,13 +523,14 @@ test.describe('Story 17.1 See the Books finished in a range (ATDD)', () => {
       for (const colorScheme of ['light', 'dark'] as const) {
         await page.emulateMedia({ colorScheme })
         await expect(finishedHeading(page)).toHaveText('Finished this year')
-        const { violations } = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze()
+        const violations = await statsAxeViolations(page)
         expect(violations.map(({ id, nodes }) => `list ${colorScheme}: ${id} (${nodes.length})`)).toEqual([])
       }
 
-      // No period is read or written: a press writes the range alone, and the list isn't narrowed.
+      // Since Story 17.2 the period is read: March narrows the list to its one finish; a press of
+      // another range writes the range alone, and the list widens to it.
       await page.goto(`${server.url}/stats?range=thisYear&period=2026-03`)
-      await expect(finishedLinks(page)).toHaveCount(9)
+      await expect(finishedLinks(page)).toHaveCount(1)
       await preset(page, 'Last year').click()
       await expect.poll(() => address(page)).toBe('/stats?range=lastYear')
       await expect(finishedLinks(page)).toHaveCount(1)

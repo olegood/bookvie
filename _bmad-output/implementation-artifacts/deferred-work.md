@@ -1913,3 +1913,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-17-1-see-the-books-finished-in-a-range.md`
   summary: Spine drift (AD-7; Capability Map FR-16 row), reconciled before the next epic: the row names only lib/page and components/PageHeading for the same-page marker, not components/AppShell (StatsNavLink, which replaces while the path is /stats) or the main.tsx router subscription, which is where isSamePageReplace is actually called. PageHeading's change in Story 17.1 is a docstring only.
   evidence: Spine Check, code review of Story 17.1; frontend/src/components/AppShell.tsx (StatsNavLink), frontend/src/main.tsx (router.subscribe). AD-7's rule agrees with the code; only the FR-16 row's file list is stale. Reconcile it with the build-auto review's AD-7 entry above.
+
+## Deferred from: build-auto review of spec-17-2-choose-a-month-or-year-by-its-bar (2026-11-27)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-17-2-choose-a-month-or-year-by-its-bar.md`
+  summary: Spine drift (AD-6, Stats finished list), reconciled before the next epic: the spine says the heading's and the announcement's count is the bucket's books, but the heading has no count ("Finished in March 2026", as EXPERIENCE.md and the AC say); only the announcement carries the bucket's books.
+  evidence: Spine Check, build-auto review of Story 17.2; frontend/src/lib/stats.ts (periodHeading, periodLine). The code follows EXPERIENCE.md and epics.md; only the spine's wording is stale. The same review also found AD-6's parse shape still stale; that is the open Story 17.1 entry above ("Record the shape that ships after Story 17.2"): parseStatsAddress returns StatsSelection and parsePeriod reads period separately, combined in StatsPage.

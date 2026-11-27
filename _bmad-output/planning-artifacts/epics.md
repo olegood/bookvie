@@ -4141,4 +4141,4 @@ So that a tall bar tells me which Books made it tall, and Back brings me to the 
 **Given** the existing Stats e2e specs
 **When** they run
 **Then** they pass, except the `stats-bars.spec.ts` leaves the Epic 17 gate names for Story 17.2, which find the chart by another locator and keep what they assert
-**And** `copy.test.mjs` and the axe checks on Stats pass with a bar selected, in both themes.
+**And** `copy.test.mjs` and the axe checks on Stats pass with a bar selected, in both themes; `label-content-name-mismatch` is excluded for the chart's bar buttons alone, whose names spell out their short labels (UX-DR109's accepted exception; Oleg, 2026-11-27).

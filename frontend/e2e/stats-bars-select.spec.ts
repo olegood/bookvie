@@ -10,7 +10,6 @@
 // Dates: `serverAtFakeToday` starts `bookvie --fake-today 2026-10-28` with the
 // browser clock at 10:00 that day in Madrid. `BARS` (stats.ts) holds the finishes.
 
-import AxeBuilder from '@axe-core/playwright'
 import { expect, test } from './fixtures.ts'
 import { systemColor } from './dev-mode.ts'
 import { serverAtFakeToday, stopAndRemove } from './home.ts'
@@ -31,7 +30,6 @@ import {
   address,
   afterAnnounceDelay,
   APRIL_ROWS,
-  AXE_TAGS,
   bar,
   barChart,
   barLook,
@@ -53,6 +51,7 @@ import {
   recordStatsRequests,
   STATS_API,
   showWholeRange,
+  statsAxeViolations,
   statsRequestFor,
 } from './stats.ts'
 
@@ -67,10 +66,9 @@ function highlightRing(page: string, accent: string): string {
 }
 
 test.describe('Story 17.2 Choose a month or year by its bar (ATDD)', () => {
-  test.skip('[P0] AC-1 the chart is a group of toggle bars named from their buckets, and empty bars are not buttons', async ({
+  test('[P0] AC-1 the chart is a group of toggle bars named from their buckets, and empty bars are not buttons', async ({
     page,
   }) => {
-    // RED: StatsBars draws an aria-hidden chart with no group and no buttons.
     const server = await serverAtFakeToday(page, 'stats-bars-buttons', BARS)
     try {
       await page.goto(`${server.url}${FEB_APR}`)
@@ -128,10 +126,9 @@ test.describe('Story 17.2 Choose a month or year by its bar (ATDD)', () => {
     }
   })
 
-  test.skip('[P0] AC-2 the chart is one Tab stop on the latest bar, and the arrows skip empty bars without wrapping', async ({
+  test('[P0] AC-2 the chart is one Tab stop on the latest bar, and the arrows skip empty bars without wrapping', async ({
     page,
   }) => {
-    // RED: the chart has no bar buttons, so Shift+Tab from the list lands elsewhere.
     const server = await serverAtFakeToday(page, 'stats-bars-keys', BARS)
     try {
       await page.goto(`${server.url}${FEB_APR}`)
@@ -193,10 +190,9 @@ test.describe('Story 17.2 Choose a month or year by its bar (ATDD)', () => {
     }
   })
 
-  test.skip('[P0] AC-3 pressing March narrows the list to its finishes, announces its books and adds period to the address', async ({
+  test('[P0] AC-3 pressing March narrows the list to its finishes, announces its books and adds period to the address', async ({
     page,
   }) => {
-    // RED: there is no March bar to press.
     const server = await serverAtFakeToday(page, 'stats-bars-press', BARS)
     try {
       await page.goto(`${server.url}${FEB_APR}`)
@@ -257,8 +253,7 @@ test.describe('Story 17.2 Choose a month or year by its bar (ATDD)', () => {
     }
   })
 
-  test.skip('[P1] AC-4 pressing April moves the selection, and pressing it again widens the list', async ({ page }) => {
-    // RED: the address's period is ignored and there are no bars to press.
+  test('[P1] AC-4 pressing April moves the selection, and pressing it again widens the list', async ({ page }) => {
     const server = await serverAtFakeToday(page, 'stats-bars-toggle', BARS)
     try {
       await page.goto(`${server.url}${FEB_APR_MARCH}`)
@@ -296,10 +291,9 @@ test.describe('Story 17.2 Choose a month or year by its bar (ATDD)', () => {
     }
   })
 
-  test.skip('[P1] AC-5 Show the whole range sits beside the heading while a bar is selected and widens the list', async ({
+  test('[P1] AC-5 Show the whole range sits beside the heading while a bar is selected and widens the list', async ({
     page,
   }) => {
-    // RED: there is no Show the whole range button.
     const server = await serverAtFakeToday(page, 'stats-bars-whole-range', BARS)
     try {
       await page.goto(`${server.url}${FEB_APR_MARCH}`)
@@ -334,10 +328,9 @@ test.describe('Story 17.2 Choose a month or year by its bar (ATDD)', () => {
     }
   })
 
-  test.skip('[P1] AC-6 the selected bar is ringed with ink labels, the others only dim their fill, with no motion', async ({
+  test('[P1] AC-6 the selected bar is ringed with ink labels, the others only dim their fill, with no motion', async ({
     page,
   }) => {
-    // RED: no bar is selected, so March's track has no ring.
     await page.emulateMedia({ colorScheme: 'light' })
     const server = await serverAtFakeToday(page, 'stats-bars-look', BARS)
     try {
@@ -435,10 +428,9 @@ test.describe('Story 17.2 Choose a month or year by its bar (ATDD)', () => {
     }
   })
 
-  test.skip('[P1] AC-7 another range releases the bar and forgets the last focused bar, even into a year chart', async ({
+  test('[P1] AC-7 another range releases the bar and forgets the last focused bar, even into a year chart', async ({
     page,
   }) => {
-    // RED: the chart has no bar buttons to release.
     const server = await serverAtFakeToday(page, 'stats-bars-range-change', BARS)
     try {
       await page.goto(`${server.url}${FEB_APR_MARCH}`)
@@ -477,10 +469,7 @@ test.describe('Story 17.2 Choose a month or year by its bar (ATDD)', () => {
     }
   })
 
-  test.skip('[P0] AC-8 Back from a Book returns to the same range, March selected and its three rows', async ({
-    page,
-  }) => {
-    // RED: there is no March bar to select.
+  test('[P0] AC-8 Back from a Book returns to the same range, March selected and its three rows', async ({ page }) => {
     const server = await serverAtFakeToday(page, 'stats-bars-back', BARS)
     try {
       await page.goto(server.url)
@@ -524,10 +513,9 @@ test.describe('Story 17.2 Choose a month or year by its bar (ATDD)', () => {
     }
   })
 
-  test.skip('[P1] AC-9 a period that is not a bar with finishes is dropped quietly, and never sent to the server', async ({
+  test('[P1] AC-9 a period that is not a bar with finishes is dropped quietly, and never sent to the server', async ({
     page,
   }) => {
-    // RED: the address keeps the period, since only range, from and to are checked on arrival.
     const server = await serverAtFakeToday(page, 'stats-bars-bad-period', BARS)
     try {
       const sent = recordStatsRequests(page)
@@ -573,10 +561,57 @@ test.describe('Story 17.2 Choose a month or year by its bar (ATDD)', () => {
     }
   })
 
-  test.skip('[P1] AC-10 while the next range loads, the shown view has no bar buttons and its list is whole', async ({
+  test('[P1] AC-9 an arrival that falls back to This year drops period; a reversed Custom keeps it', async ({
     page,
   }) => {
-    // RED: the chart is aria-hidden, not a group.
+    const server = await serverAtFakeToday(page, 'stats-bars-fallback-period', BARS)
+    try {
+      // An unknown range opens This year, which has March finishes, but with no bar.
+      await page.goto(`${server.url}/stats?range=bogus&period=2026-03`)
+      await expect(figure(page, '2,565')).toBeVisible()
+
+      // The criterion: the address is This year's, without period.
+      await expect.poll(() => address(page)).toBe('/stats?range=thisYear')
+
+      await expect(chartBars(page)).toHaveCount(5)
+      await expect(chartBars(page).and(page.locator('[aria-pressed="true"]'))).toHaveCount(0)
+      await expect(finishedLinks(page)).toHaveCount(8)
+      await afterAnnounceDelay(page)
+      await expect(page.getByRole('status')).toHaveText('')
+
+      // A reversed Custom is put in order, not a fallback: its period stays.
+      await page.goto(`${server.url}/stats?range=custom&from=2026-04-15&to=2026-02-01&period=2026-03`)
+      await expect.poll(() => address(page)).toBe(FEB_APR_MARCH)
+      await expect(bar(page, 'March 2026')).toHaveAttribute('aria-pressed', 'true')
+      await expect(finishedLinks(page)).toHaveCount(3)
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+
+  test('[P1] AC-7 committing another Custom range releases the bar', async ({ page }) => {
+    const server = await serverAtFakeToday(page, 'stats-bars-same-custom', BARS)
+    try {
+      await page.goto(`${server.url}${FEB_APR_MARCH}`)
+      await expect(finishedLinks(page)).toHaveCount(3)
+      await expect(bar(page, 'March 2026')).toHaveAttribute('aria-pressed', 'true')
+
+      // Another To is another Custom range.
+      await dateField(page, 'To').fill('2026-04-30')
+
+      // The criterion: period leaves the address and March is released.
+      await expect.poll(() => address(page)).toBe('/stats?range=custom&from=2026-02-01&to=2026-04-30')
+
+      await expect(bar(page, 'March 2026')).toHaveAttribute('aria-pressed', 'false')
+      await expect(showWholeRange(page)).toHaveCount(0)
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+
+  test('[P1] AC-10 while the next range loads, the shown view has no bar buttons and its list is whole', async ({
+    page,
+  }) => {
     const server = await serverAtFakeToday(page, 'stats-bars-placeholder', BARS)
     try {
       await page.goto(`${server.url}${FEB_APR_MARCH}`)
@@ -611,10 +646,9 @@ test.describe('Story 17.2 Choose a month or year by its bar (ATDD)', () => {
     }
   })
 
-  test.skip('[P1] AC-11 a refetch that empties the selected bar releases it and moves focus to the chart stop', async ({
+  test('[P1] AC-11 a refetch that empties the selected bar releases it and moves focus to the chart stop', async ({
     page,
   }) => {
-    // RED: the address keeps the period whatever the view says.
     const server = await serverAtFakeToday(page, 'stats-bars-refetch', BARS)
     try {
       // February holds one finish, Kindred on 10 February.
@@ -664,10 +698,85 @@ test.describe('Story 17.2 Choose a month or year by its bar (ATDD)', () => {
     }
   })
 
-  test.skip('[P2] AC-12 This month past midnight keeps its bar selected: the moving dates are not a range change', async ({
+  test('[P1] AC-11 a refetch that empties the only bar with finishes moves focus to the h1', async ({ page }) => {
+    const server = await serverAtFakeToday(page, 'stats-bars-refetch-h1', BARS)
+    try {
+      // This month holds one finish, Extreme Notes on 12 October: October is the only bar with finishes.
+      await page.goto(`${server.url}/stats?range=thisMonth&period=2026-10`)
+      await expect(finishedLinks(page)).toHaveCount(1)
+      // Setup, unasserted: focus on the October bar (from Show the whole range, back into the chart).
+      await finishedLinks(page).first().focus()
+      await page.keyboard.press('Shift+Tab')
+      await page.keyboard.press('Shift+Tab')
+
+      // Another context removed that finish: the refetch has no books at all.
+      await page.route('**/api/views/stats**', async (route) => {
+        const response = await route.fetch()
+        const view = await response.json()
+        await route.fulfill({
+          response,
+          json: {
+            ...view,
+            books: 0,
+            pages: 0,
+            buckets: view.buckets.map((b: { period: string }) => ({ ...b, books: 0, pages: 0 })),
+            finishes: [],
+          },
+        })
+      })
+      const refetch = page.waitForResponse((response) => new URL(response.url()).pathname === STATS_API)
+      await page.evaluate(() => window.dispatchEvent(new Event('focus')))
+      await refetch
+
+      // The criterion: period leaves the address.
+      await expect.poll(() => address(page)).toBe('/stats?range=thisMonth')
+
+      // No bar is left to take focus, so the h1 does; nothing is said.
+      await expect(chartBars(page)).toHaveCount(0)
+      await expect(page.getByRole('main').getByRole('heading', { level: 1 })).toBeFocused()
+      await afterAnnounceDelay(page)
+      await expect(page.getByRole('status')).toHaveText('')
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+
+  test('[P1] AC-11 a failed refetch keeps its copy, which counts as settled: the selected bar stays', async ({
     page,
   }) => {
-    // RED: the address's period is ignored, so no October bar is selected.
+    const server = await serverAtFakeToday(page, 'stats-bars-refetch-failed', BARS)
+    try {
+      await page.goto(`${server.url}${FEB_APR_MARCH}`)
+      await expect(finishedLinks(page)).toHaveCount(3)
+
+      // Network-first: the failure and its wait are in place before the focus that refetches.
+      await page.route('**/api/views/stats**', (route) =>
+        route.fulfill({ status: 503, contentType: 'text/plain', body: 'Service Unavailable' }),
+      )
+      const failedRefetch = page.waitForResponse(
+        (response) => new URL(response.url()).pathname === STATS_API && response.status() === 503,
+      )
+      await page.evaluate(() => window.dispatchEvent(new Event('focus')))
+      await (await failedRefetch).finished()
+      // The first delay lets the page take in the failure (an alert would be
+      // scheduled within it); the second lets any such alert be set.
+      await afterAnnounceDelay(page)
+      await afterAnnounceDelay(page)
+
+      // The kept copy still has March as a bar with finishes, so nothing is released.
+      await expect(bar(page, 'March 2026')).toHaveAttribute('aria-pressed', 'true')
+      expect(address(page)).toBe(FEB_APR_MARCH)
+      await expect(finishedHeading(page)).toHaveText('Finished in March 2026')
+      expect(await labelsOf(finishedLinks(page))).toEqual(MARCH_ROWS)
+      await expect(page.getByRole('status')).toHaveText('')
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+
+  test('[P2] AC-12 This month past midnight keeps its bar selected: the moving dates are not a range change', async ({
+    page,
+  }) => {
     const server = await serverAtFakeToday(page, 'stats-bars-midnight', BARS)
     try {
       await page.goto(`${server.url}/stats?range=thisMonth&period=2026-10`)
@@ -691,8 +800,7 @@ test.describe('Story 17.2 Choose a month or year by its bar (ATDD)', () => {
     }
   })
 
-  test.skip('[P2] AC-13 axe finds nothing on Stats with a bar selected, in both themes', async ({ page }) => {
-    // RED: the address's period is ignored, so no bar is selected.
+  test('[P2] AC-13 axe finds nothing on Stats with a bar selected, in both themes', async ({ page }) => {
     const server = await serverAtFakeToday(page, 'stats-bars-axe', BARS)
     try {
       await page.goto(`${server.url}${FEB_APR_MARCH}`)
@@ -704,7 +812,8 @@ test.describe('Story 17.2 Choose a month or year by its bar (ATDD)', () => {
       for (const colorScheme of ['light', 'dark'] as const) {
         await page.emulateMedia({ colorScheme })
         await expect(finishedHeading(page)).toHaveText('Finished in March 2026')
-        const { violations } = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze()
+        // The bar buttons' one exception, label-content-name-mismatch, is set aside in the helper.
+        const violations = await statsAxeViolations(page)
         expect(violations.map(({ id, nodes }) => `bar ${colorScheme}: ${id} (${nodes.length})`)).toEqual([])
       }
       // The list is March's three rows.

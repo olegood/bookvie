@@ -1,6 +1,7 @@
 // Shared by the Stats specs: stats.spec.ts (Story 6.3, the range picker and the
 // two numbers), stats-bars.spec.ts (Story 6.4, the bars and their table) and
 // stats-finished.spec.ts (Story 17.1, the finished list and the Stats address).
+import AxeBuilder from '@axe-core/playwright'
 import type { Locator, Page, Request } from '@playwright/test'
 import { ANNOUNCE_DELAY_MS } from '../src/lib/announce.ts'
 import { COVER_PNG } from './intents.ts'
@@ -10,6 +11,22 @@ export const STATS_API = '/api/views/stats'
 export const COULDNT_LOAD = "Couldn't load. Is bookvie still running?"
 export const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa']
 export const PRESETS = ['This month', 'This year', 'Last year', 'All time', 'Custom']
+
+/** The chart's bar buttons (Story 17.2), the one place `label-content-name-mismatch` is set aside. */
+const BAR_BUTTONS = '[role="group"][aria-label^="Finished by "] button'
+
+/**
+ * axe's violations on Stats with `AXE_TAGS`. A bar's name spells out its short
+ * labels ("March 2026, 3 books, 1,335 pages" over "1,335" and "Mar"), the
+ * accepted exception (DESIGN.md → Monthly bars, Name and labels; Oleg, Story
+ * 17.2): every other rule runs on the whole page, and `label-content-name-mismatch`
+ * on everything but the bar buttons.
+ */
+export async function statsAxeViolations(page: Page) {
+  const all = await new AxeBuilder({ page }).withTags(AXE_TAGS).disableRules(['label-content-name-mismatch']).analyze()
+  const names = await new AxeBuilder({ page }).withRules(['label-content-name-mismatch']).exclude(BAR_BUTTONS).analyze()
+  return [...all.violations, ...names.violations]
+}
 
 /**
  * Flow 7 at fake today 2026-10-28: three ordinary finished Readings.

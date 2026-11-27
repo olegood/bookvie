@@ -9,6 +9,21 @@
   align-self: stretch;
 }
 
+/* The heading, then Show the whole range {spacing.4} after its text, on its baseline. */
+.headingRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-4);
+}
+
+.wholeRange {
+  font-family: var(--font-meta-family);
+  font-size: var(--font-meta-size);
+  font-weight: var(--font-meta-weight);
+  line-height: var(--font-meta-line-height);
+}
+
 .heading {
   margin: 0;
   font-family: var(--font-panel-heading-family);

@@ -161,7 +161,7 @@ development_status:
 
   epic-17: in-progress
   17-1-see-the-books-finished-in-a-range: done
-  17-2-choose-a-month-or-year-by-its-bar: backlog
+  17-2-choose-a-month-or-year-by-its-bar: review
   epic-17-retrospective: optional
 action_items:
   - id: "epic-1-retro-item-1-run-an-epic-1-trace-and-gate-against-tr7"

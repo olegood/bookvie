@@ -37,10 +37,14 @@
   display: block;
 }
 
-/* A vertical track; the fill grows from the bottom. No transition: a new range redraws at once. */
+/*
+ * A vertical track; the fill grows from the bottom. No transition: a new range redraws at once.
+ * Border-box, so forced colors' border keeps it 160px tall.
+ */
 .track {
   position: relative;
   display: block;
+  box-sizing: border-box;
   width: 100%;
   max-width: 32px;
   height: 160px;
@@ -58,6 +62,54 @@
   background: var(--color-accent);
 }
 
+/*
+ * Story 17.2: a bar with finishes is a toggle button spanning its whole column
+ * (DESIGN.md → Monthly bars). Hover changes only the cursor, and nothing
+ * animates. The focus ring is drawn around the track, not the column.
+ */
+.bar {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  transition: none;
+}
+
+.bar:focus-visible {
+  outline: none;
+}
+
+.bar:focus-visible .track {
+  outline: var(--focus-ring-width) solid var(--color-accent);
+  outline-offset: var(--focus-ring-offset);
+}
+
+/* components.monthly-bar.selected-ring (components.highlight-ring), with ink labels at 600. */
+.selected .track {
+  box-shadow:
+    0 0 0 2px var(--color-page),
+    0 0 0 4px var(--color-accent);
+}
+
+.selected .value,
+.selected .period {
+  color: var(--color-ink);
+  font-weight: 600;
+}
+
+/* components.monthly-bar.selected-focus-offset: outside the highlight ring. */
+.selected:focus-visible .track {
+  outline-offset: 6px;
+}
+
+/* components.monthly-bar.dimmed-fill-opacity: only the fill dims; the labels keep full contrast. */
+.dimmed .fill {
+  opacity: 0.35;
+}
+
 @media (forced-colors: active) {
   .track {
     border: 1px solid CanvasText;
@@ -65,5 +117,20 @@
 
   .fill {
     background: Highlight;
+  }
+
+  /* No dimming; the selection is a 2px Highlight outline at offset 0, and the focus ring sits 6px out. */
+  .dimmed .fill {
+    opacity: 1;
+  }
+
+  .selected .track {
+    outline: 2px solid Highlight;
+    outline-offset: 0;
+  }
+
+  .bar:focus-visible .track {
+    outline-color: Highlight;
+    outline-offset: 6px;
   }
 }

@@ -60,7 +60,7 @@ async function booksAndPages(table: Locator): Promise<string[][]> {
   return (await tableRows(table)).map((row) => row.slice(1))
 }
 
-/** One column of the decorative chart, as drawn: its value, period lines, sizes and colours. */
+/** One column of the chart, as drawn: its value, period lines, sizes and colours. */
 type ChartColumn = {
   value: string
   period: string[]
@@ -74,11 +74,14 @@ type ChartColumn = {
   periodFontSize: string
 }
 
-/** The `aria-hidden` chart's columns, oldest first: value above, track, period below. */
+/**
+ * The chart's columns (bar buttons and empty columns alike), oldest first: value above, track, period below.
+ * The chart is the element just before the hidden table: a group with finishes, `aria-hidden` without.
+ */
 async function chartColumns(page: Page): Promise<ChartColumn[]> {
   return page
     .getByRole('main')
-    .locator('[aria-hidden="true"] > div')
+    .locator('div:has(+ table) > *')
     .evaluateAll((columns) =>
       columns.map((column) => {
         const [value, track, period] = Array.from(column.children)
@@ -179,7 +182,10 @@ test.describe('Story 6.4 See my reading month by month (ATDD)', () => {
       // 900 as the pages figure, and again as a bar value in the chart, outside Totals.
       await expect(figure(page, '900')).toBeVisible()
       await expect(
-        page.getByRole('main').locator('[aria-hidden="true"]').getByText('900', { exact: true }),
+        page
+          .getByRole('main')
+          .getByRole('group', { name: /^Finished by (month|year)$/ })
+          .getByText('900', { exact: true }),
       ).toBeVisible()
       const columns = await chartColumns(page)
       const november = columns[10]
@@ -233,7 +239,7 @@ test.describe('Story 6.4 See my reading month by month (ATDD)', () => {
       await preset(page, 'All time').click()
       await expect(page.getByRole('main').getByText('No books finished yet.', { exact: true })).toBeVisible()
       await expect(chartTable(page)).toHaveCount(0)
-      await expect(page.getByRole('main').locator('[aria-hidden="true"]')).toHaveCount(0)
+      await expect(page.getByRole('main').getByRole('group', { name: /^Finished by (month|year)$/ })).toHaveCount(0)
     } finally {
       await stopAndRemove(server)
     }

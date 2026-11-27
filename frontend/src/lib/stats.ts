@@ -3,7 +3,7 @@
 // copy. The server owns the numbers and the finishes' order; nothing here
 // counts, sums or sorts.
 
-import type { DateRange, StatsFinish, StatsRange } from '../api/index.ts'
+import type { DateRange, StatsBucket, StatsFinish, StatsRange, StatsView } from '../api/index.ts'
 import { shortDate, starsLabel } from './bookDetail.ts'
 import { authorPart } from './catalog.ts'
 import { localIsoDate } from './today.ts'
@@ -155,10 +155,17 @@ export function parseStatsAddress(params: URLSearchParams): StatsSelection {
   return { preset: DEFAULT_PRESET }
 }
 
-/** The whole Stats search for `selection`, without the `?`: `range=lastYear`, `range=custom&from=…&to=…`. */
-export function statsSearch(selection: StatsSelection): string {
-  if (selection.preset !== 'custom') return `range=${selection.preset}`
-  return `range=custom&from=${selection.range.from}&to=${selection.range.to}`
+/**
+ * The whole Stats search for `selection`, without the `?`: `range=lastYear`,
+ * `range=custom&from=…&to=…`; a selected bar's `period` comes last
+ * (`range=allTime&period=2024`).
+ */
+export function statsSearch(selection: StatsSelection, period: string | null = null): string {
+  const range =
+    selection.preset !== 'custom'
+      ? `range=${selection.preset}`
+      : `range=custom&from=${selection.range.from}&to=${selection.range.to}`
+  return period === null ? range : `${range}&period=${period}`
 }
 
 /**
@@ -242,4 +249,46 @@ export function finishRowName(
   parts.push(`finished ${shortDate(finish.finishDate)}`, pagesWords(finish.finishedPages))
   if (finish.rating !== null) parts.push(starsLabel(finish.rating))
   return parts.join(', ')
+}
+
+// --- Choosing a bar (Story 17.2) -------------------------------------------------
+
+const MONTH_PERIOD = /^\d{4}-(0[1-9]|1[0-2])$/
+const YEAR_PERIOD = /^\d{4}$/
+
+/** The address's `period` when it is shaped like a bar's (`YYYY-MM` or `YYYY`), else `null`. */
+export function parsePeriod(params: URLSearchParams): string | null {
+  const period = params.get('period')
+  if (period === null) return null
+  return MONTH_PERIOD.test(period) || YEAR_PERIOD.test(period) ? period : null
+}
+
+/**
+ * Whether `period` names a bar with finishes in `view`: the kind its chart
+ * draws (`YYYY-MM` by month, `YYYY` by year) and a bucket with `books > 0`.
+ */
+export function validPeriod(period: string | null, view: Pick<StatsView, 'bucket' | 'buckets'>): boolean {
+  if (period === null) return false
+  if (!(view.bucket === 'month' ? MONTH_PERIOD : YEAR_PERIOD).test(period)) return false
+  return view.buckets.some((b) => b.period === period && b.books > 0)
+}
+
+/** A count of books: "1 book", "3 books", "1,204 books". */
+function booksWords(books: number): string {
+  return `${formatCount(books)} ${books === 1 ? 'book' : 'books'}`
+}
+
+/** A bar's name: "March 2026, 3 books, 1,335 pages", "2024, 1 book, 304 pages". */
+export function barName(bucket: Pick<StatsBucket, 'period' | 'books' | 'pages'>): string {
+  return `${periodName(bucket.period)}, ${booksWords(bucket.books)}, ${pagesWords(bucket.pages)}`
+}
+
+/** The finished list's heading while a bar is selected: "Finished in March 2026", "Finished in 2024". */
+export function periodHeading(period: string): string {
+  return `Finished in ${periodName(period)}`
+}
+
+/** The status line when a bar is selected: "Finished in March 2026: 3 books.", the bucket's books. */
+export function periodLine(bucket: Pick<StatsBucket, 'period' | 'books'>): string {
+  return `${periodHeading(bucket.period)}: ${booksWords(bucket.books)}.`
 }

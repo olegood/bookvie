@@ -11,19 +11,30 @@ type Props = {
   heading: string
   /** The shown view's `finishes`, in the server's order: never sorted, counted or filtered here. */
   finishes: readonly StatsFinish[]
+  /** While a bar is selected: **Show the whole range** beside the heading, which widens the list (Story 17.2). */
+  onShowWholeRange?: () => void
 }
 
 /**
  * The Stats finished list (DESIGN.md → Stats finished list; UX-DR105–UX-DR108):
  * an `h2` naming the range over an `ol` with one row per finish, each row one
  * link to its Book named in one piece by `finishRowName`. Nothing when there
- * are no finishes: the page shows its empty line instead. Never announces.
+ * are no finishes: the page shows its empty line instead. While a bar is
+ * selected, **Show the whole range** sits after the heading, a sibling of the
+ * `h2` so the heading's name stays the period. Never announces.
  */
-export default function StatsFinishedList({ heading, finishes }: Props) {
+export default function StatsFinishedList({ heading, finishes, onShowWholeRange }: Props) {
   if (finishes.length === 0) return null
   return (
     <div className={styles.finished}>
-      <h2 className={styles.heading}>{heading}</h2>
+      <div className={styles.headingRow}>
+        <h2 className={styles.heading}>{heading}</h2>
+        {onShowWholeRange !== undefined && (
+          <button type="button" className={`linkButton ${styles.wholeRange}`} onClick={onShowWholeRange}>
+            Show the whole range
+          </button>
+        )}
+      </div>
       <ol className={styles.list}>
         {finishes.map((finish) => (
           <li key={finish.readingId} className={styles.item}>
