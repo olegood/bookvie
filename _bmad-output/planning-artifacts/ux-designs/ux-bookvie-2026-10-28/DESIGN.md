@@ -2,7 +2,7 @@
 name: bookvie
 description: Personal, local-first desktop web app for one reader's home library and reading. Birch Morning direction — bright, flat, Nordic; a pale birch bookcase where read books are colored and unread books are outlined.
 status: final
-updated: 2026-11-25
+updated: 2026-11-27
 colors:
   # Light theme (default tokens). Dark twins carry the -dark suffix.
   page: '#F6F4EF'
@@ -421,6 +421,36 @@ components:
     fill: '{colors.accent}'
     track: '{colors.accent-soft}'
     label: '{typography.meta}'
+    # Epic 17: a bar with finishes is a toggle button (EXPERIENCE.md -> Stats).
+    selected-ring: '{components.highlight-ring.ring}'
+    selected-label: '{colors.ink}'
+    selected-label-weight: '600'
+    dimmed-fill-opacity: 0.35
+    selected-focus-offset: 6px
+  stats-finished-row:
+    divider: '1px solid {colors.line}'
+    padding-y: '{spacing.2}'
+    gap: '{spacing.3}'
+    thumbnail-width: 44px
+    thumbnail-height: 64px
+    thumbnail-radius: '{rounded.cover}'
+    thumbnail-edge: '1px solid {colors.line}'
+    typeset-edge: '{components.catalog-tile.typeset-edge}'
+    typeset-plate: '{colors.spine-label-strip}'
+    typeset-plate-inset: 5px
+    typeset-plate-top: 19px
+    typeset-plate-height: 18px
+    title: '{typography.book-title-sm}'
+    title-weight: '600'
+    title-color: '{colors.ink}'
+    author: '{typography.body-sm}'
+    author-color: '{colors.ink-secondary}'
+    meta: '{typography.meta}'
+    meta-color: '{colors.ink-secondary}'
+    star-size: 14px
+    star-gap: 2px
+    star-on: '{colors.accent}'
+    star-off: '{colors.input-border}'
   chip:
     background: '{colors.surface-inset}'
     border: '1px solid {colors.input-border}'
@@ -679,6 +709,8 @@ Non-text pairs (target 3.0):
 | `library-meter` fill vs `page` | 4.96 | 7.68 |
 | `library-meter` track (`line`) vs `page` — decorative; "X of Y finished" carries the value | 1.21 | 1.45 |
 | `accent-soft` track vs `surface` — decorative; the figure or "p.N of M" text carries the value | 1.22 | 1.29 |
+| Dimmed monthly-bar fill (`accent` at 0.35) vs `accent-soft` track — decorative; the value label above it stays at full contrast and the bar's name carries the numbers | 1.56 | 1.90 |
+| Selected monthly-bar fill vs a dimmed one — decorative; the highlight ring and `aria-pressed` carry the selection | 2.87 | 2.79 |
 
 The marker dot is identified against its own `marker-ring`, and the focus ring by its internal `accent`-to-`page` edge, so neither depends on the spine fill (which may be any color).
 
@@ -746,6 +778,7 @@ Under `forced-colors: active`:
 - Card note boxes: the front uses `forced-color-adjust: none` with a `CanvasText` fill, like a read spine. The label becomes `Canvas` with `CanvasText` text. Each card becomes `Canvas` with a 1px `CanvasText` border. The pill becomes `Canvas` with `CanvasText` text, a 1px `CanvasText` border and a `CanvasText` dot, like the DEV pill. The fade's opacity and the lift still apply, so the contrast deviation covers forced colors too. The box's focus ring takes the system color. The open box strip uses `forced-color-adjust: none` with `CanvasText`.
 - Favourite star: every star, the chip's included, uses `forced-color-adjust: none` with a `CanvasText` fill (starred) or stroke (unstarred); on covers and spines it sits on a `Canvas` halo or square. The shape, filled or outline, carries the state. The Favourites chip is a chip and keeps its border indicator.
 - Catalog tiles: the finished ribbon and the reading bar's fill use `forced-color-adjust: none` with `CanvasText`, the bar's track becomes `Canvas` with a `CanvasText` outline, the typeset cover becomes `Canvas` with a `CanvasText` border, its text `CanvasText`, and the cover hairline and the loading box's border become `CanvasText`.
+- Stats: the dimmed bars' opacity is dropped, so every fill looks the same, and the selected bar's highlight ring becomes a 2px `Highlight` outline at offset 0, which then carries the selection alone. A bar's focus ring takes the system color at `{components.monthly-bar.selected-focus-offset}`. In the finished list, the typeset cover becomes `Canvas` with a `CanvasText` border, as on a tile, and the rating stars follow Book detail's Readings.
 
 Read and unread stay distinct.
 
@@ -793,6 +826,7 @@ Scale: 4 / 8 / 12 / 16 / 20 / 24 / 32 / 36 (`{spacing.1}`–`{spacing.8}`). Comp
 - **Spine sizing.** Width is always `{spacing.spine-width}` (28px). Height doesn't have to fit the title, but it still grows with it, so a shelf of mixed titles has mixed heights: **height = `{spacing.spine-height-min}` + `{components.spine.height-title-ratio}` × the title's rendered one-line length in `spine-label`**, rounded up to the next `{spacing.spine-height-step}` (8px) and capped at `{spacing.spine-height-max}` (120–200px). Examples: *Dune* (about 29px of text) → 136px; *Persuasion* (about 60px) → 144px; *The Left Hand of Darkness* (about 146px) → 168px; *The Visual Display of Quantitative Information* (about 250px) → 200px. Measure the rendered title, not a character count, so user text-spacing overrides grow the spine. The label itself is capped by the label strip (Components → Spine) and never wraps; the full title is always in the accessible name and the popover. Unread spines place their label at the same position and cap, without the strip.
 - **Tiles.** A grid on the plain `page` background (no card, no planks): `repeat(auto-fill, minmax({components.catalog-tile.cover-min-width}, 1fr))`, `{components.catalog-tile.column-gap}` between columns and `{components.catalog-tile.row-gap}` between rows. That gives 5 columns at 1024px, 7 at 1280px and 8 at 1440px. Each tile's cover box is the column width at 2:3, so every box in the grid has the same size and the grid never moves while covers load. Covers sit at the bottom of the box, so a row of mixed shapes shares one bottom line. Reference: [catalog-tiles-reference](imports/catalog-tiles-reference.png).
 - **Card notes.** `h1` "Card notes"; the "In *X*" chip under it (open box only); then the toolbar: Search card notes with its visible label, then, unscoped only, the Card notes view toggle and the Card notes count line, `{spacing.4}` apart. Then the boxes or the list. **Boxes:** a grid on the plain `page` background, `repeat(auto-fill, {components.card-note-box.width})`, left-aligned, `{components.card-note-box.column-gap}` between columns and `{components.card-note-box.row-gap}` between rows. That gives 4 columns at 1024px and 5 at 1280px and 1440px. Every box has the same size, so the grid never moves when a search changes. **The open box:** the open box strip runs the full width of the window directly under the app shell, above the page's top padding. Mocks: Components → Card note box.
+- **Stats.** One left-aligned column, `{spacing.5}` between blocks: `h1` "Stats"; the range picker (with From and To under it for Custom); the two big numbers; the monthly bars at full width; then the finished list's `h2` and **Show the whole range** (Stats finished list → Heading) and the list at full width. Mock: [epic17-options](mockups/epic17-options.html) (row R2, bar B2).
 - **Side panel.** Anchored to the right edge over the current page (Catalog for New book, Book detail for Edit book), full height below the top nav. The panel body sets `scroll-padding-bottom` to the sticky footer's height, so a focused field is never hidden behind the footer.
 
 ## Elevation & Depth
@@ -869,7 +903,8 @@ Visual specs. Behavior lives in EXPERIENCE.md → Component Patterns, under the 
 | **Pile** | Modal on `page` with `dialog` radius and shadow, over the scrim. A **Close** `button-secondary` (text label, not only a glyph) at the top right. One `card-note` at a time, centered, larger (`pile-text`), its page ref ("p.42" or "pp.42–45") below the text in `meta`, `ink-tertiary` (plain text, not the list's chip button), a faint stacked-card edge behind it (two 1px `line` offsets). Controls below: Previous · "N of M" · Next, and an order control (Page order · Shuffled) styled as a segmented control. At either end the inactive button keeps its shape with `ink-tertiary` text. Mock: [key-book-detail](mockups/key-book-detail.html) (Alternate); it predates Story 5.4, which drops its live region on the card (EXPERIENCE.md → Pile) and the Book title inside the card (the title is in the heading). |
 | **Pace calculator** | Collapsed: `link` "How long until…?". Expanded: inline row on `surface-inset` — "pages/day" field (Text field, 80px; `type="text"` with `inputmode="decimal"`, so any text can be typed), result in `body` ("About 9 months · July 2027"). No error styling. With nothing left to read, "Nothing left to read." in `body-sm` / `ink-secondary` replaces the row. |
 | **Stats range picker** | Segmented presets (This month · This year · Last year · All time · Custom); Custom reveals two date fields ("From", "To"). |
-| **Monthly bars** | `{components.monthly-bar}`. One vertical bar per month (one per year for ranges over 24 months), height proportional to pages finished; value label above the bar in `meta`; period label below. Two big numbers above the chart: books finished, pages finished, in `gauge-figure` with `meta` captions. |
+| **Monthly bars** | `{components.monthly-bar}`. One vertical bar per month (one per year for ranges over 24 months), height proportional to pages finished; value label above the bar in `meta`; period label below. Two big numbers above the chart: books finished, pages finished, in `gauge-figure` with `meta` captions. Selected, dimmed and focused bars: [Monthly bars](#monthly-bars) below. |
+| **Stats finished list** | See [Stats finished list](#stats-finished-list) below. |
 | **Backup page** | Three blocks on `surface` cards, stacked: Export (one `button-primary` "Export all data", "Last export: N days ago" below in `meta`/`ink-tertiary`, and the Dropbox backup line under it), Restore (`button-secondary` "Restore from file…", one-line explanation), and About this copy. |
 | **About this copy** | `{components.about-card}`. The third Backup card, same frame as the other two. Heading "ABOUT THIS COPY" in `section-label`/`ink-tertiary`. Line 1 in `body-sm`/`ink-secondary`: "bookvie 1.1.0"; on a dev server "bookvie 1.1.0 (a1b2c3d) · Development server", the parts joined by " · " (space, middle dot, space, as in the tab title), not a drawn dot. Line 2, same style: "Data folder: ~/bookvie-data"; a long path wraps at any character (`overflow-wrap: anywhere`) inside the card. All sans, no monospace. This third card supersedes plan D9's "under Last export" placement (Oleg's pick B1). Mock: [epic11-options](mockups/epic11-options.html) B1, which shows the dev text on two lines and predates the " · " rule. |
 | **Dropbox backup line** | `{components.dropbox-backup-line}`. A second `meta` line in the Export card, directly under "Last export", in the same left alignment; it wraps inside the card (a Failed reason can take two lines). Failed in `ink` (`text-color-strong`), like "Couldn't save"; every other state in `ink-tertiary`, like "Last export". Text only: no dot, glyph, icon, badge shape, tint or color, so it needs no forced-colors rule. The pattern "Dropbox backup: *detail*" carries it. Commands in a Failed reason stay in the body font, not monospace. Supersedes the colored dots in plan D11 (Oleg) and, since 2026-11-23, the five-state auto-backup line. |
@@ -988,6 +1023,29 @@ Accepted layout; mock [key-book-detail](mockups/key-book-detail.html). Mirrors t
   - **How long until…?:** Pace calculator inline.
   - **Change color:** color line ("Color: Teal, from cover", "Color: Sage" or "Color: set by you") in `meta`/`ink-secondary` with a 16px swatch of the current color, then the "From cover" chip and the eight curated swatches, styled exactly as in the Spine popover; "· shown once read" on an unread Book.
 
+### Stats finished list
+
+The Books behind the Stats numbers (Epic 17). The bar that narrows them: [Monthly bars](#monthly-bars). Mock: [epic17-options](mockups/epic17-options.html). Oleg picked row R2 and bar B2. Where the mock and the spines differ, the spines win: the mock draws only the filled rating stars, and the list follows Book detail's five.
+
+- **Heading:** the list's `h2` in `{typography.panel-heading}`, `ink`. **Show the whole range** is a `button` styled as a `link`, in `meta`, `{spacing.4}` after the heading's text, on its baseline.
+- **Row:** `{components.stats-finished-row}`, an `ol` with no markers, each row divided by `{components.stats-finished-row.divider}` and `{components.stats-finished-row.padding-y}` above and below. Left to right, `{components.stats-finished-row.gap}` apart: the thumbnail, the text column (fluid), the end column (right-aligned).
+  - **Thumbnail:** `{components.stats-finished-row.thumbnail-width}` × `{components.stats-finished-row.thumbnail-height}`, the size of the Up next row's, with `{components.stats-finished-row.thumbnail-radius}` corners. A cover is shown as is (`object-fit: contain`, at the bottom) with a `{components.stats-finished-row.thumbnail-edge}` hairline.
+  - **Typeset cover:** a finished Book is always read, so its typeset cover is always the read variant: the Book's exact spine color, `{components.stats-finished-row.typeset-edge}` all round, and a `{components.stats-finished-row.typeset-plate}` plate `{components.stats-finished-row.typeset-plate-inset}` in from the sides, `{components.stats-finished-row.typeset-plate-top}` from the top and `{components.stats-finished-row.typeset-plate-height}` tall, with `{components.catalog-tile.typeset-plate-radius}` corners. It holds no text at this size; the title is next to it.
+  - **Text column:** line 1, the title in `{components.stats-finished-row.title}` at weight `{components.stats-finished-row.title-weight}`, `{components.stats-finished-row.title-color}`; line 2, the author in `{components.stats-finished-row.author}`, `{components.stats-finished-row.author-color}`. Each is one line, cut with an ellipsis.
+  - **End column:** line 1, "14 Mar 2026 · 611 pages" in `{components.stats-finished-row.meta}`, `{components.stats-finished-row.meta-color}`, tabular figures; line 2, the rating: five `{components.stats-finished-row.star-size}` stars `{components.stats-finished-row.star-gap}` apart, filled `{components.stats-finished-row.star-on}` up to the rating, the rest outlined in `{components.stats-finished-row.star-off}`, exactly as in Book detail's Readings. Never gold. An unrated row keeps the line's height, empty, so rows stay even.
+  - **Link states:** the whole row is the link. Hover and `:focus-visible` underline the title only (the copy test, `frontend/scripts/copy.test.mjs`, needs a focus twin for every hover rule). Focus: `{components.focus-ring}` around the whole row.
+  - **No author:** the text column holds the title alone, vertically centered.
+- **Dark theme:** the same layout. The tokens take their dark twins; a read typeset cover's fill and plate are the same in both themes, as on tiles.
+- **No motion.** Narrowing the list happens at once, like a range change.
+
+### Monthly bars
+
+`{components.monthly-bar}`. The states a bar takes once it can be selected (Epic 17; EXPERIENCE.md → Stats → Choosing a bar). Mock: [epic17-options](mockups/epic17-options.html), bar B2.
+
+- **Selected bar:** the selected bar's track gets `{components.monthly-bar.selected-ring}`, and its value and period labels turn `{components.monthly-bar.selected-label}` at weight `{components.monthly-bar.selected-label-weight}`. The other bars with finishes keep their labels in `ink-secondary` at full contrast; only their fill drops to `{components.monthly-bar.dimmed-fill-opacity}` opacity. Bars with no finishes have no fill to dim. With no bar selected, every bar is drawn as before Epic 17.
+- **Bar focus:** `{components.focus-ring}` around the bar's track. On the selected bar it moves out to a `{components.monthly-bar.selected-focus-offset}` offset, outside the highlight ring, so both show. Hover: the pointer cursor only, no other change.
+- **No motion.** Selecting and dimming happen at once.
+
 ## Do's and Don'ts
 
 | Do | Don't |
@@ -1008,6 +1066,7 @@ Accepted layout; mock [key-book-detail](mockups/key-book-detail.html). Mirrors t
 | One quiet fill on finish | Confetti, sound, bouncing, replays |
 | Show a tile's cover as is, with status by ribbon and bar | Dim, desaturate, crop or tint covers to show status |
 | When a Card note box fades, keep its "M of N" pill or count, its accessible name and a full-strength focus ring | Let the fade alone say "no match", or fade the focus ring with the box |
+| When a Stats bar is selected, ring it and dim only the other bars' fills | Dim the other bars' value or period labels, or let the dimming alone say which bar is selected |
 | Same layout in light and dark; read spine fills and label strips identical in both (only `spine-edge` has a dark twin) | Theme-specific layouts or recolored read spines |
 
 ## Direction history

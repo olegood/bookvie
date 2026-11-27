@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Epic 17 — Stats finished list and selected bar options</title>
+<style>
+  :root {
+    --page:#F6F4EF; --surface:#FFFFFF; --surface-inset:#FAF9F6; --line:#E4DFD5; --input-border:#8A8273;
+    --ink:#2B2E2A; --ink2:#5F635C; --ink3:#666961; --accent:#557059; --accent-soft:#E3EBE2;
+    --edge:#5E584D; --strip:#FBF8F1;
+  }
+  .dark {
+    --page:#191B18; --surface:#222520; --surface-inset:#1D201B; --line:#343831; --input-border:#767A6F;
+    --ink:#ECEAE3; --ink2:#B3B7AD; --ink3:#9A9E94; --accent:#93B597; --accent-soft:#2C3A2E; --edge:#858A7F;
+  }
+  body { margin:0; font:14px/1.45 system-ui,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif; background:#ddd; color:#2B2E2A; }
+  h1 { font-size:22px; margin:24px 32px 4px; }
+  p.lead { margin:0 32px 16px; color:#5F635C; max-width:960px; }
+  section { margin:0 32px 32px; }
+  section > h2 { font-size:17px; margin:0 0 4px; }
+  section > p { margin:0 0 10px; color:#5F635C; max-width:960px; }
+  .pair { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .theme { background:var(--page); color:var(--ink); padding:18px 20px; border-radius:8px; }
+  .tag { font-size:12px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--ink3); margin-bottom:10px; }
+  .opt-name { font-size:13px; font-weight:700; margin:18px 0 6px; color:#2B2E2A; }
+  .opt-note { font-size:13px; color:#5F635C; margin:0 0 8px; max-width:960px; }
+
+  /* list heading */
+  .lh { display:flex; align-items:baseline; gap:16px; margin:0 0 10px; }
+  .lh h3 { margin:0; font:600 17px/1.3 system-ui; color:var(--ink); }
+  .lh a { color:var(--accent); font-size:13px; text-decoration:underline; }
+  ol { list-style:none; margin:0; padding:0; }
+  li a.row { color:inherit; text-decoration:none; display:flex; align-items:center; gap:12px; border-radius:4px; }
+  li a.row:hover .t { text-decoration:underline; }
+  .t { font:600 15px/1.3 Georgia,"Iowan Old Style",serif; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .au { font-size:13px; color:var(--ink2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .meta { font-size:12px; color:var(--ink2); font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .stars { display:inline-flex; gap:1px; vertical-align:-2px; }
+  .stars svg { width:12px; height:12px; }
+  .stars .on { fill:var(--accent); }
+  .stars .off { display:none; }
+  .grow { flex:1; min-width:0; }
+
+  /* thumbnails */
+  .th { flex:none; border-radius:2px; box-sizing:border-box; border:1px solid var(--line); overflow:hidden; position:relative; }
+  .th.s32 { width:32px; height:48px; } .th.s44 { width:44px; height:64px; }
+  .th.img { background:linear-gradient(160deg,#c9a15c,#7a4b2a); }
+  .th.img2 { background:linear-gradient(160deg,#2c4a6b,#0f1d2b); }
+  .th.type { border:1px solid var(--edge); }
+  .th.type::after { content:""; position:absolute; left:4px; right:4px; top:30%; height:28%; background:var(--strip); border-radius:1px; }
+  .th.type.s44::after { left:5px; right:5px; }
+
+  /* R1 */
+  .r1 li { padding:6px 0; border-bottom:1px solid var(--line); }
+  .r1 .line1 { display:flex; gap:10px; align-items:baseline; min-width:0; }
+  /* R2 */
+  .r2 li { padding:8px 0; border-bottom:1px solid var(--line); }
+  .r2 .right { text-align:right; display:flex; flex-direction:column; gap:3px; align-items:flex-end; }
+  /* R3 */
+  .r3 li { padding:6px 0; border-bottom:1px solid var(--line); }
+  .r3 .date { width:92px; flex:none; }
+  .r3 .pages { width:80px; text-align:right; flex:none; }
+  .r3 .st { width:70px; flex:none; }
+
+  /* chart */
+  .chart { display:flex; gap:8px; align-items:stretch; }
+  .col { flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; min-width:0; border-radius:4px; }
+  .val, .per { font-size:12px; color:var(--ink2); font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .trk { position:relative; width:100%; max-width:32px; height:120px; background:var(--accent-soft); border-radius:4px; overflow:hidden; }
+  .fil { position:absolute; left:0; right:0; bottom:0; background:var(--accent); }
+  .col.empty .trk { }
+  /* B1 — dim + underline marker */
+  .b1 .col.dim .fil { opacity:.35; }
+  .b1 .col.sel .per { color:var(--ink); font-weight:600; box-shadow:inset 0 -2px 0 var(--accent); padding-bottom:2px; }
+  .b1 .col.sel .val { color:var(--ink); font-weight:600; }
+  /* B2 — dim + ring around the selected track */
+  .b2 .col.dim .fil { opacity:.35; }
+  .b2 .col.sel .trk { overflow:visible; box-shadow:0 0 0 2px var(--page), 0 0 0 4px var(--accent); }
+  .b2 .col.sel .fil { border-radius:4px; }
+  .b2 .col.sel .val, .b2 .col.sel .per { color:var(--ink); font-weight:600; }
+  /* B3 — dim the whole column (labels too) + chip-style selected column */
+  .b3 .col.dim { opacity:.45; }
+  .b3 .col.sel { background:var(--accent-soft); box-shadow:inset 0 0 0 2px var(--accent); padding:4px 0; margin:-4px 0; }
+  .b3 .col.sel .trk { background:var(--surface); }
+  .b3 .col.sel .val, .b3 .col.sel .per { color:var(--ink); font-weight:600; }
+  .focus .trk { outline:2px solid var(--accent); outline-offset:2px; }
+</style>
+</head>
+<body>
+<h1>Epic 17: the finished list and the selected bar</h1>
+<p class="lead">Options for the two visual choices that plan step 2 leaves open (stats-finished-books-plan D3, D7, D10). Only existing tokens are used. Stars are always sage <code>accent</code>, never gold. A finished Book is always read, so its typeset cover is always the read variant: its spine color with the paper plate. At thumbnail size the plate holds no text. Pick one row and one bar style, or mix them.</p>
+
+<template id="stars4"><span class="stars" aria-hidden="true"><svg viewBox="0 0 24 24"><path class="on" d="M12 2l3 7 7 .6-5.3 4.7 1.6 7.2L12 17.8 5.7 21.5l1.6-7.2L2 9.6 9 9z"/></svg><svg viewBox="0 0 24 24"><path class="on" d="M12 2l3 7 7 .6-5.3 4.7 1.6 7.2L12 17.8 5.7 21.5l1.6-7.2L2 9.6 9 9z"/></svg><svg viewBox="0 0 24 24"><path class="on" d="M12 2l3 7 7 .6-5.3 4.7 1.6 7.2L12 17.8 5.7 21.5l1.6-7.2L2 9.6 9 9z"/></svg><svg viewBox="0 0 24 24"><path class="on" d="M12 2l3 7 7 .6-5.3 4.7 1.6 7.2L12 17.8 5.7 21.5l1.6-7.2L2 9.6 9 9z"/></svg></span></template>
+
+<section>
+  <h2>1. The list row</h2>
+  <p>Each row: the cover or typeset cover, the title, the author, the pages, the finish date and the rating. The whole row is one link. The third Book is unrated, so it shows no stars.</p>
+
+  <div class="opt-name">R1: compact, one line (32×48 thumbnail)</div>
+  <p class="opt-note">The title and author on one line, with the date, pages and stars after them. It's dense: a long year fits in about two screens.</p>
+  <div class="pair" data-list="r1"></div>
+
+  <div class="opt-name">R2: two lines, like the Up next row (44×64 thumbnail, the existing thumbnail size)</div>
+  <p class="opt-note">The title over the author, with the date and pages over the stars on the right. It reuses the Home section pane's thumbnail and row rhythm. It's roomier and reads more like a memory than a ledger.</p>
+  <div class="pair" data-list="r2"></div>
+
+  <div class="opt-name">R3: ledger, date first (32×48 thumbnail)</div>
+  <p class="opt-note">Fixed columns: the date, the cover, the title and author, the pages right-aligned, then the stars. It scans best by date, but looks like a table without being one.</p>
+  <div class="pair" data-list="r3"></div>
+</section>
+
+<section>
+  <h2>2. The selected bar</h2>
+  <p>March is selected. The other bars with finishes are dimmed, and July has no finishes. Every option also marks the selection with more than color (DESIGN.md Do's: "a border or bar as well as a fill"). The last block shows option B2's keyboard focus on April.</p>
+
+  <div class="opt-name">B1: others dimmed, plus a sage underline under the selected period</div>
+  <p class="opt-note">This is the segmented control's selected treatment (a 2px <code>accent</code> bar along the bottom) moved onto the period label. It's the quietest.</p>
+  <div class="pair" data-chart="b1"></div>
+
+  <div class="opt-name">B2: others dimmed, plus the highlight ring around the selected bar</div>
+  <p class="opt-note">This reuses <code>{components.highlight-ring}</code>, the page gap and then the 2px <code>accent</code> ring, which the app already uses for "this one".</p>
+  <div class="pair" data-chart="b2"></div>
+
+  <div class="opt-name">B3: whole columns dimmed (labels too), plus a selected column like a chip</div>
+  <p class="opt-note">The selected column gets the chip's selected fill and border. It's the strongest, but dimming the labels lowers their contrast below 4.5:1, so the dimmed values would need the hidden table to carry them.</p>
+  <div class="pair" data-chart="b3"></div>
+
+  <div class="opt-name">Focus (shown with B2): the focus ring on April while March stays selected</div>
+  <div class="pair" data-chart="b2" data-focus="3"></div>
+</section>
+
+<script>
+const star = document.getElementById('stars4').innerHTML;
+const books = [
+  {t:'The Left Hand of Darkness', a:'Ursula K. Le Guin', p:'304 pages', d:'28 Mar 2026', s:true, th:'img'},
+  {t:'Designing Data-Intensive Applications', a:'Martin Kleppmann', p:'611 pages', d:'14 Mar 2026', s:true, th:'type', color:'#2E6B6B'},
+  {t:'Thinking in Systems', a:'Donella H. Meadows', p:'240 pages', d:'2 Mar 2026', s:false, th:'img2'},
+];
+function thumb(b, size){ return `<span class="th ${size} ${b.th}" style="${b.color?'background:'+b.color:''}" aria-hidden="true"></span>`; }
+function list(kind){
+  const head = `<div class="lh"><h3>Finished in March 2026</h3><a href="#">Show the whole range</a></div>`;
+  const rows = books.map(b => {
+    const st = b.s ? star : '';
+    if (kind==='r1') return `<li><a class="row" href="#">${thumb(b,'s32')}<span class="grow line1"><span class="t">${b.t}</span><span class="au">${b.a}</span></span><span class="meta">${b.d} · ${b.p}</span><span style="width:64px">${st}</span></a></li>`;
+    if (kind==='r2') return `<li><a class="row" href="#">${thumb(b,'s44')}<span class="grow"><div class="t">${b.t}</div><div class="au">${b.a}</div></span><span class="right"><span class="meta">${b.d} · ${b.p}</span>${st||'<span style="height:12px"></span>'}</span></a></li>`;
+    return `<li><a class="row" href="#"><span class="meta date">${b.d}</span>${thumb(b,'s32')}<span class="grow"><div class="t">${b.t}</div><div class="au">${b.a}</div></span><span class="meta pages">${b.p}</span><span class="st">${st}</span></a></li>`;
+  }).join('');
+  return head + `<ol class="${kind}">${rows}</ol>`;
+}
+const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov'];
+const pages  = [420,610,1155,330,780,512,0,940,288,605,240];
+function chart(kind, focus){
+  const max = Math.max(...pages);
+  const cols = months.map((m,i)=>{
+    const cls = pages[i]===0 ? 'empty' : (i===2 ? 'sel' : 'dim');
+    const f = focus!=null && i===+focus ? ' focus' : '';
+    const per = i===0 ? `${m}<br>2026` : m;
+    return `<div class="col ${cls}${f}"><span class="val">${pages[i].toLocaleString('en-GB')}</span><span class="trk">${pages[i]?`<span class="fil" style="height:${pages[i]/max*100}%"></span>`:''}</span><span class="per">${per}</span></div>`;
+  }).join('');
+  return `<div class="chart ${kind}">${cols}</div>`;
+}
+document.querySelectorAll('[data-list]').forEach(el=>{
+  const k = el.dataset.list;
+  el.innerHTML = `<div class="theme"><div class="tag">Light</div>${list(k)}</div><div class="theme dark"><div class="tag">Dark</div>${list(k)}</div>`;
+});
+document.querySelectorAll('[data-chart]').forEach(el=>{
+  const k = el.dataset.chart, f = el.dataset.focus;
+  el.innerHTML = `<div class="theme"><div class="tag">Light</div>${chart(k,f)}</div><div class="theme dark"><div class="tag">Dark</div>${chart(k,f)}</div>`;
+});
+</script>
+</body>
+</html>

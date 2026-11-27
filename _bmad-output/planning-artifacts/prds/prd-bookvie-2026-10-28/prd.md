@@ -2,7 +2,7 @@
 title: bookvie PRD
 status: final
 created: 2026-10-28
-updated: 2026-11-25
+updated: 2026-11-27
 inputs:
   - _bmad-output/brainstorming/brainstorm-personal-library-tracker-2026-10-27/brainstorm-intent.md
   - _bmad-output/planning-artifacts/ux-designs/ux-bookvie-2026-10-28/prd-deltas.md
@@ -10,6 +10,7 @@ inputs:
   - _bmad-output/planning-artifacts/dropbox-backup-plan-2026-11-21.md
   - _bmad-output/planning-artifacts/card-note-boxes-plan-2026-11-23.md
   - _bmad-output/planning-artifacts/favourite-books-plan-2026-11-25.md
+  - _bmad-output/planning-artifacts/stats-finished-books-plan-2026-11-27.md
 assumptions: all confirmed by the user on 2026-10-28
 ---
 
@@ -204,6 +205,11 @@ The user can choose any date range and see the number of Books finished and the 
   - All of a Reading's pages count in the period it finished in, whatever its start date. A finish counts by its local date; a back-filled Reading counts in the period of its Finished on date.
   - "All time" starts at the earliest finished Reading.
   - Re-reads count again. Side reads never count.
+  - **The Books behind the numbers:** under the chart, a list shows every finish in the range. Each finish gets its own row, so a Book finished twice in the range has two rows, and the rows always add up to the books count. Side reads aren't listed. The newest finish comes first, and finishes on the same day are sorted by title. Each row shows the Book's cover, title and author, the finish date, the pages that finish added, and the Reading's rating when it has one. A row opens its Book. A range with no finishes shows no list.
+  - **One month or year at a time:** choosing a bar that has finishes narrows the list to that bar's period. Choosing it again, or choosing **Show the whole range**, widens the list back to the range. The two numbers keep showing the whole range. Changing the range clears the chosen bar.
+  - **Back returns to the same list:** the range and the chosen bar are part of the page's address. Back from a Book returns to the same range, bar and list, and Back from Stats leaves Stats in one step. Nothing is remembered between visits: Stats opened from the nav starts on This year with no bar. A broken or outdated address opens quietly, falling back to This year or dropping the bar, with no message.
+  - **Agents** that read Stats get the same list of finishes (FR-28).
+  - **Not included:** the favourite star or "purpose fulfilled" on a row, new presets, paging, sorting, filtering or exporting the list, and a popup on a bar.
 
 ### 4.7 Card notes *(Must)*
 Card notes keep what a book gave the user, so it can be found again. The main screen offers **Add card note** and **See card notes** from the first release.
@@ -340,7 +346,7 @@ An AI agent in Claude Code can read the library and record the user's reading th
   - **Local only:** a request from another site or host is refused, like any other request to bookvie.
   - **Same rules as the UI:** a write through the agent tools follows the same rules as the same action in the UI, and is refused with the same reason and the same fields. Adding a likely duplicate (FR-3) is refused until the agent confirms it explicitly.
   - **Find, never guess:** an agent finds a Book with a free-text search (an abbreviation, an author, part of a title). The search returns every likely match with its edition and type, and an empty list when nothing matches. Every other tool names the Book by its id, so a page is never logged on the wrong edition.
-  - **What agents can do:** read the catalog, a Book, Home, Card notes and Stats for any period; start, update, pause and finish a Reading, choose Up next and edit a Purpose; add and edit Card notes; mark and unmark Side reads; add and edit Books; export a backup; upload it to Dropbox (FR-29); restore a backup, with two confirmations (FR-30).
+  - **What agents can do:** read the catalog, a Book, Home, Card notes and Stats for any period, with the finishes behind the numbers; start, update, pause and finish a Reading, choose Up next and edit a Purpose; add and edit Card notes; mark and unmark Side reads; add and edit Books; export a backup; upload it to Dropbox (FR-29); restore a backup, with two confirmations (FR-30).
   - **What agents can't do:** delete a Book or a Card note, which stays in the UI behind its confirmation, or star and unstar a Book (FR-31). An agent can see whether a Book is starred.
   - **Covers by address:** adding or editing a Book can take the web address of its cover, and bookvie downloads it. Only an image from a public address is accepted. A failed download leaves the new Book unsaved, or the edited Book unchanged, with a clear error.
   - **Backup to a folder:** an agent's export writes a dated backup file to a fixed backups folder (a separate one for a Development server) and says where it is. A second export on the same day replaces that day's file. It counts as the last export (FR-22), except the backup run's export, which never moves it (FR-29).
