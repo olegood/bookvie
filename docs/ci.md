@@ -20,7 +20,7 @@ Setup is shared through `.github/actions/setup`: Node from `.nvmrc`, uv 0.13.6 w
 ## Quality gates
 
 - **Every test must pass.** The suite has no P0/P1 tags yet, so the gate is stricter than a priority split: a single failure fails the run. Playwright still retries a failing test twice in CI (`retries: CI ? 2 : 0`), so one flaky failure doesn't block a merge; burn-in is what catches the flake.
-- **Every discovered test must run.** `scripts/e2e-count.mjs` lists the tests Playwright finds for the same arguments and compares that count with the JUnit report (`tests - skipped`). A skipped test, or a suite that quietly stopped running part of itself, fails the job.
+- **Every discovered test must run.** `scripts/e2e-count.mjs` lists the tests Playwright finds for the same arguments and compares that count, minus the declared skips, with the JUnit report (`tests - skipped`). A declared skip is a leaf written as `test.skip(title, body)` or inside `test.describe.skip`: the form the ATDD's red-phase leaves take, so a pushed red-phase commit stays green (Epic 17 retro item 117). The script prints where each declared skip is. Any other skip (a runtime `test.skip()` or `test.skip(condition)`, or `test.fixme`), or a suite that quietly stopped running part of itself, fails the job.
 - **Burn-in has no retries.** `--repeat-each=10 --retries=0` runs each test 10 times; a test that only passes on retry fails. The whole suite takes about 20 s this way, so no changed-spec selection is used (it would also miss backend changes, which e2e tests depend on).
 - **Coverage gates** come from `backend/scripts/coverage_gate.py`, unchanged.
 - **One required check.** In branch protection for `master`, require **CI gate** rather than each job.
@@ -83,7 +83,7 @@ Run the full check and burn-in on a quiet machine. Locally, Playwright starts a 
 
 ## Troubleshooting
 
-- **`e2e-count: executed count does not match`**: a test was skipped (`test.skip`, `test.fixme`) or didn't run. Remove the skip, or delete the test.
+- **`e2e-count: executed count does not match`**: a test was skipped at run time (`test.skip()`, `test.skip(condition)`) or marked `test.fixme`, or didn't run. Remove the skip, or delete the test. A declared `test.skip(title, body)` leaf doesn't cause this: the count expects it to skip.
 - **Local timeouts in focus assertions or the server health check, or a very slow `npm run check`**: usually machine load, not a bug. Check `uptime` and follow [Machine load](#machine-load) before debugging the test.
 - **Passes locally, fails in CI**: run `CI=1 npm --prefix frontend run e2e` to get CI's worker and retry settings, then open the failure's trace from the `e2e-<n>` artifact.
 - **Burn-in fails, E2E passes**: the test is flaky. The `burn-in-failures` artifact has the trace of the failing repetition. See [`frontend/e2e/README.md`](../frontend/e2e/README.md) for the suite's conventions.

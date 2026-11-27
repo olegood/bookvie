@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-29-2026 17:21
-last_updated: 11-27-2026 23:47
+last_updated: 11-27-2026 23:59
 project: bookvie
 project_key: NOKEY
 tracking_system: file-system
@@ -1487,7 +1487,7 @@ action_items:
       so a pushed red-phase commit stays green, while any other skip still fails the
       count. Changes: `scripts/e2e-count.mjs`. Due: before Epic 18's first ATDD."
     owner: "Murat (TEA)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-17-retro-2026-11-27.md"
   - id: "epic-17-retro-item-118-make-a-followup-risk-a-probe"
     epic: 17
