@@ -388,3 +388,211 @@ export function thumbnailLook(link: Locator): Promise<ThumbnailLook> {
     }
   })
 }
+
+// --- Story 17.2 Choose a month or year by its bar (stats-bars-select.spec.ts) -----
+
+/**
+ * The bars' library at fake today 2026-10-28, Book ids `bookId(1)` to `bookId(8)`.
+ * Custom 1 February – 15 April 2026 (`FEB_APR`) is 6 books, 2,152 pages, in three
+ * bars that all have finishes:
+ * - February: Kindred, 10 Feb, 286 pages (its only finish).
+ * - March: Emma 28 Mar (400), Designing Data-Intensive Applications 14 Mar (611, 4 stars),
+ *   Beloved 3 Mar (324): 3 books, 1,335 pages.
+ * - April: Piranesi 10 Apr (245) and Kindred again, 2 Apr (286): 2 books, 531 pages.
+ * This year adds Dune (back-filled, 1 Jun, 412) and Extreme Notes (12 Oct, 1 page):
+ * 8 books, 2,565 pages, with January, May, July, August and September empty.
+ * All time adds Solaris (back-filled, 15 Jan 2024, 304 pages), so it spans more than
+ * 24 months and is bucketed by year: 2024 (1 book, 304 pages), 2025 empty, 2026.
+ */
+export const BARS = {
+  books: [
+    {
+      id: bookId(1),
+      title: 'Designing Data-Intensive Applications',
+      authors: ['Martin Kleppmann'],
+      pages: 616,
+      readings: [done('2026-02-20', '2026-03-14', 611, 4)],
+    },
+    {
+      id: bookId(2),
+      title: 'Beloved',
+      authors: ['Toni Morrison'],
+      pages: 324,
+      readings: [done('2026-02-25', '2026-03-03', 324, null)],
+    },
+    {
+      id: bookId(3),
+      title: 'Emma',
+      authors: ['Jane Austen'],
+      pages: 400,
+      readings: [done('2026-03-15', '2026-03-28', 400, null)],
+    },
+    {
+      id: bookId(4),
+      title: 'Kindred',
+      authors: ['Octavia E. Butler'],
+      pages: 286,
+      readings: [done('2026-02-01', '2026-02-10', 286, null), done('2026-03-29', '2026-04-02', 286, null)],
+    },
+    {
+      id: bookId(5),
+      title: 'Piranesi',
+      authors: ['Susanna Clarke'],
+      pages: 245,
+      readings: [done('2026-04-03', '2026-04-10', 245, null)],
+    },
+    {
+      id: bookId(6),
+      title: 'Dune',
+      authors: ['Frank Herbert'],
+      pages: 412,
+      readings: [done(null, '2026-06-01', 412, null)],
+    },
+    {
+      id: bookId(7),
+      title: 'Extreme Notes',
+      authors: ['Kent Beck', 'Ward Cunningham', 'Ron Jeffries'],
+      pages: 1,
+      readings: [done('2026-10-11', '2026-10-12', 1, null)],
+    },
+    {
+      id: bookId(8),
+      title: 'Solaris',
+      authors: ['Stanisław Lem'],
+      pages: 304,
+      readings: [done(null, '2024-01-15', 304, null)],
+    },
+  ],
+}
+
+/** Custom 1 February – 15 April 2026, as the address names it. */
+export const FEB_APR = '/stats?range=custom&from=2026-02-01&to=2026-04-15'
+
+/** `FEB_APR`'s bars, oldest first, named from their buckets (UX-DR109). */
+export const FEB_APR_BARS = [
+  'February 2026, 1 book, 286 pages',
+  'March 2026, 3 books, 1,335 pages',
+  'April 2026, 2 books, 531 pages',
+]
+
+/** `FEB_APR`'s rows, in the view's order. */
+export const FEB_APR_ROWS = [
+  'Piranesi, Susanna Clarke, finished 10 Apr 2026, 245 pages',
+  'Kindred, Octavia E. Butler, finished 2 Apr 2026, 286 pages',
+  'Emma, Jane Austen, finished 28 Mar 2026, 400 pages',
+  'Designing Data-Intensive Applications, Martin Kleppmann, finished 14 Mar 2026, 611 pages, 4 stars',
+  'Beloved, Toni Morrison, finished 3 Mar 2026, 324 pages',
+  'Kindred, Octavia E. Butler, finished 10 Feb 2026, 286 pages',
+]
+
+/** March 2026's rows: the three finishes whose `finishDate` starts with `2026-03`. */
+export const MARCH_ROWS = FEB_APR_ROWS.slice(2, 5)
+
+/** April 2026's rows. */
+export const APRIL_ROWS = FEB_APR_ROWS.slice(0, 2)
+
+/** The chart: a `group` named "Finished by month" or "Finished by year" (UX-DR109). */
+export function barChart(page: Page, bucket: 'month' | 'year'): Locator {
+  return page.getByRole('main').getByRole('group', { name: `Finished by ${bucket}`, exact: true })
+}
+
+/** Every bar button in the chart, whichever its bucket, oldest first. */
+export function chartBars(page: Page): Locator {
+  return page
+    .getByRole('main')
+    .getByRole('group', { name: /^Finished by (month|year)$/ })
+    .getByRole('button')
+}
+
+/** The bar button for `period` as its name starts ("March 2026", "2024"). */
+export function bar(page: Page, period: string): Locator {
+  return page
+    .getByRole('main')
+    .getByRole('group', { name: /^Finished by (month|year)$/ })
+    .getByRole('button', { name: new RegExp(`^${period}, `) })
+}
+
+/** **Show the whole range**: a link-styled button beside the list's heading (UX-DR111). */
+export function showWholeRange(page: Page): Locator {
+  return page.getByRole('main').getByRole('button', { name: 'Show the whole range', exact: true })
+}
+
+export type Focusable = { label: string; tabIndex: number }
+
+/**
+ * Every element inside `container` that can take focus (a link, an enabled
+ * button, input or select, or anything with a `tabindex`), in document order,
+ * as its `aria-label` (else its text, white space collapsed) and its `tabIndex`. A roving Tab
+ * stop shows as exactly one entry with `tabIndex` 0. A one-shot read.
+ */
+export function focusablesIn(container: Locator): Promise<Focusable[]> {
+  return container.evaluate((root) =>
+    Array.from(root.querySelectorAll('a[href], button, input, select, textarea, [tabindex]'))
+      .filter((node) => !(node as HTMLButtonElement).disabled)
+      .map((node) => ({
+        label: node.getAttribute('aria-label') ?? (node.textContent ?? '').replace(/\s+/g, ' ').trim(),
+        tabIndex: (node as HTMLElement).tabIndex,
+      })),
+  )
+}
+
+export type BarLook = {
+  cursor: string
+  /** The 160px track: its ring (box-shadow), its outline and its transition. */
+  track: {
+    shadow: string
+    outlineStyle: string
+    outlineWidth: string
+    outlineOffset: string
+    outlineColor: string
+    transition: string
+  }
+  /** The fill inside the track, its opacity taken up to the bar; null with no fill. */
+  fill: { opacity: number; transition: string } | null
+  /** Each element in the bar holding text of its own (value, period lines), its opacity taken up to the bar. */
+  labels: { text: string; color: string; weight: string; opacity: number }[]
+}
+
+/**
+ * How a bar is drawn, found by geometry and text rather than class names: the
+ * track is the first element inside `bar` that is 160px tall to within half a
+ * pixel (DESIGN.md → Monthly bars), its fill the track's first child. Opacities
+ * multiply every ancestor's up to and including `bar`, so dimming set on the
+ * column shows on its labels too. A one-shot read.
+ */
+export function barLook(bar: Locator): Promise<BarLook> {
+  return bar.evaluate((root) => {
+    const opacity = (node: Element): number => {
+      let value = 1
+      for (let n: Element | null = node; n !== null; n = n === root ? null : n.parentElement) {
+        value *= Number(getComputedStyle(n).opacity)
+      }
+      return value
+    }
+    const nodes = Array.from(root.querySelectorAll('*'))
+    const track = nodes.find((node) => Math.abs(node.getBoundingClientRect().height - 160) <= 0.5)
+    if (!track) throw new Error('no 160px track in the bar')
+    const trackStyle = getComputedStyle(track)
+    const fill = track.firstElementChild
+    const ownText = (node: Element) =>
+      Array.from(node.childNodes).some((child) => child.nodeType === Node.TEXT_NODE && child.textContent?.trim())
+    return {
+      cursor: getComputedStyle(root).cursor,
+      track: {
+        shadow: trackStyle.boxShadow,
+        outlineStyle: trackStyle.outlineStyle,
+        outlineWidth: trackStyle.outlineWidth,
+        outlineOffset: trackStyle.outlineOffset,
+        outlineColor: trackStyle.outlineColor,
+        transition: trackStyle.transitionDuration,
+      },
+      fill: fill === null ? null : { opacity: opacity(fill), transition: getComputedStyle(fill).transitionDuration },
+      labels: [root, ...nodes].filter(ownText).map((node) => ({
+        text: (node.textContent ?? '').trim(),
+        color: getComputedStyle(node).color,
+        weight: getComputedStyle(node).fontWeight,
+        opacity: opacity(node),
+      })),
+    }
+  })
+}
