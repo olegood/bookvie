@@ -29,7 +29,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 # - Retrospective appends its action items to action_items; the status view surfaces open ones
 generated: 10-29-2026 17:21
-last_updated: 11-28-2026 11:18
+last_updated: 11-28-2026 11:23
 project: bookvie
 project_key: NOKEY
 tracking_system: file-system
@@ -1457,7 +1457,7 @@ action_items:
       and add a resolved: line to each. Changes: `_bmad-output/planning-artifacts/architecture/architecture-bookvie-2026-10-29/ARCHITECTURE-SPINE.md`,
       `_bmad-output/implementation-artifacts/deferred-work.md`. Due: before Epic 18."
     owner: "Winston (Architect)"
-    status: open
+    status: done
     ref: "_bmad-output/implementation-artifacts/epic-17-retro-2026-11-27.md"
   - id: "epic-17-retro-item-115-trace-and-gate-epic-17"
     epic: 17
