@@ -264,6 +264,15 @@ describe('arrivalSearch', () => {
     assert.equal(arrivalSearch(address('range=custom&from=2026-02-01&period=2026-03')), 'range=thisYear')
   })
 
+  it('[P2] leaves a canonical range with a malformed period alone: the settled view drops it', () => {
+    assert.equal(arrivalSearch(address('range=thisYear&period=spring')), null)
+    assert.equal(arrivalSearch(address('range=lastYear&period=2025-13')), null)
+  })
+
+  it('[P2] falls back to This year for a bad range with no period', () => {
+    assert.equal(arrivalSearch(address('range=nextWeek')), 'range=thisYear')
+  })
+
   it('keeps the first of a duplicate range, and its period', () => {
     assert.equal(
       arrivalSearch(address('range=lastYear&range=thisYear&period=2025-03')),

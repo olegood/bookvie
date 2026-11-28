@@ -1,79 +1,74 @@
 ---
 stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03-generate-tests', 'step-04-validate-and-summarize']
 lastStep: 'step-04-validate-and-summarize'
-lastSaved: '2026-11-27'
-storyId: '17.2'
-storyKey: '17-2-choose-a-month-or-year-by-its-bar'
+lastSaved: '2026-11-28'
+storyId: 'epic-17-retro-item-112'
+storyKey: 'epic-17-retro-item-112-rescue-focus-from-any-removed-stats-control'
 inputDocuments:
-  - _bmad-output/implementation-artifacts/spec-17-2-choose-a-month-or-year-by-its-bar.md (ACs, I/O matrix, Review Findings, Review Triage Log, Auto Run Result)
-  - _bmad-output/test-artifacts/atdd-checklist-17-2-choose-a-month-or-year-by-its-bar.md (Green-phase follow-ups, Implementation checklist)
+  - _bmad-output/implementation-artifacts/spec-epic-17-retro-item-112-rescue-focus-from-any-removed-stats-control.md (Intent, Always/Never, I/O matrix, ACs, Implementation Notes, Review Findings)
   - _bmad/tea/config.yaml
-  - _bmad-output/planning-artifacts/ux-designs/ux-bookvie-2026-10-28/DESIGN.md (components.link, components.focus-ring, components.monthly-bar, Stats finished list → Heading)
-  - frontend/src/components/StatsBars.tsx, StatsBars.module.css, StatsFinishedList.tsx, StatsFinishedList.module.css; frontend/src/styles/base.css (.linkButton)
-  - frontend/e2e/stats-bars-select.spec.ts, stats.ts, library.ts, home.ts, dev-mode.ts; frontend/src/lib/stats.test.ts; frontend/scripts/copy.test.mjs
-  - resources/knowledge: test-levels-framework.md, test-priorities-matrix.md, data-factories.md, selective-testing.md, ci-burn-in.md, test-quality.md, fixture-architecture.md, network-first.md, playwright-cli.md (core and Traditional Patterns; no Playwright Utils)
+  - frontend/playwright.config.ts
+  - frontend/src/pages/StatsPage.tsx, frontend/src/components/StatsFinishedList.tsx, frontend/src/lib/announce.ts, frontend/src/lib/stats.ts
+  - frontend/e2e/stats-bars-focus.spec.ts, stats.ts; frontend/src/lib/announce.test.ts, stats.test.ts
+  - resources/knowledge: test-levels-framework.md, test-priorities-matrix.md, data-factories.md, selective-testing.md, ci-burn-in.md, test-quality.md, fixture-architecture.md, network-first.md, playwright-cli.md (core and Traditional Patterns; no Playwright Utils, no Pact)
 ---
 
-# Automation Summary: Story 17.2, choose a month or year by its bar
+# Automation Summary: Epic 17 retro item 112, rescue focus from any removed Stats control
 
 ## Preflight
 
-- **Done at HEAD.** At HEAD (`874db5d`, the code review's commit), `sprint-status.yaml` has `17-2-choose-a-month-or-year-by-its-bar: done`. The working tree was clean.
-- **Stack:** `fullstack` (auto). Playwright (Chromium only) and pytest are in place.
-- **Mode:** BMad-Integrated. Inputs: the ATDD checklist's ten green-phase follow-ups.
-  - Three were already covered by tests the build and review added: the `lib/stats` unit cases (`stats.test.ts:318–370`), both AC-11 halves (`stats-bars-select.spec.ts:725`, `:769`), and the first half of AC-7 (`:616`).
-  - AC-13's line needs no new test: `copy.test.mjs` passes, and the bar keys are on the chart (`StatsBars.tsx:99`, `:134`).
-  - The rest had no test.
-- **No backend target:** `period` is never sent to the server (AC-9), and the view's shape didn't change.
-- **Config:** `tea_use_playwright_utils: false` (Traditional Patterns), no Pact, `tea_browser_automation: auto`. I didn't explore with `playwright-cli`, because every locator already ships in `stats.ts`.
-- **Execution mode:** sequential in this session, as in 17.1. All eight leaves go in one new file.
+- **Done at HEAD:** the spec's frontmatter reads `status: 'done'` at HEAD (`c6eb8f9`, the code review's commit). Item 112 is a retro item, not a story, so it has no `development_status` key.
+- **Stack:** fullstack (`frontend/package.json` with React and `playwright.config.ts`; `backend/pyproject.toml`). The change is frontend only.
+- **Framework:** Playwright, Chromium only (`testDir: 'e2e'`), and `node --test` for `frontend/src/**/*.test.ts`.
+- **Mode:** BMad-Integrated, from the spec.
+- **ATDD checklist:** none. Oleg waived the ATDD step for this spec (code review, 2026-11-28).
+- **Config:** `tea_use_playwright_utils: false`, `tea_use_pactjs_utils: false`, `tea_browser_automation: auto`, `test_stack_type: auto`.
 
 ## Coverage plan
 
-| Target | Level | Priority | Result |
-|---|---|---|---|
-| AC-2 Tab back into the chart falls to the selected bar once the last focused bar has left it (a refetch removes February) | E2E | P2 | `stats-bars-select-automate.spec.ts:42` |
-| AC-2 Up and Down on a bar have their default held back, so the page doesn't scroll; Down from the `h1` is the control that does scroll | E2E | P2 | `:93` |
-| AC-3 Space presses a bar from rest; a click in the middle of a track presses that bar | E2E | P2 | `:147` |
-| AC-5 Show the whole range sits `--space-4` after the heading's last glyph, on its baseline, styled as `components.link` | E2E | P2 | `:188` |
-| AC-6 an unselected focused bar has `components.focus-ring` (2px offset); the selected one in dark has `ACCENT_DARK` at 6px | E2E | P2 | `:238` |
-| AC-7 a Custom range wider than 24 months turns the chart into years and releases the bar | E2E | P1 | `:280` |
-| AC-9 a valid `period` survives a reload (`h1` unfocused, silent) and Back/Forward (`h1` focused, silent) | E2E | P1 | `:310` |
-| AC-12 This year past New Year drops a 2026 `period` quietly and keeps `range=thisYear` | E2E | P3 | `:360` |
-| AC-1/3/5/9 strings, parse, validation, `statsSearch` | Unit | P1 | already covered: `stats.test.ts:318`, `:324`, `:343`, `:352`, `:362` |
-| AC-11 failed refetch, `h1` fallback | E2E | P1 | already covered: `stats-bars-select.spec.ts:725`, `:769` |
-| AC-6 forced-colors focus ring | — | — | retired: the review rejected it (Review Triage Log, "Verification Gap (other)") |
+**Already covered** (spec and review, re-read this run):
+- All 8 I/O-matrix rows have a leaf in `frontend/e2e/stats-bars-focus.spec.ts`.
+- `arrivalSearch` has 6 unit cases in `stats.test.ts`, and `clearStatus` has 3 in `announce.test.ts`.
+- The midnight-focused leaf (`:204`) fails with the same-selection clause removed (code review probe).
 
-## Files
+**Gaps, and the level for each.** The leaves reuse the spec's local helpers (`H1`, `nextStatsResponse`, `removeFebruaryFinish`, `refetchOnFocus`), so no helper is added or moved.
 
-- **Created:** `frontend/e2e/stats-bars-select-automate.spec.ts` (8 leaves).
-- **Updated:**
-  - `_bmad-output/test-artifacts/atdd-checklist-17-2-choose-a-month-or-year-by-its-bar.md`: every green-phase follow-up and implementation line resolved with its evidence, and one line retired. `grep -cF '[ ]'` gives **0**.
-  - this summary.
-- **Production code:** none touched.
+| # | Target | Level | Priority | Why it's not a duplicate | Result |
+|---|---|---|---|---|---|
+| 1 | A row of the whole range (no `period`) that a refetch empties when no bar is left: focus goes to the `h1`, the address is unchanged, nothing is spoken | E2E | P2 | The rescue's "else the `h1`" with no drop. The last-row leaf goes through a drop. | `stats-bars-focus.spec.ts:327` |
+| 2 | A failed new-day fetch with focus on a narrowed row: the `h1` gets focus at once, and the recovery leaves it there | E2E | P2 | `StatsFinishedList`'s report on the failed path. The matrix leaf starts from a bar (`StatsBars`). | `stats-bars-focus.spec.ts:353` |
+| 3 | `clearStatus` after an alert replaced a pending status line keeps the alert (`pendingKind` follows the latest `announce`) | Unit | P2 | The existing cases cover a single pending line only. | `announce.test.ts`, "[P2] clearStatus keeps an alert that replaced a pending status line" |
+| 4 | `arrivalSearch` with a canonical range and a malformed `period` returns `null` (the settled drop handles it); a bad range with no `period` returns `range=thisYear` | Unit | P2 | It pins the pure contract that e2e `stats-bars-select.spec.ts:567` reaches only through the UI. | `stats.test.ts`, two `[P2]` cases in `arrivalSearch` |
+
+**Scope:** selective. These are the edge paths the change opened that no leaf reaches. Safari and Firefox are out of scope (AGENTS.md "Supported browser").
+
+- **Execution mode:** sequential in this session, as in 17.1 and 17.2. The change is frontend only, so the API and backend workers had no target.
+
+## Results
+
+- **Tests added:** 4 targets. They are 2 e2e leaves in a new `(automate)` describe at the end of `frontend/e2e/stats-bars-focus.spec.ts`, and 3 unit cases: 1 in `frontend/src/lib/announce.test.ts`, 2 in `frontend/src/lib/stats.test.ts`.
+- **Runs this session:**
+  - `stats-bars-focus.spec.ts`: 10 passed.
+  - Burn-in of the two new leaves (`--repeat-each=5 --retries=0`): 10 passed.
+  - `npm run check:api` exit 0. That covers api:gen, Prettier, oxlint and `tsc -b`, and the unit suite passed 469 (466 before this run).
+- **Mutation probes:** each was an edit reverted by hand, then a rebuild, with `git status` showing only test files after.
+  - With the rescue's `|| failed` removed, `:353` fails, along with the matrix leaf at `:255`.
+  - With the row `li`'s ref removed, `:327` and `:353` fail, along with the three matrix row leaves.
+- **Files changed:** `frontend/e2e/stats-bars-focus.spec.ts`, `frontend/src/lib/announce.test.ts`, `frontend/src/lib/stats.test.ts`, and this summary.
+- **Production code:** none touched. No defect was found.
+- **ATDD checklist:** none for this spec, since ATDD was waived.
 
 ## Helpers
 
-None was added to an `e2e/*.ts` module, and the new spec has no local helper function. It reuses `firstLineRect`, `designComponentValue`, `ACCENT`, `ACCENT_DARK` and `bookId` (library.ts), `NEW_YEAR_NOW`, `barLook`, `bar`, `barChart`, `chartBars`, `showWholeRange`, `statsRequestFor` and the rest from stats.ts.
+One local helper was added to `stats-bars-focus.spec.ts`: `removeEveryFinish(page)`, the "every finish removed" stats route.
+- The new whole-range leaf needed the same stub as the existing last-row leaf (`:138`), which had it inline. So the stub moved into one helper that both use, and that leaf's assertions and title are unchanged.
+- No existing helper fits. `removeFebruaryFinish` removes one finish. Nothing in stats.ts stubs the route: `NOTHING_FINISHED` is a seeded library, not a route.
+- The leaves also reuse:
+  - from the spec: `H1` and `refetchOnFocus`;
+  - from home.ts: `serverAtFakeToday` and `stopAndRemove`;
+  - from stats.ts: `BARS`, `finishedLinks`, `address`, `afterAnnounceDelay`, `STATS_API`, `COULDNT_LOAD` and `statsRequestFor`.
 
-Three reads are written inline in their one leaf, because no exported helper does them:
-- The 160px track's center, for the click in AC-3. `barLook` finds the track the same way but doesn't return its box.
-- A baseline probe, for AC-5: a zero-height inline-block at the end of the `h2` and of the button. No e2e helper reads a baseline (`grep -n baseline e2e/*.ts` finds none).
-- A window `keydown` recorder, for AC-2: it notes whether Up and Down had their default held back.
+## Risks and next
 
-## Validation
-
-- `npx playwright test e2e/stats-bars-select-automate.spec.ts`: 8 passed. `--repeat-each=5`: 40 passed.
-- `prettier --write`, `oxlint` and `tsc -b` on the new file: clean. `node --test scripts/copy.test.mjs`: 2 passed.
-- Full `npm run check`, 2026-11-27: format, lint, `tsc`, unit 457 passed (0 skipped), pytest 2538 passed. The first `check:e2e` failed on one leaf outside this story, `search-boxes-automate.spec.ts:195` (Story 14.4): Card notes showed 0 of its 5 box links within 10s. That leaf passed 10 of 10 alone (`--repeat-each=10`), and a second `npm run check:e2e` passed **979** (971 + these 8, none skipped), with `check:smoke` ok. I read it as a flake under full-suite load; it isn't this story's, so it got no `deferred-work.md` entry.
-- **No production mutation probes:** automate edits tests only. Two leaves carry their own control instead: AC-2's Up/Down leaf shows Down does scroll from the `h1`, and AC-2's fallback leaf tells the selected bar (March) apart from the latest (April). None of the eight exposed a defect.
-
-## Assumptions and risks
-
-- AC-12's New Year leaf pins my reading: at New Year, This year's `period=2026-10` isn't a bar of 2027, so the general rule (a `period` that isn't a bar with finishes in the settled view is dropped quietly) applies. Nothing in epics.md says otherwise. The follow-up's "a change of year, not of range" shows as no range-line announcement and an unchanged `range=thisYear`.
-- AC-5's gap is compared with `--space-4` to the nearest pixel (`toBeCloseTo(…, 0)`), and the baselines to within half a pixel.
-- No defect found, so no `deferred-work.md` entry.
-
-## Next
-
-Story 17.2 closes Epic 17. Next comes the Epic 17 retrospective (`bmad-retrospective`), then its before-next-epic items: the trace and gate, and the spine reconciliation for the open "spine drift" entries (AGENTS.md → Epic boundaries).
+- **Not automated:** a refetch that reorders kept rows (a focused `li` moved by `insertBefore`). The code review rejected it as rare (another context must change a finish date while focus sits on a row), and its fix is a production change.
+- **Next:** Epic 17's remaining before-next-epic items in `sprint-status.yaml` (the trace and gate, item 115, and the spine reconciliation, item 114). Item 112's own sprint entry still reads `open`.

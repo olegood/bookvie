@@ -61,6 +61,24 @@ async function removeFebruaryFinish(page: Page): Promise<void> {
   })
 }
 
+/** From now on, every stats response is the server's with no finishes: every bucket and both totals are zero. */
+async function removeEveryFinish(page: Page): Promise<void> {
+  await page.route('**/api/views/stats**', async (route) => {
+    const response = await route.fetch()
+    const view = await response.json()
+    await route.fulfill({
+      response,
+      json: {
+        ...view,
+        books: 0,
+        pages: 0,
+        buckets: view.buckets.map((b: { period: string }) => ({ ...b, books: 0, pages: 0 })),
+        finishes: [],
+      },
+    })
+  })
+}
+
 /** Another context removed a finish: Stats refetches when the window regains focus. */
 async function refetchOnFocus(page: Page): Promise<void> {
   const refetch = nextStatsResponse(page)
@@ -126,20 +144,7 @@ test.describe('Epic 17 retro item 112 Rescue focus from any removed Stats contro
       await finishedLinks(page).first().focus()
       await expect(finishedLinks(page).first()).toBeFocused()
 
-      await page.route('**/api/views/stats**', async (route) => {
-        const response = await route.fetch()
-        const view = await response.json()
-        await route.fulfill({
-          response,
-          json: {
-            ...view,
-            books: 0,
-            pages: 0,
-            buckets: view.buckets.map((b: { period: string }) => ({ ...b, books: 0, pages: 0 })),
-            finishes: [],
-          },
-        })
-      })
+      await removeEveryFinish(page)
       await refetchOnFocus(page)
 
       // The criterion: period leaves the address and, with no bar left, the h1 takes focus.
@@ -310,6 +315,77 @@ test.describe('Epic 17 retro item 112 Rescue focus from any removed Stats contro
       await afterAnnounceDelay(page)
       await expect(page.getByRole('status')).toHaveText('')
       await expect(page.getByRole('alert')).toHaveText('')
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+})
+
+// Epic 17 retro item 112, test automation: the rescue's "else the h1" with no period to drop, and the failed
+// path from a row of the finished list rather than a bar.
+test.describe('Epic 17 retro item 112 Rescue focus from any removed Stats control (automate)', () => {
+  test('[P2] a refetch that removes the only row of the whole range moves focus to the h1, with no drop', async ({
+    page,
+  }) => {
+    const server = await serverAtFakeToday(page, 'stats-focus-whole-last-row', BARS)
+    try {
+      // This month holds one finish, Extreme Notes on 12 October, and no period is selected.
+      await page.goto(`${server.url}/stats?range=thisMonth`)
+      await expect(finishedLinks(page)).toHaveCount(1)
+      await finishedLinks(page).first().focus()
+      await expect(finishedLinks(page).first()).toBeFocused()
+
+      await removeEveryFinish(page)
+      await refetchOnFocus(page)
+
+      // The criterion: with no row and no bar left, the h1 takes focus; the address and both regions stay as they were.
+      await expect(finishedLinks(page)).toHaveCount(0)
+      await expect(H1(page)).toBeFocused()
+      expect(address(page)).toBe('/stats?range=thisMonth')
+      await afterAnnounceDelay(page)
+      await expect(page.getByRole('status')).toHaveText('')
+      await expect(page.getByRole('alert')).toHaveText('')
+    } finally {
+      await stopAndRemove(server)
+    }
+  })
+
+  test('[P2] a failed new-day fetch moves focus from a narrowed row to the h1 at once, and the recovery leaves it there', async ({
+    page,
+  }) => {
+    const server = await serverAtFakeToday(page, 'stats-focus-row-failed', BARS)
+    try {
+      await page.goto(`${server.url}/stats?range=thisMonth&period=2026-10`)
+      await expect(finishedLinks(page)).toHaveCount(1)
+      await finishedLinks(page).first().focus()
+      await expect(finishedLinks(page).first()).toBeFocused()
+
+      // Network-first: the failure and its wait are in place before the focus that fetches the new day.
+      await page.route('**/api/views/stats**', (route) =>
+        route.fulfill({ status: 503, contentType: 'text/plain', body: 'Service Unavailable' }),
+      )
+      const failed = page.waitForResponse(
+        (response) => new URL(response.url()).pathname === STATS_API && response.status() === 503,
+      )
+      await page.clock.setFixedTime(new Date('2026-10-29T00:30:00+01:00'))
+      await page.evaluate(() => window.dispatchEvent(new Event('focus')))
+      await (await failed).finished()
+
+      // The criterion: the row left with the failed view, and the h1 has focus before any recovery.
+      await expect(page.getByRole('alert')).toHaveText(COULDNT_LOAD)
+      await expect(finishedLinks(page)).toHaveCount(0)
+      await expect(H1(page)).toBeFocused()
+
+      await page.unroute('**/api/views/stats**')
+      const recovered = statsRequestFor(page, { from: '2026-10-01', to: '2026-10-29' })
+      await page.evaluate(() => window.dispatchEvent(new Event('focus')))
+      await (await recovered).response()
+
+      // The criterion: the row is back and focus stays on the h1.
+      await expect(finishedLinks(page)).toHaveCount(1)
+      await afterAnnounceDelay(page)
+      await expect(H1(page)).toBeFocused()
+      expect(address(page)).toBe('/stats?range=thisMonth&period=2026-10')
     } finally {
       await stopAndRemove(server)
     }

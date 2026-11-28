@@ -102,6 +102,16 @@ describe('announce', () => {
     assert.equal(status.textContent, '')
   })
 
+  it('[P2] clearStatus keeps an alert that replaced a pending status line', () => {
+    announce('status', 'Finished in March 2026: 3 books.')
+    announce('alert', "Couldn't load.")
+    clearStatus()
+    assert.equal(isAnnouncing(), true)
+    mock.timers.tick(ANNOUNCE_DELAY_MS)
+    assert.equal(alert.textContent, "Couldn't load.")
+    assert.equal(status.textContent, '')
+  })
+
   it('clearStatus keeps an alert still waiting for its tick', () => {
     announce('alert', 'Not saved.')
     clearStatus()
