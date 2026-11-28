@@ -5,7 +5,7 @@ created: '2026-11-27'
 status: 'done'
 baseline_revision: '50de623ecc24fb51664cd7270632130e51f2315c'
 review_loop_iteration: 0
-followup_review_recommended: true
+followup_review_recommended: false
 context:
   - '{project-root}/_bmad-output/implementation-artifacts/epic-17-context.md'
   - '{project-root}/_bmad-output/test-artifacts/atdd-checklist-17-2-choose-a-month-or-year-by-its-bar.md'
@@ -102,6 +102,8 @@ Code review, 2026-11-27 (new session; layers: Blind Hunter, Edge Case Hunter, Ve
 - [x] [Review][Defer] Existing tests changed outside the gate's list (`stats.spec.ts:299`, `stats-finished.spec.ts:526`, `:531–535`), while epics.md's existing-specs criterion and the epic context's Guards still forbid it [frontend/e2e/stats.spec.ts:299] — deferred: for the Epic 17 retro (Epic 15 item 104, Epic 16 item 110); the changes follow from option A and are recorded in the Spec Change Log
 
 - 2026-11-27, after the last patch: `npm run check` exit 0 — pytest 2538 passed, unit 457 passed (0 skipped), e2e 971 passed, smoke ok.
+
+- Follow-up risk: the lostBar focus effect through a held view; covered by frontend/e2e/stats-bars-focus.spec.ts:204; added, epic 17 retro item 112. It fails with the `selectionKey(shownSelection) === committedKey` clause removed from `interactive`. Clearing the marker before the `settled || failed` check is an equivalent mutant: all 81 Stats leaves pass, and Oleg accepted it (code review of item 112, 2026-11-28).
 
 **Rejected:**
 - `low` Edge Case 1 / Blind: a held view of another range renders a labelled group whose columns are all `aria-hidden`. — The I/O matrix's "Held view" row asks for exactly that ("the held chart is the group with no buttons"), and AC-10's leaf asserts it; the fix would edit this spec.

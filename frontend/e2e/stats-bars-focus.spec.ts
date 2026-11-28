@@ -173,6 +173,7 @@ test.describe('Epic 17 retro item 112 Rescue focus from any removed Stats contro
       expect(address(page)).toBe(FEB_APR)
       await afterAnnounceDelay(page)
       await expect(page.getByRole('status')).toHaveText('')
+      await expect(page.getByRole('alert')).toHaveText('')
     } finally {
       await stopAndRemove(server)
     }
@@ -308,6 +309,7 @@ test.describe('Epic 17 retro item 112 Rescue focus from any removed Stats contro
       await expect(H1(page)).toBeFocused()
       await afterAnnounceDelay(page)
       await expect(page.getByRole('status')).toHaveText('')
+      await expect(page.getByRole('alert')).toHaveText('')
     } finally {
       await stopAndRemove(server)
     }

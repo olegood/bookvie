@@ -2,7 +2,7 @@
 title: 'Rescue focus from any Stats control a dropped period removes, and pin the held-view paths'
 type: 'bugfix'
 created: '2026-11-28'
-status: 'in-review'
+status: 'done'
 baseline_commit: '3791c4bf99afe71969351a649c724214424f6395'
 route: 'dispatch'
 review_loop_iteration: 0
@@ -97,13 +97,46 @@ Finally, the arrival rule for keeping `period` (`:86-93`) is inline with one e2e
 - [x] `frontend/src/components/StatsFinishedList.tsx` -- `onFocusLost` reported from the Show the whole range button and each row link, through stable ref callbacks -- E17-R1.
 - [x] `frontend/src/pages/StatsPage.tsx` -- call `arrivalSearch`. Generalize `lostBar` and wire it to both components. Run the rescue on `settled` or `failed`. Clear status on a drop after a shown period -- E17-R1, R2, V2.
 - [x] `frontend/e2e/stats-bars-select.spec.ts` (or a new `stats-bars-focus.spec.ts`, see Code Map) -- one leaf per matrix row -- E17-R1, V1, V2, V3.
-- [ ] `_bmad-output/implementation-artifacts/spec-17-2-choose-a-month-or-year-by-its-bar.md` -- set `followup_review_recommended: false`, and add a `### Review Findings` line `Follow-up risk: the lostBar focus effect through a held view; covered by <file:line>; added, epic 17 retro item 112`. This spec's code review writes it when it marks this spec `done` (the "follow-up risk" fact in `_bmad/custom/bmad-code-review.toml`).
+- [x] `_bmad-output/implementation-artifacts/spec-17-2-choose-a-month-or-year-by-its-bar.md` -- set `followup_review_recommended: false`, and add a `### Review Findings` line `Follow-up risk: the lostBar focus effect through a held view; covered by <file:line>; added, epic 17 retro item 112`. This spec's code review writes it when it marks this spec `done` (the "follow-up risk" fact in `_bmad/custom/bmad-code-review.toml`).
 
 **Acceptance Criteria:**
 - **AC-1:** Given each matrix row, when its leaf runs in Chromium, then the stated focus, address, status and alert hold.
 - **AC-2:** Given the midnight-focused leaf, when the `:204` same-selection clause is removed, or `lostBar` is cleared before the `settled` check, then that leaf fails. Each edit is checked and reverted by hand, with no git command (AGENTS.md "Story pipeline").
 - **AC-3:** Given the midnight-fetch-fails leaf, when the later refetch succeeds, then focus is still on the `h1`, and only the person's own action moves it.
 - **AC-4:** Given the whole suite, when `npm run check` runs, then it passes, and every existing Stats leaf (`stats.spec.ts`, `stats-bars.spec.ts`, `stats-finished.spec.ts`, `stats-bars-select*.spec.ts`) passes unchanged.
+
+### Review Findings
+
+Code review of `cf537cf`, 2026-11-28, in a new session (bmad-code-review). Layers: Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor, Spine Check. 24 findings (Blind 13, Auditor 5, Spine 5, Edge 1, Verification Gap none), grouped into 2 decision-needed, 1 patch and 1 defer; 17 rejected.
+
+Probes this session (each an edit to `StatsPage.tsx` reverted by hand, a rebuild, then a Chromium run; `git status` clean after):
+- With the `selectionKey(shownSelection) === committedKey` clause removed from `interactive`, `stats-bars-focus.spec.ts:204` (the midnight-focused leaf) fails and the other 7 pass.
+- With `lostFocus` cleared before the `settled || failed` check, all 81 Stats leaves pass. No reachable path tells the two apart. Back and Forward get a fresh `StatsBody` (keyed by `useNavigatedHere`'s key, `StatsPage.tsx:51`), so a bar a Back leaves takes its marker with it. A range change or a Custom date runs with focus on the picker or a field.
+
+- [x] [Review][Decision] AC-2's second mutation can't fail a leaf — resolved (Oleg, 2026-11-28): accepted as an equivalent mutant; AC-2 stays as frozen, and probe 2 above is the record. The marker cleared before the `settled || failed` check is an equivalent mutant (probe above). AC-2 as frozen says a leaf fails. Oleg either accepts the equivalent mutant (recorded here, AC-2 unchanged) or renegotiates AC-2.
+- [x] [Review][Decision] The ATDD step was skipped — resolved (Oleg, 2026-11-28): waived for this spec; no retro entry. Design Notes' Pipeline line and AGENTS.md "Story pipeline" ("Don't skip or merge a step") name a separate `bmad-testarch-atdd` step. This build ran `bmad-build` with its own red-first leaves and no ATDD session. "Approve and continue" covers the switch to `bmad-build`, not dropping ATDD. Oleg either waives the step for this spec or sends it to the retro.
+- [x] [Review][Patch] Two "nothing spoken" leaves never check the alert region (matrix rows "Whole-range row goes" and "Nav from a period") [frontend/e2e/stats-bars-focus.spec.ts:175, :310] — fixed: both leaves now also assert `page.getByRole('alert')` is empty after the announce delay
+- [x] [Review][Defer] Spine drift (AD-7, "App info is an ordinary view", the update notice): `clearStatus` on a drop after a shown period cancels a pending update notice, or empties a set one, in the status region. The spine names only "another message is still waiting" as a case where the notice isn't spoken [frontend/src/lib/announce.ts:98] — deferred: spine drift, reconciled before the next epic. `announce()` already did the same through `clearAnnouncements` before this change.
+
+- 2026-11-28, after the last patch: `npm run check` exit 0. pytest 2538 passed, unit 466, e2e 987, smoke ok.
+- Follow-up risk (spec-17-2): the lostBar focus effect through a held view; covered by frontend/e2e/stats-bars-focus.spec.ts:204; existing, failed with the same-selection clause removed (probe 1). spec-17-2's `followup_review_recommended` is now `false`.
+
+Rejected:
+- `false` Blind 2: the spec-17-2 record would claim the whole risk is covered. The record isn't written yet, and this review writes it with both halves (the clause is covered; clearing order is an equivalent mutant).
+- `low` Blind 4: the Intent and AC-2 line numbers predate the change. The fix edits this spec. The probes above name the code by symbol.
+- `low` Blind 5: the title and Intent say "a dropped period" while option a widened it to any settled refetch. The fix edits this spec, and the Always list records option a.
+- `low` Blind 6: no new leaf checks that the rescue leaves focus on a control the person moved to. A row reports only when it holds focus as it leaves, and the rescue runs in the same commit (settled or failed), so nothing can focus in between. The guard is shared with the bar path.
+- `false` Blind 8: the failed-fetch leaf doesn't pin "at once". It asserts the `h1` (`:272`) before it un-routes the server (`:275`), so a rescue that waited for the recovery would fail it. Verification Gap traced the same.
+- `false` Blind 9: `arrivalSearch` has no case for a canonical range with a malformed `period`. `addressNeedsFallback` reads only the range keys, and the e2e arrival leaf covers `period=spring` (`stats-bars-select.spec.ts:567`).
+- `low` Blind 10: the last-row leaf inlines its own route stub. It's test duplication with no named harm, and the fix is a new helper.
+- `false` Blind 11: the describe title lacks a separator and the header repeats itself. Every Stats spec titles its describe this way ("Story 17.2 Choose a month…"), and the two comments say different things (where the file came from, what it pins).
+- `false` Blind 12: a stale `lostFocus` if the list unmounts while Stats stays mounted. Today the list unmounts only on an empty settled view (rescued), on a failure (rescued at once), or with the body itself.
+- `low` Blind 13: the Try-again deferral has no owner. No `deferred-work.md` entry names one; the retro reads the file.
+- `low` Edge 1: a refetch that reorders kept rows moves the focused `li` with `insertBefore`, and Chromium drops focus with no ref cleanup. It needs another context to change a finish date while focus sits on a row, and the fix adds a `focusout` guard.
+- `false` Auditor 3: the spec-17-2 task is open. By design: this review writes it.
+- `false` Auditor 4: a row reports from its `li`, not the `Link`. Implementation Notes give the reason (`Link`'s `mergeRefs` drops a returned cleanup), and the `li` holds only the link.
+- `false` Spine 1–3: AD-6 drift for the wider rescue, the failed-fetch rescue and the status clear. Already in `deferred-work.md` from the build's review; no duplicate entry.
+- `false` Spine 5: deferred entry 2 says "focusing the h1", but a failed refetch with its kept copy would focus the chart stop. A failed refetch that keeps its copy isn't `failed` (`settled` counts it). When `stats.status === 'failed'`, `shown` is null and the chart is unmounted, so the target is the `h1`.
 
 ## Implementation Notes
 

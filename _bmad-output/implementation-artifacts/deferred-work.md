@@ -1945,3 +1945,9 @@
 - source_spec: `_bmad-output/implementation-artifacts/spec-epic-17-retro-item-112-rescue-focus-from-any-removed-stats-control.md`
   summary: Focus on Stats' Try again falls to `body` when a window-focus refetch recovers and the failure block unmounts; nothing reports that loss.
   evidence: Verification gap layer ("Other"), bmad-build review of epic 17 retro item 112; frontend/src/pages/StatsPage.tsx (the `stats.status === 'failed'` block). Pre-existing since Story 6.3, and not a control a dropped period removes, so outside item 112. A fix would report the button's removal into the same `loseFocus` rescue.
+
+## Deferred from: code review of spec-epic-17-retro-item-112-rescue-focus-from-any-removed-stats-control (2026-11-28)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-epic-17-retro-item-112-rescue-focus-from-any-removed-stats-control.md`
+  summary: Spine drift (AD-7, "App info is an ordinary view", the update notice), reconciled before the next epic. A drop after a shown period calls `clearStatus`, which cancels a pending update notice or empties one already set, since the notice is a status line. The spine names only "another message is still waiting" as a case where the notice isn't spoken. Before this change, `announce()` already cancelled a pending notice through `clearAnnouncements`, and the spine doesn't describe that either.
+  evidence: Spine Check, code review of epic 17 retro item 112; frontend/src/lib/announce.ts (`clearStatus`), frontend/src/components/UpdateNotice.tsx:21, frontend/src/pages/StatsPage.tsx (the drop effect). The code follows the spec; the spec forbids spine edits.
