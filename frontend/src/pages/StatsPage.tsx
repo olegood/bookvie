@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { useLocation, useNavigate, useNavigationType, useSearchParams } from 'react-router'
 import { useStatsView } from '../api/index.ts'
 import Button from '../components/Button.tsx'
@@ -8,12 +8,12 @@ import RangePicker from '../components/RangePicker.tsx'
 import StatsBars, { type StatsBarsHandle } from '../components/StatsBars.tsx'
 import StatsFinishedList from '../components/StatsFinishedList.tsx'
 import TextField from '../components/TextField.tsx'
-import { announce, clearAnnouncements } from '../lib/announce.ts'
+import { announce, clearAnnouncements, clearStatus } from '../lib/announce.ts'
 import { COULDNT_LOAD } from '../lib/copy.ts'
 import { samePageState, useNavigatedHere, usePageTitle } from '../lib/page.ts'
 import { useNow } from '../lib/relativeDay.ts'
 import {
-  addressNeedsFallback,
+  arrivalSearch,
   DEFAULT_PRESET,
   finishedHeading,
   formatCount,
@@ -83,14 +83,8 @@ function StatsBody() {
     void navigate({ pathname: location.pathname, search }, { replace: true, state: samePageState() })
   }
 
-  // Arrival: a bad, reversed or half address is replaced, quietly, with what the page shows.
-  // A well-formed `period` is kept only when the range parsed as given (a reversed Custom put in order
-  // included): a fallback to This year has no bar. The settled view decides whether a kept one stays.
-  const [arrival] = useState(() =>
-    addressNeedsFallback(params)
-      ? statsSearch(committed, params.get('range') === committed.preset ? period : null)
-      : null,
-  )
+  // Arrival: a bad, reversed or half address is replaced, quietly, with what the page shows (`arrivalSearch`).
+  const [arrival] = useState(() => arrivalSearch(params))
   useEffect(() => {
     if (arrival === null) return
     void navigate({ pathname: location.pathname, search: `?${arrival}` }, { replace: true, state: samePageState() })
@@ -207,23 +201,34 @@ function StatsBody() {
   const settled = shown !== null && stats.current && !stats.fetching
   const chart = useRef<StatsBarsHandle>(null)
   const page = useRef<HTMLDivElement>(null)
-  // A bar that held focus when its button left the chart (a refetch emptied it), until the focus move below.
-  const lostBar = useRef<string | null>(null)
+  // Whether a control held focus when it left the document (a bar's button, Show the whole range or a row's
+  // link that a refetch removed), until the focus move below.
+  const lostFocus = useRef(false)
+  const loseFocus = useCallback(() => {
+    lostFocus.current = true
+  }, [])
+  // Whether this body has shown a selected bar: only then does a drop empty the status line it spoke.
+  const shownPeriod = useRef(false)
 
   // A `period` that isn't a bar with finishes in the settled view is dropped, quietly: on arrival, or when
-  // a refetch empties the selected bar.
+  // a refetch empties the selected bar. After a shown period, its status line goes with it; the alert stays.
   const dropPeriod = settled && hasPeriod && selected === null
   const rangeSearch = statsSearch(committed)
   useEffect(() => {
     if (!dropPeriod) return
+    if (shownPeriod.current) clearStatus()
     void navigate({ pathname: location.pathname, search: `?${rangeSearch}` }, { replace: true, state: samePageState() })
   }, [dropPeriod, rangeSearch, location.pathname, navigate])
-
-  // Once the view settles, focus that a bar held when its button left (the released bar, or any bar a
-  // refetch emptied) moves to the chart's Tab stop, else the h1. Checked after every render: `lostBar` is a ref.
   useEffect(() => {
-    if (!settled || lostBar.current === null) return
-    lostBar.current = null
+    if (selected !== null) shownPeriod.current = true
+  }, [selected])
+
+  // Focus that a removed control held moves to the chart's Tab stop, else the h1: once the view settles, or
+  // at once when the fetch failed, so a later recovery never moves it. Checked after every render:
+  // `lostFocus` is a ref. Never off a control the person is on.
+  useEffect(() => {
+    if (!lostFocus.current || !(settled || failed)) return
+    lostFocus.current = false
     const active = document.activeElement
     if (active !== null && active !== document.body) return
     if (!chart.current?.focusStop()) page.current?.querySelector<HTMLElement>('h1')?.focus()
@@ -310,15 +315,14 @@ function StatsBody() {
             selected={selected}
             interactive={interactive}
             onToggle={toggle}
-            onFocusLost={(bar) => {
-              lostBar.current = bar
-            }}
+            onFocusLost={loseFocus}
             resetKey={committedKey}
           />
           <StatsFinishedList
             heading={selected === null ? finishedHeading(shownSelection) : periodHeading(selected)}
             finishes={finishes}
             onShowWholeRange={selected === null ? undefined : showWholeRange}
+            onFocusLost={loseFocus}
           />
         </>
       )}

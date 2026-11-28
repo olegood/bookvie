@@ -179,6 +179,19 @@ export function addressNeedsFallback(params: URLSearchParams): boolean {
   return RANGE_KEYS.some((key) => params.getAll(key).join('\n') !== canonical.getAll(key).join('\n'))
 }
 
+/**
+ * The search a Stats arrival replaces the address with, without the `?`, or
+ * `null` when the address stays. A bad, reversed or half range is replaced
+ * with what it parses to; a well-formed `period` is kept only when `range`
+ * parsed as given (a reversed Custom put in order included): a fallback to
+ * This year has no bar. The settled view decides whether a kept one stays.
+ */
+export function arrivalSearch(params: URLSearchParams): string | null {
+  if (!addressNeedsFallback(params)) return null
+  const committed = parseStatsAddress(params)
+  return statsSearch(committed, params.get('range') === committed.preset ? parsePeriod(params) : null)
+}
+
 /** The dates `selection` stands for on the local day of `now`. */
 export function selectionRange(selection: StatsSelection, now: Date): StatsRange {
   return selection.preset === 'custom' ? selection.range : presetRange(selection.preset, now)

@@ -8,6 +8,7 @@ import { describe, it } from 'node:test'
 
 import {
   addressNeedsFallback,
+  arrivalSearch,
   barLines,
   barName,
   barShare,
@@ -228,6 +229,46 @@ describe('addressNeedsFallback', () => {
     ]) {
       assert.equal(addressNeedsFallback(address(search)), true, search)
     }
+  })
+})
+
+// Epic 17 retro item 112 (E17-V3): the arrival rule, as StatsPage replaces the address with it.
+describe('arrivalSearch', () => {
+  it('leaves an address with no range keys alone, with or without a period', () => {
+    assert.equal(arrivalSearch(address('')), null)
+    assert.equal(arrivalSearch(address('period=2026-03')), null)
+  })
+
+  it('leaves a canonical address alone, its period included', () => {
+    assert.equal(arrivalSearch(address('range=lastYear')), null)
+    assert.equal(arrivalSearch(address('range=thisYear&period=2026-03')), null)
+    assert.equal(arrivalSearch(address('range=custom&from=2026-02-01&to=2026-04-15&period=2026-03')), null)
+  })
+
+  it('falls back to This year with no period for a bad range', () => {
+    assert.equal(arrivalSearch(address('range=nextWeek&period=2026-03')), 'range=thisYear')
+  })
+
+  it('puts a reversed Custom in order and keeps its well-formed period', () => {
+    assert.equal(
+      arrivalSearch(address('range=custom&from=2026-04-15&to=2026-02-01&period=2026-03')),
+      'range=custom&from=2026-02-01&to=2026-04-15&period=2026-03',
+    )
+    assert.equal(
+      arrivalSearch(address('range=custom&from=2026-04-15&to=2026-02-01&period=spring')),
+      'range=custom&from=2026-02-01&to=2026-04-15',
+    )
+  })
+
+  it('falls back to This year with no period for a half Custom', () => {
+    assert.equal(arrivalSearch(address('range=custom&from=2026-02-01&period=2026-03')), 'range=thisYear')
+  })
+
+  it('keeps the first of a duplicate range, and its period', () => {
+    assert.equal(
+      arrivalSearch(address('range=lastYear&range=thisYear&period=2025-03')),
+      'range=lastYear&period=2025-03',
+    )
   })
 })
 

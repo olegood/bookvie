@@ -1,4 +1,4 @@
-import { useCallback, useState, type CSSProperties } from 'react'
+import { useCallback, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router'
 import type { StatsFinish } from '../api/index.ts'
 import { coverSrc } from '../lib/bookDetail.ts'
@@ -13,7 +13,16 @@ type Props = {
   finishes: readonly StatsFinish[]
   /** While a bar is selected: **Show the whole range** beside the heading, which widens the list (Story 17.2). */
   onShowWholeRange?: () => void
+  /**
+   * Called whenever a control holding focus (Show the whole range, or a row's link) is removed: by a
+   * refetch, when the list empties, or when the list unmounts because the person followed a row's link.
+   * The page acts on it only while it is still on Stats (Epic 17 retro item 112).
+   */
+  onFocusLost?: () => void
 }
+
+/** A ref callback that reports focus inside the node as it leaves the document. */
+type FocusRef = (node: HTMLElement | null) => (() => void) | undefined
 
 /**
  * The Stats finished list (DESIGN.md → Stats finished list; UX-DR105–UX-DR108):
@@ -23,21 +32,51 @@ type Props = {
  * selected, **Show the whole range** sits after the heading, a sibling of the
  * `h2` so the heading's name stays the period. Never announces.
  */
-export default function StatsFinishedList({ heading, finishes, onShowWholeRange }: Props) {
+export default function StatsFinishedList({ heading, finishes, onShowWholeRange, onFocusLost }: Props) {
+  const focusLost = useRef(onFocusLost)
+  useLayoutEffect(() => {
+    focusLost.current = onFocusLost
+  })
+  // One stable ref callback per control (Show the whole range, each reading's row), so a re-render doesn't
+  // detach and re-attach them, as StatsBars does for its bars. A row's goes on its `li`: `Link` merges refs
+  // into a new callback each render, which would detach and re-attach on every render.
+  const [refFor] = useState(() => {
+    const callbacks = new Map<string, FocusRef>()
+    return (key: string): FocusRef => {
+      let callback = callbacks.get(key)
+      if (callback === undefined) {
+        callback = (node) => {
+          if (node === null) return
+          return () => {
+            // Runs before the node leaves the document, so it still holds focus here.
+            if (node.contains(document.activeElement)) focusLost.current?.()
+          }
+        }
+        callbacks.set(key, callback)
+      }
+      return callback
+    }
+  })
+
   if (finishes.length === 0) return null
   return (
     <div className={styles.finished}>
       <div className={styles.headingRow}>
         <h2 className={styles.heading}>{heading}</h2>
         {onShowWholeRange !== undefined && (
-          <button type="button" className={`linkButton ${styles.wholeRange}`} onClick={onShowWholeRange}>
+          <button
+            ref={refFor('wholeRange')}
+            type="button"
+            className={`linkButton ${styles.wholeRange}`}
+            onClick={onShowWholeRange}
+          >
             Show the whole range
           </button>
         )}
       </div>
       <ol className={styles.list}>
         {finishes.map((finish) => (
-          <li key={finish.readingId} className={styles.item}>
+          <li key={finish.readingId} ref={refFor(`row:${finish.readingId}`)} className={styles.item}>
             <FinishRow finish={finish} />
           </li>
         ))}

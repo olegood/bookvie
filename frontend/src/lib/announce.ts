@@ -13,6 +13,8 @@ export const ANNOUNCE_DELAY_MS = 100
 
 const regions: Record<RegionKind, Region | null> = { status: null, alert: null }
 let pending: ReturnType<typeof setTimeout> | undefined
+// The region the pending message is for, so `clearStatus` leaves a pending alert alone.
+let pendingKind: RegionKind | undefined
 
 /** Where the regions' host element lives: the document body, or an open modal. */
 export interface RegionParent {
@@ -84,9 +86,23 @@ export function registerRegion(kind: RegionKind, region: Region | null): void {
 export function clearAnnouncements(): void {
   if (pending !== undefined) clearTimeout(pending)
   pending = undefined
+  pendingKind = undefined
   for (const region of Object.values(regions)) {
     if (region) region.textContent = ''
   }
+}
+
+/**
+ * Empties the status region alone and cancels a status line that hasn't been
+ * set yet. The alert region and a pending alert are left as they are.
+ */
+export function clearStatus(): void {
+  if (pending !== undefined && pendingKind === 'status') {
+    clearTimeout(pending)
+    pending = undefined
+    pendingKind = undefined
+  }
+  if (regions.status) regions.status.textContent = ''
 }
 
 /**
@@ -101,8 +117,10 @@ export function isAnnouncing(): boolean {
 /** Empties both regions, then sets `text` in `kind` after ANNOUNCE_DELAY_MS. */
 export function announce(kind: RegionKind, text: string): void {
   clearAnnouncements()
+  pendingKind = kind
   pending = setTimeout(() => {
     pending = undefined
+    pendingKind = undefined
     const region = regions[kind]
     if (region) region.textContent = text
   }, ANNOUNCE_DELAY_MS)

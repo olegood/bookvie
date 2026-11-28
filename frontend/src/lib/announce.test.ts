@@ -5,6 +5,7 @@ import {
   adoptRegions,
   announce,
   clearAnnouncements,
+  clearStatus,
   isAnnouncing,
   regionHost,
   registerRegion,
@@ -82,6 +83,32 @@ describe('announce', () => {
     announce('status', 'Saved.')
     clearAnnouncements()
     assert.equal(isAnnouncing(), false)
+  })
+
+  // Epic 17 retro item 112 (E17-R2): Stats empties its status line after a dropped period, and leaves the alert.
+  it('clearStatus empties the status region and keeps the alert', () => {
+    status.textContent = 'Finished in March 2026: 3 books.'
+    alert.textContent = "Couldn't load."
+    clearStatus()
+    assert.equal(status.textContent, '')
+    assert.equal(alert.textContent, "Couldn't load.")
+  })
+
+  it('clearStatus cancels a status line still waiting for its tick', () => {
+    announce('status', 'Finished in March 2026: 3 books.')
+    clearStatus()
+    assert.equal(isAnnouncing(), false)
+    mock.timers.tick(ANNOUNCE_DELAY_MS)
+    assert.equal(status.textContent, '')
+  })
+
+  it('clearStatus keeps an alert still waiting for its tick', () => {
+    announce('alert', 'Not saved.')
+    clearStatus()
+    assert.equal(isAnnouncing(), true)
+    mock.timers.tick(ANNOUNCE_DELAY_MS)
+    assert.equal(alert.textContent, 'Not saved.')
+    assert.equal(status.textContent, '')
   })
 })
 
